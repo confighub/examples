@@ -26,7 +26,7 @@ spec:
         - name: DATABASE_URL
           value: "postgres://admin:password@postgres:5432/chatdb"
         - name: CHAT_TITLE
-          value: "AI Chat"
+          value: "Cubby Chat"
         - name: PORT
           value: "8080"
         - name: REGION
