@@ -15,14 +15,14 @@ spec:
     spec:
       containers:
       - name: backend
-        image: ghcr.io/confighubai/cubbychat/backend:1.1.4
+        image: ghcr.io/confighubai/cubbychat/backend:1.1.6
         ports:
         - containerPort: 8080
         env:
         - name: OLLAMA_URL
-          value: "http://ollama:11434"  # Change to http://ollama:11434 for real Ollama
-        - name: OLLAMA_MODEL
-          value: "tinyllama"  # Options: tinyllama, llama3.2, qwen2:7b, gemma2:2b
+          value: "http://ollama:11434"
+        - name: OLLAMA_ENABLED
+          value: "true" # AI features enabled
         - name: DATABASE_URL
           value: "postgres://admin:password@postgres:5432/chatdb"
         - name: CHAT_TITLE
@@ -30,9 +30,9 @@ spec:
         - name: PORT
           value: "8080"
         - name: REGION
-          value: "dev"  # Change to your region
+          value: "dev"
         - name: ROLE
-          value: "development"  # Options: development, staging, production
+          value: "development"
         resources:
           requests:
             memory: "100Mi"
