@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama
+  namespace: confighubplaceholder
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ollama
+  template:
+    metadata:
+      labels:
+        app: ollama
+    spec:
+      containers:
+      - name: ollama
+        image: ollama/ollama:0.11.11
+        ports:
+        - containerPort: 11434
+        env:
+        - name: OLLAMA_NEW_ESTIMATES
+          value: "1"
+        - name: OLLAMA_NUM_PARALLEL
+          value: "2"
+        - name: OLLAMA_MAX_LOADED_MODELS
+          value: "2"
+        volumeMounts:
+        - name: ollama-storage
+          mountPath: /root/.ollama
+      - name: model-loader
+        image: curlimages/curl:latest
+        env:
+        - name: MODEL_NAME
+          value: "tinyllama"  # Model to preload
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          echo "🔄 Waiting for ollama service to be ready..."
+          until curl -f http://localhost:11434/api/tags >/dev/null 2>&1; do
+            echo "⏳ Ollama not ready yet, waiting..."
+            sleep 5
+          done
+          echo "✅ Ollama service is ready!"
+          
+          echo "🔍 Checking if model $MODEL_NAME is already available..."
+          if curl -s http://localhost:11434/api/tags | grep -q "$MODEL_NAME"; then
+            echo "🟢 Model $MODEL_NAME is already available"
+          else
+            echo "📥 Pulling model $MODEL_NAME via API..."
+            curl -X POST http://localhost:11434/api/pull \
+              -H "Content-Type: application/json" \
+              -d "{\"name\": \"$MODEL_NAME\"}" \
+              --no-buffer --show-error
+            echo "✅ Model $MODEL_NAME pull initiated!"
+          fi
+          
+          echo "✅ Model loading complete! Keeping container alive..."
+          tail -f /dev/null
+        resources:
+          requests:
+            memory: "50Mi"
+          limits:
+            memory: "100Mi"
+      volumes:
+      - name: ollama-storage
+        emptyDir: {}  # Change to PersistentVolumeClaim if needed
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama
+  namespace: confighubplaceholder
+spec:
+  selector:
+    app: ollama
+  ports:
+  - protocol: TCP
+    port: 11434
+    targetPort: 11434
+  type: ClusterIP

@@ -1,0 +1,22 @@
+#!/bin/bash
+
+if [ ! -e ".cub-space-prefix" ]; then
+  echo "No space prefix found. Run bin/install first."
+  exit 1
+fi
+
+prefix=$(cat .cub-space-prefix)
+
+if [[ -z "$1" || -z "$2" || -z "$3" || -z "$4" ]]; then
+  echo "Usage: $0 <env-name> <upstream> <role> <region>"
+  exit 1
+fi
+
+name=$1
+upstream=$2
+role=$3
+region=$4
+
+bin/new-infra $name
+
+bin/new-app-env $name $upstream $name $role $region

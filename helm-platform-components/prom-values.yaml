@@ -1,0 +1,10 @@
+installCRDs: true
+prometheus:
+  service:
+    type: NodePort
+grafana:
+  service:
+    type: NodePort
+alertmanager:
+  service:
+    type: NodePort

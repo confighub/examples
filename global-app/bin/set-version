@@ -1,0 +1,21 @@
+#!/bin/bash
+
+if [ ! -e ".cub-space-prefix" ]; then
+  echo "No space prefix found. Run bin/install first."
+  exit 1
+fi
+
+prefix=$(cat .cub-space-prefix)
+
+if [[ -z "$1" || -z "$2" ]]; then
+  echo "Usage: $0 <env-name> <version>"
+  exit 1
+fi
+
+env=$1
+version=$2
+
+cub run set-image-reference --container-name frontend --image-reference :$version --space $prefix-$env --quiet
+cub run set-image-reference --container-name backend  --image-reference :$version --space $prefix-$env --quiet
+
+cub unit apply --space $prefix-$env

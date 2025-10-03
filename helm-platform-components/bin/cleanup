@@ -1,0 +1,21 @@
+#!/bin/bash
+
+if [ ! -e ".cub-space-prefix" ]; then
+  echo "No space prefix found. Can't clean up."
+  exit 1
+fi
+
+prefix=$(cat .cub-space-prefix)
+
+cub space delete --where "Slug LIKE '$prefix%'" --recursive
+
+shopt -s nullglob
+for kubeconfig in var/*.kubeconfig; do
+  echo $kubeconfig
+  kind delete cluster --name $(basename $kubeconfig .kubeconfig)
+  rm -f $kubeconfig
+done
+
+rm -f .cub-space-prefix
+
+echo "Cleanup of $prefix-* spaces complete!"

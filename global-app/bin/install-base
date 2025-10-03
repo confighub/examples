@@ -1,0 +1,48 @@
+#!/bin/bash
+
+if [ -e ".cub-space-prefix" ]; then
+  echo "Clean up previous usage with bin/cleanup or delete the .cub-space-prefix file to continue"
+  exit 1
+fi
+
+if [ -z "$1" ]; then
+  # Generate a new space prefix that is not in use
+  prefix=$(cub space new-prefix)
+else
+  prefix=$1
+fi
+
+# Save the space prefix to a file for future use in this example
+echo $prefix > .cub-space-prefix
+
+# Create a space to store filters used in this example
+cub space create $prefix --label prefix=$prefix # for filters
+
+cub filter create all   Unit --where-field "Space.Labels.prefix = '$prefix'"   --space $prefix
+cub filter create app   Unit --where-field "Labels.type='app'"                 --space $prefix
+cub filter create infra Unit --where-field "Labels.type='infra'"               --space $prefix
+
+# Create spaces for the base configs
+cub space create $prefix-base --label base=true --label prefix=$prefix
+
+# Load the base config into the base space
+cub unit create --space $prefix-base backend  baseconfig/backend.yaml          --label type=app
+cub unit create --space $prefix-base frontend baseconfig/frontend.yaml         --label type=app
+cub unit create --space $prefix-base ollama   baseconfig/ollama.yaml           --label type=app
+cub unit create --space $prefix-base postgres baseconfig/postgres.yaml         --label type=app
+
+# The infra space is used to store infrastructure units such as namespaces and the nginx controller
+# The infra units are all in the same space unlike app units which are in separate spaces for each environment
+
+cub space create $prefix-infra --label prefix=$prefix
+
+cub unit create --space $prefix-infra nginx-base baseconfig/nginx-controller.yaml --label type=infra
+cub unit create --space $prefix-infra ns-base    baseconfig/ns-base.yaml          --label type=infra
+
+# Clone nginx unit from the base
+cub unit create nginx --space $prefix-infra --upstream-unit nginx-base --label type=infra,targetable=true
+
+# namespace units will be cloned in another, per-environment script. We only need one nginx so we do it here.
+# Remember that this is all a simulation. In reality there would be a whole different kube cluster in each 
+# environment along with other infrastructure services and parameters. In this example, we cram everything
+# into a single Kind cluster and we use namespaces to simulate different environments.

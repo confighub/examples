@@ -1,0 +1,15 @@
+#!/bin/bash
+
+bin/install-charts
+
+bin/clone base dev
+bin/clone dev prod1
+bin/clone dev prod2
+
+bin/create-cluster dev
+bin/create-cluster prod1
+bin/create-cluster prod2
+
+cub unit apply --space '*' --where 'TargetID IS NOT NULL' --wait=false
+
+echo "Units are being applied in the background."

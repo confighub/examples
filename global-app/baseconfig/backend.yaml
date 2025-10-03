@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: confighubplaceholder
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+      - name: backend
+        image: ghcr.io/confighubai/cubbychat/backend:1.1.4
+        ports:
+        - containerPort: 8080
+        env:
+        - name: OLLAMA_URL
+          value: "http://ollama:11434"  # Change to http://ollama:11434 for real Ollama
+        - name: OLLAMA_MODEL
+          value: "tinyllama"  # Options: tinyllama, llama3.2, qwen2:7b, gemma2:2b
+        - name: DATABASE_URL
+          value: "postgres://admin:password@postgres:5432/chatdb"
+        - name: CHAT_TITLE
+          value: "AI Chat"
+        - name: PORT
+          value: "8080"
+        - name: REGION
+          value: "dev"  # Change to your region
+        - name: ROLE
+          value: "development"  # Options: development, staging, production
+        resources:
+          requests:
+            memory: "100Mi"
+          limits:
+            memory: "200Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: confighubplaceholder
+spec:
+  selector:
+    app: backend
+  ports:
+  - protocol: TCP
+    port: 8080
+    targetPort: 8080
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: backend-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/enable-websockets: "true"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+  namespace: confighubplaceholder
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: base.local.cubby.bz
+    http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: backend
+            port:
+              number: 8080

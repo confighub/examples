@@ -1,0 +1,53 @@
+#!/bin/bash
+
+if [ ! -e ".cub-space-prefix" ]; then
+  echo "No space prefix found. Run bin/install first."
+  exit 1
+fi
+
+prefix=$(cat .cub-space-prefix)
+
+
+# First arg is name of new app, second arg is the upstream.
+# Example: bin/new-app backend base
+
+if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ]; then
+  echo "Usage: $0 <env-name> <upstream> <infra-name> <role> <region>"
+  exit 1
+fi
+
+app=$1
+upstream=$2
+infra=$3
+role=$4
+region=$5
+
+cub space create $prefix-$app --label prefix=$prefix,role=$role,region=$region
+
+# Clone app units from upstream
+cub unit create --dest-space $prefix-$app --space $prefix-$upstream --filter $prefix/app --label targetable=true,role=$role,region=$region
+
+# Set hostname subdomain in the cloned units
+cub run set-hostname-subdomain --subdomain $app --space $prefix-$app --quiet --where "Slug IN ('backend', 'frontend')"
+
+# Set role and region in the cloned units
+cub run set-env-var \
+        --container-name backend \
+        --env-var ROLE \
+        --env-value $role \
+        --space $prefix-$app \
+        --quiet
+
+cub run set-env-var \
+        --container-name backend \
+        --env-var REGION \
+        --env-value $region \
+        --space $prefix-$app \
+        --quiet
+
+cub link create --dest-space $prefix-$app --where-from "Slug LIKE '%'" --where-to "Slug='ns-$infra'" --where-to-space "Slug = '$prefix-infra'"
+
+# if cluster-target exists, set it on the new namespace and apply
+if cub target list --space $prefix-infra | grep -q cluster-target; then
+  cub unit set-target $prefix-infra/cluster-target --space $prefix-$app
+fi

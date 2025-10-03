@@ -1,0 +1,33 @@
+#!/bin/bash
+
+if [ ! -e ".cub-space-prefix" ]; then
+  echo "No space prefix found. Run bin/install-charts first."
+  exit 1
+fi
+
+prefix=$(cat .cub-space-prefix)
+
+if [[ -z "$1" ]]; then
+  echo "Usage: $0 <space-suffix>"
+  exit 1
+fi
+
+mkdir -p var
+space=$prefix-$1
+
+kind create cluster --name $space --kubeconfig var/$space.kubeconfig
+
+# Create a worker in the space
+cub worker create cluster-worker --space $space
+
+KUBECONFIG=var/$space.kubeconfig bash -c "cub worker install cluster-worker --space $space --env IN_CLUSTER_TARGET_NAME=cluster-target --export --include-secret | kubectl apply -f -"
+
+# Get cluster-target in space $space and wait for it to exist
+echo "Waiting for worker to boot, connect and create cluster-target"
+while ! cub target list --space $space | grep -q cluster-target; do
+  echo -n "."
+  sleep 1
+done
+echo
+echo "Worker is ready, setting targets on all units in space $space to cluster-target"
+cub unit set-target cluster-target --space $space

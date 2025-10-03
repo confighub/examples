@@ -1,0 +1,32 @@
+#!/bin/bash
+
+if [ ! -e ".cub-space-prefix" ]; then
+  echo "No space prefix found. Run bin/install first."
+  exit 1
+fi
+
+prefix=$(cat .cub-space-prefix)
+
+if [ -z "$1" ]; then
+  echo "Usage: $0 <infra-name>"
+  exit 1
+fi
+
+name=$1
+
+cub unit create ns-$name --space $prefix-infra --upstream-unit ns-base --label type=infra,targetable=true
+
+cub run set-string-path \
+      --resource-type v1/Namespace \
+      --path metadata.name \
+      --attribute-value $name \
+      --unit ns-$name \
+      --space $prefix-infra \
+      --quiet \
+      --change-desc "Set namespace name"
+
+# if cluster-target exists, set it on the new namespace and apply
+if cub target list --space $prefix-infra | grep -q cluster-target; then
+  cub unit set-target $prefix-infra/cluster-target --unit ns-$name --space $prefix-infra
+  cub unit apply --unit ns-$name --space $prefix-infra
+fi

@@ -1,0 +1,36 @@
+#!/bin/bash
+
+if [ ! -e ".cub-space-prefix" ]; then
+  echo "No space prefix found. Run bin/install first."
+  exit 1
+fi
+
+prefix=$(cat .cub-space-prefix)
+
+if [ -z "$1" ]; then
+  echo "Usage: $0 <env-name>"
+  exit 1
+fi
+
+name=$1
+
+cub run set-string-path \
+        --resource-type apps/v1/Deployment \
+        --path "spec.template.spec.containers.?name=frontend.imagePullPolicy" \
+        --attribute-value Never \
+        --unit frontend \
+        --space $prefix-$name \
+        --quiet
+
+cub run set-image --container-name frontend --container-image frontend:latest --unit frontend --space $prefix-$name --quiet
+
+
+cub run set-string-path \
+        --resource-type apps/v1/Deployment \
+        --path "spec.template.spec.containers.?name=backend.imagePullPolicy" \
+        --attribute-value Never \
+        --unit backend \
+        --space $prefix-$name \
+        --quiet
+
+cub run set-image --container-name backend --container-image backend:latest --unit backend --space $prefix-$name

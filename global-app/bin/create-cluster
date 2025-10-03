@@ -1,0 +1,32 @@
+#!/bin/bash
+
+if [ ! -e ".cub-space-prefix" ]; then
+  echo "No space prefix found. Run bin/install first."
+  exit 1
+fi
+
+prefix=$(cat .cub-space-prefix)
+
+mkdir -p var
+space=$prefix-infra
+
+kind create cluster --name $space --kubeconfig var/$space.kubeconfig --config cluster/kind-config.yaml
+
+# Create a worker in the space
+cub worker create cluster-worker --space $space
+
+KUBECONFIG=var/$space.kubeconfig bash -c "cub worker install cluster-worker --space $space --env IN_CLUSTER_TARGET_NAME=cluster-target --export --include-secret | kubectl apply -f -"
+
+# Get cluster-target in space $space and wait for it to exist
+echo "Waiting for worker to boot, connect and create cluster-target"
+while ! cub target list --space $space | grep -q cluster-target; do
+  echo -n "."
+  sleep 1
+done
+echo
+echo "Worker is ready."
+target_id=$(cub target get cluster-target --space $prefix-infra --jq .Target.TargetID)
+echo "Target ID: $target_id"
+echo "Setting target ID on all units except base units..."
+echo '{ "TargetID": "'$target_id'" }' | cub unit update --patch --from-stdin --space '*' \
+        --where "Space.Labels.prefix = '$prefix' AND Labels.targetable = 'true'" \

@@ -1,0 +1,17 @@
+#!/bin/bash
+
+if [ ! -e ".cub-space-prefix" ]; then
+  echo "No space prefix found. Run bin/install first."
+  exit 1
+fi
+
+prefix=$(cat .cub-space-prefix)
+
+if [ -z "$1" ]; then
+  echo "Usage: $0 <env-name>"
+  exit 1
+fi
+
+env=$1
+
+cub unit apply --space $prefix-$env --where "Labels.targetable = 'true'"

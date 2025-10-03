@@ -1,0 +1,53 @@
+#!/bin/bash
+
+if [ -e ".cub-space-prefix" ]; then
+  echo "Clean up previous usage with bin/cleanup or delete the .cub-space-prefix file to continue"
+  exit 1
+fi
+
+prefix=$(cub space new-prefix)
+echo $prefix > .cub-space-prefix
+
+
+# Create a space for the base platform components
+space=$prefix-base
+cub space create $space
+
+# Install Helm charts and group them in "bundles" using labels
+
+# Ingress bundle
+
+cub helm install --space $space --namespace ingress-nginx ingress-nginx ingress-nginx --repo https://kubernetes.github.io/ingress-nginx
+
+# Observability bundle
+
+cub helm install --space $space --namespace prometheus prom prometheus-community/kube-prometheus-stack --values prom-values.yaml
+cub helm install --space $space --namespace alertmanager alertmanager prometheus-community/alertmanager --values values.yaml
+cub helm install --space $space --namespace grafana grafana grafana/grafana --values values.yaml
+cub helm install --space $space --namespace thanos thanos bitnami/thanos --values values.yaml
+
+# Logging bundle
+
+cub helm install --space $space --namespace alloy alloy grafana/alloy --values values.yaml
+cub helm install --space $space --namespace loki loki grafana/loki-stack --set promtail.enabled=true --set grafana.enabled=true 
+
+# Security bundle
+
+helm repo add secrets-store-csi-driver https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts
+
+cub helm install --space $space --namespace cert-manager cert-manager jetstack/cert-manager --values values.yaml --version v1.17.1
+cub helm install --space $space --namespace secrets-store-csi-driver secrets-store-csi-driver secrets-store-csi-driver/secrets-store-csi-driver --values values.yaml
+cub helm install --space $space --namespace vault-csi vault hashicorp/vault --values values.yaml
+
+
+cub unit update --patch --label Bundle=Ingress --space $space \
+  --where "Labels.HelmChart = 'ingress-nginx'"
+
+cub unit update --patch --label Bundle=Observability --space $space \
+  --where "Labels.HelmChart IN ('kube-prometheus-stack', 'thanos', 'alertmanager', 'grafana')"
+
+cub unit update --patch --label Bundle=Logging --space $space \
+  --where "Labels.HelmChart IN ('alloy', 'loki-stack')"
+
+cub unit update --patch --label Bundle=Security --space $space \
+  --where "Labels.HelmChart IN ('cert-manager', 'secrets-store-csi-driver', 'vault')"

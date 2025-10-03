@@ -1,0 +1,16 @@
+#!/bin/bash
+
+if [ ! -e ".cub-space-prefix" ]; then
+  echo "No space prefix found. Run bin/install first."
+  exit 1
+fi
+
+prefix=$(cat .cub-space-prefix)
+
+# Apply infra first:
+
+cub unit apply --space $prefix-infra
+
+# Apply everything else that is not base:
+
+cub unit apply --where "Space.Labels.prefix = '$prefix' AND Space.Labels.base != 'true'" --space '*'

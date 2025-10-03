@@ -1,0 +1,4 @@
+#!/bin/bash
+if [ -e ".cub-space-prefix" ]; then
+  cat .cub-space-prefix
+fi

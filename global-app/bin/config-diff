@@ -1,0 +1,339 @@
+#!/bin/bash
+
+# ConfigHub Unit Diff Tool
+# Compares config units between two spaces and shows differences
+#
+# This script fetches config unit data from two different spaces in ConfigHub
+# and performs a pairwise diff between units of the same name in each space.
+# It displays the list of pairwise diffs nicely in the terminal and also
+# prints out units existing in one space but not another.
+#
+# Requirements:
+# - cub CLI must be installed and authenticated
+# - Access to both spaces being compared
+#
+# Author: DevOps Example
+# Version: 1.0
+
+set -euo pipefail
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Function to print colored output
+print_header() {
+    echo -e "${BLUE}=== $1 ===${NC}"
+}
+
+print_success() {
+    echo -e "${GREEN}✓ $1${NC}"
+}
+
+print_warning() {
+    echo -e "${YELLOW}⚠ $1${NC}"
+}
+
+print_error() {
+    echo -e "${RED}✗ $1${NC}"
+}
+
+# Function to show usage
+usage() {
+    echo "Usage: $0 <space1> <space2> [options]"
+    echo ""
+    echo "Compare config units between two ConfigHub spaces"
+    echo ""
+    echo "Arguments:"
+    echo "  space1    First space to compare"
+    echo "  space2    Second space to compare"
+    echo ""
+    echo "Options:"
+    echo "  -h, --help              Show this help message"
+    echo "  -v, --verbose           Show detailed diff output"
+    echo "  -i, --ignore PATTERN    Ignore lines matching PATTERN (can be used multiple times)"
+    echo "  -f, --ignore-file FILE  Ignore patterns from file (one pattern per line)"
+    echo ""
+    echo "Examples:"
+    echo "  $0 my-space-1 my-space-2"
+    echo "  $0 prod-staging prod-production --verbose"
+    echo "  $0 staging prod --ignore 'namespace:' --ignore 'image:'"
+    echo "  $0 staging prod --ignore-file .diffignore"
+    exit 1
+}
+
+# Parse command line arguments
+VERBOSE=false
+SPACE1=""
+SPACE2=""
+IGNORE_PATTERNS=()
+IGNORE_FILE=""
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -h|--help)
+            usage
+            ;;
+        -v|--verbose)
+            VERBOSE=true
+            shift
+            ;;
+        -i|--ignore)
+            if [[ -z "${2:-}" ]]; then
+                print_error "Option $1 requires a pattern argument"
+                usage
+            fi
+            IGNORE_PATTERNS+=("$2")
+            shift 2
+            ;;
+        -f|--ignore-file)
+            if [[ -z "${2:-}" ]]; then
+                print_error "Option $1 requires a file argument"
+                usage
+            fi
+            IGNORE_FILE="$2"
+            shift 2
+            ;;
+        -*)
+            print_error "Unknown option $1"
+            usage
+            ;;
+        *)
+            if [[ -z "$SPACE1" ]]; then
+                SPACE1="$1"
+            elif [[ -z "$SPACE2" ]]; then
+                SPACE2="$1"
+            else
+                print_error "Too many arguments"
+                usage
+            fi
+            shift
+            ;;
+    esac
+done
+
+# Load ignore patterns from file if specified
+if [[ -n "$IGNORE_FILE" ]]; then
+    if [[ ! -f "$IGNORE_FILE" ]]; then
+        print_error "Ignore file '$IGNORE_FILE' not found"
+        exit 1
+    fi
+    while IFS= read -r line; do
+        # Skip empty lines and comments
+        [[ -n "$line" && ! "$line" =~ ^[[:space:]]*# ]] && IGNORE_PATTERNS+=("$line")
+    done < "$IGNORE_FILE"
+fi
+
+# Function to filter out ignored lines from a file
+filter_ignored_lines() {
+    local input_file="$1"
+    local output_file="$2"
+    
+    if [[ ${#IGNORE_PATTERNS[@]} -eq 0 ]]; then
+        # No patterns to ignore, just copy the file
+        cp "$input_file" "$output_file"
+        return
+    fi
+    
+    # Create a temporary file for filtering
+    local temp_file=$(mktemp)
+    
+    # Apply all ignore patterns
+    cp "$input_file" "$temp_file"
+    for pattern in "${IGNORE_PATTERNS[@]}"; do
+        grep -v "$pattern" "$temp_file" > "${temp_file}.new" && mv "${temp_file}.new" "$temp_file"
+    done
+    
+    mv "$temp_file" "$output_file"
+}
+
+# Validate arguments
+if [[ -z "$SPACE1" || -z "$SPACE2" ]]; then
+    print_error "Both space arguments are required"
+    usage
+fi
+
+# Create temporary directory
+TEMP_DIR=$(mktemp -d)
+trap "rm -rf $TEMP_DIR" EXIT
+
+print_header "ConfigHub Unit Diff Tool"
+echo "Comparing spaces: $SPACE1 vs $SPACE2"
+echo "Temporary directory: $TEMP_DIR"
+if [[ ${#IGNORE_PATTERNS[@]} -gt 0 ]]; then
+    echo "Ignoring patterns: ${IGNORE_PATTERNS[*]}"
+fi
+echo ""
+
+# Function to get unit names from a space
+get_unit_names() {
+    local space="$1"
+    local output
+    output=$(cub unit list --space "$space" --no-header --names 2>/dev/null) || {
+        print_error "Failed to list units in space '$space'"
+        return 1
+    }
+    echo "$output"
+}
+
+# Function to get unit data and save to file
+get_unit_data() {
+    local space="$1"
+    local unit_name="$2"
+    local output_file="$3"
+    
+    cub unit get "$unit_name" --space "$space" --data-only > "$output_file" 2>/dev/null || {
+        print_warning "Failed to get data for unit '$unit_name' in space '$space'"
+        return 1
+    }
+}
+
+# Get unit lists from both spaces
+print_header "Fetching unit lists"
+print_success "Getting units from space: $SPACE1"
+UNITS_SPACE1=$(get_unit_names "$SPACE1" | sort)
+if [[ $? -ne 0 ]]; then
+    exit 1
+fi
+
+print_success "Getting units from space: $SPACE2"
+UNITS_SPACE2=$(get_unit_names "$SPACE2" | sort)
+if [[ $? -ne 0 ]]; then
+    exit 1
+fi
+
+# Convert to arrays for easier processing
+# Remove trailing newlines and whitespace, split into arrays
+UNITS_SPACE1=$(echo "$UNITS_SPACE1" | sed '/^$/d' | sed 's/[[:space:]]*$//')
+UNITS_SPACE2=$(echo "$UNITS_SPACE2" | sed '/^$/d' | sed 's/[[:space:]]*$//')
+
+UNITS1_ARRAY=()
+UNITS2_ARRAY=()
+
+while IFS= read -r line; do
+    line=$(echo "$line" | sed 's/[[:space:]]*$//')  # Remove trailing whitespace
+    [[ -n "$line" ]] && UNITS1_ARRAY+=("$line")
+done <<< "$UNITS_SPACE1"
+
+while IFS= read -r line; do
+    line=$(echo "$line" | sed 's/[[:space:]]*$//')  # Remove trailing whitespace
+    [[ -n "$line" ]] && UNITS2_ARRAY+=("$line")
+done <<< "$UNITS_SPACE2"
+
+echo "Found ${#UNITS1_ARRAY[@]} units in $SPACE1"
+echo "Found ${#UNITS2_ARRAY[@]} units in $SPACE2"
+echo ""
+
+# Find units only in space1
+ONLY_IN_SPACE1=()
+for unit in "${UNITS1_ARRAY[@]}"; do
+    if [[ ! " ${UNITS2_ARRAY[*]} " =~ " $unit " ]]; then
+        ONLY_IN_SPACE1+=("$unit")
+    fi
+done
+
+# Find units only in space2
+ONLY_IN_SPACE2=()
+for unit in "${UNITS2_ARRAY[@]}"; do
+    if [[ ! " ${UNITS1_ARRAY[*]} " =~ " $unit " ]]; then
+        ONLY_IN_SPACE2+=("$unit")
+    fi
+done
+
+# Find common units
+COMMON_UNITS=()
+for unit in "${UNITS1_ARRAY[@]}"; do
+    if [[ " ${UNITS2_ARRAY[*]} " =~ " $unit " ]]; then
+        COMMON_UNITS+=("$unit")
+    fi
+done
+
+# Display summary
+print_header "Summary"
+echo "Common units: ${#COMMON_UNITS[@]}"
+echo "Only in $SPACE1: ${#ONLY_IN_SPACE1[@]}"
+echo "Only in $SPACE2: ${#ONLY_IN_SPACE2[@]}"
+echo ""
+
+# Show units only in space1
+if [[ ${#ONLY_IN_SPACE1[@]} -gt 0 ]]; then
+    print_header "Units only in $SPACE1"
+    for unit in "${ONLY_IN_SPACE1[@]}"; do
+        echo "  - $unit"
+    done
+    echo ""
+fi
+
+# Show units only in space2
+if [[ ${#ONLY_IN_SPACE2[@]} -gt 0 ]]; then
+    print_header "Units only in $SPACE2"
+    for unit in "${ONLY_IN_SPACE2[@]}"; do
+        echo "  - $unit"
+    done
+    echo ""
+fi
+
+# Compare common units
+if [[ ${#COMMON_UNITS[@]} -gt 0 ]]; then
+    print_header "Comparing common units"
+    
+    DIFF_COUNT=0
+    SAME_COUNT=0
+    
+    for unit in "${COMMON_UNITS[@]}"; do
+        echo -n "Comparing $unit... "
+        
+        # Get unit data from both spaces
+        FILE1="$TEMP_DIR/${unit}_space1"
+        FILE2="$TEMP_DIR/${unit}_space2"
+        FILTERED_FILE1="$TEMP_DIR/${unit}_space1_filtered"
+        FILTERED_FILE2="$TEMP_DIR/${unit}_space2_filtered"
+        
+        if get_unit_data "$SPACE1" "$unit" "$FILE1" && get_unit_data "$SPACE2" "$unit" "$FILE2"; then
+            # Filter out ignored lines
+            filter_ignored_lines "$FILE1" "$FILTERED_FILE1"
+            filter_ignored_lines "$FILE2" "$FILTERED_FILE2"
+            
+            # Compare filtered files
+            if diff -q "$FILTERED_FILE1" "$FILTERED_FILE2" >/dev/null 2>&1; then
+                print_success "identical"
+                ((SAME_COUNT++))
+            else
+                print_warning "different"
+                ((DIFF_COUNT++))
+                
+                if [[ "$VERBOSE" == "true" ]]; then
+                    echo ""
+                    if [[ ${#IGNORE_PATTERNS[@]} -gt 0 ]]; then
+                        echo "--- Diff for $unit (ignoring patterns: ${IGNORE_PATTERNS[*]}) ---"
+                    else
+                        echo "--- Diff for $unit ---"
+                    fi
+                    diff -u "$FILTERED_FILE1" "$FILTERED_FILE2" || true
+                    echo "--- End diff ---"
+                    echo ""
+                fi
+            fi
+        else
+            print_error "failed to fetch data"
+        fi
+    done
+    
+    echo ""
+    print_header "Comparison Results"
+    echo "Identical units: $SAME_COUNT"
+    echo "Different units: $DIFF_COUNT"
+    
+    if [[ $DIFF_COUNT -gt 0 && "$VERBOSE" == "false" ]]; then
+        echo ""
+        echo "Use --verbose flag to see detailed differences"
+    fi
+else
+    print_warning "No common units found to compare"
+fi
+
+echo ""
+print_success "Comparison complete"

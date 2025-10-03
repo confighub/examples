@@ -1,0 +1,9 @@
+#!/bin/bash
+
+bin/new-env qa base qa dev
+bin/new-env us-staging qa staging US
+bin/new-env us-prod us-staging production US
+bin/new-env eu-staging qa staging EU
+bin/new-env eu-prod eu-staging production EU
+bin/new-env asia-staging qa staging Asia
+bin/new-env asia-prod asia-staging production Asia

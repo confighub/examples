@@ -1,0 +1,20 @@
+#!/bin/bash
+
+if [ ! -e ".cub-space-prefix" ]; then
+  echo "No space prefix found. Run bin/install-charts first."
+  exit 1
+fi
+
+if [[ -z "$1" || -z "$2" ]]; then
+  echo "Usage: $0 <source-space> <dest-space>"
+  exit 1
+fi
+
+
+prefix=$(cat .cub-space-prefix)
+source=$prefix-$1
+dest=$prefix-$2
+
+cub space create $dest || true
+
+cub unit create --dest-space $dest --space $source
