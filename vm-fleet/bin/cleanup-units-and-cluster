@@ -13,7 +13,7 @@ destroy_units() {
   # get unit list as json using cub and check that Status is NoLive:
   # do this in a loop until all units are NoLive
   while true; do
-    if ! cub unit list --where "Labels.type='$1'" --space $space --jq '.[] | select(.UnitStatus.Status != "NoLive")' | grep -q .; then
+    if ! cub unit list --where "Labels.type = '$1'" --space $space --jq '.[] | select(.UnitStatus.Status != "NotLive")' | grep -q .; then
       break
     fi
     echo "Waiting for instance units with type=$1 to be destroyed..."
