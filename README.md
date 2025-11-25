@@ -1,6 +1,6 @@
 # ConfigHub Examples
 
-This repo contains examples that demonstrate how ConfigHub works in various scenarios. ConfigHub is still in a private preview and this repo will not be very useful to you if you are not part of the preview. But feel free to look around.
+This repo contains examples that demonstrate how [ConfigHub](https://confighub.com) works in various scenarios. You'll need access to ConfigHub to go through the examples. ConfigHub is currently in gated preview. Please [sign up](https://auth.confighub.com/sign-up) and wait to be activated.
 
 ## How to use this repo
 
