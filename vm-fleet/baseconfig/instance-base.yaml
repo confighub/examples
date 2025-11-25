@@ -1,0 +1,46 @@
+apiVersion: ec2.aws.upbound.io/v1beta1
+kind: LaunchTemplate
+metadata:
+  name: confighubplaceholder
+spec:
+  forProvider:
+    region: us-west-2
+    name: confighubplaceholder
+    description: Launch template for auto-scaling EC2 instances
+    imageId: ami-0bca608fe0242d666 # Ubuntu 22.04 ARM64 us-west-2
+    instanceType: t4g.micro # ARM64 instance type (Graviton)
+    metadataOptions:
+    - instanceMetadataTags: enabled
+    iamInstanceProfile:
+    - arnRef:
+        name: crossplane-ec2-ssm-profile
+    vpcSecurityGroupIdRefs:
+    - name: crossplane-ssm-sg
+    userData: IyEvYmluL2Jhc2gKIyBHZXQgaW5zdGFuY2UgaW5mb3JtYXRpb24gZm9yIGRlbW8gcHVycG9zZXMgKG5vIEFXUyBDTEkgbmVlZGVkKQpJTlNUQU5DRV9JRD0kKGN1cmwgLXMgaHR0cDovLzE2OS4yNTQuMTY5LjI1NC9sYXRlc3QvbWV0YS1kYXRhL2luc3RhbmNlLWlkKQpIT1NUTkFNRT0kKGhvc3RuYW1lKQoKIyBHZXQgaW5zdGFuY2UgbmFtZSBmcm9tIG1ldGFkYXRhIC0gd2l0aCBiZXR0ZXIgZXJyb3IgaGFuZGxpbmcKSU5TVEFOQ0VfTkFNRT0kKGN1cmwgLXMgaHR0cDovLzE2OS4yNTQuMTY5LjI1NC9sYXRlc3QvbWV0YS1kYXRhL3RhZ3MvaW5zdGFuY2UvTmFtZSAyPi9kZXYvbnVsbCkKaWYgWyAteiAiJElOU1RBTkNFX05BTUUiIF0gfHwgW1sgIiRJTlNUQU5DRV9OQU1FIiA9PSAqIjQwNCIqIF1dIHx8IFtbICIkSU5TVEFOQ0VfTkFNRSIgPT0gKiJOb3QgRm91bmQiKiBdXTsgdGhlbgogIElOU1RBTkNFX05BTUU9InNlcnZlcjEiCmZpCgojIENyZWF0ZSBkZW1vIGhlbGxvLnR4dCBmaWxlIHdpdGggaW5zdGFuY2UgaW5mb3JtYXRpb24KZWNobyAiSGVsbG8gZnJvbSBFQzIgSW5zdGFuY2UhIiA+IC9ob21lL3VidW50dS9oZWxsby50eHQKZWNobyAiSW5zdGFuY2UgSUQ6ICRJTlNUQU5DRV9JRCIgPj4gL2hvbWUvdWJ1bnR1L2hlbGxvLnR4dAplY2hvICJJbnN0YW5jZSBOYW1lOiAkSU5TVEFOQ0VfTkFNRSIgPj4gL2hvbWUvdWJ1bnR1L2hlbGxvLnR4dAplY2hvICJIb3N0bmFtZTogJEhPU1ROQU1FIiA+PiAvaG9tZS91YnVudHUvaGVsbG8udHh0CmVjaG8gIlRpbWVzdGFtcDogJChkYXRlKSIgPj4gL2hvbWUvdWJ1bnR1L2hlbGxvLnR4dAoKIyBNYWtlIHRoZSBmaWxlIHJlYWRhYmxlIGJ5IGV2ZXJ5b25lCmNobW9kIDY0NCAvaG9tZS91YnVudHUvaGVsbG8udHh0CgojIEFkZCBmaW5hbCBzdGF0dXMgdG8gaGVsbG8udHh0CmVjaG8gIkluc3RhbmNlIHNldHVwIGNvbXBsZXRlZCBzdWNjZXNzZnVsbHkhIiA+PiAvaG9tZS91YnVudHUvaGVsbG8udHh0Cg==
+  providerConfigRef:
+    name: default
+---
+apiVersion: autoscaling.aws.upbound.io/v1beta2
+kind: AutoscalingGroup
+metadata:
+  name: confighubplaceholder
+spec:
+  forProvider:
+    region: us-west-2
+    minSize: 0 # Set to 0 to stop instances
+    maxSize: 1
+    desiredCapacity: 0 # Change to 0 to stop, 1 to start
+    healthCheckType: EC2
+    healthCheckGracePeriod: 300
+    vpcZoneIdentifier:
+    - confighubplaceholder # bin/set-network-info will set this
+    launchTemplate:
+    - idRef:
+        name: confighubplaceholder
+      version: "$Latest"
+    tag:
+    - key: Name
+      value: confighubplaceholder
+      propagateAtLaunch: true
+  providerConfigRef:
+    name: default

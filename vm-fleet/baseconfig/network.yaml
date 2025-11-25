@@ -1,0 +1,30 @@
+apiVersion: ec2.aws.upbound.io/v1beta1
+kind: DefaultVPC
+metadata:
+  name: default-vpc
+  labels:
+    crossplane.io/claim-name: default-vpc
+spec:
+  forProvider:
+    region: us-west-2
+    tags:
+      Name: default-vpc
+      ManagedBy: Crossplane
+  providerConfigRef:
+    name: default
+---
+apiVersion: ec2.aws.upbound.io/v1beta1
+kind: DefaultSubnet
+metadata:
+  name: default-subnet-a
+  labels:
+    crossplane.io/claim-name: default-subnet
+spec:
+  forProvider:
+    region: us-west-2
+    availabilityZone: us-west-2a
+    tags:
+      Name: default-subnet-a
+      ManagedBy: Crossplane
+  providerConfigRef:
+    name: default

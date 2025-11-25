@@ -1,0 +1,65 @@
+#!/bin/bash
+
+if [ ! -e ".cub-space" ]; then
+  echo "No space found. Run bin/setup first."
+  exit 1
+fi
+
+if [[ -z "$1" ]]; then
+  echo "Usage: $0 <instance-name>"
+  exit 1
+fi
+
+space=$(cat .cub-space)
+unit=instance-$1
+
+cub unit create --space $space $unit --upstream-unit instance-base --label type=instance
+
+cub run set-string-path \
+        --resource-type ec2.aws.upbound.io/v1beta1/LaunchTemplate \
+        --path metadata.name \
+        --attribute-value "$1" \
+        --unit $unit \
+        --space $space \
+        --quiet \
+        --change-desc "Set launch template KRM name after clone"
+
+cub run set-string-path \
+        --resource-type ec2.aws.upbound.io/v1beta1/LaunchTemplate \
+        --path spec.forProvider.name \
+        --attribute-value "$1" \
+        --unit $unit \
+        --space $space \
+        --quiet \
+        --change-desc "Set launch template AWS name after clone"
+
+cub run set-string-path \
+        --resource-type autoscaling.aws.upbound.io/v1beta2/AutoscalingGroup \
+        --path metadata.name \
+        --attribute-value "$1" \
+        --unit $unit \
+        --space $space \
+        --quiet \
+        --change-desc "Set ASG name after clone"
+
+cub run set-string-path \
+        --resource-type autoscaling.aws.upbound.io/v1beta2/AutoscalingGroup \
+        --path "spec.forProvider.launchTemplate.0.idRef.name" \
+        --attribute-value "$1" \
+        --unit $unit \
+        --space $space \
+        --quiet \
+        --change-desc "Set launch template idref on asg after clone"
+
+cub run set-string-path \
+        --resource-type autoscaling.aws.upbound.io/v1beta2/AutoscalingGroup \
+        --path "spec.forProvider.tag.?key=Name.value" \
+        --attribute-value "$1" \
+        --unit $unit \
+        --space $space \
+        --quiet \
+        --change-desc "Set instance name tag after clone"
+
+
+
+cub unit set-target $unit cluster-target --space $space

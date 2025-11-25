@@ -1,0 +1,3 @@
+leaderElection: false
+rbacManager:
+  leaderElection: false

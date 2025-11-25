@@ -1,0 +1,40 @@
+#!/bin/bash
+
+if [ -e ".cub-space" ]; then
+  echo "Clean up previous usage with bin/cleanup or delete the .cub-space file to continue"
+  exit 1
+fi
+
+space=$(cub space new-prefix)
+
+echo $space > .cub-space
+
+cub space create $space
+
+cub context set --space $space
+
+# Crossplane system
+cub helm install crossplane crossplane-stable/crossplane --space $space --namespace crossplane-system --values baseconfig/crossplane-values.yaml
+
+cub unit update --patch --label type=crossplane --space $space --where "Labels.HelmChart = 'crossplane'"
+
+
+# Providers
+cub unit create --space $space providers baseconfig/providers.yaml --label type=crossplane
+cub link create providers-to-crossplane --space $space providers crossplane
+
+# Provider config
+cub unit create --space $space providerconfig baseconfig/providerconfig.yaml --label type=crossplane
+cub link create providerconfig-to-providers --space $space providerconfig providers
+
+# Network
+cub unit create --space $space network baseconfig/network.yaml --label type=crossplane
+cub link create network-to-providerconfig --space $space network providerconfig
+
+# Shared Resources
+cub unit create --space $space shared-resources baseconfig/shared-resources.yaml --label type=infra
+cub link create shared-resources-to-network --space $space shared-resources network
+
+# EC2 Instance base
+cub unit create --space $space instance-base baseconfig/instance-base.yaml --label type=base
+cub link create instance-base-to-shared-resources --space $space instance-base shared-resources

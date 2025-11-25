@@ -1,0 +1,108 @@
+apiVersion: iam.aws.upbound.io/v1beta1
+kind: Role
+metadata:
+  name: crossplane-ec2-ssm-role
+  annotations:
+    crossplane.io/external-name: crossplane-ec2-ssm-role
+spec:
+  forProvider:
+    assumeRolePolicy: |
+      {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Principal": {
+              "Service": "ec2.amazonaws.com"
+            },
+            "Action": "sts:AssumeRole"
+          }
+        ]
+      }
+    tags:
+      Name: crossplane-ec2-ssm-role
+      ManagedBy: Crossplane
+  providerConfigRef:
+    name: default
+---
+apiVersion: iam.aws.upbound.io/v1beta1
+kind: RolePolicyAttachment
+metadata:
+  name: crossplane-ec2-ssm-policy
+spec:
+  forProvider:
+    policyArn: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+    roleRef:
+      name: crossplane-ec2-ssm-role
+  providerConfigRef:
+    name: default
+---
+apiVersion: iam.aws.upbound.io/v1beta1
+kind: InstanceProfile
+metadata:
+  name: crossplane-ec2-ssm-profile
+  annotations:
+    crossplane.io/external-name: crossplane-ec2-ssm-profile
+spec:
+  forProvider:
+    roleRef:
+      name: crossplane-ec2-ssm-role
+    tags:
+      Name: crossplane-ec2-ssm-profile
+      ManagedBy: Crossplane
+  providerConfigRef:
+    name: default
+---
+apiVersion: ec2.aws.upbound.io/v1beta1
+kind: SecurityGroup
+metadata:
+  name: crossplane-ssm-sg
+spec:
+  forProvider:
+    region: us-west-2
+    name: crossplane-ssm-security-group
+    description: Security group for SSM access to EC2 instance (outbound only)
+    vpcId: confighubplaceholder # bin/set-network-info will set this
+    tags:
+      Name: crossplane-ssm-sg
+      ManagedBy: Crossplane
+  providerConfigRef:
+    name: default
+---
+apiVersion: ec2.aws.upbound.io/v1beta1
+kind: SecurityGroupRule
+metadata:
+  name: crossplane-https-egress
+spec:
+  forProvider:
+    region: us-west-2
+    type: egress
+    fromPort: 443
+    toPort: 443
+    protocol: tcp
+    cidrBlocks:
+    - 0.0.0.0/0
+    description: Allow HTTPS outbound for SSM endpoints
+    securityGroupIdRef:
+      name: crossplane-ssm-sg
+  providerConfigRef:
+    name: default
+---
+apiVersion: ec2.aws.upbound.io/v1beta1
+kind: SecurityGroupRule
+metadata:
+  name: crossplane-http-egress
+spec:
+  forProvider:
+    region: us-west-2
+    type: egress
+    fromPort: 80
+    toPort: 80
+    protocol: tcp
+    cidrBlocks:
+    - 0.0.0.0/0
+    description: Allow HTTP outbound for package updates
+    securityGroupIdRef:
+      name: crossplane-ssm-sg
+  providerConfigRef:
+    name: default

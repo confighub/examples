@@ -1,0 +1,25 @@
+#!/bin/bash
+
+if [ ! -e ".cub-space" ]; then
+  echo "No space found. Run bin/setup first."
+  exit 1
+fi
+
+space=$(cat .cub-space)
+
+if [[ -z "$1" ]]; then
+  echo "Usage: $0 <instance-name>"
+  exit 1
+fi
+
+unit=instance-$1
+
+cub run set-int-path \
+        --resource-type autoscaling.aws.upbound.io/v1beta2/AutoscalingGroup \
+        --path spec.forProvider.desiredCapacity \
+        --attribute-value 0 \
+        --unit $unit \
+        --space $space \
+        --quiet \
+        --change-desc "Stop instance"
+cub unit apply $unit --space $space --wait=false

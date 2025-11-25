@@ -1,0 +1,24 @@
+#!/bin/bash
+
+bin/setup-iam
+
+bin/setup-units
+
+bin/setup-cluster
+
+space=$(cat .cub-space)
+
+# Rerun the apply command until all units are applied
+while cub unit apply --space $space --where "Labels.type = 'crossplane'" | grep -q "Warning: Apply failed"; do
+  echo "Waiting for crossplane units to be applied..."
+  sleep 5
+done
+
+KUBECONFIG=var/$space.kubeconfig kubectl wait --for=condition=Ready defaultvpc.ec2.aws.upbound.io/default-vpc --timeout=300s
+KUBECONFIG=var/$space.kubeconfig kubectl wait --for=condition=Ready defaultsubnet.ec2.aws.upbound.io/default-subnet-a --timeout=300s
+
+bin/set-network-info
+
+cub unit apply --space $space shared-resources --wait=false
+
+cub filter create instances Unit --where-field "Labels.type='instance'"

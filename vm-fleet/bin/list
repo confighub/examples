@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# List EC2 instances with their status
+# Usage: ./list
+
+# List all instances with their status
+aws ec2 describe-instances \
+  --query 'Reservations[*].Instances[*].[Tags[?Key==`Name`].Value|[0],InstanceId,State.Name,InstanceType,PublicIpAddress,PrivateIpAddress]' \
+  --output table

@@ -1,0 +1,30 @@
+#!/bin/bash
+
+if [ ! -e ".cub-space" ]; then
+  echo "No space found. Run bin/setup first."
+  exit 1
+fi
+
+space=$(cat .cub-space)
+
+vpc_id=$(KUBECONFIG=var/$space.kubeconfig kubectl get defaultvpc.ec2.aws.upbound.io default-vpc -o json | jq -r .status.atProvider.id)
+
+subnet_id=$(KUBECONFIG=var/$space.kubeconfig kubectl get defaultsubnet.ec2.aws.upbound.io default-subnet-a -o json | jq -r .status.atProvider.id)
+
+cub run set-string-path \
+        --resource-type ec2.aws.upbound.io/v1beta1/SecurityGroup \
+        --path spec.forProvider.vpcId \
+        --attribute-value $vpc_id \
+        --unit shared-resources \
+        --space $space \
+        --quiet \
+        --change-desc "Set VPC ID"
+
+cub run set-string-path \
+        --resource-type autoscaling.aws.upbound.io/v1beta2/AutoscalingGroup \
+        --path spec.forProvider.vpcZoneIdentifier.0 \
+        --attribute-value $subnet_id \
+        --unit instance-base \
+        --space $space \
+        --quiet \
+        --change-desc "Set subnet ID"

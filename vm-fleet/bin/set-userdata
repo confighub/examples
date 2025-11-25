@@ -1,0 +1,28 @@
+#!/bin/bash
+
+# Run this command if you have updated userdata.sh.
+# This command will base64 encode the script and insert it into instance-base
+# You can provide an argument to choose a different server (cloned from instance-base)
+
+if [ ! -e ".cub-space" ]; then
+  echo "No space found. Run bin/setup first."
+  exit 1
+fi
+
+space=$(cat .cub-space)
+
+unit=instance-base
+
+if [[ ! -z "$1" ]]; then
+  unit=instance-$1
+fi
+
+userdata=$(base64 -i aws/userdata.sh | tr -d '\n')
+cub run set-string-path \
+        --resource-type ec2.aws.upbound.io/v1beta1/LaunchTemplate \
+        --path spec.forProvider.userData \
+        --attribute-value "$userdata" \
+        --unit $unit \
+        --space $space \
+        --quiet \
+        --change-desc "Set userdata"

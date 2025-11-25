@@ -1,0 +1,221 @@
+#!/bin/bash
+
+# setup-crossplane-iam.sh
+# Creates an IAM user with appropriate permissions for Crossplane provisioning operations
+# Uses the user's default AWS credentials (AWS_PROFILE, etc.)
+
+set -euo pipefail
+
+# Configuration - Generate unique names to avoid collisions
+RANDOM_SUFFIX=$(openssl rand -hex 4 2>/dev/null || echo "$$")
+IAM_USER_NAME="cub-crossplane-user-${RANDOM_SUFFIX}"
+POLICY_NAME="cub-crossplane-policy-${RANDOM_SUFFIX}"
+POLICY_DOCUMENT="aws/policy.json"
+CREDENTIALS_FILE="var/aws-credentials.ini"
+RESOURCES_FILE="var/aws-resources.json"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CROSSPLANE_DIR="$(dirname "$SCRIPT_DIR")"
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Logging functions
+log_info() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
+
+log_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+log_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+log_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+# Check prerequisites
+check_prerequisites() {
+    log_info "Checking prerequisites..."
+    
+    # Check if AWS CLI is installed
+    if ! command -v aws &> /dev/null; then
+        log_error "AWS CLI is not installed. Please install it first."
+        exit 1
+    fi
+    
+    # Check if jq is installed
+    if ! command -v jq &> /dev/null; then
+        log_error "jq is not installed. Please install it first."
+        log_info "On macOS: brew install jq"
+        log_info "On Ubuntu/Debian: sudo apt-get install jq"
+        exit 1
+    fi
+    
+    # Check if policy document exists
+    if [[ ! -f "$CROSSPLANE_DIR/$POLICY_DOCUMENT" ]]; then
+        log_error "Policy document '$POLICY_DOCUMENT' not found in crossplane directory."
+        exit 1
+    fi
+    
+    # Test AWS credentials
+    log_info "Testing AWS credentials..."
+    if ! aws sts get-caller-identity &> /dev/null; then
+        log_error "AWS credentials are not configured or invalid."
+        log_info "Please configure your AWS credentials using:"
+        log_info "  aws configure"
+        log_info "  or set AWS_PROFILE environment variable"
+        exit 1
+    fi
+    
+    # Get AWS account info
+    AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+    AWS_USER_ARN=$(aws sts get-caller-identity --query Arn --output text)
+    log_success "AWS credentials validated. Account: $AWS_ACCOUNT_ID"
+    log_info "Running as: $AWS_USER_ARN"
+}
+
+# Create IAM user
+create_iam_user() {
+    log_info "Creating IAM user: $IAM_USER_NAME"
+    
+    # Create IAM user (unique name prevents collisions)
+    aws iam create-user --user-name "$IAM_USER_NAME" --tags Key=Purpose,Value=Crossplane Key=ManagedBy,Value=Script Key=RandomSuffix,Value="$RANDOM_SUFFIX"
+    log_success "IAM user '$IAM_USER_NAME' created successfully."
+}
+
+# Create and attach IAM policy
+create_and_attach_policy() {
+    log_info "Creating IAM policy: $POLICY_NAME"
+    
+    # Create IAM policy (unique name prevents collisions)
+    POLICY_ARN=$(aws iam create-policy \
+        --policy-name "$POLICY_NAME" \
+        --policy-document "file://$CROSSPLANE_DIR/$POLICY_DOCUMENT" \
+        --description "Policy for Crossplane provisioning operations" \
+        --tags Key=Purpose,Value=Crossplane Key=ManagedBy,Value=Script Key=RandomSuffix,Value="$RANDOM_SUFFIX" \
+        --query 'Policy.Arn' \
+        --output text)
+    log_success "Policy '$POLICY_NAME' created successfully."
+    
+    # Attach policy to user
+    log_info "Attaching policy to user..."
+    aws iam attach-user-policy \
+        --user-name "$IAM_USER_NAME" \
+        --policy-arn "$POLICY_ARN"
+    log_success "Policy attached to user successfully."
+}
+
+# Create access keys and save credentials
+create_access_keys() {
+    log_info "Creating access keys for user..."
+    
+    # Create access keys (new user, so no existing keys to worry about)
+    
+    # Create new access keys
+    ACCESS_KEYS=$(aws iam create-access-key --user-name "$IAM_USER_NAME")
+    ACCESS_KEY_ID=$(echo "$ACCESS_KEYS" | jq -r '.AccessKey.AccessKeyId')
+    SECRET_ACCESS_KEY=$(echo "$ACCESS_KEYS" | jq -r '.AccessKey.SecretAccessKey')
+    
+    # Create var directory if it doesn't exist
+    VAR_DIR="$CROSSPLANE_DIR/var"
+    mkdir -p "$VAR_DIR"
+    
+    # Write credentials to .ini file
+    log_info "Writing credentials to $CROSSPLANE_DIR/$CREDENTIALS_FILE"
+    cat > "$CROSSPLANE_DIR/$CREDENTIALS_FILE" << EOF
+[default]
+aws_access_key_id = $ACCESS_KEY_ID
+aws_secret_access_key = $SECRET_ACCESS_KEY
+region = us-east-1
+EOF
+    
+    # Set secure file permissions (owner read/write only)
+    chmod 0600 "$CROSSPLANE_DIR/$CREDENTIALS_FILE"
+    
+    log_success "Credentials saved to $CROSSPLANE_DIR/$CREDENTIALS_FILE with secure permissions (0600)"
+    log_warning "Keep these credentials secure and do not commit them to version control!"
+}
+
+# Save resource information for cleanup
+save_resource_info() {
+    log_info "Saving resource information for cleanup..."
+    
+    # Get access keys for the user
+    ACCESS_KEYS=$(aws iam list-access-keys --user-name "$IAM_USER_NAME" --query 'AccessKeyMetadata[0].AccessKeyId' --output text)
+    
+    # Create resources JSON
+    cat > "$CROSSPLANE_DIR/$RESOURCES_FILE" << EOF
+{
+  "created_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+  "random_suffix": "$RANDOM_SUFFIX",
+  "aws_account_id": "$AWS_ACCOUNT_ID",
+  "iam_user": {
+    "name": "$IAM_USER_NAME",
+    "arn": "arn:aws:iam::$AWS_ACCOUNT_ID:user/$IAM_USER_NAME"
+  },
+  "iam_policy": {
+    "name": "$POLICY_NAME",
+    "arn": "arn:aws:iam::$AWS_ACCOUNT_ID:policy/$POLICY_NAME"
+  },
+  "access_keys": [
+    "$ACCESS_KEYS"
+  ]
+}
+EOF
+    
+    log_success "Resource information saved to $CROSSPLANE_DIR/$RESOURCES_FILE"
+}
+
+# Display summary
+display_summary() {
+    log_success "Setup completed successfully!"
+    echo
+    log_info "Summary:"
+    echo "  IAM User: $IAM_USER_NAME"
+    echo "  Policy: $POLICY_NAME"
+    echo "  Credentials: $CROSSPLANE_DIR/$CREDENTIALS_FILE"
+    echo
+    log_info "Next steps:"
+    echo "  1. Use the credentials in $CROSSPLANE_DIR/$CREDENTIALS_FILE for your Crossplane ProviderConfig"
+    echo "  2. Create a Kubernetes secret with these credentials:"
+    echo "     kubectl create secret generic aws-creds --from-file=credentials=$CROSSPLANE_DIR/$CREDENTIALS_FILE -n crossplane-system"
+    echo "  3. Update your ProviderConfig to reference the secret"
+    echo
+    log_warning "Security reminder:"
+    echo "  - Store credentials securely"
+    echo "  - Do not commit credentials to version control"
+    echo "  - Consider using IAM roles instead of access keys when possible"
+}
+
+# Main execution
+main() {
+    log_info "Starting Crossplane IAM user setup..."
+    echo
+    
+    check_prerequisites
+    echo
+    
+    create_iam_user
+    echo
+    
+    create_and_attach_policy
+    echo
+    
+    create_access_keys
+    echo
+    
+    save_resource_info
+    echo
+    
+    display_summary
+}
+
+# Run main function
+main "$@"

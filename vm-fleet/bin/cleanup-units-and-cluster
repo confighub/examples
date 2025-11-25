@@ -1,0 +1,36 @@
+#!/bin/bash
+
+if [ ! -e ".cub-space" ]; then
+  echo "No space found. Run bin/setup first."
+  exit 1
+fi
+
+space=$(cat .cub-space)
+
+destroy_units() {
+
+  cub unit destroy --space $space --where "Labels.type = '$1'" --wait=false
+  # get unit list as json using cub and check that Status is NoLive:
+  # do this in a loop until all units are NoLive
+  while true; do
+    if ! cub unit list --where "Labels.type='$1'" --space $space --jq '.[] | select(.UnitStatus.Status != "NoLive")' | grep -q .; then
+      break
+    fi
+    echo "Waiting for instance units with type=$1 to be destroyed..."
+    sleep 5
+  done
+}
+
+# We want to make sure these units are properly destroyed because they represent the real resources in AWS.
+
+destroy_units "instance"
+destroy_units "infra"
+
+# We don't need to destroy the crossplane units because they only exist on the cluster which will be deleted.
+
+cub space delete --recursive $space
+
+kind delete cluster --name $space
+
+rm -f .cub-space
+rm -f var/$space.kubeconfig

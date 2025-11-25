@@ -1,0 +1,24 @@
+#!/bin/bash
+
+if [ ! -e ".cub-space" ]; then
+  echo "No space found. Run bin/setup first."
+  exit 1
+fi
+
+space=$(cat .cub-space)
+if [[ -z "$1" || -z "$2" ]]; then
+  echo "Usage: $0 <instance-name> <instance-type>"
+  exit 1
+fi
+
+unit=instance-$1
+instance_type=$2
+
+cub run set-string-path \
+        --resource-type ec2.aws.upbound.io/v1beta1/LaunchTemplate \
+        --path spec.forProvider.instanceType \
+        --attribute-value $instance_type \
+        --unit $unit \
+        --space $space \
+        --quiet \
+        --change-desc "Start instance"
