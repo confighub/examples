@@ -22,7 +22,7 @@ spec:
         - name: OLLAMA_URL
           value: "http://ollama:11434"
         - name: OLLAMA_ENABLED
-          value: "true" # AI features enabled
+          value: "false" # AI features disabled by default (ollama container is heavyweight)
         - name: DATABASE_URL
           value: "postgres://admin:password@postgres:5432/chatdb"
         - name: CHAT_TITLE

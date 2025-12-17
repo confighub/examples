@@ -28,7 +28,6 @@ cub space create $prefix-base --label base=true --label prefix=$prefix
 # Load the base config into the base space
 cub unit create --space $prefix-base backend  baseconfig/backend.yaml          --label type=app
 cub unit create --space $prefix-base frontend baseconfig/frontend.yaml         --label type=app
-cub unit create --space $prefix-base ollama   baseconfig/ollama.yaml           --label type=app
 cub unit create --space $prefix-base postgres baseconfig/postgres.yaml         --label type=app
 
 # The infra space is used to store infrastructure units such as namespaces and the nginx controller
