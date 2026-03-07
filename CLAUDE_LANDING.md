@@ -44,12 +44,15 @@ CUB_UP_ON_EXISTS=fresh CUB_UP_STALE_ACTION=fresh \
 
 You should see:
 
-- preflight wiring: `unit -> target -> worker`
-- assertion results after each major step
-- GUI links for checkpoints
-- completed flow output
+- `PREFLIGHT` lines showing `unit -> target -> worker`
+- `ASSERT RESULT: PASS` after each major step
+- `GUI (...)` URLs for space, targets, and units
+- final line: `Completed: cub up app`
 
 ## 3) Pair Mode (optional)
+
+Use pair mode when you want interactive prompts for reuse/fresh decisions
+instead of the fully automated AI-led flow.
 
 ```bash
 ./scripts/cub-up-pair-flow.sh \
