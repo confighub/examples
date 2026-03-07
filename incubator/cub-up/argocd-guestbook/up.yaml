@@ -1,0 +1,5 @@
+kind: platform
+space: platform-argocd-{{env}}
+units:
+  - slug: argocd-guestbook
+    file: helm-guestbook-app.yaml

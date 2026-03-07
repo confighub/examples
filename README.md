@@ -1,17 +1,48 @@
 # ConfigHub Examples
 
-This repo contains examples that demonstrate how [ConfigHub](https://confighub.com) works in various scenarios. You'll need access to ConfigHub to go through the examples. ConfigHub is currently in gated preview. Please [sign up](https://auth.confighub.com/sign-up) and wait to be activated.
+This repo contains examples that demonstrate how [ConfigHub](https://confighub.com) works in multiple scenarios.
 
-Once activated, you will find the [examples instructions on ConfigHub Docs](https://docs.confighub.com/get-started/examples/)
+## Fast Entry
 
-## How to use this repo
+- AI-led landing page: [CLAUDE_LANDING.md](./CLAUDE_LANDING.md)
+- Start guide: [START_HERE.md](./START_HERE.md)
+- Persona quickstart: [PERSONA_QUICKSTART.md](./PERSONA_QUICKSTART.md)
 
-Clone this repo to your local machine and make sure you have `cub` installed and that you are logged in. Each example is contained in its own directory. To try out an example, `cd` into the directory and follow the instructions in the README.
+## Examples Catalog
 
-Some examples will include running a local Kind Kubernetes cluster on your machine so it is a good idea to have Kind installed as well.
+- [`global-app`](./global-app/README.md): classic multi-service app example.
+- [`helm-platform-components`](./helm-platform-components/README.md): platform component setup.
+- [`vm-fleet`](./vm-fleet/README.md): VM fleet operations example.
+- [`cub-up`](./cub-up/README.md): one-command app/platform bundles with assert + GUI checkpoints.
+- [`incubator`](./incubator/README.md): experimental flows before promotion.
 
-## General structure and script behavior
+## Prerequisites
 
-Scripts and commands in this repo are designed to not interfere with other resources already in your organization. **BUT run them at your own risk**. You should check the contents of scripts before executing them. This will help you understand how the CLI commands work and can also prevent any unforseen accidents.
+```bash
+cub auth login
+```
 
-Scripts are usually located in a `bin` directory in the example dir and are executed from the example root, e.g. `bin/cleanup`. There are usually at least an `install` script and a `cleanup` script.
+For `cub-up` flows, use either `cub-up` binary or a `cub` build that supports `cub up`.
+
+## Run Checks
+
+```bash
+./scripts/verify.sh
+```
+
+## Run Modes for `cub-up` Scenarios
+
+```bash
+# Human-led
+./scripts/cub-up-human-flow.sh app ./cub-up/global-app dev <existing-target>
+
+# AI-led
+./scripts/cub-up-ai-flow.sh app ./cub-up/global-app dev <existing-target>
+
+# Human + AI
+./scripts/cub-up-pair-flow.sh app ./cub-up/global-app dev <existing-target>
+```
+
+## General Script Behavior
+
+Scripts are designed to be additive and explicit. Read scripts before running them in shared environments.
