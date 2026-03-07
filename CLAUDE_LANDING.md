@@ -14,7 +14,7 @@ Run one `cub-up` scenario with:
 ## 0) Prerequisites
 
 ```bash
-cd /Users/alexis/Public/github-repos/examples
+cd <your-examples-checkout>   # e.g. ~/src/examples
 cub auth login
 ./scripts/verify.sh
 ```
@@ -29,13 +29,15 @@ cub target list --no-header
 
 ## 1) Run AI-led flow (recommended)
 
+Arguments: `<kind>` `<bundle-path>` `<env>` `<target>`
+
 ```bash
 CUB_UP_ON_EXISTS=fresh CUB_UP_STALE_ACTION=fresh \
 ./scripts/cub-up-ai-flow.sh \
-  app \
-  ./incubator/cub-up/global-app \
-  dev \
-  <existing-target>
+  app \                              # kind
+  ./incubator/cub-up/global-app \    # bundle path
+  dev \                              # environment
+  my-target                          # target slug from `cub target list`
 ```
 
 ## 2) Success Criteria
@@ -54,7 +56,7 @@ You should see:
   app \
   ./incubator/cub-up/global-app \
   dev \
-  <existing-target>
+  my-target
 ```
 
 ## 4) Troubleshooting
