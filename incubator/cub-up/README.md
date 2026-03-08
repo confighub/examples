@@ -2,10 +2,17 @@
 
 One-command app/platform bundles with assert + GUI checkpoints.
 
+## `app` vs `platform`
+
+In current `cub-up` examples, the `kind` field in `up.yaml` sets the apply path:
+
+- **`app`** — direct apply. Unit contains workload manifests (Deployment, Service). Worker applies them to the target.
+- **`platform`** — delegated apply. Unit contains controller intent (e.g., Argo `Application`). Worker applies the CR; the controller (Argo, Flux) reconciles the workload.
+
 ## Bundles
 
-- `global-app`: application workload example.
-- `argocd-guestbook`: ArgoCD platform-style example.
+- `global-app` (`kind: app`): direct workload — Deployment + Service applied by worker.
+- `argocd-guestbook` (`kind: platform`): Argo `Application` CR — worker applies it, ArgoCD reconciles.
 
 ## Run Directly
 
