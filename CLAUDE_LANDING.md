@@ -14,7 +14,7 @@ Run one `cub-up` scenario with:
 ## 0) Prerequisites
 
 ```bash
-cd /Users/alexis/Public/github-repos/examples
+cd <your-examples-checkout>   # e.g. ~/src/examples
 cub auth login
 ./scripts/verify.sh
 ```
@@ -29,32 +29,37 @@ cub target list --no-header
 
 ## 1) Run AI-led flow (recommended)
 
+Arguments: `<kind>` `<bundle-path>` `<env>` `<target>`
+
 ```bash
 CUB_UP_ON_EXISTS=fresh CUB_UP_STALE_ACTION=fresh \
 ./scripts/cub-up-ai-flow.sh \
-  app \
-  ./incubator/cub-up/global-app \
-  dev \
-  <existing-target>
+  app \                              # kind
+  ./incubator/cub-up/global-app \    # bundle path
+  dev \                              # environment
+  my-target                          # target slug from `cub target list`
 ```
 
 ## 2) Success Criteria
 
 You should see:
 
-- preflight wiring: `unit -> target -> worker`
-- assertion results after each major step
-- GUI links for checkpoints
-- completed flow output
+- `PREFLIGHT` lines showing `unit -> target -> worker`
+- `ASSERT RESULT: PASS` after each major step
+- `GUI (...)` URLs for space, targets, and units
+- final line: `Completed: cub up app`
 
 ## 3) Pair Mode (optional)
+
+Use pair mode when you want interactive prompts for reuse/fresh decisions
+instead of the fully automated AI-led flow.
 
 ```bash
 ./scripts/cub-up-pair-flow.sh \
   app \
   ./incubator/cub-up/global-app \
   dev \
-  <existing-target>
+  my-target
 ```
 
 ## 4) Troubleshooting
