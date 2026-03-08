@@ -12,7 +12,7 @@ This checks:
 
 - wrapper script syntax
 - bundle shape (`up.yaml` + manifests)
-- stable and incubator `cub-up` directories
+- `cub-up` bundle directories
 
 ## Minimal Mental Model
 
