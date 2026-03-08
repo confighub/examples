@@ -4,9 +4,9 @@ This directory is for experimental examples before promotion to stable examples.
 
 ## Fast Entry
 
-- AI-led landing page: [CLAUDE_LANDING.md](../CLAUDE_LANDING.md)
-- Start guide: [START_HERE.md](../START_HERE.md)
-- Persona quickstart: [PERSONA_QUICKSTART.md](../PERSONA_QUICKSTART.md)
+- AI-led landing page: [CLAUDE_LANDING.md](./CLAUDE_LANDING.md)
+- Start guide: [START_HERE.md](./START_HERE.md)
+- Persona quickstart: [PERSONA_QUICKSTART.md](./PERSONA_QUICKSTART.md)
 
 ## Current Experiments
 
