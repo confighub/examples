@@ -1,6 +1,6 @@
-# Start Here: ConfigHub Examples Without Extra Complexity
+# Start Here
 
-If ConfigHub feels overwhelming, use this flow first.
+Simplified flows..
 
 ## One Command Verification
 
@@ -24,10 +24,10 @@ Flux/Argo reconcile. ConfigHub workers execute. ConfigHub governs.
 
 ### Core concepts
 
-- **Unit**: desired configuration — the manifests or controller intent you want applied.
-- **Worker**: a ConfigHub-managed bridge process that executes operations against a target. Workers can delegate to controller-based workflows (e.g., applying an Argo `Application` CR).
-- **Target**: a worker-bound endpoint defined by toolchain and provider. Not limited to Kubernetes — current providers include Kubernetes, Flux/Argo variants, OpenTofu, AWS, and others.
-- **Assertions**: explicit state checks after each major command.
+- **Unit**: desired configuration text.
+- **Target**: where apply/destroy runs.
+- **Worker**: process connected to target operations.
+- script also does explicit state assertion checks after each major command.
 
 ### Wiring
 

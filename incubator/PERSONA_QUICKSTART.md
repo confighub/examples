@@ -11,7 +11,7 @@ cub auth login
 
 Use a space with at least one ready target+worker, or pass `--target`.
 
-## Jesper (iterating)
+## Existing user (iterating)
 
 Goal: iterate on same app while deciding reuse vs fresh interactively.
 
@@ -24,7 +24,7 @@ CUB_UP_ON_EXISTS=reuse CUB_UP_STALE_ACTION=prompt \
   <existing-target>
 ```
 
-## Ilya (shareable demo)
+## First time user (shareable demo)
 
 Goal: each run feels fresh and easy to share.
 
