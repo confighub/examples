@@ -14,12 +14,42 @@ This checks:
 - bundle shape (`up.yaml` + manifests)
 - `cub-up` bundle directories
 
-## Minimal Mental Model
+## Mental Model
+
+ConfigHub is the decision and governance plane. Workers execute. External controllers (Argo, Flux) reconcile.
+
+```
+Flux/Argo reconcile. ConfigHub workers execute. ConfigHub governs.
+```
+
+### Core concepts
 
 - **Unit**: desired configuration text.
 - **Target**: where apply/destroy runs.
 - **Worker**: process connected to target operations.
 - script also does explicit state assertion checks after each major command.
+
+### Wiring
+
+```
+unit → worker (bridge) → target
+```
+
+For controller-delegated flows (e.g., ArgoCD), the worker applies a controller CR to the target, then watches sync/health status. The controller handles actual reconciliation.
+
+### `app` vs `platform` (cub-up bundle convention)
+
+In current `cub-up` examples, the `kind` field in `up.yaml` distinguishes two apply paths:
+
+- **`app`**: unit contains direct workload manifests (Deployment, Service). Worker applies them to the target.
+- **`platform`**: unit contains controller intent (e.g., Argo `Application`). Worker applies the CR; the controller reconciles the actual workload.
+
+### When to create new resources
+
+- **New target**: when you need a different endpoint (different cluster, account, or provider).
+- **New unit**: when you have a distinct piece of configuration to manage independently.
+- **New app/platform bundle**: when you want a self-contained `cub-up` scenario with its own units, environment, and target binding.
+- **Reuse existing**: when iterating on the same workload in the same destination. Use `--on-exists reuse` or `prompt` to decide interactively.
 
 ## Run Modes
 
