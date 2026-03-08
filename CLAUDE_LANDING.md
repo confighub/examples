@@ -73,4 +73,4 @@ instead of the fully automated AI-led flow.
 
 - Start guide: [START_HERE.md](./START_HERE.md)
 - Personas: [PERSONA_QUICKSTART.md](./PERSONA_QUICKSTART.md)
-- Stable bundles: [cub-up/README.md](./cub-up/README.md)
+- Bundles: [cub-up/README.md](./incubator/cub-up/README.md)
