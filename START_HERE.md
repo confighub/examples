@@ -33,7 +33,7 @@ Choose one contract and keep it explicit:
 
 ```bash
 CUB_UP_ON_EXISTS=fresh CUB_UP_STALE_ACTION=fresh \
-./scripts/cub-up-ai-flow.sh app ./cub-up/global-app dev <existing-target>
+./scripts/cub-up-ai-flow.sh app ./incubator/cub-up/global-app dev <existing-target>
 ```
 
 Why this default:

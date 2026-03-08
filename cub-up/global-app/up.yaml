@@ -1,5 +1,0 @@
-kind: app
-space: global-app-{{env}}
-units:
-  - slug: global-app
-    file: global-app.yaml

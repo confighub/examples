@@ -112,7 +112,7 @@ runner_bin="${runner_info#*:}"
 ensure_stale_support
 
 kind="${1:-app}"
-path="${2:-${repo_root}/cub-up/global-app}"
+path="${2:-${repo_root}/incubator/cub-up/global-app}"
 env_name="${3:-dev}"
 target_slug="${4:-}"
 

@@ -1,26 +1,42 @@
-# `cub-up` Incubator Bundles
+# `cub-up` Bundles
 
-These bundles are the experimental lane for `cub-up`.
-
-Stable examples remain in [`/cub-up`](../../cub-up/README.md).
+One-command app/platform bundles with assert + GUI checkpoints.
 
 ## Bundles
 
 - `global-app`: application workload example.
 - `argocd-guestbook`: ArgoCD platform-style example.
 
-## Run
+## Run Directly
 
 ```bash
 # App bundle
-./scripts/cub-up-human-flow.sh app ./incubator/cub-up/global-app staging <existing-target>
+cub-up app ./incubator/cub-up/global-app --env staging --target <existing-target> --assert --open-ui
 
 # Platform bundle
-./scripts/cub-up-human-flow.sh platform ./incubator/cub-up/argocd-guestbook dev <existing-target>
+cub-up platform ./incubator/cub-up/argocd-guestbook --env dev --target <existing-target> --assert --open-ui
+```
+
+## Run Modes
+
+```bash
+# Human-led
+./scripts/cub-up-human-flow.sh app ./incubator/cub-up/global-app staging <existing-target>
+
+# AI-led
+./scripts/cub-up-ai-flow.sh app ./incubator/cub-up/global-app staging <existing-target>
+
+# Human + AI pair mode
+./scripts/cub-up-pair-flow.sh app ./incubator/cub-up/global-app staging <existing-target>
 ```
 
 ## Notes
 
-- `--preflight` should be enabled by default.
-- Use `--assert` and GUI checkpoints.
-- Prefer `--on-exists fresh` for demo runs.
+- `--target` can override targets for all units in the bundle.
+- `--preflight` should be enabled to show wiring/status before mutation.
+- Use `--assert` to stop on first failed state check.
+- Use `--open-ui` for GUI checkpoints.
+- Use `--on-exists` and stale flags to control reuse:
+  - `--on-exists reuse|fresh|fail|prompt`
+  - `--stale-after 24h`
+  - `--stale-action warn|fresh|fail|prompt`
