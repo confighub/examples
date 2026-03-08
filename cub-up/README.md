@@ -1,6 +1,6 @@
-# `cub-up` Standard Bundles
+# `cub-up` DRAFT / EXPERIMENTAL
 
-These bundles are for the `cub-up` flow and are intentionally small.
+These bundles are for a `cub-up` flow and are intentionally small.  Likely to be deprecated when we have a cub plugin model.
 
 ## Bundles
 
