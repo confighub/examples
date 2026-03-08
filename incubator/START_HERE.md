@@ -1,6 +1,6 @@
-# Start Here: ConfigHub Examples Without Extra Complexity
+# Start Here
 
-If ConfigHub feels overwhelming, use this flow first.
+Simplified flows..
 
 ## One Command Verification
 
@@ -19,7 +19,7 @@ This checks:
 - **Unit**: desired configuration text.
 - **Target**: where apply/destroy runs.
 - **Worker**: process connected to target operations.
-- **Assertions**: explicit state checks after each major command.
+- script also does explicit state assertion checks after each major command.
 
 ## Run Modes
 
