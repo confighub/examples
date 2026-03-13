@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aichat-frontend
+  namespace: confighubplaceholder
+  labels:
+    app: aichat-frontend
+    component: frontend
+    part-of: aichat
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aichat-frontend
+  template:
+    metadata:
+      labels:
+        app: aichat-frontend
+        component: frontend
+        part-of: aichat
+    spec:
+      containers:
+      - name: frontend
+        image: ghcr.io/acme/aichat-frontend:1.4.2
+        ports:
+        - containerPort: 3000
+        env:
+        - name: ENVIRONMENT
+          value: confighubplaceholder
+        - name: REGION
+          value: confighubplaceholder
+        - name: API_URL
+          value: "http://aichat-api:8000"
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aichat-frontend
+  namespace: confighubplaceholder
+  labels:
+    app: aichat-frontend
+spec:
+  selector:
+    app: aichat-frontend
+  ports:
+  - name: http
+    port: 3000
+    targetPort: 3000
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: aichat-frontend-ingress
+  namespace: confighubplaceholder
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    traefik.ingress.kubernetes.io/router.tls: "true"
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - confighubplaceholder
+    secretName: aichat-frontend-tls
+  rules:
+  - host: confighubplaceholder
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: aichat-frontend
+            port:
+              number: 3000

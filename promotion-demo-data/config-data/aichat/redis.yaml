@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aichat-redis
+  namespace: confighubplaceholder
+  labels:
+    app: aichat-redis
+    component: cache
+    part-of: aichat
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aichat-redis
+  template:
+    metadata:
+      labels:
+        app: aichat-redis
+        component: cache
+        part-of: aichat
+    spec:
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        ports:
+        - containerPort: 6379
+        args: ["--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aichat-redis
+  namespace: confighubplaceholder
+  labels:
+    app: aichat-redis
+spec:
+  selector:
+    app: aichat-redis
+  ports:
+  - port: 6379
+    targetPort: 6379
+  type: ClusterIP

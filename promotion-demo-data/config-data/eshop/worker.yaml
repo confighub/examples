@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eshop-worker
+  namespace: confighubplaceholder
+  labels:
+    app: eshop-worker
+    component: worker
+    part-of: eshop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: eshop-worker
+  template:
+    metadata:
+      labels:
+        app: eshop-worker
+        component: worker
+        part-of: eshop
+    spec:
+      containers:
+      - name: worker
+        image: ghcr.io/acme/eshop-api:4.2.1
+        command: ["./eshop-api", "worker"]
+        env:
+        - name: ENVIRONMENT
+          value: confighubplaceholder
+        - name: REGION
+          value: confighubplaceholder
+        - name: LOG_LEVEL
+          value: debug
+        - name: DATABASE_URL
+          value: "postgresql://eshop:secret@eshop-postgres:5432/eshop"
+        - name: REDIS_URL
+          value: "redis://eshop-redis:6379/0"
+        - name: STRIPE_API_KEY
+          value: confighubplaceholder
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi

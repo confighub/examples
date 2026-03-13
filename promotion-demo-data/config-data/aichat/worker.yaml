@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aichat-worker
+  namespace: confighubplaceholder
+  labels:
+    app: aichat-worker
+    component: worker
+    part-of: aichat
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aichat-worker
+  template:
+    metadata:
+      labels:
+        app: aichat-worker
+        component: worker
+        part-of: aichat
+    spec:
+      containers:
+      - name: worker
+        image: ghcr.io/acme/aichat-api:1.4.2
+        command: ["python", "-m", "celery", "-A", "app.tasks", "worker", "--loglevel=info"]
+        env:
+        - name: ENVIRONMENT
+          value: confighubplaceholder
+        - name: REGION
+          value: confighubplaceholder
+        - name: LOG_LEVEL
+          value: debug
+        - name: DATABASE_URL
+          value: "postgresql://aichat:secret@aichat-postgres:5432/aichat"
+        - name: REDIS_URL
+          value: "redis://aichat-redis:6379/0"
+        - name: LLM_PROVIDER
+          value: "anthropic"
+        - name: LLM_MODEL
+          value: "claude-sonnet-4-5-20250929"
+        resources:
+          requests:
+            cpu: 200m
+            memory: 512Mi
+          limits:
+            cpu: "1"
+            memory: 1Gi

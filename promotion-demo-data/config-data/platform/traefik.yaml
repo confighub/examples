@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: traefik
+  labels:
+    app: traefik
+    part-of: platform
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: traefik
+  namespace: traefik
+spec:
+  interval: 1h
+  url: https://traefik.github.io/charts
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: traefik
+  namespace: traefik
+spec:
+  interval: 10m
+  chart:
+    spec:
+      chart: traefik
+      sourceRef:
+        kind: HelmRepository
+        name: traefik
+      version: "28.3.0"
+  values:
+    deployment:
+      replicas: 1
+    ingressClass:
+      enabled: true
+      isDefaultClass: true
+    ports:
+      web:
+        port: 8000
+        exposedPort: 80
+      websecure:
+        port: 8443
+        exposedPort: 443
+        tls:
+          enabled: true
+    providers:
+      kubernetesIngress:
+        enabled: true
+      kubernetesCRD:
+        enabled: true
+    metrics:
+      prometheus:
+        entryPoint: metrics
+    logs:
+      general:
+        level: INFO
+      access:
+        enabled: true

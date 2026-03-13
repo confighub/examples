@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: docs-search
+  namespace: confighubplaceholder
+  labels:
+    app: docs-search
+    component: search
+    part-of: docs
+spec:
+  serviceName: docs-search
+  replicas: 1
+  selector:
+    matchLabels:
+      app: docs-search
+  template:
+    metadata:
+      labels:
+        app: docs-search
+        component: search
+        part-of: docs
+    spec:
+      containers:
+      - name: search
+        image: getmeili/meilisearch:v1.6
+        ports:
+        - containerPort: 7700
+        env:
+        - name: MEILI_ENV
+          value: production
+        - name: MEILI_MASTER_KEY
+          value: confighubplaceholder
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        volumeMounts:
+        - name: data
+          mountPath: /meili_data
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: docs-search
+  namespace: confighubplaceholder
+  labels:
+    app: docs-search
+spec:
+  selector:
+    app: docs-search
+  ports:
+  - port: 7700
+    targetPort: 7700
+  clusterIP: None

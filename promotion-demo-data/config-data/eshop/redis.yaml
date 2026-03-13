@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eshop-redis
+  namespace: confighubplaceholder
+  labels:
+    app: eshop-redis
+    component: cache
+    part-of: eshop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: eshop-redis
+  template:
+    metadata:
+      labels:
+        app: eshop-redis
+        component: cache
+        part-of: eshop
+    spec:
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        ports:
+        - containerPort: 6379
+        args: ["--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 384Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: eshop-redis
+  namespace: confighubplaceholder
+  labels:
+    app: eshop-redis
+spec:
+  selector:
+    app: eshop-redis
+  ports:
+  - port: 6379
+    targetPort: 6379
+  type: ClusterIP

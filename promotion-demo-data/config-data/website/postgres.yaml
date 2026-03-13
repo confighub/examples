@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: website-postgres
+  namespace: confighubplaceholder
+  labels:
+    app: website-postgres
+    component: database
+    part-of: website
+spec:
+  serviceName: website-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: website-postgres
+  template:
+    metadata:
+      labels:
+        app: website-postgres
+        component: database
+        part-of: website
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:16-alpine
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_DB
+          value: website_cms
+        - name: POSTGRES_USER
+          value: website
+        - name: POSTGRES_PASSWORD
+          value: confighubplaceholder
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: website-postgres
+  namespace: confighubplaceholder
+  labels:
+    app: website-postgres
+spec:
+  selector:
+    app: website-postgres
+  ports:
+  - port: 5432
+    targetPort: 5432
+  clusterIP: None

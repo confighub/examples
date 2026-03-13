@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: portal-frontend
+  namespace: confighubplaceholder
+  labels:
+    app: portal-frontend
+    component: frontend
+    part-of: portal
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: portal-frontend
+  template:
+    metadata:
+      labels:
+        app: portal-frontend
+        component: frontend
+        part-of: portal
+    spec:
+      containers:
+      - name: frontend
+        image: ghcr.io/acme/portal-frontend:1.0.5
+        ports:
+        - containerPort: 80
+        env:
+        - name: ENVIRONMENT
+          value: confighubplaceholder
+        - name: REGION
+          value: confighubplaceholder
+        - name: API_URL
+          value: "http://portal-api:3000"
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 128Mi
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: portal-frontend
+  namespace: confighubplaceholder
+  labels:
+    app: portal-frontend
+spec:
+  selector:
+    app: portal-frontend
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: portal-frontend-ingress
+  namespace: confighubplaceholder
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    traefik.ingress.kubernetes.io/router.tls: "true"
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - confighubplaceholder
+    secretName: portal-frontend-tls
+  rules:
+  - host: confighubplaceholder
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: portal-frontend
+            port:
+              number: 80
