@@ -4,7 +4,7 @@ Scripts and data files to populate a ConfigHub org with a representative multi-a
 
 ## Prerequisites
 
-- []`cub` CLI]() built and on PATH.
+- [`cub` CLI](https://docs.confighub.com/get-started/setup/#install-the-cli) built and on PATH.
 - Run `cub upgrade` to make sure you have the latest build
 - Authenticated to ConfigHub: `cub auth login`
 
