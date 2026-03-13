@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: docs-server
+  namespace: confighubplaceholder
+  labels:
+    app: docs-server
+    component: server
+    part-of: docs
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: docs-server
+  template:
+    metadata:
+      labels:
+        app: docs-server
+        component: server
+        part-of: docs
+    spec:
+      containers:
+      - name: server
+        image: ghcr.io/acme/docs-server:3.0.1
+        ports:
+        - containerPort: 3000
+        env:
+        - name: ENVIRONMENT
+          value: confighubplaceholder
+        - name: REGION
+          value: confighubplaceholder
+        - name: LOG_LEVEL
+          value: debug
+        - name: SEARCH_URL
+          value: "http://docs-search:7700"
+        - name: SEARCH_API_KEY
+          value: confighubplaceholder
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: docs-server
+  namespace: confighubplaceholder
+  labels:
+    app: docs-server
+spec:
+  selector:
+    app: docs-server
+  ports:
+  - name: http
+    port: 3000
+    targetPort: 3000
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: docs-server-ingress
+  namespace: confighubplaceholder
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    traefik.ingress.kubernetes.io/router.tls: "true"
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - confighubplaceholder
+    secretName: docs-server-tls
+  rules:
+  - host: confighubplaceholder
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: docs-server
+            port:
+              number: 3000

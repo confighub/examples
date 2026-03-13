@@ -1,0 +1,100 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: portal-api
+  namespace: confighubplaceholder
+  labels:
+    app: portal-api
+    component: api
+    part-of: portal
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: portal-api
+  template:
+    metadata:
+      labels:
+        app: portal-api
+        component: api
+        part-of: portal
+    spec:
+      containers:
+      - name: api
+        image: ghcr.io/acme/portal-api:1.0.5
+        ports:
+        - containerPort: 3000
+        env:
+        - name: ENVIRONMENT
+          value: confighubplaceholder
+        - name: REGION
+          value: confighubplaceholder
+        - name: LOG_LEVEL
+          value: debug
+        - name: DATABASE_URL
+          value: "postgresql://portal:secret@portal-postgres:5432/portal"
+        - name: AUTH_SECRET
+          value: confighubplaceholder
+        - name: SESSION_TTL
+          value: "3600"
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 15
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: portal-api
+  namespace: confighubplaceholder
+  labels:
+    app: portal-api
+spec:
+  selector:
+    app: portal-api
+  ports:
+  - name: http
+    port: 3000
+    targetPort: 3000
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: portal-api-ingress
+  namespace: confighubplaceholder
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    traefik.ingress.kubernetes.io/router.tls: "true"
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - confighubplaceholder
+    secretName: portal-api-tls
+  rules:
+  - host: confighubplaceholder
+    http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: portal-api
+            port:
+              number: 3000

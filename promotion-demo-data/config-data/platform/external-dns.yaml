@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: external-dns
+  labels:
+    app: external-dns
+    part-of: platform
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: external-dns-config
+  namespace: external-dns
+data:
+  PROVIDER: aws
+  DOMAIN_FILTER: demo.confighub.io
+  POLICY: sync
+  REGISTRY: txt
+  TXT_OWNER_ID: confighub-demo
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: external-dns
+  namespace: external-dns
+  labels:
+    app: external-dns
+    part-of: platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: external-dns
+  template:
+    metadata:
+      labels:
+        app: external-dns
+        part-of: platform
+    spec:
+      serviceAccountName: external-dns
+      containers:
+      - name: external-dns
+        image: registry.k8s.io/external-dns/external-dns:v0.14.2
+        args:
+        - --source=ingress
+        - --source=service
+        - --provider=aws
+        - --domain-filter=demo.confighub.io
+        - --policy=sync
+        - --registry=txt
+        - --txt-owner-id=confighub-demo
+        - --log-level=info
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 128Mi
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: external-dns
+  namespace: external-dns
+  labels:
+    app: external-dns
