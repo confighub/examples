@@ -33,6 +33,11 @@ This directory is for experimental examples before promotion to stable examples.
 
 Call chain: `pair → ai → human` (each sets env vars and delegates down).
 
+## Current Experiments
+
+- [`cub-up`](./cub-up/README.md): one-command app/platform bundles with assert + GUI checkpoints.
+- [`global-app-layers`](./global-app-layers/README.md): explicit layered recipe chain using one `global-app` component.
+
 ## Purpose
 
 - Keep stable examples easy to trust and review.

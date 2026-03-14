@@ -1,0 +1,339 @@
+#!/usr/bin/env bash
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+STATE_DIR="${SCRIPT_DIR}/.state"
+STATE_FILE="${STATE_DIR}/state.env"
+RECIPE_TEMPLATE="${SCRIPT_DIR}/recipe.yaml.tmpl"
+SOURCE_BACKEND_YAML="${SCRIPT_DIR}/../../global-app/baseconfig/backend.yaml"
+
+EXAMPLE_NAME="global-app-layers"
+CHAIN_LABEL="global-app-us-staging"
+COMPONENT="backend"
+
+BASE_SPACE_SUFFIX="catalog-base"
+REGION_SPACE_SUFFIX="catalog-us"
+ROLE_SPACE_SUFFIX="catalog-us-staging"
+RECIPE_SPACE_SUFFIX="recipe-us-staging"
+DEPLOY_SPACE_SUFFIX="deploy-cluster-a"
+
+BASE_UNIT="backend-base"
+REGION_UNIT="backend-us"
+ROLE_UNIT="backend-us-staging"
+RECIPE_UNIT="backend-recipe-us-staging"
+DEPLOY_UNIT="backend-cluster-a"
+RECIPE_MANIFEST_UNIT="recipe-us-staging"
+
+REGION_VALUE="US"
+ROLE_VALUE="staging"
+DEPLOY_NAMESPACE="cluster-a"
+DEFAULT_IMAGE_TAG="1.1.8"
+
+require_cub() {
+  if ! command -v cub >/dev/null 2>&1; then
+    echo "Missing required command: cub" >&2
+    exit 1
+  fi
+}
+
+require_python() {
+  if ! command -v python3 >/dev/null 2>&1; then
+    echo "Missing required command: python3" >&2
+    exit 1
+  fi
+}
+
+ensure_state_dir() {
+  mkdir -p "${STATE_DIR}"
+}
+
+state_exists() {
+  [[ -f "${STATE_FILE}" ]]
+}
+
+load_state() {
+  if [[ ! -f "${STATE_FILE}" ]]; then
+    echo "No state file found. Run ./setup.sh first." >&2
+    exit 1
+  fi
+  # shellcheck disable=SC1090
+  source "${STATE_FILE}"
+}
+
+save_state() {
+  local prefix="$1"
+  local target_ref="${2:-}"
+
+  ensure_state_dir
+  cat >"${STATE_FILE}" <<STATE
+PREFIX='${prefix}'
+TARGET_REF='${target_ref}'
+STATE
+}
+
+state_prefix() {
+  echo "${PREFIX:?missing PREFIX in state}"
+}
+
+space_name() {
+  local suffix="$1"
+  echo "$(state_prefix)-${suffix}"
+}
+
+base_space() {
+  space_name "${BASE_SPACE_SUFFIX}"
+}
+
+region_space() {
+  space_name "${REGION_SPACE_SUFFIX}"
+}
+
+role_space() {
+  space_name "${ROLE_SPACE_SUFFIX}"
+}
+
+recipe_space() {
+  space_name "${RECIPE_SPACE_SUFFIX}"
+}
+
+deploy_space() {
+  space_name "${DEPLOY_SPACE_SUFFIX}"
+}
+
+space_exists() {
+  local space="$1"
+  cub space get "${space}" >/dev/null 2>&1
+}
+
+unit_exists() {
+  local space="$1"
+  local unit="$2"
+  cub unit get --space "${space}" "${unit}" >/dev/null 2>&1
+}
+
+create_space_if_missing() {
+  local space="$1"
+  shift
+  if space_exists "${space}"; then
+    echo "Space already exists: ${space}"
+    return
+  fi
+  cub space create "${space}" "$@"
+}
+
+create_unit_from_file() {
+  local space="$1"
+  local unit="$2"
+  local file_path="$3"
+  shift 3
+  if unit_exists "${space}" "${unit}"; then
+    echo "Unit already exists: ${space}/${unit}"
+    return
+  fi
+  cub unit create --space "${space}" "${unit}" "${file_path}" "$@"
+}
+
+create_clone_unit() {
+  local space="$1"
+  local unit="$2"
+  local upstream_space="$3"
+  local upstream_unit="$4"
+  shift 4
+  if unit_exists "${space}" "${unit}"; then
+    echo "Unit already exists: ${space}/${unit}"
+    return
+  fi
+  cub unit create --space "${space}" "${unit}" \
+    --upstream-unit "${upstream_unit}" \
+    --upstream-space "${upstream_space}" \
+    "$@"
+}
+
+label_args() {
+  local layer="$1"
+  shift
+  printf '%s\n' \
+    --label "ExampleName=${EXAMPLE_NAME}" \
+    --label "ExampleChain=$(state_prefix)" \
+    --label "Recipe=${CHAIN_LABEL}" \
+    --label "Component=${COMPONENT}" \
+    --label "Layer=${layer}" \
+    "$@"
+}
+
+space_label_args() {
+  local layer_kind="$1"
+  shift
+  printf '%s\n' \
+    --label "ExampleName=${EXAMPLE_NAME}" \
+    --label "ExampleChain=$(state_prefix)" \
+    --label "Recipe=${CHAIN_LABEL}" \
+    --label "LayerKind=${layer_kind}" \
+    "$@"
+}
+
+assert_contains() {
+  local file_path="$1"
+  local pattern="$2"
+  if ! grep -q --fixed-strings "${pattern}" "${file_path}"; then
+    echo "Expected pattern not found in ${file_path}: ${pattern}" >&2
+    exit 1
+  fi
+}
+
+unit_data_to_file() {
+  local space="$1"
+  local unit="$2"
+  local output_path="$3"
+  cub unit get --space "${space}" --data-only "${unit}" >"${output_path}"
+}
+
+get_unit_json() {
+  local space="$1"
+  local unit="$2"
+  cub unit get --space "${space}" --json "${unit}"
+}
+
+get_unit_field() {
+  local space="$1"
+  local unit="$2"
+  local field_path="$3"
+
+  get_unit_json "${space}" "${unit}" | python3 -c '
+import json
+import sys
+
+field_path = sys.argv[1].split(".")
+data = json.load(sys.stdin)
+value = data.get("Unit", {})
+for key in field_path:
+    if value is None:
+        break
+    if isinstance(value, dict):
+        value = value.get(key)
+    else:
+        value = None
+        break
+if value is None:
+    sys.exit(1)
+if isinstance(value, (dict, list)):
+    print(json.dumps(value, sort_keys=True))
+else:
+    print(value)
+' "${field_path}"
+}
+
+bundle_hint_from_target_ref() {
+  local target_ref="$1"
+  if [[ -z "${target_ref}" ]]; then
+    echo "set a target to compute the target bundle path"
+    return
+  fi
+  if [[ "${target_ref}" == */* ]]; then
+    local target_space="${target_ref%%/*}"
+    local target_slug="${target_ref##*/}"
+    echo "target/${target_space}/${target_slug}:latest"
+    return
+  fi
+  echo "target/<target-space>/${target_ref}:latest"
+}
+
+render_recipe_manifest() {
+  local output_path="$1"
+  local target_ref="$2"
+  local effective_target_ref="${target_ref:-unset}"
+
+  local base_rev region_rev role_rev recipe_rev deploy_rev
+  local base_hash region_hash role_hash recipe_hash deploy_hash
+  base_rev="$(get_unit_field "$(base_space)" "${BASE_UNIT}" HeadRevisionNum)"
+  region_rev="$(get_unit_field "$(region_space)" "${REGION_UNIT}" HeadRevisionNum)"
+  role_rev="$(get_unit_field "$(role_space)" "${ROLE_UNIT}" HeadRevisionNum)"
+  recipe_rev="$(get_unit_field "$(recipe_space)" "${RECIPE_UNIT}" HeadRevisionNum)"
+  deploy_rev="$(get_unit_field "$(deploy_space)" "${DEPLOY_UNIT}" HeadRevisionNum)"
+
+  base_hash="$(get_unit_field "$(base_space)" "${BASE_UNIT}" DataHash || true)"
+  region_hash="$(get_unit_field "$(region_space)" "${REGION_UNIT}" DataHash || true)"
+  role_hash="$(get_unit_field "$(role_space)" "${ROLE_UNIT}" DataHash || true)"
+  recipe_hash="$(get_unit_field "$(recipe_space)" "${RECIPE_UNIT}" DataHash || true)"
+  deploy_hash="$(get_unit_field "$(deploy_space)" "${DEPLOY_UNIT}" DataHash || true)"
+
+  python3 - "${RECIPE_TEMPLATE}" "${output_path}" <<PY
+from pathlib import Path
+
+replacements = {
+    "__CHAIN_NAME__": "${CHAIN_LABEL}",
+    "__EXAMPLE_NAME__": "${EXAMPLE_NAME}",
+    "__PREFIX__": "$(state_prefix)",
+    "__BASE_SPACE__": "$(base_space)",
+    "__BASE_UNIT__": "${BASE_UNIT}",
+    "__BASE_REV__": "${base_rev}",
+    "__BASE_HASH__": "${base_hash}",
+    "__REGION_SPACE__": "$(region_space)",
+    "__REGION_UNIT__": "${REGION_UNIT}",
+    "__REGION_REV__": "${region_rev}",
+    "__REGION_HASH__": "${region_hash}",
+    "__ROLE_SPACE__": "$(role_space)",
+    "__ROLE_UNIT__": "${ROLE_UNIT}",
+    "__ROLE_REV__": "${role_rev}",
+    "__ROLE_HASH__": "${role_hash}",
+    "__RECIPE_SPACE__": "$(recipe_space)",
+    "__RECIPE_UNIT__": "${RECIPE_UNIT}",
+    "__RECIPE_REV__": "${recipe_rev}",
+    "__RECIPE_HASH__": "${recipe_hash}",
+    "__DEPLOY_SPACE__": "$(deploy_space)",
+    "__DEPLOY_UNIT__": "${DEPLOY_UNIT}",
+    "__DEPLOY_REV__": "${deploy_rev}",
+    "__DEPLOY_HASH__": "${deploy_hash}",
+    "__TARGET_REF__": "${effective_target_ref}",
+    "__BUNDLE_HINT__": "$(bundle_hint_from_target_ref "${target_ref}")",
+  }
+
+template = Path(Path.cwd() / Path("${RECIPE_TEMPLATE}")).read_text()
+for key, value in replacements.items():
+    template = template.replace(key, value)
+Path(Path.cwd() / Path("${output_path}")).write_text(template)
+PY
+}
+
+refresh_recipe_manifest_unit() {
+  local target_ref="$1"
+  local rendered_manifest="${STATE_DIR}/recipe-us-staging.rendered.yaml"
+  ensure_state_dir
+  render_recipe_manifest "${rendered_manifest}" "${target_ref}"
+
+  if unit_exists "$(recipe_space)" "${RECIPE_MANIFEST_UNIT}"; then
+    cub unit update --space "$(recipe_space)" "${RECIPE_MANIFEST_UNIT}" "${rendered_manifest}"
+  else
+    mapfile -t manifest_labels < <(label_args recipe-manifest)
+    cub unit create --space "$(recipe_space)" -t AppConfig/YAML \
+      "${RECIPE_MANIFEST_UNIT}" "${rendered_manifest}" "${manifest_labels[@]}"
+  fi
+}
+
+show_summary() {
+  local target_ref="$1"
+  cat <<EOF_SUMMARY
+Created global-app layered chain with prefix: $(state_prefix)
+
+Spaces:
+- $(base_space)
+- $(region_space)
+- $(role_space)
+- $(recipe_space)
+- $(deploy_space)
+
+Units:
+- $(base_space)/${BASE_UNIT}
+- $(region_space)/${REGION_UNIT}
+- $(role_space)/${ROLE_UNIT}
+- $(recipe_space)/${RECIPE_UNIT}
+- $(recipe_space)/${RECIPE_MANIFEST_UNIT}
+- $(deploy_space)/${DEPLOY_UNIT}
+
+Next steps:
+1. ./verify.sh
+2. ./upgrade-chain.sh ${DEFAULT_IMAGE_TAG}
+3. ${target_ref:+cub unit approve --space $(deploy_space) ${DEPLOY_UNIT} && cub unit apply --space $(deploy_space) ${DEPLOY_UNIT}}
+4. ${target_ref:+Review recipe manifest: cub unit get --space $(recipe_space) --data-only ${RECIPE_MANIFEST_UNIT}}
+${target_ref:-3. ./set-target.sh <space/target>  # optional, enables apply + target bundle story}
+EOF_SUMMARY
+}
