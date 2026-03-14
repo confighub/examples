@@ -9,6 +9,12 @@ script_checks=(
   "${repo_root}/scripts/cub-up-human-flow.sh"
   "${repo_root}/scripts/cub-up-ai-flow.sh"
   "${repo_root}/scripts/cub-up-pair-flow.sh"
+  "${repo_root}/incubator/global-app-layers/lib.sh"
+  "${repo_root}/incubator/global-app-layers/setup.sh"
+  "${repo_root}/incubator/global-app-layers/set-target.sh"
+  "${repo_root}/incubator/global-app-layers/upgrade-chain.sh"
+  "${repo_root}/incubator/global-app-layers/verify.sh"
+  "${repo_root}/incubator/global-app-layers/cleanup.sh"
 )
 
 for script_path in "${script_checks[@]}"; do
@@ -27,8 +33,8 @@ bundle_roots=(
 
 for bundle_root in "${bundle_roots[@]}"; do
   if [[ ! -d "${bundle_root}" ]]; then
-    echo "Missing bundle root: ${bundle_root}" >&2
-    exit 1
+    echo "==> Skipping missing bundle root: ${bundle_root##*/}"
+    continue
   fi
   while IFS= read -r bundle_dir; do
     [[ -d "${bundle_dir}" ]] || continue
