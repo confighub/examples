@@ -90,7 +90,7 @@ create_worker_space() {
     --label "AppOwner=Platform" \
     --quiet
 
-  $CUB worker create worker --space "$WORKER_SPACE" --from-stdin --quiet --is-server-worker
+  $CUB worker create worker --space "$WORKER_SPACE" --quiet --is-server-worker
 
   echo "  Created worker space: $WORKER_SPACE"
 }
