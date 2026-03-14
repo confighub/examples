@@ -3,7 +3,7 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STATE_DIR="${SCRIPT_DIR}/.state"
 STATE_FILE="${STATE_DIR}/state.env"
-RECIPE_TEMPLATE="${SCRIPT_DIR}/recipe.yaml.tmpl"
+RECIPE_BASE_TEMPLATE="${SCRIPT_DIR}/recipe.base.yaml"
 SOURCE_BACKEND_YAML="${SCRIPT_DIR}/../../global-app/baseconfig/backend.yaml"
 
 EXAMPLE_NAME="global-app-layers"
@@ -256,38 +256,38 @@ render_recipe_manifest() {
   recipe_hash="$(get_unit_field "$(recipe_space)" "${RECIPE_UNIT}" DataHash || true)"
   deploy_hash="$(get_unit_field "$(deploy_space)" "${DEPLOY_UNIT}" DataHash || true)"
 
-  python3 - "${RECIPE_TEMPLATE}" "${output_path}" <<PY
+  python3 - "${RECIPE_BASE_TEMPLATE}" "${output_path}" <<PY
 from pathlib import Path
 
 replacements = {
-    "__CHAIN_NAME__": "${CHAIN_LABEL}",
-    "__EXAMPLE_NAME__": "${EXAMPLE_NAME}",
-    "__PREFIX__": "$(state_prefix)",
-    "__BASE_SPACE__": "$(base_space)",
-    "__BASE_UNIT__": "${BASE_UNIT}",
-    "__BASE_REV__": "${base_rev}",
-    "__BASE_HASH__": "${base_hash}",
-    "__REGION_SPACE__": "$(region_space)",
-    "__REGION_UNIT__": "${REGION_UNIT}",
-    "__REGION_REV__": "${region_rev}",
-    "__REGION_HASH__": "${region_hash}",
-    "__ROLE_SPACE__": "$(role_space)",
-    "__ROLE_UNIT__": "${ROLE_UNIT}",
-    "__ROLE_REV__": "${role_rev}",
-    "__ROLE_HASH__": "${role_hash}",
-    "__RECIPE_SPACE__": "$(recipe_space)",
-    "__RECIPE_UNIT__": "${RECIPE_UNIT}",
-    "__RECIPE_REV__": "${recipe_rev}",
-    "__RECIPE_HASH__": "${recipe_hash}",
-    "__DEPLOY_SPACE__": "$(deploy_space)",
-    "__DEPLOY_UNIT__": "${DEPLOY_UNIT}",
-    "__DEPLOY_REV__": "${deploy_rev}",
-    "__DEPLOY_HASH__": "${deploy_hash}",
-    "__TARGET_REF__": "${effective_target_ref}",
-    "__BUNDLE_HINT__": "$(bundle_hint_from_target_ref "${target_ref}")",
-  }
+    "confighubplaceholder-chain-name": "${CHAIN_LABEL}",
+    "confighubplaceholder-example-name": "${EXAMPLE_NAME}",
+    "confighubplaceholder-chain-prefix": "$(state_prefix)",
+    "confighubplaceholder-base-space": "$(base_space)",
+    "confighubplaceholder-base-unit": "${BASE_UNIT}",
+    "confighubplaceholder-base-revision": "${base_rev}",
+    "confighubplaceholder-base-hash": "${base_hash}",
+    "confighubplaceholder-region-space": "$(region_space)",
+    "confighubplaceholder-region-unit": "${REGION_UNIT}",
+    "confighubplaceholder-region-revision": "${region_rev}",
+    "confighubplaceholder-region-hash": "${region_hash}",
+    "confighubplaceholder-role-space": "$(role_space)",
+    "confighubplaceholder-role-unit": "${ROLE_UNIT}",
+    "confighubplaceholder-role-revision": "${role_rev}",
+    "confighubplaceholder-role-hash": "${role_hash}",
+    "confighubplaceholder-recipe-space": "$(recipe_space)",
+    "confighubplaceholder-recipe-unit": "${RECIPE_UNIT}",
+    "confighubplaceholder-recipe-revision": "${recipe_rev}",
+    "confighubplaceholder-recipe-hash": "${recipe_hash}",
+    "confighubplaceholder-deploy-space": "$(deploy_space)",
+    "confighubplaceholder-deploy-unit": "${DEPLOY_UNIT}",
+    "confighubplaceholder-deploy-revision": "${deploy_rev}",
+    "confighubplaceholder-deploy-hash": "${deploy_hash}",
+    "confighubplaceholder-target-ref": "${effective_target_ref}",
+    "confighubplaceholder-bundle-hint": "$(bundle_hint_from_target_ref "${target_ref}")",
+}
 
-template = Path(Path.cwd() / Path("${RECIPE_TEMPLATE}")).read_text()
+template = Path(Path.cwd() / Path("${RECIPE_BASE_TEMPLATE}")).read_text()
 for key, value in replacements.items():
     template = template.replace(key, value)
 Path(Path.cwd() / Path("${output_path}")).write_text(template)
