@@ -68,4 +68,4 @@ if [[ -n "${TARGET_REF:-}" ]]; then
   get_unit_field "$(deploy_space)" "${DEPLOY_UNIT}" TargetID >/dev/null
 fi
 
-echo "All global-app-layers checks passed."
+echo "All global-app-layer single-component checks passed."

@@ -1,6 +1,6 @@
-# `global-app-layers`
+# `single-component`
 
-This incubator example turns one `global-app` component into an explicit layered recipe chain.
+This worked example turns one `global-app` component into an explicit layered recipe chain.
 
 It demonstrates the model:
 
@@ -14,7 +14,7 @@ The recipe is the ordered chain of variants, not the bundle.
 
 One component from `global-app`:
 
-- source manifest: `../../global-app/baseconfig/backend.yaml`
+- source manifest: `../../../global-app/baseconfig/backend.yaml`
 
 One materialized chain:
 
@@ -39,7 +39,7 @@ The example also writes an explicit recipe manifest unit into the recipe space. 
 
 The recipe source now has two forms:
 
-- [recipe.base.yaml](/Users/alexis/Public/github-repos/examples/incubator/global-app-layers/recipe.base.yaml): placeholder-based base recipe, analogous to base config units that still need environment-specific values filled in
+- [recipe.base.yaml](./recipe.base.yaml): placeholder-based base recipe, analogous to base config units that still need environment-specific values filled in
 - `.state/recipe-us-staging.rendered.yaml`: rendered concrete recipe instance for this chain
 
 The setup scripts render the concrete recipe instance from the placeholder-based base recipe.
@@ -55,7 +55,7 @@ The setup scripts render the concrete recipe instance from the placeholder-based
 ## Quick Start
 
 ```bash
-cd incubator/global-app-layers
+cd incubator/global-app-layer/single-component
 
 # Build the chain only
 ./setup.sh
@@ -106,7 +106,7 @@ cub unit get --space <prefix>-deploy-cluster-a --data-only backend-cluster-a
 cub unit get --space <prefix>-recipe-us-staging --data-only recipe-us-staging
 
 # Show clone relationships
-cub unit tree --edge clone --where "Labels.ExampleName = 'global-app-layers'"
+cub unit tree --edge clone --where "Labels.ExampleName = 'global-app-layer-single'"
 ```
 
 ## Cleanup
@@ -117,7 +117,7 @@ cub unit tree --edge clone --where "Labels.ExampleName = 'global-app-layers'"
 
 ## Why This Example Exists
 
-This is a worked answer to the question:
+This is the first worked example in the `global-app-layer` package, and a worked answer to the question:
 
 - do we need a first-class recipe object?
 

@@ -4,9 +4,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STATE_DIR="${SCRIPT_DIR}/.state"
 STATE_FILE="${STATE_DIR}/state.env"
 RECIPE_BASE_TEMPLATE="${SCRIPT_DIR}/recipe.base.yaml"
-SOURCE_BACKEND_YAML="${SCRIPT_DIR}/../../global-app/baseconfig/backend.yaml"
+SOURCE_BACKEND_YAML="${SCRIPT_DIR}/../../../global-app/baseconfig/backend.yaml"
 
-EXAMPLE_NAME="global-app-layers"
+EXAMPLE_NAME="global-app-layer-single"
 CHAIN_LABEL="global-app-us-staging"
 COMPONENT="backend"
 

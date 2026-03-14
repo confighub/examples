@@ -18,4 +18,4 @@ echo "==> Deleting spaces for ExampleChain=${PREFIX}"
 cub space delete --where "Labels.ExampleChain = '${PREFIX}'" --recursive
 rm -rf "${STATE_DIR}"
 
-echo "Cleaned up global-app-layers chain for prefix ${PREFIX}."
+echo "Cleaned up global-app-layer single-component chain for prefix ${PREFIX}."

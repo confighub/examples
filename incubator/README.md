@@ -36,7 +36,7 @@ Call chain: `pair → ai → human` (each sets env vars and delegates down).
 ## Current Experiments
 
 - [`cub-up`](./cub-up/README.md): one-command app/platform bundles with assert + GUI checkpoints.
-- [`global-app-layers`](./global-app-layers/README.md): explicit layered recipe chain using one `global-app` component.
+- [`global-app-layer`](./global-app-layer/README.md): recipes and layers package with specs plus two worked `global-app` examples.
 
 ## Purpose
 
