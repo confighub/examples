@@ -38,10 +38,17 @@ region_id="$(get_unit_field "$(region_space)" "${REGION_UNIT}" UnitID)"
 role_id="$(get_unit_field "$(role_space)" "${ROLE_UNIT}" UnitID)"
 recipe_id="$(get_unit_field "$(recipe_space)" "${RECIPE_UNIT}" UnitID)"
 
-[[ "$(get_unit_field "$(region_space)" "${REGION_UNIT}" UpstreamUnitID)" == "${base_id}" ]]
-[[ "$(get_unit_field "$(role_space)" "${ROLE_UNIT}" UpstreamUnitID)" == "${region_id}" ]]
-[[ "$(get_unit_field "$(recipe_space)" "${RECIPE_UNIT}" UpstreamUnitID)" == "${role_id}" ]]
-[[ "$(get_unit_field "$(deploy_space)" "${DEPLOY_UNIT}" UpstreamUnitID)" == "${recipe_id}" ]]
+actual="$(get_unit_field "$(region_space)" "${REGION_UNIT}" UpstreamUnitID)"
+[[ "${actual}" == "${base_id}" ]] || { echo "Clone chain broken: region upstream ${actual} != base ${base_id}" >&2; exit 1; }
+
+actual="$(get_unit_field "$(role_space)" "${ROLE_UNIT}" UpstreamUnitID)"
+[[ "${actual}" == "${region_id}" ]] || { echo "Clone chain broken: role upstream ${actual} != region ${region_id}" >&2; exit 1; }
+
+actual="$(get_unit_field "$(recipe_space)" "${RECIPE_UNIT}" UpstreamUnitID)"
+[[ "${actual}" == "${role_id}" ]] || { echo "Clone chain broken: recipe upstream ${actual} != role ${role_id}" >&2; exit 1; }
+
+actual="$(get_unit_field "$(deploy_space)" "${DEPLOY_UNIT}" UpstreamUnitID)"
+[[ "${actual}" == "${recipe_id}" ]] || { echo "Clone chain broken: deploy upstream ${actual} != recipe ${recipe_id}" >&2; exit 1; }
 
 echo "==> Verifying layer-specific mutations"
 assert_contains "${base_file}" 'value: "dev"'

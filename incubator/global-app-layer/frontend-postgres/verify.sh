@@ -40,10 +40,17 @@ for component in "${COMPONENTS[@]}"; do
   role_id="$(get_unit_field "$(role_space)" "$(unit_name "${component}" role)" UnitID)"
   recipe_id="$(get_unit_field "$(recipe_space)" "$(unit_name "${component}" recipe)" UnitID)"
 
-  [[ "$(get_unit_field "$(region_space)" "$(unit_name "${component}" region)" UpstreamUnitID)" == "${base_id}" ]]
-  [[ "$(get_unit_field "$(role_space)" "$(unit_name "${component}" role)" UpstreamUnitID)" == "${region_id}" ]]
-  [[ "$(get_unit_field "$(recipe_space)" "$(unit_name "${component}" recipe)" UpstreamUnitID)" == "${role_id}" ]]
-  [[ "$(get_unit_field "$(deploy_space)" "$(unit_name "${component}" deployment)" UpstreamUnitID)" == "${recipe_id}" ]]
+  actual="$(get_unit_field "$(region_space)" "$(unit_name "${component}" region)" UpstreamUnitID)"
+  [[ "${actual}" == "${base_id}" ]] || { echo "Clone chain broken: ${component} region upstream ${actual} != base ${base_id}" >&2; exit 1; }
+
+  actual="$(get_unit_field "$(role_space)" "$(unit_name "${component}" role)" UpstreamUnitID)"
+  [[ "${actual}" == "${region_id}" ]] || { echo "Clone chain broken: ${component} role upstream ${actual} != region ${region_id}" >&2; exit 1; }
+
+  actual="$(get_unit_field "$(recipe_space)" "$(unit_name "${component}" recipe)" UpstreamUnitID)"
+  [[ "${actual}" == "${role_id}" ]] || { echo "Clone chain broken: ${component} recipe upstream ${actual} != role ${role_id}" >&2; exit 1; }
+
+  actual="$(get_unit_field "$(deploy_space)" "$(unit_name "${component}" deployment)" UpstreamUnitID)"
+  [[ "${actual}" == "${recipe_id}" ]] || { echo "Clone chain broken: ${component} deploy upstream ${actual} != recipe ${recipe_id}" >&2; exit 1; }
 
   case "${component}" in
     frontend)

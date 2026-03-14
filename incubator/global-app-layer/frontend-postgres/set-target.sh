@@ -18,8 +18,8 @@ target_ref="$1"
 
 set_target_for_deploy_units "${target_ref}"
 save_state "${PREFIX}" "${target_ref}"
-load_state
-refresh_recipe_manifest_unit "${TARGET_REF}"
+TARGET_REF="${target_ref}"
+refresh_recipe_manifest_unit "${target_ref}"
 
-echo "Updated deployment target for $(deploy_space): frontend + postgres => ${TARGET_REF}"
-echo "Bundle hint: $(bundle_hint_from_target_ref "${TARGET_REF}")"
+echo "Updated deployment target for $(deploy_space): frontend + postgres => ${target_ref}"
+echo "Bundle hint: $(bundle_hint_from_target_ref "${target_ref}")"

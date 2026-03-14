@@ -9,7 +9,7 @@ EXAMPLE_NAME="global-app-layer-frontend-postgres"
 CHAIN_LABEL="global-app-us-staging-app"
 APP_NAME="global-app"
 COMPONENTS=(frontend postgres)
-COMPONENTS_CSV="frontend,postgres"
+COMPONENTS_CSV="$(IFS=,; echo "${COMPONENTS[*]}")"
 
 BASE_SPACE_SUFFIX="catalog-base"
 REGION_SPACE_SUFFIX="catalog-us"
@@ -60,10 +60,7 @@ save_state() {
   local target_ref="${2:-}"
 
   ensure_state_dir
-  cat >"${STATE_FILE}" <<STATE
-PREFIX='${prefix}'
-TARGET_REF='${target_ref}'
-STATE
+  printf 'PREFIX=%q\nTARGET_REF=%q\n' "${prefix}" "${target_ref}" >"${STATE_FILE}"
 }
 
 state_prefix() {
@@ -296,6 +293,8 @@ render_recipe_manifest() {
   frontend_recipe_rev="$(get_unit_field "$(recipe_space)" "$(unit_name frontend recipe)" HeadRevisionNum)"
   frontend_deploy_rev="$(get_unit_field "$(deploy_space)" "$(unit_name frontend deployment)" HeadRevisionNum)"
 
+  # Hashes are optional (not all backends return DataHash), so failures are tolerated.
+  # Revisions above are mandatory and will abort on failure.
   frontend_base_hash="$(get_unit_field "$(base_space)" "$(unit_name frontend base)" DataHash || true)"
   frontend_region_hash="$(get_unit_field "$(region_space)" "$(unit_name frontend region)" DataHash || true)"
   frontend_role_hash="$(get_unit_field "$(role_space)" "$(unit_name frontend role)" DataHash || true)"
@@ -315,7 +314,11 @@ render_recipe_manifest() {
   postgres_deploy_hash="$(get_unit_field "$(deploy_space)" "$(unit_name postgres deployment)" DataHash || true)"
 
   python3 - "${RECIPE_BASE_TEMPLATE}" "${output_path}" <<PY
+import sys
 from pathlib import Path
+
+template_path = sys.argv[1]
+out_path = sys.argv[2]
 
 replacements = {
     "confighubplaceholder-chain-name": "${CHAIN_LABEL}",
@@ -368,10 +371,10 @@ replacements = {
     "confighubplaceholder-postgres-deploy-hash": "${postgres_deploy_hash}",
 }
 
-template = Path(Path.cwd() / Path("${RECIPE_BASE_TEMPLATE}")).read_text()
+template = Path(template_path).read_text()
 for key, value in replacements.items():
     template = template.replace(key, value)
-Path(Path.cwd() / Path("${output_path}")).write_text(template)
+Path(out_path).write_text(template)
 PY
 }
 

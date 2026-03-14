@@ -51,4 +51,4 @@ cd ../frontend-postgres
 ./cleanup.sh
 ```
 
-These example scripts require a working `cub` CLI and an authenticated ConfigHub context.
+These example scripts require a working `cub` CLI, `python3`, and an authenticated ConfigHub context.

@@ -64,10 +64,7 @@ save_state() {
   local target_ref="${2:-}"
 
   ensure_state_dir
-  cat >"${STATE_FILE}" <<STATE
-PREFIX='${prefix}'
-TARGET_REF='${target_ref}'
-STATE
+  printf 'PREFIX=%q\nTARGET_REF=%q\n' "${prefix}" "${target_ref}" >"${STATE_FILE}"
 }
 
 state_prefix() {
@@ -257,7 +254,11 @@ render_recipe_manifest() {
   deploy_hash="$(get_unit_field "$(deploy_space)" "${DEPLOY_UNIT}" DataHash || true)"
 
   python3 - "${RECIPE_BASE_TEMPLATE}" "${output_path}" <<PY
+import sys
 from pathlib import Path
+
+template_path = sys.argv[1]
+out_path = sys.argv[2]
 
 replacements = {
     "confighubplaceholder-chain-name": "${CHAIN_LABEL}",
@@ -287,10 +288,10 @@ replacements = {
     "confighubplaceholder-bundle-hint": "$(bundle_hint_from_target_ref "${target_ref}")",
 }
 
-template = Path(Path.cwd() / Path("${RECIPE_BASE_TEMPLATE}")).read_text()
+template = Path(template_path).read_text()
 for key, value in replacements.items():
     template = template.replace(key, value)
-Path(Path.cwd() / Path("${output_path}")).write_text(template)
+Path(out_path).write_text(template)
 PY
 }
 
