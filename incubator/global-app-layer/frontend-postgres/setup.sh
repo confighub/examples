@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib.sh"
 
 require_cub
-require_python
+require_jq
 
 if state_exists; then
   echo "State already exists in ${STATE_FILE}. Run ./cleanup.sh first or remove .state if you know it is stale." >&2

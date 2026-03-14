@@ -31,9 +31,9 @@ require_cub() {
   fi
 }
 
-require_python() {
-  if ! command -v python3 >/dev/null 2>&1; then
-    echo "Missing required command: python3" >&2
+require_jq() {
+  if ! command -v jq >/dev/null 2>&1; then
+    echo "Missing required command: jq" >&2
     exit 1
   fi
 }
@@ -238,28 +238,7 @@ get_unit_field() {
   local unit="$2"
   local field_path="$3"
 
-  get_unit_json "${space}" "${unit}" | python3 -c '
-import json
-import sys
-
-field_path = sys.argv[1].split(".")
-data = json.load(sys.stdin)
-value = data.get("Unit", {})
-for key in field_path:
-    if value is None:
-        break
-    if isinstance(value, dict):
-        value = value.get(key)
-    else:
-        value = None
-        break
-if value is None:
-    sys.exit(1)
-if isinstance(value, (dict, list)):
-    print(json.dumps(value, sort_keys=True))
-else:
-    print(value)
-' "${field_path}"
+  get_unit_json "${space}" "${unit}" | jq -e -r ".Unit.${field_path}"
 }
 
 bundle_hint_from_target_ref() {
@@ -313,69 +292,54 @@ render_recipe_manifest() {
   postgres_recipe_hash="$(get_unit_field "$(recipe_space)" "$(unit_name postgres recipe)" DataHash || true)"
   postgres_deploy_hash="$(get_unit_field "$(deploy_space)" "$(unit_name postgres deployment)" DataHash || true)"
 
-  python3 - "${RECIPE_BASE_TEMPLATE}" "${output_path}" <<PY
-import sys
-from pathlib import Path
-
-template_path = sys.argv[1]
-out_path = sys.argv[2]
-
-replacements = {
-    "confighubplaceholder-chain-name": "${CHAIN_LABEL}",
-    "confighubplaceholder-example-name": "${EXAMPLE_NAME}",
-    "confighubplaceholder-chain-prefix": "$(state_prefix)",
-    "confighubplaceholder-app-name": "${APP_NAME}",
-    "confighubplaceholder-target-ref": "${effective_target_ref}",
-    "confighubplaceholder-bundle-hint": "$(bundle_hint_from_target_ref "${target_ref}")",
-
-    "confighubplaceholder-frontend-base-space": "$(base_space)",
-    "confighubplaceholder-frontend-base-unit": "$(unit_name frontend base)",
-    "confighubplaceholder-frontend-base-revision": "${frontend_base_rev}",
-    "confighubplaceholder-frontend-base-hash": "${frontend_base_hash}",
-    "confighubplaceholder-frontend-region-space": "$(region_space)",
-    "confighubplaceholder-frontend-region-unit": "$(unit_name frontend region)",
-    "confighubplaceholder-frontend-region-revision": "${frontend_region_rev}",
-    "confighubplaceholder-frontend-region-hash": "${frontend_region_hash}",
-    "confighubplaceholder-frontend-role-space": "$(role_space)",
-    "confighubplaceholder-frontend-role-unit": "$(unit_name frontend role)",
-    "confighubplaceholder-frontend-role-revision": "${frontend_role_rev}",
-    "confighubplaceholder-frontend-role-hash": "${frontend_role_hash}",
-    "confighubplaceholder-frontend-recipe-space": "$(recipe_space)",
-    "confighubplaceholder-frontend-recipe-unit": "$(unit_name frontend recipe)",
-    "confighubplaceholder-frontend-recipe-revision": "${frontend_recipe_rev}",
-    "confighubplaceholder-frontend-recipe-hash": "${frontend_recipe_hash}",
-    "confighubplaceholder-frontend-deploy-space": "$(deploy_space)",
-    "confighubplaceholder-frontend-deploy-unit": "$(unit_name frontend deployment)",
-    "confighubplaceholder-frontend-deploy-revision": "${frontend_deploy_rev}",
-    "confighubplaceholder-frontend-deploy-hash": "${frontend_deploy_hash}",
-
-    "confighubplaceholder-postgres-base-space": "$(base_space)",
-    "confighubplaceholder-postgres-base-unit": "$(unit_name postgres base)",
-    "confighubplaceholder-postgres-base-revision": "${postgres_base_rev}",
-    "confighubplaceholder-postgres-base-hash": "${postgres_base_hash}",
-    "confighubplaceholder-postgres-region-space": "$(region_space)",
-    "confighubplaceholder-postgres-region-unit": "$(unit_name postgres region)",
-    "confighubplaceholder-postgres-region-revision": "${postgres_region_rev}",
-    "confighubplaceholder-postgres-region-hash": "${postgres_region_hash}",
-    "confighubplaceholder-postgres-role-space": "$(role_space)",
-    "confighubplaceholder-postgres-role-unit": "$(unit_name postgres role)",
-    "confighubplaceholder-postgres-role-revision": "${postgres_role_rev}",
-    "confighubplaceholder-postgres-role-hash": "${postgres_role_hash}",
-    "confighubplaceholder-postgres-recipe-space": "$(recipe_space)",
-    "confighubplaceholder-postgres-recipe-unit": "$(unit_name postgres recipe)",
-    "confighubplaceholder-postgres-recipe-revision": "${postgres_recipe_rev}",
-    "confighubplaceholder-postgres-recipe-hash": "${postgres_recipe_hash}",
-    "confighubplaceholder-postgres-deploy-space": "$(deploy_space)",
-    "confighubplaceholder-postgres-deploy-unit": "$(unit_name postgres deployment)",
-    "confighubplaceholder-postgres-deploy-revision": "${postgres_deploy_rev}",
-    "confighubplaceholder-postgres-deploy-hash": "${postgres_deploy_hash}",
-}
-
-template = Path(template_path).read_text()
-for key, value in replacements.items():
-    template = template.replace(key, value)
-Path(out_path).write_text(template)
-PY
+  sed \
+    -e "s|confighubplaceholder-chain-name|${CHAIN_LABEL}|g" \
+    -e "s|confighubplaceholder-example-name|${EXAMPLE_NAME}|g" \
+    -e "s|confighubplaceholder-chain-prefix|$(state_prefix)|g" \
+    -e "s|confighubplaceholder-app-name|${APP_NAME}|g" \
+    -e "s|confighubplaceholder-target-ref|${effective_target_ref}|g" \
+    -e "s|confighubplaceholder-bundle-hint|$(bundle_hint_from_target_ref "${target_ref}")|g" \
+    -e "s|confighubplaceholder-frontend-base-space|$(base_space)|g" \
+    -e "s|confighubplaceholder-frontend-base-unit|$(unit_name frontend base)|g" \
+    -e "s|confighubplaceholder-frontend-base-revision|${frontend_base_rev}|g" \
+    -e "s|confighubplaceholder-frontend-base-hash|${frontend_base_hash}|g" \
+    -e "s|confighubplaceholder-frontend-region-space|$(region_space)|g" \
+    -e "s|confighubplaceholder-frontend-region-unit|$(unit_name frontend region)|g" \
+    -e "s|confighubplaceholder-frontend-region-revision|${frontend_region_rev}|g" \
+    -e "s|confighubplaceholder-frontend-region-hash|${frontend_region_hash}|g" \
+    -e "s|confighubplaceholder-frontend-role-space|$(role_space)|g" \
+    -e "s|confighubplaceholder-frontend-role-unit|$(unit_name frontend role)|g" \
+    -e "s|confighubplaceholder-frontend-role-revision|${frontend_role_rev}|g" \
+    -e "s|confighubplaceholder-frontend-role-hash|${frontend_role_hash}|g" \
+    -e "s|confighubplaceholder-frontend-recipe-space|$(recipe_space)|g" \
+    -e "s|confighubplaceholder-frontend-recipe-unit|$(unit_name frontend recipe)|g" \
+    -e "s|confighubplaceholder-frontend-recipe-revision|${frontend_recipe_rev}|g" \
+    -e "s|confighubplaceholder-frontend-recipe-hash|${frontend_recipe_hash}|g" \
+    -e "s|confighubplaceholder-frontend-deploy-space|$(deploy_space)|g" \
+    -e "s|confighubplaceholder-frontend-deploy-unit|$(unit_name frontend deployment)|g" \
+    -e "s|confighubplaceholder-frontend-deploy-revision|${frontend_deploy_rev}|g" \
+    -e "s|confighubplaceholder-frontend-deploy-hash|${frontend_deploy_hash}|g" \
+    -e "s|confighubplaceholder-postgres-base-space|$(base_space)|g" \
+    -e "s|confighubplaceholder-postgres-base-unit|$(unit_name postgres base)|g" \
+    -e "s|confighubplaceholder-postgres-base-revision|${postgres_base_rev}|g" \
+    -e "s|confighubplaceholder-postgres-base-hash|${postgres_base_hash}|g" \
+    -e "s|confighubplaceholder-postgres-region-space|$(region_space)|g" \
+    -e "s|confighubplaceholder-postgres-region-unit|$(unit_name postgres region)|g" \
+    -e "s|confighubplaceholder-postgres-region-revision|${postgres_region_rev}|g" \
+    -e "s|confighubplaceholder-postgres-region-hash|${postgres_region_hash}|g" \
+    -e "s|confighubplaceholder-postgres-role-space|$(role_space)|g" \
+    -e "s|confighubplaceholder-postgres-role-unit|$(unit_name postgres role)|g" \
+    -e "s|confighubplaceholder-postgres-role-revision|${postgres_role_rev}|g" \
+    -e "s|confighubplaceholder-postgres-role-hash|${postgres_role_hash}|g" \
+    -e "s|confighubplaceholder-postgres-recipe-space|$(recipe_space)|g" \
+    -e "s|confighubplaceholder-postgres-recipe-unit|$(unit_name postgres recipe)|g" \
+    -e "s|confighubplaceholder-postgres-recipe-revision|${postgres_recipe_rev}|g" \
+    -e "s|confighubplaceholder-postgres-recipe-hash|${postgres_recipe_hash}|g" \
+    -e "s|confighubplaceholder-postgres-deploy-space|$(deploy_space)|g" \
+    -e "s|confighubplaceholder-postgres-deploy-unit|$(unit_name postgres deployment)|g" \
+    -e "s|confighubplaceholder-postgres-deploy-revision|${postgres_deploy_rev}|g" \
+    -e "s|confighubplaceholder-postgres-deploy-hash|${postgres_deploy_hash}|g" \
+    "${RECIPE_BASE_TEMPLATE}" >"${output_path}"
 }
 
 refresh_recipe_manifest_unit() {
