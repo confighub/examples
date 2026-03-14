@@ -1,0 +1,46 @@
+apiVersion: confighub.com/v1alpha1
+kind: Recipe
+metadata:
+  name: confighubplaceholder-chain-name
+  labels:
+    example: confighubplaceholder-example-name
+    chain: confighubplaceholder-chain-prefix
+spec:
+  component: backend
+  pattern: ordered-clone-chain
+  description: One materialized global-app chain showing clone = variant, link = upgrade path, bundle = published deployment artifact.
+  layers:
+    - name: base
+      space: confighubplaceholder-base-space
+      unit: confighubplaceholder-base-unit
+      revision: confighubplaceholder-base-revision
+      dataHash: confighubplaceholder-base-hash
+      mutationDelta: original global-app backend manifest
+    - name: region
+      space: confighubplaceholder-region-space
+      unit: confighubplaceholder-region-unit
+      revision: confighubplaceholder-region-revision
+      dataHash: confighubplaceholder-region-hash
+      mutationDelta: set REGION=US and host=backend.us.demo.confighub.local
+    - name: role
+      space: confighubplaceholder-role-space
+      unit: confighubplaceholder-role-unit
+      revision: confighubplaceholder-role-revision
+      dataHash: confighubplaceholder-role-hash
+      mutationDelta: set ROLE=staging, replicas=2, LOG_LEVEL=info
+    - name: recipe
+      space: confighubplaceholder-recipe-space
+      unit: confighubplaceholder-recipe-unit
+      revision: confighubplaceholder-recipe-revision
+      dataHash: confighubplaceholder-recipe-hash
+      mutationDelta: set CHAT_TITLE to recipe-specific value
+    - name: deployment
+      space: confighubplaceholder-deploy-space
+      unit: confighubplaceholder-deploy-unit
+      revision: confighubplaceholder-deploy-revision
+      dataHash: confighubplaceholder-deploy-hash
+      mutationDelta: set namespace=cluster-a, CLUSTER env var, and deployment host
+  publish:
+    targetRef: confighubplaceholder-target-ref
+    bundleHint: confighubplaceholder-bundle-hint
+    note: The bundle is the deployable output of the deployment unit's target, not the source of truth for the layer chain.

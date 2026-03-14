@@ -37,6 +37,13 @@ The chain is split across five spaces:
 
 The example also writes an explicit recipe manifest unit into the recipe space. That manifest is metadata for teaching and provenance; ConfigHub does not need a first-class `Recipe` type for the chain to work.
 
+The recipe source now has two forms:
+
+- [recipe.base.yaml](/Users/alexis/Public/github-repos/examples/incubator/global-app-layers/recipe.base.yaml): placeholder-based base recipe, analogous to base config units that still need environment-specific values filled in
+- `.state/recipe-us-staging.rendered.yaml`: rendered concrete recipe instance for this chain
+
+The setup scripts render the concrete recipe instance from the placeholder-based base recipe.
+
 ## Layer Semantics
 
 - `base`: original `global-app` backend manifest
@@ -123,3 +130,4 @@ That is why this example uses both:
 
 - real clone-chain units for execution
 - one explicit recipe manifest unit for explanation and review
+- one placeholder-based base recipe file to show the source shape before values are materialized
