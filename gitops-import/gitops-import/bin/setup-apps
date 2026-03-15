@@ -1,0 +1,134 @@
+#!/bin/bash
+
+set -e
+
+CLUSTER_NAME=${1:-gitops-import}
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+
+export KUBECONFIG="$PROJECT_DIR/var/$CLUSTER_NAME.kubeconfig"
+
+if [ ! -f "$KUBECONFIG" ]; then
+    echo "Error: Kubeconfig not found at $KUBECONFIG"
+    echo "Please run bin/create-cluster and bin/install-argocd first"
+    exit 1
+fi
+
+GITOPS_REPO="https://github.com/jesperfj/gitops-argocd.git"
+
+echo "Creating ArgoCD projects..."
+
+kubectl apply -n argocd -f - <<'EOF'
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: app-cubbychat
+  namespace: argocd
+spec:
+  description: Cubbychat application team
+  sourceRepos:
+    - https://github.com/jesperfj/gitops-argocd.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: '*'
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: platform
+  namespace: argocd
+spec:
+  description: Platform infrastructure services
+  sourceRepos:
+    - https://github.com/jesperfj/gitops-argocd.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: '*'
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+EOF
+
+echo "Applying ApplicationSets from $GITOPS_REPO..."
+
+kubectl apply -n argocd -f - <<'EOF'
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: app-cubbychat
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - git:
+        repoURL: https://github.com/jesperfj/gitops-argocd.git
+        revision: HEAD
+        directories:
+          - path: apps/cubbychat
+  template:
+    metadata:
+      name: "{{ .path.basename }}"
+    spec:
+      project: app-cubbychat
+      source:
+        repoURL: https://github.com/jesperfj/gitops-argocd.git
+        targetRevision: HEAD
+        path: "{{ .path.path }}"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "{{ .path.basename }}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+EOF
+
+kubectl apply -n argocd -f - <<'EOF'
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: platform
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - git:
+        repoURL: https://github.com/jesperfj/gitops-argocd.git
+        revision: HEAD
+        directories:
+          - path: platform/*
+  template:
+    metadata:
+      name: "{{ .path.basename }}"
+    spec:
+      project: platform
+      source:
+        repoURL: https://github.com/jesperfj/gitops-argocd.git
+        targetRevision: HEAD
+        path: "{{ .path.path }}"
+        helm:
+          releaseName: "{{ .path.basename }}"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "{{ .path.basename }}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+EOF
+
+echo ""
+echo "ApplicationSets applied!"
+echo "ArgoCD will now generate Applications from the gitops repo."
+echo ""
+echo "View in UI: http://localhost:9080"
+echo "List apps:  kubectl get applications -n argocd"
