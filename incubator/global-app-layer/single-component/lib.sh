@@ -28,6 +28,15 @@ ROLE_VALUE="staging"
 DEPLOY_NAMESPACE="cluster-a"
 DEFAULT_IMAGE_TAG="1.1.8"
 
+# bash 3-compatible replacement for mapfile -t
+_mapfile() {
+  local _var="$1"
+  eval "${_var}=()"
+  while IFS= read -r _line; do
+    eval "${_var}+=(\"\${_line}\")"
+  done
+}
+
 require_cub() {
   if ! command -v cub >/dev/null 2>&1; then
     echo "Missing required command: cub" >&2
@@ -270,7 +279,7 @@ refresh_recipe_manifest_unit() {
   if unit_exists "$(recipe_space)" "${RECIPE_MANIFEST_UNIT}"; then
     cub unit update --space "$(recipe_space)" "${RECIPE_MANIFEST_UNIT}" "${rendered_manifest}"
   else
-    mapfile -t manifest_labels < <(label_args recipe-manifest)
+    _mapfile manifest_labels < <(label_args recipe-manifest)
     cub unit create --space "$(recipe_space)" -t AppConfig/YAML \
       "${RECIPE_MANIFEST_UNIT}" "${rendered_manifest}" "${manifest_labels[@]}"
   fi

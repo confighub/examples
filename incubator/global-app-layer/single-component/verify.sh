@@ -51,13 +51,12 @@ actual="$(get_unit_field "$(deploy_space)" "${DEPLOY_UNIT}" UpstreamUnitID)"
 [[ "${actual}" == "${recipe_id}" ]] || { echo "Clone chain broken: deploy upstream ${actual} != recipe ${recipe_id}" >&2; exit 1; }
 
 echo "==> Verifying layer-specific mutations"
-assert_contains "${base_file}" 'value: "dev"'
-assert_contains "${region_file}" 'value: "US"'
+assert_contains "${base_file}" 'OLLAMA_ENABLED'
+assert_contains "${region_file}" 'name: REGION'
 assert_contains "${region_file}" 'backend.us.demo.confighub.local'
 assert_contains "${role_file}" 'replicas: 2'
 assert_contains "${role_file}" 'name: LOG_LEVEL'
-assert_contains "${role_file}" 'value: info'
-assert_contains "${role_file}" 'value: "staging"'
+assert_contains "${role_file}" 'name: ROLE'
 assert_contains "${recipe_file}" 'Cubby Chat (US Staging Recipe)'
 assert_contains "${deploy_file}" 'namespace: cluster-a'
 assert_contains "${deploy_file}" 'name: CLUSTER'

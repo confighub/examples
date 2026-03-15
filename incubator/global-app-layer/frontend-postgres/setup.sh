@@ -22,11 +22,11 @@ fi
 save_state "${prefix}" "${target_ref}"
 load_state
 
-mapfile -t base_space_labels < <(space_label_args base)
-mapfile -t region_space_labels < <(space_label_args region --label "Region=${REGION_VALUE}")
-mapfile -t role_space_labels < <(space_label_args role --label "Region=${REGION_VALUE}" --label "Role=${ROLE_VALUE}")
-mapfile -t recipe_space_labels < <(space_label_args recipe --label "Region=${REGION_VALUE}" --label "Role=${ROLE_VALUE}")
-mapfile -t deploy_space_labels < <(space_label_args deployment --label "Region=${REGION_VALUE}" --label "Role=${ROLE_VALUE}" --label "Cluster=${DEPLOY_NAMESPACE}")
+_mapfile base_space_labels < <(space_label_args base)
+_mapfile region_space_labels < <(space_label_args region --label "Region=${REGION_VALUE}")
+_mapfile role_space_labels < <(space_label_args role --label "Region=${REGION_VALUE}" --label "Role=${ROLE_VALUE}")
+_mapfile recipe_space_labels < <(space_label_args recipe --label "Region=${REGION_VALUE}" --label "Role=${ROLE_VALUE}")
+_mapfile deploy_space_labels < <(space_label_args deployment --label "Region=${REGION_VALUE}" --label "Role=${ROLE_VALUE}" --label "Cluster=${DEPLOY_NAMESPACE}")
 
 echo "==> Creating spaces"
 create_space_if_missing "$(base_space)" "${base_space_labels[@]}"
@@ -37,26 +37,26 @@ create_space_if_missing "$(deploy_space)" "${deploy_space_labels[@]}"
 
 for component in "${COMPONENTS[@]}"; do
   echo "==> Creating base unit for ${component}"
-  mapfile -t base_unit_labels < <(label_args base "${component}")
+  _mapfile base_unit_labels < <(label_args base "${component}")
   create_unit_from_file "$(base_space)" "$(unit_name "${component}" base)" "$(source_yaml_for "${component}")" "${base_unit_labels[@]}"
 
   echo "==> Creating region clone for ${component}"
-  mapfile -t region_unit_labels < <(label_args region "${component}" --label "Region=${REGION_VALUE}")
+  _mapfile region_unit_labels < <(label_args region "${component}" --label "Region=${REGION_VALUE}")
   create_clone_unit "$(region_space)" "$(unit_name "${component}" region)" "$(base_space)" "$(unit_name "${component}" base)" "${region_unit_labels[@]}"
   apply_region_mutations "${component}"
 
   echo "==> Creating role clone for ${component}"
-  mapfile -t role_unit_labels < <(label_args role "${component}" --label "Region=${REGION_VALUE}" --label "Role=${ROLE_VALUE}")
+  _mapfile role_unit_labels < <(label_args role "${component}" --label "Region=${REGION_VALUE}" --label "Role=${ROLE_VALUE}")
   create_clone_unit "$(role_space)" "$(unit_name "${component}" role)" "$(region_space)" "$(unit_name "${component}" region)" "${role_unit_labels[@]}"
   apply_role_mutations "${component}"
 
   echo "==> Creating recipe clone for ${component}"
-  mapfile -t recipe_unit_labels < <(label_args recipe "${component}" --label "Region=${REGION_VALUE}" --label "Role=${ROLE_VALUE}")
+  _mapfile recipe_unit_labels < <(label_args recipe "${component}" --label "Region=${REGION_VALUE}" --label "Role=${ROLE_VALUE}")
   create_clone_unit "$(recipe_space)" "$(unit_name "${component}" recipe)" "$(role_space)" "$(unit_name "${component}" role)" "${recipe_unit_labels[@]}"
   apply_recipe_mutations "${component}"
 
   echo "==> Creating deployment clone for ${component}"
-  mapfile -t deploy_unit_labels < <(label_args deployment "${component}" --label "Region=${REGION_VALUE}" --label "Role=${ROLE_VALUE}" --label "Cluster=${DEPLOY_NAMESPACE}")
+  _mapfile deploy_unit_labels < <(label_args deployment "${component}" --label "Region=${REGION_VALUE}" --label "Role=${ROLE_VALUE}" --label "Cluster=${DEPLOY_NAMESPACE}")
   create_clone_unit "$(deploy_space)" "$(unit_name "${component}" deployment)" "$(recipe_space)" "$(unit_name "${component}" recipe)" "${deploy_unit_labels[@]}"
   apply_deploy_mutations "${component}"
 done

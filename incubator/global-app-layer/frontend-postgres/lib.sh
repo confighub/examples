@@ -9,7 +9,7 @@ EXAMPLE_NAME="global-app-layer-frontend-postgres"
 CHAIN_LABEL="global-app-us-staging-app"
 APP_NAME="global-app"
 COMPONENTS=(frontend postgres)
-COMPONENTS_CSV="$(IFS=,; echo "${COMPONENTS[*]}")"
+COMPONENTS_CSV="$(IFS=+; echo "${COMPONENTS[*]}")"
 
 BASE_SPACE_SUFFIX="catalog-base"
 REGION_SPACE_SUFFIX="catalog-us"
@@ -23,6 +23,15 @@ ROLE_VALUE="staging"
 DEPLOY_NAMESPACE="cluster-a"
 DEFAULT_FRONTEND_TAG="1.1.8"
 DEFAULT_POSTGRES_TAG="16.1"
+
+# bash 3-compatible replacement for mapfile -t
+_mapfile() {
+  local _var="$1"
+  eval "${_var}=()"
+  while IFS= read -r _line; do
+    eval "${_var}+=(\"\${_line}\")"
+  done
+}
 
 require_cub() {
   if ! command -v cub >/dev/null 2>&1; then
@@ -351,7 +360,7 @@ refresh_recipe_manifest_unit() {
   if unit_exists "$(recipe_space)" "${RECIPE_MANIFEST_UNIT}"; then
     cub unit update --space "$(recipe_space)" "${RECIPE_MANIFEST_UNIT}" "${rendered_manifest}"
   else
-    mapfile -t manifest_labels < <(label_args recipe-manifest app)
+    _mapfile manifest_labels < <(label_args recipe-manifest app)
     cub unit create --space "$(recipe_space)" -t AppConfig/YAML \
       "${RECIPE_MANIFEST_UNIT}" "${rendered_manifest}" "${manifest_labels[@]}"
   fi
@@ -369,7 +378,7 @@ apply_region_mutations() {
       cub function do set-string-path networking.k8s.io/v1/Ingress spec.rules.0.host frontend.us.demo.confighub.local --space "${space}" --unit "${unit}"
       ;;
     postgres)
-      cub function do set-env-var postgres REGION "${REGION_VALUE}" --space "${space}" --unit "${unit}"
+      cub function do set-env postgres "REGION=${REGION_VALUE}" --space "${space}" --unit "${unit}"
       ;;
   esac
 }
@@ -384,11 +393,11 @@ apply_role_mutations() {
   case "${component}" in
     frontend)
       cub function do set-replicas 2 --space "${space}" --unit "${unit}"
-      cub function do set-env-var frontend PUBLIC_ENV "${ROLE_VALUE}" --space "${space}" --unit "${unit}"
+      cub function do set-env frontend "PUBLIC_ENV=${ROLE_VALUE}" --space "${space}" --unit "${unit}"
       ;;
     postgres)
       cub function do set-string-path apps/v1/StatefulSet spec.volumeClaimTemplates.0.spec.resources.requests.storage 10Gi --space "${space}" --unit "${unit}"
-      cub function do set-env-var postgres ROLE "${ROLE_VALUE}" --space "${space}" --unit "${unit}"
+      cub function do set-env postgres "ROLE=${ROLE_VALUE}" --space "${space}" --unit "${unit}"
       ;;
   esac
 }
@@ -402,10 +411,10 @@ apply_recipe_mutations() {
 
   case "${component}" in
     frontend)
-      cub function do set-env-var frontend RELEASE_CHANNEL us-staging-recipe --space "${space}" --unit "${unit}"
+      cub function do set-env frontend "RELEASE_CHANNEL=us-staging-recipe" --space "${space}" --unit "${unit}"
       ;;
     postgres)
-      cub function do set-env-var postgres POSTGRES_DB chatdb_us_staging --space "${space}" --unit "${unit}"
+      cub function do set-env postgres "POSTGRES_DB=chatdb_us_staging" --space "${space}" --unit "${unit}"
       ;;
   esac
 }
@@ -422,10 +431,10 @@ apply_deploy_mutations() {
   case "${component}" in
     frontend)
       cub function do set-string-path networking.k8s.io/v1/Ingress spec.rules.0.host frontend.cluster-a.demo.confighub.local --space "${space}" --unit "${unit}"
-      cub function do set-env-var frontend CLUSTER "${DEPLOY_NAMESPACE}" --space "${space}" --unit "${unit}"
+      cub function do set-env frontend "CLUSTER=${DEPLOY_NAMESPACE}" --space "${space}" --unit "${unit}"
       ;;
     postgres)
-      cub function do set-env-var postgres CLUSTER "${DEPLOY_NAMESPACE}" --space "${space}" --unit "${unit}"
+      cub function do set-env postgres "CLUSTER=${DEPLOY_NAMESPACE}" --space "${space}" --unit "${unit}"
       ;;
   esac
 }
