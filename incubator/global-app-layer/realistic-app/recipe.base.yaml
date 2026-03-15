@@ -1,0 +1,122 @@
+apiVersion: confighub.com/v1alpha1
+kind: Recipe
+metadata:
+  name: confighubplaceholder-chain-name
+  labels:
+    example: confighubplaceholder-example-name
+    chain: confighubplaceholder-chain-prefix
+spec:
+  app: confighubplaceholder-app-name
+  pattern: ordered-clone-chain
+  description: Three-component global-app recipe showing shared layer spaces with coordinated backend, frontend, and postgres mutations.
+  sharedLayers:
+    - name: region
+      value: us
+      note: Shared region context, with component-specific mutations.
+    - name: role
+      value: staging
+      note: Shared role context, with component-specific scaling and settings.
+    - name: deployment
+      value: cluster-a
+      note: Shared deployment context for one cluster instance.
+  components:
+    - name: backend
+      layers:
+        - name: base
+          space: confighubplaceholder-backend-base-space
+          unit: confighubplaceholder-backend-base-unit
+          revision: confighubplaceholder-backend-base-revision
+          dataHash: confighubplaceholder-backend-base-hash
+          mutationDelta: original global-app backend manifest
+        - name: region
+          space: confighubplaceholder-backend-region-space
+          unit: confighubplaceholder-backend-region-unit
+          revision: confighubplaceholder-backend-region-revision
+          dataHash: confighubplaceholder-backend-region-hash
+          mutationDelta: set REGION=us and backend ingress host to backend.us.demo.confighub.local
+        - name: role
+          space: confighubplaceholder-backend-role-space
+          unit: confighubplaceholder-backend-role-unit
+          revision: confighubplaceholder-backend-role-revision
+          dataHash: confighubplaceholder-backend-role-hash
+          mutationDelta: set replicas=2 and ROLE=staging
+        - name: recipe
+          space: confighubplaceholder-backend-recipe-space
+          unit: confighubplaceholder-backend-recipe-unit
+          revision: confighubplaceholder-backend-recipe-revision
+          dataHash: confighubplaceholder-backend-recipe-hash
+          mutationDelta: set DATABASE_URL for chatdb_us_staging and CHAT_TITLE for the staged app
+        - name: deployment
+          space: confighubplaceholder-backend-deploy-space
+          unit: confighubplaceholder-backend-deploy-unit
+          revision: confighubplaceholder-backend-deploy-revision
+          dataHash: confighubplaceholder-backend-deploy-hash
+          mutationDelta: set namespace=cluster-a, backend deployment host, and CLUSTER env var
+    - name: frontend
+      layers:
+        - name: base
+          space: confighubplaceholder-frontend-base-space
+          unit: confighubplaceholder-frontend-base-unit
+          revision: confighubplaceholder-frontend-base-revision
+          dataHash: confighubplaceholder-frontend-base-hash
+          mutationDelta: original global-app frontend manifest
+        - name: region
+          space: confighubplaceholder-frontend-region-space
+          unit: confighubplaceholder-frontend-region-unit
+          revision: confighubplaceholder-frontend-region-revision
+          dataHash: confighubplaceholder-frontend-region-hash
+          mutationDelta: set frontend ingress host to frontend.us.demo.confighub.local
+        - name: role
+          space: confighubplaceholder-frontend-role-space
+          unit: confighubplaceholder-frontend-role-unit
+          revision: confighubplaceholder-frontend-role-revision
+          dataHash: confighubplaceholder-frontend-role-hash
+          mutationDelta: set replicas=2 and PUBLIC_ENV=staging
+        - name: recipe
+          space: confighubplaceholder-frontend-recipe-space
+          unit: confighubplaceholder-frontend-recipe-unit
+          revision: confighubplaceholder-frontend-recipe-revision
+          dataHash: confighubplaceholder-frontend-recipe-hash
+          mutationDelta: set RELEASE_CHANNEL=us-staging-recipe
+        - name: deployment
+          space: confighubplaceholder-frontend-deploy-space
+          unit: confighubplaceholder-frontend-deploy-unit
+          revision: confighubplaceholder-frontend-deploy-revision
+          dataHash: confighubplaceholder-frontend-deploy-hash
+          mutationDelta: set namespace=cluster-a, frontend deployment host, and CLUSTER env var
+    - name: postgres
+      layers:
+        - name: base
+          space: confighubplaceholder-postgres-base-space
+          unit: confighubplaceholder-postgres-base-unit
+          revision: confighubplaceholder-postgres-base-revision
+          dataHash: confighubplaceholder-postgres-base-hash
+          mutationDelta: original global-app postgres manifest
+        - name: region
+          space: confighubplaceholder-postgres-region-space
+          unit: confighubplaceholder-postgres-region-unit
+          revision: confighubplaceholder-postgres-region-revision
+          dataHash: confighubplaceholder-postgres-region-hash
+          mutationDelta: add REGION=US env var
+        - name: role
+          space: confighubplaceholder-postgres-role-space
+          unit: confighubplaceholder-postgres-role-unit
+          revision: confighubplaceholder-postgres-role-revision
+          dataHash: confighubplaceholder-postgres-role-hash
+          mutationDelta: set PVC size=10Gi and ROLE=staging
+        - name: recipe
+          space: confighubplaceholder-postgres-recipe-space
+          unit: confighubplaceholder-postgres-recipe-unit
+          revision: confighubplaceholder-postgres-recipe-revision
+          dataHash: confighubplaceholder-postgres-recipe-hash
+          mutationDelta: set POSTGRES_DB=chatdb_us_staging
+        - name: deployment
+          space: confighubplaceholder-postgres-deploy-space
+          unit: confighubplaceholder-postgres-deploy-unit
+          revision: confighubplaceholder-postgres-deploy-revision
+          dataHash: confighubplaceholder-postgres-deploy-hash
+          mutationDelta: set namespace=cluster-a and CLUSTER env var
+  publish:
+    targetRef: confighubplaceholder-target-ref
+    bundleHint: confighubplaceholder-bundle-hint
+    note: The bundle is the deployable output of the deployment units' shared target, not the source of truth for the layer chain.

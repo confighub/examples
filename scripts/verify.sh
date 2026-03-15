@@ -21,6 +21,12 @@ script_checks=(
   "${repo_root}/incubator/global-app-layer/frontend-postgres/upgrade-chain.sh"
   "${repo_root}/incubator/global-app-layer/frontend-postgres/verify.sh"
   "${repo_root}/incubator/global-app-layer/frontend-postgres/cleanup.sh"
+  "${repo_root}/incubator/global-app-layer/realistic-app/lib.sh"
+  "${repo_root}/incubator/global-app-layer/realistic-app/setup.sh"
+  "${repo_root}/incubator/global-app-layer/realistic-app/set-target.sh"
+  "${repo_root}/incubator/global-app-layer/realistic-app/upgrade-chain.sh"
+  "${repo_root}/incubator/global-app-layer/realistic-app/verify.sh"
+  "${repo_root}/incubator/global-app-layer/realistic-app/cleanup.sh"
 )
 
 for script_path in "${script_checks[@]}"; do

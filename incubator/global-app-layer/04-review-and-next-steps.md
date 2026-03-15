@@ -4,12 +4,13 @@
 
 The `global-app-layer` package is now a good staged implementation of the proposed recipes and layers convention.
 
-It contains two examples:
+It contains three examples:
 
 - `single-component/`: proves the recipe model with one materialized chain
 - `frontend-postgres/`: proves the same model at small app scope, with two components sharing the same layer spaces
+- `realistic-app/`: proves the same model at fuller app scope, with backend, frontend, and postgres coordinated through one shared layer model
 
-This is the right shape for onboarding because it gives us a small proof and a slightly larger proof side by side.
+This is the right shape for onboarding because it gives us a small proof, a small app proof, and a more recognisable app proof side by side.
 
 ## What the Package Already Gets Right
 
@@ -52,6 +53,16 @@ This proves:
 - an app-level recipe manifest can describe more than one component cleanly
 
 This is an important step because it moves the model from "single unit mechanism" to "small app recipe".
+
+### `realistic-app/`
+
+This proves:
+
+- the same layer model can coordinate backend, frontend, and database components together
+- one app-level recipe manifest can describe a fuller deployment shape cleanly
+- the pattern is believable for a small real app, not just a pedagogical pair of units
+
+This is the point where the package becomes a realistic worked example, not only a teaching scaffold.
 
 ## What Is Still Missing
 
@@ -98,9 +109,9 @@ The examples are stronger on the CLI side than the GUI side. They still need exp
 
 ## Recommended Next Steps
 
-### 1. Keep both examples
+### 1. Keep all three examples
 
-Do not replace one with the other. The staged pair is useful.
+Do not replace one with another. The staged set is useful.
 
 ### 2. Add one package-level README and test story
 
@@ -144,7 +155,8 @@ Use it in this order:
 
 1. `single-component/`
 2. `frontend-postgres/`
-3. later, a larger GPU-style example
+3. `realistic-app/`
+4. later, a larger GPU-style example
 
 ## Bottom Line
 
