@@ -9,7 +9,6 @@ EXAMPLE_NAME="global-app-layer-frontend-postgres"
 CHAIN_LABEL="global-app-us-staging-app"
 APP_NAME="global-app"
 COMPONENTS=(frontend postgres)
-COMPONENTS_CSV="$(IFS=+; echo "${COMPONENTS[*]}")"
 
 BASE_SPACE_SUFFIX="catalog-base"
 REGION_SPACE_SUFFIX="catalog-us"
@@ -215,9 +214,12 @@ space_label_args() {
     --label "ExampleChain=$(state_prefix)" \
     --label "Recipe=${CHAIN_LABEL}" \
     --label "App=${APP_NAME}" \
-    --label "Components=${COMPONENTS_CSV}" \
     --label "LayerKind=${layer_kind}" \
     "$@"
+  local _comp
+  for _comp in "${COMPONENTS[@]}"; do
+    printf '%s\n' --label "Component=${_comp}"
+  done
 }
 
 assert_contains() {
