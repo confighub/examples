@@ -106,6 +106,7 @@ It should contain:
 - `single-component/`
 - `frontend-postgres/`
 - `realistic-app/`
+- `gpu-eks-h100-training/`
 
 That keeps the analysis, the spec, and the worked examples together.
 
@@ -247,6 +248,12 @@ In that larger example:
 - the recipe space represents a known-good combination
 - the deployment space represents a specific cluster instance
 - the bundle is emitted from the deployment target
+
+The current package now includes a first implemented version of this idea:
+
+- `gpu-eks-h100-training/`
+
+It keeps the example intentionally small by using one component, `gpu-operator`, while still making the platform, accelerator, OS, and intent layers explicit.
 
 ### Why this bigger example matters
 

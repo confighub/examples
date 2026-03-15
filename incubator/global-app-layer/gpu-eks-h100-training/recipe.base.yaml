@@ -1,0 +1,61 @@
+apiVersion: confighub.com/v1alpha1
+kind: Recipe
+metadata:
+  name: confighubplaceholder-chain-name
+  labels:
+    example: confighubplaceholder-example-name
+    chain: confighubplaceholder-chain-prefix
+spec:
+  component: gpu-operator
+  pattern: ordered-clone-chain
+  description: Single-component GPU recipe showing platform, accelerator, OS, and intent as ordered ConfigHub layers.
+  dimensions:
+    platform: eks
+    accelerator: h100
+    os: ubuntu
+    intent: training
+  constraints:
+    kubernetes: ">=1.29"
+    runtimeClass: nvidia
+    storageClass: gp3
+  layers:
+    - name: base
+      space: confighubplaceholder-base-space
+      unit: confighubplaceholder-base-unit
+      revision: confighubplaceholder-base-revision
+      dataHash: confighubplaceholder-base-hash
+      mutationDelta: original gpu-operator manifest with generic defaults
+    - name: platform
+      space: confighubplaceholder-platform-space
+      unit: confighubplaceholder-platform-unit
+      revision: confighubplaceholder-platform-revision
+      dataHash: confighubplaceholder-platform-hash
+      mutationDelta: set CLOUD_PROVIDER=eks and STORAGE_CLASS=gp3
+    - name: accelerator
+      space: confighubplaceholder-accelerator-space
+      unit: confighubplaceholder-accelerator-unit
+      revision: confighubplaceholder-accelerator-revision
+      dataHash: confighubplaceholder-accelerator-hash
+      mutationDelta: set ACCELERATOR=h100 and NODE_SELECTOR=nvidia-h100
+    - name: os
+      space: confighubplaceholder-os-space
+      unit: confighubplaceholder-os-unit
+      revision: confighubplaceholder-os-revision
+      dataHash: confighubplaceholder-os-hash
+      mutationDelta: set OS_FAMILY=ubuntu and DRIVER_BRANCH=550-ubuntu22.04
+    - name: recipe
+      space: confighubplaceholder-recipe-space
+      unit: confighubplaceholder-recipe-unit
+      revision: confighubplaceholder-recipe-revision
+      dataHash: confighubplaceholder-recipe-hash
+      mutationDelta: set WORKLOAD_INTENT=training and VALIDATION_PROFILE=training-smoke
+    - name: deployment
+      space: confighubplaceholder-deploy-space
+      unit: confighubplaceholder-deploy-unit
+      revision: confighubplaceholder-deploy-revision
+      dataHash: confighubplaceholder-deploy-hash
+      mutationDelta: set namespace=cluster-a and CLUSTER=cluster-a
+  publish:
+    targetRef: confighubplaceholder-target-ref
+    bundleHint: confighubplaceholder-bundle-hint
+    note: The bundle is the deployable output of the deployment unit's target, not the source of truth for the layer chain.

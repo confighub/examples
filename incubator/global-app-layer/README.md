@@ -1,12 +1,12 @@
 # `global-app-layer`
 
-This incubator package is the current home for ConfigHub recipe and layer experiments built from `global-app`.
+This incubator package is the current home for ConfigHub recipe and layer experiments, starting with `global-app` and extending into domain-shaped examples.
 
 It brings three things together in one place:
 
 - analysis of why the NVIDIA AICR style matters for ConfigHub
 - a working recipes-and-layers spec for ConfigHub
-- three runnable worked examples that teach the model in stages
+- four runnable worked examples that teach the model in stages
 
 ## Start Here
 
@@ -21,6 +21,7 @@ Then try the examples in this order:
 1. [single-component](./single-component/README.md)
 2. [frontend-postgres](./frontend-postgres/README.md)
 3. [realistic-app](./realistic-app/README.md)
+4. [gpu-eks-h100-training](./gpu-eks-h100-training/README.md)
 
 ## What This Package Proves
 
@@ -52,6 +53,11 @@ cd ../frontend-postgres
 ./cleanup.sh
 
 cd ../realistic-app
+./setup.sh
+./verify.sh
+./cleanup.sh
+
+cd ../gpu-eks-h100-training
 ./setup.sh
 ./verify.sh
 ./cleanup.sh

@@ -4,13 +4,14 @@
 
 The `global-app-layer` package is now a good staged implementation of the proposed recipes and layers convention.
 
-It contains three examples:
+It contains four examples:
 
 - `single-component/`: proves the recipe model with one materialized chain
 - `frontend-postgres/`: proves the same model at small app scope, with two components sharing the same layer spaces
 - `realistic-app/`: proves the same model at fuller app scope, with backend, frontend, and postgres coordinated through one shared layer model
+- `gpu-eks-h100-training/`: proves that the same recipe convention can express platform, accelerator, OS, and intent as explicit layers for a domain-shaped example
 
-This is the right shape for onboarding because it gives us a small proof, a small app proof, and a more recognisable app proof side by side.
+This is the right shape for onboarding because it gives us a small proof, a small app proof, a more recognisable app proof, and one domain-shaped proof side by side.
 
 ## What the Package Already Gets Right
 
@@ -64,18 +65,28 @@ This proves:
 
 This is the point where the package becomes a realistic worked example, not only a teaching scaffold.
 
+### `gpu-eks-h100-training/`
+
+This proves:
+
+- the same ordered clone-chain model can express non-app dimensions like platform, accelerator, OS, and intent
+- a recipe manifest can describe a GPU-flavored deployment shape without needing a new backend type
+- the AICR-style story is believable in ConfigHub terms, not only in abstract analysis
+
+This is the point where the package stops being only about `global-app` and starts showing the broader recipe model.
+
 ## What Is Still Missing
 
-### 1. No bigger recipe dimensions yet
+### 1. GPU dimensions are now present, but still only at single-component scope
 
-The package still uses region, role, recipe, and deployment as its main dimensions. It does not yet show dimensions like:
+The package now shows:
 
 - cloud or platform
 - accelerator
 - OS
 - workload intent
 
-That is why a larger GPU-style example is still needed later.
+But only in one single-component GPU example. A later multi-component GPU or platform example is still useful.
 
 ### 2. Bundle publication is still mostly a hint
 
@@ -139,13 +150,13 @@ After direct apply is solid, add one GitOps-flavored path so the package can sho
 - ArgoCD or Flux reconciles it
 - ConfigHub still governs desired state and provenance
 
-### 5. Add a larger GPU-style example later
+### 5. Add a larger multi-component GPU-style example later
 
-Only after the small package is stable should we add:
+The package now has a first GPU proof in:
 
 - `eks + h100 + ubuntu + training`
 
-That example should reuse the same conceptual standard, not invent a second one.
+The next GPU step should not be a different model. It should be a larger example that reuses the same conceptual standard across more than one component.
 
 ## Recommendation
 
@@ -156,7 +167,8 @@ Use it in this order:
 1. `single-component/`
 2. `frontend-postgres/`
 3. `realistic-app/`
-4. later, a larger GPU-style example
+4. `gpu-eks-h100-training/`
+5. later, a larger multi-component GPU-style example
 
 ## Bottom Line
 
