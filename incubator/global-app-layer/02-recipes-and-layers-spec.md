@@ -253,7 +253,7 @@ The current package now includes a first implemented version of this idea:
 
 - `gpu-eks-h100-training/`
 
-It keeps the example intentionally small by using one component, `gpu-operator`, while still making the platform, accelerator, OS, and intent layers explicit.
+It keeps the example intentionally reviewable by using two related components, `gpu-operator` and `nvidia-device-plugin`, while still making the platform, accelerator, OS, and intent layers explicit.
 
 ### Why this bigger example matters
 

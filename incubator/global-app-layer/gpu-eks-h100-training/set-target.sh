@@ -16,10 +16,10 @@ fi
 
 target_ref="$1"
 
-set_target_for_deploy_unit "${target_ref}"
+set_target_for_deploy_units "${target_ref}"
 save_state "${PREFIX}" "${target_ref}"
 TARGET_REF="${target_ref}"
 refresh_recipe_manifest_unit "${target_ref}"
 
-echo "Updated deployment target for $(deploy_space): $(unit_name deployment) => ${target_ref}"
+echo "Updated deployment target for $(deploy_space): gpu-operator + nvidia-device-plugin => ${target_ref}"
 echo "Bundle hint: $(bundle_hint_from_target_ref "${target_ref}")"

@@ -4,11 +4,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STATE_DIR="${SCRIPT_DIR}/.state"
 STATE_FILE="${STATE_DIR}/state.env"
 RECIPE_BASE_TEMPLATE="${SCRIPT_DIR}/recipe.base.yaml"
-BASE_MANIFEST="${SCRIPT_DIR}/gpu-operator.base.yaml"
 
 EXAMPLE_NAME="global-app-layer-gpu-eks-h100-training"
-CHAIN_LABEL="gpu-operator-eks-h100-ubuntu-training"
-COMPONENT_NAME="gpu-operator"
+CHAIN_LABEL="gpu-eks-h100-ubuntu-training-stack"
+APP_NAME="gpu-platform"
+COMPONENTS=(gpu-operator nvidia-device-plugin)
+STAGES=(base platform accelerator os recipe deployment)
 
 BASE_SPACE_SUFFIX="catalog-base"
 PLATFORM_SPACE_SUFFIX="catalog-eks"
@@ -17,13 +18,14 @@ OS_SPACE_SUFFIX="catalog-ubuntu"
 RECIPE_SPACE_SUFFIX="recipe-eks-h100-ubuntu-training"
 DEPLOY_SPACE_SUFFIX="deploy-cluster-a"
 
-RECIPE_MANIFEST_UNIT="recipe-eks-h100-ubuntu-training"
+RECIPE_MANIFEST_UNIT="recipe-eks-h100-ubuntu-training-stack"
 PLATFORM_VALUE="eks"
 ACCELERATOR_VALUE="h100"
 OS_VALUE="ubuntu"
 INTENT_VALUE="training"
 DEPLOY_NAMESPACE="cluster-a"
-DEFAULT_OPERATOR_TAG="24.6.1"
+DEFAULT_GPU_OPERATOR_TAG="24.6.1"
+DEFAULT_DEVICE_PLUGIN_TAG="v0.16.3"
 
 _mapfile() {
   local _var="$1"
@@ -88,15 +90,44 @@ os_space() { space_name "${OS_SPACE_SUFFIX}"; }
 recipe_space() { space_name "${RECIPE_SPACE_SUFFIX}"; }
 deploy_space() { space_name "${DEPLOY_SPACE_SUFFIX}"; }
 
-unit_name() {
+space_for_stage() {
   local stage="$1"
   case "${stage}" in
-    base) echo "${COMPONENT_NAME}-base" ;;
-    platform) echo "${COMPONENT_NAME}-eks" ;;
-    accelerator) echo "${COMPONENT_NAME}-eks-h100" ;;
-    os) echo "${COMPONENT_NAME}-eks-h100-ubuntu" ;;
-    recipe) echo "${COMPONENT_NAME}-eks-h100-ubuntu-training" ;;
-    deployment) echo "${COMPONENT_NAME}-cluster-a" ;;
+    base) base_space ;;
+    platform) platform_space ;;
+    accelerator) accelerator_space ;;
+    os) os_space ;;
+    recipe) recipe_space ;;
+    deployment) deploy_space ;;
+    *)
+      echo "Unknown stage: ${stage}" >&2
+      exit 1
+      ;;
+  esac
+}
+
+source_yaml_for() {
+  local component="$1"
+  case "${component}" in
+    gpu-operator) echo "${SCRIPT_DIR}/gpu-operator.base.yaml" ;;
+    nvidia-device-plugin) echo "${SCRIPT_DIR}/nvidia-device-plugin.base.yaml" ;;
+    *)
+      echo "Unknown component: ${component}" >&2
+      exit 1
+      ;;
+  esac
+}
+
+unit_name() {
+  local component="$1"
+  local stage="$2"
+  case "${stage}" in
+    base) echo "${component}-base" ;;
+    platform) echo "${component}-eks" ;;
+    accelerator) echo "${component}-eks-h100" ;;
+    os) echo "${component}-eks-h100-ubuntu" ;;
+    recipe) echo "${component}-eks-h100-ubuntu-training" ;;
+    deployment) echo "${component}-cluster-a" ;;
     *)
       echo "Unknown stage: ${stage}" >&2
       exit 1
@@ -160,19 +191,25 @@ space_label_args() {
     --label "ExampleName=${EXAMPLE_NAME}" \
     --label "ExampleChain=$(state_prefix)" \
     --label "Recipe=${CHAIN_LABEL}" \
-    --label "Component=${COMPONENT_NAME}" \
+    --label "App=${APP_NAME}" \
     --label "LayerKind=${layer_kind}" \
     "$@"
+  local component
+  for component in "${COMPONENTS[@]}"; do
+    printf '%s\n' --label "Component=${component}"
+  done
 }
 
 label_args() {
   local layer="$1"
-  shift
+  local component="$2"
+  shift 2
   printf '%s\n' \
     --label "ExampleName=${EXAMPLE_NAME}" \
     --label "ExampleChain=$(state_prefix)" \
     --label "Recipe=${CHAIN_LABEL}" \
-    --label "Component=${COMPONENT_NAME}" \
+    --label "App=${APP_NAME}" \
+    --label "Component=${component}" \
     --label "Layer=${layer}" \
     "$@"
 }
@@ -225,100 +262,126 @@ render_recipe_manifest() {
   local output_path="$1"
   local target_ref="$2"
   local effective_target_ref="${target_ref:-unset}"
+  local sed_args=()
+  local component stage space unit revision hash
 
-  local base_rev platform_rev accelerator_rev os_rev recipe_rev deploy_rev
-  local base_hash platform_hash accelerator_hash os_hash recipe_hash deploy_hash
+  sed_args+=(
+    -e "s|confighubplaceholder-chain-name|${CHAIN_LABEL}|g"
+    -e "s|confighubplaceholder-example-name|${EXAMPLE_NAME}|g"
+    -e "s|confighubplaceholder-chain-prefix|$(state_prefix)|g"
+    -e "s|confighubplaceholder-app-name|${APP_NAME}|g"
+    -e "s|confighubplaceholder-target-ref|${effective_target_ref}|g"
+    -e "s|confighubplaceholder-bundle-hint|$(bundle_hint_from_target_ref "${target_ref}")|g"
+  )
 
-  base_rev="$(get_unit_field "$(base_space)" "$(unit_name base)" HeadRevisionNum)"
-  platform_rev="$(get_unit_field "$(platform_space)" "$(unit_name platform)" HeadRevisionNum)"
-  accelerator_rev="$(get_unit_field "$(accelerator_space)" "$(unit_name accelerator)" HeadRevisionNum)"
-  os_rev="$(get_unit_field "$(os_space)" "$(unit_name os)" HeadRevisionNum)"
-  recipe_rev="$(get_unit_field "$(recipe_space)" "$(unit_name recipe)" HeadRevisionNum)"
-  deploy_rev="$(get_unit_field "$(deploy_space)" "$(unit_name deployment)" HeadRevisionNum)"
+  for component in "${COMPONENTS[@]}"; do
+    for stage in "${STAGES[@]}"; do
+      space="$(space_for_stage "${stage}")"
+      unit="$(unit_name "${component}" "${stage}")"
+      revision="$(get_unit_field "${space}" "${unit}" HeadRevisionNum)"
+      hash="$(get_unit_field "${space}" "${unit}" DataHash || true)"
+      sed_args+=(
+        -e "s|confighubplaceholder-${component}-${stage}-space|${space}|g"
+        -e "s|confighubplaceholder-${component}-${stage}-unit|${unit}|g"
+        -e "s|confighubplaceholder-${component}-${stage}-revision|${revision}|g"
+        -e "s|confighubplaceholder-${component}-${stage}-hash|${hash}|g"
+      )
+    done
+  done
 
-  base_hash="$(get_unit_field "$(base_space)" "$(unit_name base)" DataHash || true)"
-  platform_hash="$(get_unit_field "$(platform_space)" "$(unit_name platform)" DataHash || true)"
-  accelerator_hash="$(get_unit_field "$(accelerator_space)" "$(unit_name accelerator)" DataHash || true)"
-  os_hash="$(get_unit_field "$(os_space)" "$(unit_name os)" DataHash || true)"
-  recipe_hash="$(get_unit_field "$(recipe_space)" "$(unit_name recipe)" DataHash || true)"
-  deploy_hash="$(get_unit_field "$(deploy_space)" "$(unit_name deployment)" DataHash || true)"
-
-  sed \
-    -e "s|confighubplaceholder-chain-name|${CHAIN_LABEL}|g" \
-    -e "s|confighubplaceholder-example-name|${EXAMPLE_NAME}|g" \
-    -e "s|confighubplaceholder-chain-prefix|$(state_prefix)|g" \
-    -e "s|confighubplaceholder-target-ref|${effective_target_ref}|g" \
-    -e "s|confighubplaceholder-bundle-hint|$(bundle_hint_from_target_ref "${target_ref}")|g" \
-    -e "s|confighubplaceholder-base-space|$(base_space)|g" \
-    -e "s|confighubplaceholder-base-unit|$(unit_name base)|g" \
-    -e "s|confighubplaceholder-base-revision|${base_rev}|g" \
-    -e "s|confighubplaceholder-base-hash|${base_hash}|g" \
-    -e "s|confighubplaceholder-platform-space|$(platform_space)|g" \
-    -e "s|confighubplaceholder-platform-unit|$(unit_name platform)|g" \
-    -e "s|confighubplaceholder-platform-revision|${platform_rev}|g" \
-    -e "s|confighubplaceholder-platform-hash|${platform_hash}|g" \
-    -e "s|confighubplaceholder-accelerator-space|$(accelerator_space)|g" \
-    -e "s|confighubplaceholder-accelerator-unit|$(unit_name accelerator)|g" \
-    -e "s|confighubplaceholder-accelerator-revision|${accelerator_rev}|g" \
-    -e "s|confighubplaceholder-accelerator-hash|${accelerator_hash}|g" \
-    -e "s|confighubplaceholder-os-space|$(os_space)|g" \
-    -e "s|confighubplaceholder-os-unit|$(unit_name os)|g" \
-    -e "s|confighubplaceholder-os-revision|${os_rev}|g" \
-    -e "s|confighubplaceholder-os-hash|${os_hash}|g" \
-    -e "s|confighubplaceholder-recipe-space|$(recipe_space)|g" \
-    -e "s|confighubplaceholder-recipe-unit|$(unit_name recipe)|g" \
-    -e "s|confighubplaceholder-recipe-revision|${recipe_rev}|g" \
-    -e "s|confighubplaceholder-recipe-hash|${recipe_hash}|g" \
-    -e "s|confighubplaceholder-deploy-space|$(deploy_space)|g" \
-    -e "s|confighubplaceholder-deploy-unit|$(unit_name deployment)|g" \
-    -e "s|confighubplaceholder-deploy-revision|${deploy_rev}|g" \
-    -e "s|confighubplaceholder-deploy-hash|${deploy_hash}|g" \
-    "${RECIPE_BASE_TEMPLATE}" >"${output_path}"
+  sed "${sed_args[@]}" "${RECIPE_BASE_TEMPLATE}" >"${output_path}"
 }
 
 refresh_recipe_manifest_unit() {
   local target_ref="$1"
-  local rendered_manifest="${STATE_DIR}/recipe-eks-h100-ubuntu-training.rendered.yaml"
+  local rendered_manifest="${STATE_DIR}/recipe-eks-h100-ubuntu-training-stack.rendered.yaml"
   ensure_state_dir
   render_recipe_manifest "${rendered_manifest}" "${target_ref}"
 
   if unit_exists "$(recipe_space)" "${RECIPE_MANIFEST_UNIT}"; then
     cub unit update --space "$(recipe_space)" "${RECIPE_MANIFEST_UNIT}" "${rendered_manifest}"
   else
-    _mapfile manifest_labels < <(label_args recipe-manifest)
+    _mapfile manifest_labels < <(label_args recipe-manifest app)
     cub unit create --space "$(recipe_space)" -t AppConfig/YAML \
       "${RECIPE_MANIFEST_UNIT}" "${rendered_manifest}" "${manifest_labels[@]}"
   fi
 }
 
 apply_platform_mutations() {
-  cub function do set-env gpu-operator "CLOUD_PROVIDER=${PLATFORM_VALUE}" --space "$(platform_space)" --unit "$(unit_name platform)"
-  cub function do set-env gpu-operator "STORAGE_CLASS=gp3" --space "$(platform_space)" --unit "$(unit_name platform)"
+  local component="$1"
+  case "${component}" in
+    gpu-operator)
+      cub function do set-env gpu-operator "CLOUD_PROVIDER=${PLATFORM_VALUE}" --space "$(platform_space)" --unit "$(unit_name "${component}" platform)"
+      cub function do set-env gpu-operator "STORAGE_CLASS=gp3" --space "$(platform_space)" --unit "$(unit_name "${component}" platform)"
+      ;;
+    nvidia-device-plugin)
+      cub function do set-env nvidia-device-plugin "CLOUD_PROVIDER=${PLATFORM_VALUE}" --space "$(platform_space)" --unit "$(unit_name "${component}" platform)"
+      cub function do set-env nvidia-device-plugin "PLUGIN_CONFIG=eks-gp3" --space "$(platform_space)" --unit "$(unit_name "${component}" platform)"
+      ;;
+  esac
 }
 
 apply_accelerator_mutations() {
-  cub function do set-env gpu-operator "ACCELERATOR=${ACCELERATOR_VALUE}" --space "$(accelerator_space)" --unit "$(unit_name accelerator)"
-  cub function do set-env gpu-operator "NODE_SELECTOR=nvidia-h100" --space "$(accelerator_space)" --unit "$(unit_name accelerator)"
+  local component="$1"
+  case "${component}" in
+    gpu-operator)
+      cub function do set-env gpu-operator "ACCELERATOR=${ACCELERATOR_VALUE}" --space "$(accelerator_space)" --unit "$(unit_name "${component}" accelerator)"
+      cub function do set-env gpu-operator "NODE_SELECTOR=nvidia-h100" --space "$(accelerator_space)" --unit "$(unit_name "${component}" accelerator)"
+      ;;
+    nvidia-device-plugin)
+      cub function do set-env nvidia-device-plugin "ACCELERATOR=${ACCELERATOR_VALUE}" --space "$(accelerator_space)" --unit "$(unit_name "${component}" accelerator)"
+      cub function do set-env nvidia-device-plugin "NODE_SELECTOR=nvidia-h100" --space "$(accelerator_space)" --unit "$(unit_name "${component}" accelerator)"
+      ;;
+  esac
 }
 
 apply_os_mutations() {
-  cub function do set-env gpu-operator "OS_FAMILY=${OS_VALUE}" --space "$(os_space)" --unit "$(unit_name os)"
-  cub function do set-env gpu-operator "DRIVER_BRANCH=550-ubuntu22.04" --space "$(os_space)" --unit "$(unit_name os)"
+  local component="$1"
+  case "${component}" in
+    gpu-operator)
+      cub function do set-env gpu-operator "OS_FAMILY=${OS_VALUE}" --space "$(os_space)" --unit "$(unit_name "${component}" os)"
+      cub function do set-env gpu-operator "DRIVER_BRANCH=550-ubuntu22.04" --space "$(os_space)" --unit "$(unit_name "${component}" os)"
+      ;;
+    nvidia-device-plugin)
+      cub function do set-env nvidia-device-plugin "OS_FAMILY=${OS_VALUE}" --space "$(os_space)" --unit "$(unit_name "${component}" os)"
+      cub function do set-env nvidia-device-plugin "PLUGIN_CONFIG=ubuntu-h100" --space "$(os_space)" --unit "$(unit_name "${component}" os)"
+      ;;
+  esac
 }
 
 apply_recipe_mutations() {
-  cub function do set-env gpu-operator "WORKLOAD_INTENT=${INTENT_VALUE}" --space "$(recipe_space)" --unit "$(unit_name recipe)"
-  cub function do set-env gpu-operator "VALIDATION_PROFILE=training-smoke" --space "$(recipe_space)" --unit "$(unit_name recipe)"
+  local component="$1"
+  case "${component}" in
+    gpu-operator)
+      cub function do set-env gpu-operator "WORKLOAD_INTENT=${INTENT_VALUE}" --space "$(recipe_space)" --unit "$(unit_name "${component}" recipe)"
+      cub function do set-env gpu-operator "VALIDATION_PROFILE=training-smoke" --space "$(recipe_space)" --unit "$(unit_name "${component}" recipe)"
+      ;;
+    nvidia-device-plugin)
+      cub function do set-env nvidia-device-plugin "WORKLOAD_INTENT=${INTENT_VALUE}" --space "$(recipe_space)" --unit "$(unit_name "${component}" recipe)"
+      cub function do set-env nvidia-device-plugin "PLUGIN_CONFIG=training-smoke" --space "$(recipe_space)" --unit "$(unit_name "${component}" recipe)"
+      ;;
+  esac
 }
 
 apply_deploy_mutations() {
-  cub function do set-namespace "${DEPLOY_NAMESPACE}" --space "$(deploy_space)" --unit "$(unit_name deployment)"
-  cub function do set-env gpu-operator "CLUSTER=${DEPLOY_NAMESPACE}" --space "$(deploy_space)" --unit "$(unit_name deployment)"
+  local component="$1"
+  cub function do set-namespace "${DEPLOY_NAMESPACE}" --space "$(deploy_space)" --unit "$(unit_name "${component}" deployment)"
+  case "${component}" in
+    gpu-operator)
+      cub function do set-env gpu-operator "CLUSTER=${DEPLOY_NAMESPACE}" --space "$(deploy_space)" --unit "$(unit_name "${component}" deployment)"
+      ;;
+    nvidia-device-plugin)
+      cub function do set-env nvidia-device-plugin "CLUSTER=${DEPLOY_NAMESPACE}" --space "$(deploy_space)" --unit "$(unit_name "${component}" deployment)"
+      ;;
+  esac
 }
 
-set_target_for_deploy_unit() {
+set_target_for_deploy_units() {
   local target_ref="$1"
-  cub unit set-target "${target_ref}" --space "$(deploy_space)" --unit "$(unit_name deployment)"
+  local component
+  for component in "${COMPONENTS[@]}"; do
+    cub unit set-target "${target_ref}" --space "$(deploy_space)" --unit "$(unit_name "${component}" deployment)"
+  done
 }
 
 show_summary() {
@@ -335,19 +398,25 @@ Spaces:
 - $(deploy_space)
 
 Units:
-- $(base_space)/$(unit_name base)
-- $(platform_space)/$(unit_name platform)
-- $(accelerator_space)/$(unit_name accelerator)
-- $(os_space)/$(unit_name os)
-- $(recipe_space)/$(unit_name recipe)
-- $(deploy_space)/$(unit_name deployment)
+- $(base_space)/$(unit_name gpu-operator base)
+- $(platform_space)/$(unit_name gpu-operator platform)
+- $(accelerator_space)/$(unit_name gpu-operator accelerator)
+- $(os_space)/$(unit_name gpu-operator os)
+- $(recipe_space)/$(unit_name gpu-operator recipe)
+- $(deploy_space)/$(unit_name gpu-operator deployment)
+- $(base_space)/$(unit_name nvidia-device-plugin base)
+- $(platform_space)/$(unit_name nvidia-device-plugin platform)
+- $(accelerator_space)/$(unit_name nvidia-device-plugin accelerator)
+- $(os_space)/$(unit_name nvidia-device-plugin os)
+- $(recipe_space)/$(unit_name nvidia-device-plugin recipe)
+- $(deploy_space)/$(unit_name nvidia-device-plugin deployment)
 - $(recipe_space)/${RECIPE_MANIFEST_UNIT}
 
 Next steps:
 1. ./verify.sh
-2. ./upgrade-chain.sh ${DEFAULT_OPERATOR_TAG}
-3. ${target_ref:+cub unit approve --space $(deploy_space) $(unit_name deployment)}
-4. ${target_ref:+cub unit apply --space $(deploy_space) $(unit_name deployment)}
+2. ./upgrade-chain.sh ${DEFAULT_GPU_OPERATOR_TAG} ${DEFAULT_DEVICE_PLUGIN_TAG}
+3. ${target_ref:+cub unit approve --space $(deploy_space) $(unit_name gpu-operator deployment) && cub unit approve --space $(deploy_space) $(unit_name nvidia-device-plugin deployment)}
+4. ${target_ref:+cub unit apply --space $(deploy_space) $(unit_name gpu-operator deployment) && cub unit apply --space $(deploy_space) $(unit_name nvidia-device-plugin deployment)}
 5. ${target_ref:+Review recipe manifest: cub unit get --space $(recipe_space) --data-only ${RECIPE_MANIFEST_UNIT}}
 ${target_ref:-3. ./set-target.sh <space/target>  # optional, enables apply + target bundle story}
 EOF_SUMMARY

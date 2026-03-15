@@ -1,38 +1,46 @@
 # `gpu-eks-h100-training`
 
-This worked example turns the earlier GPU recipe sketch into a real runnable ConfigHub example.
+This worked example turns the GPU recipe sketch into a real runnable multi-component ConfigHub example.
 
-It keeps the recipe-and-layer model deliberately small:
+It keeps the recipe-and-layer model intentionally reviewable:
 
-- one component: `gpu-operator`
-- one ordered chain
-- four meaningful recipe dimensions:
+- two components:
+  - `gpu-operator`
+  - `nvidia-device-plugin`
+- one ordered chain per component
+- four shared recipe dimensions:
   - platform = `eks`
   - accelerator = `h100`
   - os = `ubuntu`
   - intent = `training`
 
-The point is not to recreate all of NVIDIA AICR. The point is to show how ConfigHub can model the same kind of layered, reproducible recipe with real units, real clone links, and an explicit recipe manifest.
+The point is not to recreate all of NVIDIA AICR. The point is to show how ConfigHub can model the same kind of layered, reproducible recipe with real units, real clone links, and an explicit recipe manifest that spans more than one related component.
 
 ## What It Builds
 
-One base manifest local to this example:
+Two base manifests local to this example:
 
 - [gpu-operator.base.yaml](./gpu-operator.base.yaml)
+- [nvidia-device-plugin.base.yaml](./nvidia-device-plugin.base.yaml)
 
-One materialized chain:
+Two materialized chains in the same shared spaces:
 
 ```mermaid
 flowchart LR
-  Base["gpu-operator-base"] --> Platform["gpu-operator-eks"]
-  Platform --> Accelerator["gpu-operator-eks-h100"]
-  Accelerator --> OS["gpu-operator-eks-h100-ubuntu"]
-  OS --> Recipe["gpu-operator-eks-h100-ubuntu-training"]
-  Recipe --> Deploy["gpu-operator-cluster-a"]
-  Deploy --> Bundle["target bundle / OCI"]
+  GBase["gpu-operator-base"] --> GPlatform["gpu-operator-eks"]
+  GPlatform --> GAccel["gpu-operator-eks-h100"]
+  GAccel --> GOS["gpu-operator-eks-h100-ubuntu"]
+  GOS --> GRecipe["gpu-operator-eks-h100-ubuntu-training"]
+  GRecipe --> GDeploy["gpu-operator-cluster-a"]
+
+  PBase["nvidia-device-plugin-base"] --> PPlatform["nvidia-device-plugin-eks"]
+  PPlatform --> PAccel["nvidia-device-plugin-eks-h100"]
+  PAccel --> POS["nvidia-device-plugin-eks-h100-ubuntu"]
+  POS --> PRecipe["nvidia-device-plugin-eks-h100-ubuntu-training"]
+  PRecipe --> PDeploy["nvidia-device-plugin-cluster-a"]
 ```
 
-The chain is split across six spaces:
+The chains are split across six shared spaces:
 
 - `catalog-base`
 - `catalog-eks`
@@ -43,45 +51,60 @@ The chain is split across six spaces:
 
 The example also writes one explicit recipe manifest unit into the recipe space:
 
-- `recipe-eks-h100-ubuntu-training`
+- `recipe-eks-h100-ubuntu-training-stack`
 
 The recipe source has two forms:
 
 - [recipe.base.yaml](./recipe.base.yaml): placeholder-based base recipe
-- `.state/recipe-eks-h100-ubuntu-training.rendered.yaml`: rendered concrete recipe instance for this chain
+- `.state/recipe-eks-h100-ubuntu-training-stack.rendered.yaml`: rendered concrete recipe instance for this run
 
 ## Layer Semantics
 
-- `base`: generic `gpu-operator` manifest with non-specialized defaults
-- `platform`: set `CLOUD_PROVIDER=eks` and `STORAGE_CLASS=gp3`
-- `accelerator`: set `ACCELERATOR=h100` and `NODE_SELECTOR=nvidia-h100`
-- `os`: set `OS_FAMILY=ubuntu` and `DRIVER_BRANCH=550-ubuntu22.04`
-- `recipe`: set `WORKLOAD_INTENT=training` and `VALIDATION_PROFILE=training-smoke`
-- `deployment`: set namespace and `CLUSTER=cluster-a`
+Shared layers:
 
-This is the key teaching point: the recipe is the ordered chain of those specializations. The target bundle is the deployment output of the final deployment unit.
+- `platform`: `eks`
+- `accelerator`: `h100`
+- `os`: `ubuntu`
+- `intent`: `training`
+
+Component-specific mutations:
+
+- `gpu-operator`
+  - `platform`: set `CLOUD_PROVIDER=eks` and `STORAGE_CLASS=gp3`
+  - `accelerator`: set `ACCELERATOR=h100` and `NODE_SELECTOR=nvidia-h100`
+  - `os`: set `OS_FAMILY=ubuntu` and `DRIVER_BRANCH=550-ubuntu22.04`
+  - `recipe`: set `WORKLOAD_INTENT=training` and `VALIDATION_PROFILE=training-smoke`
+  - `deployment`: set namespace and `CLUSTER=cluster-a`
+- `nvidia-device-plugin`
+  - `platform`: set `CLOUD_PROVIDER=eks` and `PLUGIN_CONFIG=eks-gp3`
+  - `accelerator`: set `ACCELERATOR=h100` and `NODE_SELECTOR=nvidia-h100`
+  - `os`: set `OS_FAMILY=ubuntu` and `PLUGIN_CONFIG=ubuntu-h100`
+  - `recipe`: set `WORKLOAD_INTENT=training` and `PLUGIN_CONFIG=training-smoke`
+  - `deployment`: set namespace and `CLUSTER=cluster-a`
+
+This is the main user-facing point of the example: one recipe can govern multiple related components while keeping shared layer meaning and component-specific changes separate.
 
 ## Quick Start
 
 ```bash
 cd incubator/global-app-layer/gpu-eks-h100-training
 
-# Build the chain only
+# Build the chains only
 ./setup.sh
 
-# Or build it and wire a real target immediately
+# Or build them and wire a real target immediately
 ./setup.sh <prefix> <space/target>
 
-# Verify the chain and explicit recipe manifest
+# Verify both chains and the explicit recipe manifest
 ./verify.sh
 ```
 
 ## Upgrade Flow
 
-This example also demonstrates how a base image update propagates through the layered chain without flattening the higher-level recipe choices.
+This example also demonstrates how base image updates propagate through the layered chains without flattening the higher-level recipe choices.
 
 ```bash
-./upgrade-chain.sh 24.6.1
+./upgrade-chain.sh 24.6.1 v0.16.3
 ./verify.sh
 ```
 
@@ -93,23 +116,26 @@ If you did not pass a target during setup:
 ./set-target.sh <space/target>
 ```
 
-Then you can use normal ConfigHub apply flow on the deployment unit:
+Then you can use normal ConfigHub apply flow on both deployment units:
 
 ```bash
 cub unit approve --space <prefix>-deploy-cluster-a gpu-operator-cluster-a
+cub unit approve --space <prefix>-deploy-cluster-a nvidia-device-plugin-cluster-a
+
 cub unit apply --space <prefix>-deploy-cluster-a gpu-operator-cluster-a
+cub unit apply --space <prefix>-deploy-cluster-a nvidia-device-plugin-cluster-a
 ```
 
-The bundle belongs to the target. The recipe manifest records the full chain that produced the deployment and includes a bundle hint once a target is set.
+The bundle belongs to the target. The recipe manifest records the full multi-component chain and includes a bundle hint once a target is set.
 
 ## Inspecting the Result
 
 ```bash
-# Show the deployment data
+# Show one deployment unit
 cub unit get --space <prefix>-deploy-cluster-a --data-only gpu-operator-cluster-a
 
 # Show the explicit recipe manifest
-cub unit get --space <prefix>-recipe-eks-h100-ubuntu-training --data-only recipe-eks-h100-ubuntu-training
+cub unit get --space <prefix>-recipe-eks-h100-ubuntu-training --data-only recipe-eks-h100-ubuntu-training-stack
 
 # Show clone relationships
 cub unit tree --edge clone --where "Labels.ExampleName = 'global-app-layer-gpu-eks-h100-training'"
@@ -123,9 +149,8 @@ cub unit tree --edge clone --where "Labels.ExampleName = 'global-app-layer-gpu-e
 
 ## Why This Example Exists
 
-This is the first domain-shaped example in the `global-app-layer` package.
+This is the first domain-shaped multi-component example in the `global-app-layer` package.
 
-The earlier examples prove the clone-chain model with `global-app` components.
-This example proves that the same ConfigHub pattern can express a more domain-specific recipe with dimensions like platform, accelerator, OS, and intent.
+The earlier examples prove the clone-chain model with `global-app` components. This example proves that the same ConfigHub pattern can express a more domain-specific recipe with dimensions like platform, accelerator, OS, and intent across multiple related GPU components.
 
 That makes it the bridge between the small `global-app` teaching examples and the larger NVIDIA-style recipe story.

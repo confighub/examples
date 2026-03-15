@@ -9,7 +9,7 @@ It contains four examples:
 - `single-component/`: proves the recipe model with one materialized chain
 - `frontend-postgres/`: proves the same model at small app scope, with two components sharing the same layer spaces
 - `realistic-app/`: proves the same model at fuller app scope, with backend, frontend, and postgres coordinated through one shared layer model
-- `gpu-eks-h100-training/`: proves that the same recipe convention can express platform, accelerator, OS, and intent as explicit layers for a domain-shaped example
+- `gpu-eks-h100-training/`: proves that the same recipe convention can express platform, accelerator, OS, and intent as explicit layers across `gpu-operator` and `nvidia-device-plugin`
 
 This is the right shape for onboarding because it gives us a small proof, a small app proof, a more recognisable app proof, and one domain-shaped proof side by side.
 
@@ -70,14 +70,14 @@ This is the point where the package becomes a realistic worked example, not only
 This proves:
 
 - the same ordered clone-chain model can express non-app dimensions like platform, accelerator, OS, and intent
-- a recipe manifest can describe a GPU-flavored deployment shape without needing a new backend type
+- a recipe manifest can describe a GPU-flavored multi-component deployment shape without needing a new backend type
 - the AICR-style story is believable in ConfigHub terms, not only in abstract analysis
 
 This is the point where the package stops being only about `global-app` and starts showing the broader recipe model.
 
 ## What Is Still Missing
 
-### 1. GPU dimensions are now present, but still only at single-component scope
+### 1. GPU dimensions are now present, but still only at small multi-component scope
 
 The package now shows:
 
@@ -86,7 +86,7 @@ The package now shows:
 - OS
 - workload intent
 
-But only in one single-component GPU example. A later multi-component GPU or platform example is still useful.
+But only in one small GPU example. A later larger GPU or platform example is still useful.
 
 ### 2. Bundle publication is still mostly a hint
 
