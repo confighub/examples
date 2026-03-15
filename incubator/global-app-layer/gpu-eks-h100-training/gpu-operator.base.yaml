@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gpu-operator
+  namespace: confighubplaceholder
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gpu-operator
+  template:
+    metadata:
+      labels:
+        app: gpu-operator
+    spec:
+      containers:
+      - name: gpu-operator
+        image: nvcr.io/nvidia/gpu-operator:24.6.0
+        ports:
+        - containerPort: 8080
+        env:
+        - name: CLOUD_PROVIDER
+          value: generic
+        - name: STORAGE_CLASS
+          value: standard
+        - name: ACCELERATOR
+          value: generic
+        - name: NODE_SELECTOR
+          value: generic
+        - name: OS_FAMILY
+          value: generic
+        - name: DRIVER_BRANCH
+          value: default
+        - name: WORKLOAD_INTENT
+          value: general
+        - name: VALIDATION_PROFILE
+          value: baseline
+        - name: CLUSTER
+          value: unset
+        resources:
+          requests:
+            memory: "256Mi"
+          limits:
+            memory: "512Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gpu-operator
+  namespace: confighubplaceholder
+spec:
+  selector:
+    app: gpu-operator
+  ports:
+  - protocol: TCP
+    port: 8080
+    targetPort: 8080
+  type: ClusterIP

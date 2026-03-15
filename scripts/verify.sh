@@ -27,6 +27,12 @@ script_checks=(
   "${repo_root}/incubator/global-app-layer/realistic-app/upgrade-chain.sh"
   "${repo_root}/incubator/global-app-layer/realistic-app/verify.sh"
   "${repo_root}/incubator/global-app-layer/realistic-app/cleanup.sh"
+  "${repo_root}/incubator/global-app-layer/gpu-eks-h100-training/lib.sh"
+  "${repo_root}/incubator/global-app-layer/gpu-eks-h100-training/setup.sh"
+  "${repo_root}/incubator/global-app-layer/gpu-eks-h100-training/set-target.sh"
+  "${repo_root}/incubator/global-app-layer/gpu-eks-h100-training/upgrade-chain.sh"
+  "${repo_root}/incubator/global-app-layer/gpu-eks-h100-training/verify.sh"
+  "${repo_root}/incubator/global-app-layer/gpu-eks-h100-training/cleanup.sh"
 )
 
 for script_path in "${script_checks[@]}"; do

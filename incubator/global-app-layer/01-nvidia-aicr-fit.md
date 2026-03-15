@@ -130,6 +130,7 @@ It contains:
 - `single-component/`: the smallest worked proof of a materialized recipe chain
 - `frontend-postgres/`: a small app-level recipe where two components share the same layer spaces but still carry component-specific mutations
 - `realistic-app/`: a fuller small app recipe where backend, frontend, and postgres move through the same layer model together
+- `gpu-eks-h100-training/`: a domain-shaped GPU recipe where platform, accelerator, OS, and intent become explicit ConfigHub layers
 
 These are not GPU examples, but they show the exact ConfigHub pattern that a larger `eks + h100 + ubuntu + training` example would use.
 
@@ -138,7 +139,7 @@ These are not GPU examples, but they show the exact ConfigHub pattern that a lar
 1. Keep `examples/incubator/global-app-layer/single-component/` as the smallest worked proof.
 2. Keep `examples/incubator/global-app-layer/frontend-postgres/` as the small shared-layer proof.
 3. Keep `examples/incubator/global-app-layer/realistic-app/` as the fuller app-level proof.
-4. Add a larger recipe example with dimensions such as `eks + h100 + ubuntu + training`.
+4. Keep `examples/incubator/global-app-layer/gpu-eks-h100-training/` as the first domain-shaped GPU recipe proof.
 5. Add a first-class snapshot and phased validation story.
 6. Make the GUI show the exact connected worker, target, controller, bundle, freshness, and validation state.
 
