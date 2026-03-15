@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nvidia-device-plugin
+  namespace: confighubplaceholder
+spec:
+  selector:
+    matchLabels:
+      app: nvidia-device-plugin
+  template:
+    metadata:
+      labels:
+        app: nvidia-device-plugin
+    spec:
+      containers:
+      - name: nvidia-device-plugin
+        image: nvcr.io/nvidia/k8s-device-plugin:v0.16.2
+        env:
+        - name: CLOUD_PROVIDER
+          value: generic
+        - name: ACCELERATOR
+          value: generic
+        - name: NODE_SELECTOR
+          value: generic
+        - name: OS_FAMILY
+          value: generic
+        - name: PLUGIN_CONFIG
+          value: baseline
+        - name: WORKLOAD_INTENT
+          value: general
+        - name: CLUSTER
+          value: unset
+        resources:
+          requests:
+            memory: "64Mi"
+          limits:
+            memory: "128Mi"
