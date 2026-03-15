@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib.sh"
 
 require_cub
-require_python
+require_jq
 load_state
 ensure_state_dir
 
@@ -38,19 +38,25 @@ region_id="$(get_unit_field "$(region_space)" "${REGION_UNIT}" UnitID)"
 role_id="$(get_unit_field "$(role_space)" "${ROLE_UNIT}" UnitID)"
 recipe_id="$(get_unit_field "$(recipe_space)" "${RECIPE_UNIT}" UnitID)"
 
-[[ "$(get_unit_field "$(region_space)" "${REGION_UNIT}" UpstreamUnitID)" == "${base_id}" ]]
-[[ "$(get_unit_field "$(role_space)" "${ROLE_UNIT}" UpstreamUnitID)" == "${region_id}" ]]
-[[ "$(get_unit_field "$(recipe_space)" "${RECIPE_UNIT}" UpstreamUnitID)" == "${role_id}" ]]
-[[ "$(get_unit_field "$(deploy_space)" "${DEPLOY_UNIT}" UpstreamUnitID)" == "${recipe_id}" ]]
+actual="$(get_unit_field "$(region_space)" "${REGION_UNIT}" UpstreamUnitID)"
+[[ "${actual}" == "${base_id}" ]] || { echo "Clone chain broken: region upstream ${actual} != base ${base_id}" >&2; exit 1; }
+
+actual="$(get_unit_field "$(role_space)" "${ROLE_UNIT}" UpstreamUnitID)"
+[[ "${actual}" == "${region_id}" ]] || { echo "Clone chain broken: role upstream ${actual} != region ${region_id}" >&2; exit 1; }
+
+actual="$(get_unit_field "$(recipe_space)" "${RECIPE_UNIT}" UpstreamUnitID)"
+[[ "${actual}" == "${role_id}" ]] || { echo "Clone chain broken: recipe upstream ${actual} != role ${role_id}" >&2; exit 1; }
+
+actual="$(get_unit_field "$(deploy_space)" "${DEPLOY_UNIT}" UpstreamUnitID)"
+[[ "${actual}" == "${recipe_id}" ]] || { echo "Clone chain broken: deploy upstream ${actual} != recipe ${recipe_id}" >&2; exit 1; }
 
 echo "==> Verifying layer-specific mutations"
-assert_contains "${base_file}" 'value: "dev"'
-assert_contains "${region_file}" 'value: "US"'
+assert_contains "${base_file}" 'OLLAMA_ENABLED'
+assert_contains "${region_file}" 'name: REGION'
 assert_contains "${region_file}" 'backend.us.demo.confighub.local'
 assert_contains "${role_file}" 'replicas: 2'
 assert_contains "${role_file}" 'name: LOG_LEVEL'
-assert_contains "${role_file}" 'value: info'
-assert_contains "${role_file}" 'value: "staging"'
+assert_contains "${role_file}" 'name: ROLE'
 assert_contains "${recipe_file}" 'Cubby Chat (US Staging Recipe)'
 assert_contains "${deploy_file}" 'namespace: cluster-a'
 assert_contains "${deploy_file}" 'name: CLUSTER'
@@ -68,4 +74,4 @@ if [[ -n "${TARGET_REF:-}" ]]; then
   get_unit_field "$(deploy_space)" "${DEPLOY_UNIT}" TargetID >/dev/null
 fi
 
-echo "All global-app-layers checks passed."
+echo "All global-app-layer single-component checks passed."

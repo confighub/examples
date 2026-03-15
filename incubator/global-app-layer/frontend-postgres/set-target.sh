@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib.sh"
 
 require_cub
-require_python
+require_jq
 load_state
 
 if [[ $# -ne 1 ]]; then
@@ -16,10 +16,10 @@ fi
 
 target_ref="$1"
 
-cub unit set-target "${target_ref}" --space "$(deploy_space)" --unit "${DEPLOY_UNIT}"
+set_target_for_deploy_units "${target_ref}"
 save_state "${PREFIX}" "${target_ref}"
-load_state
-refresh_recipe_manifest_unit "${TARGET_REF}"
+TARGET_REF="${target_ref}"
+refresh_recipe_manifest_unit "${target_ref}"
 
-echo "Updated deployment target for $(deploy_space)/${DEPLOY_UNIT}: ${TARGET_REF}"
-echo "Bundle hint: $(bundle_hint_from_target_ref "${TARGET_REF}")"
+echo "Updated deployment target for $(deploy_space): frontend + postgres => ${target_ref}"
+echo "Bundle hint: $(bundle_hint_from_target_ref "${target_ref}")"

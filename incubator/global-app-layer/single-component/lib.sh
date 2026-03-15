@@ -4,9 +4,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STATE_DIR="${SCRIPT_DIR}/.state"
 STATE_FILE="${STATE_DIR}/state.env"
 RECIPE_BASE_TEMPLATE="${SCRIPT_DIR}/recipe.base.yaml"
-SOURCE_BACKEND_YAML="${SCRIPT_DIR}/../../global-app/baseconfig/backend.yaml"
+SOURCE_BACKEND_YAML="${SCRIPT_DIR}/../../../global-app/baseconfig/backend.yaml"
 
-EXAMPLE_NAME="global-app-layers"
+EXAMPLE_NAME="global-app-layer-single"
 CHAIN_LABEL="global-app-us-staging"
 COMPONENT="backend"
 
@@ -28,6 +28,15 @@ ROLE_VALUE="staging"
 DEPLOY_NAMESPACE="cluster-a"
 DEFAULT_IMAGE_TAG="1.1.8"
 
+# bash 3-compatible replacement for mapfile -t
+_mapfile() {
+  local _var="$1"
+  eval "${_var}=()"
+  while IFS= read -r _line; do
+    eval "${_var}+=(\"\${_line}\")"
+  done
+}
+
 require_cub() {
   if ! command -v cub >/dev/null 2>&1; then
     echo "Missing required command: cub" >&2
@@ -35,9 +44,9 @@ require_cub() {
   fi
 }
 
-require_python() {
-  if ! command -v python3 >/dev/null 2>&1; then
-    echo "Missing required command: python3" >&2
+require_jq() {
+  if ! command -v jq >/dev/null 2>&1; then
+    echo "Missing required command: jq" >&2
     exit 1
   fi
 }
@@ -64,10 +73,7 @@ save_state() {
   local target_ref="${2:-}"
 
   ensure_state_dir
-  cat >"${STATE_FILE}" <<STATE
-PREFIX='${prefix}'
-TARGET_REF='${target_ref}'
-STATE
+  printf 'PREFIX=%q\nTARGET_REF=%q\n' "${prefix}" "${target_ref}" >"${STATE_FILE}"
 }
 
 state_prefix() {
@@ -198,28 +204,7 @@ get_unit_field() {
   local unit="$2"
   local field_path="$3"
 
-  get_unit_json "${space}" "${unit}" | python3 -c '
-import json
-import sys
-
-field_path = sys.argv[1].split(".")
-data = json.load(sys.stdin)
-value = data.get("Unit", {})
-for key in field_path:
-    if value is None:
-        break
-    if isinstance(value, dict):
-        value = value.get(key)
-    else:
-        value = None
-        break
-if value is None:
-    sys.exit(1)
-if isinstance(value, (dict, list)):
-    print(json.dumps(value, sort_keys=True))
-else:
-    print(value)
-' "${field_path}"
+  get_unit_json "${space}" "${unit}" | jq -e -r ".Unit.${field_path}"
 }
 
 bundle_hint_from_target_ref() {
@@ -256,42 +241,33 @@ render_recipe_manifest() {
   recipe_hash="$(get_unit_field "$(recipe_space)" "${RECIPE_UNIT}" DataHash || true)"
   deploy_hash="$(get_unit_field "$(deploy_space)" "${DEPLOY_UNIT}" DataHash || true)"
 
-  python3 - "${RECIPE_BASE_TEMPLATE}" "${output_path}" <<PY
-from pathlib import Path
-
-replacements = {
-    "confighubplaceholder-chain-name": "${CHAIN_LABEL}",
-    "confighubplaceholder-example-name": "${EXAMPLE_NAME}",
-    "confighubplaceholder-chain-prefix": "$(state_prefix)",
-    "confighubplaceholder-base-space": "$(base_space)",
-    "confighubplaceholder-base-unit": "${BASE_UNIT}",
-    "confighubplaceholder-base-revision": "${base_rev}",
-    "confighubplaceholder-base-hash": "${base_hash}",
-    "confighubplaceholder-region-space": "$(region_space)",
-    "confighubplaceholder-region-unit": "${REGION_UNIT}",
-    "confighubplaceholder-region-revision": "${region_rev}",
-    "confighubplaceholder-region-hash": "${region_hash}",
-    "confighubplaceholder-role-space": "$(role_space)",
-    "confighubplaceholder-role-unit": "${ROLE_UNIT}",
-    "confighubplaceholder-role-revision": "${role_rev}",
-    "confighubplaceholder-role-hash": "${role_hash}",
-    "confighubplaceholder-recipe-space": "$(recipe_space)",
-    "confighubplaceholder-recipe-unit": "${RECIPE_UNIT}",
-    "confighubplaceholder-recipe-revision": "${recipe_rev}",
-    "confighubplaceholder-recipe-hash": "${recipe_hash}",
-    "confighubplaceholder-deploy-space": "$(deploy_space)",
-    "confighubplaceholder-deploy-unit": "${DEPLOY_UNIT}",
-    "confighubplaceholder-deploy-revision": "${deploy_rev}",
-    "confighubplaceholder-deploy-hash": "${deploy_hash}",
-    "confighubplaceholder-target-ref": "${effective_target_ref}",
-    "confighubplaceholder-bundle-hint": "$(bundle_hint_from_target_ref "${target_ref}")",
-}
-
-template = Path(Path.cwd() / Path("${RECIPE_BASE_TEMPLATE}")).read_text()
-for key, value in replacements.items():
-    template = template.replace(key, value)
-Path(Path.cwd() / Path("${output_path}")).write_text(template)
-PY
+  sed \
+    -e "s|confighubplaceholder-chain-name|${CHAIN_LABEL}|g" \
+    -e "s|confighubplaceholder-example-name|${EXAMPLE_NAME}|g" \
+    -e "s|confighubplaceholder-chain-prefix|$(state_prefix)|g" \
+    -e "s|confighubplaceholder-base-space|$(base_space)|g" \
+    -e "s|confighubplaceholder-base-unit|${BASE_UNIT}|g" \
+    -e "s|confighubplaceholder-base-revision|${base_rev}|g" \
+    -e "s|confighubplaceholder-base-hash|${base_hash}|g" \
+    -e "s|confighubplaceholder-region-space|$(region_space)|g" \
+    -e "s|confighubplaceholder-region-unit|${REGION_UNIT}|g" \
+    -e "s|confighubplaceholder-region-revision|${region_rev}|g" \
+    -e "s|confighubplaceholder-region-hash|${region_hash}|g" \
+    -e "s|confighubplaceholder-role-space|$(role_space)|g" \
+    -e "s|confighubplaceholder-role-unit|${ROLE_UNIT}|g" \
+    -e "s|confighubplaceholder-role-revision|${role_rev}|g" \
+    -e "s|confighubplaceholder-role-hash|${role_hash}|g" \
+    -e "s|confighubplaceholder-recipe-space|$(recipe_space)|g" \
+    -e "s|confighubplaceholder-recipe-unit|${RECIPE_UNIT}|g" \
+    -e "s|confighubplaceholder-recipe-revision|${recipe_rev}|g" \
+    -e "s|confighubplaceholder-recipe-hash|${recipe_hash}|g" \
+    -e "s|confighubplaceholder-deploy-space|$(deploy_space)|g" \
+    -e "s|confighubplaceholder-deploy-unit|${DEPLOY_UNIT}|g" \
+    -e "s|confighubplaceholder-deploy-revision|${deploy_rev}|g" \
+    -e "s|confighubplaceholder-deploy-hash|${deploy_hash}|g" \
+    -e "s|confighubplaceholder-target-ref|${effective_target_ref}|g" \
+    -e "s|confighubplaceholder-bundle-hint|$(bundle_hint_from_target_ref "${target_ref}")|g" \
+    "${RECIPE_BASE_TEMPLATE}" >"${output_path}"
 }
 
 refresh_recipe_manifest_unit() {
@@ -303,7 +279,7 @@ refresh_recipe_manifest_unit() {
   if unit_exists "$(recipe_space)" "${RECIPE_MANIFEST_UNIT}"; then
     cub unit update --space "$(recipe_space)" "${RECIPE_MANIFEST_UNIT}" "${rendered_manifest}"
   else
-    mapfile -t manifest_labels < <(label_args recipe-manifest)
+    _mapfile manifest_labels < <(label_args recipe-manifest)
     cub unit create --space "$(recipe_space)" -t AppConfig/YAML \
       "${RECIPE_MANIFEST_UNIT}" "${rendered_manifest}" "${manifest_labels[@]}"
   fi
