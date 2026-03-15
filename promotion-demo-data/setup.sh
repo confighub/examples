@@ -150,6 +150,17 @@ for target in "${TARGETS[@]}"; do
     $CUB function do set-replicas "$replicas" --space "$space" --quiet 2>/dev/null || true
 
     # Set environment variables
+    #
+    # Note: set-env-var is a PathVisitor — it updates env vars that already
+    # exist in the manifest but silently skips containers that don't have them.
+    # This means units like postgres and redis (whose base templates don't
+    # define ENVIRONMENT/REGION/LOG_LEVEL) won't receive these values.
+    #
+    # If the intent is to add env vars everywhere, switch to set-env (a Custom
+    # function that upserts):
+    #   $CUB function do set-env '*' "ENVIRONMENT=$env" --space "$space" ...
+    #
+    # See: cub function explain set-env-var  vs  cub function explain set-env
     $CUB function do set-env-var '*' ENVIRONMENT "$env" --space "$space" --quiet 2>/dev/null || true
     $CUB function do set-env-var '*' REGION "$region" --space "$space" --quiet 2>/dev/null || true
     $CUB function do set-env-var '*' LOG_LEVEL "$log_level" --space "$space" --quiet 2>/dev/null || true
