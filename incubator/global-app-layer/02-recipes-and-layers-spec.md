@@ -105,6 +105,7 @@ It should contain:
 - `04-review-and-next-steps.md`
 - `single-component/`
 - `frontend-postgres/`
+- `realistic-app/`
 
 That keeps the analysis, the spec, and the worked examples together.
 
@@ -179,9 +180,38 @@ This example teaches a more realistic recipe truth:
 
 That is the minimum step from a single-unit mechanism to an app-level recipe model.
 
+## Suggested Third Example
+
+### C. Fuller app example: `realistic-app`
+
+This is the next step up from the two-component example.
+
+Use three coordinated components:
+
+- `backend`
+- `frontend`
+- `postgres`
+
+All three move through the same shared spaces:
+
+- `catalog-base`
+- `catalog-us`
+- `catalog-us-staging`
+- `recipe-us-staging`
+- `deploy-cluster-a`
+
+This example should prove that:
+
+- one app-level recipe can describe multiple coordinated components
+- layer names can stay stable across the app
+- recipe-stage mutations can express cross-component coordination
+- one shared target path can produce a coherent deployment story
+
+This is the minimum realistic app example for the pattern.
+
 ## Suggested Bigger Example
 
-### C. GPU recipe example: `eks-h100-ubuntu-training`
+### D. GPU recipe example: `eks-h100-ubuntu-training`
 
 This is the larger example that shows why the pattern matters.
 

@@ -6,7 +6,7 @@ It brings three things together in one place:
 
 - analysis of why the NVIDIA AICR style matters for ConfigHub
 - a working recipes-and-layers spec for ConfigHub
-- two runnable worked examples that teach the model in stages
+- three runnable worked examples that teach the model in stages
 
 ## Start Here
 
@@ -20,6 +20,7 @@ Then try the examples in this order:
 
 1. [single-component](./single-component/README.md)
 2. [frontend-postgres](./frontend-postgres/README.md)
+3. [realistic-app](./realistic-app/README.md)
 
 ## What This Package Proves
 
@@ -46,6 +47,11 @@ cd incubator/global-app-layer/single-component
 ./cleanup.sh
 
 cd ../frontend-postgres
+./setup.sh
+./verify.sh
+./cleanup.sh
+
+cd ../realistic-app
 ./setup.sh
 ./verify.sh
 ./cleanup.sh
