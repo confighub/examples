@@ -1,4 +1,4 @@
-kind: platform
+apply: argo
 space: platform-argocd-{{env}}
 units:
   - slug: argocd-guestbook

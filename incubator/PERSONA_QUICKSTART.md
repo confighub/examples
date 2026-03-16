@@ -1,6 +1,6 @@
 # Persona Quickstart: Jesper, Ilya, Claude
 
-Use this when you want the shortest path to the right demo behavior.
+Use this when you want the shortest path to the right current incubator example.
 
 ## Shared Prerequisites
 
@@ -9,55 +9,45 @@ cub auth login
 ./scripts/verify.sh
 ```
 
-Use a space with at least one ready target+worker, or pass `--target`.
+## Jesper
 
-## Existing user (iterating)
-
-Goal: iterate on same app while deciding reuse vs fresh interactively.
+Goal: show a believable app-level recipe story that still stays small enough to review.
 
 ```bash
-CUB_UP_ON_EXISTS=reuse CUB_UP_STALE_ACTION=prompt \
-./scripts/cub-up-human-flow.sh \
-  app \
-  ./incubator/cub-up/global-app \
-  dev \
-  <existing-target>
+cd incubator/global-app-layer/realistic-app
+./setup.sh
+./verify.sh
 ```
 
-## First time user (shareable demo)
+## Ilya
 
-Goal: each run feels fresh and easy to share.
+Goal: show where layered, reproducible infrastructure recipes could go next.
 
 ```bash
-CUB_UP_ON_EXISTS=fresh CUB_UP_STALE_ACTION=fresh \
-./scripts/cub-up-human-flow.sh \
-  platform \
-  ./incubator/cub-up/argocd-guestbook \
-  dev \
-  <existing-target>
+cd incubator/global-app-layer/gpu-eks-h100-training
+./setup.sh
+./verify.sh
 ```
 
-## Claude (AI-led flow)
+## Claude
 
-Goal: AI runs one command and narrates assertion transitions.
+Goal: learn the model from the smallest example, then move to the realistic app.
 
 ```bash
-CUB_UP_ON_EXISTS=fresh CUB_UP_STALE_ACTION=fresh \
-./scripts/cub-up-ai-flow.sh \
-  app \
-  ./incubator/cub-up/global-app \
-  dev \
-  <existing-target>
+cd incubator/global-app-layer/single-component
+./setup.sh
+./verify.sh
+
+cd ../realistic-app
+./setup.sh
+./verify.sh
 ```
 
-## Human + AI Pair
+## Tiny fixtures
 
-Goal: human follows GUI checkpoints while AI narrates and asserts.
+If you only want the smallest direct and delegated apply inputs for `cub run` design work:
 
 ```bash
-./scripts/cub-up-pair-flow.sh \
-  app \
-  ./incubator/cub-up/global-app \
-  dev \
-  <existing-target>
+cd incubator/cub-run-fixtures
+ls
 ```

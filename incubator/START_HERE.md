@@ -1,6 +1,6 @@
 # Start Here
 
-Simplified flows..
+Use this page to choose the right incubator example without getting lost in old paths.
 
 ## One Command Verification
 
@@ -10,24 +10,23 @@ Simplified flows..
 
 This checks:
 
-- wrapper script syntax
-- bundle shape (`up.yaml` + manifests)
-- `cub-up` bundle directories
+- incubator shell script syntax
+- recipe example script syntax
+- tiny fixture layout under `incubator/cub-run-fixtures`
 
 ## Mental Model
 
-ConfigHub is the decision and governance plane. Workers execute. External controllers (Argo, Flux) reconcile.
+ConfigHub is the decision and governance plane. Workers execute. External controllers such as Argo and Flux reconcile when the apply mode is delegated.
 
 ```
-Flux/Argo reconcile. ConfigHub workers execute. ConfigHub governs.
+ConfigHub governs. Workers execute. External controllers reconcile.
 ```
 
 ### Core concepts
 
 - **Unit**: desired configuration text.
-- **Target**: where apply/destroy runs.
+- **Target**: where apply or destroy runs.
 - **Worker**: process connected to target operations.
-- script also does explicit state assertion checks after each major command.
 
 ### Wiring
 
@@ -35,39 +34,46 @@ Flux/Argo reconcile. ConfigHub workers execute. ConfigHub governs.
 unit → worker (bridge) → target
 ```
 
-For controller-delegated flows (e.g., ArgoCD), the worker applies a controller CR to the target, then watches sync/health status. The controller handles actual reconciliation.
+For delegated flows such as ArgoCD, the worker applies a controller CR to the target, then reconciliation and health are observed through that controller.
 
-### `app` vs `platform` (cub-up bundle convention)
+### Apply modes
 
-In current `cub-up` examples, the `kind` field in `up.yaml` distinguishes two apply paths:
+When the execution path matters, prefer this language:
 
-- **`app`**: unit contains direct workload manifests (Deployment, Service). Worker applies them to the target.
-- **`platform`**: unit contains controller intent (e.g., Argo `Application`). Worker applies the CR; the controller reconciles the actual workload.
+- **`apply: direct`**: worker applies workload manifests to the target.
+- **`apply: argo`**: worker applies an Argo `Application`; Argo reconciles the workload later.
+- **`apply: flux`**: worker publishes or applies Flux-managed intent; Flux reconciles later.
 
-### When to create new resources
+## Recommended Entry Points
 
-- **New target**: when you need a different endpoint (different cluster, account, or provider).
-- **New unit**: when you have a distinct piece of configuration to manage independently.
-- **New app/platform bundle**: when you want a self-contained `cub-up` scenario with its own units, environment, and target binding.
-- **Reuse existing**: when iterating on the same workload in the same destination. Use `--on-exists reuse` or `prompt` to decide interactively.
-
-## Run Modes
-
-Choose one contract and keep it explicit:
-
-- Human-led: `./scripts/cub-up-human-flow.sh ...`
-- AI-led: `./scripts/cub-up-ai-flow.sh ...`
-- Human+AI pair: `./scripts/cub-up-pair-flow.sh ...`
-
-## First Demo Command
+### Smallest worked recipe example
 
 ```bash
-CUB_UP_ON_EXISTS=fresh CUB_UP_STALE_ACTION=fresh \
-./scripts/cub-up-ai-flow.sh app ./incubator/cub-up/global-app dev <existing-target>
+cd incubator/global-app-layer/single-component
+./setup.sh
+./verify.sh
 ```
 
-Why this default:
+### Most realistic current app example
 
-- avoids stale/reused slugs in demos
-- keeps assertions and GUI checkpoints visible
-- reduces confusion about old/disconnected state
+```bash
+cd incubator/global-app-layer/realistic-app
+./setup.sh
+./verify.sh
+```
+
+### GPU-flavored layered example
+
+```bash
+cd incubator/global-app-layer/gpu-eks-h100-training
+./setup.sh
+./verify.sh
+```
+
+### Tiny apply-mode fixtures
+
+If you only want the smallest direct-vs-delegated reference inputs, read:
+
+- [cub-run-fixtures](./cub-run-fixtures/README.md)
+
+These fixtures are preserved as design seeds, not as the main demo path.

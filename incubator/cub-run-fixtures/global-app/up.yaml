@@ -1,4 +1,4 @@
-kind: app
+apply: direct
 space: global-app-{{env}}
 units:
   - slug: global-app
