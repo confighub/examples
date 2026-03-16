@@ -6,9 +6,6 @@ repo_root="$(cd "${script_dir}/.." && pwd)"
 
 script_checks=(
   "${repo_root}/scripts/verify.sh"
-  "${repo_root}/scripts/cub-up-human-flow.sh"
-  "${repo_root}/scripts/cub-up-ai-flow.sh"
-  "${repo_root}/scripts/cub-up-pair-flow.sh"
   "${repo_root}/incubator/global-app-layer/single-component/lib.sh"
   "${repo_root}/incubator/global-app-layer/single-component/setup.sh"
   "${repo_root}/incubator/global-app-layer/single-component/set-target.sh"
@@ -45,8 +42,7 @@ for script_path in "${script_checks[@]}"; do
 done
 
 bundle_roots=(
-  "${repo_root}/cub-up"
-  "${repo_root}/incubator/cub-up"
+  "${repo_root}/incubator/cub-run-fixtures"
 )
 
 for bundle_root in "${bundle_roots[@]}"; do

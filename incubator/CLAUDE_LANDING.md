@@ -1,25 +1,20 @@
 # ConfigHub Examples: Claude Landing Page
 
-Use this page as the single entrypoint for an AI-led end-to-end demo.
+Use this page as the single entrypoint for the current incubator work.
 
 ## Goal
 
-Run one `cub-up` scenario with:
-
-- full CLI output
-- `--assert` state transitions
-- `--open-ui` GUI checkpoints
-- stale-safe demo defaults
+Start with examples that are real, current, and easy to verify.
 
 ## 0) Prerequisites
 
 ```bash
-cd <your-examples-checkout>   # e.g. ~/src/examples
+cd <your-examples-checkout>
 cub auth login
 ./scripts/verify.sh
 ```
 
-You need one ready target in your active space.
+If you want to run against a live target, have one ready in your active space.
 
 Quick check:
 
@@ -27,50 +22,60 @@ Quick check:
 cub target list --no-header
 ```
 
-## 1) Run AI-led flow (recommended)
+## 1) Recommended first path
 
-Arguments: `<kind>` `<bundle-path>` `<env>` `<target>`
-
-```bash
-CUB_UP_ON_EXISTS=fresh CUB_UP_STALE_ACTION=fresh \
-./scripts/cub-up-ai-flow.sh \
-  app \                              # kind
-  ./incubator/cub-up/global-app \    # bundle path
-  dev \                              # environment
-  my-target                          # target slug from `cub target list`
-```
-
-## 2) Success Criteria
-
-You should see:
-
-- `PREFLIGHT` lines showing `unit -> target -> worker`
-- `ASSERT RESULT: PASS` after each major step
-- `GUI (...)` URLs for space, targets, and units
-- final line: `Completed: cub up app`
-
-## 3) Pair Mode (optional)
-
-Use pair mode when you want interactive prompts for reuse/fresh decisions
-instead of the fully automated AI-led flow.
+Start with the realistic layered app example:
 
 ```bash
-./scripts/cub-up-pair-flow.sh \
-  app \
-  ./incubator/cub-up/global-app \
-  dev \
-  my-target
+cd incubator/global-app-layer/realistic-app
+./setup.sh
+./verify.sh
 ```
 
-## 4) Troubleshooting
+If you want to wire a real target immediately:
 
-- Not authenticated: run `cub auth login`
-- Target missing: pass a valid target slug
-- Worker not ready: preflight should fail fast with worker condition
-- Stale confusion: keep `CUB_UP_ON_EXISTS=fresh CUB_UP_STALE_ACTION=fresh`
+```bash
+./setup.sh <prefix> <space/target>
+./verify.sh
+```
+
+## 2) Smaller and larger options
+
+Smallest:
+
+```bash
+cd ../single-component
+./setup.sh
+./verify.sh
+```
+
+GPU-flavored:
+
+```bash
+cd ../gpu-eks-h100-training
+./setup.sh
+./verify.sh
+```
+
+## 3) What success looks like
+
+You should be able to see:
+
+- explicit spaces and units created
+- clone-chain structure preserved
+- recipe manifest materialized
+- verification passing against the created ConfigHub objects
+
+## 4) Tiny direct vs delegated fixtures
+
+If you need the smallest possible direct and delegated apply inputs for design work around `cub run`, use:
+
+- [cub-run-fixtures](./cub-run-fixtures/README.md)
+
+These are preserved reference fixtures, not the main walkthrough.
 
 ## 5) Related Pages
 
 - Start guide: [START_HERE.md](./START_HERE.md)
 - Personas: [PERSONA_QUICKSTART.md](./PERSONA_QUICKSTART.md)
-- Bundles: [cub-up/README.md](./cub-up/README.md)
+- Current package: [global-app-layer/README.md](./global-app-layer/README.md)
