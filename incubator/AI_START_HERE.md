@@ -1,6 +1,6 @@
-# ConfigHub Examples: Claude Landing Page
+# AI Start Here
 
-Use this page as the single entrypoint for the current incubator work.
+Use this page as the single AI-oriented handoff page for the current incubator work.
 
 ## Goal
 
@@ -77,5 +77,4 @@ These are preserved reference fixtures, not the main walkthrough.
 ## 5) Related Pages
 
 - Start guide: [START_HERE.md](./START_HERE.md)
-- Personas: [PERSONA_QUICKSTART.md](./PERSONA_QUICKSTART.md)
 - Current package: [global-app-layer/README.md](./global-app-layer/README.md)
