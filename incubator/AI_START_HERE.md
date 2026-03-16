@@ -11,7 +11,6 @@ Start with examples that are real, current, and easy to verify.
 ```bash
 cd <your-examples-checkout>
 cub auth login
-./scripts/verify.sh
 ```
 
 If you want to run against a live target, have one ready in your active space.
@@ -39,12 +38,32 @@ If you want to wire a real target immediately:
 ./verify.sh
 ```
 
-## 2) Smaller and larger options
+## 2) Quick demo data (no cluster required)
+
+For exploring ConfigHub's promotion UI without a live target:
+
+```bash
+cd promotion-demo-data
+./setup.sh
+./cleanup.sh
+```
+
+For CI/AI verification, see [promotion-demo-data-verify](./promotion-demo-data-verify/).
+
+This creates 49 spaces and ~154 units using the **App-Deployment-Target** model:
+
+- **App** → label + units (e.g., `aichat`, `eshop`, `platform`)
+- **Target** → infra space with target object (e.g., `us-prod-1`)
+- **Deployment** → `{target}-{app}` space (e.g., `us-prod-1-eshop`)
+
+Uses the noop bridge, so no Kubernetes cluster is needed. This is the canonical multi-env model for ConfigHub.
+
+## 3) Smaller and larger options
 
 Smallest:
 
 ```bash
-cd ../single-component
+cd incubator/global-app-layer/single-component
 ./setup.sh
 ./verify.sh
 ```
@@ -52,12 +71,12 @@ cd ../single-component
 GPU-flavored:
 
 ```bash
-cd ../gpu-eks-h100-training
+cd incubator/global-app-layer/gpu-eks-h100-training
 ./setup.sh
 ./verify.sh
 ```
 
-## 3) What success looks like
+## 4) What success looks like
 
 You should be able to see:
 
@@ -66,7 +85,7 @@ You should be able to see:
 - recipe manifest materialized
 - verification passing against the created ConfigHub objects
 
-## 4) Tiny direct vs delegated fixtures
+## 5) Tiny direct vs delegated fixtures
 
 If you need the smallest possible direct and delegated apply inputs for design work around `cub run`, use:
 
@@ -74,7 +93,7 @@ If you need the smallest possible direct and delegated apply inputs for design w
 
 These are preserved reference fixtures, not the main walkthrough.
 
-## 5) Related Pages
+## 6) Related Pages
 
 - Start guide: [START_HERE.md](./START_HERE.md)
 - Current package: [global-app-layer/README.md](./global-app-layer/README.md)
