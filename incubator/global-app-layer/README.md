@@ -8,6 +8,10 @@ It brings three things together in one place:
 - a working recipes-and-layers spec for ConfigHub
 - four runnable worked examples that teach the model in stages
 
+NVIDIA AICR refers to this OSS framework: https://developer.nvidia.com/blog/validate-kubernetes-for-gpu-infrastructure-with-layered-reproducible-recipes/
+
+Quoting from AICR "Every AI cluster running on Kubernetes requires a full software stack that works together, from low-level driver and kernel settings to high-level operator and workload configurations. You get one cluster working, and spend days getting the next one to match. Upgrade a component, and something else breaks. Move to a new cloud and start over. AI Cluster Runtime is a new open-source project designed to remove cluster configuration from the critical path. It publishes optimized, validated, and reproducible Kubernetes configurations as recipes you can deploy onto your clusters."
+
 ## Start Here
 
 Read in this order:
