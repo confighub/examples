@@ -1,14 +1,12 @@
 # `global-app-layer`
 
-This incubator package is the current home for ConfigHub recipe and layer experiments, starting with `global-app` and extending into domain-shaped examples.
+This incubator package is the current home for some ConfigHub recipe and layer experiments, starting with `global-app` and extending into domain-shaped examples.  The layers are motivated by eg. the NVIDIA AICR OSS framework: https://developer.nvidia.com/blog/validate-kubernetes-for-gpu-infrastructure-with-layered-reproducible-recipes/
 
-It brings three things together in one place:
+The project area has:
 
-- analysis of why the NVIDIA AICR style matters for ConfigHub
-- a working recipes-and-layers spec for ConfigHub
+- analysis of the NVIDIA AICR layering mapped to ConfigHub
+- a generalised working recipes-and-layers spec for ConfigHub
 - four runnable worked examples that teach the model in stages
-
-NVIDIA AICR refers to this OSS framework: https://developer.nvidia.com/blog/validate-kubernetes-for-gpu-infrastructure-with-layered-reproducible-recipes/
 
 Quoting from AICR "Every AI cluster running on Kubernetes requires a full software stack that works together, from low-level driver and kernel settings to high-level operator and workload configurations. You get one cluster working, and spend days getting the next one to match. Upgrade a component, and something else breaks. Move to a new cloud and start over. AI Cluster Runtime is a new open-source project designed to remove cluster configuration from the critical path. It publishes optimized, validated, and reproducible Kubernetes configurations as recipes you can deploy onto your clusters."
 
