@@ -228,10 +228,28 @@ space_label_args() {
 assert_contains() {
   local file_path="$1"
   local pattern="$2"
-  if ! grep -q --fixed-strings "${pattern}" "${file_path}"; then
-    echo "Expected pattern not found in ${file_path}: ${pattern}" >&2
-    exit 1
+  # Try exact fixed-string match first; if that fails and the pattern
+  # contains "value: ", retry with optional YAML quotes around the value
+  # to tolerate cub's inconsistent quoting of env-var values.
+  if grep -q --fixed-strings "${pattern}" "${file_path}"; then
+    return 0
   fi
+  if [[ "${pattern}" == *'value: '* ]]; then
+    local prefix="${pattern%%value: *}value: "
+    local val="${pattern#*value: }"
+    # try with double-quotes around the value
+    if grep -q --fixed-strings "${prefix}\"${val}\"" "${file_path}"; then
+      return 0
+    fi
+    # try without quotes (in case the assertion had quotes but the file doesn't)
+    local unquoted_val="${val#\"}"
+    unquoted_val="${unquoted_val%\"}"
+    if grep -q --fixed-strings "${prefix}${unquoted_val}" "${file_path}"; then
+      return 0
+    fi
+  fi
+  echo "Expected pattern not found in ${file_path}: ${pattern}" >&2
+  exit 1
 }
 
 unit_data_to_file() {
