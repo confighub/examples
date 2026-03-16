@@ -47,10 +47,10 @@ spec:
           dataHash: confighubplaceholder-backend-recipe-hash
           mutationDelta: set DATABASE_URL for chatdb_us_staging and CHAT_TITLE for the staged app
         - name: deployment
-          space: confighubplaceholder-backend-deploy-space
-          unit: confighubplaceholder-backend-deploy-unit
-          revision: confighubplaceholder-backend-deploy-revision
-          dataHash: confighubplaceholder-backend-deploy-hash
+          space: confighubplaceholder-backend-deployment-space
+          unit: confighubplaceholder-backend-deployment-unit
+          revision: confighubplaceholder-backend-deployment-revision
+          dataHash: confighubplaceholder-backend-deployment-hash
           mutationDelta: set namespace=cluster-a, backend deployment host, and CLUSTER env var
     - name: frontend
       layers:
@@ -79,10 +79,10 @@ spec:
           dataHash: confighubplaceholder-frontend-recipe-hash
           mutationDelta: set RELEASE_CHANNEL=us-staging-recipe
         - name: deployment
-          space: confighubplaceholder-frontend-deploy-space
-          unit: confighubplaceholder-frontend-deploy-unit
-          revision: confighubplaceholder-frontend-deploy-revision
-          dataHash: confighubplaceholder-frontend-deploy-hash
+          space: confighubplaceholder-frontend-deployment-space
+          unit: confighubplaceholder-frontend-deployment-unit
+          revision: confighubplaceholder-frontend-deployment-revision
+          dataHash: confighubplaceholder-frontend-deployment-hash
           mutationDelta: set namespace=cluster-a, frontend deployment host, and CLUSTER env var
     - name: postgres
       layers:
@@ -111,10 +111,10 @@ spec:
           dataHash: confighubplaceholder-postgres-recipe-hash
           mutationDelta: set POSTGRES_DB=chatdb_us_staging
         - name: deployment
-          space: confighubplaceholder-postgres-deploy-space
-          unit: confighubplaceholder-postgres-deploy-unit
-          revision: confighubplaceholder-postgres-deploy-revision
-          dataHash: confighubplaceholder-postgres-deploy-hash
+          space: confighubplaceholder-postgres-deployment-space
+          unit: confighubplaceholder-postgres-deployment-unit
+          revision: confighubplaceholder-postgres-deployment-revision
+          dataHash: confighubplaceholder-postgres-deployment-hash
           mutationDelta: set namespace=cluster-a and CLUSTER env var
   publish:
     targetRef: confighubplaceholder-target-ref
