@@ -2,11 +2,6 @@
 
 This directory is for experimental examples before promotion to stable examples.
 
-## Fast Entry
-
-- AI handoff page: [AI_START_HERE.md](./AI_START_HERE.md)
-- Start guide: [global-app-layer/README.md](./global-app-layer/README.md)
-
 ## Current Experiments
 
 - [`global-app-layer`](./global-app-layer/README.md): recipes and layers package with specs plus four worked examples, including a GPU-flavored chain.
