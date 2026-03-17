@@ -96,4 +96,5 @@ These documents explain the design thinking behind the examples:
 
 ## End-to-End Testing
 
-The [e2e/](./e2e/) directory contains shared deliver-and-assert infrastructure for testing examples against a real cluster. See [e2e/README.md](./e2e/README.md).
+- [e2e/](./e2e/) — delivery scripts for applying a single example to a cluster (direct or ArgoCD)
+- [incubator/e2e/](../e2e/) — full lifecycle tests: brownfield import, greenfield deploy, and bridge (import then layer). See [incubator/e2e/README.md](../e2e/README.md).

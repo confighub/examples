@@ -134,3 +134,13 @@ Three components (`backend` + `frontend` + `postgres`) — no stubs needed becau
 NVIDIA's actual layering model: `base → platform(EKS) → accelerator(H100) → OS(Ubuntu) → recipe(training) → deployment`. Two components (`gpu-operator` + `nvidia-device-plugin`) with six layers. Uses stub container images (`nginx:1.27-alpine`, `busybox:1.37`) so it runs on any cluster including local `kind`, but the structure is real — swap the images for NVIDIA's actual operator images and point at a GPU node pool and it works.
 
 Proves ConfigHub can express the same structure as NVIDIA's AICR pattern with real units, real clone links, and real provenance tracking.
+
+## 6. End-to-End Testing
+
+The [e2e/](./e2e/) directory has delivery scripts for applying a single example to a cluster (direct or via ArgoCD). The [incubator/e2e/](../e2e/) directory has full lifecycle tests that cover three flows:
+
+- **Brownfield**: import an existing cluster app into ConfigHub, mutate it, apply
+- **Greenfield**: create layered chains from scratch, deploy all four recipes
+- **Bridge**: import first, then layer greenfield config on top
+
+See [incubator/e2e/README.md](../e2e/README.md) for details.

@@ -3,7 +3,7 @@
 # Source this from any e2e script.
 
 E2E_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(dirname "${E2E_DIR}")"
+REPO_ROOT="$(cd "${E2E_DIR}/../.." && pwd)"
 GITOPS_IMPORT_DIR="${REPO_ROOT}/gitops-import"
 KUBECONFIG_PATH="${GITOPS_IMPORT_DIR}/var/gitops-import.kubeconfig"
 
