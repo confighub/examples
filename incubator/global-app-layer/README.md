@@ -7,6 +7,17 @@ Four working examples that prove ConfigHub can model layered, reproducible confi
 NVIDIA ships GPU software as "recipes" — curated, tested combinations of drivers, operators, and plugins for specific hardware/OS/cloud combinations. Their model is: start with a base component, layer on platform choices (EKS vs GKE), hardware choices (H100 vs A100), OS choices (Ubuntu vs RHEL), and workload intent (training vs inference). The result is a reproducible, auditable configuration.
 
 ConfigHub does the same thing with **spaces and clone chains**. These four examples prove it works, in increasing complexity:
+This incubator package is the current home for some ConfigHub recipe and layer experiments, starting with `global-app` and extending into domain-shaped examples.  The layers are motivated by eg. the NVIDIA AICR OSS framework: https://developer.nvidia.com/blog/validate-kubernetes-for-gpu-infrastructure-with-layered-reproducible-recipes/
+
+The project area has:
+
+- analysis of the NVIDIA AICR layering mapped to ConfigHub
+- a generalised working recipes-and-layers spec for ConfigHub
+- four runnable worked examples that teach the model in stages
+
+Quoting from AICR "Every AI cluster running on Kubernetes requires a full software stack that works together, from low-level driver and kernel settings to high-level operator and workload configurations. You get one cluster working, and spend days getting the next one to match. Upgrade a component, and something else breaks. Move to a new cloud and start over. AI Cluster Runtime is a new open-source project designed to remove cluster configuration from the critical path. It publishes optimized, validated, and reproducible Kubernetes configurations as recipes you can deploy onto your clusters."
+
+## Start Here
 
 | Example | Components | Layers | What it proves |
 |---|---|---|---|
