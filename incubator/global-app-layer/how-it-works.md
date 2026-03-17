@@ -94,7 +94,7 @@ The brownfield flow is the reverse — `cub gitops discover` finds existing Argo
 
 ### Label Mapping (Open Design Question)
 
-When ArgoCD Applications carry labels like `team=payments` or `env=prod`, there is currently no deterministic convention for how those map to ConfigHub spaces and unit labels. This is a [known gap with a proposed design](../../docs/decisions/2026-03-17-label-mapping-convention.md) — the labels are preserved in imported YAML but don't yet influence ConfigHub organizational placement. See [PR #20](https://github.com/confighub/examples/pull/20) for the proposed label-map spec.
+When ArgoCD Applications carry labels like `team=payments` or `env=prod`, there is currently no deterministic convention for how those map to ConfigHub spaces and unit labels. This is a [known gap with a proposed design](../planning/2026-03-17-label-mapping-convention.md) — the labels are preserved in imported YAML but don't yet influence ConfigHub organizational placement. See [PR #20](https://github.com/confighub/examples/pull/20) for the proposed label-map spec.
 
 ## 4. Role of AI
 
