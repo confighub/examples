@@ -43,7 +43,9 @@ When you change the base, the change propagates down through clone links. When y
 
 ## 2. GitOps with Workers and Targets
 
-Whereas YAMLs are **sourced** from Git, config units are literal deployment manifests that are **deployed to targets** - named delivery endpoints.  All targets are created, registered, and managed using **workers**.  Eacg **worker** is a long-lived agent running inside the Kubernetes cluster (in the `confighub` namespace). It maintains a persistent connection to the ConfigHub management plane to register one or more **targets**, which are scoped to the worker's space.
+Traditional GitOps sources YAML from Git. ConfigHub is different: config units are literal deployment manifests that are **deployed to targets** — named delivery endpoints.
+
+All targets are created, registered, and managed using **workers**. Each **worker** is a long-lived agent running inside the Kubernetes cluster (in the `confighub` namespace). It maintains a persistent connection to the ConfigHub management plane and registers one or more **targets**, scoped to the worker's space.
 
 When you `cub unit set-target` + `cub unit apply`:
 
@@ -75,21 +77,23 @@ The worker hands ArgoCD the rendered YAML that ConfigHub materialized through th
 
 This is the opposite of the typical ArgoCD model where Argo watches a Git repo. Here, ArgoCD is demoted from "source of truth" to "delivery and reconciliation engine."
 
-## 3. End-to-End Testing
-
 ### Brownfield: The Reverse Direction
 
-The brownfield flow is the reverse — `cub gitops discover` finds existing ArgoCD Applications on the cluster and `cub gitops import` pulls their rendered manifests into ConfigHub as units. That's Git→Argo→ConfigHub (one-time import). After that, the ongoing flow is ConfigHub→worker→Argo→cluster.
+The brownfield flow goes the other way — `cub gitops discover` finds existing ArgoCD Applications on the cluster and `cub gitops import` pulls their rendered manifests into ConfigHub as units. That's Git→Argo→ConfigHub (one-time import). After that, the ongoing flow is ConfigHub→worker→Argo→cluster.
 
 ### Label Mapping (Open Design Question)
 
-When ArgoCD Applications carry labels like `team=payments` or `env=prod`, there is currently no deterministic convention for how those map to ConfigHub spaces and unit labels. This is a [known gap with a proposed design](../planning/2026-03-17-label-mapping-convention.md) — the labels are preserved in imported YAML but don't yet influence ConfigHub organizational placement. See [PR #20](https://github.com/confighub/examples/pull/20) for the proposed label-map spec.
+When ArgoCD Applications carry labels like `team=payments` or `env=prod`, there is currently no deterministic convention for how those map to ConfigHub spaces and unit labels. This is a [known gap with a proposed design](../planning/2026-03-17-label-mapping-convention.md). The labels are preserved in imported YAML but don't yet influence ConfigHub organizational placement.
 
-The [e2e/](./e2e/) directory has delivery scripts for applying a single example to a cluster (direct or via ArgoCD). The [incubator/e2e/](../e2e/) directory has full lifecycle tests that cover three flows:
+## 3. End-to-End Testing
+
+The [e2e/](../e2e/) directory has full lifecycle tests that cover three flows:
 
 - **Brownfield**: import an existing cluster app into ConfigHub, mutate it, apply
 - **Greenfield**: create layered chains from scratch, deploy all four recipes
 - **Bridge**: import first, then layer greenfield config on top
+
+Each recipe also has its own delivery scripts in `e2e/` subdirectories for applying to a cluster (direct or via ArgoCD).
 
 ## 4. Role of AI
 
@@ -123,6 +127,3 @@ This means four recipes create ~20 spaces with zero name collisions.
 On the cluster side, `DEPLOY_NAMESPACE` is overridable (`recipe-sc`, `recipe-fp`, `recipe-ra`, `recipe-gpu`), so each recipe's pods land in a different namespace.
 
 Unit names within a space are fixed per-component (`backend-base`, `frontend-cluster-a`) — they don't conflict because they live in prefix-scoped spaces.
-
-
-See [incubator/e2e/README.md](../e2e/README.md) for details.
