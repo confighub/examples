@@ -8,7 +8,7 @@ Quoting from AICR "Every AI cluster running on Kubernetes requires a full softwa
 
 NVIDIA ships GPU software as "recipes" — curated, tested combinations of drivers, operators, and plugins for specific hardware/OS/cloud combinations. Their model is: start with a base component, layer on platform choices (EKS vs GKE), hardware choices (H100 vs A100), OS choices (Ubuntu vs RHEL), and workload intent (training vs inference). The result is a reproducible, auditable configuration.  The software is known as [NVIDIA AICR](https://developer.nvidia.com/blog/validate-kubernetes-for-gpu-infrastructure-with-layered-reproducible-recipes/).
 
-ConfigHub also enables reproducible, auditable configurations, as well as additonal management, operational and compliance capabilities. Where NVIDIA creates a stack out of a sequence of 'layers', in ConfigHub we organise configurations into config objects ("units") which can be linked into a chain of dependent 'config clones' with added components (or 'variants').  This achieves the required 'layering'.  These can then be organised and managed by ConfigHub.
+ConfigHub also enables reproducible, auditable configurations, as well as additonal management, operational and compliance capabilities. Where NVIDIA creates a stack out of a sequence of 'layers', in ConfigHub we organise configurations into config objects ("units") which can be linked into a chain of dependent 'config clones' with added components (or 'variants').  This achieves the required 'layering'.  These can then be deployed, organised and managed by ConfigHub.  Below, we set out which examples are showcased.  After that read about how to do more with them.
 
 ## The Examples
 
@@ -44,6 +44,8 @@ Every example creates real ConfigHub spaces, units, and clone chains. Every exam
 | [gpu-eks-h100-training](./gpu-eks-h100-training/) | gpu-operator + nvidia-device-plugin | 6 (base → platform → accelerator → OS → recipe → deploy) | NVIDIA's actual layering model in ConfigHub |
 
 ## How It Works
+
+ConfigHub is a database for organising software config manifests plus a management platform for executing operations.  Each config is organised into apps, which connect to Sources (eg GitHub) and may be deployed to Targets (eg Argo or Flux in Kubernetes).  Thus ConfigHub may be 'inserted' into an existing GitOps flow.  The management layer can then act as a point of operational control for all changes to the connected software.  
 
 See [how-it-works.md](./how-it-works.md) for the full explanation of:
 
