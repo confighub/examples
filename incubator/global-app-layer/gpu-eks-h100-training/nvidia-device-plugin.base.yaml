@@ -14,7 +14,10 @@ spec:
     spec:
       containers:
       - name: nvidia-device-plugin
-        image: nvcr.io/nvidia/k8s-device-plugin:v0.16.2
+        # Stub image for local/kind testing.
+        # Replace with nvcr.io/nvidia/k8s-device-plugin:<tag> on real GPU clusters.
+        image: busybox:1.37
+        command: ["sleep", "infinity"]
         env:
         - name: CLOUD_PROVIDER
           value: generic

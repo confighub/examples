@@ -15,7 +15,9 @@ spec:
     spec:
       containers:
       - name: gpu-operator
-        image: nvcr.io/nvidia/gpu-operator:24.6.0
+        # Stub image for local/kind testing.
+        # Replace with nvcr.io/nvidia/gpu-operator:<tag> on real GPU clusters.
+        image: nginx:1.27-alpine
         ports:
         - containerPort: 8080
         env:

@@ -1,0 +1,48 @@
+# Stub postgres so backend can start.
+# This is not part of the layered chain — it provides the dependency
+# that backend needs (DATABASE_URL points at postgres:5432).
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: confighubplaceholder
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:16
+        env:
+        - name: POSTGRES_USER
+          value: admin
+        - name: POSTGRES_PASSWORD
+          value: password
+        - name: POSTGRES_DB
+          value: chatdb
+        ports:
+        - containerPort: 5432
+        resources:
+          requests:
+            memory: "128Mi"
+          limits:
+            memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: confighubplaceholder
+spec:
+  selector:
+    app: postgres
+  ports:
+  - port: 5432
+    targetPort: 5432

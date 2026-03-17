@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -euo pipefail
 
 CLUSTER_NAME=${1:-gitops-import}
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -34,30 +34,29 @@ cub worker create "$WORKER_SLUG" --space $CUB_SPACE --allow-exists
 echo "Generating ArgoCD API token for confighub-worker account..."
 ARGOCD_PASSWORD=$(cat "$PROJECT_DIR/var/argocd-admin-password.txt")
 
-SESSION_RESPONSE=$(curl -s -H "Content-Type: application/json" \
+SESSION_RESPONSE=$(curl -sf -H "Content-Type: application/json" \
   http://localhost:9080/api/v1/session \
-  -d "{\"username\":\"admin\",\"password\":\"$ARGOCD_PASSWORD\"}")
-ADMIN_TOKEN=$(echo "$SESSION_RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('token',''))")
-if [ -z "$ADMIN_TOKEN" ]; then
-    echo "Error: Failed to get admin session token. Response: $SESSION_RESPONSE"
+  -d "{\"username\":\"admin\",\"password\":\"$ARGOCD_PASSWORD\"}") || {
+    echo "Error: Failed to reach ArgoCD API at http://localhost:9080" >&2
     exit 1
-fi
+}
+ADMIN_TOKEN=$(echo "$SESSION_RESPONSE" | jq -re '.token') || {
+    echo "Error: ArgoCD session response missing token. Response: $SESSION_RESPONSE" >&2
+    exit 1
+}
 
-TOKEN_RESPONSE=$(curl -s \
+TOKEN_RESPONSE=$(curl -sf \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   "http://localhost:9080/api/v1/account/confighub-worker/token" \
-  -d '{"expiresIn":0}')
-ARGOCD_TOKEN=$(echo "$TOKEN_RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('token',''))")
-if [ -z "$ARGOCD_TOKEN" ]; then
-    echo "Error: Failed to generate worker API token. Response: $TOKEN_RESPONSE"
+  -d '{"expiresIn":0}') || {
+    echo "Error: Failed to generate ArgoCD worker token" >&2
     exit 1
-fi
-
-if [ -z "$ARGOCD_TOKEN" ]; then
-    echo "Error: Failed to generate ArgoCD API token"
+}
+ARGOCD_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -re '.token') || {
+    echo "Error: ArgoCD token response missing token. Response: $TOKEN_RESPONSE" >&2
     exit 1
-fi
+}
 
 echo "Installing worker into cluster..."
 cub worker install "$WORKER_SLUG" \
