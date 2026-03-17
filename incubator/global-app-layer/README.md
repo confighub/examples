@@ -1,6 +1,8 @@
 # Global App Layer — Layered Recipes for ConfigHub
 
-Four working examples to show how ConfigHub can model "layered recipes".  These reproducible configuration recipes for combining multiple components correctly, using [NVIDIA AICR](https://developer.nvidia.com/blog/validate-kubernetes-for-gpu-infrastructure-with-layered-reproducible-recipes/) which is open source.  Here we are showing that ConfigHub gives you an **easy way to deploy NVIDIA patterns correctly** and then **to manage them** with updates, patches, integrations, customisations and fleets.
+ConfigHub gives you an **easy way to deploy NVIDIA AI software patterns correctly** and then **to manage them** with updates, patches, integrations, customisations and fleets.
+
+Four working examples are provided as "layered recipes".  These are reproducible configuration recipes for combining multiple components correctly, using [NVIDIA AICR](https://developer.nvidia.com/blog/validate-kubernetes-for-gpu-infrastructure-with-layered-reproducible-recipes/) which is open source.  
 
 ## What Is NVIDIA AICR and how does ConfigHub manage it?
 
