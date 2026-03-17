@@ -1,23 +1,40 @@
 # Global App Layer — Layered Recipes for ConfigHub
 
-Four working examples that prove ConfigHub can model layered, reproducible configuration recipes — from a single-component app all the way to NVIDIA's GPU infrastructure pattern.
+Four working examples to show how ConfigHub can model "layered recipes".  These reproducible configuration recipes for combining multiple components correctly, using [NVIDIA AICR](https://developer.nvidia.com/blog/validate-kubernetes-for-gpu-infrastructure-with-layered-reproducible-recipes/) which is open source.  Here we are showing that ConfigHub gives you an **easy way to deploy NVIDIA patterns correctly** and then **to manage them** with updates, patches, integrations, customisations and fleets.
 
-## What This Is
-
-NVIDIA ships GPU software as "recipes" — curated, tested combinations of drivers, operators, and plugins for specific hardware/OS/cloud combinations. Their model is: start with a base component, layer on platform choices (EKS vs GKE), hardware choices (H100 vs A100), OS choices (Ubuntu vs RHEL), and workload intent (training vs inference). The result is a reproducible, auditable configuration.
-
-ConfigHub does the same thing with **spaces and clone chains**. These four examples prove it works, in increasing complexity:
-This incubator package is the current home for some ConfigHub recipe and layer experiments, starting with `global-app` and extending into domain-shaped examples.  The layers are motivated by eg. the NVIDIA AICR OSS framework: https://developer.nvidia.com/blog/validate-kubernetes-for-gpu-infrastructure-with-layered-reproducible-recipes/
-
-The project area has:
-
-- analysis of the NVIDIA AICR layering mapped to ConfigHub
-- a generalised working recipes-and-layers spec for ConfigHub
-- four runnable worked examples that teach the model in stages
+## What Is NVIDIA AICR and how does ConfigHub manage it?
 
 Quoting from AICR "Every AI cluster running on Kubernetes requires a full software stack that works together, from low-level driver and kernel settings to high-level operator and workload configurations. You get one cluster working, and spend days getting the next one to match. Upgrade a component, and something else breaks. Move to a new cloud and start over. AI Cluster Runtime is a new open-source project designed to remove cluster configuration from the critical path. It publishes optimized, validated, and reproducible Kubernetes configurations as recipes you can deploy onto your clusters."
 
-## Start Here
+NVIDIA ships GPU software as "recipes" — curated, tested combinations of drivers, operators, and plugins for specific hardware/OS/cloud combinations. Their model is: start with a base component, layer on platform choices (EKS vs GKE), hardware choices (H100 vs A100), OS choices (Ubuntu vs RHEL), and workload intent (training vs inference). The result is a reproducible, auditable configuration.  The software is known as [NVIDIA AICR](https://developer.nvidia.com/blog/validate-kubernetes-for-gpu-infrastructure-with-layered-reproducible-recipes/).
+
+ConfigHub also enables reproducible, auditable configurations, as well as additonal management, operational and compliance capabilities. Where NVIDIA creates a stack out of a sequence of 'layers', in ConfigHub we organise configurations into config objects ("units") which can be linked into a chain of dependent 'config clones' with added components (or 'variants').  This achieves the required 'layering'.  These can then be organised and managed by ConfigHub.
+
+## The Examples
+
+These four examples prove it works, in increasing complexity:
+
+### single-component
+
+The simplest case: one app (`backend`), five layers, one stub dependency (`postgres`). Proves the clone chain model works end-to-end. The postgres stub is a ConfigHub unit — not a manual `kubectl apply` — so the entire deployment goes through ConfigHub.
+
+### frontend-postgres
+
+Two components (`frontend` + `postgres`) with a stub dependency (`backend`). The frontend's nginx config expects a `backend` upstream, so a minimal backend stub fills that gap. Proves that multi-component recipes work and that stub dependencies stay inside ConfigHub.
+
+### realistic-app
+
+Three components (`backend` + `frontend` + `postgres`) — no stubs needed because all dependencies are real components in the recipe. Proves a recognizable multi-tier app works end-to-end through the layered model.
+
+### gpu-eks-h100-training
+
+This is NVIDIA's actual layering model: `base → platform(EKS) → accelerator(H100) → OS(Ubuntu) → recipe(training) → deployment`. Two components (`gpu-operator` + `nvidia-device-plugin`) with six layers. Uses stub container images (`nginx:1.27-alpine`, `busybox:1.37`) so it runs on any cluster including local `kind`, but the structure is real — swap the images for NVIDIA's actual operator images and point at a GPU node pool and it works.  Proves ConfigHub can express the same structure as NVIDIA's AICR pattern with real units, real clone links, and real provenance tracking.  
+
+If you can model NVIDIA's most complex recipe pattern in ConfigHub, you can model many layered patterns :-)
+
+### Summary
+
+Every example creates real ConfigHub spaces, units, and clone chains. Every example can deploy real pods to a Kubernetes cluster via `cub unit apply`. All four can run simultaneously in different namespaces with zero conflicts.
 
 | Example | Components | Layers | What it proves |
 |---|---|---|---|
@@ -25,10 +42,6 @@ Quoting from AICR "Every AI cluster running on Kubernetes requires a full softwa
 | [frontend-postgres](./frontend-postgres/) | frontend + postgres + backend stub | 5 | Dependencies can be stubs inside ConfigHub |
 | [realistic-app](./realistic-app/) | backend + frontend + postgres | 5 | A real multi-tier app works without stubs |
 | [gpu-eks-h100-training](./gpu-eks-h100-training/) | gpu-operator + nvidia-device-plugin | 6 (base → platform → accelerator → OS → recipe → deploy) | NVIDIA's actual layering model in ConfigHub |
-
-Every example creates real ConfigHub spaces, units, and clone chains. Every example can deploy real pods to a Kubernetes cluster via `cub unit apply`. All four can run simultaneously in different namespaces with zero conflicts.
-
-**The point:** if you can model NVIDIA's most complex recipe pattern in ConfigHub, you can model anything.
 
 ## How It Works
 
