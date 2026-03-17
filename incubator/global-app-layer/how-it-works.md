@@ -97,9 +97,9 @@ Each recipe also has its own delivery scripts in `e2e/` subdirectories for apply
 
 ## 4. Role of AI
 
-**AI has zero role in the runtime data path.** ConfigHub does not use AI to generate, transform, or decide anything about your Kubernetes manifests.
+ConfigHub does **not use AI internally** but we recommend using it to "drive" the management plane and config data APIs. 
 
-The mutations are explicit, deterministic function calls:
+ConfigHub mutations are explicit, deterministic function calls:
 
 | Function | What it does |
 |---|---|
@@ -110,9 +110,9 @@ The mutations are explicit, deterministic function calls:
 
 Same input always produces same output. No model inference, no probabilistic output, no training data dependency.
 
-Where AI fits in the ConfigHub vision is **authoring assistance** — helping humans design clone chains, choose which mutations to apply at which layer, generate recipe manifests, and reason about config drift. The `cub-gen` tool is a deterministic generator that could be AI-assisted (e.g., "given this Helm chart, propose a layered chain") but the generator itself is parse-don't-guess, no ML.
+Where AI fits in the ConfigHub vision is **operating assistance** — helping humans design clone chains, choose which mutations to apply at which layer, generate recipe manifests, and reason about config drift. Eg Helm is a deterministic generator that could be AI-assisted (e.g., "given this Helm chart, propose a layered chain").
 
-These example scripts themselves were written with AI assistance (designing the layering structure, debugging deployment failures, creating stub dependencies, iterating on the chain design). But the artifacts produced are plain bash scripts calling deterministic CLI commands. There is no AI in the loop at runtime.
+In this demo our example scripts were written with AI assistance (designing the layering structure, debugging deployment failures, creating stub dependencies, iterating on the chain design). But the artifacts produced are plain bash scripts calling deterministic CLI commands. There is no AI in the loop at runtime.
 
 
 ## 5. Avoiding Name Conflicts
