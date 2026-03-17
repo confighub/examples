@@ -115,25 +115,6 @@ Where AI fits in the ConfigHub vision is **authoring assistance** — helping hu
 
 These example scripts themselves were written with AI assistance (designing the layering structure, debugging deployment failures, creating stub dependencies, iterating on the chain design). But the artifacts produced are plain bash scripts calling deterministic CLI commands. There is no AI in the loop at runtime.
 
-## 5. What Each Example Teaches
-
-### single-component
-
-The simplest case: one app (`backend`), five layers, one stub dependency (`postgres`). Proves the clone chain model works end-to-end. The postgres stub is a ConfigHub unit — not a manual `kubectl apply` — so the entire deployment goes through ConfigHub.
-
-### frontend-postgres
-
-Two components (`frontend` + `postgres`) with a stub dependency (`backend`). The frontend's nginx config expects a `backend` upstream, so a minimal backend stub fills that gap. Proves that multi-component recipes work and that stub dependencies stay inside ConfigHub.
-
-### realistic-app
-
-Three components (`backend` + `frontend` + `postgres`) — no stubs needed because all dependencies are real components in the recipe. Proves a recognizable multi-tier app works end-to-end through the layered model.
-
-### gpu-eks-h100-training
-
-NVIDIA's actual layering model: `base → platform(EKS) → accelerator(H100) → OS(Ubuntu) → recipe(training) → deployment`. Two components (`gpu-operator` + `nvidia-device-plugin`) with six layers. Uses stub container images (`nginx:1.27-alpine`, `busybox:1.37`) so it runs on any cluster including local `kind`, but the structure is real — swap the images for NVIDIA's actual operator images and point at a GPU node pool and it works.
-
-Proves ConfigHub can express the same structure as NVIDIA's AICR pattern with real units, real clone links, and real provenance tracking.
 
 ## 6. End-to-End Testing
 
