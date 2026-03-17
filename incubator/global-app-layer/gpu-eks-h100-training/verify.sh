@@ -59,7 +59,8 @@ for component in "${COMPONENTS[@]}"; do
 
   case "${component}" in
     gpu-operator)
-      assert_contains "${base_file}" 'image: nvcr.io/nvidia/gpu-operator:24.6.0'
+      # Stub image: nginx:1.27-alpine (replace with nvcr.io/nvidia/gpu-operator on real GPU clusters)
+      assert_contains "${base_file}" 'image: nginx:1.27-alpine'
       assert_contains "${base_file}" 'value: generic'
       assert_contains "${platform_file}" 'value: eks'
       assert_contains "${platform_file}" 'value: gp3'
@@ -73,7 +74,8 @@ for component in "${COMPONENTS[@]}"; do
       assert_contains "${deploy_file}" 'value: cluster-a'
       ;;
     nvidia-device-plugin)
-      assert_contains "${base_file}" 'image: nvcr.io/nvidia/k8s-device-plugin:v0.16.2'
+      # Stub image: busybox:1.37 (replace with nvcr.io/nvidia/k8s-device-plugin on real GPU clusters)
+      assert_contains "${base_file}" 'image: busybox:1.37'
       assert_contains "${base_file}" 'value: generic'
       assert_contains "${platform_file}" 'value: eks'
       assert_contains "${platform_file}" 'value: eks-gp3'

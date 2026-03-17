@@ -61,9 +61,15 @@ for component in "${COMPONENTS[@]}"; do
   apply_deploy_mutations "${component}"
 done
 
+echo "==> Creating backend stub (dependency for frontend)"
+_mapfile deploy_stub_labels < <(label_args deployment backend-stub --label "Region=${REGION_VALUE}" --label "Role=${ROLE_VALUE}" --label "Cluster=${DEPLOY_NAMESPACE}")
+create_unit_from_file "$(deploy_space)" "${DEPLOY_STUB_UNIT}" "${BACKEND_STUB_YAML}" "${deploy_stub_labels[@]}"
+cub function do set-namespace "${DEPLOY_NAMESPACE}" --space "$(deploy_space)" --unit "${DEPLOY_STUB_UNIT}"
+
 if [[ -n "${TARGET_REF}" ]]; then
-  echo "==> Setting target on deployment clones"
+  echo "==> Setting target on deployment units"
   set_target_for_deploy_units "${TARGET_REF}"
+  cub unit set-target "${TARGET_REF}" --space "$(deploy_space)" --unit "${DEPLOY_STUB_UNIT}"
 fi
 
 echo "==> Rendering explicit app-level recipe manifest"

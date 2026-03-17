@@ -16,6 +16,22 @@ It keeps the recipe-and-layer model intentionally reviewable:
 
 The point is not to recreate all of NVIDIA AICR. The point is to show how ConfigHub can model the same kind of layered, reproducible recipe with real units, real clone links, and an explicit recipe manifest that spans more than one related component.
 
+## Stub Images
+
+The base manifests use **stub container images** (`nginx:1.27-alpine` and `busybox:1.37`) so the example runs on any cluster, including local kind clusters with no GPU hardware. The layering, clone chains, and recipe structure are identical to what a real deployment would use.
+
+To point at real NVIDIA images, replace the `image:` lines in the base YAMLs:
+
+```yaml
+# gpu-operator.base.yaml
+image: nvcr.io/nvidia/gpu-operator:24.6.0
+
+# nvidia-device-plugin.base.yaml
+image: nvcr.io/nvidia/k8s-device-plugin:v0.16.2
+```
+
+Or use `set-image-reference` after setup to swap them in through the chain.
+
 ## What It Builds
 
 Two base manifests local to this example:

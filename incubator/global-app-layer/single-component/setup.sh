@@ -65,9 +65,14 @@ cub function do set-namespace "${DEPLOY_NAMESPACE}" --space "$(deploy_space)" --
 cub function do set-env backend "CLUSTER=${DEPLOY_NAMESPACE}" --space "$(deploy_space)" --unit "${DEPLOY_UNIT}"
 cub function do set-string-path networking.k8s.io/v1/Ingress spec.rules.0.host backend.cluster-a.demo.confighub.local --space "$(deploy_space)" --unit "${DEPLOY_UNIT}"
 
+echo "==> Creating postgres stub (dependency for backend)"
+create_unit_from_file "$(deploy_space)" "${DEPLOY_STUB_UNIT}" "${POSTGRES_STUB_YAML}" "${deploy_unit_labels[@]}"
+cub function do set-namespace "${DEPLOY_NAMESPACE}" --space "$(deploy_space)" --unit "${DEPLOY_STUB_UNIT}"
+
 if [[ -n "${TARGET_REF}" ]]; then
-  echo "==> Setting target on deployment clone"
+  echo "==> Setting target on deployment units"
   cub unit set-target "${TARGET_REF}" --space "$(deploy_space)" --unit "${DEPLOY_UNIT}"
+  cub unit set-target "${TARGET_REF}" --space "$(deploy_space)" --unit "${DEPLOY_STUB_UNIT}"
 fi
 
 echo "==> Rendering explicit recipe manifest"

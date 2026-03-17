@@ -5,6 +5,7 @@ STATE_DIR="${SCRIPT_DIR}/.state"
 STATE_FILE="${STATE_DIR}/state.env"
 RECIPE_BASE_TEMPLATE="${SCRIPT_DIR}/recipe.base.yaml"
 SOURCE_BACKEND_YAML="${SCRIPT_DIR}/../../../global-app/baseconfig/backend.yaml"
+POSTGRES_STUB_YAML="${SCRIPT_DIR}/postgres-stub.yaml"
 
 EXAMPLE_NAME="global-app-layer-single"
 CHAIN_LABEL="global-app-us-staging"
@@ -25,7 +26,8 @@ RECIPE_MANIFEST_UNIT="recipe-us-staging"
 
 REGION_VALUE="US"
 ROLE_VALUE="staging"
-DEPLOY_NAMESPACE="cluster-a"
+DEPLOY_NAMESPACE="${DEPLOY_NAMESPACE:-cluster-a}"
+DEPLOY_STUB_UNIT="postgres-stub"
 DEFAULT_IMAGE_TAG="1.1.8"
 
 # bash 3-compatible replacement for mapfile -t
