@@ -5,7 +5,7 @@ This directory is for experimental examples before promotion to stable examples.
 ## Fast Entry
 
 - AI handoff page: [AI_START_HERE.md](./AI_START_HERE.md)
-- Start guide: [START_HERE.md](./START_HERE.md)
+- Start guide: [global-app-layer/README.md](./global-app-layer/README.md)
 
 ## Current Experiments
 

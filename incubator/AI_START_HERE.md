@@ -95,5 +95,5 @@ These are preserved reference fixtures, not the main walkthrough.
 
 ## 6) Related Pages
 
-- Start guide: [START_HERE.md](./START_HERE.md)
-- Current package: [global-app-layer/README.md](./global-app-layer/README.md)
+- Start guide: [global-app-layer/README.md](./global-app-layer/README.md)
+- How it works: [global-app-layer/how-it-works.md](./global-app-layer/how-it-works.md)
