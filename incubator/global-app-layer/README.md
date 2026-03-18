@@ -10,11 +10,13 @@ If you want the clearest explanation of what ConfigHub adds on top of AICR, read
 
 - [confighub-aicr-value-add.md](./confighub-aicr-value-add.md)
 
-Then use these supporting documents:
+Supporting documents:
 
 - [how-it-works.md](./how-it-works.md)
-- [01-nvidia-aicr-fit.md](./01-nvidia-aicr-fit.md)
-- [02-recipes-and-layers-spec.md](./02-recipes-and-layers-spec.md)
+- [confighub docs](https://docs.confighub.com/)
+- use 'cub upgrade' to download the latest cub and 'cub --help' to get CLI 
+- [initial project analysis 01-nvidia-aicr-fit.md](./01-nvidia-aicr-fit.md)
+- [recipes mapped to configs 02-recipes-and-layers-spec.md](./02-recipes-and-layers-spec.md)
 - [04-review-and-next-steps.md](./04-review-and-next-steps.md)
 
 ## What Is NVIDIA AICR and how does ConfigHub manage it?
