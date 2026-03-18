@@ -6,6 +6,8 @@ This directory is for experimental examples before promotion to stable examples.
 
 - For humans: [`../START_HERE.md`](../START_HERE.md)
 - For AI assistants: [`AI_START_HERE.md`](./AI_START_HERE.md)
+- Incubator AI protocol: [`AGENTS.md`](./AGENTS.md)
+- Fuller incubator AI guide: [`AI-README-FIRST.md`](./AI-README-FIRST.md)
 
 ## Current Experiments
 
@@ -28,3 +30,4 @@ This directory is for experimental examples before promotion to stable examples.
 - Keep changes additive and easy to diff.
 - Include verification commands.
 - Do not break existing stable examples.
+- For major examples, follow [`ai-example-playbook.md`](./ai-example-playbook.md).

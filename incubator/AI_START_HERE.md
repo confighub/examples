@@ -2,6 +2,9 @@
 
 Use this page as the single AI-oriented handoff page for the current incubator work.
 
+If you need the stricter protocol first, read [AGENTS.md](./AGENTS.md).
+If you need the fuller incubator AI guide, read [AI-README-FIRST.md](./AI-README-FIRST.md).
+
 Default rule:
 
 - start in read-only mode
@@ -147,5 +150,9 @@ These are preserved reference fixtures, not the main walkthrough.
 ## 8) Related Pages
 
 - Repo-level AI path: [../AI_START_HERE.md](../AI_START_HERE.md)
+- Incubator AI protocol: [AGENTS.md](./AGENTS.md)
+- Incubator AI guide: [AI-README-FIRST.md](./AI-README-FIRST.md)
+- Reusable example playbook: [ai-example-playbook.md](./ai-example-playbook.md)
+- Reusable example template: [ai-example-template.md](./ai-example-template.md)
 - Start guide: [global-app-layer/README.md](./global-app-layer/README.md)
 - How it works: [global-app-layer/how-it-works.md](./global-app-layer/how-it-works.md)

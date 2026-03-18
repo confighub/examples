@@ -23,6 +23,10 @@ If you already understand the NVIDIA AICR idea and want the clearest explanation
 Supporting documents:
 
 - [how-it-works.md](./how-it-works.md)
+- [../AGENTS.md](../AGENTS.md) for the incubator AI protocol
+- [../AI-README-FIRST.md](../AI-README-FIRST.md) for fuller incubator AI guidance
+- [../ai-example-playbook.md](../ai-example-playbook.md) for the reusable example standard
+- [../ai-example-template.md](../ai-example-template.md) for the reusable file bundle/template
 - [confighub docs](https://docs.confighub.com/)
 - use `cub upgrade` to download the latest `cub`, then `cub --help` for CLI guidance
 - [find-runs.sh](./find-runs.sh) if you need to discover active global-app-layer runs in live ConfigHub
