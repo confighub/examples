@@ -14,6 +14,20 @@ It is for:
 
 It is **not** only about live deployment. A large part of the value is visible in the ConfigHub database before anything is applied to a cluster.
 
+## WET-First, Not Live-First
+
+This package is intended-state first.
+
+The normal path is:
+1. preview the layered recipe
+2. materialize it in ConfigHub as WET objects
+3. verify it in ConfigHub
+4. optionally bind a target
+5. optionally apply live
+
+So `setup.sh` is ConfigHub-first, not cluster-first.
+Do not treat these examples as "inspect the cluster first" walkthroughs.
+
 ## Safe First Steps
 
 Start with read-only commands only:

@@ -19,6 +19,18 @@ This package is for:
 
 It demonstrates how to turn a layered recipe into real ConfigHub spaces, units, variants, recipe manifests, and optional deployment targets.
 
+## WET-First, Not Live-First
+
+These examples are intended-state first.
+
+They start by materializing and verifying layered config in ConfigHub as concrete WET objects.
+Live delivery is a later optional step.
+
+In other words:
+- `setup.sh` is ConfigHub-first, not cluster-first
+- target binding is optional
+- `cub unit apply` is a later explicit action, not the starting point
+
 ## What This Reads And Writes
 
 What it reads:
