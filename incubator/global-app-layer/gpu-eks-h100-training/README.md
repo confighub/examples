@@ -14,11 +14,11 @@ It keeps the recipe-and-layer model intentionally reviewable:
   - os = `ubuntu`
   - intent = `training`
 
-The point is not to recreate all of NVIDIA AICR. The point is to show how ConfigHub can model the same kind of layered, reproducible recipe with real units, real clone links, and an explicit recipe manifest that spans more than one related component.
+The point is not to recreate all of NVIDIA AICR. The point is to show how ConfigHub can model the same kind of layered, reproducible recipe with real units, real variant links, and an explicit recipe manifest that spans more than one related component.
 
 ## Stub Images
 
-The base manifests use **stub container images** (`nginx:1.27-alpine` and `busybox:1.37`) so the example runs on any cluster, including local kind clusters with no GPU hardware. The layering, clone chains, and recipe structure are identical to what a real deployment would use.
+The base manifests use **stub container images** (`nginx:1.27-alpine` and `busybox:1.37`) so the example runs on any cluster, including local kind clusters with no GPU hardware. The layering, variant chains, and recipe structure are identical to what a real deployment would use.
 
 To point at real NVIDIA images, replace the `image:` lines in the base YAMLs:
 
@@ -98,7 +98,7 @@ Component-specific mutations:
   - `recipe`: set `WORKLOAD_INTENT=training` and `PLUGIN_CONFIG=training-smoke`
   - `deployment`: set namespace and `CLUSTER=cluster-a`
 
-This is the main user-facing point of the example: one recipe can govern multiple related components while keeping shared layer meaning and component-specific changes separate.
+This is the main user-facing point of the example: one recipe can govern multiple related components while keeping shared layer meaning and component-specific changes separate. The variant chains are what ConfigHub executes; the recipe manifest is the receipt that explains the full GPU stack.
 
 ## Quick Start
 
@@ -153,7 +153,7 @@ cub unit get --space <prefix>-deploy-cluster-a --data-only gpu-operator-cluster-
 # Show the explicit recipe manifest
 cub unit get --space <prefix>-recipe-eks-h100-ubuntu-training --data-only recipe-eks-h100-ubuntu-training-stack
 
-# Show clone relationships
+# Show variant ancestry (implemented with clone links)
 cub unit tree --edge clone --where "Labels.ExampleName = 'global-app-layer-gpu-eks-h100-training'"
 ```
 
@@ -167,6 +167,6 @@ cub unit tree --edge clone --where "Labels.ExampleName = 'global-app-layer-gpu-e
 
 This is the first domain-shaped multi-component example in the `global-app-layer` package.
 
-The earlier examples prove the clone-chain model with `global-app` components. This example proves that the same ConfigHub pattern can express a more domain-specific recipe with dimensions like platform, accelerator, OS, and intent across multiple related GPU components.
+The earlier examples prove the variant-chain model with `global-app` components. This example proves that the same ConfigHub pattern can express a more domain-specific recipe with dimensions like platform, accelerator, OS, and intent across multiple related GPU components.
 
 That makes it the bridge between the small `global-app` teaching examples and the larger NVIDIA-style recipe story.

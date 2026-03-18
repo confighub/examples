@@ -8,6 +8,7 @@ The package is now a coherent teaching and demo set for layered recipes in Confi
 
 It has:
 
+- a minimal ConfigHub first step: [`00-config-hub-hello-world.md`](./00-config-hub-hello-world.md)
 - a simple one-component proof: [`single-component`](./single-component/)
 - a small multi-component app proof: [`frontend-postgres`](./frontend-postgres/)
 - a more realistic app proof: [`realistic-app`](./realistic-app/)
@@ -23,7 +24,7 @@ That is enough to teach the core model and to run believable demos.
 
 The examples consistently show:
 
-- ordered clone chains
+- ordered variant chains, implemented with clone links
 - explicit layer meaning
 - explicit recipe manifests for provenance
 - deployment layers separated from shared recipe layers

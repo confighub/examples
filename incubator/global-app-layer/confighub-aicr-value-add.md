@@ -35,6 +35,46 @@ The natural next questions are:
 
 Those are the three stories in this guide.
 
+## One Picture of the Mapping
+
+NVIDIA AICR talks about layers.
+ConfigHub stores one concrete unit at each stage of specialization.
+
+```mermaid
+flowchart TB
+  subgraph AICR["AICR layer model"]
+    A0["Base"]
+    A1["Platform"]
+    A2["Accelerator"]
+    A3["OS"]
+    A4["Intent"]
+    A5["Deployment"]
+    A0 --> A1 --> A2 --> A3 --> A4 --> A5
+  end
+
+  subgraph CH["ConfigHub object model"]
+    C0["Base unit"]
+    C1["Platform variant"]
+    C2["Accelerator variant"]
+    C3["OS variant"]
+    C4["Recipe variant"]
+    C5["Deployment variant"]
+    C0 --> C1 --> C2 --> C3 --> C4 --> C5
+  end
+
+  A0 -. "stored as" .-> C0
+  A1 -. "stored as" .-> C1
+  A2 -. "stored as" .-> C2
+  A3 -. "stored as" .-> C3
+  A4 -. "stored as" .-> C4
+  A5 -. "stored as" .-> C5
+```
+
+The important point is:
+
+- AICR gives you the layered recipe idea
+- ConfigHub turns each stage into a real object with provenance and later updates
+
 ## Before You Start
 
 You will get the clearest demos if you first verify the examples repo and have an authenticated `cub` CLI.
@@ -105,7 +145,7 @@ cd incubator/global-app-layer/realistic-app
 # Verify again after the upgrade
 ./verify.sh
 
-# Show the clone ancestry
+# Show the variant ancestry
 cub unit tree --edge clone --where "Labels.ExampleName = 'global-app-layer-realistic-app'"
 ```
 
@@ -236,7 +276,7 @@ That means you can:
 
 - create per-environment or per-fleet deployment variants
 - preserve local overrides that should stay different
-- understand why a value differs by following the clone chain and recipe manifest
+- understand why a value differs by following the variant chain and recipe manifest
 - keep a fleet of similar deployments without flattening them into one giant hand-maintained output
 
 This is where provenance and causality matter most.

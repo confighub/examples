@@ -100,6 +100,7 @@ The package for this convention should live at:
 
 It should contain:
 
+- `00-config-hub-hello-world.md`
 - `01-nvidia-aicr-fit.md`
 - `02-recipes-and-layers-spec.md`
 - `04-review-and-next-steps.md`
@@ -144,7 +145,7 @@ Layer semantics:
 - `recipe`: set recipe-specific identity or presentation values
 - `deployment`: set cluster-local target values
 
-This example should keep the explicit recipe manifest alongside the real clone chain. That is the right balance between simplicity and clarity.
+This example should keep the explicit recipe manifest alongside the real variant chain. That is the right balance between simplicity and clarity.
 
 ### Why this is a good first example
 
@@ -271,7 +272,7 @@ Not yet.
 
 The first implementation should stay light:
 
-- execution implicit in clone chains
+- execution implicit in variant chains
 - explanation explicit in a recipe manifest
 
 That keeps the model easy to implement and review now, while leaving room for a future first-class `Recipe` feature if the UX proves it is needed.
@@ -305,7 +306,7 @@ This should be treated as explicit metadata and provenance, not as a new executi
 
 The proposed ConfigHub standard is:
 
-1. recipe = ordered clone chain
+1. recipe = ordered variant chain
 2. deployment = final cluster or environment clone
 3. bundle = deployable artifact from the target
 4. recipe manifest = explicit provenance and teaching layer

@@ -6,7 +6,11 @@ Four working examples are provided as "layered recipes".  These are reproducible
 
 ## Start Here
 
-If you want the clearest explanation of what ConfigHub adds on top of AICR, read:
+If you are new to ConfigHub, start here:
+
+- [00-config-hub-hello-world.md](./00-config-hub-hello-world.md)
+
+If you already understand the NVIDIA AICR idea and want the clearest explanation of what ConfigHub adds on top, read:
 
 - [confighub-aicr-value-add.md](./confighub-aicr-value-add.md)
 
@@ -32,13 +36,107 @@ Before running any examples, ensure you have the following in place:
 
 Without the `cub` CLI authenticated, the setup scripts will fail immediately.
 
+## Quick Glossary
+
+| Term | Plain meaning | Why it matters here |
+|---|---|---|
+| `space` | A named workspace in ConfigHub | Each layer or deployment stage gets its own space so updates and local overrides stay separate |
+| `unit` | One versioned config object, usually one manifest or manifest set | Units are the concrete things ConfigHub stores, mutates, and deploys |
+| `variant` | A specialized unit derived from an earlier unit | This is the user-facing idea of a "layered copy" |
+| `clone link` | The ConfigHub mechanism behind a variant | ConfigHub uses clone links so shared changes can flow downstream with provenance |
+| `worker` | A long-lived agent that can act on real systems | Workers register delivery endpoints and execute apply/import work |
+| `target` | A named delivery endpoint owned by a worker | A target tells ConfigHub where to apply or publish rendered config |
+| `bundle` | The deployable output produced for a target | Bundles belong to targets, not to the recipe itself |
+| `recipe manifest` | A metadata unit that explains how a recipe was assembled | The variant chain is what ConfigHub executes; the recipe manifest is the receipt that explains it |
+
+## If You Are New to NVIDIA AICR
+
+You do not need prior AICR knowledge to use these examples.
+
+Treat AICR as one motivating example of a layered configuration system:
+
+- start from a base component
+- apply a few shared specialization layers
+- produce a known-good deployment shape
+
+ConfigHub uses that same idea, but stores the result as real versioned config objects that can keep evolving over time.
+
 ## What Is NVIDIA AICR and how does ConfigHub manage it?
 
 Quoting from AICR "Every AI cluster running on Kubernetes requires a full software stack that works together, from low-level driver and kernel settings to high-level operator and workload configurations. You get one cluster working, and spend days getting the next one to match. Upgrade a component, and something else breaks. Move to a new cloud and start over. AI Cluster Runtime is a new open-source project designed to remove cluster configuration from the critical path. It publishes optimized, validated, and reproducible Kubernetes configurations as recipes you can deploy onto your clusters."
 
 NVIDIA ships GPU software as "recipes" — curated, tested combinations of drivers, operators, and plugins for specific hardware/OS/cloud combinations. Their model is: start with a base component, layer on platform choices (EKS vs GKE), hardware choices (H100 vs A100), OS choices (Ubuntu vs RHEL), and workload intent (training vs inference). The result is a reproducible, auditable configuration. The software is known as [NVIDIA AICR](https://developer.nvidia.com/blog/validate-kubernetes-for-gpu-infrastructure-with-layered-reproducible-recipes/).
 
-ConfigHub also enables reproducible, auditable configurations, as well as additonal management, operational and compliance capabilities. Where NVIDIA creates a stack out of a sequence of 'layers', in ConfigHub we organise configurations into config objects ("units") which can be linked into a chain of dependent 'config clones' with added components (or 'variants'). This achieves the required 'layering'. These can then be deployed, organised and managed by ConfigHub.
+ConfigHub also enables reproducible, auditable configurations, as well as additonal management, operational and compliance capabilities. Where NVIDIA creates a stack out of a sequence of layers, ConfigHub stores a concrete unit at each stage and connects them into a layered variant chain. The underlying ConfigHub mechanism is a set of clone links, but the user-facing idea is simple: each layer becomes one more specialized variant that can still receive safe upstream updates.
+
+## How NVIDIA Layers Map to ConfigHub
+
+```mermaid
+flowchart TB
+  subgraph AICR["NVIDIA AICR view"]
+    A0["Base component"]
+    A1["Platform layer"]
+    A2["Accelerator layer"]
+    A3["OS layer"]
+    A4["Intent layer"]
+    A5["Deployment overlay"]
+    A0 --> A1 --> A2 --> A3 --> A4 --> A5
+  end
+
+  subgraph CH["ConfigHub view"]
+    C0["Base unit<br/>catalog-base"]
+    C1["Variant unit<br/>catalog-eks"]
+    C2["Variant unit<br/>catalog-h100"]
+    C3["Variant unit<br/>catalog-ubuntu"]
+    C4["Recipe variant unit<br/>recipe-eks-h100-ubuntu-training"]
+    C5["Deployment unit<br/>deploy-cluster-a"]
+    C0 --> C1 --> C2 --> C3 --> C4 --> C5
+  end
+
+  A0 -. "maps to" .-> C0
+  A1 -. "maps to" .-> C1
+  A2 -. "maps to" .-> C2
+  A3 -. "maps to" .-> C3
+  A4 -. "maps to" .-> C4
+  A5 -. "maps to" .-> C5
+```
+
+Read the diagram from left to right:
+
+- each AICR layer becomes a concrete unit in ConfigHub
+- each new unit is a more specialized variant of the previous one
+- ConfigHub records how that specialization happened
+- the deployment unit is the final environment-specific form that can be applied or published
+
+## Why These Examples Use Multiple Spaces
+
+The smallest layered example still uses several spaces because each space captures one level of shared meaning.
+
+| Space role | Example names | Why it exists |
+|---|---|---|
+| Base catalog | `catalog-base` | Holds the starting manifest that other variants build from |
+| Shared specialization catalogs | `catalog-us`, `catalog-eks`, `catalog-h100`, `catalog-ubuntu` | Holds shared changes that many downstream deployments may want to inherit |
+| Recipe space | `recipe-us-staging`, `recipe-eks-h100-ubuntu-training` | Holds the resolved recipe-level intent shared by deployments |
+| Deploy space | `deploy-cluster-a` | Holds the final cluster- or environment-specific overrides |
+
+For the app examples there are five spaces because they use `base -> region -> role -> recipe -> deploy`.
+
+For the GPU example there are six spaces because it uses `base -> platform -> accelerator -> os -> recipe -> deploy`.
+
+The point is not to create lots of spaces for their own sake. The point is to keep shared updates separate from deployment-local choices so changes can move safely without flattening everything into one file.
+
+## Where the Base Manifests Come From
+
+These examples are a package, not a standalone application source tree.
+
+The package reuses real manifests from elsewhere in this repo:
+
+| Example | Base manifests |
+|---|---|
+| `single-component` | [`global-app/baseconfig/backend.yaml`](../../global-app/baseconfig/backend.yaml) |
+| `frontend-postgres` | [`global-app/baseconfig/frontend.yaml`](../../global-app/baseconfig/frontend.yaml), [`global-app/baseconfig/postgres.yaml`](../../global-app/baseconfig/postgres.yaml) |
+| `realistic-app` | `global-app/baseconfig/backend.yaml`, `global-app/baseconfig/frontend.yaml`, `global-app/baseconfig/postgres.yaml` |
+| `gpu-eks-h100-training` | local base YAML files in the example directory |
 
 ## The Examples
 
@@ -46,7 +144,7 @@ These four examples prove it works, in increasing complexity:
 
 ### single-component
 
-The simplest case: one app (`backend`), five layers, one stub dependency (`postgres`). Proves the clone chain model works end-to-end. The postgres stub is a ConfigHub unit — not a manual `kubectl apply` — so the entire deployment goes through ConfigHub.
+The simplest case: one app (`backend`), five layers, one stub dependency (`postgres`). Proves the layered variant model works end-to-end. The postgres stub is a ConfigHub unit — not a manual `kubectl apply` — so the entire deployment goes through ConfigHub.
 
 ### frontend-postgres
 
@@ -58,17 +156,17 @@ Three components (`backend` + `frontend` + `postgres`) — no stubs needed becau
 
 ### gpu-eks-h100-training
 
-This is NVIDIA's actual layering model: `base → platform(EKS) → accelerator(H100) → OS(Ubuntu) → recipe(training) → deployment`. Two components (`gpu-operator` + `nvidia-device-plugin`) with six layers. Uses stub container images (`nginx:1.27-alpine`, `busybox:1.37`) so it runs on any cluster including local `kind`, but the structure is real — swap the images for NVIDIA's actual operator images and point at a GPU node pool and it works. Proves ConfigHub can express the same structure as NVIDIA's AICR pattern with real units, real clone links, and real provenance tracking.
+This is NVIDIA's actual layering model: `base → platform(EKS) → accelerator(H100) → OS(Ubuntu) → recipe(training) → deployment`. Two components (`gpu-operator` + `nvidia-device-plugin`) with six layers. Uses stub container images (`nginx:1.27-alpine`, `busybox:1.37`) so it runs on any cluster including local `kind`, but the structure is real — swap the images for NVIDIA's actual operator images and point at a GPU node pool and it works. Proves ConfigHub can express the same structure as NVIDIA's AICR pattern with real units, real variant links, and real provenance tracking.
 
 If you can model NVIDIA's most complex recipe pattern in ConfigHub, you can model many layered patterns.
 
 ### Summary
 
-Every example creates real ConfigHub spaces, units, and clone chains. Every example can deploy real pods to a Kubernetes cluster via `cub unit apply`. All four can run simultaneously in different namespaces with zero conflicts.
+Every example creates real ConfigHub spaces, units, and layered variant chains. Every example can deploy real pods to a Kubernetes cluster via `cub unit apply`. All four can run simultaneously in different namespaces with zero conflicts.
 
 | Example | Components | Layers | What it proves |
 |---|---|---|---|
-| [single-component](./single-component/) | backend + postgres stub | 5 (base → region → role → recipe → deploy) | The chain model works end-to-end |
+| [single-component](./single-component/) | backend + postgres stub | 5 (base → region → role → recipe → deploy) | The layered variant model works end-to-end |
 | [frontend-postgres](./frontend-postgres/) | frontend + postgres + backend stub | 5 | Dependencies can be stubs inside ConfigHub |
 | [realistic-app](./realistic-app/) | backend + frontend + postgres | 5 | A real multi-tier app works without stubs |
 | [gpu-eks-h100-training](./gpu-eks-h100-training/) | gpu-operator + nvidia-device-plugin | 6 (base → platform → accelerator → OS → recipe → deploy) | NVIDIA's actual layering model in ConfigHub |
@@ -88,13 +186,21 @@ See [how-it-works.md](./how-it-works.md) for the full explanation of:
 
 ## Quick Start
 
+Every layered example uses the same script pattern:
+
+1. `setup.sh` creates spaces, base units, downstream variants, and the recipe-manifest receipt
+2. `verify.sh` checks the variant chain and the receipt
+3. `set-target.sh` optionally binds the deployment units to a real target
+4. `upgrade-chain.sh` proves shared updates can move downstream safely
+5. `cleanup.sh` removes the created spaces and units
+
 Each example follows the same script interface:
 
 ```bash
 # Pick an example
 cd single-component    # or frontend-postgres, realistic-app, gpu-eks-h100-training
 
-# Create the full clone chain in ConfigHub
+# Create the full layered variant chain in ConfigHub
 ./setup.sh
 
 # Verify all spaces, units, and links are correct
@@ -130,10 +236,11 @@ DEPLOY_NAMESPACE=recipe-gpu  ./gpu-eks-h100-training/setup.sh
 
 These documents explain the design thinking behind the examples:
 
-1. [confighub-aicr-value-add.md](./confighub-aicr-value-add.md) — Three practical stories showing what ConfigHub adds after you have an AICR-style recipe
-2. [01-nvidia-aicr-fit.md](./01-nvidia-aicr-fit.md) — Why the NVIDIA AICR pattern matters for ConfigHub
-3. [02-recipes-and-layers-spec.md](./02-recipes-and-layers-spec.md) — The recipes-and-layers spec for ConfigHub
-4. [04-review-and-next-steps.md](./04-review-and-next-steps.md) — Current status and the main open gaps
+1. [00-config-hub-hello-world.md](./00-config-hub-hello-world.md) — A minimal one-unit example before the layered recipes
+2. [confighub-aicr-value-add.md](./confighub-aicr-value-add.md) — Three practical stories showing what ConfigHub adds after you have an AICR-style recipe
+3. [01-nvidia-aicr-fit.md](./01-nvidia-aicr-fit.md) — Why the NVIDIA AICR pattern matters for ConfigHub
+4. [02-recipes-and-layers-spec.md](./02-recipes-and-layers-spec.md) — The recipes-and-layers spec for ConfigHub
+5. [04-review-and-next-steps.md](./04-review-and-next-steps.md) — Current status and the main open gaps
 
 ## End-to-End Testing
 

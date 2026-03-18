@@ -4,8 +4,8 @@ This worked example turns one `global-app` component into an explicit layered re
 
 It demonstrates the model:
 
-- `clone` = make a variant
-- `link` = keep it upgraded from upstream
+- `variant` = a unit specialized from an earlier unit
+- `clone link` = the ConfigHub mechanism that keeps it connected upstream
 - `bundle` = publish the resolved deployment output from a target
 
 The recipe is the ordered chain of variants, not the bundle.
@@ -35,7 +35,7 @@ The chain is split across five spaces:
 - `recipe-us-staging`
 - `deploy-cluster-a`
 
-The example also writes an explicit recipe manifest unit into the recipe space. That manifest is metadata for teaching and provenance; ConfigHub does not need a first-class `Recipe` type for the chain to work.
+The example also writes an explicit recipe manifest unit into the recipe space. ConfigHub does not need a first-class `Recipe` type for the chain to work. The variant chain is what ConfigHub executes; the recipe manifest is the receipt that explains how it was assembled.
 
 The recipe source now has two forms:
 
@@ -63,7 +63,7 @@ cd incubator/global-app-layer/single-component
 # Or build it and wire a real target immediately
 ./setup.sh <prefix> <space/target>
 
-# Verify the chain and explicit recipe manifest
+# Verify the variant chain and explicit recipe manifest
 ./verify.sh
 ```
 
@@ -105,7 +105,7 @@ cub unit get --space <prefix>-deploy-cluster-a --data-only backend-cluster-a
 # Show the explicit recipe manifest
 cub unit get --space <prefix>-recipe-us-staging --data-only recipe-us-staging
 
-# Show clone relationships
+# Show variant ancestry (implemented with clone links)
 cub unit tree --edge clone --where "Labels.ExampleName = 'global-app-layer-single'"
 ```
 
@@ -123,11 +123,11 @@ This is the first worked example in the `global-app-layer` package, and a worked
 
 For now, the answer is:
 
-- execution can stay implicit in clones + links
+- execution can stay implicit in variants + clone links
 - teaching and provenance should be explicit in metadata
 
 That is why this example uses both:
 
-- real clone-chain units for execution
+- real variant-chain units for execution
 - one explicit recipe manifest unit for explanation and review
 - one placeholder-based base recipe file to show the source shape before values are materialized
