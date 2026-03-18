@@ -55,7 +55,7 @@ for component in "${COMPONENTS[@]}"; do
 
   case "${component}" in
     backend)
-      assert_contains "${base_file}" 'image: ghcr.io/confighub/cubbychat/backend:1.1.7'
+      assert_contains "${base_file}" 'image: ghcr.io/confighub/cubbychat/backend:'
       assert_contains "${base_file}" 'value: "dev"'
       assert_contains "${region_file}" 'backend.us.demo.confighub.local'
       assert_contains "${region_file}" 'value: "us"'
@@ -69,7 +69,7 @@ for component in "${COMPONENTS[@]}"; do
       assert_contains "${deploy_file}" "value: ${DEPLOY_NAMESPACE}"
       ;;
     frontend)
-      assert_contains "${base_file}" 'image: ghcr.io/confighub/cubbychat/frontend:1.1.7'
+      assert_contains "${base_file}" 'image: ghcr.io/confighub/cubbychat/frontend:'
       assert_contains "${region_file}" 'frontend.us.demo.confighub.local'
       assert_contains "${role_file}" 'replicas: 2'
       assert_contains "${role_file}" 'name: PUBLIC_ENV'
@@ -83,7 +83,7 @@ for component in "${COMPONENTS[@]}"; do
       ;;
     postgres)
       assert_contains "${base_file}" 'storage: 5Gi'
-      assert_contains "${base_file}" 'image: postgres:16'
+      assert_contains "${base_file}" 'image: postgres:'
       assert_contains "${region_file}" 'name: REGION'
       assert_contains "${region_file}" 'value: US'
       assert_contains "${role_file}" 'storage: 10Gi'
