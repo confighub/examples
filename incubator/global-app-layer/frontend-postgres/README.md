@@ -4,8 +4,8 @@ This worked example extends [single-component](../single-component/README.md) fr
 
 It keeps the same model:
 
-- `clone` = make a variant
-- `link` = keep it upgraded from upstream
+- `variant` = a unit specialized from an earlier unit
+- `clone link` = the ConfigHub mechanism that keeps it connected upstream
 - `bundle` = publish the resolved deployment output from a target
 
 The recipe is still the ordered chain of variants, not the bundle. The difference here is that two components move through the same layer spaces together.
@@ -40,7 +40,7 @@ Shared spaces:
 - `recipe-us-staging`
 - `deploy-cluster-a`
 
-The example also writes one explicit app-level recipe manifest unit into the recipe space. That manifest shows both components together and acts as the teaching and provenance layer.
+The example also writes one explicit app-level recipe manifest unit into the recipe space. The variant chains are what ConfigHub executes; the recipe manifest is the receipt that shows both components together and records their provenance.
 
 The recipe source has two forms:
 
@@ -127,7 +127,7 @@ cub unit get --space <prefix>-deploy-cluster-a --data-only frontend-cluster-a
 # Show the app-level recipe manifest
 cub unit get --space <prefix>-recipe-us-staging --data-only recipe-us-staging-app
 
-# Show clone relationships
+# Show variant ancestry (implemented with clone links)
 cub unit tree --edge clone --where "Labels.ExampleName = 'global-app-layer-frontend-postgres'"
 ```
 

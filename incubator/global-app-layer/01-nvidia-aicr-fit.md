@@ -42,7 +42,7 @@ This means ConfigHub can already express a recipe as an ordered chain of real un
 
 ### 1. Layered configuration
 
-AICR's overlay model maps naturally to ConfigHub clone chains.
+AICR's overlay model maps naturally to ConfigHub variant chains, implemented with clone links.
 
 Example:
 
@@ -116,7 +116,7 @@ ConfigHub should not try to copy AICR literally. It should adopt the useful patt
 
 The clean ConfigHub interpretation is:
 
-- recipe chain = ordered clone chain of units
+- recipe chain = ordered variant chain of units
 - deployment = final environment-specific clone
 - bundle = published deployable output of the deployment target
 - recipe manifest = explicit metadata describing the chain and resulting artifact

@@ -8,8 +8,8 @@ This worked example extends [frontend-postgres](../frontend-postgres/README.md) 
 
 It keeps the same recipe model:
 
-- `clone` = make a variant
-- `link` = keep it upgraded from upstream
+- `variant` = a unit specialized from an earlier unit
+- `clone link` = the ConfigHub mechanism that keeps it connected upstream
 - `bundle` = publish the resolved deployment output from a target
 
 The recipe is still the ordered chain of variants, not the bundle. What changes here is that the layer model now governs a recognisable small app, not just a pair of components.
@@ -54,7 +54,7 @@ The example also writes one explicit app-level recipe manifest unit into the rec
 
 - `recipe-us-staging-realistic-app`
 
-That manifest records the layer provenance for all three components together.
+That manifest records the layer provenance for all three components together. The variant chains are what ConfigHub executes; the recipe manifest is the receipt that explains the assembled app.
 
 The recipe source has two forms:
 
@@ -146,7 +146,7 @@ cub unit get --space <prefix>-deploy-cluster-a --data-only backend-cluster-a
 # Show the app-level recipe manifest
 cub unit get --space <prefix>-recipe-us-staging --data-only recipe-us-staging-realistic-app
 
-# Show clone relationships
+# Show variant ancestry (implemented with clone links)
 cub unit tree --edge clone --where "Labels.ExampleName = 'global-app-layer-realistic-app'"
 ```
 
