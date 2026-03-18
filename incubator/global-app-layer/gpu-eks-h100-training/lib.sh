@@ -71,7 +71,7 @@ save_state() {
   local target_ref="${2:-}"
 
   ensure_state_dir
-  printf 'PREFIX=%q\nTARGET_REF=%q\n' "${prefix}" "${target_ref}" >"${STATE_FILE}"
+  printf 'PREFIX=%q\nTARGET_REF=%q\nDEPLOY_NAMESPACE=%q\n' "${prefix}" "${target_ref}" "${DEPLOY_NAMESPACE}" >"${STATE_FILE}"
 }
 
 state_prefix() {
@@ -386,7 +386,8 @@ set_target_for_deploy_units() {
 
 show_summary() {
   local target_ref="$1"
-  cat <<EOF_SUMMARY
+  if [[ -n "${target_ref}" ]]; then
+    cat <<EOF_SUMMARY
 Created GPU layered chain with prefix: $(state_prefix)
 
 Spaces:
@@ -415,9 +416,41 @@ Units:
 Next steps:
 1. ./verify.sh
 2. ./upgrade-chain.sh ${DEFAULT_GPU_OPERATOR_TAG} ${DEFAULT_DEVICE_PLUGIN_TAG}
-3. ${target_ref:+cub unit approve --space $(deploy_space) $(unit_name gpu-operator deployment) && cub unit approve --space $(deploy_space) $(unit_name nvidia-device-plugin deployment)}
-4. ${target_ref:+cub unit apply --space $(deploy_space) $(unit_name gpu-operator deployment) && cub unit apply --space $(deploy_space) $(unit_name nvidia-device-plugin deployment)}
-5. ${target_ref:+Review recipe manifest: cub unit get --space $(recipe_space) --data-only ${RECIPE_MANIFEST_UNIT}}
-${target_ref:-3. ./set-target.sh <space/target>  # optional, enables apply + target bundle story}
+3. cub unit approve --space $(deploy_space) $(unit_name gpu-operator deployment) && cub unit approve --space $(deploy_space) $(unit_name nvidia-device-plugin deployment)
+4. cub unit apply --space $(deploy_space) $(unit_name gpu-operator deployment) && cub unit apply --space $(deploy_space) $(unit_name nvidia-device-plugin deployment)
+5. Review recipe manifest: cub unit get --space $(recipe_space) --data-only ${RECIPE_MANIFEST_UNIT}
 EOF_SUMMARY
+  else
+    cat <<EOF_SUMMARY
+Created GPU layered chain with prefix: $(state_prefix)
+
+Spaces:
+- $(base_space)
+- $(platform_space)
+- $(accelerator_space)
+- $(os_space)
+- $(recipe_space)
+- $(deploy_space)
+
+Units:
+- $(base_space)/$(unit_name gpu-operator base)
+- $(platform_space)/$(unit_name gpu-operator platform)
+- $(accelerator_space)/$(unit_name gpu-operator accelerator)
+- $(os_space)/$(unit_name gpu-operator os)
+- $(recipe_space)/$(unit_name gpu-operator recipe)
+- $(deploy_space)/$(unit_name gpu-operator deployment)
+- $(base_space)/$(unit_name nvidia-device-plugin base)
+- $(platform_space)/$(unit_name nvidia-device-plugin platform)
+- $(accelerator_space)/$(unit_name nvidia-device-plugin accelerator)
+- $(os_space)/$(unit_name nvidia-device-plugin os)
+- $(recipe_space)/$(unit_name nvidia-device-plugin recipe)
+- $(deploy_space)/$(unit_name nvidia-device-plugin deployment)
+- $(recipe_space)/${RECIPE_MANIFEST_UNIT}
+
+Next steps:
+1. ./verify.sh
+2. ./upgrade-chain.sh ${DEFAULT_GPU_OPERATOR_TAG} ${DEFAULT_DEVICE_PLUGIN_TAG}
+3. ./set-target.sh <space/target>  # optional, enables apply + target bundle story
+EOF_SUMMARY
+  fi
 }

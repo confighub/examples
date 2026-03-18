@@ -1,2 +1,4 @@
 .cub*
+.state/
+**/.state/
 var/

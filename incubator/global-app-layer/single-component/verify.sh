@@ -58,9 +58,9 @@ assert_contains "${role_file}" 'replicas: 2'
 assert_contains "${role_file}" 'name: LOG_LEVEL'
 assert_contains "${role_file}" 'name: ROLE'
 assert_contains "${recipe_file}" 'Cubby Chat (US Staging Recipe)'
-assert_contains "${deploy_file}" 'namespace: cluster-a'
+assert_contains "${deploy_file}" "namespace: ${DEPLOY_NAMESPACE}"
 assert_contains "${deploy_file}" 'name: CLUSTER'
-assert_contains "${deploy_file}" 'backend.cluster-a.demo.confighub.local'
+assert_contains "${deploy_file}" "$(deploy_backend_hostname)"
 
 echo "==> Verifying explicit recipe manifest"
 assert_contains "${manifest_file}" 'kind: Recipe'

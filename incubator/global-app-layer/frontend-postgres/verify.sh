@@ -61,8 +61,8 @@ for component in "${COMPONENTS[@]}"; do
       assert_contains "${role_file}" 'value: staging'
       assert_contains "${recipe_file}" 'name: RELEASE_CHANNEL'
       assert_contains "${recipe_file}" 'value: us-staging-recipe'
-      assert_contains "${deploy_file}" 'namespace: cluster-a'
-      assert_contains "${deploy_file}" 'frontend.cluster-a.demo.confighub.local'
+      assert_contains "${deploy_file}" "namespace: ${DEPLOY_NAMESPACE}"
+      assert_contains "${deploy_file}" "$(deploy_hostname frontend)"
       assert_contains "${deploy_file}" 'name: CLUSTER'
       ;;
     postgres)
@@ -74,9 +74,9 @@ for component in "${COMPONENTS[@]}"; do
       assert_contains "${role_file}" 'name: ROLE'
       assert_contains "${role_file}" 'value: staging'
       assert_contains "${recipe_file}" 'chatdb_us_staging'
-      assert_contains "${deploy_file}" 'namespace: cluster-a'
+      assert_contains "${deploy_file}" "namespace: ${DEPLOY_NAMESPACE}"
       assert_contains "${deploy_file}" 'name: CLUSTER'
-      assert_contains "${deploy_file}" 'value: cluster-a'
+      assert_contains "${deploy_file}" "value: ${DEPLOY_NAMESPACE}"
       ;;
   esac
 

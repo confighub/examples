@@ -70,8 +70,8 @@ for component in "${COMPONENTS[@]}"; do
       assert_contains "${os_file}" 'value: 550-ubuntu22.04'
       assert_contains "${recipe_file}" 'value: training'
       assert_contains "${recipe_file}" 'value: training-smoke'
-      assert_contains "${deploy_file}" 'namespace: cluster-a'
-      assert_contains "${deploy_file}" 'value: cluster-a'
+      assert_contains "${deploy_file}" "namespace: ${DEPLOY_NAMESPACE}"
+      assert_contains "${deploy_file}" "value: ${DEPLOY_NAMESPACE}"
       ;;
     nvidia-device-plugin)
       # Stub image: busybox:1.37 (replace with nvcr.io/nvidia/k8s-device-plugin on real GPU clusters)
@@ -85,8 +85,8 @@ for component in "${COMPONENTS[@]}"; do
       assert_contains "${os_file}" 'value: ubuntu-h100'
       assert_contains "${recipe_file}" 'value: training'
       assert_contains "${recipe_file}" 'value: training-smoke'
-      assert_contains "${deploy_file}" 'namespace: cluster-a'
-      assert_contains "${deploy_file}" 'value: cluster-a'
+      assert_contains "${deploy_file}" "namespace: ${DEPLOY_NAMESPACE}"
+      assert_contains "${deploy_file}" "value: ${DEPLOY_NAMESPACE}"
       ;;
   esac
 done

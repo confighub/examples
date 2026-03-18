@@ -75,7 +75,7 @@ save_state() {
   local target_ref="${2:-}"
 
   ensure_state_dir
-  printf 'PREFIX=%q\nTARGET_REF=%q\n' "${prefix}" "${target_ref}" >"${STATE_FILE}"
+  printf 'PREFIX=%q\nTARGET_REF=%q\nDEPLOY_NAMESPACE=%q\n' "${prefix}" "${target_ref}" "${DEPLOY_NAMESPACE}" >"${STATE_FILE}"
 }
 
 state_prefix() {
@@ -224,6 +224,10 @@ bundle_hint_from_target_ref() {
   echo "target/<target-space>/${target_ref}:latest"
 }
 
+deploy_backend_hostname() {
+  echo "backend.${DEPLOY_NAMESPACE}.demo.confighub.local"
+}
+
 render_recipe_manifest() {
   local output_path="$1"
   local target_ref="$2"
@@ -289,7 +293,8 @@ refresh_recipe_manifest_unit() {
 
 show_summary() {
   local target_ref="$1"
-  cat <<EOF_SUMMARY
+  if [[ -n "${target_ref}" ]]; then
+    cat <<EOF_SUMMARY
 Created global-app layered chain with prefix: $(state_prefix)
 
 Spaces:
@@ -310,8 +315,32 @@ Units:
 Next steps:
 1. ./verify.sh
 2. ./upgrade-chain.sh ${DEFAULT_IMAGE_TAG}
-3. ${target_ref:+cub unit approve --space $(deploy_space) ${DEPLOY_UNIT} && cub unit apply --space $(deploy_space) ${DEPLOY_UNIT}}
-4. ${target_ref:+Review recipe manifest: cub unit get --space $(recipe_space) --data-only ${RECIPE_MANIFEST_UNIT}}
-${target_ref:-3. ./set-target.sh <space/target>  # optional, enables apply + target bundle story}
+3. cub unit approve --space $(deploy_space) ${DEPLOY_UNIT} && cub unit apply --space $(deploy_space) ${DEPLOY_UNIT}
+4. Review recipe manifest: cub unit get --space $(recipe_space) --data-only ${RECIPE_MANIFEST_UNIT}
 EOF_SUMMARY
+  else
+    cat <<EOF_SUMMARY
+Created global-app layered chain with prefix: $(state_prefix)
+
+Spaces:
+- $(base_space)
+- $(region_space)
+- $(role_space)
+- $(recipe_space)
+- $(deploy_space)
+
+Units:
+- $(base_space)/${BASE_UNIT}
+- $(region_space)/${REGION_UNIT}
+- $(role_space)/${ROLE_UNIT}
+- $(recipe_space)/${RECIPE_UNIT}
+- $(recipe_space)/${RECIPE_MANIFEST_UNIT}
+- $(deploy_space)/${DEPLOY_UNIT}
+
+Next steps:
+1. ./verify.sh
+2. ./upgrade-chain.sh ${DEFAULT_IMAGE_TAG}
+3. ./set-target.sh <space/target>  # optional, enables apply + target bundle story
+EOF_SUMMARY
+  fi
 }
