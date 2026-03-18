@@ -35,6 +35,11 @@ cub target list --space "*" --json | jq
 
 If no target is available, stop after the ConfigHub-only path.
 
+Important:
+- `cub target list` only proves a target is visible in ConfigHub
+- it does **not** prove the target's worker is online
+- do not call the live path ready until `./preflight-live.sh <space/target>` reports `applyReady: true`
+
 ## 1. Preview The Recipe
 
 ```bash
@@ -66,9 +71,21 @@ At this point you have:
 
 ## 3. Bind A Live Target And Apply
 
+Before binding or applying, preflight the target:
+
+```bash
+cd incubator/global-app-layer
+./preflight-live.sh <space/target>
+./preflight-live.sh <space/target> --json | jq
+```
+
+If preflight fails, stop the live branch there.
+You can still continue with ConfigHub-only upgrades and custom downstream variants.
+
 If you already know the target:
 
 ```bash
+../preflight-live.sh <space/target>
 ./setup.sh <prefix> <space/target>
 ./verify.sh
 ```
@@ -76,6 +93,7 @@ If you already know the target:
 If you started ConfigHub-only, continue like this:
 
 ```bash
+../preflight-live.sh <space/target>
 ./set-target.sh <space/target>
 ./verify.sh
 ```

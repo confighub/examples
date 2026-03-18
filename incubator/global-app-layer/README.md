@@ -83,6 +83,7 @@ Supporting documents:
 - [AI_START_HERE.md](./AI_START_HERE.md)
 - [prompts.md](./prompts.md)
 - [contracts.md](./contracts.md)
+- [preflight-live.sh](./preflight-live.sh) for live-target readiness checks
 - [whole-journey.md](./whole-journey.md)
 - [how-it-works.md](./how-it-works.md)
 - [../AGENTS.md](../AGENTS.md) for the incubator AI protocol
@@ -310,6 +311,15 @@ If you want the **full** story after that, continue with:
 - custom downstream deployment variants
 
 The exact walkthrough lives in [whole-journey.md](./whole-journey.md).
+
+Before any live claim, preflight the target first:
+
+```bash
+./preflight-live.sh <space/target>
+./preflight-live.sh <space/target> --json | jq
+```
+
+`cub target list` only proves target visibility. It does not prove the worker is ready for apply.
 
 The two explain modes are safe to run before authentication or before choosing a target:
 

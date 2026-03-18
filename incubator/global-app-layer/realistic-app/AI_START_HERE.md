@@ -45,7 +45,8 @@ cub target list --space "*" --json | jq
 Use this rule:
 - if `cub` is missing or auth is unavailable, stop at preview mode
 - if auth works but there is no relevant target, use ConfigHub-only mode
-- only use the live path when a real target exists
+- if a real target is visible, run `../preflight-live.sh <space/target>` before you offer the live path
+- only use the live path when preflight reports `applyReady: true`
 
 ## Safe First Steps
 
@@ -66,6 +67,16 @@ After `./setup.sh`, use:
 - `.logs/verify.latest.log`
 
 instead of relying on terminal scrollback alone.
+
+For the live branch, do not rely on target visibility alone.
+From this directory, run:
+
+```bash
+../preflight-live.sh <space/target>
+../preflight-live.sh <space/target> --json | jq
+```
+
+Only call the live path ready if preflight reports `applyReady: true`.
 
 If the human wants the full lifecycle after setup + verify, continue with:
 

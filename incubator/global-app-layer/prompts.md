@@ -17,6 +17,7 @@ Explain:
 Then run only read-only preview commands.
 Also tell me whether `cub` auth is available and whether any targets are visible.
 Do not guess unsupported `cub` subcommands; check `cub --help` first if needed.
+If you think a live path may be possible, do not infer readiness from `cub target list` alone.
 
 ## 2. Safe Walkthrough
 
@@ -30,6 +31,7 @@ Before each command:
 - stop and branch clearly if auth or targets are missing
 - use the documented JSON/jq contracts rather than inventing field paths
 - after setup, use the printed GUI URLs and `.logs/*.latest.log` files instead of relying on scrollback
+- before any live claim, run `./preflight-live.sh <space/target>` and treat `applyReady: true` as the gate
 
 Start with `realistic-app` unless you think another example is a better fit.
 
@@ -52,7 +54,7 @@ Use `gpu-eks-h100-training` to explain how NVIDIA AICR-style layers map to Confi
 Start read-only.
 Then materialize the example in ConfigHub.
 Then verify it.
-Only offer the live path if a real target exists.
+Only offer the live path if a real target exists and `./preflight-live.sh <space/target>` says `applyReady: true`.
 
 ## 5. Verify Everything
 
@@ -82,5 +84,7 @@ Before each command:
 - say what success looks like
 - say what GUI page or CLI object to inspect next
 - stop clearly if required infrastructure is missing
+- do not treat target visibility or set-target success as proof that apply will work
+- run `./preflight-live.sh <space/target>` before the live branch
 
 Use `whole-journey.md` and the example docs instead of inventing steps.

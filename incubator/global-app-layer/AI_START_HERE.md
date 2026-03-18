@@ -57,6 +57,13 @@ Once you run `./setup.sh`, use the printed artifacts instead of relying on termi
 - clickable GUI URLs for the recipe space, deploy space, recipe manifest, and one deployment unit
 - durable logs in `.logs/setup.latest.log`, `.logs/set-target.latest.log`, `.logs/verify.latest.log`, and `.logs/cleanup.latest.log`
 
+For live delivery, use the package-level preflight before you claim anything is ready:
+
+```bash
+./preflight-live.sh <space/target>
+./preflight-live.sh <space/target> --json | jq
+```
+
 ## Ready For A Fresh Run
 
 Use the same short path across the layered examples:
@@ -96,7 +103,12 @@ cub target list --space "*" --json | jq
 Interpret the result like this:
 - if `cub` is missing or auth is unavailable, stay in preview mode
 - if auth works but target listing is empty or irrelevant, use ConfigHub-only mode
-- if a real target is available, you can offer the live path
+- if a real target is visible, run `./preflight-live.sh <space/target>` before you offer the live path
+
+Important:
+- `cub target list` proves visibility, not readiness
+- `set-target.sh` proves binding, not readiness
+- only call the live path ready if `preflight-live.sh` reports `applyReady: true`
 
 ## Capability Branching
 
@@ -129,11 +141,13 @@ This writes ConfigHub spaces and units, but does not deploy anything live.
 
 ### C. Live target available
 
-Use this only when the user has a real target and worker available.
+Use this only when `./preflight-live.sh <space/target>` reports `applyReady: true`.
 
 Safe path:
 
 ```bash
+cd incubator/global-app-layer
+./preflight-live.sh <space/target>
 cd incubator/global-app-layer/realistic-app
 ./setup.sh <prefix> <space/target>
 ./verify.sh
@@ -183,6 +197,7 @@ If the user wants deployment, updates, and custom live variants instead of only 
 | Command | Reads | Writes |
 |---|---|---|
 | `./find-runs.sh --json` | ConfigHub labels on spaces/units | nothing |
+| `./preflight-live.sh <space/target>` | ConfigHub target and worker state | nothing |
 | `./setup.sh --explain-json` | local scripts and source manifests | nothing |
 | `./setup.sh` | local source manifests + current ConfigHub org | ConfigHub spaces, units, links, recipe manifest, local `.state/`, local `.logs/setup.latest.log` |
 | `./verify.sh` | ConfigHub objects created by the example | local `.logs/verify.latest.log` |
@@ -198,6 +213,7 @@ After a successful ConfigHub-only run you should see:
 - `verify.sh` passing
 
 After a successful live path you should also see:
+- `./preflight-live.sh <space/target>` returning `applyReady: true`
 - targets bound on deployment units
 - successful `cub unit apply`
 - live resources or delegated delivery objects visible
@@ -219,6 +235,7 @@ The easiest way to get there is to use the clickable URLs printed by `./setup.sh
 - use `cub version`, not `cub --version`
 - use `cub context list`, not `cub context current`
 - for machine-readable unit inspection, prefer the exact jq examples in `contracts.md`
+- do not treat a visible target as a live-ready target until `./preflight-live.sh` says so
 
 ## Cleanup
 
