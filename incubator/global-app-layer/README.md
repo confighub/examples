@@ -10,6 +10,51 @@ Important note:
 - it uses stub images so the recipe shape can be reviewed and exercised on ordinary clusters, including local `kind`
 - to run real NVIDIA GPU software, swap in the real NVIDIA images and point the deployment at GPU-capable nodes
 
+## Stack And Scenario
+
+This package is for:
+- ConfigHub-managed Kubernetes application manifests
+- layered multi-component app recipes
+- NVIDIA AICR-style layered software stacks
+
+It demonstrates how to turn a layered recipe into real ConfigHub spaces, units, variants, recipe manifests, and optional deployment targets.
+
+## What This Reads And Writes
+
+What it reads:
+- base YAML manifests from `global-app/baseconfig/` for the app examples
+- local example YAML files for the GPU example
+- current ConfigHub context, spaces, targets, and workers
+
+What it writes:
+- new ConfigHub spaces for each layer
+- units for base, shared layers, recipe, and deploy stages
+- clone links / variant ancestry between those units
+- one recipe manifest unit per assembled recipe
+- optional target bindings if you choose a live delivery path
+- optional live cluster or GitOps delivery state only if you explicitly bind and apply
+
+## What You Should Expect To See
+
+In ConfigHub-only mode you should expect:
+- five or six new spaces sharing one prefix
+- units for each layer in the chain
+- one recipe manifest unit
+- `verify.sh` passing
+
+In live mode you should additionally expect:
+- deployment units bound to a real target
+- successful `cub unit apply`
+- live resources or delegated delivery objects appearing in the chosen target path
+
+## AI-Safe Path
+
+If you want to use this package with an AI assistant, start here:
+
+- [AI_START_HERE.md](./AI_START_HERE.md)
+- [prompts.md](./prompts.md)
+- [contracts.md](./contracts.md)
+
 ## Start Here
 
 If you are new to ConfigHub, start here:
@@ -22,6 +67,9 @@ If you already understand the NVIDIA AICR idea and want the clearest explanation
 
 Supporting documents:
 
+- [AI_START_HERE.md](./AI_START_HERE.md)
+- [prompts.md](./prompts.md)
+- [contracts.md](./contracts.md)
 - [how-it-works.md](./how-it-works.md)
 - [../AGENTS.md](../AGENTS.md) for the incubator AI protocol
 - [../AI-README-FIRST.md](../AI-README-FIRST.md) for fuller incubator AI guidance
