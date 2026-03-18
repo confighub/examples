@@ -15,6 +15,7 @@ Explain:
 - what success should look like
 
 Then run only read-only preview commands.
+Also tell me whether `cub` auth is available and whether any targets are visible.
 
 ## 2. Safe Walkthrough
 
@@ -25,6 +26,7 @@ Before each command:
 - say whether it mutates ConfigHub or live infrastructure
 - tell me what success looks like
 - tell me what GUI page or CLI object to inspect next
+- stop and branch clearly if auth or targets are missing
 
 Start with `realistic-app` unless you think another example is a better fit.
 
@@ -38,6 +40,7 @@ Use `global-app-layer` in ConfigHub-only mode:
 - verify it
 - show me the important spaces, units, and recipe manifest
 - do not bind a target or apply anything live
+- include GUI checkpoints as you go
 
 ## 4. NVIDIA-Shaped Walkthrough
 

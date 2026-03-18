@@ -10,6 +10,12 @@
   - which spaces will be created
   - which components participate
   - whether a target was provided
+- expected anchors:
+  - `.example == "global-app-layer-realistic-app"`
+  - `.mutates == false`
+  - `.spaces | length == 5`
+  - `.components | length == 3`
+  - `.recipeManifest.unit == "recipe-us-staging-realistic-app"`
 
 ## ConfigHub State Contracts
 
@@ -32,3 +38,10 @@
 - mutates: no
 - output shape: text tree
 - proves: the layered ancestry exists
+
+## Expected Output Signals
+
+When `./verify.sh` succeeds, expect:
+- the final line `All global-app-layer realistic-app checks passed.`
+- no clone-chain error output
+- no missing-space or missing-unit errors

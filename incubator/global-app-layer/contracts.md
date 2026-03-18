@@ -19,6 +19,18 @@ This file documents the safest stable inspection paths for `global-app-layer`.
   - which components participate
   - which layer sequence is used
   - whether a target was provided
+- expected anchors:
+  - `.example`
+  - `.mutates == false`
+  - `.spaces`
+  - `.components`
+  - `.recipeManifest`
+
+### `cub context list --json`
+
+- mutates: no
+- output shape: JSON array of available contexts
+- proves: whether the current shell has a usable ConfigHub CLI context
 
 ### `cub target list --space "*" --json`
 
@@ -55,6 +67,7 @@ When a run succeeds in ConfigHub-only mode, expect:
 - a shared prefix across all created spaces
 - one recipe manifest in the recipe space
 - `verify.sh` exiting successfully
+- `verify.sh` printing a final `All ... checks passed.` line
 
 When the live path also succeeds, expect:
 - target binding visible on deployment units
