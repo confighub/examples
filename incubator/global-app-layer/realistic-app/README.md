@@ -14,6 +14,50 @@ It keeps the same recipe model:
 
 The recipe is still the ordered chain of variants, not the bundle. What changes here is that the layer model now governs a recognisable small app, not just a pair of components.
 
+## Stack And Scenario
+
+This example is for:
+- ConfigHub-managed Kubernetes application manifests
+- a small three-tier app recipe
+- safe app-level layered propagation across backend, frontend, and database
+
+## What This Reads And Writes
+
+What it reads:
+- `../../../global-app/baseconfig/backend.yaml`
+- `../../../global-app/baseconfig/frontend.yaml`
+- `../../../global-app/baseconfig/postgres.yaml`
+- current ConfigHub context and optional target ref
+
+What it writes:
+- five ConfigHub spaces with a shared prefix
+- units for each layer of each component
+- clone links / variant ancestry
+- one app-level recipe manifest
+- optional target bindings
+- optional live deployment state only if you explicitly bind and apply
+
+## What You Should Expect To See
+
+In ConfigHub-only mode:
+- five spaces sharing one prefix
+- three coordinated layered chains
+- one recipe manifest unit
+- `verify.sh` passing
+
+In live mode:
+- deployment units bound to a target
+- successful `cub unit apply`
+- live resources visible in the chosen target path
+
+## AI-Safe Path
+
+If you want to use this example with an AI assistant, start here:
+
+- [AI_START_HERE.md](./AI_START_HERE.md)
+- [prompts.md](./prompts.md)
+- [contracts.md](./contracts.md)
+
 ## What It Builds
 
 Three components from `global-app`:
