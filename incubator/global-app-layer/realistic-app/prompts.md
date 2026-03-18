@@ -29,6 +29,7 @@ Before each command:
 - after setup, surface the printed GUI URLs and `.logs/*.latest.log` files
 - do not treat `cub target list` or `./set-target.sh` as proof that apply will work
 - run `../preflight-live.sh <space/target>` before the live branch
+- prefer `./apply-live.sh` over ad hoc manual apply steps
 
 ## Verify Everything
 
@@ -60,3 +61,4 @@ Before each command:
 - use `whole-journey.md` and the documented contracts rather than guessing
 - run `../preflight-live.sh <space/target>` before binding or applying
 - only call the live path ready if preflight reports `applyReady: true`
+- only call live apply successful if backend, frontend, and postgres all reach `Ready` with `ApplyCompleted`

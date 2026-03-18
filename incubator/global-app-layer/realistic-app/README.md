@@ -39,6 +39,7 @@ What it reads:
 What it writes:
 - five ConfigHub spaces with a shared prefix
 - units for each layer of each component
+- one deployment-bootstrap namespace unit for the live path
 - clone links / variant ancestry
 - one app-level recipe manifest
 - optional target bindings
@@ -54,7 +55,7 @@ In ConfigHub-only mode:
 
 In live mode:
 - deployment units bound to a target
-- successful `cub unit apply`
+- successful `./apply-live.sh`
 - live resources visible in the chosen target path
 
 ## AI-Safe Path
@@ -109,6 +110,10 @@ The example also writes one explicit app-level recipe manifest unit into the rec
 
 - `recipe-us-staging-realistic-app`
 
+And one deployment bootstrap unit into the deploy space:
+
+- `cluster-a-namespace`
+
 That manifest records the layer provenance for all three components together. The variant chains are what ConfigHub executes; the recipe manifest is the receipt that explains the assembled app.
 
 The recipe source has two forms:
@@ -131,7 +136,7 @@ Component-specific mutations:
 - `backend`
   - `region`: set `REGION=us` and backend ingress host
   - `role`: set `replicas=2` and `ROLE=staging`
-  - `recipe`: point `DATABASE_URL` at `chatdb_us_staging` and set `CHAT_TITLE`
+  - `recipe`: set an explicit backend `DATABASE_URL` for `chatdb` and set `CHAT_TITLE`
   - `deployment`: set namespace, deployment host, and `CLUSTER=cluster-a`
 - `frontend`
   - `region`: set the ingress host to `frontend.us.demo.confighub.local`
@@ -141,7 +146,7 @@ Component-specific mutations:
 - `postgres`
   - `region`: add `REGION=US`
   - `role`: set PVC size to `10Gi` and `ROLE=staging`
-  - `recipe`: set `POSTGRES_DB=chatdb_us_staging`
+  - `recipe`: keep `POSTGRES_DB` aligned with the backend contract
   - `deployment`: set namespace and `CLUSTER=cluster-a`
 
 This is what makes it more realistic than the earlier examples: the layers still have one shared meaning, but the app components now coordinate on a consistent staged deployment shape.
@@ -184,17 +189,19 @@ If you did not pass a target during setup:
 ./set-target.sh <space/target>
 ```
 
-Then you can use normal ConfigHub apply flow on all deployment units:
+The simplest honest live path is:
 
 ```bash
-cub unit approve --space <prefix>-deploy-cluster-a backend-cluster-a
-cub unit approve --space <prefix>-deploy-cluster-a frontend-cluster-a
-cub unit approve --space <prefix>-deploy-cluster-a postgres-cluster-a
-
-cub unit apply --space <prefix>-deploy-cluster-a backend-cluster-a
-cub unit apply --space <prefix>-deploy-cluster-a frontend-cluster-a
-cub unit apply --space <prefix>-deploy-cluster-a postgres-cluster-a
+./apply-live.sh
 ```
+
+`apply-live.sh` now does the whole safe live sequence for you:
+- preflights the target and stops if it is not actually apply-ready
+- refreshes the deploy-space clones from the latest upstream recipe revisions
+- refreshes the app-level recipe receipt
+- approves and applies the deployment bootstrap namespace unit first
+- then approves and applies the backend, frontend, and postgres deployment units
+- waits for completion instead of treating "apply started" as success
 
 The bundle belongs to the target. The explicit recipe manifest records the layered provenance for the whole app and includes a bundle hint once a target is set.
 

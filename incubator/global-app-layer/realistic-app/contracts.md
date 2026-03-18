@@ -89,9 +89,35 @@
   - the target binding step ran
   - the refreshed GUI URLs and bundle hint are durable
 
+### `./apply-live.sh`
+
+- mutates: yes
+- output shape: plain text orchestration log
+- proves:
+  - the target was preflighted and was actually apply-ready before live mutation
+  - the deploy-space clones were refreshed from the latest upstream recipe revisions
+  - the app-level recipe receipt was refreshed for the live target
+  - the deployment bootstrap namespace unit was applied first
+  - backend, frontend, and postgres were approved and applied
+  - the script waited for unit completion instead of treating apply start as success
+
+### `./.logs/apply-live.latest.log`
+
+- mutates: no
+- output shape: plain text log file
+- proves:
+  - the ordered live apply flow ran
+  - final unit status was captured durably
+
 ## Expected Output Signals
 
 When `./verify.sh` succeeds, expect:
 - the final line `All global-app-layer realistic-app checks passed.`
 - no clone-chain error output
 - no missing-space or missing-unit errors
+
+When `./apply-live.sh` succeeds, expect:
+- no timeout or `ApplyFailed` output
+- a preflight JSON summary with `applyReady: true`
+- final status lines showing backend, frontend, and postgres as `Ready`
+- `actionResult: "ApplyCompleted"` for all three deployment units

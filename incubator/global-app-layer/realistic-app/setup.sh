@@ -61,6 +61,9 @@ create_space_if_missing "$(role_space)" "${role_space_labels[@]}"
 create_space_if_missing "$(recipe_space)" "${recipe_space_labels[@]}"
 create_space_if_missing "$(deploy_space)" "${deploy_space_labels[@]}"
 
+echo "==> Creating deployment bootstrap namespace unit"
+ensure_namespace_unit "${target_ref}"
+
 for component in "${COMPONENTS[@]}"; do
   echo "==> Creating base unit for ${component}"
   _mapfile base_unit_labels < <(label_args base "${component}")

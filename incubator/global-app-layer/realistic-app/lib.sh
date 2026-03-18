@@ -22,6 +22,7 @@ RECIPE_MANIFEST_UNIT="recipe-us-staging-realistic-app"
 REGION_VALUE="us"
 ROLE_VALUE="staging"
 DEPLOY_NAMESPACE="${DEPLOY_NAMESPACE:-cluster-a}"
+NAMESPACE_BOOTSTRAP_UNIT_SUFFIX="namespace"
 DEFAULT_BACKEND_TAG="1.1.8"
 DEFAULT_FRONTEND_TAG="1.1.8"
 DEFAULT_POSTGRES_TAG="16.1"
@@ -167,6 +168,14 @@ unit_name() {
   esac
 }
 
+namespace_unit_name() {
+  echo "${DEPLOY_NAMESPACE}-${NAMESPACE_BOOTSTRAP_UNIT_SUFFIX}"
+}
+
+namespace_manifest_path() {
+  echo "${STATE_DIR}/${DEPLOY_NAMESPACE}.namespace.yaml"
+}
+
 space_exists() {
   local space="$1"
   cub space get "${space}" >/dev/null 2>&1
@@ -195,6 +204,18 @@ create_unit_from_file() {
   shift 3
   if unit_exists "${space}" "${unit}"; then
     echo "Unit already exists: ${space}/${unit}"
+    return
+  fi
+  cub unit create --space "${space}" "${unit}" "${file_path}" "$@"
+}
+
+upsert_unit_from_file() {
+  local space="$1"
+  local unit="$2"
+  local file_path="$3"
+  shift 3
+  if unit_exists "${space}" "${unit}"; then
+    cub unit update --space "${space}" "${unit}" "${file_path}"
     return
   fi
   cub unit create --space "${space}" "${unit}" "${file_path}" "$@"
@@ -244,6 +265,18 @@ space_label_args() {
   for component in "${COMPONENTS[@]}"; do
     printf '%s\n' --label "Component=${component}"
   done
+}
+
+namespace_unit_label_args() {
+  printf '%s\n' \
+    --label "ExampleName=${EXAMPLE_NAME}" \
+    --label "ExampleChain=$(state_prefix)" \
+    --label "Recipe=${CHAIN_LABEL}" \
+    --label "App=${APP_NAME}" \
+    --label "Component=namespace" \
+    --label "Layer=deployment-bootstrap" \
+    --label "LayerKind=deployment" \
+    --label "Cluster=${DEPLOY_NAMESPACE}"
 }
 
 assert_contains() {
@@ -356,6 +389,29 @@ gui_unit_url() {
   fi
 }
 
+render_namespace_manifest() {
+  local output_path="$1"
+  ensure_state_dir
+  cat >"${output_path}" <<EOF_NAMESPACE
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ${DEPLOY_NAMESPACE}
+EOF_NAMESPACE
+}
+
+ensure_namespace_unit() {
+  local target_ref="${1:-}"
+  local manifest_path
+  manifest_path="$(namespace_manifest_path)"
+  render_namespace_manifest "${manifest_path}"
+  _mapfile namespace_labels < <(namespace_unit_label_args)
+  upsert_unit_from_file "$(deploy_space)" "$(namespace_unit_name)" "${manifest_path}" "${namespace_labels[@]}"
+  if [[ -n "${target_ref}" ]]; then
+    cub unit set-target "${target_ref}" --space "$(deploy_space)" --unit "$(namespace_unit_name)"
+  fi
+}
+
 show_setup_plan() {
   local target_ref="${1:-}"
   local target_display="${target_ref:-<none>}"
@@ -383,7 +439,7 @@ Components and variant chains:
 Layer mutations:
 - backend region: set REGION=${REGION_VALUE} and regional ingress host
 - backend role: set replicas=2 and ROLE=${ROLE_VALUE}
-- backend recipe: set DATABASE_URL and CHAT_TITLE
+- backend recipe: set explicit DATABASE_URL and CHAT_TITLE
 - backend deployment: set namespace, CLUSTER=${DEPLOY_NAMESPACE}, and deployment ingress host
 - frontend region: set regional ingress host
 - frontend role: set replicas=2 and PUBLIC_ENV=${ROLE_VALUE}
@@ -391,8 +447,12 @@ Layer mutations:
 - frontend deployment: set namespace, CLUSTER=${DEPLOY_NAMESPACE}, and deployment ingress host
 - postgres region: set REGION=US
 - postgres role: set PVC size and ROLE=${ROLE_VALUE}
-- postgres recipe: set POSTGRES_DB
+- postgres recipe: keep the shared database contract stable for the backend
 - postgres deployment: set namespace and CLUSTER=${DEPLOY_NAMESPACE}
+
+Deployment bootstrap unit:
+- $(deploy_space)/$(namespace_unit_name) creates namespace ${DEPLOY_NAMESPACE}
+- this is the first live apply step before the app workloads
 
 Recipe manifest:
 - $(recipe_space)/${RECIPE_MANIFEST_UNIT}
@@ -476,7 +536,7 @@ show_setup_plan_json() {
           mutations: [
             {stage: "region", summary: "set REGION and regional ingress host"},
             {stage: "role", summary: "set replicas and ROLE"},
-            {stage: "recipe", summary: "set DATABASE_URL and CHAT_TITLE"},
+            {stage: "recipe", summary: "set explicit DATABASE_URL and CHAT_TITLE"},
             {stage: "deployment", summary: "set namespace, CLUSTER, and deployment ingress host"}
           ]
         },
@@ -510,11 +570,16 @@ show_setup_plan_json() {
           mutations: [
             {stage: "region", summary: "set REGION"},
             {stage: "role", summary: "set PVC size and ROLE"},
-            {stage: "recipe", summary: "set POSTGRES_DB"},
+            {stage: "recipe", summary: "keep POSTGRES_DB aligned with the backend contract"},
             {stage: "deployment", summary: "set namespace and CLUSTER"}
           ]
         }
       ],
+      deploymentBootstrap: {
+        space: $deploySpace,
+        unit: ($namespace + "-namespace"),
+        kind: "Namespace"
+      },
       recipeManifest: {
         space: $recipeSpace,
         unit: $manifestUnit,
@@ -641,14 +706,14 @@ apply_recipe_mutations() {
 
   case "${component}" in
     backend)
-      cub function do set-env backend "DATABASE_URL=postgres://admin:password@postgres:5432/chatdb_us_staging" --space "${space}" --unit "${unit}"
+      cub function do set-env backend "DATABASE_URL=postgres://admin:password@postgres:5432/chatdb?sslmode=disable" --space "${space}" --unit "${unit}"
       cub function do set-env backend "CHAT_TITLE=Cubby Chat US Staging" --space "${space}" --unit "${unit}"
       ;;
     frontend)
       cub function do set-env frontend "RELEASE_CHANNEL=us-staging-recipe" --space "${space}" --unit "${unit}"
       ;;
     postgres)
-      cub function do set-env postgres "POSTGRES_DB=chatdb_us_staging" --space "${space}" --unit "${unit}"
+      cub function do set-env postgres "POSTGRES_DB=chatdb" --space "${space}" --unit "${unit}"
       ;;
   esac
 }
@@ -679,6 +744,7 @@ apply_deploy_mutations() {
 set_target_for_deploy_units() {
   local target_ref="$1"
   local component
+  ensure_namespace_unit "${target_ref}"
   for component in "${COMPONENTS[@]}"; do
     cub unit set-target "${target_ref}" --space "$(deploy_space)" --unit "$(unit_name "${component}" deployment)"
   done
@@ -703,6 +769,7 @@ Spaces:
 - $(deploy_space)
 
 Units:
+- $(deploy_space)/$(namespace_unit_name)
 - $(base_space)/$(unit_name backend base)
 - $(region_space)/$(unit_name backend region)
 - $(role_space)/$(unit_name backend role)
@@ -734,10 +801,9 @@ Logs:
 
 Next steps:
 1. ./verify.sh
-2. ./upgrade-chain.sh ${DEFAULT_BACKEND_TAG} ${DEFAULT_FRONTEND_TAG} ${DEFAULT_POSTGRES_TAG}
-3. cub unit approve --space $(deploy_space) $(unit_name backend deployment) && cub unit approve --space $(deploy_space) $(unit_name frontend deployment) && cub unit approve --space $(deploy_space) $(unit_name postgres deployment)
-4. cub unit apply --space $(deploy_space) $(unit_name backend deployment) && cub unit apply --space $(deploy_space) $(unit_name frontend deployment) && cub unit apply --space $(deploy_space) $(unit_name postgres deployment)
-5. Review recipe manifest: cub unit get --space $(recipe_space) --data-only ${RECIPE_MANIFEST_UNIT}
+2. ./apply-live.sh                    # preflights target, refreshes deploy clones, then applies namespace + app units
+3. ./upgrade-chain.sh ${DEFAULT_BACKEND_TAG} ${DEFAULT_FRONTEND_TAG} ${DEFAULT_POSTGRES_TAG}
+4. Review recipe manifest: cub unit get --space $(recipe_space) --data-only ${RECIPE_MANIFEST_UNIT}
 EOF_SUMMARY
   else
     cat <<EOF_SUMMARY
@@ -751,6 +817,7 @@ Spaces:
 - $(deploy_space)
 
 Units:
+- $(deploy_space)/$(namespace_unit_name)
 - $(base_space)/$(unit_name backend base)
 - $(region_space)/$(unit_name backend region)
 - $(role_space)/$(unit_name backend role)
@@ -783,7 +850,8 @@ Logs:
 Next steps:
 1. ./verify.sh
 2. ./upgrade-chain.sh ${DEFAULT_BACKEND_TAG} ${DEFAULT_FRONTEND_TAG} ${DEFAULT_POSTGRES_TAG}
-3. ./set-target.sh <space/target>  # optional, enables apply + target bundle story
+3. ./set-target.sh <space/target>  # optional, binds target + prepares namespace bootstrap unit
+4. ./apply-live.sh                 # optional, preflights target, refreshes deploy clones, then applies namespace + app units
 EOF_SUMMARY
   fi
 }

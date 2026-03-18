@@ -45,7 +45,7 @@ spec:
           unit: confighubplaceholder-backend-recipe-unit
           revision: confighubplaceholder-backend-recipe-revision
           dataHash: confighubplaceholder-backend-recipe-hash
-          mutationDelta: set DATABASE_URL for chatdb_us_staging and CHAT_TITLE for the staged app
+          mutationDelta: set explicit DATABASE_URL for chatdb and CHAT_TITLE for the staged app
         - name: deployment
           space: confighubplaceholder-backend-deployment-space
           unit: confighubplaceholder-backend-deployment-unit
@@ -109,7 +109,7 @@ spec:
           unit: confighubplaceholder-postgres-recipe-unit
           revision: confighubplaceholder-postgres-recipe-revision
           dataHash: confighubplaceholder-postgres-recipe-hash
-          mutationDelta: set POSTGRES_DB=chatdb_us_staging
+          mutationDelta: keep POSTGRES_DB aligned with the backend connection contract
         - name: deployment
           space: confighubplaceholder-postgres-deployment-space
           unit: confighubplaceholder-postgres-deployment-unit

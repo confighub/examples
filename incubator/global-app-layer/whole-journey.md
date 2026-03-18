@@ -101,22 +101,20 @@ If you started ConfigHub-only, continue like this:
 Then approve and apply the deployment units:
 
 ```bash
-source ./lib.sh
-load_state
-
-cub unit approve --space "$(deploy_space)" "$(unit_name backend deployment)"
-cub unit approve --space "$(deploy_space)" "$(unit_name frontend deployment)"
-cub unit approve --space "$(deploy_space)" "$(unit_name postgres deployment)"
-
-cub unit apply --space "$(deploy_space)" "$(unit_name backend deployment)"
-cub unit apply --space "$(deploy_space)" "$(unit_name frontend deployment)"
-cub unit apply --space "$(deploy_space)" "$(unit_name postgres deployment)"
+./apply-live.sh
 ```
+
+`./apply-live.sh` is the preferred live path because it:
+- re-checks that the target is actually apply-ready
+- refreshes the deployment clones from upstream before delivery
+- applies the namespace bootstrap unit first
+- waits for completion instead of treating "apply started" as success
 
 What to inspect next:
 - the deploy space URL printed by `./setup.sh` or `./set-target.sh`
 - one deployment unit, for example `backend-cluster-a`
 - `.logs/set-target.latest.log`
+- `.logs/apply-live.latest.log`
 
 ## 4. Update The Shared Upstream Chain
 
@@ -130,16 +128,7 @@ This proves the value of clone-linked variants: update upstream once, then move 
 If you already have a target and want to push the updated deployment live:
 
 ```bash
-source ./lib.sh
-load_state
-
-cub unit approve --space "$(deploy_space)" "$(unit_name backend deployment)"
-cub unit approve --space "$(deploy_space)" "$(unit_name frontend deployment)"
-cub unit approve --space "$(deploy_space)" "$(unit_name postgres deployment)"
-
-cub unit apply --space "$(deploy_space)" "$(unit_name backend deployment)"
-cub unit apply --space "$(deploy_space)" "$(unit_name frontend deployment)"
-cub unit apply --space "$(deploy_space)" "$(unit_name postgres deployment)"
+./apply-live.sh
 ```
 
 ## 5. Create A Custom Downstream Deployment Variant
