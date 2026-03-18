@@ -2,26 +2,63 @@
 
 Use this page as the single AI-oriented handoff page for the current incubator work.
 
-## Goal
+Default rule:
 
-Start with examples that are real, current, and easy to verify.
+- start in read-only mode
+- prefer JSON output
+- only mutate ConfigHub when the human asks for that next step
 
 ## 0) Prerequisites
 
 ```bash
 cd <your-examples-checkout>
-cub auth login
+export CONFIGHUB_AGENT=1
 ```
+
+## 1) Read-Only First
+
+Start by inspecting the repo without mutating ConfigHub:
+
+```bash
+./scripts/verify.sh
+rg --files incubator
+```
+
+If the human wants connected read-only inspection:
+
+```bash
+cub auth login
+cub space list --json
+cub target list --space "*" --json
+```
+
+What these commands do not mutate:
+
+- they do not create spaces or units
+- they do not write config data
+- they do not apply to a cluster
+
+## 2) Stable machine-readable commands
+
+Preferred contracts for AI use:
+
+| Command | Output contract | Mutates anything? |
+|---|---|---|
+| `cub space list --json` | JSON array of spaces | no |
+| `cub target list --space "*" --json` | JSON array of targets | no |
+| `cub unit get --space <space> --json <unit>` | JSON object for one unit | no |
+| `cub function do --dry-run --json ...` | JSON invocation response | no config write |
+| `cub unit apply --dry-run --json ...` | JSON apply preview | no live apply |
 
 If you want to run against a live target, have one ready in your active space.
 
-Quick check:
+Quick connected check:
 
 ```bash
-cub target list --no-header
+cub target list --json
 ```
 
-## 1) Recommended first path
+## 3) Recommended first mutating path
 
 Start with the realistic layered app example:
 
@@ -38,7 +75,7 @@ If you want to wire a real target immediately:
 ./verify.sh
 ```
 
-## 2) Quick demo data (no cluster required)
+## 4) Quick demo data (no cluster required)
 
 For exploring ConfigHub's promotion UI without a live target:
 
@@ -58,7 +95,7 @@ This creates 49 spaces and ~154 units using the **App-Deployment-Target** model:
 
 Uses the noop bridge, so no Kubernetes cluster is needed. This is the canonical multi-env model for ConfigHub.
 
-## 3) Smaller and larger options
+## 5) Smaller and larger options
 
 Smallest:
 
@@ -76,16 +113,16 @@ cd incubator/global-app-layer/gpu-eks-h100-training
 ./verify.sh
 ```
 
-## 4) What success looks like
+## 6) What success looks like
 
 You should be able to see:
 
 - explicit spaces and units created
-- clone-chain structure preserved
+- variant-chain structure preserved
 - recipe manifest materialized
 - verification passing against the created ConfigHub objects
 
-## 5) Tiny direct vs delegated fixtures
+## 7) Tiny direct vs delegated fixtures
 
 If you need the smallest possible direct and delegated apply inputs for design work around `cub run`, use:
 
@@ -93,7 +130,8 @@ If you need the smallest possible direct and delegated apply inputs for design w
 
 These are preserved reference fixtures, not the main walkthrough.
 
-## 6) Related Pages
+## 8) Related Pages
 
+- Repo-level AI path: [../AI_START_HERE.md](../AI_START_HERE.md)
 - Start guide: [global-app-layer/README.md](./global-app-layer/README.md)
 - How it works: [global-app-layer/how-it-works.md](./global-app-layer/how-it-works.md)

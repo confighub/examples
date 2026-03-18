@@ -2,6 +2,11 @@
 
 This repo contains examples that demonstrate how [ConfigHub](https://confighub.com) works in multiple scenarios.
 
+## Start Here
+
+- For humans: [START_HERE.md](./START_HERE.md)
+- For AI assistants: [AI_START_HERE.md](./AI_START_HERE.md)
+
 ## Examples Catalog
 
 - [`global-app`](./global-app/README.md): classic multi-service app example.

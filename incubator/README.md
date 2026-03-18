@@ -2,6 +2,11 @@
 
 This directory is for experimental examples before promotion to stable examples.
 
+## Entry Paths
+
+- For humans: [`../START_HERE.md`](../START_HERE.md)
+- For AI assistants: [`AI_START_HERE.md`](./AI_START_HERE.md)
+
 ## Current Experiments
 
 - [`global-app-layer`](./global-app-layer/README.md): recipes and layers package with specs plus four worked examples, including a GPU-flavored chain.
