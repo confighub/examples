@@ -19,9 +19,6 @@ Supporting documents:
 - [how-it-works.md](./how-it-works.md)
 - [confighub docs](https://docs.confighub.com/)
 - use `cub upgrade` to download the latest `cub`, then `cub --help` for CLI guidance
-- [initial project analysis 01-nvidia-aicr-fit.md](./01-nvidia-aicr-fit.md)
-- [recipes mapped to configs 02-recipes-and-layers-spec.md](./02-recipes-and-layers-spec.md)
-- [04-review-and-next-steps.md](./04-review-and-next-steps.md) — current status and open gaps
 
 ## Prerequisites
 
@@ -232,15 +229,13 @@ DEPLOY_NAMESPACE=recipe-ra   ./realistic-app/setup.sh
 DEPLOY_NAMESPACE=recipe-gpu  ./gpu-eks-h100-training/setup.sh
 ```
 
-## Background Reading
+## Contributor Notes
 
-These documents explain the design thinking behind the examples:
+These documents explain the design thinking behind the examples and the current open gaps:
 
-1. [00-config-hub-hello-world.md](./00-config-hub-hello-world.md) — A minimal one-unit example before the layered recipes
-2. [confighub-aicr-value-add.md](./confighub-aicr-value-add.md) — Three practical stories showing what ConfigHub adds after you have an AICR-style recipe
-3. [01-nvidia-aicr-fit.md](./01-nvidia-aicr-fit.md) — Why the NVIDIA AICR pattern matters for ConfigHub
-4. [02-recipes-and-layers-spec.md](./02-recipes-and-layers-spec.md) — The recipes-and-layers spec for ConfigHub
-5. [04-review-and-next-steps.md](./04-review-and-next-steps.md) — Current status and the main open gaps
+1. [01-nvidia-aicr-fit.md](./01-nvidia-aicr-fit.md) — Why the NVIDIA AICR pattern matters for ConfigHub
+2. [02-recipes-and-layers-spec.md](./02-recipes-and-layers-spec.md) — The recipes-and-layers spec for ConfigHub
+3. [04-review-and-next-steps.md](./04-review-and-next-steps.md) — Current status and the main open gaps
 
 ## End-to-End Testing
 
