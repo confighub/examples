@@ -6,6 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib.sh"
 
 require_cub
+begin_log_capture cleanup
 
 if ! state_exists; then
   echo "No state file found. Nothing to clean up." >&2

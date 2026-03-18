@@ -46,6 +46,14 @@ cd incubator/global-app-layer/realistic-app
 
 These do not mutate ConfigHub or a cluster.
 
+After `./setup.sh`, use:
+- the printed clickable GUI URLs
+- `.logs/setup.latest.log`
+- `.logs/set-target.latest.log`
+- `.logs/verify.latest.log`
+
+instead of relying on terminal scrollback alone.
+
 ## Capability Branching
 
 ### A. Docs / preview only
@@ -103,6 +111,8 @@ As you go, inspect these in the ConfigHub GUI:
 5. if you apply live
    - inspect the deployment space after apply and compare intended state vs live result
 
+The easiest path is to open the clickable URLs printed by `./setup.sh`.
+
 ## CLI Footguns To Avoid
 
 - use `cub version`, not `cub --version`
@@ -114,9 +124,9 @@ As you go, inspect these in the ConfigHub GUI:
 | Command | Writes |
 |---|---|
 | `./setup.sh --explain-json` | nothing |
-| `./setup.sh` | ConfigHub spaces, units, links, recipe manifest, local `.state/` |
-| `./verify.sh` | nothing |
-| `./set-target.sh <space/target>` | ConfigHub target bindings |
+| `./setup.sh` | ConfigHub spaces, units, links, recipe manifest, local `.state/`, local `.logs/setup.latest.log` |
+| `./verify.sh` | local `.logs/verify.latest.log` |
+| `./set-target.sh <space/target>` | ConfigHub target bindings, local `.logs/set-target.latest.log` |
 | `cub unit apply ...` | live target state |
 
 ## What Success Looks Like

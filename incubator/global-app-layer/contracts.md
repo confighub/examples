@@ -39,6 +39,31 @@ This file documents the safest stable inspection paths for `global-app-layer`.
 - output shape: JSON array of targets visible to the current context
 - proves: whether the optional live-delivery path is even possible
 
+### `./.logs/setup.latest.log`
+
+- mutates: no
+- output shape: plain text log file written by `./setup.sh`
+- proves:
+  - the exact CLI sequence that just ran
+  - the printed GUI URLs for the created spaces and units
+  - the summary and next steps are durable, not only in scrollback
+
+### `./.logs/verify.latest.log`
+
+- mutates: no
+- output shape: plain text log file written by `./verify.sh`
+- proves:
+  - which verification stages ran
+  - whether verification reached the final success line
+
+### `./.logs/set-target.latest.log`
+
+- mutates: no
+- output shape: plain text log file written by `./set-target.sh`
+- proves:
+  - which target ref was bound
+  - the refreshed bundle hint and GUI URLs were printed again
+
 ## ConfigHub State Contracts
 
 ### `cub unit tree --edge clone --where "Labels.ExampleName = 'global-app-layer-realistic-app'"`

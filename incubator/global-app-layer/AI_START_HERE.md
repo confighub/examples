@@ -39,6 +39,10 @@ What these do not mutate:
 - they do not bind targets
 - they do not apply to a cluster
 
+Once you run `./setup.sh`, use the printed artifacts instead of relying on terminal scrollback:
+- clickable GUI URLs for the recipe space, deploy space, recipe manifest, and one deployment unit
+- durable logs in `.logs/setup.latest.log`, `.logs/set-target.latest.log`, `.logs/verify.latest.log`, and `.logs/cleanup.latest.log`
+
 ## Capability Check
 
 Before you choose a path, check what is actually available:
@@ -139,9 +143,9 @@ cd incubator/global-app-layer/gpu-eks-h100-training
 |---|---|---|
 | `./find-runs.sh --json` | ConfigHub labels on spaces/units | nothing |
 | `./setup.sh --explain-json` | local scripts and source manifests | nothing |
-| `./setup.sh` | local source manifests + current ConfigHub org | ConfigHub spaces, units, links, recipe manifest, local `.state/` |
-| `./verify.sh` | ConfigHub objects created by the example | nothing |
-| `./set-target.sh <space/target>` | ConfigHub deployment units, target ref | ConfigHub target bindings |
+| `./setup.sh` | local source manifests + current ConfigHub org | ConfigHub spaces, units, links, recipe manifest, local `.state/`, local `.logs/setup.latest.log` |
+| `./verify.sh` | ConfigHub objects created by the example | local `.logs/verify.latest.log` |
+| `./set-target.sh <space/target>` | ConfigHub deployment units, target ref | ConfigHub target bindings, local `.logs/set-target.latest.log` |
 | `cub unit apply ...` | ConfigHub deployment units + target + worker | live target state |
 
 ## What Success Looks Like
@@ -167,6 +171,8 @@ Use the GUI while you go:
 4. if a target is set, inspect the deployment unit again and confirm the target binding is visible
 5. if using the live path, inspect the deployment space again after apply and compare intended state vs live result
 
+The easiest way to get there is to use the clickable URLs printed by `./setup.sh`.
+
 ## CLI Footguns To Avoid
 
 - use `cub version`, not `cub --version`
@@ -183,3 +189,4 @@ Use the example-specific cleanup script:
 
 This removes the ConfigHub objects created by the example.
 It does not magically clean unrelated cluster resources if you applied and then changed things outside the example flow.
+The cleanup output is also captured in `.logs/cleanup.latest.log`.

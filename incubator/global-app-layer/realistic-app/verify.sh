@@ -7,6 +7,7 @@ source "${SCRIPT_DIR}/lib.sh"
 
 require_cub
 require_jq
+begin_log_capture verify
 load_state
 ensure_state_dir
 

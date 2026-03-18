@@ -3,6 +3,7 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STATE_DIR="${SCRIPT_DIR}/.state"
 STATE_FILE="${STATE_DIR}/state.env"
+LOG_DIR="${SCRIPT_DIR}/.logs"
 RECIPE_BASE_TEMPLATE="${SCRIPT_DIR}/recipe.base.yaml"
 
 EXAMPLE_NAME="global-app-layer-frontend-postgres"
@@ -50,6 +51,26 @@ require_jq() {
 
 ensure_state_dir() {
   mkdir -p "${STATE_DIR}"
+}
+
+ensure_log_dir() {
+  mkdir -p "${LOG_DIR}"
+}
+
+current_log_path() {
+  local script_name="${1:-$(basename "$0" .sh)}"
+  echo "${LOG_DIR}/${script_name}.latest.log"
+}
+
+begin_log_capture() {
+  local script_name="${1:-$(basename "$0" .sh)}"
+  if [[ "${CONFIGHUB_EXAMPLE_LOG_CAPTURED:-}" == "1" ]]; then
+    return
+  fi
+  ensure_log_dir
+  export CONFIGHUB_EXAMPLE_LOG_CAPTURED=1
+  exec > >(tee "$(current_log_path "${script_name}")") 2>&1
+  echo "Log file: $(current_log_path "${script_name}")"
 }
 
 state_exists() {
@@ -246,6 +267,18 @@ get_unit_json() {
   cub unit get --space "${space}" --json "${unit}"
 }
 
+get_space_json() {
+  local space="$1"
+  cub space get --json "${space}"
+}
+
+get_space_field() {
+  local space="$1"
+  local field_path="$2"
+
+  get_space_json "${space}" | jq -e -r ".Space.${field_path}"
+}
+
 get_unit_field() {
   local space="$1"
   local unit="$2"
@@ -267,6 +300,41 @@ bundle_hint_from_target_ref() {
     return
   fi
   echo "target/<target-space>/${target_ref}:latest"
+}
+
+current_server_url() {
+  local url
+  url="$(cub context list 2>/dev/null | awk '$1 == "*" {print $3; exit}')"
+  if [[ -n "${url}" ]]; then
+    echo "${url}"
+    return
+  fi
+  url="$(cub version 2>/dev/null | awk '/URL:/ {print $2; exit}')"
+  if [[ -n "${url}" ]]; then
+    echo "${url}"
+  fi
+}
+
+gui_space_url() {
+  local space="$1"
+  local server_url space_id
+  server_url="$(current_server_url)"
+  space_id="$(get_space_field "${space}" SpaceID 2>/dev/null || true)"
+  if [[ -n "${server_url}" && -n "${space_id}" ]]; then
+    echo "${server_url}/spaces/${space_id}"
+  fi
+}
+
+gui_unit_url() {
+  local space="$1"
+  local unit="$2"
+  local server_url space_id unit_id
+  server_url="$(current_server_url)"
+  space_id="$(get_space_field "${space}" SpaceID 2>/dev/null || true)"
+  unit_id="$(get_unit_field "${space}" "${unit}" UnitID 2>/dev/null || true)"
+  if [[ -n "${server_url}" && -n "${space_id}" && -n "${unit_id}" ]]; then
+    echo "${server_url}/units/${space_id}/${unit_id}"
+  fi
 }
 
 show_setup_plan() {
@@ -625,6 +693,11 @@ set_target_for_deploy_units() {
 
 show_summary() {
   local target_ref="$1"
+  local recipe_space_url deploy_space_url recipe_unit_url frontend_unit_url
+  recipe_space_url="$(gui_space_url "$(recipe_space)")"
+  deploy_space_url="$(gui_space_url "$(deploy_space)")"
+  recipe_unit_url="$(gui_unit_url "$(recipe_space)" "${RECIPE_MANIFEST_UNIT}")"
+  frontend_unit_url="$(gui_unit_url "$(deploy_space)" "$(unit_name frontend deployment)")"
   if [[ -n "${target_ref}" ]]; then
     cat <<EOF_SUMMARY
 Created global-app layered app chain with prefix: $(state_prefix)
@@ -648,6 +721,18 @@ Units:
 - $(recipe_space)/$(unit_name postgres recipe)
 - $(deploy_space)/$(unit_name postgres deployment)
 - $(recipe_space)/${RECIPE_MANIFEST_UNIT}
+
+GUI:
+- Recipe space: ${recipe_space_url}
+- Deploy space: ${deploy_space_url}
+- Recipe manifest: ${recipe_unit_url}
+- Frontend deployment unit: ${frontend_unit_url}
+
+Logs:
+- Setup log: $(current_log_path setup)
+- Set-target log: $(current_log_path set-target)
+- Verify log: $(current_log_path verify)
+- Cleanup log: $(current_log_path cleanup)
 
 Next steps:
 1. ./verify.sh
@@ -679,6 +764,18 @@ Units:
 - $(recipe_space)/$(unit_name postgres recipe)
 - $(deploy_space)/$(unit_name postgres deployment)
 - $(recipe_space)/${RECIPE_MANIFEST_UNIT}
+
+GUI:
+- Recipe space: ${recipe_space_url}
+- Deploy space: ${deploy_space_url}
+- Recipe manifest: ${recipe_unit_url}
+- Frontend deployment unit: ${frontend_unit_url}
+
+Logs:
+- Setup log: $(current_log_path setup)
+- Set-target log: $(current_log_path set-target)
+- Verify log: $(current_log_path verify)
+- Cleanup log: $(current_log_path cleanup)
 
 Next steps:
 1. ./verify.sh
