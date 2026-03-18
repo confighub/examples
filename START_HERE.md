@@ -47,6 +47,13 @@ That gives you:
 - then one layered recipe model
 - then the value-add on top of NVIDIA AICR
 
+When you enter one of the worked examples, use the non-mutating plan first:
+
+```bash
+cd incubator/global-app-layer/realistic-app
+./setup.sh --explain
+```
+
 ## Third Path: Pick the Right Worked Example
 
 Inside [`incubator/global-app-layer`](./incubator/global-app-layer/README.md):

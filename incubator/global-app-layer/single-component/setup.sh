@@ -5,6 +5,33 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=./lib.sh
 source "${SCRIPT_DIR}/lib.sh"
 
+mode="run"
+case "${1:-}" in
+  --explain)
+    mode="explain"
+    shift
+    ;;
+  --explain-json)
+    mode="explain-json"
+    shift
+    ;;
+esac
+
+prefix="${1:-}"
+target_ref="${2:-}"
+
+if [[ "${mode}" != "run" ]]; then
+  PREFIX="${prefix:-<generated-prefix>}"
+  TARGET_REF="${target_ref}"
+  if [[ "${mode}" == "explain-json" ]]; then
+    require_jq
+    show_setup_plan_json "${TARGET_REF}"
+  else
+    show_setup_plan "${TARGET_REF}"
+  fi
+  exit 0
+fi
+
 require_cub
 require_jq
 
@@ -13,8 +40,6 @@ if state_exists; then
   exit 1
 fi
 
-prefix="${1:-}"
-target_ref="${2:-}"
 if [[ -z "${prefix}" ]]; then
   prefix="$(cub space new-prefix)"
 fi

@@ -224,6 +224,148 @@ bundle_hint_from_target_ref() {
   echo "target/<target-space>/${target_ref}:latest"
 }
 
+show_setup_plan() {
+  local target_ref="${1:-}"
+  local target_display="${target_ref:-<none>}"
+  cat <<EOF_PLAN
+This is a read-only setup plan for ${EXAMPLE_NAME}.
+Nothing will be created or mutated.
+
+Inputs:
+- prefix: $(state_prefix)
+- deploy namespace: ${DEPLOY_NAMESPACE}
+- target: ${target_display}
+
+Spaces that ./setup.sh will create:
+- $(base_space)
+- $(region_space)
+- $(role_space)
+- $(recipe_space)
+- $(deploy_space)
+
+Variant chain:
+- $(base_space)/${BASE_UNIT}
+- $(region_space)/${REGION_UNIT}
+- $(role_space)/${ROLE_UNIT}
+- $(recipe_space)/${RECIPE_UNIT}
+- $(deploy_space)/${DEPLOY_UNIT}
+
+Dependency stub:
+- $(deploy_space)/${DEPLOY_STUB_UNIT}
+
+Layer mutations:
+- region: set backend REGION=${REGION_VALUE} and regional ingress host
+- role: set ROLE=${ROLE_VALUE}, replicas=2, and LOG_LEVEL=info
+- recipe: set CHAT_TITLE for the resolved recipe
+- deployment: set namespace=${DEPLOY_NAMESPACE}, CLUSTER=${DEPLOY_NAMESPACE}, and deployment ingress host
+- dependency stub: create postgres stub and set its namespace
+
+Recipe manifest:
+- $(recipe_space)/${RECIPE_MANIFEST_UNIT}
+- source template: ${RECIPE_BASE_TEMPLATE}
+- rendered output: ${STATE_DIR}/recipe-us-staging.rendered.yaml
+
+Core cub commands:
+- cub space create
+- cub unit create <unit> <file>
+- cub unit create --upstream-space ... --upstream-unit ...
+- cub function do set-env
+- cub function do set-replicas
+- cub function do set-string-path
+- cub function do set-namespace
+EOF_PLAN
+  if [[ -n "${target_ref}" ]]; then
+    cat <<EOF_PLAN
+- cub unit set-target ${target_ref}
+EOF_PLAN
+  fi
+}
+
+show_setup_plan_json() {
+  local target_ref="${1:-}"
+  jq -n \
+    --arg example "${EXAMPLE_NAME}" \
+    --arg prefix "$(state_prefix)" \
+    --arg namespace "${DEPLOY_NAMESPACE}" \
+    --arg target "${target_ref}" \
+    --arg source "${SOURCE_BACKEND_YAML}" \
+    --arg stubSource "${POSTGRES_STUB_YAML}" \
+    --arg baseSpace "$(base_space)" \
+    --arg regionSpace "$(region_space)" \
+    --arg roleSpace "$(role_space)" \
+    --arg recipeSpace "$(recipe_space)" \
+    --arg deploySpace "$(deploy_space)" \
+    --arg baseUnit "${BASE_UNIT}" \
+    --arg regionUnit "${REGION_UNIT}" \
+    --arg roleUnit "${ROLE_UNIT}" \
+    --arg recipeUnit "${RECIPE_UNIT}" \
+    --arg deployUnit "${DEPLOY_UNIT}" \
+    --arg stubUnit "${DEPLOY_STUB_UNIT}" \
+    --arg manifestUnit "${RECIPE_MANIFEST_UNIT}" \
+    --arg manifestTemplate "${RECIPE_BASE_TEMPLATE}" \
+    --arg manifestRendered "${STATE_DIR}/recipe-us-staging.rendered.yaml" \
+    '{
+      example: $example,
+      mode: "setup-plan",
+      mutates: false,
+      prefix: $prefix,
+      namespace: $namespace,
+      targetRef: (if $target == "" then null else $target end),
+      spaces: [
+        {stage: "base", space: $baseSpace},
+        {stage: "region", space: $regionSpace},
+        {stage: "role", space: $roleSpace},
+        {stage: "recipe", space: $recipeSpace},
+        {stage: "deployment", space: $deploySpace}
+      ],
+      components: [
+        {
+          component: "backend",
+          source: $source,
+          chain: [
+            {stage: "base", space: $baseSpace, unit: $baseUnit},
+            {stage: "region", space: $regionSpace, unit: $regionUnit},
+            {stage: "role", space: $roleSpace, unit: $roleUnit},
+            {stage: "recipe", space: $recipeSpace, unit: $recipeUnit},
+            {stage: "deployment", space: $deploySpace, unit: $deployUnit}
+          ],
+          mutations: [
+            {stage: "region", summary: "set backend REGION and regional ingress host"},
+            {stage: "role", summary: "set ROLE, replicas, and LOG_LEVEL"},
+            {stage: "recipe", summary: "set CHAT_TITLE"},
+            {stage: "deployment", summary: "set namespace, CLUSTER, and deployment ingress host"}
+          ]
+        },
+        {
+          component: "postgres-stub",
+          source: $stubSource,
+          stub: true,
+          chain: [
+            {stage: "deployment", space: $deploySpace, unit: $stubUnit}
+          ],
+          mutations: [
+            {stage: "deployment", summary: "set namespace"}
+          ]
+        }
+      ],
+      recipeManifest: {
+        space: $recipeSpace,
+        unit: $manifestUnit,
+        template: $manifestTemplate,
+        renderedOutput: $manifestRendered
+      },
+      commands: ([
+        "cub space create",
+        "cub unit create <unit> <file>",
+        "cub unit create --upstream-space ... --upstream-unit ...",
+        "cub function do set-env",
+        "cub function do set-replicas",
+        "cub function do set-string-path",
+        "cub function do set-namespace"
+      ] + (if $target == "" then [] else ["cub unit set-target"] end))
+    }'
+}
+
 deploy_backend_hostname() {
   echo "backend.${DEPLOY_NAMESPACE}.demo.confighub.local"
 }

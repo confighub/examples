@@ -132,6 +132,7 @@ If the user is asking about NVIDIA AICR, recipes, or layered variants:
 2. [`incubator/global-app-layer/confighub-aicr-value-add.md`](./incubator/global-app-layer/confighub-aicr-value-add.md)
 3. [`incubator/global-app-layer/how-it-works.md`](./incubator/global-app-layer/how-it-works.md)
 4. one worked example under `incubator/global-app-layer/`
+5. run `./setup.sh --explain-json | jq` inside that example before reading shell code or mutating anything
 
 If the user is asking about incubator-only work:
 
@@ -213,3 +214,13 @@ Then choose one path:
 - human-friendly overview: [START_HERE.md](./START_HERE.md)
 - incubator AI path: [incubator/AI_START_HERE.md](./incubator/AI_START_HERE.md)
 - layered recipes and AICR mapping: [incubator/global-app-layer/README.md](./incubator/global-app-layer/README.md)
+
+If you land in a layered example and want to know what it does, use:
+
+```bash
+cd incubator/global-app-layer/realistic-app
+./setup.sh --explain
+./setup.sh --explain-json | jq
+```
+
+Those commands do not mutate ConfigHub.

@@ -64,6 +64,8 @@ Start with the realistic layered app example:
 
 ```bash
 cd incubator/global-app-layer/realistic-app
+./setup.sh --explain
+./setup.sh --explain-json | jq
 ./setup.sh
 ./verify.sh
 ```
@@ -117,6 +119,7 @@ cd incubator/global-app-layer/gpu-eks-h100-training
 
 You should be able to see:
 
+- the setup plan before any mutation
 - explicit spaces and units created
 - variant-chain structure preserved
 - recipe manifest materialized

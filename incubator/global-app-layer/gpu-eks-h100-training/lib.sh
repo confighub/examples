@@ -258,6 +258,157 @@ bundle_hint_from_target_ref() {
   echo "target/<target-space>/${target_ref}:latest"
 }
 
+show_setup_plan() {
+  local target_ref="${1:-}"
+  local target_display="${target_ref:-<none>}"
+  cat <<EOF_PLAN
+This is a read-only setup plan for ${EXAMPLE_NAME}.
+Nothing will be created or mutated.
+
+Inputs:
+- prefix: $(state_prefix)
+- deploy namespace: ${DEPLOY_NAMESPACE}
+- target: ${target_display}
+
+Spaces that ./setup.sh will create:
+- $(base_space)
+- $(platform_space)
+- $(accelerator_space)
+- $(os_space)
+- $(recipe_space)
+- $(deploy_space)
+
+Components and variant chains:
+- gpu-operator: $(base_space)/$(unit_name gpu-operator base) -> $(platform_space)/$(unit_name gpu-operator platform) -> $(accelerator_space)/$(unit_name gpu-operator accelerator) -> $(os_space)/$(unit_name gpu-operator os) -> $(recipe_space)/$(unit_name gpu-operator recipe) -> $(deploy_space)/$(unit_name gpu-operator deployment)
+- nvidia-device-plugin: $(base_space)/$(unit_name nvidia-device-plugin base) -> $(platform_space)/$(unit_name nvidia-device-plugin platform) -> $(accelerator_space)/$(unit_name nvidia-device-plugin accelerator) -> $(os_space)/$(unit_name nvidia-device-plugin os) -> $(recipe_space)/$(unit_name nvidia-device-plugin recipe) -> $(deploy_space)/$(unit_name nvidia-device-plugin deployment)
+
+Layer mutations:
+- platform: set EKS-specific cloud and storage/plugin settings
+- accelerator: set H100-specific accelerator and node selector settings
+- os: set Ubuntu-specific OS and driver/plugin settings
+- recipe: set training intent and validation/plugin profile
+- deployment: set namespace=${DEPLOY_NAMESPACE} and CLUSTER=${DEPLOY_NAMESPACE}
+
+Recipe manifest:
+- $(recipe_space)/${RECIPE_MANIFEST_UNIT}
+- source template: ${RECIPE_BASE_TEMPLATE}
+- rendered output: ${STATE_DIR}/recipe-eks-h100-ubuntu-training-stack.rendered.yaml
+
+Core cub commands:
+- cub space create
+- cub unit create <unit> <file>
+- cub unit create --upstream-space ... --upstream-unit ...
+- cub function do set-env
+- cub function do set-namespace
+EOF_PLAN
+  if [[ -n "${target_ref}" ]]; then
+    cat <<EOF_PLAN
+- cub unit set-target ${target_ref}
+EOF_PLAN
+  fi
+}
+
+show_setup_plan_json() {
+  local target_ref="${1:-}"
+  jq -n \
+    --arg example "${EXAMPLE_NAME}" \
+    --arg prefix "$(state_prefix)" \
+    --arg namespace "${DEPLOY_NAMESPACE}" \
+    --arg target "${target_ref}" \
+    --arg gpuSource "$(source_yaml_for gpu-operator)" \
+    --arg pluginSource "$(source_yaml_for nvidia-device-plugin)" \
+    --arg baseSpace "$(base_space)" \
+    --arg platformSpace "$(platform_space)" \
+    --arg acceleratorSpace "$(accelerator_space)" \
+    --arg osSpace "$(os_space)" \
+    --arg recipeSpace "$(recipe_space)" \
+    --arg deploySpace "$(deploy_space)" \
+    --arg gpuBase "$(unit_name gpu-operator base)" \
+    --arg gpuPlatform "$(unit_name gpu-operator platform)" \
+    --arg gpuAccelerator "$(unit_name gpu-operator accelerator)" \
+    --arg gpuOS "$(unit_name gpu-operator os)" \
+    --arg gpuRecipe "$(unit_name gpu-operator recipe)" \
+    --arg gpuDeploy "$(unit_name gpu-operator deployment)" \
+    --arg pluginBase "$(unit_name nvidia-device-plugin base)" \
+    --arg pluginPlatform "$(unit_name nvidia-device-plugin platform)" \
+    --arg pluginAccelerator "$(unit_name nvidia-device-plugin accelerator)" \
+    --arg pluginOS "$(unit_name nvidia-device-plugin os)" \
+    --arg pluginRecipe "$(unit_name nvidia-device-plugin recipe)" \
+    --arg pluginDeploy "$(unit_name nvidia-device-plugin deployment)" \
+    --arg manifestUnit "${RECIPE_MANIFEST_UNIT}" \
+    --arg manifestTemplate "${RECIPE_BASE_TEMPLATE}" \
+    --arg manifestRendered "${STATE_DIR}/recipe-eks-h100-ubuntu-training-stack.rendered.yaml" \
+    '{
+      example: $example,
+      mode: "setup-plan",
+      mutates: false,
+      prefix: $prefix,
+      namespace: $namespace,
+      targetRef: (if $target == "" then null else $target end),
+      spaces: [
+        {stage: "base", space: $baseSpace},
+        {stage: "platform", space: $platformSpace},
+        {stage: "accelerator", space: $acceleratorSpace},
+        {stage: "os", space: $osSpace},
+        {stage: "recipe", space: $recipeSpace},
+        {stage: "deployment", space: $deploySpace}
+      ],
+      components: [
+        {
+          component: "gpu-operator",
+          source: $gpuSource,
+          chain: [
+            {stage: "base", space: $baseSpace, unit: $gpuBase},
+            {stage: "platform", space: $platformSpace, unit: $gpuPlatform},
+            {stage: "accelerator", space: $acceleratorSpace, unit: $gpuAccelerator},
+            {stage: "os", space: $osSpace, unit: $gpuOS},
+            {stage: "recipe", space: $recipeSpace, unit: $gpuRecipe},
+            {stage: "deployment", space: $deploySpace, unit: $gpuDeploy}
+          ],
+          mutations: [
+            {stage: "platform", summary: "set cloud provider and storage class"},
+            {stage: "accelerator", summary: "set accelerator and node selector"},
+            {stage: "os", summary: "set OS family and driver branch"},
+            {stage: "recipe", summary: "set workload intent and validation profile"},
+            {stage: "deployment", summary: "set namespace and CLUSTER"}
+          ]
+        },
+        {
+          component: "nvidia-device-plugin",
+          source: $pluginSource,
+          chain: [
+            {stage: "base", space: $baseSpace, unit: $pluginBase},
+            {stage: "platform", space: $platformSpace, unit: $pluginPlatform},
+            {stage: "accelerator", space: $acceleratorSpace, unit: $pluginAccelerator},
+            {stage: "os", space: $osSpace, unit: $pluginOS},
+            {stage: "recipe", space: $recipeSpace, unit: $pluginRecipe},
+            {stage: "deployment", space: $deploySpace, unit: $pluginDeploy}
+          ],
+          mutations: [
+            {stage: "platform", summary: "set cloud provider and EKS plugin config"},
+            {stage: "accelerator", summary: "set accelerator and node selector"},
+            {stage: "os", summary: "set OS family and Ubuntu plugin config"},
+            {stage: "recipe", summary: "set workload intent and training plugin config"},
+            {stage: "deployment", summary: "set namespace and CLUSTER"}
+          ]
+        }
+      ],
+      recipeManifest: {
+        space: $recipeSpace,
+        unit: $manifestUnit,
+        template: $manifestTemplate,
+        renderedOutput: $manifestRendered
+      },
+      commands: ([
+        "cub space create",
+        "cub unit create <unit> <file>",
+        "cub unit create --upstream-space ... --upstream-unit ...",
+        "cub function do set-env",
+        "cub function do set-namespace"
+      ] + (if $target == "" then [] else ["cub unit set-target"] end))
+    }'
+}
+
 render_recipe_manifest() {
   local output_path="$1"
   local target_ref="$2"

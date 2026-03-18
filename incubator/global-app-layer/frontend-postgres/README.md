@@ -77,6 +77,12 @@ This is the point of the example: the layer names are shared, but the mutations 
 ```bash
 cd incubator/global-app-layer/frontend-postgres
 
+# Inspect the full plan without mutating ConfigHub
+./setup.sh --explain
+
+# Machine-readable plan for AI or tooling
+./setup.sh --explain-json | jq
+
 # Build the chain only
 ./setup.sh
 
