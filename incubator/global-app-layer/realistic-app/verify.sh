@@ -21,6 +21,12 @@ trap 'rm -rf "${tmp_dir}"' EXIT
 
 recipe_manifest_file="${tmp_dir}/recipe-manifest.yaml"
 unit_data_to_file "$(recipe_space)" "${RECIPE_MANIFEST_UNIT}" "${recipe_manifest_file}"
+namespace_file="${tmp_dir}/namespace.yaml"
+unit_data_to_file "$(deploy_space)" "$(namespace_unit_name)" "${namespace_file}"
+
+echo "==> Verifying deployment bootstrap unit"
+assert_contains "${namespace_file}" 'kind: Namespace'
+assert_contains "${namespace_file}" "name: ${DEPLOY_NAMESPACE}"
 
 echo "==> Verifying clone chains"
 for component in "${COMPONENTS[@]}"; do
@@ -61,7 +67,7 @@ for component in "${COMPONENTS[@]}"; do
       assert_contains "${region_file}" 'value: "us"'
       assert_contains "${role_file}" 'replicas: 2'
       assert_contains "${role_file}" 'value: "staging"'
-      assert_contains "${recipe_file}" 'chatdb_us_staging'
+      assert_contains "${recipe_file}" 'postgres://admin:password@postgres:5432/chatdb?sslmode=disable'
       assert_contains "${recipe_file}" 'Cubby Chat US Staging'
       assert_contains "${deploy_file}" "namespace: ${DEPLOY_NAMESPACE}"
       assert_contains "${deploy_file}" "$(deploy_hostname backend)"
@@ -89,7 +95,7 @@ for component in "${COMPONENTS[@]}"; do
       assert_contains "${role_file}" 'storage: 10Gi'
       assert_contains "${role_file}" 'name: ROLE'
       assert_contains "${role_file}" 'value: staging'
-      assert_contains "${recipe_file}" 'chatdb_us_staging'
+      assert_contains "${recipe_file}" 'value: "chatdb"'
       assert_contains "${deploy_file}" "namespace: ${DEPLOY_NAMESPACE}"
       assert_contains "${deploy_file}" 'name: CLUSTER'
       assert_contains "${deploy_file}" "value: ${DEPLOY_NAMESPACE}"
@@ -110,6 +116,7 @@ assert_contains "${recipe_manifest_file}" 'bundleHint:'
 
 if [[ -n "${TARGET_REF:-}" ]]; then
   echo "==> Verifying deployment units have a target"
+  get_unit_field "$(deploy_space)" "$(namespace_unit_name)" TargetID >/dev/null
   get_unit_field "$(deploy_space)" "$(unit_name backend deployment)" TargetID >/dev/null
   get_unit_field "$(deploy_space)" "$(unit_name frontend deployment)" TargetID >/dev/null
   get_unit_field "$(deploy_space)" "$(unit_name postgres deployment)" TargetID >/dev/null

@@ -20,7 +20,7 @@ The normal path is:
 2. materialize with `./setup.sh`
 3. verify with `./verify.sh`
 4. optionally bind a target
-5. optionally apply live
+5. optionally apply live with `./apply-live.sh`
 
 So `setup.sh` is ConfigHub-first, not cluster-first.
 
@@ -99,7 +99,11 @@ If you start ConfigHub-only and later want the live path:
 
 ```bash
 ./set-target.sh <space/target>
+./apply-live.sh
 ```
+
+Prefer `./apply-live.sh` over ad hoc manual approval/apply steps.
+It preflights the target, refreshes the deploy clones from upstream, refreshes the recipe receipt, applies the namespace bootstrap unit first, and only then applies the app units.
 
 ## Capability Branching
 
@@ -128,6 +132,7 @@ Use:
 ```
 
 Then approve and apply the deployment units explicitly.
+Prefer `./apply-live.sh`, which preflights the target, refreshes the deployment units from upstream, applies the namespace bootstrap unit first, and then applies the app units.
 
 ## Verification Modes
 
@@ -140,7 +145,7 @@ Then approve and apply the deployment units explicitly.
 - Live target:
   - `./setup.sh <prefix> <space/target>`
   - `./verify.sh`
-  - explicit `cub unit apply ...`
+  - `./apply-live.sh`
 
 ## GUI Checkpoints
 
@@ -174,7 +179,7 @@ The easiest path is to open the clickable URLs printed by `./setup.sh`.
 | `./setup.sh` | ConfigHub spaces, units, links, recipe manifest, local `.state/`, local `.logs/setup.latest.log` |
 | `./verify.sh` | local `.logs/verify.latest.log` |
 | `./set-target.sh <space/target>` | ConfigHub target bindings, local `.logs/set-target.latest.log` |
-| `cub unit apply ...` | live target state |
+| `./apply-live.sh` | ConfigHub approvals, live target state, local `.logs/apply-live.latest.log` |
 
 ## What Success Looks Like
 
@@ -186,5 +191,6 @@ In ConfigHub-only mode:
 
 In live mode:
 - deployment units bound to a target
-- successful `cub unit apply`
+- successful `./apply-live.sh`
+- backend, frontend, and postgres all reaching `Ready` with `ApplyCompleted`
 - live resources appearing in the chosen target path
