@@ -1,8 +1,14 @@
 # Global App Layer — Layered Recipes for ConfigHub
 
-ConfigHub gives you an **easy way to deploy NVIDIA AI software patterns correctly** and then **to manage them** with updates, patches, integrations, customisations and fleets.
+ConfigHub gives you an **easy way to model and manage NVIDIA AI software patterns correctly** and then **to operate them** with updates, patches, integrations, customisations and fleets.
 
 Four working examples are provided as "layered recipes".  These are reproducible configuration recipes for combining multiple components correctly, using [NVIDIA AICR](https://developer.nvidia.com/blog/validate-kubernetes-for-gpu-infrastructure-with-layered-reproducible-recipes/) which is open source.
+
+Important note:
+
+- the GPU example in this package is a **structural proof**, not a full functional NVIDIA deployment
+- it uses stub images so the recipe shape can be reviewed and exercised on ordinary clusters, including local `kind`
+- to run real NVIDIA GPU software, swap in the real NVIDIA images and point the deployment at GPU-capable nodes
 
 ## Start Here
 
@@ -65,6 +71,8 @@ Quoting from AICR "Every AI cluster running on Kubernetes requires a full softwa
 NVIDIA ships GPU software as "recipes" — curated, tested combinations of drivers, operators, and plugins for specific hardware/OS/cloud combinations. Their model is: start with a base component, layer on platform choices (EKS vs GKE), hardware choices (H100 vs A100), OS choices (Ubuntu vs RHEL), and workload intent (training vs inference). The result is a reproducible, auditable configuration. The software is known as [NVIDIA AICR](https://developer.nvidia.com/blog/validate-kubernetes-for-gpu-infrastructure-with-layered-reproducible-recipes/).
 
 ConfigHub also enables reproducible, auditable configurations, as well as additonal management, operational and compliance capabilities. Where NVIDIA creates a stack out of a sequence of layers, ConfigHub stores a concrete unit at each stage and connects them into a layered variant chain. The underlying ConfigHub mechanism is a set of clone links, but the user-facing idea is simple: each layer becomes one more specialized variant that can still receive safe upstream updates.
+
+For AICR, this means customers can adopt recipes through one managed path and keep using that same mechanism as new recipes appear and critical updates are released.
 
 ## How NVIDIA Layers Map to ConfigHub
 
@@ -212,6 +220,16 @@ cub unit apply --space <deploy-space> --unit <deploy-unit>
 
 # Tear down all spaces and units
 ./cleanup.sh
+```
+
+About the placeholders:
+
+- `./setup.sh` and `./verify.sh` work without any target at all; they only load and check manifests in the ConfigHub database
+- placeholders like `<target-ref>` or `<space/target>` are only needed for optional live delivery
+- find a real target reference with:
+
+```bash
+cub target list --space "*" --json
 ```
 
 To deploy to a specific namespace (default is `cluster-a`):

@@ -13,6 +13,8 @@ In other words:
 - AICR helps you create and validate a good recipe.
 - ConfigHub helps you manage that recipe over time.
 
+For AICR itself, that means customers can adopt recipes through one managed path and keep using that same mechanism as new recipes appear and critical updates are released.
+
 ## If You Are New To This
 
 AICR is a strong model for packaging a working software stack as a layered recipe.
@@ -223,6 +225,18 @@ cub unit approve --space "${deploy_space}" gpu-operator-cluster-a
 cub unit approve --space "${deploy_space}" nvidia-device-plugin-cluster-a
 cub unit apply --space "${deploy_space}" gpu-operator-cluster-a
 cub unit apply --space "${deploy_space}" nvidia-device-plugin-cluster-a
+```
+
+About the placeholder:
+
+- `<direct-target>` means a real ConfigHub target reference such as `worker-space/worker-kubernetes-yaml-cluster`
+- you do **not** need a target to materialize the recipe or verify it in the ConfigHub database
+- you only need a target for the optional live delivery step above
+
+To find available targets:
+
+```bash
+cub target list --space "*" --json
 ```
 
 Then compare that with the package e2e delivery helpers:

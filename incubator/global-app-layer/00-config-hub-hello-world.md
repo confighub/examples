@@ -43,7 +43,7 @@ cub space create "${SPACE}" --label ExampleName=global-app-layer-hello
 cub unit create \
   --space "${SPACE}" \
   hello-backend \
-  --file global-app/baseconfig/backend.yaml \
+  global-app/baseconfig/backend.yaml \
   --label ExampleName=global-app-layer-hello
 
 # Inspect the stored config
@@ -64,6 +64,18 @@ If you already have a worker and target:
 cub unit set-target --space "${SPACE}" hello-backend <space/target>
 cub unit approve --space "${SPACE}" hello-backend
 cub unit apply --space "${SPACE}" hello-backend
+```
+
+What the placeholder means:
+
+- `<space/target>` means the full target reference, using the target's space and slug
+- you only need this for optional live delivery
+- the earlier steps already proved that the manifest can be loaded and inspected in the ConfigHub database without any target
+
+To find a real target reference:
+
+```bash
+cub target list --space "*" --json
 ```
 
 That is the core delivery loop:
