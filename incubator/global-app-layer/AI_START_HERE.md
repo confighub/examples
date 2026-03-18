@@ -19,6 +19,10 @@ It is **not** only about live deployment. A large part of the value is visible i
 Start with read-only commands only:
 
 ```bash
+git rev-parse --show-toplevel
+which cub
+cub context list --json | jq
+
 cd incubator/global-app-layer
 ./find-runs.sh --json | jq
 
@@ -33,11 +37,25 @@ What these do not mutate:
 - they do not bind targets
 - they do not apply to a cluster
 
+## Capability Check
+
+Before you choose a path, check what is actually available:
+
+```bash
+cub context list --json | jq
+cub target list --space "*" --json | jq
+```
+
+Interpret the result like this:
+- if `cub` is missing or auth is unavailable, stay in preview mode
+- if auth works but target listing is empty or irrelevant, use ConfigHub-only mode
+- if a real target is available, you can offer the live path
+
 ## Capability Branching
 
-### A. Docs and repo only
+### A. Preview only
 
-Use this if the human wants explanation only.
+Use this if the human wants explanation only, or if `cub` auth is unavailable.
 
 Safe path:
 
@@ -141,10 +159,10 @@ After a successful live path you should also see:
 Use the GUI while you go:
 
 1. open the new spaces created by the example prefix
-2. inspect the recipe space
-3. inspect one deployment unit
-4. inspect the recipe manifest unit
-5. if using a live target, inspect the deployment space again after apply
+2. open the recipe space and inspect the recipe manifest unit
+3. open one deployment unit and inspect its upstream chain and current intended state
+4. if a target is set, inspect the deployment unit again and confirm the target binding is visible
+5. if using the live path, inspect the deployment space again after apply and compare intended state vs live result
 
 ## Cleanup
 

@@ -12,6 +12,7 @@ Explain:
 - what success should look like
 
 Then run only the read-only preview commands.
+Also tell me whether `cub` auth works and whether any targets are visible.
 
 ## Safe Walkthrough
 
@@ -21,7 +22,8 @@ Before each command:
 - explain what it does
 - say whether it mutates ConfigHub or live infrastructure
 - say what success looks like
-- say what to inspect next
+- say what to inspect next in both CLI and GUI
+- stop and branch clearly if auth or targets are missing
 
 ## Verify Everything
 
@@ -32,3 +34,4 @@ After running `realistic-app`, verify:
 - recipe manifest
 - target binding if used
 - live apply state if used
+- summarize what definitely happened, what did not happen, and what still depends on missing infrastructure

@@ -18,6 +18,21 @@ It is the clearest app-shaped example in `global-app-layer`.
 - `jq` for the JSON preview path
 - optional: a live target only if you want to bind and apply
 
+## Capability Check
+
+Check capability before mutating anything:
+
+```bash
+which cub
+cub context list --json | jq
+cub target list --space "*" --json | jq
+```
+
+Use this rule:
+- if `cub` is missing or auth is unavailable, stop at preview mode
+- if auth works but there is no relevant target, use ConfigHub-only mode
+- only use the live path when a real target exists
+
 ## Safe First Steps
 
 Start read-only:
@@ -34,7 +49,7 @@ These do not mutate ConfigHub or a cluster.
 
 ### A. Docs / preview only
 
-Use the explain modes only.
+Use the explain modes only. This is also the right stop point if auth is missing.
 
 ### B. ConfigHub-only mode
 
@@ -70,6 +85,22 @@ Then approve and apply the deployment units explicitly.
   - `./setup.sh <prefix> <space/target>`
   - `./verify.sh`
   - explicit `cub unit apply ...`
+
+## GUI Checkpoints
+
+As you go, inspect these in the ConfigHub GUI:
+
+1. `<prefix>-recipe-us-staging`
+   - inspect `recipe-us-staging-realistic-app`
+2. `<prefix>-deploy-cluster-a`
+   - inspect `backend-cluster-a`
+3. compare the recipe manifest and one deployment unit
+   - confirm the recipe receipt exists
+   - confirm the deployment variant exists
+4. if a target is set
+   - inspect `backend-cluster-a` again and confirm the target binding is visible
+5. if you apply live
+   - inspect the deployment space after apply and compare intended state vs live result
 
 ## What Mutates What
 
