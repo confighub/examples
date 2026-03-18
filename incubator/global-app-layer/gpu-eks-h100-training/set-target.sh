@@ -7,6 +7,7 @@ source "${SCRIPT_DIR}/lib.sh"
 
 require_cub
 require_jq
+begin_log_capture set-target
 load_state
 
 if [[ $# -ne 1 ]]; then
@@ -23,3 +24,4 @@ refresh_recipe_manifest_unit "${target_ref}"
 
 echo "Updated deployment target for $(deploy_space): gpu-operator + nvidia-device-plugin => ${target_ref}"
 echo "Bundle hint: $(bundle_hint_from_target_ref "${target_ref}")"
+show_summary "${target_ref}"

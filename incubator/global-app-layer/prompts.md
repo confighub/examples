@@ -29,6 +29,7 @@ Before each command:
 - tell me what GUI page or CLI object to inspect next
 - stop and branch clearly if auth or targets are missing
 - use the documented JSON/jq contracts rather than inventing field paths
+- after setup, use the printed GUI URLs and `.logs/*.latest.log` files instead of relying on scrollback
 
 Start with `realistic-app` unless you think another example is a better fit.
 

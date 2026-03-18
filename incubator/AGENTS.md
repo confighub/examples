@@ -73,6 +73,13 @@ Prefer these kinds of commands first:
 - example-specific `--explain`
 - example-specific `--explain-json`
 
+When available, prefer the example's own durable artifacts over scrollback:
+
+- printed GUI URLs from `setup.sh`
+- `.logs/setup.latest.log`
+- `.logs/verify.latest.log`
+- `.logs/cleanup.latest.log`
+
 For `global-app-layer`, the safest first commands are:
 
 ```bash

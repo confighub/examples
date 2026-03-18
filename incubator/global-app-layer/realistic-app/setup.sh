@@ -34,6 +34,7 @@ fi
 
 require_cub
 require_jq
+begin_log_capture setup
 
 if state_exists; then
   echo "State already exists in ${STATE_FILE}. The .state directory is local run state from an earlier setup. Run ./cleanup.sh first, or remove .state if you know this old state is no longer needed." >&2

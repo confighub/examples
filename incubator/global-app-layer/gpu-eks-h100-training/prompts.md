@@ -26,6 +26,7 @@ Before each command:
 - say what to inspect next in both CLI and GUI
 - stop and branch clearly if auth or targets are missing
 - use the documented jq anchors for inspection commands
+- after setup, surface the printed GUI URLs and `.logs/*.latest.log` files
 
 ## Verify Everything
 

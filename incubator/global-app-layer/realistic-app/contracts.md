@@ -54,6 +54,31 @@
 - output shape: text tree
 - proves: the layered ancestry exists in a human-readable view
 
+### `./.logs/setup.latest.log`
+
+- mutates: no
+- output shape: plain text log file
+- proves:
+  - the setup command completed
+  - the summary was printed
+  - the GUI URLs are available again later
+
+### `./.logs/verify.latest.log`
+
+- mutates: no
+- output shape: plain text log file
+- proves:
+  - verification stages ran
+  - the final success line is durable
+
+### `./.logs/set-target.latest.log`
+
+- mutates: no
+- output shape: plain text log file
+- proves:
+  - the target binding step ran
+  - the refreshed GUI URLs and bundle hint are durable
+
 ## Expected Output Signals
 
 When `./verify.sh` succeeds, expect:
