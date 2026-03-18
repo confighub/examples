@@ -20,6 +20,7 @@ export CONFIGHUB_AGENT=1
 Start by inspecting the repo without mutating ConfigHub:
 
 ```bash
+git rev-parse --show-toplevel
 ./scripts/verify.sh
 rg --files incubator
 ```
@@ -30,6 +31,8 @@ If the human wants connected read-only inspection:
 cub auth login
 cub space list --json
 cub target list --space "*" --json
+cd incubator/global-app-layer
+./find-runs.sh --json | jq
 ```
 
 What these commands do not mutate:
@@ -56,6 +59,14 @@ Quick connected check:
 
 ```bash
 cub target list --json
+```
+
+To discover currently active layered-example runs without knowing the prefix:
+
+```bash
+cd incubator/global-app-layer
+./find-runs.sh
+./find-runs.sh realistic-app --json | jq
 ```
 
 ## 3) Recommended first mutating path
