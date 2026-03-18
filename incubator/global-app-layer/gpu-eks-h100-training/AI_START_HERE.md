@@ -10,6 +10,19 @@ This example demonstrates an NVIDIA-shaped layered recipe in ConfigHub with:
 
 It is the clearest AICR-shaped example in the package.
 
+## WET-First, Not Live-First
+
+This example starts by materializing intended state in ConfigHub.
+
+The normal path is:
+1. preview with `./setup.sh --explain`
+2. materialize with `./setup.sh`
+3. verify with `./verify.sh`
+4. optionally bind a target
+5. optionally apply live
+
+So `setup.sh` is ConfigHub-first, not cluster-first.
+
 ## What You Need Installed
 
 - `cub` in `PATH`
