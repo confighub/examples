@@ -74,6 +74,15 @@ If you start ConfigHub-only and later want the live path:
 ./set-target.sh <space/target>
 ```
 
+If the human wants the whole lifecycle instead of only setup + verify, use:
+
+- [whole-journey.md](./whole-journey.md)
+
+That walkthrough covers:
+- live target binding and apply
+- shared upstream updates
+- custom downstream deployment variants
+
 ## Capability Check
 
 Before you choose a path, check what is actually available:
@@ -166,6 +175,8 @@ cd incubator/global-app-layer/gpu-eks-h100-training
 ./setup.sh
 ./verify.sh
 ```
+
+If the user wants deployment, updates, and custom live variants instead of only ConfigHub-only walkthroughs, switch to [whole-journey.md](./whole-journey.md).
 
 ## What Mutates What
 

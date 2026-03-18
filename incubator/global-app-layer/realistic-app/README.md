@@ -65,6 +65,10 @@ If you want to use this example with an AI assistant, start here:
 - [prompts.md](./prompts.md)
 - [contracts.md](./contracts.md)
 
+If you want the full lifecycle after setup + verify, including live deployment, shared updates, and a custom downstream deployment variant, use:
+
+- [../whole-journey.md](../whole-journey.md)
+
 ## What It Builds
 
 Three components from `global-app`:

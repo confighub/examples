@@ -67,6 +67,15 @@ After `./setup.sh`, use:
 
 instead of relying on terminal scrollback alone.
 
+If the human wants the full lifecycle after setup + verify, continue with:
+
+- [../whole-journey.md](../whole-journey.md)
+
+That walkthrough covers:
+- live target binding and apply
+- shared upstream upgrades
+- a custom downstream deployment variant
+
 ## Ready For A Fresh Run
 
 ```bash

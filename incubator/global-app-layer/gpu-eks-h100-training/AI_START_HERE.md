@@ -74,6 +74,13 @@ After `./setup.sh`, use:
 
 instead of relying on terminal scrollback alone.
 
+If the human wants the full lifecycle after setup + verify, continue with:
+
+- [../whole-journey.md](../whole-journey.md)
+
+Use the same live target, upgrade, and downstream-variant pattern there.
+For functional NVIDIA proof, also replace the stub images and use GPU-capable nodes.
+
 ## Ready For A Fresh Run
 
 ```bash

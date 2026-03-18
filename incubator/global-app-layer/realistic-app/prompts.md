@@ -38,3 +38,21 @@ After running `realistic-app`, verify:
 - target binding if used
 - live apply state if used
 - summarize what definitely happened, what did not happen, and what still depends on missing infrastructure
+
+## Whole Lifecycle Walkthrough
+
+Guide me through the full `realistic-app` lifecycle.
+
+Start read-only, then continue through:
+- ConfigHub materialization
+- live target binding
+- live apply
+- shared upstream update
+- a custom downstream deployment variant
+
+Before each command:
+- explain what it does
+- say whether it mutates ConfigHub or live infrastructure
+- say what success looks like
+- say what to inspect next in both CLI and GUI
+- use `whole-journey.md` and the documented contracts rather than guessing

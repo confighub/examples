@@ -66,6 +66,10 @@ If you want to use this example with an AI assistant, start here:
 - [prompts.md](./prompts.md)
 - [contracts.md](./contracts.md)
 
+If you want the full lifecycle after setup + verify, including live deployment, shared updates, and an extra downstream deployment variant, use:
+
+- [../whole-journey.md](../whole-journey.md)
+
 ## Stub Images
 
 The base manifests use **stub container images** (`nginx:1.27-alpine` and `busybox:1.37`) so the example runs on any cluster, including local kind clusters with no GPU hardware. The layering, variant chains, and recipe structure are identical to what a real deployment would use.

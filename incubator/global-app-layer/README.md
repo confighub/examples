@@ -66,6 +66,7 @@ If you want to use this package with an AI assistant, start here:
 - [AI_START_HERE.md](./AI_START_HERE.md)
 - [prompts.md](./prompts.md)
 - [contracts.md](./contracts.md)
+- [whole-journey.md](./whole-journey.md)
 
 ## Start Here
 
@@ -82,6 +83,7 @@ Supporting documents:
 - [AI_START_HERE.md](./AI_START_HERE.md)
 - [prompts.md](./prompts.md)
 - [contracts.md](./contracts.md)
+- [whole-journey.md](./whole-journey.md)
 - [how-it-works.md](./how-it-works.md)
 - [../AGENTS.md](../AGENTS.md) for the incubator AI protocol
 - [../AI-README-FIRST.md](../AI-README-FIRST.md) for fuller incubator AI guidance
@@ -301,6 +303,13 @@ After `./setup.sh`, prefer the durable artifacts over terminal scrollback:
 - `.logs/set-target.latest.log`
 - `.logs/verify.latest.log`
 - `.logs/cleanup.latest.log`
+
+If you want the **full** story after that, continue with:
+- live target binding and apply
+- shared upstream upgrades
+- custom downstream deployment variants
+
+The exact walkthrough lives in [whole-journey.md](./whole-journey.md).
 
 The two explain modes are safe to run before authentication or before choosing a target:
 
