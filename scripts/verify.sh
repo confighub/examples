@@ -30,6 +30,14 @@ script_checks=(
   "${repo_root}/incubator/global-app-layer/gpu-eks-h100-training/upgrade-chain.sh"
   "${repo_root}/incubator/global-app-layer/gpu-eks-h100-training/verify.sh"
   "${repo_root}/incubator/global-app-layer/gpu-eks-h100-training/cleanup.sh"
+  "${repo_root}/incubator/global-app-layer/e2e/lib.sh"
+  "${repo_root}/incubator/global-app-layer/e2e/01-brownfield.sh"
+  "${repo_root}/incubator/global-app-layer/e2e/02-greenfield.sh"
+  "${repo_root}/incubator/global-app-layer/e2e/03-bridge.sh"
+  "${repo_root}/incubator/global-app-layer/e2e/deliver-direct.sh"
+  "${repo_root}/incubator/global-app-layer/e2e/deliver-argo.sh"
+  "${repo_root}/incubator/global-app-layer/e2e/assert-cluster.sh"
+  "${repo_root}/incubator/global-app-layer/e2e/run-all.sh"
 )
 
 for script_path in "${script_checks[@]}"; do
