@@ -87,17 +87,19 @@ When ArgoCD Applications carry labels like `team=payments` or `env=prod`, there 
 
 ## 3. End-to-End Testing
 
-The [e2e/](../e2e/) directory has full lifecycle tests that cover three flows:
+The [e2e/](./e2e/) directory now contains the full lifecycle tests for this package.
+
+It covers:
 
 - **Brownfield**: import an existing cluster app into ConfigHub, mutate it, apply
 - **Greenfield**: create layered chains from scratch, deploy all four recipes
 - **Bridge**: import first, then layer greenfield config on top
-
-Each recipe also has its own delivery scripts in `e2e/` subdirectories for applying to a cluster (direct or via ArgoCD).
+- **Direct delivery**: apply a single materialized example through the worker
+- **Argo-oriented delivery**: deliver a single materialized example through the Argo path
 
 ## 4. Role of AI
 
-ConfigHub does **not use AI internally** but we recommend using it to "drive" the management plane and config data APIs. 
+ConfigHub does **not use AI internally** but we recommend using it to "drive" the management plane and config data APIs.
 
 ConfigHub mutations are explicit, deterministic function calls:
 
@@ -113,7 +115,6 @@ Same input always produces same output. No model inference, no probabilistic out
 Where AI fits in the ConfigHub vision is **operating assistance** — helping humans design clone chains, choose which mutations to apply at which layer, generate recipe manifests, and reason about config drift. Eg Helm is a deterministic generator that could be AI-assisted (e.g., "given this Helm chart, propose a layered chain").
 
 In this demo our example scripts were written with AI assistance (designing the layering structure, debugging deployment failures, creating stub dependencies, iterating on the chain design). But the artifacts produced are plain bash scripts calling deterministic CLI commands. There is no AI in the loop at runtime.
-
 
 ## 5. Avoiding Name Conflicts
 

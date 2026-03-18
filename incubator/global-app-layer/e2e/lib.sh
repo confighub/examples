@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Shared helpers for e2e tests.
-# Source this from any e2e script.
+# Shared e2e helpers for the global-app-layer package.
+# Source this from any script under incubator/global-app-layer/e2e.
 
 E2E_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${E2E_DIR}/../.." && pwd)"
+LAYER_DIR="$(dirname "${E2E_DIR}")"
+REPO_ROOT="$(cd "${LAYER_DIR}/../../.." && pwd)"
 GITOPS_IMPORT_DIR="${REPO_ROOT}/gitops-import"
 KUBECONFIG_PATH="${GITOPS_IMPORT_DIR}/var/gitops-import.kubeconfig"
 
@@ -11,14 +12,20 @@ KUBECONFIG_PATH="${GITOPS_IMPORT_DIR}/var/gitops-import.kubeconfig"
 WORKER_SPACE="${WORKER_SPACE:-gitops-import-test}"
 K8S_TARGET="${K8S_TARGET:-worker-kubernetes-yaml-cluster}"
 ARGO_TARGET="${ARGO_TARGET:-worker-argocdrenderer-kubernetes-yaml-cluster}"
+ARGOCD_PORT="${ARGOCD_PORT:-9080}"
+GITOPS_STAGE_DIR="${E2E_DIR}/.gitops-stage"
 
-require_infrastructure() {
+require_kubeconfig() {
   if [[ ! -f "${KUBECONFIG_PATH}" ]]; then
     echo "No kubeconfig at ${KUBECONFIG_PATH}" >&2
     echo "Run gitops-import/bin/create-cluster + install-argocd + install-worker first." >&2
     exit 1
   fi
   export KUBECONFIG="${KUBECONFIG_PATH}"
+}
+
+require_infrastructure() {
+  require_kubeconfig
 
   if ! kubectl cluster-info >/dev/null 2>&1; then
     echo "Cluster not reachable. Is Docker Desktop running? Is the kind cluster up?" >&2
@@ -43,6 +50,54 @@ direct_target() {
 # target_ref for ArgoCD apply
 argo_target() {
   echo "${WORKER_SPACE}/${ARGO_TARGET}"
+}
+
+require_example() {
+  local example_name="$1"
+  local example_dir="${LAYER_DIR}/${example_name}"
+  if [[ ! -d "${example_dir}" ]]; then
+    echo "Error: Example directory not found: ${example_dir}" >&2
+    exit 1
+  fi
+  if [[ ! -f "${example_dir}/.state/state.env" ]]; then
+    echo "Error: No state file in ${example_dir}. Run ./setup.sh first." >&2
+    exit 1
+  fi
+}
+
+# Source the example's lib.sh and load its state.
+load_example() {
+  local example_name="$1"
+  local example_dir="${LAYER_DIR}/${example_name}"
+  # shellcheck disable=SC1090
+  source "${example_dir}/lib.sh"
+  load_state
+}
+
+# Return the deploy space name for the loaded example.
+example_deploy_space() {
+  deploy_space
+}
+
+# Return deploy namespace.
+example_deploy_namespace() {
+  echo "${DEPLOY_NAMESPACE}"
+}
+
+# Return the list of deployment unit names for the loaded example.
+example_deploy_units() {
+  local component
+  for component in "${COMPONENTS[@]}"; do
+    unit_name "${component}" deployment
+  done
+}
+
+# Return component names for the loaded example.
+example_components() {
+  local component
+  for component in "${COMPONENTS[@]}"; do
+    echo "${component}"
+  done
 }
 
 # Create a namespace if it doesn't exist.
@@ -140,10 +195,8 @@ assert_unit_exists() {
 }
 
 # Clean all units and links from a space (without deleting the space itself).
-# Useful for re-running import which fails if links already exist.
 clean_space_contents() {
   local space="$1"
-  # Delete links first (they reference units).
   local link_ids
   link_ids="$(cub link list --space "${space}" --json 2>/dev/null \
     | jq -r '.[].Link.LinkID' 2>/dev/null)" || true
@@ -152,7 +205,7 @@ clean_space_contents() {
       [[ -n "${lid}" ]] && cub link delete --space "${space}" "${lid}" 2>/dev/null || true
     done <<< "${link_ids}"
   fi
-  # Delete units.
+
   local unit_slugs
   unit_slugs="$(cub unit list --space "${space}" --json 2>/dev/null \
     | jq -r '.[].Unit.Slug' 2>/dev/null)" || true
@@ -170,7 +223,6 @@ unit_data() {
   cub unit get --space "${space}" --data-only "${unit}"
 }
 
-# Print a section header.
 section() {
   echo ""
   echo "================================================================"
@@ -179,7 +231,6 @@ section() {
   echo ""
 }
 
-# Print a subsection.
 step() {
   echo "==> $*"
 }
