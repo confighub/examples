@@ -96,6 +96,12 @@ This is what makes it more realistic than the earlier examples: the layers still
 ```bash
 cd incubator/global-app-layer/realistic-app
 
+# Inspect the full plan without mutating ConfigHub
+./setup.sh --explain
+
+# Machine-readable plan for AI or tooling
+./setup.sh --explain-json | jq
+
 # Build the chain only
 ./setup.sh
 
@@ -105,6 +111,8 @@ cd incubator/global-app-layer/realistic-app
 # Verify all three chains and the app-level recipe manifest
 ./verify.sh
 ```
+
+The explain modes do not require a live target and do not write anything to ConfigHub.
 
 ## Upgrade Flow
 

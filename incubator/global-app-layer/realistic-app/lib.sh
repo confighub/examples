@@ -288,6 +288,183 @@ bundle_hint_from_target_ref() {
   echo "target/<target-space>/${target_ref}:latest"
 }
 
+show_setup_plan() {
+  local target_ref="${1:-}"
+  local target_display="${target_ref:-<none>}"
+  cat <<EOF_PLAN
+This is a read-only setup plan for ${EXAMPLE_NAME}.
+Nothing will be created or mutated.
+
+Inputs:
+- prefix: $(state_prefix)
+- deploy namespace: ${DEPLOY_NAMESPACE}
+- target: ${target_display}
+
+Spaces that ./setup.sh will create:
+- $(base_space)
+- $(region_space)
+- $(role_space)
+- $(recipe_space)
+- $(deploy_space)
+
+Components and variant chains:
+- backend: $(base_space)/$(unit_name backend base) -> $(region_space)/$(unit_name backend region) -> $(role_space)/$(unit_name backend role) -> $(recipe_space)/$(unit_name backend recipe) -> $(deploy_space)/$(unit_name backend deployment)
+- frontend: $(base_space)/$(unit_name frontend base) -> $(region_space)/$(unit_name frontend region) -> $(role_space)/$(unit_name frontend role) -> $(recipe_space)/$(unit_name frontend recipe) -> $(deploy_space)/$(unit_name frontend deployment)
+- postgres: $(base_space)/$(unit_name postgres base) -> $(region_space)/$(unit_name postgres region) -> $(role_space)/$(unit_name postgres role) -> $(recipe_space)/$(unit_name postgres recipe) -> $(deploy_space)/$(unit_name postgres deployment)
+
+Layer mutations:
+- backend region: set REGION=${REGION_VALUE} and regional ingress host
+- backend role: set replicas=2 and ROLE=${ROLE_VALUE}
+- backend recipe: set DATABASE_URL and CHAT_TITLE
+- backend deployment: set namespace, CLUSTER=${DEPLOY_NAMESPACE}, and deployment ingress host
+- frontend region: set regional ingress host
+- frontend role: set replicas=2 and PUBLIC_ENV=${ROLE_VALUE}
+- frontend recipe: set RELEASE_CHANNEL
+- frontend deployment: set namespace, CLUSTER=${DEPLOY_NAMESPACE}, and deployment ingress host
+- postgres region: set REGION=US
+- postgres role: set PVC size and ROLE=${ROLE_VALUE}
+- postgres recipe: set POSTGRES_DB
+- postgres deployment: set namespace and CLUSTER=${DEPLOY_NAMESPACE}
+
+Recipe manifest:
+- $(recipe_space)/${RECIPE_MANIFEST_UNIT}
+- source template: ${RECIPE_BASE_TEMPLATE}
+- rendered output: ${STATE_DIR}/recipe-us-staging-realistic-app.rendered.yaml
+
+Core cub commands:
+- cub space create
+- cub unit create <unit> <file>
+- cub unit create --upstream-space ... --upstream-unit ...
+- cub function do set-env
+- cub function do set-replicas
+- cub function do set-string-path
+- cub function do set-namespace
+EOF_PLAN
+  if [[ -n "${target_ref}" ]]; then
+    cat <<EOF_PLAN
+- cub unit set-target ${target_ref}
+EOF_PLAN
+  fi
+}
+
+show_setup_plan_json() {
+  local target_ref="${1:-}"
+  jq -n \
+    --arg example "${EXAMPLE_NAME}" \
+    --arg prefix "$(state_prefix)" \
+    --arg namespace "${DEPLOY_NAMESPACE}" \
+    --arg target "${target_ref}" \
+    --arg backendSource "$(source_yaml_for backend)" \
+    --arg frontendSource "$(source_yaml_for frontend)" \
+    --arg postgresSource "$(source_yaml_for postgres)" \
+    --arg baseSpace "$(base_space)" \
+    --arg regionSpace "$(region_space)" \
+    --arg roleSpace "$(role_space)" \
+    --arg recipeSpace "$(recipe_space)" \
+    --arg deploySpace "$(deploy_space)" \
+    --arg backendBase "$(unit_name backend base)" \
+    --arg backendRegion "$(unit_name backend region)" \
+    --arg backendRole "$(unit_name backend role)" \
+    --arg backendRecipe "$(unit_name backend recipe)" \
+    --arg backendDeploy "$(unit_name backend deployment)" \
+    --arg frontendBase "$(unit_name frontend base)" \
+    --arg frontendRegion "$(unit_name frontend region)" \
+    --arg frontendRole "$(unit_name frontend role)" \
+    --arg frontendRecipe "$(unit_name frontend recipe)" \
+    --arg frontendDeploy "$(unit_name frontend deployment)" \
+    --arg postgresBase "$(unit_name postgres base)" \
+    --arg postgresRegion "$(unit_name postgres region)" \
+    --arg postgresRole "$(unit_name postgres role)" \
+    --arg postgresRecipe "$(unit_name postgres recipe)" \
+    --arg postgresDeploy "$(unit_name postgres deployment)" \
+    --arg manifestUnit "${RECIPE_MANIFEST_UNIT}" \
+    --arg manifestTemplate "${RECIPE_BASE_TEMPLATE}" \
+    --arg manifestRendered "${STATE_DIR}/recipe-us-staging-realistic-app.rendered.yaml" \
+    '{
+      example: $example,
+      mode: "setup-plan",
+      mutates: false,
+      prefix: $prefix,
+      namespace: $namespace,
+      targetRef: (if $target == "" then null else $target end),
+      spaces: [
+        {stage: "base", space: $baseSpace},
+        {stage: "region", space: $regionSpace},
+        {stage: "role", space: $roleSpace},
+        {stage: "recipe", space: $recipeSpace},
+        {stage: "deployment", space: $deploySpace}
+      ],
+      components: [
+        {
+          component: "backend",
+          source: $backendSource,
+          chain: [
+            {stage: "base", space: $baseSpace, unit: $backendBase},
+            {stage: "region", space: $regionSpace, unit: $backendRegion},
+            {stage: "role", space: $roleSpace, unit: $backendRole},
+            {stage: "recipe", space: $recipeSpace, unit: $backendRecipe},
+            {stage: "deployment", space: $deploySpace, unit: $backendDeploy}
+          ],
+          mutations: [
+            {stage: "region", summary: "set REGION and regional ingress host"},
+            {stage: "role", summary: "set replicas and ROLE"},
+            {stage: "recipe", summary: "set DATABASE_URL and CHAT_TITLE"},
+            {stage: "deployment", summary: "set namespace, CLUSTER, and deployment ingress host"}
+          ]
+        },
+        {
+          component: "frontend",
+          source: $frontendSource,
+          chain: [
+            {stage: "base", space: $baseSpace, unit: $frontendBase},
+            {stage: "region", space: $regionSpace, unit: $frontendRegion},
+            {stage: "role", space: $roleSpace, unit: $frontendRole},
+            {stage: "recipe", space: $recipeSpace, unit: $frontendRecipe},
+            {stage: "deployment", space: $deploySpace, unit: $frontendDeploy}
+          ],
+          mutations: [
+            {stage: "region", summary: "set regional ingress host"},
+            {stage: "role", summary: "set replicas and PUBLIC_ENV"},
+            {stage: "recipe", summary: "set RELEASE_CHANNEL"},
+            {stage: "deployment", summary: "set namespace, CLUSTER, and deployment ingress host"}
+          ]
+        },
+        {
+          component: "postgres",
+          source: $postgresSource,
+          chain: [
+            {stage: "base", space: $baseSpace, unit: $postgresBase},
+            {stage: "region", space: $regionSpace, unit: $postgresRegion},
+            {stage: "role", space: $roleSpace, unit: $postgresRole},
+            {stage: "recipe", space: $recipeSpace, unit: $postgresRecipe},
+            {stage: "deployment", space: $deploySpace, unit: $postgresDeploy}
+          ],
+          mutations: [
+            {stage: "region", summary: "set REGION"},
+            {stage: "role", summary: "set PVC size and ROLE"},
+            {stage: "recipe", summary: "set POSTGRES_DB"},
+            {stage: "deployment", summary: "set namespace and CLUSTER"}
+          ]
+        }
+      ],
+      recipeManifest: {
+        space: $recipeSpace,
+        unit: $manifestUnit,
+        template: $manifestTemplate,
+        renderedOutput: $manifestRendered
+      },
+      commands: ([
+        "cub space create",
+        "cub unit create <unit> <file>",
+        "cub unit create --upstream-space ... --upstream-unit ...",
+        "cub function do set-env",
+        "cub function do set-replicas",
+        "cub function do set-string-path",
+        "cub function do set-namespace"
+      ] + (if $target == "" then [] else ["cub unit set-target"] end))
+    }'
+}
+
 deploy_hostname() {
   local component="$1"
   case "${component}" in

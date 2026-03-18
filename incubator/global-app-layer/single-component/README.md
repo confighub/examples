@@ -57,6 +57,12 @@ The setup scripts render the concrete recipe instance from the placeholder-based
 ```bash
 cd incubator/global-app-layer/single-component
 
+# Inspect the full plan without mutating ConfigHub
+./setup.sh --explain
+
+# Machine-readable plan for AI or tooling
+./setup.sh --explain-json | jq
+
 # Build the chain only
 ./setup.sh
 

@@ -193,17 +193,25 @@ See [how-it-works.md](./how-it-works.md) for the full explanation of:
 
 Every layered example uses the same script pattern:
 
-1. `setup.sh` creates spaces, base units, downstream variants, and the recipe-manifest receipt
-2. `verify.sh` checks the variant chain and the receipt
-3. `set-target.sh` optionally binds the deployment units to a real target
-4. `upgrade-chain.sh` proves shared updates can move downstream safely
-5. `cleanup.sh` removes the created spaces and units
+1. `setup.sh --explain` shows the full plan without mutating ConfigHub
+2. `setup.sh --explain-json` shows the same plan as stable JSON for AI or tooling
+3. `setup.sh` creates spaces, base units, downstream variants, and the recipe-manifest receipt
+4. `verify.sh` checks the variant chain and the receipt
+5. `set-target.sh` optionally binds the deployment units to a real target
+6. `upgrade-chain.sh` proves shared updates can move downstream safely
+7. `cleanup.sh` removes the created spaces and units
 
 Each example follows the same script interface:
 
 ```bash
 # Pick an example
 cd single-component    # or frontend-postgres, realistic-app, gpu-eks-h100-training
+
+# See the full plan first without writing anything
+./setup.sh --explain
+
+# Machine-readable plan for AI or tooling
+./setup.sh --explain-json | jq
 
 # Create the full layered variant chain in ConfigHub
 ./setup.sh
@@ -221,6 +229,13 @@ cub unit apply --space <deploy-space> --unit <deploy-unit>
 # Tear down all spaces and units
 ./cleanup.sh
 ```
+
+The two explain modes are safe to run before authentication or before choosing a target:
+
+- they do not create spaces
+- they do not create units
+- they do not bind targets
+- they do not apply anything to a cluster
 
 About the placeholders:
 

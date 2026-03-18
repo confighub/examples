@@ -105,6 +105,12 @@ This is the main user-facing point of the example: one recipe can govern multipl
 ```bash
 cd incubator/global-app-layer/gpu-eks-h100-training
 
+# Inspect the full plan without mutating ConfigHub
+./setup.sh --explain
+
+# Machine-readable plan for AI or tooling
+./setup.sh --explain-json | jq
+
 # Build the chains only
 ./setup.sh
 
