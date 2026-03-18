@@ -4,6 +4,8 @@ If you are an AI assistant, read this file before exploring the rest of the repo
 
 This repo is meant to be understandable and usable by both humans and AI assistants, but you will avoid a lot of confusion if you start here.
 
+If you want the shortest strict protocol first, read [AGENTS.md](./AGENTS.md) before this file.
+
 ## 1. What This Repo Is
 
 This is the public `confighub/examples` repo.
