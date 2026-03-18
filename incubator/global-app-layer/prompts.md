@@ -65,3 +65,22 @@ After running a `global-app-layer` example, verify:
 - live apply state if used
 
 Summarize what definitely happened, what did not happen, and what still depends on missing infrastructure.
+
+## 6. Whole Lifecycle Walkthrough
+
+Guide me through the full `global-app-layer` journey using `realistic-app`.
+
+Start with preview and ConfigHub materialization, then continue through:
+- target binding
+- live apply
+- shared upstream update
+- one custom downstream deployment variant
+
+Before each command:
+- explain what it does
+- say whether it mutates ConfigHub or live infrastructure
+- say what success looks like
+- say what GUI page or CLI object to inspect next
+- stop clearly if required infrastructure is missing
+
+Use `whole-journey.md` and the example docs instead of inventing steps.

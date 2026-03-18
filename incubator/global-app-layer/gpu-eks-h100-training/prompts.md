@@ -38,3 +38,20 @@ After running `gpu-eks-h100-training`, verify:
 - target binding if used
 - live apply state if used
 - summarize what definitely happened, what did not happen, and what still depends on missing infrastructure
+
+## Whole Lifecycle Walkthrough
+
+Guide me through the full `gpu-eks-h100-training` lifecycle.
+
+Start read-only, then continue through:
+- ConfigHub materialization
+- live target binding
+- live apply
+- shared upstream update
+- an extra downstream deployment variant
+
+Be explicit about the difference between:
+- structural proof with stub images
+- real NVIDIA deployment proof with real images and GPU-capable nodes
+
+Use `whole-journey.md` and the documented contracts rather than guessing.
