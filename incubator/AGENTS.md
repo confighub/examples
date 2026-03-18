@@ -66,6 +66,8 @@ Every major incubator example should ideally include:
 Prefer these kinds of commands first:
 
 - `./scripts/verify.sh`
+- `cub version`
+- `cub context list`
 - `cub ... --help`
 - `cub ... --json`
 - example-specific `--explain`
@@ -101,3 +103,9 @@ If there is:
 - no cluster
 
 then continue with the highest-fidelity database-only or explain-only path and say clearly what was not exercised.
+
+## CLI Footguns To Avoid
+
+- use `cub version`, not `cub --version`
+- use `cub context list`, not `cub context current`
+- check `cub ... --help` before assuming a subcommand or JSON shape

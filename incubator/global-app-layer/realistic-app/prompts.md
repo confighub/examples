@@ -13,6 +13,7 @@ Explain:
 
 Then run only the read-only preview commands.
 Also tell me whether `cub` auth works and whether any targets are visible.
+Do not guess unsupported `cub` subcommands or JSON paths; check the docs and `--help` first.
 
 ## Safe Walkthrough
 
@@ -24,6 +25,7 @@ Before each command:
 - say what success looks like
 - say what to inspect next in both CLI and GUI
 - stop and branch clearly if auth or targets are missing
+- use the documented jq anchors for inspection commands
 
 ## Verify Everything
 

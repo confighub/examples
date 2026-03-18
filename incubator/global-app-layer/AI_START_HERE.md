@@ -21,6 +21,8 @@ Start with read-only commands only:
 ```bash
 git rev-parse --show-toplevel
 which cub
+kubectl version --client 2>/dev/null || true
+cub version
 cub context list --json | jq
 
 cd incubator/global-app-layer
@@ -42,6 +44,7 @@ What these do not mutate:
 Before you choose a path, check what is actually available:
 
 ```bash
+cub version
 cub context list --json | jq
 cub target list --space "*" --json | jq
 ```
@@ -163,6 +166,12 @@ Use the GUI while you go:
 3. open one deployment unit and inspect its upstream chain and current intended state
 4. if a target is set, inspect the deployment unit again and confirm the target binding is visible
 5. if using the live path, inspect the deployment space again after apply and compare intended state vs live result
+
+## CLI Footguns To Avoid
+
+- use `cub version`, not `cub --version`
+- use `cub context list`, not `cub context current`
+- for machine-readable unit inspection, prefer the exact jq examples in `contracts.md`
 
 ## Cleanup
 
