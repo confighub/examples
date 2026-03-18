@@ -5,7 +5,7 @@ This repo contains examples that demonstrate how [ConfigHub](https://confighub.c
 ## Start Here
 
 - For humans: [START_HERE.md](./START_HERE.md)
-- For AI assistants: [AI_START_HERE.md](./AI_START_HERE.md)
+- For AI assistants: [AI-README-FIRST.md](./AI-README-FIRST.md)
 
 ## Examples Catalog
 
