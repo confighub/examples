@@ -16,6 +16,48 @@ It keeps the recipe-and-layer model intentionally reviewable:
 
 The point is not to recreate all of NVIDIA AICR. The point is to show how ConfigHub can model the same kind of layered, reproducible recipe with real units, real variant links, and an explicit recipe manifest that spans more than one related component.
 
+## Stack And Scenario
+
+This example is for:
+- ConfigHub-managed Kubernetes manifests
+- NVIDIA AICR-style layered recipe structure
+- multi-component GPU-related software stacks
+
+## What This Reads And Writes
+
+What it reads:
+- local base YAML files in this example directory
+- current ConfigHub context and optional target ref
+
+What it writes:
+- six ConfigHub spaces with a shared prefix
+- units for each layer of both components
+- clone links / variant ancestry
+- one stack-level recipe manifest
+- optional target bindings
+- optional live deployment state only if you explicitly bind and apply
+
+## What You Should Expect To See
+
+In ConfigHub-only mode:
+- six spaces sharing one prefix
+- two layered GPU chains
+- one recipe manifest unit
+- `verify.sh` passing
+
+In live mode:
+- deployment units bound to a target
+- successful `cub unit apply`
+- live resources or delegated delivery objects visible
+
+## AI-Safe Path
+
+If you want to use this example with an AI assistant, start here:
+
+- [AI_START_HERE.md](./AI_START_HERE.md)
+- [prompts.md](./prompts.md)
+- [contracts.md](./contracts.md)
+
 ## Stub Images
 
 The base manifests use **stub container images** (`nginx:1.27-alpine` and `busybox:1.37`) so the example runs on any cluster, including local kind clusters with no GPU hardware. The layering, variant chains, and recipe structure are identical to what a real deployment would use.
