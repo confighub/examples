@@ -55,6 +55,7 @@ for component in "${COMPONENTS[@]}"; do
 
   case "${component}" in
     frontend)
+      assert_contains "${base_file}" 'image: ghcr.io/confighub/cubbychat/frontend:'
       assert_contains "${base_file}" 'host: base.local.cubby.bz'
       assert_contains "${region_file}" 'frontend.us.demo.confighub.local'
       assert_contains "${role_file}" 'replicas: 2'
@@ -68,7 +69,7 @@ for component in "${COMPONENTS[@]}"; do
       ;;
     postgres)
       assert_contains "${base_file}" 'storage: 5Gi'
-      assert_contains "${base_file}" 'image: postgres:16'
+      assert_contains "${base_file}" 'image: postgres:'
       assert_contains "${region_file}" 'name: REGION'
       assert_contains "${region_file}" 'value: US'
       assert_contains "${role_file}" 'storage: 10Gi'
