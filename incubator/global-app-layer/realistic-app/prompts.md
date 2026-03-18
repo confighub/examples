@@ -27,6 +27,8 @@ Before each command:
 - stop and branch clearly if auth or targets are missing
 - use the documented jq anchors for inspection commands
 - after setup, surface the printed GUI URLs and `.logs/*.latest.log` files
+- do not treat `cub target list` or `./set-target.sh` as proof that apply will work
+- run `../preflight-live.sh <space/target>` before the live branch
 
 ## Verify Everything
 
@@ -56,3 +58,5 @@ Before each command:
 - say what success looks like
 - say what to inspect next in both CLI and GUI
 - use `whole-journey.md` and the documented contracts rather than guessing
+- run `../preflight-live.sh <space/target>` before binding or applying
+- only call the live path ready if preflight reports `applyReady: true`

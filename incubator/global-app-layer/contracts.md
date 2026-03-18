@@ -37,7 +37,25 @@ This file documents the safest stable inspection paths for `global-app-layer`.
 
 - mutates: no
 - output shape: JSON array of targets visible to the current context
-- proves: whether the optional live-delivery path is even possible
+- proves: whether the optional live-delivery path is even visible
+- note: this does **not** prove the worker is ready for apply
+
+### `./preflight-live.sh <space/target> --json`
+
+- mutates: no
+- output shape: JSON object
+- proves:
+  - whether the target exists
+  - whether the target maps to direct or GitOps-style delivery
+  - whether the attached worker is actually ready for apply
+- expected anchors:
+  - `.mutates == false`
+  - `.targetExists == true`
+  - `.providerType`
+  - `.deliveryMode`
+  - `.bridgeWorker.slug`
+  - `.applyReady`
+  - `.reasons`
 
 ### `./.logs/setup.latest.log`
 
@@ -121,6 +139,7 @@ When a run succeeds in ConfigHub-only mode, expect:
 - `verify.sh` printing a final `All ... checks passed.` line
 
 When the live path also succeeds, expect:
+- `./preflight-live.sh <space/target>` to report `applyReady: true`
 - target binding visible on deployment units
 - successful `cub unit apply`
 - resulting live state visible via ConfigHub and the cluster target
