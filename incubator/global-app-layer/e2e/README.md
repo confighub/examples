@@ -62,12 +62,18 @@ Apply the deployment units for one already-materialized example directly through
 
 ### `deliver-argo.sh`
 
-Deliver one already-materialized example using the Argo-oriented path.
+Deliver one already-materialized example using the current Argo-oriented e2e path.
 
 ```bash
 ./e2e/deliver-argo.sh frontend-postgres
 ./e2e/assert-cluster.sh frontend-postgres
 ```
+
+Important:
+- this helper is currently a hybrid path, not a pure GitOps proof
+- it exports ConfigHub-rendered YAMLs, applies them directly with `kubectl`, and then creates an ArgoCD Application for visibility and drift detection
+- it proves the staged Argo-shaped workflow and Argo artifacts around the app
+- it does not, by itself, prove Argo reconciled the workloads from Git as the sole delivery mechanism
 
 ## Running the Lifecycle Flows
 
@@ -113,4 +119,4 @@ They prove that the layered recipe model works:
 
 - from imported brownfield state
 - from fresh greenfield creation
-- and across direct vs delegated delivery
+- and across direct vs Argo-oriented hybrid delivery
