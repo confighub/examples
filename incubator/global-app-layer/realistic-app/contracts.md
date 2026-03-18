@@ -19,6 +19,16 @@
 
 ## ConfigHub State Contracts
 
+### `cub space get <prefix>-recipe-us-staging --json`
+
+- mutates: no
+- output shape: JSON object containing `Space` plus summary counters
+- proves:
+  - the recipe space currently exists
+  - its `SpaceID` and labels are inspectable
+- jq anchor:
+  - `cub space get <prefix>-recipe-us-staging --json | jq '.Space | {slug: .Slug, id: .SpaceID, labels: .Labels}'`
+
 ### `cub unit get --space <prefix>-recipe-us-staging --json recipe-us-staging-realistic-app`
 
 - mutates: no

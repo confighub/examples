@@ -20,6 +20,16 @@
 
 ## ConfigHub State Contracts
 
+### `cub space get <prefix>-recipe-eks-h100-ubuntu-training --json`
+
+- mutates: no
+- output shape: JSON object containing `Space` plus summary counters
+- proves:
+  - the recipe space currently exists
+  - its `SpaceID` and labels are inspectable
+- jq anchor:
+  - `cub space get <prefix>-recipe-eks-h100-ubuntu-training --json | jq '.Space | {slug: .Slug, id: .SpaceID, labels: .Labels}'`
+
 ### `cub unit get --space <prefix>-recipe-eks-h100-ubuntu-training --json recipe-eks-h100-ubuntu-training-stack`
 
 - mutates: no
