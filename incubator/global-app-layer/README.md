@@ -19,6 +19,19 @@ Supporting documents:
 - [recipes mapped to configs 02-recipes-and-layers-spec.md](./02-recipes-and-layers-spec.md)
 - [04-review-and-next-steps.md](./04-review-and-next-steps.md) — current status and open gaps
 
+## Prerequisites
+
+Before running any examples, ensure you have the following in place:
+
+| Requirement | Purpose |
+|------------|---------|
+| `cub` CLI | ConfigHub command-line tool ([install docs](https://docs.confighub.com/)) |
+| `cub auth login` | Authenticated session with ConfigHub |
+| `jq` | JSON processing for scripts |
+| Kubernetes cluster + ConfigHub worker | Required for actual deployments (see [gitops-import](../../gitops-import/) for setup) |
+
+Without the `cub` CLI authenticated, the setup scripts will fail immediately.
+
 ## What Is NVIDIA AICR and how does ConfigHub manage it?
 
 Quoting from AICR "Every AI cluster running on Kubernetes requires a full software stack that works together, from low-level driver and kernel settings to high-level operator and workload configurations. You get one cluster working, and spend days getting the next one to match. Upgrade a component, and something else breaks. Move to a new cloud and start over. AI Cluster Runtime is a new open-source project designed to remove cluster configuration from the critical path. It publishes optimized, validated, and reproducible Kubernetes configurations as recipes you can deploy onto your clusters."
@@ -121,12 +134,6 @@ These documents explain the design thinking behind the examples:
 2. [01-nvidia-aicr-fit.md](./01-nvidia-aicr-fit.md) — Why the NVIDIA AICR pattern matters for ConfigHub
 3. [02-recipes-and-layers-spec.md](./02-recipes-and-layers-spec.md) — The recipes-and-layers spec for ConfigHub
 4. [04-review-and-next-steps.md](./04-review-and-next-steps.md) — Current status and the main open gaps
-
-## Prerequisites
-
-- `cub` CLI, authenticated (`cub auth login`)
-- `jq`
-- For cluster deployment: a running Kubernetes cluster with a ConfigHub worker (see [gitops-import](../../gitops-import/) for setup)
 
 ## End-to-End Testing
 
