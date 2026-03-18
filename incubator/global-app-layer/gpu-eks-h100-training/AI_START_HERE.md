@@ -61,6 +61,20 @@ After `./setup.sh`, use:
 
 instead of relying on terminal scrollback alone.
 
+## Ready For A Fresh Run
+
+```bash
+./setup.sh                              # ConfigHub-only
+./setup.sh <prefix> <space/target>     # with live target
+./verify.sh
+```
+
+If you start ConfigHub-only and later want the live path:
+
+```bash
+./set-target.sh <space/target>
+```
+
 ## Capability Branching
 
 ### A. Docs / preview only

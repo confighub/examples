@@ -23,6 +23,14 @@ This example is for:
 - NVIDIA AICR-style layered recipe structure
 - multi-component GPU-related software stacks
 
+## What You Need Installed
+
+- `cub` in `PATH`
+- an authenticated ConfigHub CLI context for any mutating step
+- `jq` for the JSON preview path
+- optional: a live target only if you want to bind and apply
+- optional: GPU-capable nodes and real NVIDIA images only if you want functional proof rather than structural proof
+
 ## What This Reads And Writes
 
 What it reads:
@@ -153,15 +161,13 @@ cd incubator/global-app-layer/gpu-eks-h100-training
 # Machine-readable plan for AI or tooling
 ./setup.sh --explain-json | jq
 
-# Build the chains only
-./setup.sh
-
-# Or build them and wire a real target immediately
-./setup.sh <prefix> <space/target>
-
-# Verify both chains and the explicit recipe manifest
+# Ready for a fresh run
+./setup.sh                              # ConfigHub-only
+./setup.sh <prefix> <space/target>     # with live target
 ./verify.sh
 ```
+
+After `./setup.sh`, prefer the printed clickable GUI URLs and `.logs/*.latest.log` files over terminal scrollback alone.
 
 ## Upgrade Flow
 

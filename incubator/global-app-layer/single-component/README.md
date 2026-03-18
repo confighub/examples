@@ -10,6 +10,57 @@ It demonstrates the model:
 
 The recipe is the ordered chain of variants, not the bundle.
 
+## Stack And Scenario
+
+This example is for:
+- ConfigHub-managed Kubernetes manifests
+- the smallest layered recipe walkthrough in this package
+- one backend service plus one deploy-time stub dependency
+
+## What You Need Installed
+
+- `cub` in `PATH`
+- an authenticated ConfigHub CLI context for any mutating step
+- `jq` for the JSON preview path
+- optional: a live target only if you want to bind and apply
+
+## What This Reads And Writes
+
+What it reads:
+- `../../../global-app/baseconfig/backend.yaml`
+- `./postgres-stub.yaml`
+- current ConfigHub context and optional target ref
+
+What it writes:
+- five ConfigHub spaces with a shared prefix
+- one layered backend chain
+- one deploy-stage `postgres-stub`
+- one recipe manifest unit
+- optional target bindings
+- optional live deployment state only if you explicitly bind and apply
+
+## What You Should Expect To See
+
+In ConfigHub-only mode:
+- five spaces sharing one prefix
+- one layered backend chain
+- one deploy-stage stub
+- one recipe manifest unit
+- `verify.sh` passing
+
+In live mode:
+- deployment units bound to a target
+- successful `cub unit apply`
+- live resources visible in the chosen target path
+
+## AI-Safe Path
+
+If you want to use this example with an AI assistant, start here:
+
+- [AI_START_HERE.md](./AI_START_HERE.md)
+- [prompts.md](./prompts.md)
+- [contracts.md](./contracts.md)
+
 ## What It Builds
 
 One component from `global-app`:
@@ -63,15 +114,13 @@ cd incubator/global-app-layer/single-component
 # Machine-readable plan for AI or tooling
 ./setup.sh --explain-json | jq
 
-# Build the chain only
-./setup.sh
-
-# Or build it and wire a real target immediately
-./setup.sh <prefix> <space/target>
-
-# Verify the variant chain and explicit recipe manifest
+# Ready for a fresh run
+./setup.sh                              # ConfigHub-only
+./setup.sh <prefix> <space/target>     # with live target
 ./verify.sh
 ```
+
+After `./setup.sh`, prefer the printed clickable GUI URLs and `.logs/*.latest.log` files over terminal scrollback alone.
 
 ## Upgrade Flow
 

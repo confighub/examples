@@ -266,14 +266,13 @@ cd single-component    # or frontend-postgres, realistic-app, gpu-eks-h100-train
 # Machine-readable plan for AI or tooling
 ./setup.sh --explain-json | jq
 
-# Create the full layered variant chain in ConfigHub
-./setup.sh
-
-# Verify all spaces, units, and links are correct
+# Ready for a fresh run
+./setup.sh                              # ConfigHub-only
+./setup.sh <prefix> <space/target>     # with live target
 ./verify.sh
 
-# Optional: bind to a worker target and deploy to a cluster
-./set-target.sh <target-ref>
+# Optional: start ConfigHub-only, then bind a target later
+./set-target.sh <space/target>
 cub unit apply --space <deploy-space> --unit <deploy-unit>
 
 # Optional: change the base and watch it propagate
@@ -282,6 +281,14 @@ cub unit apply --space <deploy-space> --unit <deploy-unit>
 # Tear down all spaces and units
 ./cleanup.sh
 ```
+
+After `./setup.sh`, prefer the durable artifacts over terminal scrollback:
+
+- the printed clickable GUI URLs
+- `.logs/setup.latest.log`
+- `.logs/set-target.latest.log`
+- `.logs/verify.latest.log`
+- `.logs/cleanup.latest.log`
 
 The two explain modes are safe to run before authentication or before choosing a target:
 

@@ -1,15 +1,15 @@
 # AI Start Here
 
-Use this page when you want to drive `realistic-app` safely with an AI assistant.
+Use this page when you want to drive `single-component` safely with an AI assistant.
 
 ## What This Example Is For
 
-This example demonstrates a layered small app recipe in ConfigHub:
-- `backend`
-- `frontend`
-- `postgres`
+This is the smallest layered example in `global-app-layer`.
 
-It is the clearest app-shaped example in `global-app-layer`.
+It demonstrates:
+- one real `backend` variant chain
+- one `postgres-stub` deployment dependency
+- one explicit recipe manifest receipt
 
 ## What You Need Installed
 
@@ -39,7 +39,7 @@ Use this rule:
 Start read-only:
 
 ```bash
-cd incubator/global-app-layer/realistic-app
+cd incubator/global-app-layer/single-component
 ./setup.sh --explain
 ./setup.sh --explain-json | jq
 ```
@@ -68,6 +68,8 @@ If you start ConfigHub-only and later want the live path:
 ./set-target.sh <space/target>
 ```
 
+Then approve and apply the deployment unit explicitly.
+
 ## Capability Branching
 
 ### A. Docs / preview only
@@ -83,7 +85,7 @@ Use:
 ./verify.sh
 ```
 
-This writes spaces, units, links, and the recipe manifest into ConfigHub, but does not deploy anything live.
+This writes spaces, units, links, the recipe manifest, and the deploy-time stub into ConfigHub, but does not deploy anything live.
 
 ### C. Live target mode
 
@@ -94,7 +96,7 @@ Use:
 ./verify.sh
 ```
 
-Then approve and apply the deployment units explicitly.
+Then approve and apply the deployment unit explicitly.
 
 ## Verification Modes
 
@@ -114,16 +116,16 @@ Then approve and apply the deployment units explicitly.
 As you go, inspect these in the ConfigHub GUI:
 
 1. `<prefix>-recipe-us-staging`
-   - inspect `recipe-us-staging-realistic-app`
+   - inspect `recipe-us-staging`
 2. `<prefix>-deploy-cluster-a`
    - inspect `backend-cluster-a`
-3. compare the recipe manifest and one deployment unit
+3. compare the recipe manifest and the deployment unit
    - confirm the recipe receipt exists
    - confirm the deployment variant exists
 4. if a target is set
    - inspect `backend-cluster-a` again and confirm the target binding is visible
 5. if you apply live
-   - inspect the deployment space after apply and compare intended state vs live result
+   - inspect the deployment unit after apply and compare intended state vs live result
 
 The easiest path is to open the clickable URLs printed by `./setup.sh`.
 
@@ -147,7 +149,8 @@ The easiest path is to open the clickable URLs printed by `./setup.sh`.
 
 In ConfigHub-only mode:
 - five new spaces with one shared prefix
-- three layered chains
+- one layered backend chain
+- one deploy-stage `postgres-stub`
 - one recipe manifest unit
 - `verify.sh` passing
 

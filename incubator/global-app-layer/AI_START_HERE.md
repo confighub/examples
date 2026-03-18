@@ -43,6 +43,23 @@ Once you run `./setup.sh`, use the printed artifacts instead of relying on termi
 - clickable GUI URLs for the recipe space, deploy space, recipe manifest, and one deployment unit
 - durable logs in `.logs/setup.latest.log`, `.logs/set-target.latest.log`, `.logs/verify.latest.log`, and `.logs/cleanup.latest.log`
 
+## Ready For A Fresh Run
+
+Use the same short path across the layered examples:
+
+```bash
+cd incubator/global-app-layer/realistic-app
+./setup.sh                              # ConfigHub-only
+./setup.sh <prefix> <space/target>     # with live target
+./verify.sh
+```
+
+If you start ConfigHub-only and later want the live path:
+
+```bash
+./set-target.sh <space/target>
+```
+
 ## Capability Check
 
 Before you choose a path, check what is actually available:
@@ -112,10 +129,9 @@ cd incubator/global-app-layer/realistic-app
 ./setup.sh --explain
 ./setup.sh --explain-json | jq
 
-# Materialize the layered recipe in ConfigHub
-./setup.sh
-
-# Verify spaces, units, chain, and recipe manifest
+# Ready for a fresh run
+./setup.sh                              # ConfigHub-only
+./setup.sh <prefix> <space/target>     # with live target
 ./verify.sh
 ```
 
