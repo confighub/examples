@@ -66,6 +66,16 @@ This file documents the safest stable inspection paths for `global-app-layer`.
 
 ## ConfigHub State Contracts
 
+### `cub space get <space> --json`
+
+- mutates: no
+- output shape: JSON object containing `Space` plus summary counters
+- proves:
+  - the space currently exists
+  - its `SpaceID` and labels are inspectable
+- jq anchor:
+  - `cub space get <space> --json | jq '.Space | {slug: .Slug, id: .SpaceID, labels: .Labels}'`
+
 ### `cub unit tree --edge clone --where "Labels.ExampleName = 'global-app-layer-realistic-app'"`
 
 - mutates: no
