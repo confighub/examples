@@ -39,6 +39,21 @@ cub gitops discover --space <space> worker-kubernetes-yaml-cluster
 cub gitops import --space <space> worker-kubernetes-yaml-cluster worker-argocdrenderer-kubernetes-yaml-cluster
 ```
 
+## Applying ConfigHub units to this cluster
+
+After setup, you can also use this cluster to apply ConfigHub-managed units directly (e.g. from the layered recipe examples).
+
+**Note:** `cub unit apply` requires the target namespace to already exist in the cluster. Unlike Argo CD (which uses `CreateNamespace=true`), the direct apply path does not create namespaces automatically.
+
+```bash
+# Create the namespace first
+export KUBECONFIG=$PWD/var/gitops-import.kubeconfig
+kubectl create namespace <namespace>
+
+# Then apply
+cub unit apply --space <deploy-space> <unit-slug>
+```
+
 ## Teardown
 
 ```bash
