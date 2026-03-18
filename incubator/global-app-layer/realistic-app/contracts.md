@@ -22,22 +22,37 @@
 ### `cub unit get --space <prefix>-recipe-us-staging --json recipe-us-staging-realistic-app`
 
 - mutates: no
-- output shape: JSON object for the recipe manifest unit
+- output shape: JSON array containing `[space, unit, unit-status]`
 - proves: the app-level recipe receipt exists in ConfigHub
+- jq anchor:
+  - `cub unit get --space <prefix>-recipe-us-staging --json recipe-us-staging-realistic-app | jq '.[1] | {slug: .Slug, revision: .HeadRevisionNum, labels: .Labels}'`
 
 ### `cub unit get --space <prefix>-deploy-cluster-a --json backend-cluster-a`
 
 - mutates: no
-- output shape: JSON object for one deployment unit
+- output shape: JSON array containing `[space, unit, unit-status]`
 - proves:
   - the final deployment variant exists
   - target binding is inspectable if present
+- jq anchor:
+  - `cub unit get --space <prefix>-deploy-cluster-a --json backend-cluster-a | jq '.[1] | {slug: .Slug, upstreamUnitID: .UpstreamUnitID, targetID: .TargetID, revision: .HeadRevisionNum}'`
+
+### `cub unit list --space <prefix>-deploy-cluster-a --quiet --json`
+
+- mutates: no
+- output shape: JSON array of objects containing `Space`, `Unit`, `UnitStatus`, and optional `UpstreamUnit`
+- proves:
+  - which deployment units exist
+  - which recipe units they point to
+  - current live/not-live status
+- jq anchor:
+  - `cub unit list --space <prefix>-deploy-cluster-a --quiet --json | jq '.[] | {slug: .Unit.Slug, upstream: .UpstreamUnit.Slug, status: .UnitStatus.Status}'`
 
 ### `cub unit tree --edge clone --where "Labels.ExampleName = 'global-app-layer-realistic-app'"`
 
 - mutates: no
 - output shape: text tree
-- proves: the layered ancestry exists
+- proves: the layered ancestry exists in a human-readable view
 
 ## Expected Output Signals
 

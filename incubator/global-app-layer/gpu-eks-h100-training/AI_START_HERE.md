@@ -24,6 +24,7 @@ Check capability before mutating anything:
 
 ```bash
 which cub
+cub version
 cub context list --json | jq
 cub target list --space "*" --json | jq
 ```
@@ -108,6 +109,12 @@ As you go, inspect these in the ConfigHub GUI:
    - inspect `gpu-operator-cluster-a` again and confirm the target binding is visible
 5. if you apply live
    - inspect the deployment space after apply and compare intended state vs live result
+
+## CLI Footguns To Avoid
+
+- use `cub version`, not `cub --version`
+- use `cub context list`, not `cub context current`
+- use the jq anchors in `contracts.md` for machine-readable unit inspection
 
 ## What Mutates What
 

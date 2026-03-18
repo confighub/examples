@@ -53,10 +53,15 @@ rg --files incubator
 If connected read-only inspection is wanted:
 
 ```bash
-cub auth login
+cub version
+cub context list
 cub space list --json
 cub target list --space "*" --json
 ```
+
+Avoid guessing unsupported commands. In particular:
+- use `cub version`, not `cub --version`
+- use `cub context list`, not `cub context current`
 
 ## 4. Capability Branching
 

@@ -31,6 +31,7 @@ This file documents the safest stable inspection paths for `global-app-layer`.
 - mutates: no
 - output shape: JSON array of available contexts
 - proves: whether the current shell has a usable ConfigHub CLI context
+- note: for the current context, use `cub context list` plain output and look for the `CURRENT` marker
 
 ### `cub target list --space "*" --json`
 
@@ -49,17 +50,32 @@ This file documents the safest stable inspection paths for `global-app-layer`.
 ### `cub unit get --space <recipe-space> --json <recipe-manifest-unit>`
 
 - mutates: no
-- output shape: JSON object for the recipe manifest unit
+- output shape: JSON array containing `[space, unit, unit-status]`
 - proves: the package created the explicit recipe receipt for the assembled layered app
+- jq anchor:
+  - `cub unit get --space <recipe-space> --json <recipe-manifest-unit> | jq '.[1] | {slug: .Slug, revision: .HeadRevisionNum, labels: .Labels}'`
 
 ### `cub unit get --space <deploy-space> --json <deploy-unit>`
 
 - mutates: no
-- output shape: JSON object for one deployment unit
+- output shape: JSON array containing `[space, unit, unit-status]`
 - proves:
   - the final deployment-specific unit exists
   - target binding can be inspected if present
   - the current intended state is materialized in ConfigHub
+- jq anchor:
+  - `cub unit get --space <deploy-space> --json <deploy-unit> | jq '.[1] | {slug: .Slug, upstreamUnitID: .UpstreamUnitID, targetID: .TargetID, revision: .HeadRevisionNum}'`
+
+### `cub unit list --space <deploy-space> --quiet --json`
+
+- mutates: no
+- output shape: JSON array of objects containing `Space`, `Unit`, `UnitStatus`, and optional `UpstreamUnit`
+- proves:
+  - which deployment units exist
+  - which upstream units they point to
+  - current live/not-live status
+- jq anchor:
+  - `cub unit list --space <deploy-space> --quiet --json | jq '.[] | {slug: .Unit.Slug, upstream: .UpstreamUnit.Slug, status: .UnitStatus.Status}'`
 
 ## Expected Output Signals
 

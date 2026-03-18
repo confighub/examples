@@ -16,6 +16,7 @@ Explain:
 
 Then run only read-only preview commands.
 Also tell me whether `cub` auth is available and whether any targets are visible.
+Do not guess unsupported `cub` subcommands; check `cub --help` first if needed.
 
 ## 2. Safe Walkthrough
 
@@ -27,6 +28,7 @@ Before each command:
 - tell me what success looks like
 - tell me what GUI page or CLI object to inspect next
 - stop and branch clearly if auth or targets are missing
+- use the documented JSON/jq contracts rather than inventing field paths
 
 Start with `realistic-app` unless you think another example is a better fit.
 
