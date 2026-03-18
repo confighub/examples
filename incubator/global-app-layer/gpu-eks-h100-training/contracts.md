@@ -23,20 +23,20 @@
 ### `cub unit get --space <prefix>-recipe-eks-h100-ubuntu-training --json recipe-eks-h100-ubuntu-training-stack`
 
 - mutates: no
-- output shape: JSON array containing `[space, unit, unit-status]`
+- output shape: JSON object containing `Space`, `Unit`, and `UnitStatus`
 - proves: the stack-level recipe receipt exists in ConfigHub
 - jq anchor:
-  - `cub unit get --space <prefix>-recipe-eks-h100-ubuntu-training --json recipe-eks-h100-ubuntu-training-stack | jq '.[1] | {slug: .Slug, revision: .HeadRevisionNum, labels: .Labels}'`
+  - `cub unit get --space <prefix>-recipe-eks-h100-ubuntu-training --json recipe-eks-h100-ubuntu-training-stack | jq '.Unit | {slug: .Slug, revision: .HeadRevisionNum, labels: .Labels}'`
 
 ### `cub unit get --space <prefix>-deploy-cluster-a --json gpu-operator-cluster-a`
 
 - mutates: no
-- output shape: JSON array containing `[space, unit, unit-status]`
+- output shape: JSON object containing `Space`, `Unit`, `UnitStatus`, and often `UpstreamUnit`
 - proves:
   - the final deployment variant exists
   - target binding is inspectable if present
 - jq anchor:
-  - `cub unit get --space <prefix>-deploy-cluster-a --json gpu-operator-cluster-a | jq '.[1] | {slug: .Slug, upstreamUnitID: .UpstreamUnitID, targetID: .TargetID, revision: .HeadRevisionNum}'`
+  - `cub unit get --space <prefix>-deploy-cluster-a --json gpu-operator-cluster-a | jq '.Unit | {slug: .Slug, upstreamUnitID: .UpstreamUnitID, targetID: .TargetID, revision: .HeadRevisionNum}'`
 
 ### `cub unit list --space <prefix>-deploy-cluster-a --quiet --json`
 

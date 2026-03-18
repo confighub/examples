@@ -22,20 +22,20 @@
 ### `cub unit get --space <prefix>-recipe-us-staging --json recipe-us-staging-realistic-app`
 
 - mutates: no
-- output shape: JSON array containing `[space, unit, unit-status]`
+- output shape: JSON object containing `Space`, `Unit`, and `UnitStatus`
 - proves: the app-level recipe receipt exists in ConfigHub
 - jq anchor:
-  - `cub unit get --space <prefix>-recipe-us-staging --json recipe-us-staging-realistic-app | jq '.[1] | {slug: .Slug, revision: .HeadRevisionNum, labels: .Labels}'`
+  - `cub unit get --space <prefix>-recipe-us-staging --json recipe-us-staging-realistic-app | jq '.Unit | {slug: .Slug, revision: .HeadRevisionNum, labels: .Labels}'`
 
 ### `cub unit get --space <prefix>-deploy-cluster-a --json backend-cluster-a`
 
 - mutates: no
-- output shape: JSON array containing `[space, unit, unit-status]`
+- output shape: JSON object containing `Space`, `Unit`, `UnitStatus`, and often `UpstreamUnit`
 - proves:
   - the final deployment variant exists
   - target binding is inspectable if present
 - jq anchor:
-  - `cub unit get --space <prefix>-deploy-cluster-a --json backend-cluster-a | jq '.[1] | {slug: .Slug, upstreamUnitID: .UpstreamUnitID, targetID: .TargetID, revision: .HeadRevisionNum}'`
+  - `cub unit get --space <prefix>-deploy-cluster-a --json backend-cluster-a | jq '.Unit | {slug: .Slug, upstreamUnitID: .UpstreamUnitID, targetID: .TargetID, revision: .HeadRevisionNum}'`
 
 ### `cub unit list --space <prefix>-deploy-cluster-a --quiet --json`
 
