@@ -1,110 +1,84 @@
-# Review of the `global-app-layer` Package Against the Recipes Spec
+# Status and Open Gaps for `global-app-layer`
 
-## Summary
+This note is for contributors who want a quick view of what is already working in the `global-app-layer` package and what still needs product or example work.
 
-The `global-app-layer` package is now a good staged implementation of the proposed recipes and layers convention.
+## Current Status
 
-It contains four examples:
+The package is now a coherent teaching and demo set for layered recipes in ConfigHub.
 
-- `single-component/`: proves the recipe model with one materialized chain
-- `frontend-postgres/`: proves the same model at small app scope, with two components sharing the same layer spaces
-- `realistic-app/`: proves the same model at fuller app scope, with backend, frontend, and postgres coordinated through one shared layer model
-- `gpu-eks-h100-training/`: proves that the same recipe convention can express platform, accelerator, OS, and intent as explicit layers across `gpu-operator` and `nvidia-device-plugin`
+It has:
 
-This is the right shape for onboarding because it gives us a small proof, a small app proof, a more recognisable app proof, and one domain-shaped proof side by side.
+- a simple one-component proof: [`single-component`](./single-component/)
+- a small multi-component app proof: [`frontend-postgres`](./frontend-postgres/)
+- a more realistic app proof: [`realistic-app`](./realistic-app/)
+- a domain-shaped GPU recipe proof: [`gpu-eks-h100-training`](./gpu-eks-h100-training/)
+- a practical explanation of ConfigHub's value on top of AICR: [confighub-aicr-value-add.md](./confighub-aicr-value-add.md)
+- a package-owned e2e layer: [e2e/](./e2e/)
 
-## What the Package Already Gets Right
+That is enough to teach the core model and to run believable demos.
 
-### 1. Real materialized chains
+## What Is Working Well
 
-Both examples use real units and real upstream relationships rather than describing a purely conceptual overlay model.
+### 1. The recipe model is clear
 
-### 2. Explicit provenance
+The examples consistently show:
 
-Both examples write explicit `Recipe` manifest units and keep placeholder-based base recipe files. That is exactly the right teaching pattern.
+- ordered clone chains
+- explicit layer meaning
+- explicit recipe manifests for provenance
+- deployment layers separated from shared recipe layers
 
-### 3. Ordered precedence is understandable
+### 2. Upgrades are believable
 
-The chains are readable and reviewable. The examples teach a stable precedence model rather than a wide fan-out of hidden overlays.
+The package now gives a credible story for:
 
-### 4. Upgrade propagation is demonstrated
+- shared updates
+- downstream propagation
+- preserved deployment-local values
 
-Both examples show that upstream changes can move down the chain without losing layer-specific mutations.
+### 3. Delivery is no longer hand-wavy
 
-### 5. Verification exists
+The package now has one place for:
 
-The examples are not just narrative. They include `verify.sh` scripts that check chain structure, mutations, and recipe manifest content.
+- direct delivery
+- Argo-oriented delivery
+- brownfield import
+- bridge flows between import and layering
 
-## What Each Example Proves
+### 4. The package is easier to explain
 
-### `single-component/`
+The combination of:
 
-This proves:
+- [README.md](./README.md)
+- [how-it-works.md](./how-it-works.md)
+- [confighub-aicr-value-add.md](./confighub-aicr-value-add.md)
 
-- one component can be expressed as a layered recipe chain
-- a recipe manifest can remain explicit without requiring a new hard backend type
-- upgrade propagation can be reviewed clearly
-
-### `frontend-postgres/`
-
-This proves:
-
-- layer names can keep a consistent meaning across the app
-- component-specific mutations can still differ within shared layer spaces
-- an app-level recipe manifest can describe more than one component cleanly
-
-This is an important step because it moves the model from "single unit mechanism" to "small app recipe".
-
-### `realistic-app/`
-
-This proves:
-
-- the same layer model can coordinate backend, frontend, and database components together
-- one app-level recipe manifest can describe a fuller deployment shape cleanly
-- the pattern is believable for a small real app, not just a pedagogical pair of units
-
-This is the point where the package becomes a realistic worked example, not only a teaching scaffold.
-
-### `gpu-eks-h100-training/`
-
-This proves:
-
-- the same ordered clone-chain model can express non-app dimensions like platform, accelerator, OS, and intent
-- a recipe manifest can describe a GPU-flavored multi-component deployment shape without needing a new backend type
-- the AICR-style story is believable in ConfigHub terms, not only in abstract analysis
-
-This is the point where the package stops being only about `global-app` and starts showing the broader recipe model.
+is now much stronger than the older scattered explanation.
 
 ## What Is Still Missing
 
-### 1. GPU dimensions are now present, but still only at small multi-component scope
+### 1. Preflight and connection clarity in the examples
 
-The package now shows:
+The examples still assume the user can sort out:
 
-- cloud or platform
-- accelerator
-- OS
-- workload intent
+- authentication
+- which worker is active
+- which target to use
+- whether a cluster is actually fresh and connected
 
-But only in one small GPU example. A later larger GPU or platform example is still useful.
+This is still thinner than it should be for first-time live demos.
 
-### 2. Bundle publication is still mostly a hint
+### 2. Full bundle publication as a first-class story
 
-The examples explain the bundle role and target association, but they do not yet walk through publishing and inspecting a real bundle end to end.
+The examples explain the role of bundles and targets, but the package still does not present a strong end-to-end bundle publication and inspection walkthrough.
 
-### 3. Real preflight and connection clarity are still thin
+### 3. A stronger GUI-led walkthrough
 
-The examples do not yet show the full "what am I connected to and is it fresh" story for:
+The new value-add guide includes GUI steps, but the package still does not yet have one dedicated GUI-first walkthrough for users who want to understand the chain visually before using the CLI deeply.
 
-- worker
-- target
-- cluster
-- GitOps controller if delegated
-- resulting bundle
+### 4. A phased operational story
 
-### 4. No phased validation story
-
-The examples verify config shape, but they do not yet show:
+The examples verify config shape and cluster results, but they still do not yet show a formal operational flow like:
 
 - snapshot
 - readiness validate
@@ -112,66 +86,29 @@ The examples verify config shape, but they do not yet show:
 - post-deploy health
 - conformance
 
-That is the main reason the later `Run` idea still matters.
+That remains the strongest reason to keep exploring a better `cub run` or `Operation` story.
 
-### 5. No GUI-led walkthrough yet
+### 5. A larger fleet-style example
 
-The examples are stronger on the CLI side than the GUI side. They still need explicit GUI checkpoints.
+The package now demonstrates the idea of variants and preserved local overrides, but it does not yet have a fuller fleet example where many similar deployments differ by one or two meaningful operational parameters.
 
 ## Recommended Next Steps
 
-### 1. Keep all three examples
+If someone is continuing this work, the most useful next moves are:
 
-Do not replace one with another. The staged set is useful.
-
-### 2. Add one package-level README and test story
-
-Claude and other contributors should be able to understand:
-
-- what this package is
-- where the spec is
-- which example to start with
-- how to test it
-
-### 3. Strengthen the optional target path
-
-Add stronger preflight checks for:
-
-- authenticated context
-- worker selection or creation
-- target selection
-- freshness and connection clarity
-
-### 4. Add one delegated deploy path
-
-After direct apply is solid, add one GitOps-flavored path so the package can show:
-
-- worker publishes bundle
-- ArgoCD or Flux reconciles it
-- ConfigHub still governs desired state and provenance
-
-### 5. Add a larger multi-component GPU-style example later
-
-The package now has a first GPU proof in:
-
-- `eks + h100 + ubuntu + training`
-
-The next GPU step should not be a different model. It should be a larger example that reuses the same conceptual standard across more than one component.
-
-## Recommendation
-
-Keep `examples/incubator/global-app-layer/` as the canonical incubator package for recipes and layers.
-
-Use it in this order:
-
-1. `single-component/`
-2. `frontend-postgres/`
-3. `realistic-app/`
-4. `gpu-eks-h100-training/`
-5. later, a larger multi-component GPU-style example
+1. add stronger preflight and live-target clarity to the examples
+2. add one GUI-first walkthrough page for the main demo paths
+3. add one stronger fleet or multi-variant example
+4. connect the package more directly to a future `cub run` or `Operation` workflow once that direction firms up
 
 ## Bottom Line
 
-The package now matches the proposed spec well enough to serve as the first coherent recipe-and-layer teaching set.
+Yes, this package is now worth using as the main incubator home for recipes and layers.
 
-The next step is not redesign. The next step is to make the package easier to run, easier to connect to real targets, and easier to understand through GUI plus CLI together.
+What remains is no longer basic model design.
+What remains is product polish:
+
+- clearer live connections
+- clearer GUI guidance
+- clearer operational flow
+- larger real-world variant/fleet stories

@@ -108,7 +108,7 @@ It should contain:
 - `realistic-app/`
 - `gpu-eks-h100-training/`
 
-That keeps the analysis, the spec, and the worked examples together.
+That keeps the analysis, the spec, the current-status note, and the worked examples together.
 
 ## Suggested Initial Implementation
 
