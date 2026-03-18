@@ -9,7 +9,7 @@ require_cub
 require_jq
 
 if state_exists; then
-  echo "State already exists in ${STATE_FILE}. Run ./cleanup.sh first or remove .state if you know it is stale." >&2
+  echo "State already exists in ${STATE_FILE}. The .state directory is local run state from an earlier setup. Run ./cleanup.sh first, or remove .state if you know this old state is no longer needed." >&2
   exit 1
 fi
 

@@ -62,10 +62,10 @@ for component in "${COMPONENTS[@]}"; do
       assert_contains "${role_file}" 'value: "staging"'
       assert_contains "${recipe_file}" 'chatdb_us_staging'
       assert_contains "${recipe_file}" 'Cubby Chat US Staging'
-      assert_contains "${deploy_file}" 'namespace: cluster-a'
-      assert_contains "${deploy_file}" 'backend.cluster-a.demo.confighub.local'
+      assert_contains "${deploy_file}" "namespace: ${DEPLOY_NAMESPACE}"
+      assert_contains "${deploy_file}" "$(deploy_hostname backend)"
       assert_contains "${deploy_file}" 'name: CLUSTER'
-      assert_contains "${deploy_file}" 'value: cluster-a'
+      assert_contains "${deploy_file}" "value: ${DEPLOY_NAMESPACE}"
       ;;
     frontend)
       assert_contains "${base_file}" 'image: ghcr.io/confighub/cubbychat/frontend:1.1.7'
@@ -75,10 +75,10 @@ for component in "${COMPONENTS[@]}"; do
       assert_contains "${role_file}" 'value: "staging"'
       assert_contains "${recipe_file}" 'name: RELEASE_CHANNEL'
       assert_contains "${recipe_file}" 'value: us-staging-recipe'
-      assert_contains "${deploy_file}" 'namespace: cluster-a'
-      assert_contains "${deploy_file}" 'frontend.cluster-a.demo.confighub.local'
+      assert_contains "${deploy_file}" "namespace: ${DEPLOY_NAMESPACE}"
+      assert_contains "${deploy_file}" "$(deploy_hostname frontend)"
       assert_contains "${deploy_file}" 'name: CLUSTER'
-      assert_contains "${deploy_file}" 'value: cluster-a'
+      assert_contains "${deploy_file}" "value: ${DEPLOY_NAMESPACE}"
       ;;
     postgres)
       assert_contains "${base_file}" 'storage: 5Gi'
@@ -89,9 +89,9 @@ for component in "${COMPONENTS[@]}"; do
       assert_contains "${role_file}" 'name: ROLE'
       assert_contains "${role_file}" 'value: staging'
       assert_contains "${recipe_file}" 'chatdb_us_staging'
-      assert_contains "${deploy_file}" 'namespace: cluster-a'
+      assert_contains "${deploy_file}" "namespace: ${DEPLOY_NAMESPACE}"
       assert_contains "${deploy_file}" 'name: CLUSTER'
-      assert_contains "${deploy_file}" 'value: cluster-a'
+      assert_contains "${deploy_file}" "value: ${DEPLOY_NAMESPACE}"
       ;;
   esac
 done

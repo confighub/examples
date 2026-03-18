@@ -9,7 +9,7 @@ require_cub
 require_jq
 
 if state_exists; then
-  echo "State already exists in ${STATE_FILE}. Run ./cleanup.sh first or remove .state if you know it is stale." >&2
+  echo "State already exists in ${STATE_FILE}. The .state directory is local run state from an earlier setup. Run ./cleanup.sh first, or remove .state if you know this old state is no longer needed." >&2
   exit 1
 fi
 
@@ -63,7 +63,7 @@ echo "==> Creating deployment clone"
 create_clone_unit "$(deploy_space)" "${DEPLOY_UNIT}" "$(recipe_space)" "${RECIPE_UNIT}" "${deploy_unit_labels[@]}"
 cub function do set-namespace "${DEPLOY_NAMESPACE}" --space "$(deploy_space)" --unit "${DEPLOY_UNIT}"
 cub function do set-env backend "CLUSTER=${DEPLOY_NAMESPACE}" --space "$(deploy_space)" --unit "${DEPLOY_UNIT}"
-cub function do set-string-path networking.k8s.io/v1/Ingress spec.rules.0.host backend.cluster-a.demo.confighub.local --space "$(deploy_space)" --unit "${DEPLOY_UNIT}"
+cub function do set-string-path networking.k8s.io/v1/Ingress spec.rules.0.host "$(deploy_backend_hostname)" --space "$(deploy_space)" --unit "${DEPLOY_UNIT}"
 
 echo "==> Creating postgres stub (dependency for backend)"
 create_unit_from_file "$(deploy_space)" "${DEPLOY_STUB_UNIT}" "${POSTGRES_STUB_YAML}" "${deploy_unit_labels[@]}"

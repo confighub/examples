@@ -70,7 +70,7 @@ save_state() {
   local target_ref="${2:-}"
 
   ensure_state_dir
-  printf 'PREFIX=%q\nTARGET_REF=%q\n' "${prefix}" "${target_ref}" >"${STATE_FILE}"
+  printf 'PREFIX=%q\nTARGET_REF=%q\nDEPLOY_NAMESPACE=%q\n' "${prefix}" "${target_ref}" "${DEPLOY_NAMESPACE}" >"${STATE_FILE}"
 }
 
 state_prefix() {
@@ -288,6 +288,15 @@ bundle_hint_from_target_ref() {
   echo "target/<target-space>/${target_ref}:latest"
 }
 
+deploy_hostname() {
+  local component="$1"
+  case "${component}" in
+    backend) echo "backend.${DEPLOY_NAMESPACE}.demo.confighub.local" ;;
+    frontend) echo "frontend.${DEPLOY_NAMESPACE}.demo.confighub.local" ;;
+    *) return 1 ;;
+  esac
+}
+
 render_recipe_manifest() {
   local output_path="$1"
   local target_ref="$2"
@@ -409,11 +418,11 @@ apply_deploy_mutations() {
 
   case "${component}" in
     backend)
-      cub function do set-string-path networking.k8s.io/v1/Ingress spec.rules.0.host backend.cluster-a.demo.confighub.local --space "${space}" --unit "${unit}"
+      cub function do set-string-path networking.k8s.io/v1/Ingress spec.rules.0.host "$(deploy_hostname backend)" --space "${space}" --unit "${unit}"
       cub function do set-env backend "CLUSTER=${DEPLOY_NAMESPACE}" --space "${space}" --unit "${unit}"
       ;;
     frontend)
-      cub function do set-string-path networking.k8s.io/v1/Ingress spec.rules.0.host frontend.cluster-a.demo.confighub.local --space "${space}" --unit "${unit}"
+      cub function do set-string-path networking.k8s.io/v1/Ingress spec.rules.0.host "$(deploy_hostname frontend)" --space "${space}" --unit "${unit}"
       cub function do set-env frontend "CLUSTER=${DEPLOY_NAMESPACE}" --space "${space}" --unit "${unit}"
       ;;
     postgres)
@@ -432,7 +441,8 @@ set_target_for_deploy_units() {
 
 show_summary() {
   local target_ref="$1"
-  cat <<EOF_SUMMARY
+  if [[ -n "${target_ref}" ]]; then
+    cat <<EOF_SUMMARY
 Created realistic global-app layered chain with prefix: $(state_prefix)
 
 Spaces:
@@ -463,9 +473,43 @@ Units:
 Next steps:
 1. ./verify.sh
 2. ./upgrade-chain.sh ${DEFAULT_BACKEND_TAG} ${DEFAULT_FRONTEND_TAG} ${DEFAULT_POSTGRES_TAG}
-3. ${target_ref:+cub unit approve --space $(deploy_space) $(unit_name backend deployment) && cub unit approve --space $(deploy_space) $(unit_name frontend deployment) && cub unit approve --space $(deploy_space) $(unit_name postgres deployment)}
-4. ${target_ref:+cub unit apply --space $(deploy_space) $(unit_name backend deployment) && cub unit apply --space $(deploy_space) $(unit_name frontend deployment) && cub unit apply --space $(deploy_space) $(unit_name postgres deployment)}
-5. ${target_ref:+Review recipe manifest: cub unit get --space $(recipe_space) --data-only ${RECIPE_MANIFEST_UNIT}}
-${target_ref:-3. ./set-target.sh <space/target>  # optional, enables apply + target bundle story}
+3. cub unit approve --space $(deploy_space) $(unit_name backend deployment) && cub unit approve --space $(deploy_space) $(unit_name frontend deployment) && cub unit approve --space $(deploy_space) $(unit_name postgres deployment)
+4. cub unit apply --space $(deploy_space) $(unit_name backend deployment) && cub unit apply --space $(deploy_space) $(unit_name frontend deployment) && cub unit apply --space $(deploy_space) $(unit_name postgres deployment)
+5. Review recipe manifest: cub unit get --space $(recipe_space) --data-only ${RECIPE_MANIFEST_UNIT}
 EOF_SUMMARY
+  else
+    cat <<EOF_SUMMARY
+Created realistic global-app layered chain with prefix: $(state_prefix)
+
+Spaces:
+- $(base_space)
+- $(region_space)
+- $(role_space)
+- $(recipe_space)
+- $(deploy_space)
+
+Units:
+- $(base_space)/$(unit_name backend base)
+- $(region_space)/$(unit_name backend region)
+- $(role_space)/$(unit_name backend role)
+- $(recipe_space)/$(unit_name backend recipe)
+- $(deploy_space)/$(unit_name backend deployment)
+- $(base_space)/$(unit_name frontend base)
+- $(region_space)/$(unit_name frontend region)
+- $(role_space)/$(unit_name frontend role)
+- $(recipe_space)/$(unit_name frontend recipe)
+- $(deploy_space)/$(unit_name frontend deployment)
+- $(base_space)/$(unit_name postgres base)
+- $(region_space)/$(unit_name postgres region)
+- $(role_space)/$(unit_name postgres role)
+- $(recipe_space)/$(unit_name postgres recipe)
+- $(deploy_space)/$(unit_name postgres deployment)
+- $(recipe_space)/${RECIPE_MANIFEST_UNIT}
+
+Next steps:
+1. ./verify.sh
+2. ./upgrade-chain.sh ${DEFAULT_BACKEND_TAG} ${DEFAULT_FRONTEND_TAG} ${DEFAULT_POSTGRES_TAG}
+3. ./set-target.sh <space/target>  # optional, enables apply + target bundle story
+EOF_SUMMARY
+  fi
 }
