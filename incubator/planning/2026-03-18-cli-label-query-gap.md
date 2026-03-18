@@ -1,40 +1,43 @@
-# CLI Label Query Gap
+# Label Query UX Gap
 
 **Status**: backlog
 **Filed**: 2026-03-18
-**Context**: discovered while testing global-app-layer examples with multiple agents
+**Context**: discovered while testing `global-app-layer` examples with multiple agents
 
 ## Problem
 
-The `cub` CLI lets you set labels on spaces and units:
+The core CLI capability already exists:
 
 ```bash
-cub space create my-space --label "ExampleName=global-app-layer-realistic-app"
-cub unit create --space my-space my-unit file.yaml --label "Component=backend"
+cub space list --where "Labels.ExampleName = 'global-app-layer-realistic-app'" --json
+cub space list --where "Labels.ExampleChain = 'hug-hug'" --json
+cub space list --where "Labels.ExampleName LIKE 'global-app-layer-%'" --names
 ```
 
-But there is no way to query by label:
+But this is not obvious to new users or AI assistants. People naturally guess:
 
 ```bash
-# This does not exist
+# This does not exist today
 cub space list --label "ExampleName=global-app-layer-realistic-app"
 ```
 
-Labels are write-only from the CLI perspective.
+So the gap is not "labels are unqueryable". The gap is that **label-based discovery is too hard to discover and too easy to guess wrong**.
 
 ## Impact
 
-1. **Multi-agent coordination fails.** Agent A creates spaces with labels. Agent B cannot find them by label — only by prefix/name pattern matching with `grep`.
+1. **Multi-agent coordination is brittle.** Agent A creates labeled spaces. Agent B may not know the prefix and may guess the wrong CLI shape instead of using `--where "Labels.X = 'Y'"`.
 
-2. **Cleanup relies on naming conventions, not semantics.** The `cleanup.sh` scripts use `cub space delete --where "Labels.ExampleChain = 'prefix'"` (which works via the bulk delete API), but `cub space list` has no equivalent filter. You can delete by label but not list by label.
+2. **Example handoff is harder than it should be.** The `global-app-layer` examples set `ExampleName`, `ExampleChain`, `Recipe`, `Component`, and `Layer` labels consistently, but a second agent has to know both the labels and the `--where` syntax to find them.
 
-3. **"What's running right now?" requires heuristics.** To find all global-app-layer spaces, you have to `cub space list | grep -E '(catalog-base|catalog-us|recipe-|deploy-)'` instead of querying by `ExampleName`.
+3. **The common mental model is wrong.** People think:
+   - `--label` for create/update
+   - therefore probably `--label` for list/filter
 
-4. **The label convention in the examples is systematically applied but unverifiable.** Every space and unit gets `ExampleName`, `ExampleChain`, `Recipe`, `Component`, and `Layer` labels. These labels exist in the database but are invisible to CLI users except through `cub space get` or `cub unit get` on individual objects.
+4. **Docs and examples have to carry extra explanation.** The `global-app-layer` package now ships `find-runs.sh` mainly to bridge this discovery gap.
 
 ## Current Labels Set by Examples
 
-```
+```bash
 --label "ExampleName=${EXAMPLE_NAME}"
 --label "ExampleChain=$(state_prefix)"
 --label "Recipe=${CHAIN_LABEL}"
@@ -42,22 +45,46 @@ Labels are write-only from the CLI perspective.
 --label "Layer=${layer}"
 ```
 
-## Proposed Fix
+These labels are queryable today through `--where`.
 
-Add label filtering to list commands:
+## Proposed Fixes
+
+### Minimum fix: improve discoverability
+
+Make label-query examples much more obvious in CLI help and docs:
+
+```bash
+cub space list --where "Labels.ExampleName = 'global-app-layer-realistic-app'" --json
+cub unit list --where "Labels.Component = 'backend'" --json
+```
+
+This should appear in:
+
+- `cub space list --help`
+- `cub unit list --help`
+- agent-oriented CLI docs
+
+### Optional sugar: add `--label` shorthand for list commands
+
+Support:
 
 ```bash
 cub space list --label "ExampleName=global-app-layer-realistic-app"
 cub unit list --label "Component=backend"
-cub space list --label "ExampleChain=hug-hug"
 ```
 
-This would make labels queryable and close the gap between the bulk delete API (which already supports label-based `--where`) and the list commands (which do not).
+Implemented as shorthand for the equivalent `--where "Labels.X = 'Y'"` expression.
 
-## Workarounds
+This is a UX improvement, not a missing backend capability.
 
-Until the CLI supports label filtering:
+## What This Is Not
 
-- Use prefix-based `grep` on `cub space list` output
-- Use `cub space delete --where "Labels.X = 'Y'"` for cleanup (this works today)
-- Use the ConfigHub GUI for label-based browsing
+- not a claim that labels are write-only
+- not a claim that list commands cannot filter by labels
+- not a blocker for the examples package, which can already query labels with `--where`
+
+## Workarounds Available Today
+
+- use `--where "Labels.X = 'Y'"` on `cub space list`
+- use `--where "Labels.X = 'Y'"` on `cub unit list`
+- use [`global-app-layer/find-runs.sh`](../global-app-layer/find-runs.sh) for example-run discovery

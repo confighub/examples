@@ -25,6 +25,7 @@ Supporting documents:
 - [how-it-works.md](./how-it-works.md)
 - [confighub docs](https://docs.confighub.com/)
 - use `cub upgrade` to download the latest `cub`, then `cub --help` for CLI guidance
+- [find-runs.sh](./find-runs.sh) if you need to discover active global-app-layer runs in live ConfigHub
 
 ## Prerequisites
 
@@ -245,6 +246,21 @@ About the placeholders:
 
 ```bash
 cub target list --space "*" --json
+```
+
+To discover active global-app-layer runs in ConfigHub without knowing the prefix:
+
+```bash
+./find-runs.sh
+./find-runs.sh realistic-app
+./find-runs.sh --json | jq
+```
+
+The helper uses the labels already written by the examples:
+
+```bash
+cub space list --where "Labels.ExampleName = 'global-app-layer-realistic-app'" --json
+cub space list --where "Labels.ExampleChain = '<prefix>'" --json
 ```
 
 To deploy to a specific namespace (default is `cluster-a`):

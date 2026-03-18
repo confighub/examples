@@ -14,6 +14,14 @@ It contains:
 - incubator work in [`incubator/`](./incubator/README.md), especially the layered-recipe package in [`incubator/global-app-layer/`](./incubator/global-app-layer/README.md)
 - verifier scripts in `./scripts/`
 
+Do not hardcode the checkout path. This repo may be checked out as `examples`, `confighub-examples`, or another folder name.
+
+Resolve the repo root first:
+
+```bash
+git rev-parse --show-toplevel
+```
+
 ## 2. How To Access Live ConfigHub
 
 If you need live ConfigHub state, use the `cub` CLI.
@@ -36,6 +44,7 @@ Avoid these common mistakes:
 - use `cub version`, not `cub --version`
 - use `cub context list`, not `cub auth status`
 - use `--json` and `--jq` when you want machine-readable output
+- use `--where "Labels.Key = 'value'"` for label filtering on `cub space list`, not `--label`
 - use `--dry-run` before `cub function do` or `cub unit apply` if you want a non-mutating preview
 
 Good discovery commands:
@@ -133,6 +142,7 @@ If the user is asking about NVIDIA AICR, recipes, or layered variants:
 3. [`incubator/global-app-layer/how-it-works.md`](./incubator/global-app-layer/how-it-works.md)
 4. one worked example under `incubator/global-app-layer/`
 5. run `./setup.sh --explain-json | jq` inside that example before reading shell code or mutating anything
+6. use `./find-runs.sh --json` in `incubator/global-app-layer/` to discover active live runs
 
 If the user is asking about incubator-only work:
 
@@ -224,3 +234,13 @@ cd incubator/global-app-layer/realistic-app
 ```
 
 Those commands do not mutate ConfigHub.
+
+If you need to discover live runs for the layered examples, use:
+
+```bash
+cd incubator/global-app-layer
+./find-runs.sh
+./find-runs.sh realistic-app --json | jq
+```
+
+This is also read-only.
