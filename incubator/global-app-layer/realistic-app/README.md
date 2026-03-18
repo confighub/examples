@@ -21,6 +21,13 @@ This example is for:
 - a small three-tier app recipe
 - safe app-level layered propagation across backend, frontend, and database
 
+## What You Need Installed
+
+- `cub` in `PATH`
+- an authenticated ConfigHub CLI context for any mutating step
+- `jq` for the JSON preview path
+- optional: a live target only if you want to bind and apply
+
 ## What This Reads And Writes
 
 What it reads:
@@ -146,17 +153,15 @@ cd incubator/global-app-layer/realistic-app
 # Machine-readable plan for AI or tooling
 ./setup.sh --explain-json | jq
 
-# Build the chain only
-./setup.sh
-
-# Or build it and wire a real target immediately
-./setup.sh <prefix> <space/target>
-
-# Verify all three chains and the app-level recipe manifest
+# Ready for a fresh run
+./setup.sh                              # ConfigHub-only
+./setup.sh <prefix> <space/target>     # with live target
 ./verify.sh
 ```
 
 The explain modes do not require a live target and do not write anything to ConfigHub.
+
+After `./setup.sh`, prefer the printed clickable GUI URLs and `.logs/*.latest.log` files over terminal scrollback alone.
 
 ## Upgrade Flow
 

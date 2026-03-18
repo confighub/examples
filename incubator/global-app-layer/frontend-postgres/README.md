@@ -10,6 +10,58 @@ It keeps the same model:
 
 The recipe is still the ordered chain of variants, not the bundle. The difference here is that two components move through the same layer spaces together.
 
+## Stack And Scenario
+
+This example is for:
+- ConfigHub-managed Kubernetes manifests
+- a small two-component app recipe
+- shared layers with component-specific mutations
+
+## What You Need Installed
+
+- `cub` in `PATH`
+- an authenticated ConfigHub CLI context for any mutating step
+- `jq` for the JSON preview path
+- optional: a live target only if you want to bind and apply
+
+## What This Reads And Writes
+
+What it reads:
+- `../../../global-app/baseconfig/frontend.yaml`
+- `../../../global-app/baseconfig/postgres.yaml`
+- `./backend-stub.yaml`
+- current ConfigHub context and optional target ref
+
+What it writes:
+- five ConfigHub spaces with a shared prefix
+- two layered component chains
+- one deploy-stage `backend-stub`
+- one app-level recipe manifest
+- optional target bindings
+- optional live deployment state only if you explicitly bind and apply
+
+## What You Should Expect To See
+
+In ConfigHub-only mode:
+- five spaces sharing one prefix
+- two layered chains
+- one deploy-stage stub
+- one recipe manifest unit
+- `verify.sh` passing
+
+In live mode:
+- deployment units bound to a target
+- successful `cub unit apply`
+- live resources visible in the chosen target path
+
+## AI-Safe Path
+
+If you want to use this example with an AI assistant, start here:
+
+- [AI_START_HERE.md](./AI_START_HERE.md)
+- [prompts.md](./prompts.md)
+- [contracts.md](./contracts.md)
+
 ## What It Builds
 
 Two components from `global-app`:
@@ -83,15 +135,13 @@ cd incubator/global-app-layer/frontend-postgres
 # Machine-readable plan for AI or tooling
 ./setup.sh --explain-json | jq
 
-# Build the chain only
-./setup.sh
-
-# Or build it and wire a real target immediately
-./setup.sh <prefix> <space/target>
-
-# Verify both chains and the app-level recipe manifest
+# Ready for a fresh run
+./setup.sh                              # ConfigHub-only
+./setup.sh <prefix> <space/target>     # with live target
 ./verify.sh
 ```
+
+After `./setup.sh`, prefer the printed clickable GUI URLs and `.logs/*.latest.log` files over terminal scrollback alone.
 
 ## Upgrade Flow
 
