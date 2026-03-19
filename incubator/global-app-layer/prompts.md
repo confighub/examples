@@ -32,6 +32,7 @@ Before each command:
 - use the documented JSON/jq contracts rather than inventing field paths
 - after setup, use the printed GUI URLs and `.logs/*.latest.log` files instead of relying on scrollback
 - before any live claim, run `./preflight-live.sh <space/target>` and treat `applyReady: true` as the gate
+- when claiming GitOps/delegated delivery, use a real `ArgoCDRenderer` target if available and prove the agent-side objects/sync state; do not use `e2e/deliver-argo.sh` as the sole proof
 
 Start with `realistic-app` unless you think another example is a better fit.
 
@@ -67,6 +68,7 @@ After running a `global-app-layer` example, verify:
 - live apply state if used
 
 Summarize what definitely happened, what did not happen, and what still depends on missing infrastructure.
+If live delivery was involved, separate direct-worker evidence from delegated-agent evidence.
 
 ## 6. Whole Lifecycle Walkthrough
 

@@ -110,14 +110,21 @@ When you `cub unit set-target` + `cub unit apply`:
 2. Sends it to the worker via the target reference
 3. The worker applies the rendered YAML to the cluster
 
+Important:
+
+- a visible target is not enough for a believable demo
+- a good demo should show that the worker is actually ready before mutation
+- in this package, `./preflight-live.sh <space/target>` is the safest way to show that readiness
+
 The worker supports two target types in this example:
 
 | Target | Slug | What it does |
 |---|---|---|
 | **Kubernetes (direct)** | `worker-kubernetes-yaml-cluster` | Worker applies YAML directly via `kubectl apply` |
-| **ArgoCDRenderer** | `worker-argocdrenderer-kubernetes-yaml-cluster` | Worker pushes YAML through ArgoCD |
+| **ArgoCDRenderer** | `worker-argocdrenderer-kubernetes-yaml-cluster` | Worker hands rendered YAML to ArgoCD as the delegated reconciler |
 
-In these examples we use the direct target. You could swap the direct target for ArgoCD and the layered variant chain is unchanged — only the delivery mode differs.
+In these examples the direct target is the most fully proven delivery path today.
+The layered variant chain is unchanged when you swap the direct target for ArgoCD — only the executor changes — but a good delegated-delivery proof still needs explicit Argo-side evidence, not only target binding.
 
 ### How ArgoCD Integration Works
 
@@ -133,6 +140,12 @@ ConfigHub (materialized config)
 The worker hands ArgoCD the rendered YAML that ConfigHub materialized through the layered variant chain. ArgoCD applies it and then does what ArgoCD does — drift detection, self-heal, health checks, sync status. But the **source of truth is ConfigHub**, not a Git repo.
 
 This is the opposite of the typical ArgoCD model where Argo watches a Git repo. Here, ArgoCD is demoted from "source of truth" to "delivery and reconciliation engine."
+
+That distinction matters for demos:
+
+- if the proof is about direct worker delivery, show worker readiness plus cluster results
+- if the proof is about delegated Argo delivery, show worker readiness, Argo objects/sync state, and cluster results
+- do not treat a hybrid helper that runs `kubectl apply` and then creates an Argo Application as the same thing as a real Argo-backed target proof
 
 ### Brownfield: The Reverse Direction
 
@@ -152,7 +165,7 @@ It covers:
 - **Greenfield**: create layered chains from scratch, deploy all four recipes
 - **Bridge**: import first, then layer greenfield config on top
 - **Direct delivery**: apply a single materialized example through the worker
-- **Argo-oriented delivery**: deliver a single materialized example through the Argo path
+- **Argo-oriented delivery**: compare the hybrid helper path with real delegated delivery through an `ArgoCDRenderer` target
 
 ## 5. Role of AI
 

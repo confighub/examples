@@ -55,9 +55,26 @@ In ConfigHub-only mode you should expect:
 - `verify.sh` passing
 
 In live mode you should additionally expect:
+- `./preflight-live.sh <space/target>` showing `applyReady: true` before any mutation
 - deployment units bound to a real target
 - successful `cub unit apply`
-- live resources or delegated delivery objects appearing in the chosen target path
+- for direct targets: worker-mediated apply evidence plus live cluster resources
+- for delegated targets: agent-side objects and sync/health evidence plus live cluster resources
+
+## What Good Demos Should Prove
+
+For this package, a believable live demo should show:
+
+- target visibility is not enough; worker or agent readiness must be shown first
+- which delivery mode is in use: direct worker apply or delegated GitOps agent
+- evidence from the executor, not only from ConfigHub intent objects
+- cluster-side results after the delivery step
+
+What these demos should also make visible:
+
+- direct worker delivery is already a strong proof path in this package
+- delegated GitOps-agent delivery is a must-have proof path for the AICR story
+- worker resilience still needs to be demonstrated more explicitly through reconnect, retry, and resume behavior rather than treated as a hidden assumption
 
 ## AI-Safe Path
 

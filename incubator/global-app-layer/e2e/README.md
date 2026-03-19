@@ -74,6 +74,7 @@ Important:
 - it exports ConfigHub-rendered YAMLs, applies them directly with `kubectl`, and then creates an ArgoCD Application for visibility and drift detection
 - it proves the staged Argo-shaped workflow and Argo artifacts around the app
 - it does not, by itself, prove Argo reconciled the workloads from Git as the sole delivery mechanism
+- if you need a real delegated-delivery proof, prefer the actual `ArgoCDRenderer` target path instead of this helper
 
 ## Running the Lifecycle Flows
 
@@ -110,6 +111,12 @@ The shared `lib.sh` provides:
 - example loading from `.state/state.env`
 - cluster assertions and wait helpers
 - ConfigHub space cleanup helpers
+
+Use those infrastructure checks as part of the demo, not as hidden setup:
+
+- show that the worker is actually ready before delivery
+- show which target type is being exercised
+- for delegated delivery, show the agent-side objects and sync state, not only the final cluster resources
 
 ## Why This Lives Here
 

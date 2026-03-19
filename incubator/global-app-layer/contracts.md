@@ -140,6 +140,8 @@ When a run succeeds in ConfigHub-only mode, expect:
 
 When the live path also succeeds, expect:
 - `./preflight-live.sh <space/target>` to report `applyReady: true`
+- `./preflight-live.sh <space/target> --json` to make the delivery mode explicit (`direct` vs `gitops`)
 - target binding visible on deployment units
 - successful `cub unit apply`
-- resulting live state visible via ConfigHub and the cluster target
+- for direct targets: resulting live state visible via ConfigHub and the cluster target
+- for delegated targets: resulting live state visible via ConfigHub, the delegated agent, and the cluster target
