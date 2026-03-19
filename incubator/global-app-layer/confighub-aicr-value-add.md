@@ -196,9 +196,10 @@ ConfigHub lets you keep the layered recipe as the managed source of truth, and t
 
 That means:
 
-- the same recipe chain can be delivered directly or through Argo
+- the same recipe chain can be delivered directly or through a GitOps agent such as Argo
 - the delivery mode can change without rewriting the recipe chain
 - ConfigHub remains the governing system for the materialized config
+- a good demo can prove which executor actually handled the delivery: direct worker or delegated agent
 
 This is explained in [how-it-works.md](./how-it-works.md).
 
@@ -239,6 +240,20 @@ To find available targets:
 cub target list --space "*" --json
 ```
 
+Before claiming anything about live delivery, preflight the target and inspect the worker:
+
+```bash
+cd ..
+./preflight-live.sh gitops-import-test/worker-kubernetes-yaml-cluster --json | jq
+./preflight-live.sh gitops-import-test/worker-argocdrenderer-kubernetes-yaml-cluster --json | jq
+```
+
+What to notice:
+
+- target visibility is not enough; `applyReady: true` is the gate
+- the `Kubernetes` target proves direct worker apply
+- the `ArgoCDRenderer` target is the target that matters for real GitOps-agent proof
+
 Then compare that with the package e2e delivery helpers:
 
 ```bash
@@ -247,6 +262,12 @@ cd ../e2e
 # or
 ./deliver-argo.sh gpu-eks-h100-training
 ```
+
+Important:
+
+- `deliver-direct.sh` is a good worker-mediated proof helper
+- `deliver-argo.sh` is currently a hybrid scaffold, not the main GitOps proof
+- if you want to prove real Argo-backed delivery, prefer the actual `ArgoCDRenderer` target path over the hybrid helper
 
 #### GUI
 
@@ -259,6 +280,8 @@ What this proves:
 
 - AICR gives you a layered recipe ready for delivery.
 - ConfigHub lets you keep that recipe under management while still using the delivery pattern your team already trusts.
+- The demo is strongest when it shows worker readiness first and then proves whether a direct worker or a delegated GitOps agent handled the delivery.
+- The package still needs a first-class real Argo-backed target walkthrough to make this story complete.
 
 ## Story 3: Variants, Customizations, Integrations, and Fleets
 

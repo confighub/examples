@@ -109,6 +109,7 @@ Important:
 - `cub target list` proves visibility, not readiness
 - `set-target.sh` proves binding, not readiness
 - only call the live path ready if `preflight-live.sh` reports `applyReady: true`
+- when claiming delegated/GitOps delivery, prefer a real `ArgoCDRenderer` target and prove the agent-side evidence; do not treat the hybrid `e2e/deliver-argo.sh` helper as the main proof
 
 ## Capability Branching
 
@@ -216,7 +217,8 @@ After a successful live path you should also see:
 - `./preflight-live.sh <space/target>` returning `applyReady: true`
 - targets bound on deployment units
 - successful `cub unit apply`
-- live resources or delegated delivery objects visible
+- for direct targets: worker-mediated apply evidence plus live resources
+- for delegated targets: agent-side objects/sync evidence plus live resources
 
 ## GUI Checkpoints
 
