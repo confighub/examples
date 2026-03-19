@@ -51,6 +51,7 @@ upgrade_deploy_units_from_upstream() {
 }
 
 ensure_apply_ready_target "${target_ref}"
+assert_supported_live_target "${target_ref}"
 
 if [[ "${target_ref}" != "${TARGET_REF:-}" ]]; then
   echo "==> Updating target binding to ${target_ref}"

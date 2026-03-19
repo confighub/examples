@@ -46,7 +46,7 @@ This file documents the safest stable inspection paths for `global-app-layer`.
 - output shape: JSON object
 - proves:
   - whether the target exists
-  - whether the target maps to direct or GitOps-style delivery
+  - whether the target maps to direct apply or Argo-render-style delivery
   - whether the attached worker is actually ready for apply
 - expected anchors:
   - `.mutates == false`
@@ -56,6 +56,8 @@ This file documents the safest stable inspection paths for `global-app-layer`.
   - `.bridgeWorker.slug`
   - `.applyReady`
   - `.reasons`
+- note: this proves worker/target readiness, not payload compatibility; a raw Kubernetes unit can still be incompatible with an `ArgoCDRenderer` target that expects an Argo CD `Application`
+- note: for `ArgoCDRenderer`, readiness means the renderer target is reachable, not that Argo-managed workload sync is proven
 
 ### `./.logs/setup.latest.log`
 
@@ -140,7 +142,7 @@ When a run succeeds in ConfigHub-only mode, expect:
 
 When the live path also succeeds, expect:
 - `./preflight-live.sh <space/target>` to report `applyReady: true`
-- `./preflight-live.sh <space/target> --json` to make the delivery mode explicit (`direct` vs `gitops`)
+- `./preflight-live.sh <space/target> --json` to make the delivery mode explicit (`direct` vs `argocd-render`)
 - target binding visible on deployment units
 - successful `cub unit apply`
 - for direct targets: resulting live state visible via ConfigHub and the cluster target

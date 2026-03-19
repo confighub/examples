@@ -203,6 +203,11 @@ The simplest honest live path is:
 - then approves and applies the backend, frontend, and postgres deployment units
 - waits for completion instead of treating "apply started" as success
 
+Important:
+- this example's proven live path is the direct `Kubernetes` target
+- the deployment units here are raw Kubernetes manifests, not Argo CD `Application` resources
+- so `ArgoCDRenderer` is not a drop-in target swap for `realistic-app` today; the helper scripts now stop early and tell you that instead of failing later with `failed to parse Application`
+
 The bundle belongs to the target. The explicit recipe manifest records the layered provenance for the whole app and includes a bundle hint once a target is set.
 
 ## Inspecting the Result

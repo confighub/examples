@@ -109,7 +109,7 @@ Important:
 - `cub target list` proves visibility, not readiness
 - `set-target.sh` proves binding, not readiness
 - only call the live path ready if `preflight-live.sh` reports `applyReady: true`
-- when claiming delegated/GitOps delivery, prefer a real `ArgoCDRenderer` target and prove the agent-side evidence; do not treat the hybrid `e2e/deliver-argo.sh` helper as the main proof
+- when exploring Argo integration, distinguish Argo rendering from real Argo-managed sync; the current `ArgoCDRenderer` target is a renderer/hydration path, not the final sync proof
 
 ## Capability Branching
 

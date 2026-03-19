@@ -78,6 +78,10 @@ From this directory, run:
 
 Only call the live path ready if preflight reports `applyReady: true`.
 
+For `realistic-app`, there is one more gate:
+- the honest live proof today is the direct `Kubernetes` target
+- if preflight says `providerType: "ArgoCDRenderer"`, stop and note that this example materializes raw Kubernetes manifests, while the current renderer expects Argo CD `Application` payloads
+
 If the human wants the full lifecycle after setup + verify, continue with:
 
 - [../whole-journey.md](../whole-journey.md)
@@ -104,6 +108,7 @@ If you start ConfigHub-only and later want the live path:
 
 Prefer `./apply-live.sh` over ad hoc manual approval/apply steps.
 It preflights the target, refreshes the deploy clones from upstream, refreshes the recipe receipt, applies the namespace bootstrap unit first, and only then applies the app units.
+It also rejects `ArgoCDRenderer` targets for this example with a clear compatibility error before mutating the deployment units.
 
 ## Capability Branching
 

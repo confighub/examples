@@ -48,6 +48,10 @@ Use this rule:
 - if a real target is visible, run `../preflight-live.sh <space/target>` before you offer the live path
 - only use the live path when preflight reports `applyReady: true`
 
+For this example, there is one more gate:
+- the honest live proof today is the direct `Kubernetes` target
+- if preflight says `providerType: "ArgoCDRenderer"`, stop and note that this example materializes raw Kubernetes deployment units, while the current renderer path expects Argo CD `Application` payloads and does not serve as the final Argo-sync proof
+
 ## Important Note
 
 This example is a structural proof:
@@ -105,6 +109,8 @@ If you start ConfigHub-only and later want the live path:
 ```bash
 ./set-target.sh <space/target>
 ```
+
+The helper now rejects `ArgoCDRenderer` targets for this example before mutating deployment units.
 
 ## Capability Branching
 

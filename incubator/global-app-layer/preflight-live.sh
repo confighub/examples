@@ -121,7 +121,7 @@ bridge_worker_slug="$(printf '%s\n' "${target_doc}" | jq -r '.BridgeWorker.Slug 
 delivery_mode="unknown"
 case "${provider_type}" in
   Kubernetes) delivery_mode="direct" ;;
-  ArgoCDRenderer) delivery_mode="gitops" ;;
+  ArgoCDRenderer) delivery_mode="argocd-render" ;;
 esac
 
 worker_condition=""
@@ -178,11 +178,11 @@ next_steps_json="$(
             "run cub unit approve ...",
             "run cub unit apply ..."
           ]
-        elif $deliveryMode == "gitops" then
+        elif $deliveryMode == "argocd-render" then
           [
-            "use the GitOps/Argo-oriented path for this target",
-            "expect delegated delivery rather than direct kubectl-style apply",
-            "verify the resulting controller-side objects"
+            "treat this as an ArgoCD Application render/hydration target, not as proof of Argo-managed workload sync",
+            "verify that the unit payload is actually compatible with Argo CD Application resources before applying",
+            "use a direct Kubernetes target for the honest raw-manifest live path today"
           ]
         else
           [
@@ -246,8 +246,8 @@ else
     echo "What this means:"
     if [[ "${delivery_mode}" == "direct" ]]; then
       echo "- direct apply is expected to work if you approve and apply the units"
-    elif [[ "${delivery_mode}" == "gitops" ]]; then
-      echo "- delegated/GitOps delivery is expected to work for this target"
+    elif [[ "${delivery_mode}" == "argocd-render" ]]; then
+      echo "- the renderer target looks reachable, but this is not by itself proof of Argo-managed workload sync"
     else
       echo "- the worker looks ready, but the provider type is not part of the documented example flow"
     fi

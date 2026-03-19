@@ -17,6 +17,8 @@ fi
 
 target_ref="$1"
 
+assert_supported_live_target "${target_ref}"
+
 set_target_for_deploy_units "${target_ref}"
 save_state "${PREFIX}" "${target_ref}"
 TARGET_REF="${target_ref}"

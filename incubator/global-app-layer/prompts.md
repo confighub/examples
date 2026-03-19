@@ -32,7 +32,8 @@ Before each command:
 - use the documented JSON/jq contracts rather than inventing field paths
 - after setup, use the printed GUI URLs and `.logs/*.latest.log` files instead of relying on scrollback
 - before any live claim, run `./preflight-live.sh <space/target>` and treat `applyReady: true` as the gate
-- when claiming GitOps/delegated delivery, use a real `ArgoCDRenderer` target if available and prove the agent-side objects/sync state; do not use `e2e/deliver-argo.sh` as the sole proof
+- when exploring Argo integration, distinguish renderer evidence from real sync evidence; `ArgoCDRenderer` is not by itself a workload-sync proof, and `e2e/deliver-argo.sh` is also not sufficient
+- for raw-manifest examples such as `realistic-app`, do not assume `ArgoCDRenderer` compatibility just because preflight passes; verify the unit payload shape first
 
 Start with `realistic-app` unless you think another example is a better fit.
 
