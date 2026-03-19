@@ -121,35 +121,36 @@ The worker supports two target types in this example:
 | Target | Slug | What it does |
 |---|---|---|
 | **Kubernetes (direct)** | `worker-kubernetes-yaml-cluster` | Worker applies YAML directly via `kubectl apply` |
-| **ArgoCDRenderer** | `worker-argocdrenderer-kubernetes-yaml-cluster` | Worker hands rendered YAML to ArgoCD as the delegated reconciler |
+| **ArgoCDRenderer** | `worker-argocdrenderer-kubernetes-yaml-cluster` | Worker manages or reads Argo CD `Application` resources and asks ArgoCD to render them |
 
 In these examples the direct target is the most fully proven delivery path today.
-The layered variant chain is unchanged when you swap the direct target for ArgoCD — only the executor changes — but a good delegated-delivery proof still needs explicit Argo-side evidence, not only target binding.
+The layered variant chain is unchanged conceptually when you change executors, but the unit payload still has to match the target type. The raw-manifest examples in this package are not yet a one-line swap to `ArgoCDRenderer`, and a good delegated-delivery proof still needs explicit Argo-side evidence, not only target binding.
 
 ### How ArgoCD Integration Works
 
 When you use the `ArgoCDRenderer` target, the flow is:
 
 ```
-ConfigHub (materialized config)
+ConfigHub (materialized Application)
     → worker (in-cluster agent)
-        → ArgoCD (as a rendering/delivery engine)
-            → cluster
+        → ArgoCD API (render/hydrate)
+            → rendered manifests returned to ConfigHub
 ```
 
-The worker hands ArgoCD the rendered YAML that ConfigHub materialized through the layered variant chain. ArgoCD applies it and then does what ArgoCD does — drift detection, self-heal, health checks, sync status. But the **source of truth is ConfigHub**, not a Git repo.
+The current `ArgoCDRenderer` implementation works with Argo CD `Application` resources, not arbitrary raw Kubernetes manifests. It also disables autosync so ArgoCD does not become the workload reconciler for this path. So for an Application-shaped unit, ConfigHub can hand that object to the worker, let ArgoCD render it, and then read back Argo-side evidence about the rendered manifests. But the raw-manifest chains in `realistic-app` and `gpu-eks-h100-training` do not yet fit that target directly.
 
-This is the opposite of the typical ArgoCD model where Argo watches a Git repo. Here, ArgoCD is demoted from "source of truth" to "delivery and reconciliation engine."
+That is still different from the typical ArgoCD model where Argo watches a Git repo and reconciles workloads. Here, ArgoCD is being used as a render/hydration engine. A separate sync-capable target path is still needed for a true Argo-managed workload proof.
 
 That distinction matters for demos:
 
 - if the proof is about direct worker delivery, show worker readiness plus cluster results
-- if the proof is about delegated Argo delivery, show worker readiness, Argo objects/sync state, and cluster results
+- if the proof is about Argo rendering, show worker readiness, Argo `Application` objects, and rendered-manifest evidence
+- do not call `ArgoCDRenderer` a real Argo-sync proof for workloads
 - do not treat a hybrid helper that runs `kubectl apply` and then creates an Argo Application as the same thing as a real Argo-backed target proof
 
 ### Brownfield: The Reverse Direction
 
-The brownfield flow goes the other way — `cub gitops discover` finds existing ArgoCD Applications on the cluster and `cub gitops import` pulls their rendered manifests into ConfigHub as units. That's Git→Argo→ConfigHub (one-time import). After that, the ongoing flow is ConfigHub→worker→Argo→cluster.
+The brownfield flow goes the other way — `cub gitops discover` finds existing ArgoCD Applications on the cluster and `cub gitops import` pulls their rendered manifests into ConfigHub as units. That's Git→Argo→ConfigHub (one-time import). After that, the ongoing renderer flow is ConfigHub→worker→Argo render API→rendered manifests.
 
 ### Label Mapping (Open Design Question)
 
@@ -165,7 +166,7 @@ It covers:
 - **Greenfield**: create layered chains from scratch, deploy all four recipes
 - **Bridge**: import first, then layer greenfield config on top
 - **Direct delivery**: apply a single materialized example through the worker
-- **Argo-oriented delivery**: compare the hybrid helper path with real delegated delivery through an `ArgoCDRenderer` target
+- **Argo-oriented delivery**: compare the hybrid helper path with the renderer-oriented `ArgoCDRenderer` target, while keeping real Argo-managed sync as a separate future proof
 
 ## 5. Role of AI
 

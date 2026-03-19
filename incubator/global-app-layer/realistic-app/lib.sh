@@ -339,6 +339,61 @@ get_unit_field() {
   get_unit_json "${space}" "${unit}" | jq -e -r ".Unit.${field_path}"
 }
 
+get_target_json() {
+  local target_ref="$1"
+
+  if [[ -z "${target_ref}" ]]; then
+    return 1
+  fi
+
+  if [[ "${target_ref}" == */* ]]; then
+    local target_space="${target_ref%%/*}"
+    local target_slug="${target_ref##*/}"
+    cub target list --space "*" --json \
+      | jq --arg space "${target_space}" --arg target "${target_slug}" '
+          [ .[] | select(.Space.Slug == $space and .Target.Slug == $target) ][0]
+        '
+    return
+  fi
+
+  cub target list --space "*" --json \
+    | jq --arg target "${target_ref}" '
+        [ .[] | select(.Target.Slug == $target) ][0]
+      '
+}
+
+get_target_provider_type() {
+  local target_ref="$1"
+  get_target_json "${target_ref}" | jq -r '.Target.ProviderType // ""'
+}
+
+assert_supported_live_target() {
+  local target_ref="${1:-}"
+  local provider_type
+
+  if [[ -z "${target_ref}" ]]; then
+    return 0
+  fi
+
+  provider_type="$(get_target_provider_type "${target_ref}" 2>/dev/null || true)"
+  if [[ "${provider_type}" != "ArgoCDRenderer" ]]; then
+    return 0
+  fi
+
+  cat >&2 <<EOF_TARGET
+Target ${target_ref} uses provider type ${provider_type}.
+
+${EXAMPLE_NAME} materializes raw Kubernetes manifests (Namespace, Deployment, Service, Ingress, StatefulSet).
+The current ArgoCDRenderer worker expects units whose payload is an Argo CD Application resource
+(apiVersion: argoproj.io/v1alpha1, kind: Application).
+
+So this example can prove direct worker delivery today, but it cannot yet use ArgoCDRenderer as a drop-in target swap.
+Use a Kubernetes target such as gitops-import-test/worker-kubernetes-yaml-cluster for the honest live path,
+or switch to an Application-shaped GitOps example before claiming real Argo-backed reconciliation.
+EOF_TARGET
+  exit 1
+}
+
 bundle_hint_from_target_ref() {
   local target_ref="$1"
   if [[ -z "${target_ref}" ]]; then

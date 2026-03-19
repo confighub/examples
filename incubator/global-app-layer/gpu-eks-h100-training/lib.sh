@@ -275,6 +275,61 @@ get_unit_field() {
   get_unit_json "${space}" "${unit}" | jq -e -r ".Unit.${field_path}"
 }
 
+get_target_json() {
+  local target_ref="$1"
+
+  if [[ -z "${target_ref}" ]]; then
+    return 1
+  fi
+
+  if [[ "${target_ref}" == */* ]]; then
+    local target_space="${target_ref%%/*}"
+    local target_slug="${target_ref##*/}"
+    cub target list --space "*" --json \
+      | jq --arg space "${target_space}" --arg target "${target_slug}" '
+          [ .[] | select(.Space.Slug == $space and .Target.Slug == $target) ][0]
+        '
+    return
+  fi
+
+  cub target list --space "*" --json \
+    | jq --arg target "${target_ref}" '
+        [ .[] | select(.Target.Slug == $target) ][0]
+      '
+}
+
+get_target_provider_type() {
+  local target_ref="$1"
+  get_target_json "${target_ref}" | jq -r '.Target.ProviderType // ""'
+}
+
+assert_supported_live_target() {
+  local target_ref="${1:-}"
+  local provider_type
+
+  if [[ -z "${target_ref}" ]]; then
+    return 0
+  fi
+
+  provider_type="$(get_target_provider_type "${target_ref}" 2>/dev/null || true)"
+  if [[ "${provider_type}" != "ArgoCDRenderer" ]]; then
+    return 0
+  fi
+
+  cat >&2 <<EOF_TARGET
+Target ${target_ref} uses provider type ${provider_type}.
+
+${EXAMPLE_NAME} materializes raw Kubernetes deployment units for direct worker apply.
+The current ArgoCDRenderer path expects Argo CD Application payloads and uses Argo for render/hydration,
+not as a true workload-sync proof for these raw manifests.
+
+So this GPU example should stay on a Kubernetes target for the honest live path today.
+Use a Kubernetes target such as gitops-import-test/worker-kubernetes-yaml-cluster,
+and defer Argo sync claims until a sync-capable target exists.
+EOF_TARGET
+  exit 1
+}
+
 bundle_hint_from_target_ref() {
   local target_ref="$1"
   if [[ -z "${target_ref}" ]]; then
@@ -336,6 +391,9 @@ Inputs:
 - prefix: $(state_prefix)
 - deploy namespace: ${DEPLOY_NAMESPACE}
 - target: ${target_display}
+
+This example currently proves the direct deployment variant only.
+The shared GPU recipe is the app-level intent; the deployment units are the leaf deployment variants.
 
 Spaces that ./setup.sh will create:
 - $(base_space)
@@ -636,6 +694,11 @@ Units:
 - $(deploy_space)/$(unit_name nvidia-device-plugin deployment)
 - $(recipe_space)/${RECIPE_MANIFEST_UNIT}
 
+Model:
+- shared recipe/app: ${CHAIN_LABEL}
+- deployment units: $(unit_name gpu-operator deployment), $(unit_name nvidia-device-plugin deployment)
+- honest live path today: direct Kubernetes target only
+
 GUI:
 - Recipe space: ${recipe_space_url}
 - Deploy space: ${deploy_space_url}
@@ -681,6 +744,11 @@ Units:
 - $(recipe_space)/$(unit_name nvidia-device-plugin recipe)
 - $(deploy_space)/$(unit_name nvidia-device-plugin deployment)
 - $(recipe_space)/${RECIPE_MANIFEST_UNIT}
+
+Model:
+- shared recipe/app: ${CHAIN_LABEL}
+- deployment units: $(unit_name gpu-operator deployment), $(unit_name nvidia-device-plugin deployment)
+- honest live path today: direct Kubernetes target only
 
 GUI:
 - Recipe space: ${recipe_space_url}

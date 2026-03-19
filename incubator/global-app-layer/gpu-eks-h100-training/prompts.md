@@ -29,6 +29,7 @@ Before each command:
 - after setup, surface the printed GUI URLs and `.logs/*.latest.log` files
 - do not treat `cub target list` or `./set-target.sh` as proof that apply will work
 - run `../preflight-live.sh <space/target>` before the live branch
+- for this raw-manifest GPU example, do not treat `ArgoCDRenderer` as a real sync-capable target; use the direct Kubernetes target for the honest live path today
 
 ## Verify Everything
 

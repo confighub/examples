@@ -252,7 +252,7 @@ What to notice:
 
 - target visibility is not enough; `applyReady: true` is the gate
 - the `Kubernetes` target proves direct worker apply
-- the `ArgoCDRenderer` target is the target that matters for real GitOps-agent proof
+- the `ArgoCDRenderer` target is useful for Argo `Application` render/hydration proof, but it is not the same thing as real Argo-managed workload sync
 
 Then compare that with the package e2e delivery helpers:
 
@@ -267,7 +267,8 @@ Important:
 
 - `deliver-direct.sh` is a good worker-mediated proof helper
 - `deliver-argo.sh` is currently a hybrid scaffold, not the main GitOps proof
-- if you want to prove real Argo-backed delivery, prefer the actual `ArgoCDRenderer` target path over the hybrid helper
+- `ArgoCDRenderer` is still not the final sync proof either: it works with Argo CD `Application` payloads and renderer semantics, not raw-manifest direct-sync semantics
+- so the package still needs a true sync-capable Argo target path before we can honestly claim real Argo-managed workload sync
 
 #### GUI
 

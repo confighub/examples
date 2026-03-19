@@ -74,7 +74,7 @@ Important:
 - it exports ConfigHub-rendered YAMLs, applies them directly with `kubectl`, and then creates an ArgoCD Application for visibility and drift detection
 - it proves the staged Argo-shaped workflow and Argo artifacts around the app
 - it does not, by itself, prove Argo reconciled the workloads from Git as the sole delivery mechanism
-- if you need a real delegated-delivery proof, prefer the actual `ArgoCDRenderer` target path instead of this helper
+- the current `ArgoCDRenderer` target is renderer-oriented as well, so it is also not the final proof of Argo-managed workload sync
 
 ## Running the Lifecycle Flows
 

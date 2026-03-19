@@ -45,6 +45,8 @@ if [[ -z "${prefix}" ]]; then
   prefix="$(cub space new-prefix)"
 fi
 
+assert_supported_live_target "${target_ref}"
+
 save_state "${prefix}" "${target_ref}"
 load_state
 

@@ -42,6 +42,7 @@ What it writes:
 - units for each layer of both components
 - clone links / variant ancestry
 - one stack-level recipe manifest
+- one direct deployment unit per component in the deploy space
 - optional target bindings
 - optional live deployment state only if you explicitly bind and apply
 
@@ -154,6 +155,11 @@ Component-specific mutations:
 
 This is the main user-facing point of the example: one recipe can govern multiple related components while keeping shared layer meaning and component-specific changes separate. The variant chains are what ConfigHub executes; the recipe manifest is the receipt that explains the full GPU stack.
 
+It also fits the App-Deployment-Target model used elsewhere in the examples:
+- the shared recipe layers are the app-level intent
+- the deploy-space units are the concrete deployment units at the leaf
+- today this example materializes the direct deployment variant only
+
 ## Quick Start
 
 ```bash
@@ -199,6 +205,11 @@ cub unit approve --space <prefix>-deploy-cluster-a nvidia-device-plugin-cluster-
 cub unit apply --space <prefix>-deploy-cluster-a gpu-operator-cluster-a
 cub unit apply --space <prefix>-deploy-cluster-a nvidia-device-plugin-cluster-a
 ```
+
+Important:
+- this example's honest live path today is the direct `Kubernetes` target
+- the deployment units here are raw Kubernetes manifests
+- the current `ArgoCDRenderer` path is renderer-oriented and expects Argo CD `Application` payloads, so the helper scripts reject it for this example instead of implying a real Argo-sync proof
 
 The bundle belongs to the target. The recipe manifest records the full multi-component chain and includes a bundle hint once a target is set.
 

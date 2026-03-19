@@ -47,6 +47,7 @@
   - target binding is inspectable if present
 - jq anchor:
   - `cub unit get --space <prefix>-deploy-cluster-a --json gpu-operator-cluster-a | jq '.Unit | {slug: .Slug, upstreamUnitID: .UpstreamUnitID, targetID: .TargetID, revision: .HeadRevisionNum}'`
+- note: in this example the deploy-space units are the direct deployment variants; Argo renderer compatibility is intentionally not claimed
 
 ### `cub unit list --space <prefix>-deploy-cluster-a --quiet --json`
 
