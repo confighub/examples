@@ -130,6 +130,13 @@ Important:
 - only call the live path ready if `preflight-live.sh` reports `applyReady: true`
 - when exploring Argo integration, distinguish Argo rendering from real Argo-managed sync; the current `ArgoCDRenderer` target is a renderer/hydration path, not the final sync proof
 
+**ArgoCDRenderer payload compatibility:**
+- `ArgoCDRenderer` targets expect units containing ArgoCD `Application` CRDs (`apiVersion: argoproj.io/v1alpha1`)
+- The raw-manifest examples (`realistic-app`, `single-component`, etc.) are **incompatible** with `ArgoCDRenderer`
+- If you try, you'll get: `failed to parse Application: expected apiVersion argoproj.io/v1alpha1, got v1`
+- For ArgoCDRenderer proof, use brownfield-imported Application units (e.g., `argocd-cubbychat-Application-dry`)
+- See [contracts.md](./contracts.md) for the full compatibility matrix
+
 ## Capability Branching
 
 ### A. Preview only

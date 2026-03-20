@@ -121,7 +121,17 @@ The worker supports two target types in this example:
 | Target | Slug | What it does |
 |---|---|---|
 | **Kubernetes (direct)** | `worker-kubernetes-yaml-cluster` | Worker applies YAML directly via `kubectl apply` |
-| **ArgoCDRenderer** | `worker-argocdrenderer-kubernetes-yaml-cluster` | Worker manages or reads Argo CD `Application` resources and asks ArgoCD to render them |
+| **ArgoCDRenderer** | `worker-argocdrenderer-kubernetes-yaml-cluster` | Worker manages Argo CD `Application` CRDs and asks ArgoCD to render them |
+
+**Payload compatibility matters:**
+
+| Example | Kubernetes Target | ArgoCDRenderer Target |
+|---------|-------------------|----------------------|
+| `realistic-app` | ✅ | ❌ (raw manifests, not Application CRDs) |
+| `single-component` | ✅ | ❌ |
+| `frontend-postgres` | ✅ | ❌ |
+| `gpu-eks-h100-training` | ✅ | ❌ |
+| Brownfield-imported Applications | ✅ | ✅ |
 
 In these examples the direct target is the most fully proven delivery path today.
 The layered variant chain is unchanged conceptually when you change executors, but the unit payload still has to match the target type. The raw-manifest examples in this package are not yet a one-line swap to `ArgoCDRenderer`, and a good delegated-delivery proof still needs explicit Argo-side evidence, not only target binding.

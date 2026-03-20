@@ -132,6 +132,50 @@ This file documents the safest stable inspection paths for `global-app-layer`.
 - jq anchor:
   - `cub unit list --space <deploy-space> --quiet --json | jq '.[] | {slug: .Unit.Slug, upstream: .UpstreamUnit.Slug, status: .UnitStatus.Status}'`
 
+## Target/Payload Compatibility
+
+Not all units work with all targets. The payload format must match the target's expectations:
+
+| Target Type | Expected Payload | Error If Mismatched |
+|-------------|------------------|---------------------|
+| **Kubernetes** | Any raw K8s manifest (Deployment, Service, Namespace, etc.) | N/A - accepts all valid YAML |
+| **ArgoCDRenderer** | ArgoCD `Application` CRD only (`apiVersion: argoproj.io/v1alpha1`) | `failed to parse Application: expected apiVersion argoproj.io/v1alpha1, got <actual>` |
+
+### Which Examples Work With Which Targets
+
+| Example | Payload Type | Kubernetes Target | ArgoCDRenderer Target |
+|---------|--------------|-------------------|----------------------|
+| `realistic-app` | Raw manifests | ✅ Compatible | ❌ Incompatible |
+| `single-component` | Raw manifests | ✅ Compatible | ❌ Incompatible |
+| `frontend-postgres` | Raw manifests | ✅ Compatible | ❌ Incompatible |
+| `gpu-eks-h100-training` | Raw manifests | ✅ Compatible | ❌ Incompatible |
+| Brownfield-imported Application units | Application CRD | ✅ Compatible | ✅ Compatible |
+
+### Proving ArgoCDRenderer Works
+
+To prove ArgoCDRenderer delivery, use **brownfield-imported Application units**, not the raw-manifest examples:
+
+```bash
+# These units contain Application CRDs and work with ArgoCDRenderer:
+cub unit get --space gitops-import-test --data-only argocd-cubbychat-Application-dry | head -5
+# apiVersion: argoproj.io/v1alpha1
+# kind: Application
+
+# Apply through ArgoCDRenderer:
+cub unit set-target --space gitops-import-test argocd-cubbychat-Application-dry gitops-import-test/worker-argocdrenderer-kubernetes-yaml-cluster
+cub unit approve --space gitops-import-test argocd-cubbychat-Application-dry
+cub unit apply --space gitops-import-test argocd-cubbychat-Application-dry
+```
+
+### Why e2e/deliver-argo.sh Is Not ArgoCDRenderer Proof
+
+The `e2e/deliver-argo.sh` helper is a **hybrid** path:
+1. Exports raw manifests to `.gitops-stage/`
+2. Applies them via `kubectl apply` (direct, not Argo)
+3. Creates an ArgoCD Application for drift detection only
+
+This does not prove ArgoCDRenderer delivery. It proves kubectl delivery with Argo visibility.
+
 ## Expected Output Signals
 
 When a run succeeds in ConfigHub-only mode, expect:
