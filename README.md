@@ -15,6 +15,17 @@ This repo contains examples that demonstrate how [ConfigHub](https://confighub.c
 - [`vm-fleet`](./vm-fleet/README.md): VM fleet operations example.
 - [`incubator`](./incubator/README.md): experimental examples, especially the recipes-and-layers work and small `cub run` seed fixtures.
 
+## Companion Demos
+
+For the current GitHub + Argo/Flux + AI/CLI + ConfigHub wedge, the best import and evidence demos live in the companion repo:
+
+- [cub-scout examples index](https://github.com/confighub/cub-scout/tree/main/examples)
+- [Argo import demo](https://github.com/confighub/cub-scout/tree/main/examples/argo-import-confighub-demo)
+- [Flux import demo](https://github.com/confighub/cub-scout/tree/main/examples/flux-import-confighub-demo)
+- [Apptique microservice app styles](https://github.com/confighub/cub-scout/tree/main/examples/apptique-examples)
+
+Use this repo for the ConfigHub-side examples and layer/deployment-unit stories.
+
 ## Prerequisites
 
 ```bash
