@@ -7,22 +7,12 @@
 FROM golang:1.25-alpine AS builder
 WORKDIR /go/src/app
 
-# Cache dependency downloads in separate layers
-COPY core/go.mod core/go.sum ./core/
-COPY configkit/k8skit/go.mod configkit/k8skit/go.sum ./configkit/k8skit/
-COPY examples/kube-score/go.mod examples/kube-score/go.sum ./examples/kube-score/
-
-WORKDIR /go/src/app/examples/kube-score
+# Cache dependency downloads
+COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy source code
-WORKDIR /go/src/app
-COPY core/ ./core/
-COPY configkit/k8skit/ ./configkit/k8skit/
-COPY examples/kube-score/ ./examples/kube-score/
-
-# Build the binary
-WORKDIR /go/src/app/examples/kube-score
+# Copy source code and build
+COPY . .
 RUN CGO_ENABLED=0 go build -o /go/bin/kube-score-worker .
 
 # Install kube-score CLI
