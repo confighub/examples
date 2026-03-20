@@ -1,11 +1,11 @@
-module github.com/confighub/sdk/examples/kyverno-server
+module github.com/confighub/examples/custom-workers/kyverno-server
 
 go 1.25.0
 
 require (
-	github.com/confighub/sdk/core v0.0.0
-	github.com/confighub/sdk/configkit/k8skit v0.0.0-00010101000000-000000000000
-	github.com/confighub/sdk/worker-function-impl v0.0.0-00010101000000-000000000000
+	github.com/confighub/sdk/configkit/k8skit v0.1.12
+	github.com/confighub/sdk/core v0.1.12
+	github.com/confighub/sdk/worker-function-impl v0.1.12
 )
 
 require (

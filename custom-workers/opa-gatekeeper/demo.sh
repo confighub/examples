@@ -9,8 +9,8 @@
 #   - Authenticated with: cub auth login
 #
 # Usage:
-#   cd ../..
-#   bash examples/opa-gatekeeper/demo.sh
+#   cd custom-workers/opa-gatekeeper
+#   bash demo.sh
 
 set -euo pipefail
 
@@ -65,7 +65,7 @@ echo ""
 # --- Build and load Docker image (while cluster is fresh) --------------------
 
 echo "--- Building Docker image ---"
-docker build -f examples/opa-gatekeeper/Dockerfile -t "$IMAGE_NAME" .
+docker build -t "$IMAGE_NAME" .
 
 echo "--- Loading image into kind ---"
 kind load docker-image "$IMAGE_NAME" --name "$CLUSTER_NAME"

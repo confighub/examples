@@ -7,24 +7,12 @@
 FROM golang:1.25-alpine AS builder
 WORKDIR /go/src/app
 
-# Cache dependency downloads in separate layers
-COPY core/go.mod core/go.sum ./core/
-COPY configkit/k8skit/go.mod configkit/k8skit/go.sum ./configkit/k8skit/
-COPY worker-function-impl/go.mod worker-function-impl/go.sum ./worker-function-impl/
-COPY examples/kyverno-server/go.mod examples/kyverno-server/go.sum ./examples/kyverno-server/
-
-WORKDIR /go/src/app/examples/kyverno-server
+# Cache dependency downloads
+COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy source code
-WORKDIR /go/src/app
-COPY core/ ./core/
-COPY configkit/k8skit/ ./configkit/k8skit/
-COPY worker-function-impl/ ./worker-function-impl/
-COPY examples/kyverno-server/ ./examples/kyverno-server/
-
-# Build the binary
-WORKDIR /go/src/app/examples/kyverno-server
+# Copy source code and build
+COPY . .
 RUN CGO_ENABLED=0 go build -o /go/bin/kyverno-server .
 
 #################

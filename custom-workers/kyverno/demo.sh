@@ -13,8 +13,8 @@
 #   - Authenticated with: cub auth login
 #
 # Usage:
-#   cd ../..
-#   bash examples/kyverno/demo.sh
+#   cd custom-workers/kyverno
+#   bash demo.sh
 
 set -euo pipefail
 
@@ -69,7 +69,7 @@ echo ""
 # --- Build and load Docker image ---------------------------------------------
 
 echo "--- Building Docker image ---"
-docker build -f examples/kyverno/Dockerfile -t "$IMAGE_NAME" .
+docker build -t "$IMAGE_NAME" .
 
 echo "--- Loading image into kind ---"
 kind load docker-image "$IMAGE_NAME" --name "$CLUSTER_NAME"

@@ -7,20 +7,12 @@
 FROM golang:1.25-alpine AS builder
 WORKDIR /go/src/app
 
-# Cache dependency downloads in separate layers
-COPY core/go.mod core/go.sum ./core/
-COPY examples/hello-world-bridge/go.mod examples/hello-world-bridge/go.sum ./examples/hello-world-bridge/
-
-WORKDIR /go/src/app/examples/hello-world-bridge
+# Cache dependency downloads
+COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy source code
-WORKDIR /go/src/app
-COPY core/ ./core/
-COPY examples/hello-world-bridge/ ./examples/hello-world-bridge/
-
-# Build the binary
-WORKDIR /go/src/app/examples/hello-world-bridge
+# Copy source code and build
+COPY . .
 RUN CGO_ENABLED=0 go build -o /go/bin/hello-world-bridge .
 
 #################
