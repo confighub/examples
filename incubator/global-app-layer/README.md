@@ -31,6 +31,27 @@ In other words:
 - target binding is optional
 - `cub unit apply` is a later explicit action, not the starting point
 
+## Current Demo Wedge
+
+For the current `GitHub + Argo/Flux + AI/CLI + ConfigHub` wedge, lead with import and evidence, not with apply.
+
+In that first demo, ConfigHub's job is to:
+
+- ingest existing WET config from GitHub
+- organize it into ConfigHub units and manifests
+- run validation and scan immediately
+- show one concrete issue or policy result quickly
+- compare imported WET with real cluster evidence
+- support review and approvals before any later mutation path
+
+That also means:
+
+- AI and CLI are the primary operator path
+- the GUI is where ConfigHub should shine for tables, trees, diffs, policy results, evidence, and approvals
+- if runtime status is not yet trustworthy enough, do not center the demo on ConfigHub apply or claim ConfigHub is the runtime source of truth; show direct cluster evidence side by side with ConfigHub
+
+This package supports that story, but it is usually the second stop rather than the first one. For the first-stop import demos, start with the published [GitOps Import docs](https://docs.confighub.com/get-started/examples/gitops-import/) and then use the Argo and Flux references in [Choose The Right Demo First](#choose-the-right-demo-first).
+
 ## What This Reads And Writes
 
 What it reads:
@@ -63,7 +84,15 @@ In live mode you should additionally expect:
 
 ## What Good Demos Should Prove
 
-For this package, a believable live demo should show:
+For the current wedge, a believable demo should show:
+
+- imported WET config visible in ConfigHub quickly
+- validation or `confighub-scan` results immediately after import
+- one real issue that a platform team would care about, not just a successful import
+- direct cluster evidence shown beside ConfigHub evidence when runtime behavior matters
+- AI and CLI as the main operator flow, with the GUI used for inspection, review, and approvals
+
+If you take this package further into live delivery follow-ons, a believable live demo should then also show:
 
 - target visibility is not enough; worker or agent readiness must be shown first
 - which delivery mode is in use: direct worker apply or delegated GitOps agent
@@ -94,7 +123,8 @@ If your goal is earlier or simpler, start with these first:
 
 | Goal | Start here | Why |
 |---|---|---|
-| Argo import from GitHub | [cub-scout: argo-import-confighub-demo](https://github.com/confighub/cub-scout/tree/main/examples/argo-import-confighub-demo) | Best first demo for the current wedge: import, rendered manifests, evidence |
+| Official GitOps import walkthrough | [GitOps Import docs](https://docs.confighub.com/get-started/examples/gitops-import/) | Best first stop for the current wedge: one published import/evidence path |
+| Argo import from GitHub | [cub-scout: argo-import-confighub-demo](https://github.com/confighub/cub-scout/tree/main/examples/argo-import-confighub-demo) | Concrete Argo repo example behind the published docs story |
 | Flux import from GitHub | [cub-scout: flux-import-confighub-demo](https://github.com/confighub/cub-scout/tree/main/examples/flux-import-confighub-demo) | Same import-first story, but for Flux |
 | Helm-oriented workflow | [helm-platform-components](../../helm-platform-components/README.md) and [cub-scout Helm quickstart](https://github.com/confighub/cub-scout/blob/main/docs/reference/cub-track-quickstart-helm.md) | Simpler path for chart-centric teams |
 | Direct apply, smallest example | [single-component](./single-component/README.md) | The simplest layered apply story in this package |

@@ -1,0 +1,83 @@
+#!/bin/bash
+
+set -euo pipefail
+
+CLUSTER_NAME=${1:-gitops-import-argo}
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+ARGOCD_HOST_PORT=${ARGOCD_HOST_PORT:-}
+
+if [ -z "$ARGOCD_HOST_PORT" ] && [ -f "$PROJECT_DIR/var/argocd-host-port.txt" ]; then
+    ARGOCD_HOST_PORT="$(cat "$PROJECT_DIR/var/argocd-host-port.txt")"
+fi
+
+ARGOCD_HOST_PORT=${ARGOCD_HOST_PORT:-9080}
+
+export KUBECONFIG="$PROJECT_DIR/var/$CLUSTER_NAME.kubeconfig"
+
+if [ ! -f "$KUBECONFIG" ]; then
+    echo "Error: Kubeconfig not found at $KUBECONFIG"
+    echo "Please run bin/create-cluster first"
+    exit 1
+fi
+
+echo "Installing ArgoCD in cluster: $CLUSTER_NAME"
+
+echo "Creating argocd namespace..."
+kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+
+echo "Installing ArgoCD..."
+kubectl apply --server-side -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+echo "Waiting for essential ArgoCD components to be ready..."
+kubectl wait --for=condition=Available --timeout=600s \
+  -n argocd deployment/argocd-server \
+  deployment/argocd-repo-server \
+  deployment/argocd-applicationset-controller \
+  deployment/argocd-notifications-controller \
+  deployment/argocd-redis
+
+kubectl wait --for=condition=Ready --timeout=600s \
+  -n argocd pod/argocd-application-controller-0
+
+if ! kubectl wait --for=condition=Available --timeout=120s -n argocd deployment/argocd-dex-server; then
+  echo "Warning: argocd-dex-server did not become Available within the timeout."
+  echo "Continuing because Dex is not required for the local import workflow."
+fi
+
+echo "ArgoCD installed successfully!"
+
+echo "Patching ArgoCD server service to use NodePort for local access..."
+kubectl patch svc argocd-server -n argocd -p '{"spec": {"type": "NodePort", "ports": [{"name": "http", "port": 80, "nodePort": 30080, "protocol": "TCP", "targetPort": 8080}, {"name": "https", "port": 443, "nodePort": 30443, "protocol": "TCP", "targetPort": 8080}]}}'
+
+echo "Enabling insecure mode for HTTP access (no port-forward needed)..."
+kubectl patch configmap argocd-cmd-params-cm -n argocd --type merge -p '{"data":{"server.insecure":"true"}}' 2>/dev/null || \
+  kubectl create configmap argocd-cmd-params-cm -n argocd --from-literal=server.insecure=true
+
+echo "Creating ArgoCD service account for ConfigHub worker..."
+kubectl patch configmap argocd-cm -n argocd --type merge \
+  -p '{"data":{"accounts.confighub-worker":"apiKey"}}'
+
+echo "Configuring RBAC for ConfigHub worker account..."
+kubectl patch configmap argocd-rbac-cm -n argocd --type merge \
+  -p '{"data":{"policy.csv":"p, confighub-worker, applications, get, */*, allow\n"}}'
+
+kubectl rollout restart deployment/argocd-server -n argocd
+kubectl rollout status deployment/argocd-server -n argocd --timeout=120s
+
+echo "Getting initial admin password..."
+ARGOCD_PASSWORD=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
+
+echo ""
+echo "========================================="
+echo "ArgoCD Installation Complete!"
+echo "========================================="
+echo "ArgoCD Server URL: http://localhost:$ARGOCD_HOST_PORT"
+echo "Username: admin"
+echo "Password: $ARGOCD_PASSWORD"
+echo ""
+echo "No port-forward needed - access ArgoCD UI directly at: http://localhost:$ARGOCD_HOST_PORT"
+echo "========================================="
+
+echo "$ARGOCD_PASSWORD" > "$PROJECT_DIR/var/argocd-admin-password.txt"
+echo "Password saved to: $PROJECT_DIR/var/argocd-admin-password.txt"

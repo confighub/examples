@@ -74,6 +74,20 @@ cd incubator/global-app-layer
 
 ## 3) Recommended first mutating path
 
+If the human wants the current Argo import wedge in incubator form, start here:
+
+```bash
+cd incubator/gitops-import-argo
+./setup.sh --explain
+./setup.sh --explain-json | jq
+```
+
+That example is for:
+
+- GitHub + Argo + AI/CLI + ConfigHub
+- import and evidence
+- read-only preview before cluster setup
+
 Start with the realistic layered app example:
 
 ```bash

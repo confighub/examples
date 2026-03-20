@@ -95,6 +95,34 @@ Recommended examples for this guide:
 - [`gpu-eks-h100-training`](./gpu-eks-h100-training/README.md)
 - [`how-it-works.md`](./how-it-works.md)
 
+## Current Demo Wedge
+
+The current wedge is narrower than the full long-term AICR story:
+
+- GitHub remains the source repo
+- Argo or Flux remain the deployers
+- AI and CLI are the primary operator experience
+- ConfigHub ingests WET config, organizes it, validates it, and shows evidence
+
+That means the first demo should answer "why import?" in under a minute:
+
+1. Import existing Argo- or Flux-managed WET config from GitHub.
+2. Organize it into ConfigHub.
+3. Run validation and `confighub-scan` immediately.
+4. Show one concrete issue or policy result.
+5. Compare imported WET with direct cluster evidence.
+6. Use the GUI for tables, diffs, policy results, evidence, and approvals.
+
+The important boundary is that ConfigHub does not need to replace Argo or Flux to provide value here. The current wedge is additive governance and visibility for AI-era GitOps.
+
+Use these first if you want the clearest version of that story:
+
+- [GitOps Import docs](https://docs.confighub.com/get-started/examples/gitops-import/)
+- [cub-scout: argo-import-confighub-demo](https://github.com/confighub/cub-scout/tree/main/examples/argo-import-confighub-demo)
+- [cub-scout: flux-import-confighub-demo](https://github.com/confighub/cub-scout/tree/main/examples/flux-import-confighub-demo)
+
+This guide still covers the broader three-story AICR picture, but Story 2 should be read through that narrower current-demo lens.
+
 ## Story 1: Safe Updates, Patches, and Upgrades
 
 ### What AICR gives you
@@ -188,101 +216,70 @@ They want to keep using familiar GitOps mechanisms such as:
 - App of Apps
 - ApplicationSet
 
-What they want is better control over what gets delivered.
+What they want is better control over what gets delivered, plus faster visibility into whether the rendered output is safe, compliant, and consistent with the live cluster.
 
 ### What ConfigHub adds
 
-ConfigHub lets you keep the layered recipe as the managed source of truth, and then choose how to deliver it.
+For the current wedge, ConfigHub does not have to be the applier to be valuable.
+It can sit alongside GitHub plus Argo or Flux and make the WET configuration much easier to inspect and govern.
 
 That means:
 
-- the same recipe chain can be delivered directly or through a GitOps agent such as Argo
-- the delivery mode can change without rewriting the recipe chain
-- ConfigHub remains the governing system for the materialized config
-- a good demo can prove which executor actually handled the delivery: direct worker or delegated agent
+- GitHub remains the source repo
+- Argo or Flux remain the deployers
+- ConfigHub ingests the rendered WET config into units you can inspect and compare
+- AI and CLI can drive the workflow without giving up GUI strengths such as tables, diffs, policy results, evidence, and approvals
+- you can show imported config next to direct cluster evidence instead of overclaiming ConfigHub runtime status
+- you can find one useful issue quickly instead of waiting for a full mutation path to justify the product
 
 This is explained in [how-it-works.md](./how-it-works.md).
 
-### Demo: same GPU recipe, different delivery modes
+### Demo: import an existing Argo- or Flux-managed app and show immediate value
 
 #### CLI
 
-Use the GPU example because it mirrors the AICR shape most clearly.
+Start with one of the simpler import demos:
 
-```bash
-cd incubator/global-app-layer/gpu-eks-h100-training
+- [GitOps Import docs](https://docs.confighub.com/get-started/examples/gitops-import/)
+- [cub-scout: argo-import-confighub-demo](https://github.com/confighub/cub-scout/tree/main/examples/argo-import-confighub-demo)
+- [cub-scout: flux-import-confighub-demo](https://github.com/confighub/cub-scout/tree/main/examples/flux-import-confighub-demo)
 
-# Materialize the layered recipe in ConfigHub
-./setup.sh
-./verify.sh
+Then make sure the operator experience does these things in order:
 
-# Read the generated prefix so the next commands are exact
-source ./.state/state.env
-deploy_space="${PREFIX}-deploy-cluster-a"
-
-# Optional: attach a direct target and apply
-./set-target.sh <direct-target>
-cub unit approve --space "${deploy_space}" gpu-operator-cluster-a
-cub unit approve --space "${deploy_space}" nvidia-device-plugin-cluster-a
-cub unit apply --space "${deploy_space}" gpu-operator-cluster-a
-cub unit apply --space "${deploy_space}" nvidia-device-plugin-cluster-a
-```
-
-About the placeholder:
-
-- `<direct-target>` means a real ConfigHub target reference such as `worker-space/worker-kubernetes-yaml-cluster`
-- you do **not** need a target to materialize the recipe or verify it in the ConfigHub database
-- you only need a target for the optional live delivery step above
-
-To find available targets:
-
-```bash
-cub target list --space "*" --json
-```
-
-Before claiming anything about live delivery, preflight the target and inspect the worker:
-
-```bash
-cd ..
-./preflight-live.sh gitops-import-test/worker-kubernetes-yaml-cluster --json | jq
-./preflight-live.sh gitops-import-test/worker-argocdrenderer-kubernetes-yaml-cluster --json | jq
-```
+1. Read the GitHub repo and import the rendered WET config into ConfigHub.
+2. Inspect the imported units and manifests right away.
+3. Run validation and `confighub-scan` immediately after import.
+4. Show one concrete issue, such as missing TLS, missing resource limits, drift, or another policy failure.
+5. Compare the imported WET config with direct cluster evidence.
 
 What to notice:
 
-- target visibility is not enough; `applyReady: true` is the gate
-- the `Kubernetes` target proves direct worker apply
-- the `ArgoCDRenderer` target is useful for Argo `Application` render/hydration proof, but it is not the same thing as real Argo-managed workload sync
-
-Then compare that with the package e2e delivery helpers:
-
-```bash
-cd ../e2e
-./deliver-direct.sh gpu-eks-h100-training
-# or
-./deliver-argo.sh gpu-eks-h100-training
-```
-
-Important:
-
-- `deliver-direct.sh` is a good worker-mediated proof helper
-- `deliver-argo.sh` is currently a hybrid scaffold, not the main GitOps proof
-- `ArgoCDRenderer` is still not the final sync proof either: it works with Argo CD `Application` payloads and renderer semantics, not raw-manifest direct-sync semantics
-- so the package still needs a true sync-capable Argo target path before we can honestly claim real Argo-managed workload sync
+- the first value is visible immediately after import
+- the demo stays additive to the team's existing GitOps system
+- AI and CLI drive the workflow, rather than forcing a GUI-first experience
+- the real "why this matters" moment is the issue or policy result, not the import itself
 
 #### GUI
 
-1. Open the recipe space and deploy space for the GPU example.
-2. Confirm that the chain itself is unchanged.
-3. Inspect the target binding on the deployment units.
-4. If you use the Argo-oriented path, inspect the corresponding Argo application and sync state alongside the ConfigHub objects.
+Use the GUI to show the parts of the workflow that benefit from visual inspection:
+
+1. Open the imported units in a table or tree view.
+2. Inspect the rendered manifests and diffs.
+3. Review policy and scan results.
+4. Compare imported config with evidence from the live cluster.
+5. Show the approval and review surfaces that would gate later changes.
 
 What this proves:
 
-- AICR gives you a layered recipe ready for delivery.
-- ConfigHub lets you keep that recipe under management while still using the delivery pattern your team already trusts.
-- The demo is strongest when it shows worker readiness first and then proves whether a direct worker or a delegated GitOps agent handled the delivery.
-- The package still needs a first-class real Argo-backed target walkthrough to make this story complete.
+- ConfigHub can add value without replacing GitHub, Argo, or Flux
+- imported WET config becomes inspectable and governable in one place
+- policy, evidence, and review are the first proof points for AI-era GitOps
+
+What this does not need to prove in the first demo:
+
+- that ConfigHub itself is the live applier
+- that ConfigHub status alone is the runtime source of truth
+- that every longer-term grouping, dependency, or variant feature is already in the critical path
 
 ## Story 3: Variants, Customizations, Integrations, and Fleets
 

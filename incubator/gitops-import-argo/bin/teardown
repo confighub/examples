@@ -1,0 +1,16 @@
+#!/bin/bash
+
+set -euo pipefail
+
+CLUSTER_NAME=${1:-gitops-import-argo}
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+
+echo "Deleting Kind cluster: $CLUSTER_NAME"
+kind delete cluster --name "$CLUSTER_NAME"
+
+rm -f "$PROJECT_DIR/var/$CLUSTER_NAME.kubeconfig"
+rm -f "$PROJECT_DIR/var/argocd-admin-password.txt"
+rm -f "$PROJECT_DIR/var/argocd-host-port.txt"
+
+echo "Cluster $CLUSTER_NAME deleted and local files cleaned up."

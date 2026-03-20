@@ -1,0 +1,94 @@
+#!/bin/bash
+
+set -euo pipefail
+
+CLUSTER_NAME=${1:-gitops-import-argo}
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+ARGOCD_HOST_PORT=${ARGOCD_HOST_PORT:-}
+
+if [ -z "$ARGOCD_HOST_PORT" ] && [ -f "$PROJECT_DIR/var/argocd-host-port.txt" ]; then
+  ARGOCD_HOST_PORT="$(cat "$PROJECT_DIR/var/argocd-host-port.txt")"
+fi
+
+ARGOCD_HOST_PORT=${ARGOCD_HOST_PORT:-9080}
+
+export KUBECONFIG="$PROJECT_DIR/var/$CLUSTER_NAME.kubeconfig"
+
+if [ ! -f "$KUBECONFIG" ]; then
+    echo "Error: Kubeconfig not found at $KUBECONFIG"
+    echo "Please run bin/create-cluster and bin/install-argocd first"
+    exit 1
+fi
+
+# Require space to be set via --space or CUB_SPACE
+if [ -z "$CUB_SPACE" ]; then
+    echo "Error: Set CUB_SPACE or use 'cub' with --space to specify the space"
+    exit 1
+fi
+
+WORKER_SLUG=${2:-worker}
+
+echo "Ensuring space '$CUB_SPACE' exists..."
+if ! cub space get "$CUB_SPACE" > /dev/null 2>&1; then
+    echo "Space '$CUB_SPACE' does not exist, creating it..."
+    cub space create "$CUB_SPACE"
+fi
+
+echo "Creating worker '$WORKER_SLUG' in space '$CUB_SPACE'..."
+cub worker create "$WORKER_SLUG" --space $CUB_SPACE --allow-exists
+
+echo "Generating ArgoCD API token for confighub-worker account..."
+if [ -f "$PROJECT_DIR/var/argocd-admin-password.txt" ]; then
+  ARGOCD_PASSWORD="$(cat "$PROJECT_DIR/var/argocd-admin-password.txt")"
+else
+  ARGOCD_PASSWORD="$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d)"
+  printf '%s\n' "$ARGOCD_PASSWORD" > "$PROJECT_DIR/var/argocd-admin-password.txt"
+fi
+
+SESSION_RESPONSE=$(curl -sf -H "Content-Type: application/json" \
+  "http://localhost:$ARGOCD_HOST_PORT/api/v1/session" \
+  -d "{\"username\":\"admin\",\"password\":\"$ARGOCD_PASSWORD\"}") || {
+    echo "Error: Failed to reach ArgoCD API at http://localhost:$ARGOCD_HOST_PORT" >&2
+    exit 1
+}
+ADMIN_TOKEN=$(echo "$SESSION_RESPONSE" | jq -re '.token') || {
+    echo "Error: ArgoCD session response missing token. Response: $SESSION_RESPONSE" >&2
+    exit 1
+}
+
+TOKEN_RESPONSE=$(curl -sf \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  "http://localhost:9080/api/v1/account/confighub-worker/token" \
+  -d '{"expiresIn":0}') || {
+    echo "Error: Failed to generate ArgoCD worker token" >&2
+    exit 1
+}
+ARGOCD_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -re '.token') || {
+    echo "Error: ArgoCD token response missing token. Response: $TOKEN_RESPONSE" >&2
+    exit 1
+}
+
+echo "Installing worker into cluster..."
+cub worker install "$WORKER_SLUG" \
+  --space $CUB_SPACE \
+  -t kubernetes,argocdrenderer \
+  -e "ARGOCD_SERVER=argocd-server.argocd.svc.cluster.local" \
+  -e "ARGOCD_AUTH_TOKEN=$ARGOCD_TOKEN" \
+  -e "ARGOCD_INSECURE=true" \
+  --include-secret --export \
+  | kubectl apply --server-side -f -
+
+echo "Waiting for worker to be ready..."
+kubectl wait --for=condition=Available --timeout=120s \
+  -n confighub deployment/worker
+
+echo ""
+echo "========================================="
+echo "ConfigHub Worker Installed!"
+echo "========================================="
+echo "Space:  $CUB_SPACE"
+echo "Worker: $WORKER_SLUG"
+echo "ArgoCD: http://localhost:$ARGOCD_HOST_PORT"
+echo "========================================="

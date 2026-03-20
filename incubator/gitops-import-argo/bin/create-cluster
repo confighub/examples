@@ -1,0 +1,39 @@
+#!/bin/bash
+
+set -euo pipefail
+
+CLUSTER_NAME=${1:-gitops-import-argo}
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+ARGOCD_HOST_PORT=${ARGOCD_HOST_PORT:-}
+
+if [ -z "$ARGOCD_HOST_PORT" ] && [ -f "$PROJECT_DIR/var/argocd-host-port.txt" ]; then
+  ARGOCD_HOST_PORT="$(cat "$PROJECT_DIR/var/argocd-host-port.txt")"
+fi
+
+ARGOCD_HOST_PORT=${ARGOCD_HOST_PORT:-9080}
+
+echo "Creating Kind cluster: $CLUSTER_NAME"
+echo "Using ArgoCD host port: $ARGOCD_HOST_PORT"
+
+mkdir -p "$PROJECT_DIR/var"
+
+TMP_KIND_CONFIG="$(mktemp)"
+sed "s/hostPort: 9080/hostPort: $ARGOCD_HOST_PORT/" \
+  "$PROJECT_DIR/cluster/kind-config.yaml" > "$TMP_KIND_CONFIG"
+trap 'rm -f "$TMP_KIND_CONFIG"' EXIT
+
+kind create cluster \
+  --name "$CLUSTER_NAME" \
+  --config "$TMP_KIND_CONFIG" \
+  --kubeconfig "$PROJECT_DIR/var/$CLUSTER_NAME.kubeconfig"
+
+echo "Cluster $CLUSTER_NAME created successfully"
+echo "Kubeconfig saved to: $PROJECT_DIR/var/$CLUSTER_NAME.kubeconfig"
+
+export KUBECONFIG="$PROJECT_DIR/var/$CLUSTER_NAME.kubeconfig"
+
+echo "Waiting for cluster to be ready..."
+kubectl wait --for=condition=Ready nodes --all --timeout=60s
+
+echo "Cluster is ready!"
