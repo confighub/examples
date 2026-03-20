@@ -85,6 +85,27 @@ If you want to use this package with an AI assistant, start here:
 - [contracts.md](./contracts.md)
 - [whole-journey.md](./whole-journey.md)
 
+## Choose The Right Demo First
+
+This package is no longer the front door for every ConfigHub story.
+Use it when you specifically want layered recipes, deployment units, and the NVIDIA-shaped chain model.
+
+If your goal is earlier or simpler, start with these first:
+
+| Goal | Start here | Why |
+|---|---|---|
+| Argo import from GitHub | [cub-scout: argo-import-confighub-demo](https://github.com/confighub/cub-scout/tree/main/examples/argo-import-confighub-demo) | Best first demo for the current wedge: import, rendered manifests, evidence |
+| Flux import from GitHub | [cub-scout: flux-import-confighub-demo](https://github.com/confighub/cub-scout/tree/main/examples/flux-import-confighub-demo) | Same import-first story, but for Flux |
+| Helm-oriented workflow | [helm-platform-components](../../helm-platform-components/README.md) and [cub-scout Helm quickstart](https://github.com/confighub/cub-scout/blob/main/docs/reference/cub-track-quickstart-helm.md) | Simpler path for chart-centric teams |
+| Direct apply, smallest example | [single-component](./single-component/README.md) | The simplest layered apply story in this package |
+| Multi-env App-Deployment-Target model | [promotion-demo-data](../../promotion-demo-data/README.md) | Jesper's app/deployment/target model with many deployments |
+| Microservices and app styles | [global-app](../../global-app/README.md) and [cub-scout apptique examples](https://github.com/confighub/cub-scout/tree/main/examples/apptique-examples) | Concrete app layouts across Argo, Flux, monorepo, and app-of-apps styles |
+
+Use `global-app-layer` after those when you want to show:
+- one shared recipe turning into concrete deployment units
+- layered updates and downstream specialization
+- NVIDIA AICR-shaped config chains
+
 ## Start Here
 
 If you are new to ConfigHub, start here:

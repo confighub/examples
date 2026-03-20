@@ -14,6 +14,25 @@ It is for:
 
 It is **not** only about live deployment. A large part of the value is visible in the ConfigHub database before anything is applied to a cluster.
 
+## Choose The Smallest Matching Demo
+
+Before you run this package, pick the smallest demo that matches the user's actual question:
+
+| User goal | Better first stop |
+|---|---|
+| “Show me Argo import from GitHub” | [cub-scout argo-import-confighub-demo](https://github.com/confighub/cub-scout/tree/main/examples/argo-import-confighub-demo) |
+| “Show me Flux import from GitHub” | [cub-scout flux-import-confighub-demo](https://github.com/confighub/cub-scout/tree/main/examples/flux-import-confighub-demo) |
+| “Show me Helm first” | [helm-platform-components](../../helm-platform-components/README.md) and [cub-scout Helm quickstart](https://github.com/confighub/cub-scout/blob/main/docs/reference/cub-track-quickstart-helm.md) |
+| “Show me the smallest direct apply example” | [single-component](./single-component/README.md) |
+| “Show me App-Deployment-Target” | [promotion-demo-data](../../promotion-demo-data/README.md) |
+| “Show me microservices / app-of-apps / monorepo styles” | [global-app](../../global-app/README.md) and [cub-scout apptique examples](https://github.com/confighub/cub-scout/tree/main/examples/apptique-examples) |
+
+Use `global-app-layer` when the question is specifically about:
+- layered recipes
+- deployment units at the leaf
+- upstream propagation with preserved downstream specialization
+- NVIDIA-shaped configuration chains
+
 ## WET-First, Not Live-First
 
 This package is intended-state first.
