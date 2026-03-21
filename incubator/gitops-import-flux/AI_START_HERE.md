@@ -60,7 +60,12 @@ With optional contrast fixtures:
 - `cub gitops import` mutates ConfigHub only
 - `./cleanup.sh` deletes the local kind cluster and local discovery worker state
 
-The worker install step preloads the Flux renderer worker image into kind before rollout. If that step still takes time, wait for the renderer target to appear in `cub target list` before concluding the install is stuck.
+The worker install step preloads the Flux worker image into kind before rollout. If that step still takes time, wait for the Flux targets to appear in `cub target list` before concluding the install is stuck.
+
+If the worker install succeeds, expect three useful targets:
+- one Kubernetes discovery target
+- one `fluxrenderer` target for import and render
+- one `fluxoci` target for Flux-managed deployment of raw Kubernetes manifests
 
 ## What To Verify
 

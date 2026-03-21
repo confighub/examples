@@ -47,7 +47,7 @@ This file documents the safest stable inspection paths for `gitops-import-flux`.
 
 - mutates: no
 - output shape: JSON array
-- proves: discovery and renderer targets are visible in the selected ConfigHub space
+- proves: discovery, renderer, and Flux deployment targets are visible in the selected ConfigHub space
 
 ### `cub-scout gitops status`
 

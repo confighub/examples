@@ -11,7 +11,7 @@ begin_log_capture verify
 load_state
 ensure_state_dir
 
-for space in "$(base_space)" "$(platform_space)" "$(accelerator_space)" "$(os_space)" "$(recipe_space)" "$(deploy_space)"; do
+for space in "$(base_space)" "$(platform_space)" "$(accelerator_space)" "$(os_space)" "$(recipe_space)" "$(deploy_space)" "$(flux_deploy_space)"; do
   echo "==> Checking space exists: ${space}"
   cub space get "${space}" >/dev/null
 done
@@ -28,14 +28,16 @@ for component in "${COMPONENTS[@]}"; do
   accelerator_file="${tmp_dir}/${component}-accelerator.yaml"
   os_file="${tmp_dir}/${component}-os.yaml"
   recipe_file="${tmp_dir}/${component}-recipe.yaml"
-  deploy_file="${tmp_dir}/${component}-deploy.yaml"
+  direct_deploy_file="${tmp_dir}/${component}-deploy-direct.yaml"
+  flux_deploy_file="${tmp_dir}/${component}-deploy-flux.yaml"
 
   unit_data_to_file "$(base_space)" "$(unit_name "${component}" base)" "${base_file}"
   unit_data_to_file "$(platform_space)" "$(unit_name "${component}" platform)" "${platform_file}"
   unit_data_to_file "$(accelerator_space)" "$(unit_name "${component}" accelerator)" "${accelerator_file}"
   unit_data_to_file "$(os_space)" "$(unit_name "${component}" os)" "${os_file}"
   unit_data_to_file "$(recipe_space)" "$(unit_name "${component}" recipe)" "${recipe_file}"
-  unit_data_to_file "$(deploy_space)" "$(unit_name "${component}" deployment)" "${deploy_file}"
+  unit_data_to_file "$(deploy_space)" "$(deployment_unit_name "${component}" direct)" "${direct_deploy_file}"
+  unit_data_to_file "$(flux_deploy_space)" "$(deployment_unit_name "${component}" flux)" "${flux_deploy_file}"
 
   base_id="$(get_unit_field "$(base_space)" "$(unit_name "${component}" base)" UnitID)"
   platform_id="$(get_unit_field "$(platform_space)" "$(unit_name "${component}" platform)" UnitID)"
@@ -55,8 +57,11 @@ for component in "${COMPONENTS[@]}"; do
   actual="$(get_unit_field "$(recipe_space)" "$(unit_name "${component}" recipe)" UpstreamUnitID)"
   [[ "${actual}" == "${os_id}" ]] || { echo "Clone chain broken: ${component} recipe upstream ${actual} != os ${os_id}" >&2; exit 1; }
 
-  actual="$(get_unit_field "$(deploy_space)" "$(unit_name "${component}" deployment)" UpstreamUnitID)"
-  [[ "${actual}" == "${recipe_id}" ]] || { echo "Clone chain broken: ${component} deployment upstream ${actual} != recipe ${recipe_id}" >&2; exit 1; }
+  actual="$(get_unit_field "$(deploy_space)" "$(deployment_unit_name "${component}" direct)" UpstreamUnitID)"
+  [[ "${actual}" == "${recipe_id}" ]] || { echo "Clone chain broken: ${component} direct deployment upstream ${actual} != recipe ${recipe_id}" >&2; exit 1; }
+
+  actual="$(get_unit_field "$(flux_deploy_space)" "$(deployment_unit_name "${component}" flux)" UpstreamUnitID)"
+  [[ "${actual}" == "${recipe_id}" ]] || { echo "Clone chain broken: ${component} flux deployment upstream ${actual} != recipe ${recipe_id}" >&2; exit 1; }
 
   case "${component}" in
     gpu-operator)
@@ -71,8 +76,10 @@ for component in "${COMPONENTS[@]}"; do
       assert_contains "${os_file}" 'value: 550-ubuntu22.04'
       assert_contains "${recipe_file}" 'value: training'
       assert_contains "${recipe_file}" 'value: training-smoke'
-      assert_contains "${deploy_file}" "namespace: ${DEPLOY_NAMESPACE}"
-      assert_contains "${deploy_file}" "value: ${DEPLOY_NAMESPACE}"
+      assert_contains "${direct_deploy_file}" "namespace: ${DEPLOY_NAMESPACE}"
+      assert_contains "${direct_deploy_file}" "value: ${DEPLOY_NAMESPACE}"
+      assert_contains "${flux_deploy_file}" "namespace: ${DEPLOY_NAMESPACE}"
+      assert_contains "${flux_deploy_file}" "value: ${DEPLOY_NAMESPACE}"
       ;;
     nvidia-device-plugin)
       # Stub image family: busybox (replace with nvcr.io/nvidia/k8s-device-plugin on real GPU clusters)
@@ -86,8 +93,10 @@ for component in "${COMPONENTS[@]}"; do
       assert_contains "${os_file}" 'value: ubuntu-h100'
       assert_contains "${recipe_file}" 'value: training'
       assert_contains "${recipe_file}" 'value: training-smoke'
-      assert_contains "${deploy_file}" "namespace: ${DEPLOY_NAMESPACE}"
-      assert_contains "${deploy_file}" "value: ${DEPLOY_NAMESPACE}"
+      assert_contains "${direct_deploy_file}" "namespace: ${DEPLOY_NAMESPACE}"
+      assert_contains "${direct_deploy_file}" "value: ${DEPLOY_NAMESPACE}"
+      assert_contains "${flux_deploy_file}" "namespace: ${DEPLOY_NAMESPACE}"
+      assert_contains "${flux_deploy_file}" "value: ${DEPLOY_NAMESPACE}"
       ;;
   esac
 done
@@ -103,12 +112,21 @@ assert_contains "${recipe_manifest_file}" 'os: ubuntu'
 assert_contains "${recipe_manifest_file}" 'intent: training'
 assert_contains "${recipe_manifest_file}" "space: $(base_space)"
 assert_contains "${recipe_manifest_file}" "space: $(deploy_space)"
+assert_contains "${recipe_manifest_file}" "space: $(flux_deploy_space)"
+assert_contains "${recipe_manifest_file}" 'name: direct'
+assert_contains "${recipe_manifest_file}" 'name: flux'
 assert_contains "${recipe_manifest_file}" 'bundleHint:'
 
-if [[ -n "${TARGET_REF:-}" ]]; then
-  echo "==> Verifying deployment units have a target"
-  get_unit_field "$(deploy_space)" "$(unit_name gpu-operator deployment)" TargetID >/dev/null
-  get_unit_field "$(deploy_space)" "$(unit_name nvidia-device-plugin deployment)" TargetID >/dev/null
+if [[ -n "${DIRECT_TARGET_REF:-}" ]]; then
+  echo "==> Verifying direct deployment units have a target"
+  get_unit_field "$(deploy_space)" "$(deployment_unit_name gpu-operator direct)" TargetID >/dev/null
+  get_unit_field "$(deploy_space)" "$(deployment_unit_name nvidia-device-plugin direct)" TargetID >/dev/null
+fi
+
+if [[ -n "${FLUX_TARGET_REF:-}" ]]; then
+  echo "==> Verifying Flux deployment units have a target"
+  get_unit_field "$(flux_deploy_space)" "$(deployment_unit_name gpu-operator flux)" TargetID >/dev/null
+  get_unit_field "$(flux_deploy_space)" "$(deployment_unit_name nvidia-device-plugin flux)" TargetID >/dev/null
 fi
 
 echo "All global-app-layer gpu-eks-h100-training checks passed."

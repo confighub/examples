@@ -29,7 +29,10 @@ Before each command:
 - after setup, surface the printed GUI URLs and `.logs/*.latest.log` files
 - do not treat `cub target list` or `./set-target.sh` as proof that apply will work
 - run `../preflight-live.sh <space/target>` before the live branch
-- for this raw-manifest GPU example, do not treat `ArgoCDRenderer` as a real sync-capable target; use the direct Kubernetes target for the honest live path today
+- for this raw-manifest GPU example, route live targets by provider type:
+  - `Kubernetes` -> direct deployment variant
+  - `FluxOCI` or `FluxOCIWriter` -> Flux deployment variant
+  - `ArgoCDRenderer` and `FluxRenderer` -> reject as incompatible deployment targets for this example
 
 ## Verify Everything
 
@@ -38,7 +41,7 @@ After running `gpu-eks-h100-training`, verify:
 - created units
 - layered variant ancestry
 - recipe manifest
-- target binding if used
+- target binding per deployment variant if used
 - live apply state if used
 - summarize what definitely happened, what did not happen, and what still depends on missing infrastructure
 
@@ -60,3 +63,4 @@ Be explicit about the difference between:
 Use `whole-journey.md` and the documented contracts rather than guessing.
 - run `../preflight-live.sh <space/target>` before binding or applying
 - only call the live path ready if preflight reports `applyReady: true`
+- keep the distinction clear between the direct deployment variant and the Flux deployment variant

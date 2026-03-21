@@ -70,7 +70,7 @@ What it writes:
 ## What You Should Expect To See
 
 In ConfigHub-only mode you should expect:
-- five or six new spaces sharing one prefix
+- five, six, or seven new spaces sharing one prefix
 - units for each layer in the chain
 - one recipe manifest unit
 - `verify.sh` passing
@@ -297,7 +297,7 @@ Three components (`backend` + `frontend` + `postgres`) — no stubs needed becau
 
 ### gpu-eks-h100-training
 
-This is NVIDIA's actual layering model: `base → platform(EKS) → accelerator(H100) → OS(Ubuntu) → recipe(training) → deployment`. Two components (`gpu-operator` + `nvidia-device-plugin`) with six layers. Uses stub container images (`nginx:1.27-alpine`, `busybox:1.37`) so it runs on any cluster including local `kind`, but the structure is real — swap the images for NVIDIA's actual operator images and point at a GPU node pool and it works. Proves ConfigHub can express the same structure as NVIDIA's AICR pattern with real units, real variant links, and real provenance tracking.
+This is NVIDIA's actual layering model: `base → platform(EKS) → accelerator(H100) → OS(Ubuntu) → recipe(training)` with two deployment variants at the leaf. Two components (`gpu-operator` + `nvidia-device-plugin`) with one direct deployment variant and one Flux deployment variant. Uses stub container images (`nginx:1.27-alpine`, `busybox:1.37`) so it runs on any cluster including local `kind`, but the structure is real — swap the images for NVIDIA's actual operator images and point at a GPU node pool and it works. Proves ConfigHub can express the same structure as NVIDIA's AICR pattern with real units, real variant links, real provenance tracking, and explicit deployment variants.
 
 If you can model NVIDIA's most complex recipe pattern in ConfigHub, you can model many layered patterns.
 
@@ -310,7 +310,7 @@ Every example creates real ConfigHub spaces, units, and layered variant chains. 
 | [single-component](./single-component/) | backend + postgres stub | 5 (base → region → role → recipe → deploy) | The layered variant model works end-to-end |
 | [frontend-postgres](./frontend-postgres/) | frontend + postgres + backend stub | 5 | Dependencies can be stubs inside ConfigHub |
 | [realistic-app](./realistic-app/) | backend + frontend + postgres | 5 | A real multi-tier app works without stubs |
-| [gpu-eks-h100-training](./gpu-eks-h100-training/) | gpu-operator + nvidia-device-plugin | 6 (base → platform → accelerator → OS → recipe → deploy) | NVIDIA's actual layering model in ConfigHub |
+| [gpu-eks-h100-training](./gpu-eks-h100-training/) | gpu-operator + nvidia-device-plugin | 5 shared layers + 2 deployment variants | NVIDIA's actual layering model in ConfigHub with explicit direct and Flux leaves |
 
 ## How It Works
 
