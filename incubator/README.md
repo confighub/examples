@@ -16,6 +16,7 @@ This directory is for experimental examples before promotion to stable examples.
 - [`gitops-import-flux`](./gitops-import-flux/README.md): incubator Flux GitOps import example built from `cub-scout`'s D2 and podinfo fixtures with the same import-and-evidence verification model as the Argo sibling.
 - [`global-app-layer`](./global-app-layer/README.md): recipes and layers package with specs plus four worked examples, including a GPU-flavored chain.
 - [`cub-proc-fixtures`](./cub-proc-fixtures/README.md): tiny direct and delegated apply fixtures preserved from the earlier `cub-up` exploration.
+- [`vmcluster-from-scratch`](./vmcluster-from-scratch.md): short note for thinking about real cluster bootstrap as cluster first, target second, worker mostly hidden.
 - [`promotion-demo-data-verify`](./promotion-demo-data-verify/README.md): verification wrapper for the stable `promotion-demo-data` example.
 
 ## Where To Start By Goal
@@ -36,6 +37,10 @@ Use [`global-app-layer`](./global-app-layer/README.md) after that for layered re
 If the goal is to understand the next operational layer that these examples point toward, use:
 
 - [`cub-proc`](./cub-proc/README.md)
+
+If the goal is to think about real clusters and targets from scratch, use:
+
+- [`vmcluster-from-scratch`](./vmcluster-from-scratch.md)
 
 ## Stable Examples (outside incubator)
 

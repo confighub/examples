@@ -16,66 +16,7 @@ A good candidate procedure has most of these properties:
 
 ## Best Current Candidates
 
-### 1. `gitops-import/argo`
-
-Example:
-
-- [../gitops-import-argo](../gitops-import-argo/README.md)
-
-Why it is strong:
-
-- cluster setup, controller setup, worker setup, discovery, import, and verification are separate phases
-- the happy path and the broken paths are both useful evidence
-- the procedure spans ConfigHub, ArgoCD, Kubernetes, and optional `cub-scout`
-- the operator must distinguish import facts from live controller facts
-
-Likely top-level phases:
-
-- `preflight`
-- `connect-cluster`
-- `discover`
-- `import`
-- `assert`
-
-Likely assertions:
-
-- discovery target is present
-- Argo applications were discovered
-- selected dry units rendered
-- wet units were created
-- at least one expected healthy app is present
-- controller-side failures are surfaced rather than hidden
-
-### 2. `gitops-import/flux`
-
-Example:
-
-- [../gitops-import-flux](../gitops-import-flux/README.md)
-
-Why it is strong:
-
-- same overall shape as the Argo path, so it is a good sibling profile
-- the current example already shows one healthy path and several intentionally broken paths
-- the procedure spans ConfigHub, Flux, Kubernetes, and optional `cub-scout`
-- the operator must distinguish renderer success from source-readiness failures
-
-Likely top-level phases:
-
-- `preflight`
-- `connect-cluster`
-- `discover`
-- `import`
-- `assert`
-
-Likely assertions:
-
-- discovery target is present
-- Flux deployers were discovered
-- `podinfo` rendered successfully
-- broken source paths are surfaced with explicit evidence
-- wet units were created
-
-### 3. `demo-data/install`
+### 1. `demo-data/install`
 
 Example:
 
@@ -108,7 +49,97 @@ Likely assertions:
 - prod resource overrides
 - intentional version skew
 
-### 4. `global-app/install`
+### 2. `vmcluster/bootstrap`
+
+Example:
+
+- [../vmcluster-from-scratch.md](../vmcluster-from-scratch.md)
+- [vmcluster-bootstrap-profile.md](./vmcluster-bootstrap-profile.md)
+
+Why it is strong:
+
+- it is a real live-system bootstrap flow rather than a toy local helper
+- it naturally ends in a usable target ref, which is the handoff point the rest of the examples need
+- it makes the worker and target model concrete enough to improve product thinking
+- it is exactly the kind of thing that is hard to represent today without stitching together cloud, worker, target, and cluster evidence
+
+Likely top-level phases:
+
+- `preflight`
+- `materialize-cluster-config`
+- `apply-cluster-config`
+- `wait-for-worker`
+- `assert-target-ready`
+- `summarize`
+
+Likely assertions:
+
+- cloud prerequisites are present
+- worker connected
+- target exists
+- target is usable
+- cluster API is reachable
+
+### 3. `gitops-import/flux`
+
+Example:
+
+- [../gitops-import-flux](../gitops-import-flux/README.md)
+
+Why it is strong:
+
+- same overall shape as the Argo path, so it is a good sibling profile
+- the current example already shows one healthy path and several intentionally broken paths
+- the procedure spans ConfigHub, Flux, Kubernetes, and optional `cub-scout`
+- the operator must distinguish renderer success from source-readiness failures
+
+Likely top-level phases:
+
+- `preflight`
+- `connect-cluster`
+- `discover`
+- `import`
+- `assert`
+
+Likely assertions:
+
+- discovery target is present
+- Flux deployers were discovered
+- `podinfo` rendered successfully
+- broken source paths are surfaced with explicit evidence
+- wet units were created
+
+### 4. `gitops-import/argo`
+
+Example:
+
+- [../gitops-import-argo](../gitops-import-argo/README.md)
+
+Why it is strong:
+
+- cluster setup, controller setup, worker setup, discovery, import, and verification are separate phases
+- the happy path and the broken paths are both useful evidence
+- the procedure spans ConfigHub, ArgoCD, Kubernetes, and optional `cub-scout`
+- the operator must distinguish import facts from live controller facts
+
+Likely top-level phases:
+
+- `preflight`
+- `connect-cluster`
+- `discover`
+- `import`
+- `assert`
+
+Likely assertions:
+
+- discovery target is present
+- Argo applications were discovered
+- selected dry units rendered
+- wet units were created
+- at least one expected healthy app is present
+- controller-side failures are surfaced rather than hidden
+
+### 5. `global-app/install`
 
 Example:
 
@@ -135,7 +166,7 @@ Likely assertions:
 - apply completed where requested
 - expected live services or workloads are present
 
-### 5. `gpu-stack/install`
+### 6. `gpu-stack/install`
 
 Example:
 
@@ -176,9 +207,10 @@ That is good. It means `cub-proc` can be tested against real examples instead of
 If `cub-proc` work resumes, the cleanest order is:
 
 1. `demo-data/install`
-2. `gitops-import/flux`
-3. `gitops-import/argo`
-4. `global-app/install`
-5. `gpu-stack/install`
+2. `vmcluster/bootstrap`
+3. `gitops-import/flux`
+4. `gitops-import/argo`
+5. `global-app/install`
+6. `gpu-stack/install`
 
-That order starts with a lower-risk ConfigHub-only procedure, then moves into the import-and-evidence wedge, then into the richer live deployment stories.
+That order starts with a lower-risk ConfigHub-only procedure, then moves into real target bootstrap, then into the import-and-evidence wedge, and finally into the richer live deployment stories.

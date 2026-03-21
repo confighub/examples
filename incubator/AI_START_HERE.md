@@ -204,6 +204,18 @@ That directory keeps the design work next to the runnable examples it is based o
 
 Do not make the current examples depend on `cub-proc`. Use those docs to understand the next layer, not to block current runnable paths.
 
+If the human is asking how to think about real clusters, workers, and targets from scratch, use:
+
+- [vmcluster-from-scratch](./vmcluster-from-scratch.md)
+
+That note uses the simplest user-facing order:
+
+- boot cluster
+- wait for target
+- deploy workloads
+
+Use the worker as troubleshooting or implementation detail unless the human is explicitly working on worker and target UX.
+
 ## 9) Related Pages
 
 - Repo-level AI path: [../AI_START_HERE.md](../AI_START_HERE.md)
