@@ -55,3 +55,7 @@ Keep this directory only as seed material for:
 - `cub run` design
 - direct-vs-delegated tests
 - tiny fixture-based experiments
+
+For the public `cub run` design docs that now sit next to the runnable examples, see:
+
+- [../cub-run](../cub-run/README.md)

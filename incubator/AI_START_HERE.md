@@ -190,7 +190,21 @@ If you need the smallest possible direct and delegated apply inputs for design w
 
 These are preserved reference fixtures, not the main walkthrough.
 
-## 8) Related Pages
+## 8) Public `cub run` design work
+
+If the human wants the current public design work for bounded procedures and `Operation` records, use:
+
+- [cub-run](./cub-run/README.md)
+
+That directory keeps the design work next to the runnable examples it is based on:
+
+- proposed `Operation` model
+- procedure candidates grounded in real examples
+- the `promotion-demo-data` evidence note
+
+Do not make the current examples depend on `cub run`. Use those docs to understand the next layer, not to block current runnable paths.
+
+## 9) Related Pages
 
 - Repo-level AI path: [../AI_START_HERE.md](../AI_START_HERE.md)
 - Published GitOps import docs: [docs.confighub.com/get-started/examples/gitops-import/](https://docs.confighub.com/get-started/examples/gitops-import/)
