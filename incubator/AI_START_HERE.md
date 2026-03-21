@@ -74,7 +74,13 @@ cd incubator/global-app-layer
 
 ## 3) Recommended first mutating path
 
-If the human wants the current Argo import wedge in incubator form, start here:
+If the human wants the current GitOps import wedge, start with the published docs for the overall story:
+
+- [Official GitOps Import docs](https://docs.confighub.com/get-started/examples/gitops-import/)
+
+Then use the runnable incubator examples here.
+
+If the human wants the Argo import path, start here:
 
 ```bash
 cd incubator/gitops-import-argo
@@ -88,7 +94,7 @@ That example is for:
 - import and evidence
 - read-only preview before cluster setup
 
-If the human wants the matching Flux import wedge in incubator form, start here:
+If the human wants the matching Flux import path, start here:
 
 ```bash
 cd incubator/gitops-import-flux
@@ -102,7 +108,7 @@ That example is for:
 - import and evidence
 - read-only preview before cluster setup
 
-Start with the realistic layered app example:
+If instead the human wants the layered recipe path rather than the GitOps import wedge, start with the realistic layered app example:
 
 ```bash
 cd incubator/global-app-layer/realistic-app
@@ -141,6 +147,15 @@ Uses the noop bridge, so no Kubernetes cluster is needed. This is the canonical 
 
 ## 5) Smaller and larger options
 
+If the human wants worker extension patterns, policy checks, or validation workers instead of GitOps import, use the stable worker examples:
+
+- [../custom-workers/hello-world-bridge](../custom-workers/hello-world-bridge/README.md)
+- [../custom-workers/hello-world-function](../custom-workers/hello-world-function/README.md)
+- [../custom-workers/kube-score](../custom-workers/kube-score/README.md)
+- [../custom-workers/kyverno](../custom-workers/kyverno/README.md)
+- [../custom-workers/kyverno-server](../custom-workers/kyverno-server/README.md)
+- [../custom-workers/opa-gatekeeper](../custom-workers/opa-gatekeeper/README.md)
+
 Smallest:
 
 ```bash
@@ -178,6 +193,7 @@ These are preserved reference fixtures, not the main walkthrough.
 ## 8) Related Pages
 
 - Repo-level AI path: [../AI_START_HERE.md](../AI_START_HERE.md)
+- Published GitOps import docs: [docs.confighub.com/get-started/examples/gitops-import/](https://docs.confighub.com/get-started/examples/gitops-import/)
 - Incubator AI protocol: [AGENTS.md](./AGENTS.md)
 - Incubator AI guide: [AI-README-FIRST.md](./AI-README-FIRST.md)
 - Reusable example playbook: [ai-example-playbook.md](./ai-example-playbook.md)

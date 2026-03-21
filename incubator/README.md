@@ -22,8 +22,10 @@ This directory is for experimental examples before promotion to stable examples.
 If the goal is the current GitHub + Argo/Flux + AI/CLI + ConfigHub wedge, do not start with `global-app-layer`.
 
 Start with:
+- [Official GitOps Import docs](https://docs.confighub.com/get-started/examples/gitops-import/)
 - Argo import: [`gitops-import-argo`](./gitops-import-argo/README.md)
 - Flux import: [`gitops-import-flux`](./gitops-import-flux/README.md)
+- Worker extensibility and policy: [`../custom-workers`](../custom-workers)
 - Helm-first story: [`../helm-platform-components`](../helm-platform-components/README.md) or [cub-scout Helm quickstart](https://github.com/confighub/cub-scout/blob/main/docs/reference/cub-track-quickstart-helm.md)
 - App-Deployment-Target story: [`../promotion-demo-data`](../promotion-demo-data/README.md)
 - Microservice app styles: [cub-scout apptique examples](https://github.com/confighub/cub-scout/tree/main/examples/apptique-examples)
@@ -33,6 +35,7 @@ Use [`global-app-layer`](./global-app-layer/README.md) after that for layered re
 ## Stable Examples (outside incubator)
 
 - [`promotion-demo-data`](../promotion-demo-data/README.md): creates 49 spaces and ~154 units using the App-Deployment-Target model. Uses noop bridge, no cluster required. Canonical example of ConfigHub's multi-env promotion model.
+- [`../custom-workers`](../custom-workers): official worker extension examples, including bridge workers, function workers, and policy or validation workers.
 
 ## Purpose
 
