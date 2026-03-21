@@ -87,7 +87,7 @@ The examples verify config shape and cluster results, but they still do not yet 
 - post-deploy health
 - conformance
 
-That remains the strongest reason to keep exploring a better `cub run` or `Operation` story.
+That remains the strongest reason to keep exploring a better `cub-proc` or `Operation` story.
 
 ### 5. A larger fleet-style example
 
@@ -100,7 +100,7 @@ If someone is continuing this work, the most useful next moves are:
 1. add stronger preflight and live-target clarity to the examples
 2. add one GUI-first walkthrough page for the main demo paths
 3. add one stronger fleet or multi-variant example
-4. connect the package more directly to a future `cub run` or `Operation` workflow once that direction firms up
+4. connect the package more directly to a future `cub-proc` or `Operation` workflow once that direction firms up
 
 ## Bottom Line
 

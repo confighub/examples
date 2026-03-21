@@ -11,10 +11,11 @@ This directory is for experimental examples before promotion to stable examples.
 
 ## Current Experiments
 
+- [`cub-proc`](./cub-proc/README.md): public incubator design work for bounded procedures, `Operation` records, and `cub-proc`, grounded in the runnable examples in this repo.
 - [`gitops-import-argo`](./gitops-import-argo/README.md): incubator Argo GitOps import example built from the stable `gitops-import` assets plus stronger contrast fixtures adapted from `cub-scout`.
 - [`gitops-import-flux`](./gitops-import-flux/README.md): incubator Flux GitOps import example built from `cub-scout`'s D2 and podinfo fixtures with the same import-and-evidence verification model as the Argo sibling.
 - [`global-app-layer`](./global-app-layer/README.md): recipes and layers package with specs plus four worked examples, including a GPU-flavored chain.
-- [`cub-run-fixtures`](./cub-run-fixtures/README.md): tiny direct and delegated apply fixtures preserved from the earlier `cub-up` exploration.
+- [`cub-proc-fixtures`](./cub-proc-fixtures/README.md): tiny direct and delegated apply fixtures preserved from the earlier `cub-up` exploration.
 - [`promotion-demo-data-verify`](./promotion-demo-data-verify/README.md): verification wrapper for the stable `promotion-demo-data` example.
 
 ## Where To Start By Goal
@@ -31,6 +32,10 @@ Start with:
 - Microservice app styles: [cub-scout apptique examples](https://github.com/confighub/cub-scout/tree/main/examples/apptique-examples)
 
 Use [`global-app-layer`](./global-app-layer/README.md) after that for layered recipe structure, deployment units, and the NVIDIA-shaped chain model.
+
+If the goal is to understand the next operational layer that these examples point toward, use:
+
+- [`cub-proc`](./cub-proc/README.md)
 
 ## Stable Examples (outside incubator)
 
