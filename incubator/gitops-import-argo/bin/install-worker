@@ -28,6 +28,11 @@ if [ -z "$CUB_SPACE" ]; then
 fi
 
 WORKER_SLUG=${2:-worker}
+PID_FILE="$PROJECT_DIR/var/worker.pid"
+LOG_FILE="$PROJECT_DIR/var/worker.log"
+PORT_FORWARD_PID_FILE="$PROJECT_DIR/var/argocd-port-forward.pid"
+PORT_FORWARD_LOG_FILE="$PROJECT_DIR/var/argocd-port-forward.log"
+PORT_FORWARD_PORT=${ARGOCD_PORT_FORWARD_PORT:-8888}
 
 echo "Ensuring space '$CUB_SPACE' exists..."
 if ! cub space get "$CUB_SPACE" > /dev/null 2>&1; then
@@ -46,10 +51,52 @@ else
   printf '%s\n' "$ARGOCD_PASSWORD" > "$PROJECT_DIR/var/argocd-admin-password.txt"
 fi
 
-SESSION_RESPONSE=$(curl -sf -H "Content-Type: application/json" \
-  "http://localhost:$ARGOCD_HOST_PORT/api/v1/session" \
+start_port_forward() {
+  local server_pod
+
+  if [ -f "$PORT_FORWARD_PID_FILE" ] && kill -0 "$(cat "$PORT_FORWARD_PID_FILE")" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  server_pod=$(kubectl get pod -n argocd -l app.kubernetes.io/name=argocd-server -o jsonpath='{.items[0].metadata.name}')
+  if [ -z "$server_pod" ]; then
+    echo "Error: could not find an argocd-server pod for port-forward" >&2
+    exit 1
+  fi
+
+  rm -f "$PORT_FORWARD_PID_FILE"
+  nohup kubectl -n argocd port-forward "pod/${server_pod}" "${PORT_FORWARD_PORT}:8080" \
+    > "$PORT_FORWARD_LOG_FILE" 2>&1 &
+  echo $! > "$PORT_FORWARD_PID_FILE"
+
+  for _ in $(seq 1 20); do
+    if python3 - <<PY
+import socket
+s = socket.socket()
+s.settimeout(1)
+try:
+    s.connect(("127.0.0.1", ${PORT_FORWARD_PORT}))
+except OSError:
+    raise SystemExit(1)
+finally:
+    s.close()
+PY
+    then
+      return 0
+    fi
+    sleep 1
+  done
+
+  echo "Error: ArgoCD port-forward on localhost:${PORT_FORWARD_PORT} did not become ready" >&2
+  exit 1
+}
+
+start_port_forward
+
+SESSION_RESPONSE=$(curl -skf -H "Content-Type: application/json" \
+  "https://localhost:${PORT_FORWARD_PORT}/api/v1/session" \
   -d "{\"username\":\"admin\",\"password\":\"$ARGOCD_PASSWORD\"}") || {
-    echo "Error: Failed to reach ArgoCD API at http://localhost:$ARGOCD_HOST_PORT" >&2
+    echo "Error: Failed to reach ArgoCD API at https://localhost:${PORT_FORWARD_PORT}" >&2
     exit 1
 }
 ADMIN_TOKEN=$(echo "$SESSION_RESPONSE" | jq -re '.token') || {
@@ -57,10 +104,10 @@ ADMIN_TOKEN=$(echo "$SESSION_RESPONSE" | jq -re '.token') || {
     exit 1
 }
 
-TOKEN_RESPONSE=$(curl -sf \
+TOKEN_RESPONSE=$(curl -skf \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
-  "http://localhost:9080/api/v1/account/confighub-worker/token" \
+  "https://localhost:${PORT_FORWARD_PORT}/api/v1/account/confighub-worker/token" \
   -d '{"expiresIn":0}') || {
     echo "Error: Failed to generate ArgoCD worker token" >&2
     exit 1
@@ -70,25 +117,48 @@ ARGOCD_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -re '.token') || {
     exit 1
 }
 
-echo "Installing worker into cluster..."
-cub worker install "$WORKER_SLUG" \
-  --space $CUB_SPACE \
-  -t kubernetes,argocdrenderer \
-  -e "ARGOCD_SERVER=argocd-server.argocd.svc.cluster.local" \
-  -e "ARGOCD_AUTH_TOKEN=$ARGOCD_TOKEN" \
-  -e "ARGOCD_INSECURE=true" \
-  --include-secret --export \
-  | kubectl apply --server-side -f -
+mkdir -p "$PROJECT_DIR/var"
 
-echo "Waiting for worker to be ready..."
-kubectl wait --for=condition=Available --timeout=120s \
-  -n confighub deployment/worker
+if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" >/dev/null 2>&1; then
+  echo "Stopping previous local worker..."
+  kill "$(cat "$PID_FILE")" >/dev/null 2>&1 || true
+  sleep 2
+fi
+
+rm -f "$PID_FILE"
+
+echo "Starting local Kubernetes+ArgoCDRenderer worker..."
+nohup env \
+  KUBECONFIG="$KUBECONFIG" \
+  ARGOCD_SERVER="localhost:${PORT_FORWARD_PORT}" \
+  ARGOCD_AUTH_TOKEN="$ARGOCD_TOKEN" \
+  ARGOCD_INSECURE=true \
+  cub worker run --space "$CUB_SPACE" -t kubernetes,argocdrenderer "$WORKER_SLUG" \
+  > "$LOG_FILE" 2>&1 &
+echo $! > "$PID_FILE"
+
+echo "Waiting for targets to register..."
+TARGETS_READY=false
+for _ in $(seq 1 60); do
+  TARGET_JSON=$(cub target list --space "$CUB_SPACE" --json 2>/dev/null || echo '[]')
+  if echo "$TARGET_JSON" | jq -e '([.[].Target.ProviderType | ascii_downcase] | index("kubernetes")) != null and ([.[].Target.ProviderType | ascii_downcase] | index("argocdrenderer")) != null' >/dev/null 2>&1; then
+    TARGETS_READY=true
+    break
+  fi
+  sleep 2
+done
+
+if ! $TARGETS_READY; then
+  echo "Warning: targets are not both visible yet. Inspect with: cub target list --space $CUB_SPACE" >&2
+fi
 
 echo ""
 echo "========================================="
-echo "ConfigHub Worker Installed!"
+echo "ConfigHub Worker Started!"
 echo "========================================="
 echo "Space:  $CUB_SPACE"
 echo "Worker: $WORKER_SLUG"
-echo "ArgoCD: http://localhost:$ARGOCD_HOST_PORT"
+echo "ArgoCD API: https://localhost:${PORT_FORWARD_PORT}"
+echo "ArgoCD pf:  $PORT_FORWARD_LOG_FILE"
+echo "Log:    $LOG_FILE"
 echo "========================================="

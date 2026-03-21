@@ -50,10 +50,6 @@ echo "ArgoCD installed successfully!"
 echo "Patching ArgoCD server service to use NodePort for local access..."
 kubectl patch svc argocd-server -n argocd -p '{"spec": {"type": "NodePort", "ports": [{"name": "http", "port": 80, "nodePort": 30080, "protocol": "TCP", "targetPort": 8080}, {"name": "https", "port": 443, "nodePort": 30443, "protocol": "TCP", "targetPort": 8080}]}}'
 
-echo "Enabling insecure mode for HTTP access (no port-forward needed)..."
-kubectl patch configmap argocd-cmd-params-cm -n argocd --type merge -p '{"data":{"server.insecure":"true"}}' 2>/dev/null || \
-  kubectl create configmap argocd-cmd-params-cm -n argocd --from-literal=server.insecure=true
-
 echo "Creating ArgoCD service account for ConfigHub worker..."
 kubectl patch configmap argocd-cm -n argocd --type merge \
   -p '{"data":{"accounts.confighub-worker":"apiKey"}}'
@@ -62,9 +58,6 @@ echo "Configuring RBAC for ConfigHub worker account..."
 kubectl patch configmap argocd-rbac-cm -n argocd --type merge \
   -p '{"data":{"policy.csv":"p, confighub-worker, applications, get, */*, allow\n"}}'
 
-kubectl rollout restart deployment/argocd-server -n argocd
-kubectl rollout status deployment/argocd-server -n argocd --timeout=120s
-
 echo "Getting initial admin password..."
 ARGOCD_PASSWORD=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
 
@@ -72,11 +65,12 @@ echo ""
 echo "========================================="
 echo "ArgoCD Installation Complete!"
 echo "========================================="
-echo "ArgoCD Server URL: http://localhost:$ARGOCD_HOST_PORT"
+echo "ArgoCD Server URL: https://localhost:$ARGOCD_HOST_PORT"
 echo "Username: admin"
 echo "Password: $ARGOCD_PASSWORD"
 echo ""
-echo "No port-forward needed - access ArgoCD UI directly at: http://localhost:$ARGOCD_HOST_PORT"
+echo "No port-forward needed - access ArgoCD UI directly at: https://localhost:$ARGOCD_HOST_PORT"
+echo "The browser will show a certificate warning because this is a local self-signed endpoint."
 echo "========================================="
 
 echo "$ARGOCD_PASSWORD" > "$PROJECT_DIR/var/argocd-admin-password.txt"

@@ -32,6 +32,10 @@ It writes local state:
 - `var/<cluster>.kubeconfig`
 - `var/argocd-admin-password.txt`
 - `var/argocd-host-port.txt`
+- `var/worker.pid`
+- `var/worker.log`
+- `var/argocd-port-forward.pid`
+- `var/argocd-port-forward.log`
 
 It writes live infrastructure:
 
@@ -39,7 +43,6 @@ It writes live infrastructure:
 - ArgoCD installation in that cluster
 - ArgoCD projects, applications, and application sets
 - optional contrast fixtures
-- optional ConfigHub worker deployment in the cluster
 
 It writes ConfigHub state only if you choose the worker and import path:
 
@@ -91,13 +94,13 @@ export CUB_SPACE=<space>
 
 `./setup.sh` mutates live infrastructure by creating a cluster and installing ArgoCD.
 
-`./setup.sh --with-worker` mutates ConfigHub and live infrastructure by creating a worker and installing it into the cluster.
+`./setup.sh --with-worker` mutates ConfigHub and local process state by creating a worker, starting a local ArgoCD API port-forward, generating an ArgoCD API token, and starting a local Kubernetes plus ArgoCD renderer worker.
 
 `cub gitops discover` mutates ConfigHub only by creating or reusing the discover unit.
 
 `cub gitops import` mutates ConfigHub only by creating renderer units, wet units, and links.
 
-`./cleanup.sh` mutates live infrastructure and local files by deleting the kind cluster and local kubeconfig state.
+`./cleanup.sh` mutates live infrastructure and local files by deleting the kind cluster, stopping the local worker if present, and removing local kubeconfig state.
 
 If `9080` is already in use, the example automatically picks the first free port in `9080-9099` for the ArgoCD UI and API and records it in `var/argocd-host-port.txt`. You can override that explicitly with `export ARGOCD_HOST_PORT=<port>` before running `./setup.sh`.
 
@@ -105,10 +108,12 @@ If `9080` is already in use, the example automatically picks the first free port
 
 After setup:
 
-- ArgoCD UI: `http://localhost:$(cat var/argocd-host-port.txt)`
+- ArgoCD UI: `https://localhost:$(cat var/argocd-host-port.txt)`
 - ArgoCD username: `admin`
 - ArgoCD password: `cat var/argocd-admin-password.txt`
 - kubeconfig: `export KUBECONFIG=$PWD/var/gitops-import-argo.kubeconfig`
+
+Expect a self-signed certificate warning in the browser. That is normal for this local demo.
 
 ## Discover And Import
 
@@ -125,6 +130,8 @@ cub gitops discover --space "$CUB_SPACE" worker-kubernetes-yaml-cluster --json |
 cub gitops import --space "$CUB_SPACE" worker-kubernetes-yaml-cluster worker-argocdrenderer-kubernetes-yaml-cluster --wait
 ```
 
+The worker runs locally and records its pid and log in `var/worker.pid` and `var/worker.log`. The helper also keeps a local ArgoCD API port-forward for the renderer worker in `var/argocd-port-forward.pid` and `var/argocd-port-forward.log`.
+
 ## What Success Looks Like
 
 At the cluster level you should see:
@@ -140,6 +147,13 @@ At the ConfigHub level, after discover and import, you should see:
 - `-dry` and `-wet` units in the selected space
 - successful unit actions for the renderer stage
 - imported WET configuration available for inspection
+
+In the current contrast setup, the most useful live outcome is mixed on purpose:
+
+- `cubbychat`, `helm-guestbook`, and `kustomize-guestbook` are the healthy reference applications
+- several platform and brownfield-style applications remain broken or incomplete in ArgoCD
+
+That gives the example immediate value: the import path shows which Applications render cleanly and which ones already have live controller-side problems.
 
 ## Live Verification Model
 
@@ -184,6 +198,16 @@ cub-scout map list
 ```
 
 Important: import and renderer evidence are not the same thing as proving that a live GitOps controller reconciled workloads. If you need runtime truth, compare ConfigHub evidence and `cub-scout` evidence with direct cluster evidence.
+
+## Known Live Outcome
+
+On the live run used to validate this incubator example:
+
+- `cub gitops discover` found 12 ArgoCD `Application` resources
+- `argocd-cubbychat-Application-dry`, `argocd-helm-guestbook-Application-dry`, and `argocd-kustomize-guestbook-Application-dry` completed successfully
+- several other dry units failed with real Argo-side render issues, including manifest timeouts and controller-side reconciliation problems
+
+That is a good wedge result. It proves ConfigHub can import and render the healthy paths while surfacing real ArgoCD problems immediately.
 
 ## Interpreting ArgoCDRenderer Evidence
 

@@ -1,0 +1,33 @@
+#!/bin/bash
+set -euo pipefail
+
+CLUSTER_NAME=${1:-gitops-import-flux}
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+
+export KUBECONFIG="$PROJECT_DIR/var/$CLUSTER_NAME.kubeconfig"
+
+if [ ! -f "$KUBECONFIG" ]; then
+    echo "Error: Kubeconfig not found at $KUBECONFIG"
+    echo "Please run bin/create-cluster and bin/install-flux first"
+    exit 1
+fi
+
+echo "Applying real Flux podinfo fixtures..."
+kubectl apply -f "$PROJECT_DIR/fixtures/flux/podinfo-kustomizations.yaml"
+
+echo "Waiting for Flux sources to be ready..."
+kubectl -n flux-system wait --for=condition=ready gitrepository/podinfo --timeout=180s
+
+echo "Waiting for real Flux Kustomization to be ready..."
+if ! kubectl -n flux-system wait --for=condition=ready kustomization/podinfo --timeout=240s; then
+    echo "Warning: podinfo Kustomization is not Ready yet. Flux may still be reconciling."
+fi
+
+echo "Waiting for podinfo deployment to become available..."
+if ! kubectl -n podinfo wait --for=condition=available deployment/podinfo --timeout=240s; then
+    echo "Warning: podinfo deployment is not Available yet. Continue to inspect with flux and kubectl."
+fi
+
+echo "Real Flux fixtures applied."
+echo "Check with: flux get all -A"

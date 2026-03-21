@@ -1,6 +1,6 @@
 # Contracts
 
-This file documents the safest stable inspection paths for `gitops-import-argo`.
+This file documents the safest stable inspection paths for `gitops-import-flux`.
 
 ## Read-Only Contracts
 
@@ -12,11 +12,9 @@ This file documents the safest stable inspection paths for `gitops-import-argo`.
   - which default steps will run
   - which optional steps exist
   - which local and live assets will be written
-  - which ArgoCD host port will be used for local access
 - expected anchors:
-  - `.example == "gitops-import-argo"`
+  - `.example == "gitops-import-flux"`
   - `.mutates == false`
-  - `.argocdHostPort`
   - `.steps`
   - `.optionalSteps`
   - `.writes`
@@ -27,29 +25,36 @@ This file documents the safest stable inspection paths for `gitops-import-argo`.
 - output shape: plain text
 - proves:
   - the cluster is reachable
-  - the `argocd` namespace exists
-  - ArgoCD applications are listable
-  - the local worker pid and log are visible if present
-  - the local ArgoCD port-forward pid is visible if present
+  - the `flux-system` namespace exists
+  - Flux controllers are listable
+  - the real podinfo Flux path exists as the healthy reference path
+  - worker targets are visible if present
+  - the script can show failing contrast objects without treating them as a harness failure
 
-### `kubectl get applications -n argocd`
+### `flux get all -A`
+
+- mutates: no
+- output shape: Flux table output
+- proves: Flux controllers, sources, and deployers are visible to the cluster API
+
+### `kubectl get gitrepositories,kustomizations,helmreleases -A`
 
 - mutates: no
 - output shape: Kubernetes table output
-- proves: ArgoCD `Application` resources are present in the cluster
+- proves: Flux source and deployer objects are present in the cluster
 
 ### `cub target list --space <space> --json`
 
 - mutates: no
 - output shape: JSON array
-- proves: worker targets are visible in the selected ConfigHub space
+- proves: discovery and renderer targets are visible in the selected ConfigHub space
 
 ### `cub-scout gitops status`
 
 - mutates: no
 - output shape: terminal status view
 - proves:
-  - which GitOps objects appear healthy or unhealthy live
+  - which Flux objects appear healthy or unhealthy live
   - GitOps controller-side ownership and status interpretation
 - note: this is a live ownership and GitOps context view, not a ConfigHub state view
 
@@ -59,26 +64,27 @@ This file documents the safest stable inspection paths for `gitops-import-argo`.
 - output shape: terminal table view
 - proves:
   - how live resources are classified by ownership
-  - whether a workload appears Argo-managed, Helm-managed, Flux-managed, or native
+  - whether a workload appears Flux-managed, Helm-managed, or native
 - note: this is especially useful in brownfield or mixed-management clusters
 
 ## ConfigHub Contracts
 
-### `cub gitops discover --space <space> worker-kubernetes-yaml-cluster --json`
+### `cub gitops discover --space <space> <kubernetes-target-slug> --json`
 
 - mutates: yes, ConfigHub only
 - output shape: JSON resource list
 - proves:
   - discover ran against the Kubernetes target
-  - GitOps resources were found and serialized into ConfigHub discover state
+  - Flux deployers were found and serialized into ConfigHub discover state
 
-### `cub gitops import --space <space> worker-kubernetes-yaml-cluster worker-argocdrenderer-kubernetes-yaml-cluster --wait`
+### `cub gitops import --space <space> <kubernetes-target-slug> <flux-renderer-target-slug> --wait`
 
 - mutates: yes, ConfigHub only
 - output shape: text
 - proves:
   - renderer and wet units were created
   - the renderer stage completed or failed visibly
+  - the healthy `podinfo` path can render successfully even when contrast paths fail for real source reasons
 
 ### `cub unit list --space <space> --json`
 
@@ -107,3 +113,13 @@ This example can prove three different kinds of evidence:
 Import and renderer evidence do not, by themselves, prove live workload reconciliation.
 
 If runtime behavior matters, compare all three surfaces instead of relying on only one.
+
+## Expected Contrast Outcome
+
+In this example, a mixed result is expected and useful:
+
+- `podinfo` is the healthy reference path
+- the `platform-config` Kustomizations are expected to fail when the Git source has no artifact
+- the HelmRelease paths are expected to fail when their chart sources are not ready
+
+That is not noise. It is the core value proposition of the example.

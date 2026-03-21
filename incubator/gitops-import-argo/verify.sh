@@ -20,14 +20,25 @@ kubectl get nodes >/dev/null
 echo "==> Checking ArgoCD namespace"
 kubectl get namespace argocd >/dev/null
 
+echo "==> Checking the healthy reference applications"
+kubectl -n argocd get application cubbychat >/dev/null
+kubectl -n argocd get application helm-guestbook >/dev/null
+kubectl -n argocd get application kustomize-guestbook >/dev/null
+
 echo "==> Checking ArgoCD applications"
 kubectl get applications -n argocd
 
 echo "==> Checking ConfigHub worker deployment if present"
-if kubectl get namespace confighub >/dev/null 2>&1; then
-    kubectl get deployment -n confighub
+if [ -f "$PROJECT_DIR/var/worker.pid" ]; then
+    echo "local worker pid: $(cat "$PROJECT_DIR/var/worker.pid")"
+    if [ -f "$PROJECT_DIR/var/worker.log" ]; then
+        echo "local worker log: $PROJECT_DIR/var/worker.log"
+    fi
+    if [ -f "$PROJECT_DIR/var/argocd-port-forward.pid" ]; then
+        echo "argocd port-forward pid: $(cat "$PROJECT_DIR/var/argocd-port-forward.pid")"
+    fi
 else
-    echo "confighub namespace not present yet"
+    echo "local worker pid file not present"
 fi
 
 echo "==> Checking ConfigHub targets if auth and space are available"
@@ -45,4 +56,6 @@ else
     echo "cub-scout not installed; skipping optional live ownership checks"
 fi
 
-echo "All gitops-import-argo checks passed."
+echo "Verification completed."
+echo "This example expects a mixed ArgoCD state: a few healthy reference applications and several deliberately failing contrast applications."
+echo "Treat the failing ArgoCD objects above as evidence, not as a script failure."

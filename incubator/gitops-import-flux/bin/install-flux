@@ -1,0 +1,47 @@
+#!/bin/bash
+set -euo pipefail
+
+CLUSTER_NAME=${1:-gitops-import-flux}
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+MANIFEST_FILE="$(mktemp)"
+
+cleanup() {
+    rm -f "$MANIFEST_FILE"
+}
+trap cleanup EXIT
+
+export KUBECONFIG="$PROJECT_DIR/var/$CLUSTER_NAME.kubeconfig"
+
+if [ ! -f "$KUBECONFIG" ]; then
+    echo "Error: Kubeconfig not found at $KUBECONFIG"
+    echo "Please run bin/create-cluster first"
+    exit 1
+fi
+
+echo "Installing Flux in cluster: $CLUSTER_NAME"
+flux install \
+  --components="source-controller,helm-controller,kustomize-controller" \
+  --network-policy=false \
+  --export > "$MANIFEST_FILE"
+
+echo "Preloading Flux controller images into kind..."
+while IFS= read -r image; do
+    [ -n "$image" ] || continue
+    if ! docker image inspect "$image" >/dev/null 2>&1; then
+        docker pull "$image"
+    fi
+    kind load docker-image --name "$CLUSTER_NAME" "$image"
+done < <(awk '/image:/ {print $2}' "$MANIFEST_FILE" | sort -u)
+
+kubectl apply -f "$MANIFEST_FILE"
+
+echo "Waiting for Flux controllers to be ready..."
+kubectl -n flux-system wait --for=condition=available deployment/source-controller --timeout=180s
+kubectl -n flux-system wait --for=condition=available deployment/helm-controller --timeout=180s
+kubectl -n flux-system wait --for=condition=available deployment/kustomize-controller --timeout=180s
+
+echo "Waiting for Flux CRDs to be established..."
+kubectl wait --for=condition=Established --timeout=120s   crd/gitrepositories.source.toolkit.fluxcd.io   crd/kustomizations.kustomize.toolkit.fluxcd.io   crd/helmreleases.helm.toolkit.fluxcd.io
+
+echo "Flux installed successfully!"

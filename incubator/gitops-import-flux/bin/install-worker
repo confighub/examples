@@ -1,0 +1,131 @@
+#!/bin/bash
+set -euo pipefail
+
+CLUSTER_NAME=${1:-gitops-import-flux}
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+
+export KUBECONFIG="$PROJECT_DIR/var/$CLUSTER_NAME.kubeconfig"
+
+if [ ! -f "$KUBECONFIG" ]; then
+    echo "Error: Kubeconfig not found at $KUBECONFIG"
+    echo "Please run bin/create-cluster and bin/install-flux first"
+    exit 1
+fi
+
+if [ -z "${CUB_SPACE:-}" ]; then
+    echo "Error: Set CUB_SPACE to specify the ConfigHub space" >&2
+    exit 1
+fi
+
+DISCOVERY_WORKER_SLUG=${DISCOVERY_WORKER_SLUG:-discovery-worker}
+RENDERER_WORKER_SLUG=${RENDERER_WORKER_SLUG:-flux-renderer-worker}
+PID_FILE="$PROJECT_DIR/var/discovery-worker.pid"
+LOG_FILE="$PROJECT_DIR/var/discovery-worker.log"
+MANIFEST_FILE="$(mktemp)"
+
+mkdir -p "$PROJECT_DIR/var"
+
+cleanup() {
+    rm -f "$MANIFEST_FILE"
+}
+trap cleanup EXIT
+
+if ! cub space get "$CUB_SPACE" >/dev/null 2>&1; then
+    echo "Space '$CUB_SPACE' does not exist, creating it..."
+    cub space create "$CUB_SPACE"
+fi
+
+resolve_renderer_confighub_url() {
+    local base_url docker_host_ip port
+    if [ -n "${CONFIGHUB_URL:-}" ]; then
+        base_url="$CONFIGHUB_URL"
+    else
+        base_url=$(cub info 2>/dev/null | awk '/Server URL:/ {print $NF}')
+    fi
+
+    if [ -z "$base_url" ]; then
+        echo "Error: Could not determine ConfigHub URL. Set CONFIGHUB_URL or authenticate with cub." >&2
+        exit 1
+    fi
+
+    if echo "$base_url" | grep -qE 'localhost|127\.0\.0\.1'; then
+        docker_host_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.Gateway}}{{end}}' "${CLUSTER_NAME}-control-plane" 2>/dev/null | head -1)
+        if [ -z "$docker_host_ip" ]; then
+            docker_host_ip="host.docker.internal"
+        fi
+        port=$(printf '%s\n' "$base_url" | sed -E -n 's#.*:([0-9]+)$#\1#p')
+        port=${port:-9090}
+        echo "http://${docker_host_ip}:${port}"
+        return 0
+    fi
+
+    echo "$base_url"
+}
+
+if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" >/dev/null 2>&1; then
+    echo "Stopping previous discovery worker..."
+    kill "$(cat "$PID_FILE")" >/dev/null 2>&1 || true
+    sleep 2
+fi
+
+rm -f "$PID_FILE"
+
+cub worker create "$DISCOVERY_WORKER_SLUG" --space "$CUB_SPACE" --allow-exists
+cub worker create "$RENDERER_WORKER_SLUG" --space "$CUB_SPACE" --allow-exists
+
+echo "Starting local discovery worker..."
+nohup cub worker run --space "$CUB_SPACE" -t kubernetes "$DISCOVERY_WORKER_SLUG" > "$LOG_FILE" 2>&1 &
+echo $! > "$PID_FILE"
+
+RENDERER_CONFIGHUB_URL=$(resolve_renderer_confighub_url)
+
+echo "Installing in-cluster Flux renderer worker..."
+kubectl create namespace confighub-worker --dry-run=client -o yaml | kubectl apply -f -
+cub worker install \
+  --space "$CUB_SPACE" \
+  --export \
+  --include-secret \
+  -t fluxrenderer \
+  -n confighub-worker \
+  --image-pull-policy IfNotPresent \
+  -e "CONFIGHUB_URL=$RENDERER_CONFIGHUB_URL" \
+  "$RENDERER_WORKER_SLUG" > "$MANIFEST_FILE"
+
+echo "Preloading Flux renderer worker image into kind..."
+while IFS= read -r image; do
+    [ -n "$image" ] || continue
+    if ! docker image inspect "$image" >/dev/null 2>&1; then
+        docker pull "$image"
+    fi
+    kind load docker-image --name "$CLUSTER_NAME" "$image"
+done < <(awk '/image:/ {print $2}' "$MANIFEST_FILE" | sort -u)
+
+kubectl apply -f "$MANIFEST_FILE"
+
+kubectl wait --for=condition=Available --timeout=180s   -n confighub-worker deployment/"$RENDERER_WORKER_SLUG"
+
+echo "Waiting for targets to register..."
+TARGETS_READY=false
+for _ in $(seq 1 60); do
+    TARGET_JSON=$(cub target list --space "$CUB_SPACE" --json 2>/dev/null || echo '[]')
+    if echo "$TARGET_JSON" | jq -e '([.[].Target.ProviderType | ascii_downcase] | index("kubernetes")) != null and ([.[].Target.ProviderType | ascii_downcase] | index("fluxrenderer")) != null' >/dev/null 2>&1; then
+        TARGETS_READY=true
+        break
+    fi
+    sleep 2
+done
+
+if ! $TARGETS_READY; then
+    echo "Warning: targets are not both visible yet. Inspect with: cub target list --space $CUB_SPACE" >&2
+fi
+
+echo ""
+echo "========================================="
+echo "ConfigHub Workers Installed!"
+echo "========================================="
+echo "Space:            $CUB_SPACE"
+echo "Discovery worker: $DISCOVERY_WORKER_SLUG"
+echo "Renderer worker:  $RENDERER_WORKER_SLUG"
+echo "Discovery log:    $LOG_FILE"
+echo "========================================="
