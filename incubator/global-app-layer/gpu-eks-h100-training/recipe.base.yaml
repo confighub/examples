@@ -51,12 +51,19 @@ spec:
           revision: confighubplaceholder-gpu-operator-recipe-revision
           dataHash: confighubplaceholder-gpu-operator-recipe-hash
           mutationDelta: set WORKLOAD_INTENT=training and VALIDATION_PROFILE=training-smoke
-        - name: deployment
-          space: confighubplaceholder-gpu-operator-deployment-space
-          unit: confighubplaceholder-gpu-operator-deployment-unit
-          revision: confighubplaceholder-gpu-operator-deployment-revision
-          dataHash: confighubplaceholder-gpu-operator-deployment-hash
-          mutationDelta: set namespace=cluster-a and CLUSTER=cluster-a
+      deploymentVariants:
+        - name: direct
+          space: confighubplaceholder-gpu-operator-deployment-direct-space
+          unit: confighubplaceholder-gpu-operator-deployment-direct-unit
+          revision: confighubplaceholder-gpu-operator-deployment-direct-revision
+          dataHash: confighubplaceholder-gpu-operator-deployment-direct-hash
+          mutationDelta: set namespace=cluster-a and CLUSTER=cluster-a for direct worker delivery
+        - name: flux
+          space: confighubplaceholder-gpu-operator-deployment-flux-space
+          unit: confighubplaceholder-gpu-operator-deployment-flux-unit
+          revision: confighubplaceholder-gpu-operator-deployment-flux-revision
+          dataHash: confighubplaceholder-gpu-operator-deployment-flux-hash
+          mutationDelta: set namespace=cluster-a and CLUSTER=cluster-a for Flux OCI delivery
     - name: nvidia-device-plugin
       layers:
         - name: base
@@ -89,13 +96,26 @@ spec:
           revision: confighubplaceholder-nvidia-device-plugin-recipe-revision
           dataHash: confighubplaceholder-nvidia-device-plugin-recipe-hash
           mutationDelta: set WORKLOAD_INTENT=training and PLUGIN_CONFIG=training-smoke
-        - name: deployment
-          space: confighubplaceholder-nvidia-device-plugin-deployment-space
-          unit: confighubplaceholder-nvidia-device-plugin-deployment-unit
-          revision: confighubplaceholder-nvidia-device-plugin-deployment-revision
-          dataHash: confighubplaceholder-nvidia-device-plugin-deployment-hash
-          mutationDelta: set namespace=cluster-a and CLUSTER=cluster-a
+      deploymentVariants:
+        - name: direct
+          space: confighubplaceholder-nvidia-device-plugin-deployment-direct-space
+          unit: confighubplaceholder-nvidia-device-plugin-deployment-direct-unit
+          revision: confighubplaceholder-nvidia-device-plugin-deployment-direct-revision
+          dataHash: confighubplaceholder-nvidia-device-plugin-deployment-direct-hash
+          mutationDelta: set namespace=cluster-a and CLUSTER=cluster-a for direct worker delivery
+        - name: flux
+          space: confighubplaceholder-nvidia-device-plugin-deployment-flux-space
+          unit: confighubplaceholder-nvidia-device-plugin-deployment-flux-unit
+          revision: confighubplaceholder-nvidia-device-plugin-deployment-flux-revision
+          dataHash: confighubplaceholder-nvidia-device-plugin-deployment-flux-hash
+          mutationDelta: set namespace=cluster-a and CLUSTER=cluster-a for Flux OCI delivery
   publish:
-    targetRef: confighubplaceholder-target-ref
-    bundleHint: confighubplaceholder-bundle-hint
-    note: The bundle is the deployable output of the deployment units' shared target, not the source of truth for the layer chain.
+    variants:
+      - name: direct
+        targetRef: confighubplaceholder-direct-target-ref
+        bundleHint: confighubplaceholder-direct-bundle-hint
+        note: The bundle is the deployable output of the direct deployment units' target, not the source of truth for the layer chain.
+      - name: flux
+        targetRef: confighubplaceholder-flux-target-ref
+        bundleHint: confighubplaceholder-flux-bundle-hint
+        note: The bundle is the deployable output of the Flux deployment units' target, not the source of truth for the layer chain.

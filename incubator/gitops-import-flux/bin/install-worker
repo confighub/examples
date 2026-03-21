@@ -80,19 +80,19 @@ echo $! > "$PID_FILE"
 
 RENDERER_CONFIGHUB_URL=$(resolve_renderer_confighub_url)
 
-echo "Installing in-cluster Flux renderer worker..."
+echo "Installing in-cluster Flux worker with renderer and deployment bridges..."
 kubectl create namespace confighub-worker --dry-run=client -o yaml | kubectl apply -f -
 cub worker install \
   --space "$CUB_SPACE" \
   --export \
   --include-secret \
-  -t fluxrenderer \
+  -t fluxrenderer,fluxoci \
   -n confighub-worker \
   --image-pull-policy IfNotPresent \
   -e "CONFIGHUB_URL=$RENDERER_CONFIGHUB_URL" \
   "$RENDERER_WORKER_SLUG" > "$MANIFEST_FILE"
 
-echo "Preloading Flux renderer worker image into kind..."
+echo "Preloading Flux worker image into kind..."
 while IFS= read -r image; do
     [ -n "$image" ] || continue
     if ! docker image inspect "$image" >/dev/null 2>&1; then
@@ -109,7 +109,7 @@ echo "Waiting for targets to register..."
 TARGETS_READY=false
 for _ in $(seq 1 60); do
     TARGET_JSON=$(cub target list --space "$CUB_SPACE" --json 2>/dev/null || echo '[]')
-    if echo "$TARGET_JSON" | jq -e '([.[].Target.ProviderType | ascii_downcase] | index("kubernetes")) != null and ([.[].Target.ProviderType | ascii_downcase] | index("fluxrenderer")) != null' >/dev/null 2>&1; then
+    if echo "$TARGET_JSON" | jq -e '([.[].Target.ProviderType | ascii_downcase] | index("kubernetes")) != null and ([.[].Target.ProviderType | ascii_downcase] | index("fluxrenderer")) != null and ([.[].Target.ProviderType | ascii_downcase] | index("fluxoci")) != null' >/dev/null 2>&1; then
         TARGETS_READY=true
         break
     fi
@@ -117,7 +117,7 @@ for _ in $(seq 1 60); do
 done
 
 if ! $TARGETS_READY; then
-    echo "Warning: targets are not both visible yet. Inspect with: cub target list --space $CUB_SPACE" >&2
+    echo "Warning: discovery, fluxrenderer, and fluxoci targets are not all visible yet. Inspect with: cub target list --space $CUB_SPACE" >&2
 fi
 
 echo ""
@@ -126,6 +126,6 @@ echo "ConfigHub Workers Installed!"
 echo "========================================="
 echo "Space:            $CUB_SPACE"
 echo "Discovery worker: $DISCOVERY_WORKER_SLUG"
-echo "Renderer worker:  $RENDERER_WORKER_SLUG"
+echo "Flux worker:      $RENDERER_WORKER_SLUG"
 echo "Discovery log:    $LOG_FILE"
 echo "========================================="

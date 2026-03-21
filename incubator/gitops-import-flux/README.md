@@ -2,7 +2,7 @@
 
 This incubator example is the working Flux import path for the current GitHub + Flux + AI/CLI + ConfigHub wedge.
 
-It sets up a local kind cluster with real Flux, optionally installs a ConfigHub discovery worker and an in-cluster Flux renderer worker, and demonstrates `cub gitops discover` and `cub gitops import` against Flux `Kustomization` and `HelmRelease` resources.
+It sets up a local kind cluster with real Flux, optionally installs a ConfigHub discovery worker and an in-cluster Flux worker with both `fluxrenderer` and `fluxoci`, and demonstrates `cub gitops discover` and `cub gitops import` against Flux `Kustomization` and `HelmRelease` resources.
 
 It also includes an optional contrast layer adapted from `cub-scout` so you can compare two different Flux-shaped situations in one cluster:
 
@@ -40,11 +40,11 @@ It writes live infrastructure:
 - Flux controllers in `flux-system`
 - real Flux GitRepository and Kustomization resources for podinfo
 - optional D2 brownfield fixtures
-- optional ConfigHub renderer worker deployment in the cluster
+- optional ConfigHub renderer and Flux OCI worker deployment in the cluster
 
 It writes ConfigHub state only if you choose the worker and import path:
 
-- discovery and renderer workers in the selected space
+- one discovery worker and one in-cluster Flux worker in the selected space
 - targets registered by those workers
 - discover, dry, wet, and linked units created by `cub gitops discover` and `cub gitops import`
 
@@ -94,7 +94,7 @@ export CUB_SPACE=<space>
 
 `./setup.sh --with-contrast` mutates live infrastructure further by applying D2 brownfield fixtures.
 
-`./setup.sh --with-worker` mutates ConfigHub and live infrastructure by creating ConfigHub workers, starting a local discovery worker process, and installing the Flux renderer worker into the cluster.
+`./setup.sh --with-worker` mutates ConfigHub and live infrastructure by creating ConfigHub workers, starting a local discovery worker process, and installing the in-cluster Flux worker that exposes both `fluxrenderer` and `fluxoci` targets.
 
 `cub gitops discover` mutates ConfigHub only by creating or reusing the discover unit.
 
@@ -115,7 +115,8 @@ After setup:
 If you installed the workers and have a valid `CUB_SPACE`, you should see:
 
 - one Kubernetes discovery target from the local discovery worker
-- one `fluxrenderer` target from the in-cluster renderer worker
+- one `fluxrenderer` target from the in-cluster worker
+- one `fluxoci` target from the same in-cluster worker
 
 Use those for the import path:
 
@@ -125,7 +126,9 @@ cub gitops discover --space "$CUB_SPACE" <kubernetes-target-slug> --json | jq
 cub gitops import --space "$CUB_SPACE" <kubernetes-target-slug> <flux-renderer-target-slug> --wait
 ```
 
-The worker installer preloads the Flux controller images and the ConfigHub renderer worker image into the kind cluster before waiting on rollout. That avoids long or flaky first-time image pulls from becoming the main story of the example.
+The worker installer preloads the Flux controller images and the ConfigHub Flux worker image into the kind cluster before waiting on rollout. That avoids long or flaky first-time image pulls from becoming the main story of the example.
+
+The `fluxoci` target is useful beyond this import example. It is the deployment bridge that raw-manifest examples such as `incubator/global-app-layer/gpu-eks-h100-training` can bind to when they want a Flux-managed deployment variant.
 
 ## What Success Looks Like
 

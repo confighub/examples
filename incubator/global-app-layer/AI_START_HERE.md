@@ -234,7 +234,7 @@ If the user wants deployment, updates, and custom live variants instead of only 
 ## What Success Looks Like
 
 After a successful ConfigHub-only run you should see:
-- five or six new spaces with a shared prefix
+- five, six, or seven new spaces with a shared prefix
 - units for each layer
 - one recipe manifest in the recipe space
 - `verify.sh` passing

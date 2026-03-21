@@ -18,16 +18,32 @@ case "${1:-}" in
 esac
 
 prefix="${1:-}"
-target_ref="${2:-}"
+shift_count=0
+if [[ -n "${prefix}" ]]; then
+  shift_count=1
+fi
+if [[ "${shift_count}" -gt 0 ]]; then
+  shift
+fi
+target_refs=("$@")
 
 if [[ "${mode}" != "run" ]]; then
   PREFIX="${prefix:-<generated-prefix>}"
-  TARGET_REF="${target_ref}"
+  DIRECT_TARGET_REF=""
+  FLUX_TARGET_REF=""
   if [[ "${mode}" == "explain-json" ]]; then
     require_jq
-    show_setup_plan_json "${TARGET_REF}"
+    if [[ "${#target_refs[@]}" -gt 0 ]]; then
+      show_setup_plan_json "${target_refs[@]}"
+    else
+      show_setup_plan_json
+    fi
   else
-    show_setup_plan "${TARGET_REF}"
+    if [[ "${#target_refs[@]}" -gt 0 ]]; then
+      show_setup_plan "${target_refs[@]}"
+    else
+      show_setup_plan
+    fi
   fi
   exit 0
 fi
@@ -45,9 +61,13 @@ if [[ -z "${prefix}" ]]; then
   prefix="$(cub space new-prefix)"
 fi
 
-assert_supported_live_target "${target_ref}"
+if [[ "${#target_refs[@]}" -gt 0 ]]; then
+  for target_ref in "${target_refs[@]}"; do
+    assert_supported_live_target "${target_ref}"
+  done
+fi
 
-save_state "${prefix}" "${target_ref}"
+save_state "${prefix}" "" ""
 load_state
 
 _mapfile base_space_labels < <(space_label_args base)
@@ -55,7 +75,8 @@ _mapfile platform_space_labels < <(space_label_args platform --label "Platform=$
 _mapfile accelerator_space_labels < <(space_label_args accelerator --label "Platform=${PLATFORM_VALUE}" --label "Accelerator=${ACCELERATOR_VALUE}")
 _mapfile os_space_labels < <(space_label_args os --label "Platform=${PLATFORM_VALUE}" --label "Accelerator=${ACCELERATOR_VALUE}" --label "OS=${OS_VALUE}")
 _mapfile recipe_space_labels < <(space_label_args recipe --label "Platform=${PLATFORM_VALUE}" --label "Accelerator=${ACCELERATOR_VALUE}" --label "OS=${OS_VALUE}" --label "Intent=${INTENT_VALUE}")
-_mapfile deploy_space_labels < <(space_label_args deployment --label "Platform=${PLATFORM_VALUE}" --label "Accelerator=${ACCELERATOR_VALUE}" --label "OS=${OS_VALUE}" --label "Intent=${INTENT_VALUE}" --label "Cluster=${DEPLOY_NAMESPACE}")
+_mapfile direct_deploy_space_labels < <(space_label_args deployment --label "Platform=${PLATFORM_VALUE}" --label "Accelerator=${ACCELERATOR_VALUE}" --label "OS=${OS_VALUE}" --label "Intent=${INTENT_VALUE}" --label "Cluster=${DEPLOY_NAMESPACE}" --label "DeliveryVariant=direct")
+_mapfile flux_deploy_space_labels < <(space_label_args deployment --label "Platform=${PLATFORM_VALUE}" --label "Accelerator=${ACCELERATOR_VALUE}" --label "OS=${OS_VALUE}" --label "Intent=${INTENT_VALUE}" --label "Cluster=${DEPLOY_NAMESPACE}" --label "DeliveryVariant=flux")
 
 echo "==> Creating spaces"
 create_space_if_missing "$(base_space)" "${base_space_labels[@]}"
@@ -63,7 +84,8 @@ create_space_if_missing "$(platform_space)" "${platform_space_labels[@]}"
 create_space_if_missing "$(accelerator_space)" "${accelerator_space_labels[@]}"
 create_space_if_missing "$(os_space)" "${os_space_labels[@]}"
 create_space_if_missing "$(recipe_space)" "${recipe_space_labels[@]}"
-create_space_if_missing "$(deploy_space)" "${deploy_space_labels[@]}"
+create_space_if_missing "$(deploy_space)" "${direct_deploy_space_labels[@]}"
+create_space_if_missing "$(flux_deploy_space)" "${flux_deploy_space_labels[@]}"
 
 for component in "${COMPONENTS[@]}"; do
   echo "==> Creating base unit for ${component}"
@@ -90,18 +112,26 @@ for component in "${COMPONENTS[@]}"; do
   create_clone_unit "$(recipe_space)" "$(unit_name "${component}" recipe)" "$(os_space)" "$(unit_name "${component}" os)" "${recipe_unit_labels[@]}"
   apply_recipe_mutations "${component}"
 
-  echo "==> Creating deployment clone for ${component}"
-  _mapfile deploy_unit_labels < <(label_args deployment "${component}" --label "Platform=${PLATFORM_VALUE}" --label "Accelerator=${ACCELERATOR_VALUE}" --label "OS=${OS_VALUE}" --label "Intent=${INTENT_VALUE}" --label "Cluster=${DEPLOY_NAMESPACE}")
-  create_clone_unit "$(deploy_space)" "$(unit_name "${component}" deployment)" "$(recipe_space)" "$(unit_name "${component}" recipe)" "${deploy_unit_labels[@]}"
-  apply_deploy_mutations "${component}"
+  echo "==> Creating direct deployment clone for ${component}"
+  _mapfile direct_deploy_unit_labels < <(label_args deployment "${component}" --label "Platform=${PLATFORM_VALUE}" --label "Accelerator=${ACCELERATOR_VALUE}" --label "OS=${OS_VALUE}" --label "Intent=${INTENT_VALUE}" --label "Cluster=${DEPLOY_NAMESPACE}" --label "DeliveryVariant=direct")
+  create_clone_unit "$(deploy_space)" "$(deployment_unit_name "${component}" direct)" "$(recipe_space)" "$(unit_name "${component}" recipe)" "${direct_deploy_unit_labels[@]}"
+  apply_deploy_mutations "${component}" direct
+
+  echo "==> Creating Flux deployment clone for ${component}"
+  _mapfile flux_deploy_unit_labels < <(label_args deployment "${component}" --label "Platform=${PLATFORM_VALUE}" --label "Accelerator=${ACCELERATOR_VALUE}" --label "OS=${OS_VALUE}" --label "Intent=${INTENT_VALUE}" --label "Cluster=${DEPLOY_NAMESPACE}" --label "DeliveryVariant=flux")
+  create_clone_unit "$(flux_deploy_space)" "$(deployment_unit_name "${component}" flux)" "$(recipe_space)" "$(unit_name "${component}" recipe)" "${flux_deploy_unit_labels[@]}"
+  apply_deploy_mutations "${component}" flux
 done
 
-if [[ -n "${TARGET_REF}" ]]; then
-  echo "==> Setting target on deployment clones"
-  set_target_for_deploy_units "${TARGET_REF}"
+if [[ "${#target_refs[@]}" -gt 0 ]]; then
+  echo "==> Setting targets on compatible deployment variants"
+  for target_ref in "${target_refs[@]}"; do
+    set_target_for_compatible_units "${target_ref}"
+  done
+  save_state "${PREFIX}" "${DIRECT_TARGET_REF:-}" "${FLUX_TARGET_REF:-}"
 fi
 
 echo "==> Rendering explicit GPU recipe manifest"
-refresh_recipe_manifest_unit "${TARGET_REF}"
+refresh_recipe_manifest_unit "${DIRECT_TARGET_REF:-}" "${FLUX_TARGET_REF:-}"
 
-show_summary "${TARGET_REF}"
+show_summary

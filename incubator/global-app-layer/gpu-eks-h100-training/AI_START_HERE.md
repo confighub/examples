@@ -10,7 +10,7 @@ This example demonstrates an NVIDIA-shaped layered recipe in ConfigHub with:
 
 It is the clearest AICR-shaped example in the package.
 
-## WET-First, Not Live-First
+## WET-First, Then Deployment Variants
 
 This example starts by materializing intended state in ConfigHub.
 
@@ -18,17 +18,19 @@ The normal path is:
 1. preview with `./setup.sh --explain`
 2. materialize with `./setup.sh`
 3. verify with `./verify.sh`
-4. optionally bind a target
+4. optionally bind one or both deployment variants to targets
 5. optionally apply live
 
-So `setup.sh` is ConfigHub-first, not cluster-first.
+The shared recipe is the app-level intent. The deployment variants sit at the leaf:
+- direct deployment variant
+- Flux deployment variant
 
 ## What You Need Installed
 
 - `cub` in `PATH`
 - an authenticated ConfigHub CLI context for any mutating step
 - `jq` for the JSON preview path
-- optional: a live target only if you want to bind and apply
+- optional: compatible live targets only if you want to bind and apply
 - optional: GPU-capable nodes and real images only if you want functional NVIDIA proof rather than structural proof
 
 ## Capability Check
@@ -48,9 +50,10 @@ Use this rule:
 - if a real target is visible, run `../preflight-live.sh <space/target>` before you offer the live path
 - only use the live path when preflight reports `applyReady: true`
 
-For this example, there is one more gate:
-- the honest live proof today is the direct `Kubernetes` target
-- if preflight says `providerType: "ArgoCDRenderer"`, stop and note that this example materializes raw Kubernetes deployment units, while the current renderer path expects Argo CD `Application` payloads and does not serve as the final Argo-sync proof
+For this example, route by provider type:
+- `Kubernetes` -> direct deployment variant
+- `FluxOCI` or `FluxOCIWriter` -> Flux deployment variant
+- `ArgoCDRenderer` and `FluxRenderer` are not deployment targets for this example and should be rejected
 
 ## Important Note
 
@@ -89,28 +92,23 @@ From this directory, run:
 
 Only call the live path ready if preflight reports `applyReady: true`.
 
-If the human wants the full lifecycle after setup + verify, continue with:
-
-- [../whole-journey.md](../whole-journey.md)
-
-Use the same live target, upgrade, and downstream-variant pattern there.
-For functional NVIDIA proof, also replace the stub images and use GPU-capable nodes.
-
 ## Ready For A Fresh Run
 
 ```bash
-./setup.sh                              # ConfigHub-only
-./setup.sh <prefix> <space/target>     # with live target
+./setup.sh                                            # ConfigHub-only
+./setup.sh <prefix> <kubernetes-target>               # bind direct variant during setup
+./setup.sh <prefix> <kubernetes-target> <fluxoci-target>  # bind direct and Flux variants during setup
 ./verify.sh
 ```
 
 If you start ConfigHub-only and later want the live path:
 
 ```bash
-./set-target.sh <space/target>
+./set-target.sh <kubernetes-target>
+./set-target.sh <fluxoci-target>
 ```
 
-The helper now rejects `ArgoCDRenderer` targets for this example before mutating deployment units.
+The helper routes targets by provider type and only binds the compatible deployment variant.
 
 ## Capability Branching
 
@@ -127,18 +125,19 @@ Use:
 ./verify.sh
 ```
 
-This writes the layered GPU recipe into ConfigHub, but does not deploy anything live.
+This writes the layered GPU recipe and both deployment variants into ConfigHub, but does not deploy anything live.
 
 ### C. Live target mode
 
 Use:
 
 ```bash
-./setup.sh <prefix> <space/target>
+./setup.sh <prefix> <kubernetes-target>
+./set-target.sh <fluxoci-target>   # optional second branch
 ./verify.sh
 ```
 
-Then approve and apply the deployment units explicitly.
+Then approve and apply the deployment units explicitly for the variant you want to prove.
 
 ## Verification Modes
 
@@ -149,7 +148,8 @@ Then approve and apply the deployment units explicitly.
   - `./setup.sh`
   - `./verify.sh`
 - Live target:
-  - `./setup.sh <prefix> <space/target>`
+  - `./setup.sh <prefix> <kubernetes-target>`
+  - `./set-target.sh <fluxoci-target>` if you want the Flux branch too
   - `./verify.sh`
   - explicit `cub unit apply ...`
 
@@ -161,12 +161,14 @@ As you go, inspect these in the ConfigHub GUI:
    - inspect `recipe-eks-h100-ubuntu-training-stack`
 2. `<prefix>-deploy-cluster-a`
    - inspect `gpu-operator-cluster-a`
-3. compare the recipe manifest and one deployment unit
+3. `<prefix>-deploy-cluster-a-flux`
+   - inspect `gpu-operator-cluster-a-flux`
+4. compare the recipe manifest and the two deployment variants
    - confirm the recipe receipt exists
-   - confirm the deployment variant exists
-4. if a target is set
-   - inspect `gpu-operator-cluster-a` again and confirm the target binding is visible
-5. if you apply live
+   - confirm both deployment variants exist
+5. if targets are set
+   - inspect the matching deployment variant again and confirm the target binding is visible
+6. if you apply live
    - inspect the deployment space after apply and compare intended state vs live result
 
 The easiest path is to open the clickable URLs printed by `./setup.sh`.
@@ -176,6 +178,7 @@ The easiest path is to open the clickable URLs printed by `./setup.sh`.
 - use `cub version`, not `cub --version`
 - use `cub context list`, not `cub context current`
 - use the jq anchors in `contracts.md` for machine-readable unit inspection
+- do not treat `FluxRenderer` as the deployment target for this example; it is the import-and-render path for existing Flux resources
 
 ## What Mutates What
 
@@ -184,18 +187,19 @@ The easiest path is to open the clickable URLs printed by `./setup.sh`.
 | `./setup.sh --explain-json` | nothing |
 | `./setup.sh` | ConfigHub spaces, units, links, recipe manifest, local `.state/`, local `.logs/setup.latest.log` |
 | `./verify.sh` | local `.logs/verify.latest.log` |
-| `./set-target.sh <space/target>` | ConfigHub target bindings, local `.logs/set-target.latest.log` |
+| `./set-target.sh <target> ...` | ConfigHub target bindings for compatible deployment variants, local `.logs/set-target.latest.log` |
 | `cub unit apply ...` | live target state |
 
 ## What Success Looks Like
 
 In ConfigHub-only mode:
-- six new spaces with one shared prefix
+- seven new spaces with one shared prefix
 - two layered GPU chains
+- two deployment variants at the leaf
 - one stack-level recipe manifest unit
 - `verify.sh` passing
 
 In live mode:
-- deployment units bound to a target
+- direct and or Flux deployment variants bound to compatible targets
 - successful `cub unit apply`
 - live resources or delegated delivery objects visible
