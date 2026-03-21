@@ -1,4 +1,4 @@
-# RFC: `cub run` and `Operation` records
+# RFC: `cub-proc` and `Operation` records
 
 ## Summary
 
@@ -9,9 +9,11 @@ For connected procedures, it should also store structured operational state.
 This RFC proposes two things:
 
 - a first-class `Operation` record in ConfigHub for bounded procedures
-- `cub run` as the CLI over that record
+- `cub-proc` as the CLI over that record
 
 This is not mainly about a new command. It is about making multi-step operations first-class in ConfigHub instead of leaving them split across shell output, GUI pages, worker activity, controller state, and user memory.
+
+Earlier drafts used `cub run` as the working name. This public incubator version uses `cub-proc` to avoid conflict with the existing `cub run` function surface in the `cub` CLI.
 
 ## Problem
 
@@ -48,7 +50,7 @@ Without that, ConfigHub can hold fragments of operational evidence, but each flo
 
 Add a first-class `Operation` record in ConfigHub.
 
-`cub run` is the CLI for creating, updating, and reading `Operation` records.
+`cub-proc` is the CLI for creating, updating, and reading `Operation` records.
 
 ## Canonical model
 
@@ -137,20 +139,20 @@ apply: flux
 Initial CLI shape:
 
 ```bash
-cub run <procedure> [subject]
-cub run get <operation-id>
-cub run list
-cub run watch <operation-id>
+cub-proc <procedure> [subject]
+cub-proc get <operation-id>
+cub-proc list
+cub-proc watch <operation-id>
 ```
 
 Initial procedure candidates:
 
 ```bash
-cub run demo-data/install
-cub run gitops-import/flux
-cub run gitops-import/argo
-cub run global-app/install
-cub run gpu-stack/install
+cub-proc demo-data/install
+cub-proc gitops-import/flux
+cub-proc gitops-import/argo
+cub-proc global-app/install
+cub-proc gpu-stack/install
 ```
 
 ## Concrete failure modes without this
@@ -198,10 +200,10 @@ For MVP:
 - procedure profiles are hardcoded in `cub`
 - ordered steps are hardcoded in `cub`
 - default assertions are hardcoded in `cub`
-- only `cub run` emits `Operation` records
+- only `cub-proc` emits `Operation` records
 - existing commands stay unchanged
 
-The current examples should remain runnable without `cub run`.
+The current examples should remain runnable without `cub-proc`.
 
 ## `watch` and re-derivation
 
@@ -209,7 +211,7 @@ MVP does not require a long-lived server-side run engine.
 
 Instead:
 
-- `cub run` executes locally in the CLI
+- `cub-proc` executes locally in the CLI
 - `get` reads stored `Operation` state from ConfigHub
 - `watch` re-derives current state by polling underlying systems using the stored `Operation` plus the hardcoded procedure profile
 
@@ -241,5 +243,5 @@ After that, the next strongest profiles are the two GitOps import examples, then
 
 - What is the right ConfigHub backing type for `Operation` records?
 - What is the minimum assertion set for the first three procedure profiles?
-- When should `cub run` stop waiting automatically versus return `waiting`?
+- When should `cub-proc` stop waiting automatically versus return `waiting`?
 - When, if ever, should procedure profiles become declarative rather than hardcoded?

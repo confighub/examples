@@ -184,17 +184,17 @@ You should be able to see:
 
 ## 7) Tiny direct vs delegated fixtures
 
-If you need the smallest possible direct and delegated apply inputs for design work around `cub run`, use:
+If you need the smallest possible direct and delegated apply inputs for design work around `cub-proc`, use:
 
-- [cub-run-fixtures](./cub-run-fixtures/README.md)
+- [cub-proc-fixtures](./cub-proc-fixtures/README.md)
 
 These are preserved reference fixtures, not the main walkthrough.
 
-## 8) Public `cub run` design work
+## 8) Public `cub-proc` design work
 
 If the human wants the current public design work for bounded procedures and `Operation` records, use:
 
-- [cub-run](./cub-run/README.md)
+- [cub-proc](./cub-proc/README.md)
 
 That directory keeps the design work next to the runnable examples it is based on:
 
@@ -202,7 +202,7 @@ That directory keeps the design work next to the runnable examples it is based o
 - procedure candidates grounded in real examples
 - the `promotion-demo-data` evidence note
 
-Do not make the current examples depend on `cub run`. Use those docs to understand the next layer, not to block current runnable paths.
+Do not make the current examples depend on `cub-proc`. Use those docs to understand the next layer, not to block current runnable paths.
 
 ## 9) Related Pages
 

@@ -1,4 +1,4 @@
-# PRD: `cub run`
+# PRD: `cub-proc`
 
 ## Status
 
@@ -13,16 +13,18 @@ ConfigHub should also act as the system of record for bounded operational proced
 This PRD proposes:
 
 - a first-class `Operation` record in ConfigHub
-- `cub run` as the public CLI for creating, updating, and reading those records
+- `cub-proc` as the public CLI for creating, updating, and reading those records
 
 The point is not mainly a new command. The point is to stop treating multi-step procedures as shell output plus memory.
+
+Earlier drafts used `cub run` as the working name. This public incubator version uses `cub-proc` to avoid conflict with the existing `cub run` function surface in `cub`.
 
 Repository context:
 
 - runnable scenarios and worked examples live in this repo
 - the public `cub` CLI lives in [`confighub`](https://github.com/confighubai/confighub)
 
-## What `cub run` adds
+## What `cub-proc` adds
 
 ConfigHub could already store operational data in principle.
 
@@ -32,9 +34,9 @@ What is missing today is a standard bounded-procedure record:
 - a standard lifecycle
 - a standard CLI for creating, updating, and reading it
 
-Without `cub run`, ConfigHub can hold fragments of operational evidence, but each flow still invents its own way of producing and interpreting those fragments.
+Without `cub-proc`, ConfigHub can hold fragments of operational evidence, but each flow still invents its own way of producing and interpreting those fragments.
 
-With `cub run`, ConfigHub gets one consistent operational record for a bounded procedure.
+With `cub-proc`, ConfigHub gets one consistent operational record for a bounded procedure.
 
 ## User Problem
 
@@ -62,7 +64,7 @@ That is already visible in the runnable examples in this repo.
 
 ## How this helps users get apps up faster
 
-`cub run` does not make Kubernetes, ArgoCD, Flux, or workers execute faster.
+`cub-proc` does not make Kubernetes, ArgoCD, Flux, or workers execute faster.
 
 It reduces four specific delays:
 
@@ -219,7 +221,7 @@ Example:
 - publish to ArgoCD can be `done`
 - workload health can still be `pending`
 
-So `cub run` must show both:
+So `cub-proc` must show both:
 
 - procedure state
 - assertion state
@@ -269,25 +271,25 @@ The best first ones are:
 
 ### Main verb
 
-`cub run` should be the primary CLI verb for bounded procedures.
+`cub-proc` should be the primary CLI verb for bounded procedures.
 
 ### MVP commands
 
 ```bash
-cub run <procedure> [subject]
-cub run get <operation-id>
-cub run list
-cub run watch <operation-id>
+cub-proc <procedure> [subject]
+cub-proc get <operation-id>
+cub-proc list
+cub-proc watch <operation-id>
 ```
 
 ### Initial procedures
 
 ```bash
-cub run demo-data/install
-cub run gitops-import/flux
-cub run gitops-import/argo
-cub run global-app/install
-cub run gpu-stack/install
+cub-proc demo-data/install
+cub-proc gitops-import/flux
+cub-proc gitops-import/argo
+cub-proc global-app/install
+cub-proc gpu-stack/install
 ```
 
 ### Initial flags
@@ -306,7 +308,7 @@ cub run gpu-stack/install
 
 For MVP:
 
-- only `cub run` emits `Operation` records
+- only `cub-proc` emits `Operation` records
 - existing commands such as `cub unit apply`, `cub gitops import`, and `cub function do` remain unchanged
 - no `rerun`, `abort`, or step resume
 
@@ -330,15 +332,15 @@ Local ephemeral mode should be explicit opt-out, not the implied norm.
 
 ## `get`, `watch`, and `list`
 
-For MVP, `cub run` should not require a long-lived server-side run engine.
+For MVP, `cub-proc` should not require a long-lived server-side run engine.
 
 Instead:
 
-- `cub run` executes locally in the CLI
+- `cub-proc` executes locally in the CLI
 - `get` reads the stored `Operation` from ConfigHub
 - `watch` re-derives current state by polling underlying systems using the stored `Operation` plus the hardcoded procedure profile
 
-`cub run list` should show persisted `Operation` records only.
+`cub-proc list` should show persisted `Operation` records only.
 
 ## `--assert` semantics
 
@@ -362,13 +364,13 @@ A procedure may return with state `waiting` while assertions are still `pending`
 
 The strongest current evidence is:
 
-- [why-cub-run-example-promotions.md](./why-cub-run-example-promotions.md)
+- [why-cub-proc-example-promotions.md](./why-cub-proc-example-promotions.md)
 - [../gitops-import-argo](../gitops-import-argo/README.md)
 - [../gitops-import-flux](../gitops-import-flux/README.md)
 - [../global-app-layer](../global-app-layer/README.md)
 
 ## Current position
 
-The examples should not wait on `cub run`.
+The examples should not wait on `cub-proc`.
 
-The current wedge is already strong without it. The job of `cub run` is to give those worked procedures a consistent operational record later, not to become a prerequisite for using the examples now.
+The current wedge is already strong without it. The job of `cub-proc` is to give those worked procedures a consistent operational record later, not to become a prerequisite for using the examples now.

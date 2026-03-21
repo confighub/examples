@@ -1,4 +1,4 @@
-# `cub-run-fixtures`
+# `cub-proc-fixtures`
 
 This directory preserves the only parts of the earlier `cub-up` exploration that still look useful:
 
@@ -6,7 +6,7 @@ This directory preserves the only parts of the earlier `cub-up` exploration that
 - one tiny delegated-apply fixture
 
 These are not the main incubator entrypoint.
-They are small reference inputs for `cub run` design and testing.
+They are small reference inputs for `cub-proc` design and testing.
 
 ## What is here
 
@@ -52,10 +52,10 @@ For worked examples and live ConfigHub usage, start with:
 
 Keep this directory only as seed material for:
 
-- `cub run` design
+- `cub-proc` design
 - direct-vs-delegated tests
 - tiny fixture-based experiments
 
-For the public `cub run` design docs that now sit next to the runnable examples, see:
+For the public `cub-proc` design docs that now sit next to the runnable examples, see:
 
-- [../cub-run](../cub-run/README.md)
+- [../cub-proc](../cub-proc/README.md)

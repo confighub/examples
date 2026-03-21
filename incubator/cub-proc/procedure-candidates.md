@@ -1,8 +1,8 @@
-# `cub run` Procedure Candidates From Runnable Examples
+# `cub-proc` Procedure Candidates From Runnable Examples
 
-This document maps the proposed `cub run` idea to runnable examples in this repo.
+This document maps the proposed `cub-proc` idea to runnable examples in this repo.
 
-The point is not to prove that every example should become a `cub run` profile. The point is to identify which bounded procedures are already visible enough, repeated enough, and important enough to justify a standard operational record later.
+The point is not to prove that every example should become a `cub-proc` profile. The point is to identify which bounded procedures are already visible enough, repeated enough, and important enough to justify a standard operational record later.
 
 ## Selection Rule
 
@@ -80,7 +80,7 @@ Likely assertions:
 Example:
 
 - [../../promotion-demo-data](../../promotion-demo-data/README.md)
-- [why-cub-run-example-promotions.md](./why-cub-run-example-promotions.md)
+- [why-cub-proc-example-promotions.md](./why-cub-proc-example-promotions.md)
 
 Why it is strong:
 
@@ -163,17 +163,17 @@ Likely assertions:
 - chosen variant is bound to a compatible target
 - selected variant applied successfully
 
-## What Should Not Block On `cub run`
+## What Should Not Block On `cub-proc`
 
-The current examples do not need `cub run` to be useful.
+The current examples do not need `cub-proc` to be useful.
 
 The GitOps import examples already land the current wedge without it. The layered examples already explain deployment variants without it. The promotion dataset already demonstrates the App-Deployment-Target model without it.
 
-That is good. It means `cub run` can be tested against real examples instead of being a prerequisite for them.
+That is good. It means `cub-proc` can be tested against real examples instead of being a prerequisite for them.
 
 ## Suggested Order For Future Procedure Profiles
 
-If `cub run` work resumes, the cleanest order is:
+If `cub-proc` work resumes, the cleanest order is:
 
 1. `demo-data/install`
 2. `gitops-import/flux`

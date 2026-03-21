@@ -1,6 +1,6 @@
-# Why `cub run`: Evidence from `promotion-demo-data`
+# Why `cub-proc`: Evidence from `promotion-demo-data`
 
-This document captures observations from running the [promotion-demo-data](../../promotion-demo-data/README.md) example and how they validate the `cub run` design.
+This document captures observations from running the [promotion-demo-data](../../promotion-demo-data/README.md) example and how they validate the `cub-proc` design.
 
 ## What the Example Does
 
@@ -22,9 +22,9 @@ Totals:
 - about 154 units
 - many repeated CLI invocations with ordering constraints
 
-## Why This Validates `cub run`
+## Why This Validates `cub-proc`
 
-This example is a near-perfect `cub run` candidate.
+This example is a near-perfect `cub-proc` candidate.
 
 ### 1. It already has a bounded multi-phase shape
 
@@ -46,7 +46,7 @@ These phases have real ordering constraints. You cannot label units before they 
 
 The script prints progress, but the strongest proof points are still implicit.
 
-A `cub run` profile would make the important checks explicit:
+A `cub-proc` profile would make the important checks explicit:
 
 ```text
 Assertion: expected spaces created     PASS
@@ -64,19 +64,19 @@ That is exactly the gap an `Operation` record would fill.
 
 ### 4. It is a good first profile because it avoids live-cluster complexity
 
-This example uses ConfigHub objects and a noop-style target story. That makes it a good low-risk place to prove the `cub run` model before moving into Argo, Flux, Kubernetes, or delegated waiting behavior.
+This example uses ConfigHub objects and a noop-style target story. That makes it a good low-risk place to prove the `cub-proc` model before moving into Argo, Flux, Kubernetes, or delegated waiting behavior.
 
 ## Suggested Profile
 
-If `cub run` existed with hardcoded profiles today, this example would be a strong candidate for:
+If `cub-proc` existed with hardcoded profiles today, this example would be a strong candidate for:
 
 ```bash
-cub run demo-data/install --record summary --assert
+cub-proc demo-data/install --record summary --assert
 ```
 
 ## Why It Still Matters Now
 
-The current examples do not need `cub run` to be useful.
+The current examples do not need `cub-proc` to be useful.
 
 That is not a weakness. It is exactly why this example is valuable as design evidence. It shows a real bounded procedure that is already useful today and can later become a cleaner operational record without changing the underlying example.
 
@@ -84,5 +84,5 @@ That is not a weakness. It is exactly why this example is valuable as design evi
 
 - [README.md](./README.md)
 - [procedure-candidates.md](./procedure-candidates.md)
-- [03-cub-run-prd.md](./03-cub-run-prd.md)
-- [03-cub-run-rfc.md](./03-cub-run-rfc.md)
+- [03-cub-proc-prd.md](./03-cub-proc-prd.md)
+- [03-cub-proc-rfc.md](./03-cub-proc-rfc.md)
