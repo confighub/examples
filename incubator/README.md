@@ -17,6 +17,7 @@ This directory is for experimental examples before promotion to stable examples.
 - [`global-app-layer`](./global-app-layer/README.md): recipes and layers package with specs plus four worked examples, including a GPU-flavored chain.
 - [`cub-proc-fixtures`](./cub-proc-fixtures/README.md): tiny direct and delegated apply fixtures preserved from the earlier `cub-up` exploration.
 - [`vmcluster-from-scratch`](./vmcluster-from-scratch.md): short note for thinking about real cluster bootstrap as cluster first, target second, worker mostly hidden.
+- [`vmcluster-nginx-path`](./vmcluster-nginx-path.md): short note for the smallest real-cluster follow-on path, from ready target to one reachable workload.
 - [`promotion-demo-data-verify`](./promotion-demo-data-verify/README.md): verification wrapper for the stable `promotion-demo-data` example.
 
 ## Where To Start By Goal
@@ -41,6 +42,10 @@ If the goal is to understand the next operational layer that these examples poin
 If the goal is to think about real clusters and targets from scratch, use:
 
 - [`vmcluster-from-scratch`](./vmcluster-from-scratch.md)
+
+If the goal is to see the smallest live deployment after that bootstrap, use:
+
+- [`vmcluster-nginx-path`](./vmcluster-nginx-path.md)
 
 ## Stable Examples (outside incubator)
 

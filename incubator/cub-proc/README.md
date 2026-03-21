@@ -28,6 +28,7 @@ That is why the `cub-proc` design belongs here.
 - [03-cub-proc-rfc.md](./03-cub-proc-rfc.md): technical RFC for the same idea
 - [procedure-candidates.md](./procedure-candidates.md): mapping from proposed `cub-proc` procedures to runnable examples in this repo
 - [vmcluster-bootstrap-profile.md](./vmcluster-bootstrap-profile.md): first draft profile for bootstrapping a real `cub-vmcluster` target
+- [vmcluster-nginx-deploy-profile.md](./vmcluster-nginx-deploy-profile.md): first draft profile for deploying one simple workload to that target
 - [why-cub-proc-example-promotions.md](./why-cub-proc-example-promotions.md): evidence from `promotion-demo-data`
 
 ## Relationship To Current Examples
@@ -48,6 +49,7 @@ They do three narrower things:
 - Global app install story: [../../global-app](../../global-app/README.md)
 - Layered recipe and deployment variants: [../global-app-layer](../global-app-layer/README.md)
 - Real-cluster mental model note: [../vmcluster-from-scratch.md](../vmcluster-from-scratch.md)
+- Real-cluster first workload note: [../vmcluster-nginx-path.md](../vmcluster-nginx-path.md)
 - Tiny design fixtures: [../cub-proc-fixtures](../cub-proc-fixtures/README.md)
 
 ## Recommended Reading Order

@@ -139,7 +139,39 @@ Likely assertions:
 - at least one expected healthy app is present
 - controller-side failures are surfaced rather than hidden
 
-### 5. `global-app/install`
+### 5. `vmcluster/nginx-deploy`
+
+Example:
+
+- [../vmcluster-nginx-path.md](../vmcluster-nginx-path.md)
+- [vmcluster-nginx-deploy-profile.md](./vmcluster-nginx-deploy-profile.md)
+
+Why it is strong:
+
+- it is the smallest realistic live deployment after a real cluster bootstrap
+- it keeps the workload shape small enough that verification stays concrete
+- it gives a clean handoff from target readiness to user-visible workload evidence
+- it is a safer first live deployment profile than a larger app or layered recipe
+
+Likely top-level phases:
+
+- `preflight`
+- `bind-target`
+- `apply`
+- `assert-cluster-state`
+- `assert-reachability`
+- `summarize`
+
+Likely assertions:
+
+- target exists
+- target is ready
+- workload unit is bound
+- deployment is available
+- service exists
+- ingress or URL responds if requested
+
+### 6. `global-app/install`
 
 Example:
 
@@ -166,7 +198,7 @@ Likely assertions:
 - apply completed where requested
 - expected live services or workloads are present
 
-### 6. `gpu-stack/install`
+### 7. `gpu-stack/install`
 
 Example:
 
@@ -210,7 +242,8 @@ If `cub-proc` work resumes, the cleanest order is:
 2. `vmcluster/bootstrap`
 3. `gitops-import/flux`
 4. `gitops-import/argo`
-5. `global-app/install`
-6. `gpu-stack/install`
+5. `vmcluster/nginx-deploy`
+6. `global-app/install`
+7. `gpu-stack/install`
 
 That order starts with a lower-risk ConfigHub-only procedure, then moves into real target bootstrap, then into the import-and-evidence wedge, and finally into the richer live deployment stories.

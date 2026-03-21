@@ -207,6 +207,7 @@ Do not make the current examples depend on `cub-proc`. Use those docs to underst
 If the human is asking how to think about real clusters, workers, and targets from scratch, use:
 
 - [vmcluster-from-scratch](./vmcluster-from-scratch.md)
+- [vmcluster-nginx-path](./vmcluster-nginx-path.md)
 
 That note uses the simplest user-facing order:
 
@@ -215,6 +216,17 @@ That note uses the simplest user-facing order:
 - deploy workloads
 
 Use the worker as troubleshooting or implementation detail unless the human is explicitly working on worker and target UX.
+
+If the human wants the smallest live deployment after that bootstrap, use:
+
+- [vmcluster-nginx-path](./vmcluster-nginx-path.md)
+
+That keeps the order simple:
+
+- bootstrap cluster
+- wait for target
+- bind one small workload
+- apply and verify
 
 ## 9) Related Pages
 

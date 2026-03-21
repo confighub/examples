@@ -111,3 +111,4 @@ This is a strong future `cub-proc` candidate because it is naturally a bounded p
 See:
 
 - [cub-proc/vmcluster-bootstrap-profile.md](./cub-proc/vmcluster-bootstrap-profile.md)
+- [vmcluster-nginx-path.md](./vmcluster-nginx-path.md)
