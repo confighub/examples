@@ -11,20 +11,28 @@ This repo contains examples that demonstrate how [ConfigHub](https://confighub.c
 ## Examples Catalog
 
 - [`global-app`](./global-app/README.md): classic multi-service app example.
+- [`custom-workers`](./custom-workers): worker extension examples using the ConfigHub SDK as normal Go modules.
 - [`helm-platform-components`](./helm-platform-components/README.md): platform component setup.
 - [`vm-fleet`](./vm-fleet/README.md): VM fleet operations example.
-- [`incubator`](./incubator/README.md): experimental examples, especially the recipes-and-layers work and small `cub run` seed fixtures.
+- [`incubator`](./incubator/README.md): experimental examples, including the current Argo and Flux import paths plus the recipes-and-layers work.
 
-## Companion Demos
+## Current Wedge
 
-For the current GitHub + Argo/Flux + AI/CLI + ConfigHub wedge, the best import and evidence demos live in the companion repo:
+For the current GitHub + Argo/Flux + AI/CLI + ConfigHub wedge, start here:
+
+- [Official GitOps Import docs](https://docs.confighub.com/get-started/examples/gitops-import/)
+- [`incubator/gitops-import-argo`](./incubator/gitops-import-argo/README.md)
+- [`incubator/gitops-import-flux`](./incubator/gitops-import-flux/README.md)
+- [`custom-workers`](./custom-workers)
+
+These are the runnable examples for import, evidence, and worker extensibility in this repo today.
+
+## Companion Material
+
+`cub-scout` remains useful as companion material and as a source of example fixtures, especially for deeper app-style comparisons:
 
 - [cub-scout examples index](https://github.com/confighub/cub-scout/tree/main/examples)
-- [Argo import demo](https://github.com/confighub/cub-scout/tree/main/examples/argo-import-confighub-demo)
-- [Flux import demo](https://github.com/confighub/cub-scout/tree/main/examples/flux-import-confighub-demo)
 - [Apptique microservice app styles](https://github.com/confighub/cub-scout/tree/main/examples/apptique-examples)
-
-Use this repo for the ConfigHub-side examples and layer/deployment-unit stories.
 
 ## Prerequisites
 

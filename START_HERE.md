@@ -4,13 +4,60 @@ This is the human entry point for the `confighub/examples` repo.
 
 If you want the shortest path to understanding, use this order:
 
-1. look at one example that does not need a cluster
-2. look at one example that teaches the core ConfigHub object model
-3. only then move to the bigger layered or fleet-style examples
+1. look at one GitOps import example with direct evidence
+2. look at one worker extension example
+3. look at one example that teaches the core ConfigHub object model
+4. only then move to the bigger layered or fleet-style examples
 
-## First Path: No Cluster Required
+## First Path: GitOps Import And Evidence
 
-Start with [`promotion-demo-data`](./promotion-demo-data/README.md).
+Start with the published GitOps docs and then use the runnable examples in this repo:
+
+- [Official GitOps Import docs](https://docs.confighub.com/get-started/examples/gitops-import/)
+- [`incubator/gitops-import-argo`](./incubator/gitops-import-argo/README.md)
+- [`incubator/gitops-import-flux`](./incubator/gitops-import-flux/README.md)
+
+Why:
+
+- they show the current GitHub + Argo/Flux + AI/CLI + ConfigHub wedge
+- they focus on import, rendered manifests, and evidence
+- they do not depend on ConfigHub being the workload applier
+- they use direct cluster inspection and `cub-scout` as verification layers
+
+Typical flow:
+
+```bash
+cd incubator/gitops-import-argo
+./setup.sh --explain
+./setup.sh --with-worker --with-contrast
+./verify.sh
+```
+
+For the Flux sibling:
+
+```bash
+cd incubator/gitops-import-flux
+./setup.sh --explain
+./setup.sh --with-worker --with-contrast
+./verify.sh
+```
+
+## Second Path: Worker Extensibility
+
+If you want to understand how ConfigHub workers are built and extended, go to:
+
+- [`custom-workers/hello-world-bridge`](./custom-workers/hello-world-bridge/README.md)
+- [`custom-workers/hello-world-function`](./custom-workers/hello-world-function/README.md)
+- [`custom-workers/kube-score`](./custom-workers/kube-score/README.md)
+- [`custom-workers/kyverno`](./custom-workers/kyverno/README.md)
+- [`custom-workers/kyverno-server`](./custom-workers/kyverno-server/README.md)
+- [`custom-workers/opa-gatekeeper`](./custom-workers/opa-gatekeeper/README.md)
+
+These show simple bridge and function workers, plus policy and validation examples using the SDK as normal Go modules.
+
+## Third Path: No Cluster Required
+
+Then look at [`promotion-demo-data`](./promotion-demo-data/README.md).
 
 Why:
 
@@ -27,7 +74,7 @@ cd promotion-demo-data
 ./cleanup.sh
 ```
 
-## Second Path: Learn the Core Object Model
+## Fourth Path: Learn The Core Object Model
 
 Then go to the layered examples package:
 
@@ -54,7 +101,7 @@ cd incubator/global-app-layer/realistic-app
 ./setup.sh --explain
 ```
 
-## Third Path: Pick the Right Worked Example
+## Fifth Path: Pick The Right Layered Worked Example
 
 Inside [`incubator/global-app-layer`](./incubator/global-app-layer/README.md):
 
