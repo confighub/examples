@@ -14,7 +14,7 @@
 - expected anchors:
   - `.example == "global-app-layer-gpu-eks-h100-training"`
   - `.mutates == false`
-  - `.spaces | length == 6`
+  - `.spaces | length == 7`
   - `.components | length == 2`
   - `.recipeManifest.unit == "recipe-eks-h100-ubuntu-training-stack"`
 
@@ -47,7 +47,18 @@
   - target binding is inspectable if present
 - jq anchor:
   - `cub unit get --space <prefix>-deploy-cluster-a --json gpu-operator-cluster-a | jq '.Unit | {slug: .Slug, upstreamUnitID: .UpstreamUnitID, targetID: .TargetID, revision: .HeadRevisionNum}'`
-- note: in this example the deploy-space units are the direct deployment variants; Argo renderer compatibility is intentionally not claimed
+- note: in this example the deploy-space units are the direct deployment variants
+
+### `cub unit get --space <prefix>-deploy-cluster-a-flux --json gpu-operator-cluster-a-flux`
+
+- mutates: no
+- output shape: JSON object containing `Space`, `Unit`, `UnitStatus`, and often `UpstreamUnit`
+- proves:
+  - the Flux deployment variant exists
+  - target binding is inspectable if present
+- jq anchor:
+  - `cub unit get --space <prefix>-deploy-cluster-a-flux --json gpu-operator-cluster-a-flux | jq '.Unit | {slug: .Slug, upstreamUnitID: .UpstreamUnitID, targetID: .TargetID, revision: .HeadRevisionNum}'`
+- note: this unit is still raw Kubernetes YAML; the Flux delivery contract comes from the target provider type, not from changing the unit payload shape
 
 ### `cub unit list --space <prefix>-deploy-cluster-a --quiet --json`
 
@@ -59,6 +70,17 @@
   - current live/not-live status
 - jq anchor:
   - `cub unit list --space <prefix>-deploy-cluster-a --quiet --json | jq '.[] | {slug: .Unit.Slug, upstream: .UpstreamUnit.Slug, status: .UnitStatus.Status}'`
+
+### `cub unit list --space <prefix>-deploy-cluster-a-flux --quiet --json`
+
+- mutates: no
+- output shape: JSON array of objects containing `Space`, `Unit`, `UnitStatus`, and optional `UpstreamUnit`
+- proves:
+  - which Flux deployment variant units exist
+  - which recipe units they point to
+  - current live or not-live status
+- jq anchor:
+  - `cub unit list --space <prefix>-deploy-cluster-a-flux --quiet --json | jq '.[] | {slug: .Unit.Slug, upstream: .UpstreamUnit.Slug, status: .UnitStatus.Status}'`
 
 ### `cub unit tree --edge clone --where "Labels.ExampleName = 'global-app-layer-gpu-eks-h100-training'"`
 
@@ -97,3 +119,4 @@ When `./verify.sh` succeeds, expect:
 - the final line `All global-app-layer gpu-eks-h100-training checks passed.`
 - no clone-chain error output
 - no missing-space or missing-unit errors
+- both deployment variant spaces present

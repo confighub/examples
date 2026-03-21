@@ -10,7 +10,8 @@ EXAMPLE_NAME="global-app-layer-gpu-eks-h100-training"
 CHAIN_LABEL="gpu-eks-h100-ubuntu-training-stack"
 APP_NAME="gpu-platform"
 COMPONENTS=(gpu-operator nvidia-device-plugin)
-STAGES=(base platform accelerator os recipe deployment)
+CHAIN_STAGES=(base platform accelerator os recipe)
+DEPLOY_VARIANTS=(direct flux)
 
 BASE_SPACE_SUFFIX="catalog-base"
 PLATFORM_SPACE_SUFFIX="catalog-eks"
@@ -18,6 +19,7 @@ ACCELERATOR_SPACE_SUFFIX="catalog-h100"
 OS_SPACE_SUFFIX="catalog-ubuntu"
 RECIPE_SPACE_SUFFIX="recipe-eks-h100-ubuntu-training"
 DEPLOY_SPACE_SUFFIX="deploy-cluster-a"
+DEPLOY_FLUX_SPACE_SUFFIX="deploy-cluster-a-flux"
 
 RECIPE_MANIFEST_UNIT="recipe-eks-h100-ubuntu-training-stack"
 PLATFORM_VALUE="eks"
@@ -85,14 +87,18 @@ load_state() {
   fi
   # shellcheck disable=SC1090
   source "${STATE_FILE}"
+  : "${DIRECT_TARGET_REF:=${TARGET_REF:-}}"
+  : "${FLUX_TARGET_REF:=}"
 }
 
 save_state() {
   local prefix="$1"
-  local target_ref="${2:-}"
+  local direct_target_ref="${2:-}"
+  local flux_target_ref="${3:-}"
 
   ensure_state_dir
-  printf 'PREFIX=%q\nTARGET_REF=%q\nDEPLOY_NAMESPACE=%q\n' "${prefix}" "${target_ref}" "${DEPLOY_NAMESPACE}" >"${STATE_FILE}"
+  printf 'PREFIX=%q\nTARGET_REF=%q\nDIRECT_TARGET_REF=%q\nFLUX_TARGET_REF=%q\nDEPLOY_NAMESPACE=%q\n' \
+    "${prefix}" "${direct_target_ref}" "${direct_target_ref}" "${flux_target_ref}" "${DEPLOY_NAMESPACE}" >"${STATE_FILE}"
 }
 
 state_prefix() {
@@ -110,6 +116,7 @@ accelerator_space() { space_name "${ACCELERATOR_SPACE_SUFFIX}"; }
 os_space() { space_name "${OS_SPACE_SUFFIX}"; }
 recipe_space() { space_name "${RECIPE_SPACE_SUFFIX}"; }
 deploy_space() { space_name "${DEPLOY_SPACE_SUFFIX}"; }
+flux_deploy_space() { space_name "${DEPLOY_FLUX_SPACE_SUFFIX}"; }
 
 space_for_stage() {
   local stage="$1"
@@ -119,9 +126,20 @@ space_for_stage() {
     accelerator) accelerator_space ;;
     os) os_space ;;
     recipe) recipe_space ;;
-    deployment) deploy_space ;;
     *)
       echo "Unknown stage: ${stage}" >&2
+      exit 1
+      ;;
+  esac
+}
+
+deploy_space_for_variant() {
+  local variant="$1"
+  case "${variant}" in
+    direct) deploy_space ;;
+    flux) flux_deploy_space ;;
+    *)
+      echo "Unknown deployment variant: ${variant}" >&2
       exit 1
       ;;
   esac
@@ -151,6 +169,19 @@ unit_name() {
     deployment) echo "${component}-cluster-a" ;;
     *)
       echo "Unknown stage: ${stage}" >&2
+      exit 1
+      ;;
+  esac
+}
+
+deployment_unit_name() {
+  local component="$1"
+  local variant="$2"
+  case "${variant}" in
+    direct) echo "${component}-cluster-a" ;;
+    flux) echo "${component}-cluster-a-flux" ;;
+    *)
+      echo "Unknown deployment variant: ${variant}" >&2
       exit 1
       ;;
   esac
@@ -303,30 +334,71 @@ get_target_provider_type() {
   get_target_json "${target_ref}" | jq -r '.Target.ProviderType // ""'
 }
 
+deployment_variant_for_provider_type() {
+  local provider_type="$1"
+  case "${provider_type}" in
+    Kubernetes) echo "direct" ;;
+    FluxOCI|FluxOCIWriter) echo "flux" ;;
+    *) echo "" ;;
+  esac
+}
+
+supported_target_description() {
+  cat <<'EOF_TARGETS'
+Supported live target provider types for this example:
+- Kubernetes -> direct deployment variant
+- FluxOCI or FluxOCIWriter -> Flux deployment variant
+EOF_TARGETS
+}
+
 assert_supported_live_target() {
   local target_ref="${1:-}"
-  local provider_type
+  local provider_type variant
 
   if [[ -z "${target_ref}" ]]; then
     return 0
   fi
 
   provider_type="$(get_target_provider_type "${target_ref}" 2>/dev/null || true)"
-  if [[ "${provider_type}" != "ArgoCDRenderer" ]]; then
+  variant="$(deployment_variant_for_provider_type "${provider_type}")"
+  if [[ -n "${variant}" ]]; then
     return 0
   fi
 
-  cat >&2 <<EOF_TARGET
+  case "${provider_type}" in
+    ArgoCDRenderer)
+      cat >&2 <<EOF_TARGET
 Target ${target_ref} uses provider type ${provider_type}.
 
-${EXAMPLE_NAME} materializes raw Kubernetes deployment units for direct worker apply.
+${EXAMPLE_NAME} materializes raw Kubernetes deployment units.
 The current ArgoCDRenderer path expects Argo CD Application payloads and uses Argo for render/hydration,
 not as a true workload-sync proof for these raw manifests.
 
-So this GPU example should stay on a Kubernetes target for the honest live path today.
-Use a Kubernetes target such as gitops-import-test/worker-kubernetes-yaml-cluster,
-and defer Argo sync claims until a sync-capable target exists.
+So this GPU example should use either:
+- a Kubernetes target for the direct deployment variant
+- a FluxOCI target for the Flux deployment variant
 EOF_TARGET
+      ;;
+    FluxRenderer)
+      cat >&2 <<EOF_TARGET
+Target ${target_ref} uses provider type ${provider_type}.
+
+FluxRenderer is the import-and-render path for existing Flux Kustomization and HelmRelease resources.
+It is not the deployment bridge for raw Kubernetes manifests.
+
+For this GPU example, use:
+- a Kubernetes target for the direct deployment variant
+- a FluxOCI target for the Flux deployment variant
+EOF_TARGET
+      ;;
+    *)
+      cat >&2 <<EOF_TARGET
+Target ${target_ref} uses provider type ${provider_type:-<unknown>}, which this example does not support.
+
+$(supported_target_description)
+EOF_TARGET
+      ;;
+  esac
   exit 1
 }
 
@@ -381,8 +453,12 @@ gui_unit_url() {
 }
 
 show_setup_plan() {
-  local target_ref="${1:-}"
-  local target_display="${target_ref:-<none>}"
+  local target_display
+  if [[ $# -eq 0 ]]; then
+    target_display="<none>"
+  else
+    target_display="$*"
+  fi
   cat <<EOF_PLAN
 This is a read-only setup plan for ${EXAMPLE_NAME}.
 Nothing will be created or mutated.
@@ -390,9 +466,9 @@ Nothing will be created or mutated.
 Inputs:
 - prefix: $(state_prefix)
 - deploy namespace: ${DEPLOY_NAMESPACE}
-- target: ${target_display}
+- targets: ${target_display}
 
-This example currently proves the direct deployment variant only.
+This example materializes one shared recipe and two deployment variants at the leaf.
 The shared GPU recipe is the app-level intent; the deployment units are the leaf deployment variants.
 
 Spaces that ./setup.sh will create:
@@ -401,18 +477,23 @@ Spaces that ./setup.sh will create:
 - $(accelerator_space)
 - $(os_space)
 - $(recipe_space)
-- $(deploy_space)
+- $(deploy_space)        # direct deployment variant
+- $(flux_deploy_space)   # Flux deployment variant
 
 Components and variant chains:
-- gpu-operator: $(base_space)/$(unit_name gpu-operator base) -> $(platform_space)/$(unit_name gpu-operator platform) -> $(accelerator_space)/$(unit_name gpu-operator accelerator) -> $(os_space)/$(unit_name gpu-operator os) -> $(recipe_space)/$(unit_name gpu-operator recipe) -> $(deploy_space)/$(unit_name gpu-operator deployment)
-- nvidia-device-plugin: $(base_space)/$(unit_name nvidia-device-plugin base) -> $(platform_space)/$(unit_name nvidia-device-plugin platform) -> $(accelerator_space)/$(unit_name nvidia-device-plugin accelerator) -> $(os_space)/$(unit_name nvidia-device-plugin os) -> $(recipe_space)/$(unit_name nvidia-device-plugin recipe) -> $(deploy_space)/$(unit_name nvidia-device-plugin deployment)
+- gpu-operator: $(base_space)/$(unit_name gpu-operator base) -> $(platform_space)/$(unit_name gpu-operator platform) -> $(accelerator_space)/$(unit_name gpu-operator accelerator) -> $(os_space)/$(unit_name gpu-operator os) -> $(recipe_space)/$(unit_name gpu-operator recipe)
+  direct leaf: $(deploy_space)/$(deployment_unit_name gpu-operator direct)
+  flux leaf: $(flux_deploy_space)/$(deployment_unit_name gpu-operator flux)
+- nvidia-device-plugin: $(base_space)/$(unit_name nvidia-device-plugin base) -> $(platform_space)/$(unit_name nvidia-device-plugin platform) -> $(accelerator_space)/$(unit_name nvidia-device-plugin accelerator) -> $(os_space)/$(unit_name nvidia-device-plugin os) -> $(recipe_space)/$(unit_name nvidia-device-plugin recipe)
+  direct leaf: $(deploy_space)/$(deployment_unit_name nvidia-device-plugin direct)
+  flux leaf: $(flux_deploy_space)/$(deployment_unit_name nvidia-device-plugin flux)
 
 Layer mutations:
 - platform: set EKS-specific cloud and storage/plugin settings
 - accelerator: set H100-specific accelerator and node selector settings
 - os: set Ubuntu-specific OS and driver/plugin settings
 - recipe: set training intent and validation/plugin profile
-- deployment: set namespace=${DEPLOY_NAMESPACE} and CLUSTER=${DEPLOY_NAMESPACE}
+- deployment variants: both direct and flux leaves set namespace=${DEPLOY_NAMESPACE} and CLUSTER=${DEPLOY_NAMESPACE}
 
 Recipe manifest:
 - $(recipe_space)/${RECIPE_MANIFEST_UNIT}
@@ -425,21 +506,21 @@ Core cub commands:
 - cub unit create --upstream-space ... --upstream-unit ...
 - cub function do set-env
 - cub function do set-namespace
+- cub unit set-target <kubernetes target>   # for direct variant
+- cub unit set-target <fluxoci target>      # for flux variant
 EOF_PLAN
-  if [[ -n "${target_ref}" ]]; then
-    cat <<EOF_PLAN
-- cub unit set-target ${target_ref}
-EOF_PLAN
-  fi
 }
 
 show_setup_plan_json() {
-  local target_ref="${1:-}"
+  local target_refs_json='[]'
+  if [[ $# -gt 0 ]]; then
+    target_refs_json="$(printf '%s\n' "$@" | jq -R . | jq -s '.')"
+  fi
   jq -n \
     --arg example "${EXAMPLE_NAME}" \
     --arg prefix "$(state_prefix)" \
     --arg namespace "${DEPLOY_NAMESPACE}" \
-    --arg target "${target_ref}" \
+    --argjson targetRefs "${target_refs_json}" \
     --arg gpuSource "$(source_yaml_for gpu-operator)" \
     --arg pluginSource "$(source_yaml_for nvidia-device-plugin)" \
     --arg baseSpace "$(base_space)" \
@@ -447,19 +528,22 @@ show_setup_plan_json() {
     --arg acceleratorSpace "$(accelerator_space)" \
     --arg osSpace "$(os_space)" \
     --arg recipeSpace "$(recipe_space)" \
-    --arg deploySpace "$(deploy_space)" \
+    --arg directDeploySpace "$(deploy_space)" \
+    --arg fluxDeploySpace "$(flux_deploy_space)" \
     --arg gpuBase "$(unit_name gpu-operator base)" \
     --arg gpuPlatform "$(unit_name gpu-operator platform)" \
     --arg gpuAccelerator "$(unit_name gpu-operator accelerator)" \
     --arg gpuOS "$(unit_name gpu-operator os)" \
     --arg gpuRecipe "$(unit_name gpu-operator recipe)" \
-    --arg gpuDeploy "$(unit_name gpu-operator deployment)" \
+    --arg gpuDirectDeploy "$(deployment_unit_name gpu-operator direct)" \
+    --arg gpuFluxDeploy "$(deployment_unit_name gpu-operator flux)" \
     --arg pluginBase "$(unit_name nvidia-device-plugin base)" \
     --arg pluginPlatform "$(unit_name nvidia-device-plugin platform)" \
     --arg pluginAccelerator "$(unit_name nvidia-device-plugin accelerator)" \
     --arg pluginOS "$(unit_name nvidia-device-plugin os)" \
     --arg pluginRecipe "$(unit_name nvidia-device-plugin recipe)" \
-    --arg pluginDeploy "$(unit_name nvidia-device-plugin deployment)" \
+    --arg pluginDirectDeploy "$(deployment_unit_name nvidia-device-plugin direct)" \
+    --arg pluginFluxDeploy "$(deployment_unit_name nvidia-device-plugin flux)" \
     --arg manifestUnit "${RECIPE_MANIFEST_UNIT}" \
     --arg manifestTemplate "${RECIPE_BASE_TEMPLATE}" \
     --arg manifestRendered "${STATE_DIR}/recipe-eks-h100-ubuntu-training-stack.rendered.yaml" \
@@ -469,14 +553,15 @@ show_setup_plan_json() {
       mutates: false,
       prefix: $prefix,
       namespace: $namespace,
-      targetRef: (if $target == "" then null else $target end),
+      targetRefs: $targetRefs,
       spaces: [
         {stage: "base", space: $baseSpace},
         {stage: "platform", space: $platformSpace},
         {stage: "accelerator", space: $acceleratorSpace},
         {stage: "os", space: $osSpace},
         {stage: "recipe", space: $recipeSpace},
-        {stage: "deployment", space: $deploySpace}
+        {stage: "deployment", variant: "direct", space: $directDeploySpace},
+        {stage: "deployment", variant: "flux", space: $fluxDeploySpace}
       ],
       components: [
         {
@@ -487,15 +572,18 @@ show_setup_plan_json() {
             {stage: "platform", space: $platformSpace, unit: $gpuPlatform},
             {stage: "accelerator", space: $acceleratorSpace, unit: $gpuAccelerator},
             {stage: "os", space: $osSpace, unit: $gpuOS},
-            {stage: "recipe", space: $recipeSpace, unit: $gpuRecipe},
-            {stage: "deployment", space: $deploySpace, unit: $gpuDeploy}
+            {stage: "recipe", space: $recipeSpace, unit: $gpuRecipe}
+          ],
+          deploymentVariants: [
+            {variant: "direct", space: $directDeploySpace, unit: $gpuDirectDeploy},
+            {variant: "flux", space: $fluxDeploySpace, unit: $gpuFluxDeploy}
           ],
           mutations: [
             {stage: "platform", summary: "set cloud provider and storage class"},
             {stage: "accelerator", summary: "set accelerator and node selector"},
             {stage: "os", summary: "set OS family and driver branch"},
             {stage: "recipe", summary: "set workload intent and validation profile"},
-            {stage: "deployment", summary: "set namespace and CLUSTER"}
+            {stage: "deploymentVariants", summary: "set namespace and CLUSTER on both direct and flux leaves"}
           ]
         },
         {
@@ -506,15 +594,18 @@ show_setup_plan_json() {
             {stage: "platform", space: $platformSpace, unit: $pluginPlatform},
             {stage: "accelerator", space: $acceleratorSpace, unit: $pluginAccelerator},
             {stage: "os", space: $osSpace, unit: $pluginOS},
-            {stage: "recipe", space: $recipeSpace, unit: $pluginRecipe},
-            {stage: "deployment", space: $deploySpace, unit: $pluginDeploy}
+            {stage: "recipe", space: $recipeSpace, unit: $pluginRecipe}
+          ],
+          deploymentVariants: [
+            {variant: "direct", space: $directDeploySpace, unit: $pluginDirectDeploy},
+            {variant: "flux", space: $fluxDeploySpace, unit: $pluginFluxDeploy}
           ],
           mutations: [
             {stage: "platform", summary: "set cloud provider and EKS plugin config"},
             {stage: "accelerator", summary: "set accelerator and node selector"},
             {stage: "os", summary: "set OS family and Ubuntu plugin config"},
             {stage: "recipe", summary: "set workload intent and training plugin config"},
-            {stage: "deployment", summary: "set namespace and CLUSTER"}
+            {stage: "deploymentVariants", summary: "set namespace and CLUSTER on both direct and flux leaves"}
           ]
         }
       ],
@@ -524,34 +615,40 @@ show_setup_plan_json() {
         template: $manifestTemplate,
         renderedOutput: $manifestRendered
       },
-      commands: ([
+      commands: [
         "cub space create",
         "cub unit create <unit> <file>",
         "cub unit create --upstream-space ... --upstream-unit ...",
         "cub function do set-env",
-        "cub function do set-namespace"
-      ] + (if $target == "" then [] else ["cub unit set-target"] end))
+        "cub function do set-namespace",
+        "cub unit set-target <kubernetes target>",
+        "cub unit set-target <fluxoci target>"
+      ]
     }'
 }
 
 render_recipe_manifest() {
   local output_path="$1"
-  local target_ref="$2"
-  local effective_target_ref="${target_ref:-unset}"
+  local direct_target_ref="$2"
+  local flux_target_ref="$3"
+  local effective_direct_target_ref="${direct_target_ref:-unset}"
+  local effective_flux_target_ref="${flux_target_ref:-unset}"
   local sed_args=()
-  local component stage space unit revision hash
+  local component stage space unit revision hash variant deploy_variant_space deploy_variant_unit
 
   sed_args+=(
     -e "s|confighubplaceholder-chain-name|${CHAIN_LABEL}|g"
     -e "s|confighubplaceholder-example-name|${EXAMPLE_NAME}|g"
     -e "s|confighubplaceholder-chain-prefix|$(state_prefix)|g"
     -e "s|confighubplaceholder-app-name|${APP_NAME}|g"
-    -e "s|confighubplaceholder-target-ref|${effective_target_ref}|g"
-    -e "s|confighubplaceholder-bundle-hint|$(bundle_hint_from_target_ref "${target_ref}")|g"
+    -e "s|confighubplaceholder-direct-target-ref|${effective_direct_target_ref}|g"
+    -e "s|confighubplaceholder-direct-bundle-hint|$(bundle_hint_from_target_ref "${direct_target_ref}")|g"
+    -e "s|confighubplaceholder-flux-target-ref|${effective_flux_target_ref}|g"
+    -e "s|confighubplaceholder-flux-bundle-hint|$(bundle_hint_from_target_ref "${flux_target_ref}")|g"
   )
 
   for component in "${COMPONENTS[@]}"; do
-    for stage in "${STAGES[@]}"; do
+    for stage in "${CHAIN_STAGES[@]}"; do
       space="$(space_for_stage "${stage}")"
       unit="$(unit_name "${component}" "${stage}")"
       revision="$(get_unit_field "${space}" "${unit}" HeadRevisionNum)"
@@ -563,16 +660,29 @@ render_recipe_manifest() {
         -e "s|confighubplaceholder-${component}-${stage}-hash|${hash}|g"
       )
     done
+    for variant in "${DEPLOY_VARIANTS[@]}"; do
+      deploy_variant_space="$(deploy_space_for_variant "${variant}")"
+      deploy_variant_unit="$(deployment_unit_name "${component}" "${variant}")"
+      revision="$(get_unit_field "${deploy_variant_space}" "${deploy_variant_unit}" HeadRevisionNum)"
+      hash="$(get_unit_field "${deploy_variant_space}" "${deploy_variant_unit}" DataHash || true)"
+      sed_args+=(
+        -e "s|confighubplaceholder-${component}-deployment-${variant}-space|${deploy_variant_space}|g"
+        -e "s|confighubplaceholder-${component}-deployment-${variant}-unit|${deploy_variant_unit}|g"
+        -e "s|confighubplaceholder-${component}-deployment-${variant}-revision|${revision}|g"
+        -e "s|confighubplaceholder-${component}-deployment-${variant}-hash|${hash}|g"
+      )
+    done
   done
 
   sed "${sed_args[@]}" "${RECIPE_BASE_TEMPLATE}" >"${output_path}"
 }
 
 refresh_recipe_manifest_unit() {
-  local target_ref="$1"
+  local direct_target_ref="$1"
+  local flux_target_ref="$2"
   local rendered_manifest="${STATE_DIR}/recipe-eks-h100-ubuntu-training-stack.rendered.yaml"
   ensure_state_dir
-  render_recipe_manifest "${rendered_manifest}" "${target_ref}"
+  render_recipe_manifest "${rendered_manifest}" "${direct_target_ref}" "${flux_target_ref}"
 
   if unit_exists "$(recipe_space)" "${RECIPE_MANIFEST_UNIT}"; then
     cub unit update --space "$(recipe_space)" "${RECIPE_MANIFEST_UNIT}" "${rendered_manifest}"
@@ -641,34 +751,75 @@ apply_recipe_mutations() {
 
 apply_deploy_mutations() {
   local component="$1"
-  cub function do set-namespace "${DEPLOY_NAMESPACE}" --space "$(deploy_space)" --unit "$(unit_name "${component}" deployment)"
+  local variant="${2:-direct}"
+  local deploy_variant_space deploy_variant_unit
+
+  deploy_variant_space="$(deploy_space_for_variant "${variant}")"
+  deploy_variant_unit="$(deployment_unit_name "${component}" "${variant}")"
+
+  cub function do set-namespace "${DEPLOY_NAMESPACE}" --space "${deploy_variant_space}" --unit "${deploy_variant_unit}"
   case "${component}" in
     gpu-operator)
-      cub function do set-env gpu-operator "CLUSTER=${DEPLOY_NAMESPACE}" --space "$(deploy_space)" --unit "$(unit_name "${component}" deployment)"
+      cub function do set-env gpu-operator "CLUSTER=${DEPLOY_NAMESPACE}" --space "${deploy_variant_space}" --unit "${deploy_variant_unit}"
       ;;
     nvidia-device-plugin)
-      cub function do set-env nvidia-device-plugin "CLUSTER=${DEPLOY_NAMESPACE}" --space "$(deploy_space)" --unit "$(unit_name "${component}" deployment)"
+      cub function do set-env nvidia-device-plugin "CLUSTER=${DEPLOY_NAMESPACE}" --space "${deploy_variant_space}" --unit "${deploy_variant_unit}"
       ;;
   esac
 }
 
-set_target_for_deploy_units() {
-  local target_ref="$1"
+set_target_for_deploy_variant() {
+  local variant="$1"
+  local target_ref="$2"
   local component
   for component in "${COMPONENTS[@]}"; do
-    cub unit set-target "${target_ref}" --space "$(deploy_space)" --unit "$(unit_name "${component}" deployment)"
+    cub unit set-target "${target_ref}" --space "$(deploy_space_for_variant "${variant}")" --unit "$(deployment_unit_name "${component}" "${variant}")"
   done
 }
 
-show_summary() {
+remember_target_ref_for_variant() {
   local target_ref="$1"
-  local recipe_space_url deploy_space_url recipe_unit_url gpu_unit_url
+  local provider_type variant
+
+  provider_type="$(get_target_provider_type "${target_ref}")"
+  variant="$(deployment_variant_for_provider_type "${provider_type}")"
+  case "${variant}" in
+    direct) DIRECT_TARGET_REF="${target_ref}" ;;
+    flux) FLUX_TARGET_REF="${target_ref}" ;;
+    *)
+      echo "Unsupported target provider type: ${provider_type}" >&2
+      exit 1
+      ;;
+  esac
+}
+
+set_target_for_compatible_units() {
+  local target_ref="$1"
+  local provider_type variant
+
+  provider_type="$(get_target_provider_type "${target_ref}")"
+  variant="$(deployment_variant_for_provider_type "${provider_type}")"
+  case "${variant}" in
+    direct|flux)
+      set_target_for_deploy_variant "${variant}" "${target_ref}"
+      remember_target_ref_for_variant "${target_ref}"
+      ;;
+    *)
+      echo "Unsupported target provider type: ${provider_type}" >&2
+      exit 1
+      ;;
+  esac
+}
+
+show_summary() {
+  local recipe_space_url deploy_space_url flux_deploy_space_url recipe_unit_url gpu_unit_url flux_gpu_unit_url
   recipe_space_url="$(gui_space_url "$(recipe_space)")"
   deploy_space_url="$(gui_space_url "$(deploy_space)")"
+  flux_deploy_space_url="$(gui_space_url "$(flux_deploy_space)")"
   recipe_unit_url="$(gui_unit_url "$(recipe_space)" "${RECIPE_MANIFEST_UNIT}")"
-  gpu_unit_url="$(gui_unit_url "$(deploy_space)" "$(unit_name gpu-operator deployment)")"
-  if [[ -n "${target_ref}" ]]; then
-    cat <<EOF_SUMMARY
+  gpu_unit_url="$(gui_unit_url "$(deploy_space)" "$(deployment_unit_name gpu-operator direct)")"
+  flux_gpu_unit_url="$(gui_unit_url "$(flux_deploy_space)" "$(deployment_unit_name gpu-operator flux)")"
+  cat <<EOF_SUMMARY
 Created GPU layered chain with prefix: $(state_prefix)
 
 Spaces:
@@ -678,6 +829,7 @@ Spaces:
 - $(os_space)
 - $(recipe_space)
 - $(deploy_space)
+- $(flux_deploy_space)
 
 Units:
 - $(base_space)/$(unit_name gpu-operator base)
@@ -685,25 +837,35 @@ Units:
 - $(accelerator_space)/$(unit_name gpu-operator accelerator)
 - $(os_space)/$(unit_name gpu-operator os)
 - $(recipe_space)/$(unit_name gpu-operator recipe)
-- $(deploy_space)/$(unit_name gpu-operator deployment)
+- $(deploy_space)/$(deployment_unit_name gpu-operator direct)
+- $(flux_deploy_space)/$(deployment_unit_name gpu-operator flux)
 - $(base_space)/$(unit_name nvidia-device-plugin base)
 - $(platform_space)/$(unit_name nvidia-device-plugin platform)
 - $(accelerator_space)/$(unit_name nvidia-device-plugin accelerator)
 - $(os_space)/$(unit_name nvidia-device-plugin os)
 - $(recipe_space)/$(unit_name nvidia-device-plugin recipe)
-- $(deploy_space)/$(unit_name nvidia-device-plugin deployment)
+- $(deploy_space)/$(deployment_unit_name nvidia-device-plugin direct)
+- $(flux_deploy_space)/$(deployment_unit_name nvidia-device-plugin flux)
 - $(recipe_space)/${RECIPE_MANIFEST_UNIT}
 
 Model:
 - shared recipe/app: ${CHAIN_LABEL}
-- deployment units: $(unit_name gpu-operator deployment), $(unit_name nvidia-device-plugin deployment)
-- honest live path today: direct Kubernetes target only
+- deployment variants:
+  - direct: $(deployment_unit_name gpu-operator direct), $(deployment_unit_name nvidia-device-plugin direct)
+  - flux: $(deployment_unit_name gpu-operator flux), $(deployment_unit_name nvidia-device-plugin flux)
+- supported live targets:
+  - Kubernetes -> direct variant
+  - FluxOCI / FluxOCIWriter -> flux variant
+- direct target: ${DIRECT_TARGET_REF:-<unset>}
+- flux target: ${FLUX_TARGET_REF:-<unset>}
 
 GUI:
 - Recipe space: ${recipe_space_url}
-- Deploy space: ${deploy_space_url}
+- Direct deploy space: ${deploy_space_url}
+- Flux deploy space: ${flux_deploy_space_url}
 - Recipe manifest: ${recipe_unit_url}
-- GPU deployment unit: ${gpu_unit_url}
+- Direct GPU deployment unit: ${gpu_unit_url}
+- Flux GPU deployment unit: ${flux_gpu_unit_url}
 
 Logs:
 - Setup log: $(current_log_path setup)
@@ -714,58 +876,12 @@ Logs:
 Next steps:
 1. ./verify.sh
 2. ./upgrade-chain.sh ${DEFAULT_GPU_OPERATOR_TAG} ${DEFAULT_DEVICE_PLUGIN_TAG}
-3. cub unit approve --space $(deploy_space) $(unit_name gpu-operator deployment) && cub unit approve --space $(deploy_space) $(unit_name nvidia-device-plugin deployment)
-4. cub unit apply --space $(deploy_space) $(unit_name gpu-operator deployment) && cub unit apply --space $(deploy_space) $(unit_name nvidia-device-plugin deployment)
-5. Review recipe manifest: cub unit get --space $(recipe_space) --data-only ${RECIPE_MANIFEST_UNIT}
+3. ./set-target.sh <kubernetes-target>        # binds the direct deployment variant
+4. ./set-target.sh <fluxoci-target>           # binds the Flux deployment variant
+5. cub unit approve --space $(deploy_space) $(deployment_unit_name gpu-operator direct) && cub unit approve --space $(deploy_space) $(deployment_unit_name nvidia-device-plugin direct)
+6. cub unit apply --space $(deploy_space) $(deployment_unit_name gpu-operator direct) && cub unit apply --space $(deploy_space) $(deployment_unit_name nvidia-device-plugin direct)
+7. cub unit approve --space $(flux_deploy_space) $(deployment_unit_name gpu-operator flux) && cub unit approve --space $(flux_deploy_space) $(deployment_unit_name nvidia-device-plugin flux)
+8. cub unit apply --space $(flux_deploy_space) $(deployment_unit_name gpu-operator flux) && cub unit apply --space $(flux_deploy_space) $(deployment_unit_name nvidia-device-plugin flux)
+9. Review recipe manifest: cub unit get --space $(recipe_space) --data-only ${RECIPE_MANIFEST_UNIT}
 EOF_SUMMARY
-  else
-    cat <<EOF_SUMMARY
-Created GPU layered chain with prefix: $(state_prefix)
-
-Spaces:
-- $(base_space)
-- $(platform_space)
-- $(accelerator_space)
-- $(os_space)
-- $(recipe_space)
-- $(deploy_space)
-
-Units:
-- $(base_space)/$(unit_name gpu-operator base)
-- $(platform_space)/$(unit_name gpu-operator platform)
-- $(accelerator_space)/$(unit_name gpu-operator accelerator)
-- $(os_space)/$(unit_name gpu-operator os)
-- $(recipe_space)/$(unit_name gpu-operator recipe)
-- $(deploy_space)/$(unit_name gpu-operator deployment)
-- $(base_space)/$(unit_name nvidia-device-plugin base)
-- $(platform_space)/$(unit_name nvidia-device-plugin platform)
-- $(accelerator_space)/$(unit_name nvidia-device-plugin accelerator)
-- $(os_space)/$(unit_name nvidia-device-plugin os)
-- $(recipe_space)/$(unit_name nvidia-device-plugin recipe)
-- $(deploy_space)/$(unit_name nvidia-device-plugin deployment)
-- $(recipe_space)/${RECIPE_MANIFEST_UNIT}
-
-Model:
-- shared recipe/app: ${CHAIN_LABEL}
-- deployment units: $(unit_name gpu-operator deployment), $(unit_name nvidia-device-plugin deployment)
-- honest live path today: direct Kubernetes target only
-
-GUI:
-- Recipe space: ${recipe_space_url}
-- Deploy space: ${deploy_space_url}
-- Recipe manifest: ${recipe_unit_url}
-- GPU deployment unit: ${gpu_unit_url}
-
-Logs:
-- Setup log: $(current_log_path setup)
-- Set-target log: $(current_log_path set-target)
-- Verify log: $(current_log_path verify)
-- Cleanup log: $(current_log_path cleanup)
-
-Next steps:
-1. ./verify.sh
-2. ./upgrade-chain.sh ${DEFAULT_GPU_OPERATOR_TAG} ${DEFAULT_DEVICE_PLUGIN_TAG}
-3. ./set-target.sh <space/target>  # optional, enables apply + target bundle story
-EOF_SUMMARY
-  fi
 }

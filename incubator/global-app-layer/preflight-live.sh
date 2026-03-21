@@ -31,6 +31,7 @@ Usage:
 
 Examples:
   ./preflight-live.sh gitops-import-test/worker-kubernetes-yaml-cluster
+  ./preflight-live.sh gitops-import-test/worker-fluxoci-kubernetes-yaml-cluster
   ./preflight-live.sh gitops-import-test/worker-argocdrenderer-kubernetes-yaml-cluster --json
 EOF_USAGE
 }
@@ -122,6 +123,7 @@ delivery_mode="unknown"
 case "${provider_type}" in
   Kubernetes) delivery_mode="direct" ;;
   ArgoCDRenderer) delivery_mode="argocd-render" ;;
+  FluxOCI|FluxOCIWriter) delivery_mode="flux-oci" ;;
 esac
 
 worker_condition=""
@@ -177,6 +179,12 @@ next_steps_json="$(
             "run ./set-target.sh <space/target> if needed",
             "run cub unit approve ...",
             "run cub unit apply ..."
+          ]
+        elif $deliveryMode == "flux-oci" then
+          [
+            "treat this as a Flux-managed deployment target for raw Kubernetes manifests",
+            "bind the target to the Flux deployment variant, not the direct deployment variant",
+            "verify Flux OCIRepository and Kustomization or HelmRelease objects plus live resources after apply"
           ]
         elif $deliveryMode == "argocd-render" then
           [
@@ -246,6 +254,8 @@ else
     echo "What this means:"
     if [[ "${delivery_mode}" == "direct" ]]; then
       echo "- direct apply is expected to work if you approve and apply the units"
+    elif [[ "${delivery_mode}" == "flux-oci" ]]; then
+      echo "- this target can drive a Flux-managed deployment path for raw manifests if the example has an explicit Flux deployment variant"
     elif [[ "${delivery_mode}" == "argocd-render" ]]; then
       echo "- the renderer target looks reachable, but this is not by itself proof of Argo-managed workload sync"
     else

@@ -41,7 +41,7 @@ if $EXPLAIN_JSON; then
     "Flux installation",
     "real Flux podinfo GitRepository and Kustomization",
     "optional D2 brownfield fixtures",
-    "optional ConfigHub discovery worker and flux renderer worker",
+    "optional ConfigHub discovery worker and in-cluster Flux worker with fluxrenderer and fluxoci",
     "local var/<cluster>.kubeconfig and worker pid/log files"
   ]
 }
@@ -60,7 +60,7 @@ Default steps:
 - apply a real Flux GitRepository and Kustomization for podinfo
 
 Optional steps:
-- install a ConfigHub discovery worker and in-cluster flux renderer worker if --with-worker is set and CUB_SPACE is available
+- install a ConfigHub discovery worker and in-cluster Flux worker with fluxrenderer and fluxoci if --with-worker is set and CUB_SPACE is available
 - apply D2 brownfield contrast fixtures from cub-scout if --with-contrast is set
 
 Writes:

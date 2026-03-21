@@ -28,6 +28,6 @@ for component in "${COMPONENTS[@]}"; do
 done
 
 echo "==> Refreshing explicit recipe manifest"
-refresh_recipe_manifest_unit "${TARGET_REF:-}"
+refresh_recipe_manifest_unit "${DIRECT_TARGET_REF:-${TARGET_REF:-}}" "${FLUX_TARGET_REF:-}"
 
 echo "Upgrade propagation complete. Run ./verify.sh to inspect the chain."
