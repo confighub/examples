@@ -12,6 +12,7 @@ This directory is for experimental examples before promotion to stable examples.
 ## Current Experiments
 
 - [`gitops-import-argo`](./gitops-import-argo/README.md): incubator Argo GitOps import example built from the stable `gitops-import` assets plus stronger contrast fixtures adapted from `cub-scout`.
+- [`gitops-import-flux`](./gitops-import-flux/README.md): incubator Flux GitOps import example built from `cub-scout`'s D2 and podinfo fixtures with the same import-and-evidence verification model as the Argo sibling.
 - [`global-app-layer`](./global-app-layer/README.md): recipes and layers package with specs plus four worked examples, including a GPU-flavored chain.
 - [`cub-run-fixtures`](./cub-run-fixtures/README.md): tiny direct and delegated apply fixtures preserved from the earlier `cub-up` exploration.
 - [`promotion-demo-data-verify`](./promotion-demo-data-verify/README.md): verification wrapper for the stable `promotion-demo-data` example.
@@ -22,7 +23,7 @@ If the goal is the current GitHub + Argo/Flux + AI/CLI + ConfigHub wedge, do not
 
 Start with:
 - Argo import: [`gitops-import-argo`](./gitops-import-argo/README.md)
-- Flux import: [cub-scout flux-import-confighub-demo](https://github.com/confighub/cub-scout/tree/main/examples/flux-import-confighub-demo)
+- Flux import: [`gitops-import-flux`](./gitops-import-flux/README.md)
 - Helm-first story: [`../helm-platform-components`](../helm-platform-components/README.md) or [cub-scout Helm quickstart](https://github.com/confighub/cub-scout/blob/main/docs/reference/cub-track-quickstart-helm.md)
 - App-Deployment-Target story: [`../promotion-demo-data`](../promotion-demo-data/README.md)
 - Microservice app styles: [cub-scout apptique examples](https://github.com/confighub/cub-scout/tree/main/examples/apptique-examples)

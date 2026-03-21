@@ -16,7 +16,7 @@ Then run only read-only preview commands.
 
 ## 2. Safe Walkthrough
 
-Guide me through `gitops-import-argo` step by step.
+Guide me through `gitops-import-flux` step by step.
 
 Before each command:
 - explain what it does
@@ -27,19 +27,18 @@ Before each command:
 
 Start with `./setup.sh --explain` and `./setup.sh --explain-json | jq`.
 
-If the local ArgoCD port is already in use, notice the chosen host port and verify it from `var/argocd-host-port.txt` before you continue.
-
 ## 3. Verify The Import
 
 After the example is running, verify:
 - the cluster is reachable
-- ArgoCD applications exist
-- the healthy reference applications (`cubbychat`, `helm-guestbook`, `kustomize-guestbook`) are present
+- Flux controllers exist
+- the healthy reference path (`podinfo`) is ready
+- Flux GitRepositories, Kustomizations, and HelmReleases exist as expected
 - the worker targets exist if configured
 - `cub gitops discover` found resources
 - `cub gitops import` created `-dry` and `-wet` units
 - the renderer stage completed without overclaiming live reconciliation
-- any failing ArgoCD Applications are reported as live evidence, not hidden
+- any source-blocked or artifact-blocked Flux objects are reported as live evidence, not hidden
 - `cub-scout` status and ownership views if `cub-scout` is installed
 
 Separate cluster evidence, ConfigHub evidence, and `cub-scout` evidence in the final summary.

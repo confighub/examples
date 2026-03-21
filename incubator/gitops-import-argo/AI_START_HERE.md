@@ -51,11 +51,13 @@ With optional contrast fixtures:
 
 If another local example is already using `9080`, this example will choose a free ArgoCD host port in `9080-9099` and record it in `var/argocd-host-port.txt`. You can override that with `export ARGOCD_HOST_PORT=<port>` before running `./setup.sh`.
 
+Use `https://localhost:$(cat var/argocd-host-port.txt)` for the ArgoCD UI and API. The certificate warning is expected in this local setup.
+
 ## Important Boundaries
 
 - `./setup.sh --explain` is read-only
 - `./setup.sh` mutates live infrastructure
-- `./setup.sh --with-worker` mutates ConfigHub and live infrastructure
+- `./setup.sh --with-worker` mutates ConfigHub and starts a local worker plus a local ArgoCD API port-forward
 - `cub gitops discover` mutates ConfigHub only
 - `cub gitops import` mutates ConfigHub only
 - `./cleanup.sh` deletes the local kind cluster and local kubeconfig state
@@ -90,6 +92,11 @@ Use the evidence like this:
 - `kubectl` proves raw cluster facts
 - ConfigHub proves import and renderer facts
 - `cub-scout` proves live ownership and GitOps context facts
+
+Expect a mixed result in the contrast path:
+
+- `cubbychat`, `helm-guestbook`, and `kustomize-guestbook` are the healthy reference applications
+- several other Applications are expected to stay unhealthy or incomplete and should be reported as live evidence, not hidden
 
 Do not collapse those into one claim.
 

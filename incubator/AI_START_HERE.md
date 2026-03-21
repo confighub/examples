@@ -88,6 +88,20 @@ That example is for:
 - import and evidence
 - read-only preview before cluster setup
 
+If the human wants the matching Flux import wedge in incubator form, start here:
+
+```bash
+cd incubator/gitops-import-flux
+./setup.sh --explain
+./setup.sh --explain-json | jq
+```
+
+That example is for:
+
+- GitHub + Flux + AI/CLI + ConfigHub
+- import and evidence
+- read-only preview before cluster setup
+
 Start with the realistic layered app example:
 
 ```bash

@@ -1,0 +1,21 @@
+#!/bin/bash
+set -euo pipefail
+
+CLUSTER_NAME=${1:-gitops-import-flux}
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+PID_FILE="$PROJECT_DIR/var/discovery-worker.pid"
+
+if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" >/dev/null 2>&1; then
+    echo "Stopping local discovery worker..."
+    kill "$(cat "$PID_FILE")" >/dev/null 2>&1 || true
+fi
+
+echo "Deleting Kind cluster: $CLUSTER_NAME"
+kind delete cluster --name "$CLUSTER_NAME"
+
+rm -f "$PID_FILE"
+rm -f "$PROJECT_DIR/var/discovery-worker.log"
+rm -f "$PROJECT_DIR/var/$CLUSTER_NAME.kubeconfig"
+
+echo "Cluster $CLUSTER_NAME deleted and local files cleaned up."

@@ -5,6 +5,18 @@ set -euo pipefail
 CLUSTER_NAME=${1:-gitops-import-argo}
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+PID_FILE="$PROJECT_DIR/var/worker.pid"
+PORT_FORWARD_PID_FILE="$PROJECT_DIR/var/argocd-port-forward.pid"
+
+if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" >/dev/null 2>&1; then
+    echo "Stopping local worker..."
+    kill "$(cat "$PID_FILE")" >/dev/null 2>&1 || true
+fi
+
+if [ -f "$PORT_FORWARD_PID_FILE" ] && kill -0 "$(cat "$PORT_FORWARD_PID_FILE")" >/dev/null 2>&1; then
+    echo "Stopping ArgoCD port-forward..."
+    kill "$(cat "$PORT_FORWARD_PID_FILE")" >/dev/null 2>&1 || true
+fi
 
 echo "Deleting Kind cluster: $CLUSTER_NAME"
 kind delete cluster --name "$CLUSTER_NAME"
@@ -12,5 +24,9 @@ kind delete cluster --name "$CLUSTER_NAME"
 rm -f "$PROJECT_DIR/var/$CLUSTER_NAME.kubeconfig"
 rm -f "$PROJECT_DIR/var/argocd-admin-password.txt"
 rm -f "$PROJECT_DIR/var/argocd-host-port.txt"
+rm -f "$PROJECT_DIR/var/worker.pid"
+rm -f "$PROJECT_DIR/var/worker.log"
+rm -f "$PROJECT_DIR/var/argocd-port-forward.pid"
+rm -f "$PROJECT_DIR/var/argocd-port-forward.log"
 
 echo "Cluster $CLUSTER_NAME deleted and local files cleaned up."

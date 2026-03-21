@@ -1,0 +1,35 @@
+#!/bin/bash
+set -euo pipefail
+
+CLUSTER_NAME=${1:-gitops-import-flux}
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+
+export KUBECONFIG="$PROJECT_DIR/var/$CLUSTER_NAME.kubeconfig"
+
+if [ ! -f "$KUBECONFIG" ]; then
+    echo "Error: Kubeconfig not found at $KUBECONFIG"
+    echo "Please run bin/create-cluster and bin/install-flux first"
+    exit 1
+fi
+
+retry_apply() {
+    local file=$1
+    local attempt
+    for attempt in 1 2 3; do
+        if kubectl apply -f "$file"; then
+            return 0
+        fi
+        if [ "$attempt" -lt 3 ]; then
+            echo "Retrying apply for $file after transient failure..."
+            sleep 5
+        fi
+    done
+    return 1
+}
+
+echo "Applying D2 brownfield contrast fixtures..."
+retry_apply "$PROJECT_DIR/fixtures/contrast/d2-brownfield.yaml"
+
+echo "Contrast fixtures applied."
+echo "Check with: kubectl get gitrepositories,kustomizations,helmreleases -A"
