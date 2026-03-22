@@ -285,6 +285,16 @@ It does not mutate ConfigHub by itself. If the human wants to bring a cluster li
 
 - [gitops-import-argo](./gitops-import-argo/README.md)
 
+If the human specifically wants the root-plus-child Argo hierarchy pattern, use:
+
+- [apptique-argo-app-of-apps](./apptique-argo-app-of-apps/README.md)
+
+That example is good for:
+
+- one root Application
+- one child Application per environment
+- ownership and provenance checks across the Argo hierarchy
+
 ## 11) Related Pages
 
 - Repo-level AI path: [../AI_START_HERE.md](../AI_START_HERE.md)

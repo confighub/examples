@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: apptique-apps
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: apptique-apps
+    app.kubernetes.io/part-of: apptique-examples
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/confighub/examples.git
+    targetRevision: main
+    path: incubator/apptique-argo-app-of-apps/apps
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
