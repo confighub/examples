@@ -173,6 +173,22 @@ That example is for:
 - ADT-style labels and annotations
 - no live cluster requirement
 
+If the human wants a no-cluster migration-risk example for Helm hooks under Argo CD, start here:
+
+```bash
+cd incubator/lifecycle-hazards
+./setup.sh --explain
+./setup.sh --explain-json | jq
+./setup.sh
+./verify.sh
+```
+
+That example is for:
+
+- hook inventory from one file
+- Helm-to-Argo lifecycle hazard detection
+- no live cluster requirement
+
 If the human wants the smallest no-cluster evidence path first, start here:
 
 ```bash

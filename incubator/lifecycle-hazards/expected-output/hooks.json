@@ -1,0 +1,39 @@
+{
+  "count": 4,
+  "hooks": [
+    {
+      "helmHooks": [
+        "post-install",
+        "post-upgrade"
+      ],
+      "hookWeight": "-5",
+      "kind": "Job",
+      "mappedPhase": "PostSync",
+      "name": "db-migrate",
+      "namespace": "prod"
+    },
+    {
+      "helmHooks": [
+        "post-install"
+      ],
+      "kind": "Job",
+      "mappedPhase": "PostSync",
+      "name": "notify-deploy",
+      "namespace": "prod"
+    },
+    {
+      "argoHook": "PostSync",
+      "kind": "Job",
+      "name": "postsync-verify",
+      "namespace": "prod",
+      "syncWave": "1"
+    },
+    {
+      "argoHook": "PreSync",
+      "kind": "Job",
+      "name": "presync-check",
+      "namespace": "prod",
+      "syncWave": "-1"
+    }
+  ]
+}
