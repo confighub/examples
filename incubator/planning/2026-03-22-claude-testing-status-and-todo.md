@@ -13,9 +13,11 @@ Do not mutate the dirty local checkout in `/Users/alexis/Public/github-repos/exa
 
 Start read-only whenever possible.
 
+For live examples that create local clusters, prefer examples that already use dedicated kubeconfig files under a local `var/` directory. Do not rely on ambient `~/.kube/config` state.
+
 ## Current State
 
-These are already merged on `main` and should be treated as the current canonical incubator set for this testing pass:
+These are already merged on `main` and should be treated as the current canonical incubator set for this testing pass.
 
 ### No-cluster examples
 
@@ -23,12 +25,21 @@ These are already merged on `main` and should be treated as the current canonica
 - `incubator/import-from-bundle`
 - `incubator/fleet-import`
 - `incubator/demo-data-adt`
+- `incubator/lifecycle-hazards`
+- `incubator/connected-summary-storage`
+- `incubator/artifact-workflow`
 
 ### Mixed or live-evidence examples
 
+- `incubator/import-from-live`
 - `incubator/combined-git-live`
 - `incubator/gitops-import-argo`
 - `incubator/gitops-import-flux`
+- `incubator/custom-ownership-detectors`
+- `incubator/graph-export`
+- `incubator/orphans`
+- `incubator/watch-webhook`
+- `incubator/flux-boutique`
 
 ### App-style examples still needing stronger live validation confidence
 
@@ -40,7 +51,7 @@ These are already merged on `main` and should be treated as the current canonica
 
 ### 1. Re-run the no-cluster examples cleanly
 
-These should be easy to verify first and should remain green.
+These should stay green and are the fastest signal.
 
 For each of these:
 
@@ -48,6 +59,9 @@ For each of these:
 - `incubator/import-from-bundle`
 - `incubator/fleet-import`
 - `incubator/demo-data-adt`
+- `incubator/lifecycle-hazards`
+- `incubator/connected-summary-storage`
+- `incubator/artifact-workflow`
 
 Run:
 
@@ -65,14 +79,21 @@ What to record:
 - whether `verify.sh` is strong enough
 - whether the README claims match the actual output
 
-### 2. Re-run `combined-git-live`
+### 2. Re-run the smaller live examples first
 
-This example is live-optional and depends on a reachable cluster.
+These now form the best live smoke-test set before the bigger controller stories.
 
-If a healthy disposable local cluster is available, run:
+Targets:
+
+- `incubator/watch-webhook`
+- `incubator/orphans`
+- `incubator/graph-export`
+- `incubator/custom-ownership-detectors`
+- `incubator/flux-boutique`
+
+For each:
 
 ```bash
-cd incubator/combined-git-live
 ./setup.sh --explain
 ./setup.sh --explain-json | jq
 ./setup.sh
@@ -82,16 +103,28 @@ cd incubator/combined-git-live
 
 What to record:
 
+- whether the dedicated-kubeconfig pattern still works cleanly
+- whether the evidence captured by the example still matches the current command output
+- whether any README or contract text drifts from runtime behavior
+
+### 3. Re-run `import-from-live` and `combined-git-live`
+
+These are valuable, but they are broader brownfield stories than the smaller live examples above.
+
+Targets:
+
+- `incubator/import-from-live`
+- `incubator/combined-git-live`
+
+What to record:
+
 - whether the fixture apply path behaves as documented
-- whether the compare result still shows:
-  - 4 aligned
-  - 1 git-only
-  - 1 cluster-only
-- whether the README still matches the current `cub-scout combined` output
+- whether the dry-run or compare result still matches the expected output
+- whether any live cluster dependencies have become flaky
 
-### 3. Resume live validation of the app-style examples
+### 4. Resume live validation of the app-style examples
 
-This is the main unfinished testing task.
+This is still the main unfinished example-quality task.
 
 Targets:
 
@@ -99,14 +132,7 @@ Targets:
 - `incubator/apptique-argo-applicationset`
 - `incubator/apptique-argo-app-of-apps`
 
-What happened last time:
-
-- the examples were structurally validated
-- fresh temporary kind clusters were created
-- Docker or kind became sticky during follow-up probing and verification
-- the work stopped rather than claiming a live proof that the environment did not support
-
-What to do now:
+What to do:
 
 - only proceed if Docker and kind are healthy
 - prefer one clean cluster per controller family
@@ -142,7 +168,7 @@ kubectl get deployment,service -n apptique-prod
 
 If `cub-scout` is available and the cluster is stable, also record ownership or provenance checks.
 
-### 4. Check top-level routing only after example testing
+### 5. Check top-level routing only after example testing
 
 Once the examples themselves are verified, sanity-check that these still point to the right places:
 
@@ -154,17 +180,21 @@ Once the examples themselves are verified, sanity-check that these still point t
 
 ## Known Upstream Caveats
 
-Do not spend time trying to promote or validate a `drift` example in `examples` yet.
+The following upstream issues were discovered during the current adaptation work.
 
-Two upstream issues were found and filed during this work:
-
-- `confighub/cub-scout#331`
-- `confighub/cub-scout#332`
+- `confighub/cub-scout#331` for `scan --file --json` exit semantics
+- `confighub/cub-scout#332` for `drift` docs and command contract mismatch
+- `confighub/cub-scout#333` for custom ownership detectors applying in `map list` but not consistently in `explain` or `trace`
+- `confighub/cub-scout#334` for `trace` misclassifying a native Deployment as Flux in the `orphans` fixture
+- `confighub/cub-scout#335` for `map orphans` not surfacing the fixture CronJob
+- `confighub/cub-scout#336` for the `workflows/fleet-demo` README overclaiming differences in the current prebuilt bundles
+- `confighubai/confighub#4025` for adopting dedicated kubeconfig files across live examples and incubator workflows
 
 Meaning:
 
-- `scan --file --json` currently returns exit code `1` when findings are present, so examples need to tolerate that if they capture JSON output
-- the `drift` example docs currently overclaim beyond the documented `cub-scout drift` contract
+- examples that capture JSON from `scan --file --json` must tolerate exit code `1` when findings are present
+- do not promote a `drift` example into `examples` yet
+- treat the current `custom-ownership-detectors`, `orphans`, and `fleet-demo` stories as evidence-based and issue-linked rather than perfect happy paths
 
 ## Desired Output From Claude
 
@@ -184,5 +214,6 @@ For each example tested, capture:
 A good stopping point for the next Claude session is:
 
 - all no-cluster examples re-verified
+- the smaller live examples re-verified with dedicated kubeconfigs
 - at least one clean live validation pass for the app-style set, if the runtime is healthy
 - a short list of any doc or script fixes discovered during that testing
