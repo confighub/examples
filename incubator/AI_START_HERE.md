@@ -140,6 +140,22 @@ That example is for:
 - one unified fleet proposal
 - no live cluster requirement
 
+If the human wants a scan-first example with App-Deployment-Target-style labels and one immediate real issue, start here:
+
+```bash
+cd incubator/demo-data-adt
+./setup.sh --explain
+./setup.sh --explain-json | jq
+./setup.sh
+./verify.sh
+```
+
+That example is for:
+
+- static risk findings
+- ADT-style labels and annotations
+- no live cluster requirement
+
 If the human wants the smallest no-cluster evidence path first, start here:
 
 ```bash

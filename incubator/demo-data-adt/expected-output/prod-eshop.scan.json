@@ -1,0 +1,8 @@
+{
+  "static": {
+    "file": "fixtures/prod-eshop.yaml",
+    "scannedAt": "2026-03-22T10:43:44.199393Z",
+    "resourceCount": 2,
+    "findings": []
+  }
+}

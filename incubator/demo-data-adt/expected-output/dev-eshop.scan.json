@@ -1,0 +1,31 @@
+{
+  "static": {
+    "file": "fixtures/dev-eshop.yaml",
+    "scannedAt": "2026-03-22T10:43:43.840796Z",
+    "resourceCount": 2,
+    "findings": [
+      {
+        "ccve_id": "CCVE-2025-0248",
+        "name": "Missing resource limits",
+        "kind": "Deployment",
+        "resource_name": "eshop-api",
+        "namespace": "dev-eshop",
+        "severity": "warning",
+        "category": "CONFIG",
+        "message": "Container \"api\" has no resource limits defined",
+        "remediation": "Add resources.limits.cpu and resources.limits.memory"
+      },
+      {
+        "ccve_id": "CCVE-2025-0248",
+        "name": "Missing resource limits",
+        "kind": "Deployment",
+        "resource_name": "eshop-worker",
+        "namespace": "dev-eshop",
+        "severity": "warning",
+        "category": "CONFIG",
+        "message": "Container \"worker\" has no resource limits defined",
+        "remediation": "Add resources.limits.cpu and resources.limits.memory"
+      }
+    ]
+  }
+}
