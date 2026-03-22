@@ -204,16 +204,40 @@ done
 
 echo ""
 
-# Create intentional version skew for eshop to demonstrate diff
-echo "Phase 6b: Creating version skew for eshop..."
+##################################
+# Phase 7: Upgrade and apply all units
+##################################
+echo "Phase 7: Upgrading all units to upstream head revision..."
+
+$CUB unit update --space '*' \
+  --where "Labels.ExampleName = '${EXAMPLE_NAME}' AND UpstreamUnitID IS NOT NULL" \
+  --upgrade --patch --quiet
+
+echo "  Done."
+echo ""
+
+echo "Phase 7b: Applying all units (noop worker — no real effect)..."
+
+$CUB unit apply --space '*' \
+  --where "Labels.ExampleName = '${EXAMPLE_NAME}' AND TargetID IS NOT NULL" \
+  --wait=false
+
+echo "  Done. Units are being applied in the background."
+echo ""
+
+##################################
+# Phase 8: Create intentional version skew
+##################################
+# This runs AFTER upgrade+apply so the skew is the only unapplied change.
+echo "Phase 8: Creating version skew for eshop..."
 
 $CUB function do set-image-reference api ":4.2.0" \
-  --space us-prod-1-eshop --unit api --quiet
+  --space us-dev-1-eshop --unit api --quiet
 $CUB function do set-image-reference worker ":4.2.0" \
-  --space us-prod-1-eshop --unit worker --quiet
-echo "  Set eshop api+worker to :4.2.0 in us-prod-1 (vs :4.2.1 elsewhere)"
-
+  --space us-dev-1-eshop --unit worker --quiet
+echo "  Set eshop api+worker to :4.2.0 in us-dev-1 (vs :4.2.1 elsewhere)"
 echo ""
+
 echo "=== Demo setup complete ==="
 echo ""
 echo "Summary:"

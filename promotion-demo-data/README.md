@@ -146,8 +146,8 @@ cub space list --where "Labels.TargetRole = 'Prod' AND Labels.TargetRegion = 'US
 cub unit list --space us-prod-1-aichat
 
 # Compare image versions across environments (shows version skew in eshop)
-cub function do get-image api --space us-prod-1-eshop --unit api --output-only
-cub function do get-image api --space eu-prod-1-eshop --unit api --output-only
+cub function do get-image api --space us-dev-1-eshop --unit api --output-only
+cub function do get-image api --space us-dev-2-eshop --unit api --output-only
 ```
 
 ## Environment Variations
@@ -161,7 +161,7 @@ The setup script customizes deployments per environment:
 | CPU request | 100m | 100m | 100m | 500m |
 | Memory request | 256Mi | 256Mi | 256Mi | 512Mi |
 
-An intentional version skew exists in `us-prod-1-eshop` (api image `:4.2.0` vs `:4.2.1` elsewhere) to demonstrate diff capabilities.
+An intentional version skew exists in `us-dev-1-eshop` (api image `:4.2.0` vs `:4.2.1` elsewhere) to demonstrate diff capabilities.
 
 ## Directory Structure
 
