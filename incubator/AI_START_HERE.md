@@ -222,6 +222,22 @@ That example is for:
 - live `map`, `explain`, and `trace` evidence
 - no ConfigHub mutation
 
+If the human wants shareable topology artifacts from a live cluster, start here:
+
+```bash
+cd incubator/graph-export
+./setup.sh --explain
+./setup.sh --explain-json | jq
+./setup.sh
+./verify.sh
+```
+
+That example is for:
+
+- `graph.v1` JSON export
+- DOT, SVG, and HTML renderings
+- no ConfigHub mutation
+
 If instead the human wants the layered recipe path rather than the GitOps import wedge, start with the realistic layered app example:
 
 ```bash
