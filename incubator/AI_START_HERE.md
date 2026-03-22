@@ -124,7 +124,24 @@ That example is for:
 - bundle-backed evidence
 - no live cluster requirement
 
-If the human wants the next offline step after that, aggregating two existing cluster imports, start here:
+If the human wants the next step after that, reading directly from a running cluster before any ConfigHub mutation, start here:
+
+```bash
+cd incubator/import-from-live
+./setup.sh --explain
+./setup.sh --explain-json | jq
+./setup.sh
+./verify.sh
+```
+
+That example is for:
+
+- brownfield discovery
+- dry-run proposal generation from live state
+- mixed Argo, Helm, and native ownership signals
+- no default ConfigHub mutation
+
+If the human wants multi-cluster aggregation from two existing cluster imports, start here:
 
 ```bash
 cd incubator/fleet-import
@@ -364,6 +381,7 @@ This example is good for:
 
 If the human wants the next compare example that uses a real cluster, use:
 
+- [import-from-live](./import-from-live/README.md)
 - [combined-git-live](./combined-git-live/README.md)
 
 This example is good for:
