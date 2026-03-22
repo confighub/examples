@@ -189,6 +189,22 @@ That example is for:
 - Helm-to-Argo lifecycle hazard detection
 - no live cluster requirement
 
+If the human wants reporting and digest generation from stored connected summaries, start here:
+
+```bash
+cd incubator/connected-summary-storage
+./setup.sh --explain
+./setup.sh --explain-json | jq
+./setup.sh
+./verify.sh
+```
+
+That example is for:
+
+- persisted summary query with `summary list --json`
+- dry-run Slack digest generation with `summary slack --dry-run`
+- no live cluster requirement
+
 If the human wants the smallest no-cluster evidence path first, start here:
 
 ```bash

@@ -1,0 +1,2 @@
+{"schemaVersion":"connected.summary.v1","timestamp":"2026-03-22T10:00:00Z","type":"scan","cluster":"kind-dev","scope":{"namespace":"prod"},"metrics":{"riskTotal":3,"riskCritical":1,"riskWarning":2},"source":"cub-scout scan -n prod"}
+{"schemaVersion":"connected.summary.v1","timestamp":"2026-03-22T11:30:00Z","type":"scan","cluster":"kind-dev","scope":{"namespace":"staging"},"metrics":{"riskTotal":1,"riskWarning":1},"source":"cub-scout scan -n staging"}
