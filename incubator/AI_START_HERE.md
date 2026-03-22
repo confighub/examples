@@ -125,6 +125,22 @@ That example is for:
 - history output
 - no live cluster requirement
 
+If the human wants the next compare step with a real live cluster, start here:
+
+```bash
+cd incubator/combined-git-live
+./setup.sh --explain
+./setup.sh --explain-json | jq
+./setup.sh
+./verify.sh
+```
+
+That example is for:
+
+- Git intent versus live cluster state
+- aligned, git-only, and cluster-only findings
+- no ConfigHub mutation
+
 If instead the human wants the layered recipe path rather than the GitOps import wedge, start with the realistic layered app example:
 
 ```bash
@@ -297,6 +313,17 @@ This example is good for:
 - a fast demo of visible value
 - compare output with aligned, git-only, and cluster-only findings
 - history output without claiming runtime authority
+
+If the human wants the next compare example that uses a real cluster, use:
+
+- [combined-git-live](./combined-git-live/README.md)
+
+This example is good for:
+
+- Git plus live cluster alignment
+- one real cluster-only workload
+- one real Git-only app
+- the same evidence-first compare model against live state
 
 ## 11) App-Style Argo Layout
 
