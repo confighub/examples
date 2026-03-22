@@ -11,6 +11,9 @@ they can use ConfigHub.
 ConfigHub is where operational config becomes authoritative, mutable, and
 inspectable.
 
+It is the mutation plane: the place where operational changes are requested,
+decided, and routed.
+
 ## Stack And Scenario
 
 This example is for:
@@ -28,6 +31,10 @@ The main question it answers is:
 mutation, a change routed back to the Spring app inputs, or a platform-owned
 field that gets blocked or escalated?"
 
+Once platform-rendered operational config is in ConfigHub, every governed
+change request enters there. ConfigHub records the request, provenance, and
+decision, then routes it: apply here, lift upstream, or block/escalate.
+
 ## What This Proves
 
 This is a structural proof, not a live deployment proof.
@@ -36,10 +43,10 @@ It proves:
 
 - a realistic split between app inputs and platform policy
 - a clear operational shape that ConfigHub could store authoritatively
-- three natural change behaviors in one app lifecycle:
-  - `mutable in CH`
+- one mutation system with three outcomes:
+  - `apply here`
   - `lift upstream`
-  - `generator-owned`
+  - `block/escalate`
 
 It does not prove:
 
@@ -108,11 +115,11 @@ These commands do not mutate ConfigHub or live infrastructure.
 | [`changes/02-lift-upstream.md`](./changes/02-lift-upstream.md) | Upstream routing example |
 | [`changes/03-generator-owned.md`](./changes/03-generator-owned.md) | Block/escalate example |
 
-## The Three Behaviors
+## The Three Outcomes
 
-Given one app, there are three kinds of change:
+Given one app, there is one mutation system with three outcomes:
 
-### 1. `mutable in CH`
+### 1. `apply here`
 
 Prod rollout change: `feature.inventory.reservationMode=strict -> optimistic`
 for `inventory-api-prod`.
@@ -137,13 +144,13 @@ See:
 
 - [`changes/02-lift-upstream.md`](./changes/02-lift-upstream.md)
 
-### 3. `generator-owned`
+### 3. `block/escalate`
 
 The app team tries to change `spring.datasource.*` or bypass the managed
 datasource boundary.
 
-That should be blocked or escalated because it is platform-owned. There are
-some cases of this too.
+That should be blocked or escalated because it is platform-owned. Fields get
+blocked or escalated when they are platform-owned or generator-owned.
 
 See:
 
@@ -160,6 +167,10 @@ We distinguish authority vs provenance.
 A generator maps code to config plus provenance, so that given the latter, the
 former may be traced.
 
+This makes generated config tractable at scale: one place to see requested
+changes, provenance, ownership, campaigns, and outcomes across many apps and
+deployments.
+
 - ConfigHub is the system of record for operational config and its mutation
   history; authoritative, mutable, and inspectable.
 - deployments have targets and live state
@@ -174,6 +185,31 @@ live reality is opaque.
 
 The enemy is opaque, uncontrolled Git-centric config sprawl.
 
+## Config sprawl and copied config
+
+Sprawl is real. Multiple remote stores may generate, sync, or project local
+copies of config:
+
+- Git repos
+- secrets systems
+- cloud control planes
+- SaaS tools
+- platform generators
+- local rendered or cached copies
+
+That can still work if ConfigHub treats those copies as projections with
+provenance, instead of pretending they do not exist or letting them become
+silent competing sources of truth.
+
+To make that work:
+
+- record where each projection came from and when
+- route each requested change through ConfigHub
+- classify each field as `apply here`, `lift upstream`, or `block/escalate`
+- merge refreshes by policy instead of blind overwrite
+- show drift and divergence explicitly
+- keep one activity log in ConfigHub even when the durable edit lands elsewhere
+
 ## Mutations to generated config in ConfigHub
 
 This is the key case, and it is not a contradiction.
@@ -184,9 +220,9 @@ policy-driven, not blind overwrite.
 
 Each field needs one of three behaviors:
 
-- `mutable in CH`: edit directly in ConfigHub; the change survives future refreshes
+- `apply here`: edit directly in ConfigHub; the change survives future refreshes
 - `lift upstream`: route the durable change back to the generator input or source repo
-- `generator-owned`: block or escalate direct mutation because the field is not safe to diverge locally
+- `block/escalate`: stop or route the request because the field is not safe to diverge locally
 
 So the bad model is:
 
@@ -200,6 +236,12 @@ The good model is:
 
 Example to show: "Here is what is running, where it came from, what changed,
 and the next safe mutation."
+
+One app, three requests, one activity log:
+
+- config edit rollout: apply here
+- add Redis: lift upstream
+- change datasource boundary: block/escalate
 
 ## Exact CLI Sequence
 
@@ -233,9 +275,9 @@ After `./setup.sh --explain-json | jq`, you should see:
 - `mutates_confighub: false`
 - `mutates_live_infra: false`
 - three behavior entries named:
-  - `mutable_in_ch`
+  - `apply_here`
   - `lift_upstream`
-  - `generator_owned`
+  - `block_or_escalate`
 
 After `./verify.sh`, you should see:
 

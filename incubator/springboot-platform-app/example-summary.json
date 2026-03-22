@@ -24,9 +24,9 @@
   "writes": [],
   "behaviors": [
     {
-      "name": "mutable_in_ch",
+      "name": "apply_here",
       "request": "Change feature.inventory.reservationMode in prod for a rollout.",
-      "default_route": "direct_config_hub_mutation",
+      "default_route": "apply_here",
       "owner": "app-team",
       "upstream_inputs": [
         "upstream/app/src/main/resources/application-prod.yaml"
@@ -38,7 +38,7 @@
     {
       "name": "lift_upstream",
       "request": "Add Redis-backed caching to the service.",
-      "default_route": "route_to_upstream_producer",
+      "default_route": "lift_upstream",
       "owner": "app-team",
       "upstream_inputs": [
         "upstream/app/pom.xml",
@@ -50,7 +50,7 @@
       ]
     },
     {
-      "name": "generator_owned",
+      "name": "block_or_escalate",
       "request": "Change spring.datasource.* or bypass the managed datasource boundary.",
       "default_route": "block_or_escalate",
       "owner": "platform-engineering",
@@ -65,7 +65,7 @@
   ],
   "success_looks_like": [
     "The preview explains authority vs provenance clearly.",
-    "The three behaviors are visible in one app.",
+    "The three routed outcomes are visible in one app.",
     "The example stays read-only."
   ]
 }
