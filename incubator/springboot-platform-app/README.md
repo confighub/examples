@@ -37,40 +37,59 @@ decision, then routes it: apply here, lift upstream, or block/escalate.
 
 ## What This Proves
 
-This is a structural ConfigHub proof with a locally runnable Spring Boot app.
+This example has three proof levels:
 
-It proves:
+### 1. Structural proof
 
 - a realistic split between app inputs and platform policy
-- a real `inventory-api` upstream app with HTTP-level tests
 - a clear operational shape that ConfigHub could store authoritatively
 - one mutation system with three outcomes:
   - `apply here`
   - `lift upstream`
   - `block/escalate`
 
-It does not prove:
+### 2. Local app proof
+
+- a real `inventory-api` upstream app with HTTP-level tests
+- `mvn test` starts the app on a random port and calls the HTTP API
+- default and prod profile responses are observable over HTTP
+
+### 3. ConfigHub-only proof
+
+- real ConfigHub spaces and units for `inventory-api-dev`, `inventory-api-stage`, `inventory-api-prod`
+- per-environment operational config stored in ConfigHub
+- `apply here` mutation proven via `FEATURE_INVENTORY_RESERVATIONMODE` env var
+  on the prod Deployment, which Spring Boot maps to
+  `feature.inventory.reservationMode` via relaxed binding
+- the running app reports the changed value via `/api/inventory/summary`
+- no cluster target, worker, or live apply required
+
+It does not yet prove:
 
 - a live cluster apply
 - a worker or target integration
-- a full end-to-end ConfigHub setup flow
+- `lift upstream` via GitHub PR
+- `block/escalate` via field-level policy enforcement
 
 ## Prerequisites
 
-You need:
+For structural proof:
 
 - `bash`
 - `jq`
 
-If you want to run the local app or its HTTP tests, you also need:
+For local app proof, also:
 
 - Java 21+
 - Maven
 
+For ConfigHub-only proof, also:
+
+- `cub` CLI
+- `cub auth login` (authenticated context)
+
 You do not need:
 
-- `cub`
-- `cub auth login`
 - a worker
 - a target
 - a cluster
@@ -84,13 +103,17 @@ What it reads:
 - operational shape under [`operational`](./operational)
 - example metadata in [`example-summary.json`](./example-summary.json)
 
-What it writes:
+What the structural scripts write:
 
 - nothing in ConfigHub
 - nothing in a cluster
 - nothing outside this directory
 
-The provided scripts are read-only.
+What the ConfigHub-only scripts write:
+
+- `./confighub-setup.sh` creates spaces and units in ConfigHub
+- `./confighub-cleanup.sh` deletes them
+- no cluster or live infrastructure is touched
 
 ## Read-Only Preview
 
@@ -126,6 +149,12 @@ These commands do not mutate ConfigHub or live infrastructure.
 | [`changes/01-mutable-in-ch.md`](./changes/01-mutable-in-ch.md) | Direct ConfigHub mutation example |
 | [`changes/02-lift-upstream.md`](./changes/02-lift-upstream.md) | Upstream routing example |
 | [`changes/03-generator-owned.md`](./changes/03-generator-owned.md) | Block/escalate example |
+| [`confighub-setup.sh`](./confighub-setup.sh) | ConfigHub-only setup (creates spaces and units) |
+| [`confighub-cleanup.sh`](./confighub-cleanup.sh) | ConfigHub-only cleanup |
+| [`confighub-verify.sh`](./confighub-verify.sh) | ConfigHub-only verification |
+| [`confighub/inventory-api-dev.yaml`](./confighub/inventory-api-dev.yaml) | Dev variant unit YAML |
+| [`confighub/inventory-api-stage.yaml`](./confighub/inventory-api-stage.yaml) | Stage variant unit YAML |
+| [`confighub/inventory-api-prod.yaml`](./confighub/inventory-api-prod.yaml) | Prod variant unit YAML |
 
 ## The Three Outcomes
 
@@ -307,15 +336,15 @@ All three commands are read-only.
 After `./setup.sh --explain`, you should see:
 
 - the stack and scenario
-- proof type: `structural`
-- note that the upstream app can be tested over HTTP with `mvn test`
-- the three behavior categories
-- the exact files this example uses
+- the three proof levels (structural, local app, ConfigHub-only)
+- what the structural scripts read and write
+- safe next steps including `./confighub-setup.sh --explain`
 
 After `./setup.sh --explain-json | jq`, you should see:
 
-- `proof_type: "structural"`
-- `mutates_confighub: false`
+- `proof_type: "structural+confighub-only"`
+- `mutates_confighub: false` (for the structural scripts)
+- `confighub_only.mutates_confighub: true` (for the ConfigHub scripts)
 - `mutates_live_infra: false`
 - three behavior entries named:
   - `apply_here`
@@ -347,20 +376,61 @@ cd upstream/app
 mvn test
 ```
 
-## Inspect It In The GUI
+## ConfigHub-Only Proof
 
-There is no GUI or live ConfigHub path for this example yet.
+This example includes a ConfigHub-only setup path that creates real ConfigHub
+objects without requiring a cluster.
 
-This example is the crisp conceptual starting point, not the live wedge.
+```bash
+# Preview what will be created (read-only)
+./confighub-setup.sh --explain
+./confighub-setup.sh --explain-json | jq
 
-If you want the next step after understanding this model:
+# Create ConfigHub objects (mutating)
+./confighub-setup.sh
+
+# Verify ConfigHub objects exist
+./confighub-verify.sh
+
+# Inspect created objects
+cub space list --where "Labels.ExampleName = 'springboot-platform-app'" --json
+cub unit get --space inventory-api-prod --json inventory-api
+
+# Prove apply-here mutation: override reservationMode from strict to optimistic
+# FEATURE_INVENTORY_RESERVATIONMODE maps to feature.inventory.reservationMode
+# via Spring Boot relaxed binding
+cub function do --space inventory-api-prod --unit inventory-api \
+  --change-desc "apply-here: override reservationMode from strict to optimistic for prod rollout" \
+  set-env inventory-api "FEATURE_INVENTORY_RESERVATIONMODE=optimistic"
+
+# Verify the mutation is stored in ConfigHub
+cub function do --space inventory-api-prod --unit inventory-api \
+  --output-only yq 'select(.kind == "Deployment") | .spec.template.spec.containers[0].env'
+
+# Verify the app would see the new value (local proof)
+cd upstream/app
+FEATURE_INVENTORY_RESERVATIONMODE=optimistic mvn spring-boot:run -q -Dspring-boot.run.profiles=prod &
+# then: curl -s http://localhost:8081/api/inventory/summary | jq .reservationMode
+# expected: "optimistic"
+
+# Clean up
+./confighub-cleanup.sh
+```
+
+## What Is Not Yet Proven
+
+- live cluster apply (requires target binding)
+- `lift upstream` via GitHub PR
+- `block/escalate` via field-level policy enforcement
+- ConfigMap embedded YAML string mutation (product limitation: `set-string-path`
+  cannot address dotted ConfigMap data keys)
+
+If you want the next step after this ConfigHub-only proof:
 
 - use `cub-gen` for source-to-operational provenance
 - use `cub-scout` for live runtime inspection
 - use the GitOps or layered examples in this repo for live ConfigHub flows
-- use [`V2-LIVE-PLAN.md`](./V2-LIVE-PLAN.md) for the concrete next step that
-  turns this same `inventory-api` story into a runnable ConfigHub + GitHub
-  example with a callable API
+- use [`V2-LIVE-PLAN.md`](./V2-LIVE-PLAN.md) for the full v2 plan
 
 ## Troubleshooting
 
@@ -374,15 +444,21 @@ If you are not in the right directory:
 - run `git rev-parse --show-toplevel`
 - then `cd <repo-root>/incubator/springboot-platform-app`
 
-If you expected a live demo:
+If you expected a live cluster demo:
 
-- this example is intentionally structural and read-only
-- use it to explain the model before moving to live GitOps or layered examples
+- this example proves structural, local app, and ConfigHub-only levels
+- it does not yet prove live cluster apply or GitOps integration
 - the concrete follow-on for this same service is
   [`V2-LIVE-PLAN.md`](./V2-LIVE-PLAN.md)
 
 ## Cleanup
 
-No cleanup is required.
+The structural and local app proofs require no cleanup.
 
-This example does not create ConfigHub objects or touch live infrastructure.
+If you ran `./confighub-setup.sh`, clean up with:
+
+```bash
+./confighub-cleanup.sh
+```
+
+This deletes all spaces labeled `ExampleName=springboot-platform-app`.

@@ -43,6 +43,48 @@
   - the tests call the HTTP API on a random local port
   - the default and `prod` profile responses are observable over HTTP
 
+## ConfigHub-only contracts
+
+### `./confighub-setup.sh --explain-json`
+
+- mutates: no
+- output: JSON object describing ConfigHub-only setup plan
+- stable fields:
+  - `proof_type`
+  - `mutates_confighub`
+  - `spaces_created`
+  - `units_per_space`
+  - `labels`
+- proves:
+  - what ConfigHub objects will be created
+  - what the cleanup path is
+
+### `./confighub-setup.sh`
+
+- mutates: yes (ConfigHub only)
+- creates:
+  - 3 spaces: `inventory-api-dev`, `inventory-api-stage`, `inventory-api-prod`
+  - 1 unit per space: `inventory-api`
+- labels:
+  - `ExampleName=springboot-platform-app`
+  - `App=inventory-api`
+  - `Environment=<env>`
+
+### `./confighub-verify.sh`
+
+- mutates: no
+- output: plain text success line
+- stable success text:
+  - `ok: springboot-platform-app ConfigHub-only objects are consistent`
+- proves:
+  - 3 spaces exist with the expected label
+  - each space contains an `inventory-api` unit with resources
+
+### `./confighub-cleanup.sh`
+
+- mutates: yes (ConfigHub only)
+- deletes all spaces with `Labels.ExampleName = 'springboot-platform-app'`
+
 ## Fixture contracts
 
 ### [`operational/field-routes.yaml`](./operational/field-routes.yaml)
