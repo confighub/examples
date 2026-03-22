@@ -2,6 +2,10 @@
 
 This note is the smallest realistic follow-on path after `cub-vmcluster` bootstrap.
 
+The authoritative runnable implementation lives in Jesper's [`cub-vmcluster`](https://github.com/jesperfj/cub-vmcluster) repo, which already proves the real cluster plus nginx path.
+
+This page has a different job. It explains why that path matters in the official `examples/incubator` story and how it connects cluster bootstrap to later ConfigHub deployment examples.
+
 The goal is simple:
 
 - start with a real cluster
@@ -42,6 +46,22 @@ It is easy to reason about:
 - optionally one ingress
 
 That makes it a good handoff after `vmcluster/bootstrap` and a good baseline before moving into GitOps import, larger app installs, or layered deployment variants.
+
+## What This Page Is For
+
+This page is not trying to recreate Jesper's runnable flow inside this repo.
+
+Use the `cub-vmcluster` repo when the goal is:
+
+- actually boot the cluster
+- actually deploy nginx
+- verify ingress and TLS on the live system
+
+Use this page when the goal is:
+
+- explain the smallest downstream deployment after target creation
+- connect that path to ConfigHub targets and deployment units
+- describe the bounded procedure that `cub-proc` would eventually represent
 
 ## What The User Cares About
 
@@ -117,6 +137,10 @@ This is a strong bridge between:
 - the direct deployment variants in [global-app-layer](./global-app-layer/README.md)
 
 It is also a strong future `cub-proc` candidate because it is a bounded live procedure with a clean handoff and concrete verification.
+
+If you want to run the real implementation, use:
+
+- [`jesperfj/cub-vmcluster`](https://github.com/jesperfj/cub-vmcluster)
 
 See:
 

@@ -2,6 +2,10 @@
 
 This note is the simplest way to think about `cub-vmcluster` from a user point of view.
 
+The authoritative runnable implementation lives in Jesper's [`cub-vmcluster`](https://github.com/jesperfj/cub-vmcluster) repo.
+
+This page has a narrower job. It explains how to think about that runnable implementation in the context of the official ConfigHub examples and the current target model.
+
 The user story is not mainly about workers. It is about getting a real Kubernetes cluster somewhere inexpensive, connecting it to ConfigHub, and then using it as a deployment target for workloads.
 
 ## The Mental Model
@@ -65,6 +69,22 @@ It gives us:
 - a cleaner bridge from ConfigHub examples to live deployment
 - a better place to pressure-test worker and target UX
 
+## What This Page Is For
+
+This page is not trying to replace the runnable `cub-vmcluster` repo.
+
+Use the `cub-vmcluster` repo when the goal is:
+
+- boot a real cluster
+- run the actual scripts
+- get a live target
+
+Use this page when the goal is:
+
+- understand the user-facing mental model
+- explain how the target fits with downstream ConfigHub examples
+- connect the cluster story to `cub-proc`
+
 ## How It Fits With The Current Examples
 
 `cub-vmcluster` is not the current front door. The current wedge is still:
@@ -76,6 +96,10 @@ It gives us:
 - evidence
 
 But `cub-vmcluster` is a strong next bridge from that wedge into real live targets.
+
+If you want to actually run that flow, go to the authoritative implementation:
+
+- [`jesperfj/cub-vmcluster`](https://github.com/jesperfj/cub-vmcluster)
 
 Good follow-on pairings are:
 

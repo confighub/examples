@@ -228,6 +228,12 @@ That keeps the order simple:
 - bind one small workload
 - apply and verify
 
+For the actual runnable implementation of those `vmcluster` flows, point to:
+
+- [jesperfj/cub-vmcluster](https://github.com/jesperfj/cub-vmcluster)
+
+The incubator pages here are for mental model, integration with ConfigHub examples, and future `cub-proc` shaping.
+
 ## 9) Related Pages
 
 - Repo-level AI path: [../AI_START_HERE.md](../AI_START_HERE.md)
