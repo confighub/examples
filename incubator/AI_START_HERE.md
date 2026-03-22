@@ -124,6 +124,22 @@ That example is for:
 - bundle-backed evidence
 - no live cluster requirement
 
+If the human wants the next offline step after that, aggregating two existing cluster imports, start here:
+
+```bash
+cd incubator/fleet-import
+./setup.sh --explain
+./setup.sh --explain-json | jq
+./setup.sh
+./verify.sh
+```
+
+That example is for:
+
+- multi-cluster aggregation
+- one unified fleet proposal
+- no live cluster requirement
+
 If the human wants the smallest no-cluster evidence path first, start here:
 
 ```bash
