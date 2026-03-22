@@ -1,0 +1,71 @@
+{
+  "example_name": "springboot-platform-app",
+  "proof_type": "structural",
+  "stack": [
+    "Spring Boot",
+    "platform-rendered operational config",
+    "ConfigHub authority",
+    "upstream provenance"
+  ],
+  "service_name": "inventory-api",
+  "mutates_confighub": false,
+  "mutates_live_infra": false,
+  "reads": [
+    "upstream/app/pom.xml",
+    "upstream/app/src/main/resources/application.yaml",
+    "upstream/app/src/main/resources/application-prod.yaml",
+    "upstream/platform/runtime-policy.yaml",
+    "upstream/platform/slo-policy.yaml",
+    "operational/configmap.yaml",
+    "operational/deployment.yaml",
+    "operational/service.yaml",
+    "operational/field-routes.yaml"
+  ],
+  "writes": [],
+  "behaviors": [
+    {
+      "name": "mutable_in_ch",
+      "request": "Change feature.inventory.reservationMode in prod for a rollout.",
+      "default_route": "direct_config_hub_mutation",
+      "owner": "app-team",
+      "upstream_inputs": [
+        "upstream/app/src/main/resources/application-prod.yaml"
+      ],
+      "operational_fields": [
+        "ConfigMap/data/application-prod.yaml:feature.inventory.reservationMode"
+      ]
+    },
+    {
+      "name": "lift_upstream",
+      "request": "Add Redis-backed caching to the service.",
+      "default_route": "route_to_upstream_producer",
+      "owner": "app-team",
+      "upstream_inputs": [
+        "upstream/app/pom.xml",
+        "upstream/app/src/main/resources/application.yaml"
+      ],
+      "operational_fields": [
+        "Deployment/spec/template/spec/containers[0]/env[CACHE_BACKEND]",
+        "ConfigMap/data/application.yaml:spring.cache.type"
+      ]
+    },
+    {
+      "name": "generator_owned",
+      "request": "Change spring.datasource.* or bypass the managed datasource boundary.",
+      "default_route": "block_or_escalate",
+      "owner": "platform-engineering",
+      "upstream_inputs": [
+        "upstream/platform/runtime-policy.yaml"
+      ],
+      "operational_fields": [
+        "ConfigMap/data/application.yaml:spring.datasource.url",
+        "Deployment/spec/template/spec/containers[0]/env[SPRING_DATASOURCE_URL]"
+      ]
+    }
+  ],
+  "success_looks_like": [
+    "The preview explains authority vs provenance clearly.",
+    "The three behaviors are visible in one app.",
+    "The example stays read-only."
+  ]
+}

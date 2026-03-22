@@ -1,0 +1,17 @@
+routes:
+  - match: feature.inventory.*
+    owner: app-team
+    defaultAction: mutable-in-ch
+    reason: Per-deployment rollout tuning is safe to keep in ConfigHub.
+  - match: spring.cache.*
+    owner: app-team
+    defaultAction: lift-upstream
+    reason: Cache adoption changes the app contract and should update upstream app inputs.
+  - match: spring.datasource.*
+    owner: platform-engineering
+    defaultAction: generator-owned
+    reason: Datasource connectivity is part of the managed platform boundary.
+  - match: securityContext.*
+    owner: platform-engineering
+    defaultAction: generator-owned
+    reason: Runtime hardening must remain platform-controlled.

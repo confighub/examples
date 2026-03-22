@@ -125,6 +125,25 @@ If you want to wire a real target immediately:
 ./verify.sh
 ```
 
+If the human first needs a crisp, read-only app/platform example for authority
+vs provenance before any live flow, start here:
+
+```bash
+cd incubator/springboot-platform-app
+./setup.sh --explain
+./setup.sh --explain-json | jq
+./verify.sh
+```
+
+That example is for:
+
+- one Spring Boot service
+- one platform boundary
+- three natural mutation routes:
+  - `mutable in CH`
+  - `lift upstream`
+  - `generator-owned`
+
 ## 4) Quick demo data (no cluster required)
 
 For exploring ConfigHub's promotion UI without a live target:

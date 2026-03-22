@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: inventory-api-config
+  namespace: apps
+data:
+  application.yaml: |
+    spring:
+      application:
+        name: inventory-api
+      datasource:
+        url: jdbc:postgresql://postgres.platform.svc:5432/inventory
+        username: inventory
+    management:
+      endpoints:
+        web:
+          exposure:
+            include: health,info
+  application-prod.yaml: |
+    server:
+      port: 8081
+    feature:
+      inventory:
+        reservationMode: strict
