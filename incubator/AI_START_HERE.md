@@ -108,6 +108,22 @@ That example is for:
 - import and evidence
 - read-only preview before cluster setup
 
+If the human wants an offline import path with no cluster access, start here:
+
+```bash
+cd incubator/import-from-bundle
+./setup.sh --explain
+./setup.sh --explain-json | jq
+./setup.sh
+./verify.sh
+```
+
+That example is for:
+
+- dry-run import proposal generation
+- bundle-backed evidence
+- no live cluster requirement
+
 If the human wants the smallest no-cluster evidence path first, start here:
 
 ```bash
