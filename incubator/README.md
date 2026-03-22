@@ -26,7 +26,7 @@ Keep building AI-first examples in `examples/incubator` that give one person a f
 - [`import-from-bundle`](./import-from-bundle/README.md): dry-run import proposal generation from a debug bundle without cluster access.
 - [`fleet-import`](./fleet-import/README.md): multi-cluster aggregation from two existing cluster import JSONs into one unified proposal.
 
-### Live Import, Comparison, Ownership, And Topology
+### Live Import, Comparison, Ownership, Topology, And Orphans
 
 - [`import-from-live`](./import-from-live/README.md): brownfield discovery example adapted from `cub-scout`, showing how a running cluster can produce a dry-run ConfigHub proposal before any ConfigHub mutation.
 - [`gitops-import-argo`](./gitops-import-argo/README.md): Argo GitOps import example built from the stable `gitops-import` assets plus stronger contrast fixtures adapted from `cub-scout`.
@@ -34,6 +34,7 @@ Keep building AI-first examples in `examples/incubator` that give one person a f
 - [`combined-git-live`](./combined-git-live/README.md): Git-plus-live compare example adapted from `cub-scout`, showing aligned, git-only, and cluster-only results against a real cluster.
 - [`custom-ownership-detectors`](./custom-ownership-detectors/README.md): platform-team ownership example adapted from `cub-scout`, showing custom owner names in `map`, `explain`, and `trace` without touching ConfigHub.
 - [`graph-export`](./graph-export/README.md): shareable topology example adapted from `cub-scout`, showing `graph.v1` JSON plus DOT, SVG, and HTML artifacts from a live cluster.
+- [`orphans`](./orphans/README.md): unmanaged-resource example adapted from `cub-scout`, showing how `Native` resources surface in orphan inventory on a live cluster.
 
 ### App-Style GitOps Layouts
 
@@ -69,13 +70,14 @@ Use this order:
   - [`fleet-import`](./fleet-import/README.md)
   - [`demo-data-adt`](./demo-data-adt/README.md)
   - [`lifecycle-hazards`](./lifecycle-hazards/README.md)
-- Then live import, comparison, ownership, and topology:
+- Then live import, comparison, ownership, topology, and orphans:
   - [`import-from-live`](./import-from-live/README.md)
   - [`gitops-import-argo`](./gitops-import-argo/README.md)
   - [`gitops-import-flux`](./gitops-import-flux/README.md)
   - [`combined-git-live`](./combined-git-live/README.md)
   - [`custom-ownership-detectors`](./custom-ownership-detectors/README.md)
   - [`graph-export`](./graph-export/README.md)
+  - [`orphans`](./orphans/README.md)
 - Then app-style layouts:
   - [`apptique-argo-applicationset`](./apptique-argo-applicationset/README.md)
   - [`apptique-argo-app-of-apps`](./apptique-argo-app-of-apps/README.md)
