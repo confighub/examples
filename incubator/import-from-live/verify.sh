@@ -4,6 +4,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OUTPUT_DIR="$SCRIPT_DIR/sample-output"
 EXPECTED="$SCRIPT_DIR/expected-output/suggestion.json"
+VAR_DIR="$SCRIPT_DIR/var"
+CLUSTER_NAME="${IMPORT_FROM_LIVE_CLUSTER_NAME:-import-from-live}"
+export KUBECONFIG="$VAR_DIR/$CLUSTER_NAME.kubeconfig"
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 

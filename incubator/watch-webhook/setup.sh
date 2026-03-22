@@ -4,9 +4,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OUTPUT_DIR="$SCRIPT_DIR/sample-output"
 FIXTURE="$SCRIPT_DIR/fixtures/watch-demo.yaml"
+VAR_DIR="$SCRIPT_DIR/var"
 EXPLAIN=0
 EXPLAIN_JSON=0
 CLUSTER_NAME="${WATCH_WEBHOOK_CLUSTER_NAME:-watch-webhook}"
+KUBECONFIG_PATH="$VAR_DIR/$CLUSTER_NAME.kubeconfig"
 PORT="${WATCH_WEBHOOK_PORT:-8787}"
 RECEIVER_PATH="/events"
 RECEIVER_PID=""
@@ -56,6 +58,7 @@ command -v kubectl >/dev/null
 command -v python3 >/dev/null
 command -v cub-scout >/dev/null
 
+mkdir -p "$VAR_DIR"
 mkdir -p "$OUTPUT_DIR"
 : > "$OUTPUT_DIR/webhook-events.jsonl"
 : > "$OUTPUT_DIR/webhook.stdout.log"
@@ -63,8 +66,9 @@ mkdir -p "$OUTPUT_DIR"
 : > "$OUTPUT_DIR/watch.stdout.log"
 : > "$OUTPUT_DIR/watch.stderr.log"
 
+export KUBECONFIG="$KUBECONFIG_PATH"
 if ! kind get clusters | grep -qx "$CLUSTER_NAME"; then
-  kind create cluster --name "$CLUSTER_NAME"
+  kind create cluster --name "$CLUSTER_NAME" --kubeconfig "$KUBECONFIG_PATH"
 fi
 kubectl config use-context "kind-$CLUSTER_NAME" >/dev/null
 kubectl apply -f "$FIXTURE" >/dev/null
