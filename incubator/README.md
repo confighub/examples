@@ -14,6 +14,7 @@ This directory is for experimental examples before promotion to stable examples.
 - [`cub-proc`](./cub-proc/README.md): public incubator design work for bounded procedures, `Operation` records, and `cub-proc`, grounded in the runnable examples in this repo.
 - [`gitops-import-argo`](./gitops-import-argo/README.md): incubator Argo GitOps import example built from the stable `gitops-import` assets plus stronger contrast fixtures adapted from `cub-scout`.
 - [`gitops-import-flux`](./gitops-import-flux/README.md): incubator Flux GitOps import example built from `cub-scout`'s D2 and podinfo fixtures with the same import-and-evidence verification model as the Argo sibling.
+- [`apptique-flux-monorepo`](./apptique-flux-monorepo/README.md): incubator app-style Flux monorepo example adapted from `cub-scout`, showing one app base plus dev and prod overlays with ownership and provenance checks.
 - [`global-app-layer`](./global-app-layer/README.md): recipes and layers package with specs plus four worked examples, including a GPU-flavored chain.
 - [`springboot-platform-app`](./springboot-platform-app/README.md): structural Spring Boot app/platform example for authority vs provenance, with one app and three natural mutation routes.
 - [`cub-proc-fixtures`](./cub-proc-fixtures/README.md): tiny direct and delegated apply fixtures preserved from the earlier `cub-up` exploration.
@@ -29,10 +30,11 @@ Start with:
 - [Official GitOps Import docs](https://docs.confighub.com/get-started/examples/gitops-import/)
 - Argo import: [`gitops-import-argo`](./gitops-import-argo/README.md)
 - Flux import: [`gitops-import-flux`](./gitops-import-flux/README.md)
+- App-style Flux layout: [`apptique-flux-monorepo`](./apptique-flux-monorepo/README.md)
 - Worker extensibility and policy: [`../custom-workers`](../custom-workers)
 - Helm-first story: [`../helm-platform-components`](../helm-platform-components/README.md) or [cub-scout Helm quickstart](https://github.com/confighub/cub-scout/blob/main/docs/reference/cub-track-quickstart-helm.md)
 - App-Deployment-Target story: [`../promotion-demo-data`](../promotion-demo-data/README.md)
-- Microservice app styles: [cub-scout apptique examples](https://github.com/confighub/cub-scout/tree/main/examples/apptique-examples)
+- More app-style source material: [cub-scout apptique examples](https://github.com/confighub/cub-scout/tree/main/examples/apptique-examples)
 - Authority vs provenance for one app/platform pair: [`springboot-platform-app`](./springboot-platform-app/README.md)
 
 Use [`global-app-layer`](./global-app-layer/README.md) after that for layered recipe structure, deployment units, and the NVIDIA-shaped chain model.
