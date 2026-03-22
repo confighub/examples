@@ -20,6 +20,7 @@ Keep building AI-first examples in `examples/incubator` that give one person a f
 - [`connect-and-compare`](./connect-and-compare/README.md): fixture-first evidence path showing doctor, compare, and history without a live cluster.
 - [`demo-data-adt`](./demo-data-adt/README.md): scan-first App-Deployment-Target example showing labeled workload fixtures plus immediate static risk findings.
 - [`lifecycle-hazards`](./lifecycle-hazards/README.md): migration-risk example adapted from `cub-scout`, showing hook inventory and Helm-to-Argo lifecycle hazards from one manifest file.
+- [`connected-summary-storage`](./connected-summary-storage/README.md): reporting example adapted from `cub-scout`, showing persisted connected summaries plus dry-run Slack digest generation from local storage.
 
 ### Offline Import And Aggregation
 
@@ -71,6 +72,7 @@ Use this order:
   - [`fleet-import`](./fleet-import/README.md)
   - [`demo-data-adt`](./demo-data-adt/README.md)
   - [`lifecycle-hazards`](./lifecycle-hazards/README.md)
+  - [`connected-summary-storage`](./connected-summary-storage/README.md)
 - Then live import, comparison, ownership, topology, and orphans:
   - [`import-from-live`](./import-from-live/README.md)
   - [`gitops-import-argo`](./gitops-import-argo/README.md)

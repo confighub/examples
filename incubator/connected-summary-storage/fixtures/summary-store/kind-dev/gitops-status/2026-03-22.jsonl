@@ -1,0 +1,1 @@
+{"schemaVersion":"connected.summary.v1","timestamp":"2026-03-22T10:05:00Z","type":"gitops-status","cluster":"kind-dev","scope":{"namespace":"prod"},"metrics":{"syncTotal":4,"syncFailed":1,"syncOutOfSync":1,"driftTotal":1},"source":"cub-scout gitops status -n prod"}
