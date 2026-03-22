@@ -2,6 +2,10 @@
 
 This directory is for experimental examples before promotion to stable examples.
 
+Current focus:
+
+Keep building AI-first examples in `examples/incubator` that give one person a fast reason to use ConfigHub, especially by adapting the best `cub-scout` flows into official, evidence-first examples.
+
 ## Entry Paths
 
 - For humans: [`../START_HERE.md`](../START_HERE.md)
@@ -11,45 +15,69 @@ This directory is for experimental examples before promotion to stable examples.
 
 ## Current Experiments
 
-- [`cub-proc`](./cub-proc/README.md): public incubator design work for bounded procedures, `Operation` records, and `cub-proc`, grounded in the runnable examples in this repo.
-- [`gitops-import-argo`](./gitops-import-argo/README.md): incubator Argo GitOps import example built from the stable `gitops-import` assets plus stronger contrast fixtures adapted from `cub-scout`.
-- [`gitops-import-flux`](./gitops-import-flux/README.md): incubator Flux GitOps import example built from `cub-scout`'s D2 and podinfo fixtures with the same import-and-evidence verification model as the Argo sibling.
-- [`import-from-bundle`](./import-from-bundle/README.md): incubator offline import example adapted from `cub-scout`, showing dry-run proposal generation from a debug bundle without cluster access.
-- [`fleet-import`](./fleet-import/README.md): incubator multi-cluster aggregation example adapted from `cub-scout`, showing one unified proposal from two existing cluster import JSONs.
-- [`connect-and-compare`](./connect-and-compare/README.md): incubator fixture-first compare example adapted from `cub-scout`, showing doctor, compare, and history evidence without a live cluster.
-- [`demo-data-adt`](./demo-data-adt/README.md): incubator scan-first ADT example adapted from `cub-scout`, showing labeled workload fixtures plus immediate static risk findings.
-- [`combined-git-live`](./combined-git-live/README.md): incubator Git-plus-live compare example adapted from `cub-scout`, showing aligned, git-only, and cluster-only results against a real cluster.
-- [`apptique-argo-applicationset`](./apptique-argo-applicationset/README.md): incubator app-style Argo ApplicationSet example adapted from `cub-scout`, showing one generator and one generated Application per environment.
-- [`apptique-argo-app-of-apps`](./apptique-argo-app-of-apps/README.md): incubator app-style Argo app-of-apps example adapted from `cub-scout`, showing one root Application and one child Application per environment.
-- [`apptique-flux-monorepo`](./apptique-flux-monorepo/README.md): incubator app-style Flux monorepo example adapted from `cub-scout`, showing one app base plus dev and prod overlays with ownership and provenance checks.
-- [`global-app-layer`](./global-app-layer/README.md): recipes and layers package with specs plus four worked examples, including a GPU-flavored chain.
-- [`springboot-platform-app`](./springboot-platform-app/README.md): structural Spring Boot app/platform example for authority vs provenance, with one app and three natural mutation routes.
-- [`cub-proc-fixtures`](./cub-proc-fixtures/README.md): tiny direct and delegated apply fixtures preserved from the earlier `cub-up` exploration.
-- [`vmcluster-from-scratch`](./vmcluster-from-scratch.md): short note for thinking about real cluster bootstrap as cluster first, target second, worker mostly hidden.
-- [`vmcluster-nginx-path`](./vmcluster-nginx-path.md): short note for the smallest real-cluster follow-on path, from ready target to one reachable workload.
+### No-Cluster Evidence And Inspection
+
+- [`connect-and-compare`](./connect-and-compare/README.md): fixture-first evidence path showing doctor, compare, and history without a live cluster.
+- [`demo-data-adt`](./demo-data-adt/README.md): scan-first App-Deployment-Target example showing labeled workload fixtures plus immediate static risk findings.
+
+### Offline Import And Aggregation
+
+- [`import-from-bundle`](./import-from-bundle/README.md): dry-run import proposal generation from a debug bundle without cluster access.
+- [`fleet-import`](./fleet-import/README.md): multi-cluster aggregation from two existing cluster import JSONs into one unified proposal.
+
+### Live Import And Live Comparison
+
+- [`import-from-live`](./import-from-live/README.md): brownfield discovery example adapted from `cub-scout`, showing how a running cluster can produce a dry-run ConfigHub proposal before any ConfigHub mutation.
+- [`gitops-import-argo`](./gitops-import-argo/README.md): Argo GitOps import example built from the stable `gitops-import` assets plus stronger contrast fixtures adapted from `cub-scout`.
+- [`gitops-import-flux`](./gitops-import-flux/README.md): Flux GitOps import example built from `cub-scout`'s D2 and podinfo fixtures with the same import-and-evidence verification model as the Argo sibling.
+- [`combined-git-live`](./combined-git-live/README.md): Git-plus-live compare example adapted from `cub-scout`, showing aligned, git-only, and cluster-only results against a real cluster.
+
+### App-Style GitOps Layouts
+
+- [`apptique-flux-monorepo`](./apptique-flux-monorepo/README.md): Flux monorepo layout with one app base plus dev and prod overlays.
+- [`apptique-argo-applicationset`](./apptique-argo-applicationset/README.md): Argo ApplicationSet layout with one generator and one generated Application per environment.
+- [`apptique-argo-app-of-apps`](./apptique-argo-app-of-apps/README.md): Argo app-of-apps layout with one root Application and one child Application per environment.
+
+### Structural And Model Examples
+
+- [`springboot-platform-app`](./springboot-platform-app/README.md): Spring Boot app/platform example for authority vs provenance, with one app and three natural mutation routes.
 - [`promotion-demo-data-verify`](./promotion-demo-data-verify/README.md): verification wrapper for the stable `promotion-demo-data` example.
+
+### Advanced Composition And Deployment Variants
+
+- [`global-app-layer`](./global-app-layer/README.md): recipes and layers package with specs plus worked examples, including a GPU-flavored chain.
+
+### Operational Model And Supporting Design Work
+
+- [`cub-proc`](./cub-proc/README.md): public incubator design work for bounded procedures, `Operation` records, and `cub-proc`, grounded in the runnable examples in this repo.
+- [`cub-proc-fixtures`](./cub-proc-fixtures/README.md): tiny direct and delegated apply fixtures preserved from the earlier `cub-up` exploration.
+- [`vmcluster-from-scratch`](./vmcluster-from-scratch.md): note for thinking about real cluster bootstrap as cluster first, target second, worker mostly hidden.
+- [`vmcluster-nginx-path`](./vmcluster-nginx-path.md): note for the smallest real-cluster follow-on path, from ready target to one reachable workload.
 
 ## Where To Start By Goal
 
 If the goal is the current GitHub + Argo/Flux + AI/CLI + ConfigHub wedge, do not start with `global-app-layer`.
 
-Start with:
+Use this order:
 - [Official GitOps Import docs](https://docs.confighub.com/get-started/examples/gitops-import/)
-- Argo import: [`gitops-import-argo`](./gitops-import-argo/README.md)
-- Flux import: [`gitops-import-flux`](./gitops-import-flux/README.md)
-- Offline import from bundle: [`import-from-bundle`](./import-from-bundle/README.md)
-- Fleet aggregation from existing imports: [`fleet-import`](./fleet-import/README.md)
-- Fixture-first compare: [`connect-and-compare`](./connect-and-compare/README.md)
-- ADT scan-first example: [`demo-data-adt`](./demo-data-adt/README.md)
-- Git plus live compare: [`combined-git-live`](./combined-git-live/README.md)
-- App-style Argo layout: [`apptique-argo-applicationset`](./apptique-argo-applicationset/README.md)
-- App-style Argo hierarchy: [`apptique-argo-app-of-apps`](./apptique-argo-app-of-apps/README.md)
-- App-style Flux layout: [`apptique-flux-monorepo`](./apptique-flux-monorepo/README.md)
-- Worker extensibility and policy: [`../custom-workers`](../custom-workers)
-- Helm-first story: [`../helm-platform-components`](../helm-platform-components/README.md) or [cub-scout Helm quickstart](https://github.com/confighub/cub-scout/blob/main/docs/reference/cub-track-quickstart-helm.md)
-- App-Deployment-Target story: [`../promotion-demo-data`](../promotion-demo-data/README.md)
-- More app-style source material: [cub-scout apptique examples](https://github.com/confighub/cub-scout/tree/main/examples/apptique-examples)
-- Authority vs provenance for one app/platform pair: [`springboot-platform-app`](./springboot-platform-app/README.md)
+- No-cluster evidence first:
+  - [`connect-and-compare`](./connect-and-compare/README.md)
+  - [`import-from-bundle`](./import-from-bundle/README.md)
+  - [`fleet-import`](./fleet-import/README.md)
+  - [`demo-data-adt`](./demo-data-adt/README.md)
+- Then live import and live comparison:
+  - [`import-from-live`](./import-from-live/README.md)
+  - [`gitops-import-argo`](./gitops-import-argo/README.md)
+  - [`gitops-import-flux`](./gitops-import-flux/README.md)
+  - [`combined-git-live`](./combined-git-live/README.md)
+- Then app-style layouts:
+  - [`apptique-argo-applicationset`](./apptique-argo-applicationset/README.md)
+  - [`apptique-argo-app-of-apps`](./apptique-argo-app-of-apps/README.md)
+  - [`apptique-flux-monorepo`](./apptique-flux-monorepo/README.md)
+- Then worker and model examples:
+  - [`../custom-workers`](../custom-workers)
+  - [`../promotion-demo-data`](../promotion-demo-data/README.md)
+  - [`springboot-platform-app`](./springboot-platform-app/README.md)
 
 Use [`global-app-layer`](./global-app-layer/README.md) after that for layered recipe structure, deployment units, and the NVIDIA-shaped chain model.
 
