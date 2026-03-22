@@ -37,11 +37,12 @@ decision, then routes it: apply here, lift upstream, or block/escalate.
 
 ## What This Proves
 
-This is a structural proof, not a live deployment proof.
+This is a structural ConfigHub proof with a locally runnable Spring Boot app.
 
 It proves:
 
 - a realistic split between app inputs and platform policy
+- a real `inventory-api` upstream app with HTTP-level tests
 - a clear operational shape that ConfigHub could store authoritatively
 - one mutation system with three outcomes:
   - `apply here`
@@ -60,6 +61,11 @@ You need:
 
 - `bash`
 - `jq`
+
+If you want to run the local app or its HTTP tests, you also need:
+
+- Java 21+
+- Maven
 
 You do not need:
 
@@ -103,8 +109,14 @@ These commands do not mutate ConfigHub or live infrastructure.
 | Path | Purpose |
 |---|---|
 | [`upstream/app/pom.xml`](./upstream/app/pom.xml) | App-owned Spring Boot build input |
+| [`upstream/app/src/main/java/com/example/inventory/InventoryApiApplication.java`](./upstream/app/src/main/java/com/example/inventory/InventoryApiApplication.java) | Spring Boot entrypoint |
+| [`upstream/app/src/main/java/com/example/inventory/api/InventoryController.java`](./upstream/app/src/main/java/com/example/inventory/api/InventoryController.java) | HTTP API controller |
+| [`upstream/app/src/main/java/com/example/inventory/api/InventoryService.java`](./upstream/app/src/main/java/com/example/inventory/api/InventoryService.java) | In-memory inventory service |
 | [`upstream/app/src/main/resources/application.yaml`](./upstream/app/src/main/resources/application.yaml) | Base Spring config |
+| [`upstream/app/src/main/resources/application-stage.yaml`](./upstream/app/src/main/resources/application-stage.yaml) | Stage app overrides |
 | [`upstream/app/src/main/resources/application-prod.yaml`](./upstream/app/src/main/resources/application-prod.yaml) | Prod app overrides |
+| [`upstream/app/src/test/java/com/example/inventory/api/InventoryControllerHttpTest.java`](./upstream/app/src/test/java/com/example/inventory/api/InventoryControllerHttpTest.java) | HTTP-level test for default profile |
+| [`upstream/app/src/test/java/com/example/inventory/api/InventoryControllerProdHttpTest.java`](./upstream/app/src/test/java/com/example/inventory/api/InventoryControllerProdHttpTest.java) | HTTP-level test for prod profile |
 | [`upstream/platform/runtime-policy.yaml`](./upstream/platform/runtime-policy.yaml) | Platform-owned runtime policy |
 | [`upstream/platform/slo-policy.yaml`](./upstream/platform/slo-policy.yaml) | Platform-owned SLO policy |
 | [`operational/configmap.yaml`](./operational/configmap.yaml) | Materialized operational config |
@@ -155,6 +167,36 @@ blocked or escalated when they are platform-owned or generator-owned.
 See:
 
 - [`changes/03-generator-owned.md`](./changes/03-generator-owned.md)
+
+## Local API Proof
+
+The upstream Spring Boot app is now real enough to call and test locally.
+
+Use:
+
+```bash
+cd incubator/springboot-platform-app/upstream/app
+mvn test
+```
+
+These tests start the app on a random local port and call the HTTP API. They
+do not mutate ConfigHub or live infrastructure.
+
+To run the app manually:
+
+```bash
+cd incubator/springboot-platform-app/upstream/app
+mvn spring-boot:run
+curl -s http://localhost:8080/api/inventory/summary | jq
+curl -s http://localhost:8080/api/inventory/items | jq
+```
+
+The main callable endpoints are:
+
+- `GET /api/inventory/items`
+- `GET /api/inventory/items/{sku}`
+- `GET /api/inventory/summary`
+- `GET /actuator/health`
 
 ## ConfigHub as authority tracking provenance
 
@@ -266,6 +308,7 @@ After `./setup.sh --explain`, you should see:
 
 - the stack and scenario
 - proof type: `structural`
+- note that the upstream app can be tested over HTTP with `mvn test`
 - the three behavior categories
 - the exact files this example uses
 
@@ -283,12 +326,25 @@ After `./verify.sh`, you should see:
 
 - `ok: springboot-platform-app fixtures are consistent`
 
+If Maven and Java are installed, after `mvn test` you should see:
+
+- the Spring Boot tests start a local HTTP server
+- `InventoryControllerHttpTest` exercise `/api/inventory/items` and `/api/inventory/summary`
+- `InventoryControllerProdHttpTest` exercise `/api/inventory/summary` with the `prod` profile
+
 ## Verify It
 
 ```bash
 ./setup.sh --explain-json | jq '.behaviors[].name'
 ./setup.sh --explain-json | jq '.reads'
 ./verify.sh
+```
+
+Optional local app proof:
+
+```bash
+cd upstream/app
+mvn test
 ```
 
 ## Inspect It In The GUI
@@ -302,6 +358,9 @@ If you want the next step after understanding this model:
 - use `cub-gen` for source-to-operational provenance
 - use `cub-scout` for live runtime inspection
 - use the GitOps or layered examples in this repo for live ConfigHub flows
+- use [`V2-LIVE-PLAN.md`](./V2-LIVE-PLAN.md) for the concrete next step that
+  turns this same `inventory-api` story into a runnable ConfigHub + GitHub
+  example with a callable API
 
 ## Troubleshooting
 
@@ -319,6 +378,8 @@ If you expected a live demo:
 
 - this example is intentionally structural and read-only
 - use it to explain the model before moving to live GitOps or layered examples
+- the concrete follow-on for this same service is
+  [`V2-LIVE-PLAN.md`](./V2-LIVE-PLAN.md)
 
 ## Cleanup
 

@@ -4,6 +4,8 @@ spring:
   datasource:
     url: jdbc:postgresql://postgres.platform.svc:5432/inventory
     username: inventory
+inventory:
+  environment: dev
 server:
   port: 8080
 management:
@@ -11,3 +13,6 @@ management:
     web:
       exposure:
         include: health,info
+feature:
+  inventory:
+    reservationMode: optimistic

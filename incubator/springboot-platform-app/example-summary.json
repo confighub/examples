@@ -12,8 +12,16 @@
   "mutates_live_infra": false,
   "reads": [
     "upstream/app/pom.xml",
+    "upstream/app/src/main/java/com/example/inventory/InventoryApiApplication.java",
+    "upstream/app/src/main/java/com/example/inventory/api/InventoryController.java",
+    "upstream/app/src/main/java/com/example/inventory/api/InventoryService.java",
+    "upstream/app/src/main/java/com/example/inventory/api/InventoryItem.java",
+    "upstream/app/src/main/java/com/example/inventory/api/InventorySummary.java",
     "upstream/app/src/main/resources/application.yaml",
+    "upstream/app/src/main/resources/application-stage.yaml",
     "upstream/app/src/main/resources/application-prod.yaml",
+    "upstream/app/src/test/java/com/example/inventory/api/InventoryControllerHttpTest.java",
+    "upstream/app/src/test/java/com/example/inventory/api/InventoryControllerProdHttpTest.java",
     "upstream/platform/runtime-policy.yaml",
     "upstream/platform/slo-policy.yaml",
     "operational/configmap.yaml",
@@ -65,6 +73,7 @@
   ],
   "success_looks_like": [
     "The preview explains authority vs provenance clearly.",
+    "The upstream app includes HTTP-level tests for the inventory API.",
     "The three routed outcomes are visible in one app.",
     "The example stays read-only."
   ]

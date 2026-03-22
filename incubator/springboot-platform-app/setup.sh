@@ -20,6 +20,7 @@ Stack:
 What it proves:
 - one app, inventory-api
 - one materialized operational shape
+- one upstream Spring Boot API that can be tested over HTTP
 - one mutation system with three outcomes:
   - apply here
   - lift upstream
@@ -37,6 +38,7 @@ What it writes:
 Safe next step:
 - run ./setup.sh --explain-json | jq
 - then run ./verify.sh
+- optional local app proof: cd upstream/app && mvn test
 EOF
     ;;
   --explain-json)
