@@ -20,10 +20,10 @@ Stack:
 What it proves:
 - one app, inventory-api
 - one materialized operational shape
-- three change behaviors:
-  - mutable in CH
+- one mutation system with three outcomes:
+  - apply here
   - lift upstream
-  - generator-owned
+  - block/escalate
 
 What it reads:
 - upstream/app/*
