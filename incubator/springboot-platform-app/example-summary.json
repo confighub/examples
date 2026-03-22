@@ -1,6 +1,6 @@
 {
   "example_name": "springboot-platform-app",
-  "proof_type": "structural",
+  "proof_type": "structural+confighub-only",
   "stack": [
     "Spring Boot",
     "platform-rendered operational config",
@@ -10,6 +10,18 @@
   "service_name": "inventory-api",
   "mutates_confighub": false,
   "mutates_live_infra": false,
+  "confighub_only": {
+    "mutates_confighub": true,
+    "mutates_live_infra": false,
+    "setup": "./confighub-setup.sh",
+    "cleanup": "./confighub-cleanup.sh",
+    "verify": "./confighub-verify.sh",
+    "spaces": [
+      "inventory-api-dev",
+      "inventory-api-stage",
+      "inventory-api-prod"
+    ]
+  },
   "reads": [
     "upstream/app/pom.xml",
     "upstream/app/src/main/java/com/example/inventory/InventoryApiApplication.java",
@@ -27,7 +39,10 @@
     "operational/configmap.yaml",
     "operational/deployment.yaml",
     "operational/service.yaml",
-    "operational/field-routes.yaml"
+    "operational/field-routes.yaml",
+    "confighub/inventory-api-dev.yaml",
+    "confighub/inventory-api-stage.yaml",
+    "confighub/inventory-api-prod.yaml"
   ],
   "writes": [],
   "behaviors": [
@@ -41,7 +56,8 @@
       ],
       "operational_fields": [
         "ConfigMap/data/application-prod.yaml:feature.inventory.reservationMode"
-      ]
+      ],
+      "confighub_proof": "Proven via set-env FEATURE_INVENTORY_RESERVATIONMODE=optimistic on the prod Deployment. Spring Boot relaxed binding maps this env var to feature.inventory.reservationMode. The running app reports the changed value via /api/inventory/summary."
     },
     {
       "name": "lift_upstream",
@@ -55,7 +71,8 @@
       "operational_fields": [
         "Deployment/spec/template/spec/containers[0]/env[CACHE_BACKEND]",
         "ConfigMap/data/application.yaml:spring.cache.type"
-      ]
+      ],
+      "confighub_proof": "Not yet proven. Requires GitHub PR integration."
     },
     {
       "name": "block_or_escalate",
@@ -68,13 +85,15 @@
       "operational_fields": [
         "ConfigMap/data/application.yaml:spring.datasource.url",
         "Deployment/spec/template/spec/containers[0]/env[SPRING_DATASOURCE_URL]"
-      ]
+      ],
+      "confighub_proof": "Not yet proven. Requires field-level policy enforcement in ConfigHub."
     }
   ],
   "success_looks_like": [
     "The preview explains authority vs provenance clearly.",
     "The upstream app includes HTTP-level tests for the inventory API.",
     "The three routed outcomes are visible in one app.",
-    "The example stays read-only."
+    "ConfigHub-only spaces and units exist for dev, stage, and prod.",
+    "The apply-here mutation is proven via FEATURE_INVENTORY_RESERVATIONMODE env var on the prod Deployment, and the running app reports the changed value."
   ]
 }

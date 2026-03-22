@@ -14,30 +14,33 @@ It demonstrates one app, `inventory-api`, with three routed outcomes:
 - `lift upstream`
 - `block/escalate`
 
-## Proof Type
+## Proof Types
 
-This example is structural proof only.
+This example has three proof levels:
 
-It does not:
+1. **Structural**: fixture files and contracts (`./setup.sh --explain`)
+2. **Local app**: Spring Boot HTTP tests (`cd upstream/app && mvn test`)
+3. **ConfigHub-only**: real spaces and units (`./confighub-setup.sh`)
 
-- create ConfigHub spaces
-- create units
+It does not yet:
+
 - bind targets
 - apply to a cluster
-
-It does include a real upstream Spring Boot app and HTTP-level tests.
+- prove `lift upstream` or `block/escalate` in ConfigHub
 
 ## What You Need Installed
 
+For structural proof:
 - `bash`
 - `jq`
 
-If you want to run the local app or HTTP tests, also install:
-
+For local app proof, also:
 - Java 21+
 - Maven
 
-You do not need `cub` or `cub auth login` for this example.
+For ConfigHub-only proof, also:
+- `cub` CLI
+- `cub auth login` (authenticated context)
 
 ## Safe First Steps
 
@@ -86,11 +89,45 @@ mvn test
 
 These tests start the app on a random local port and call the HTTP API.
 
-### D. Live follow-on
+### D. ConfigHub-only proof
 
-This example does not include a live path.
+Use:
 
-If the human wants a live next step after understanding the model:
+```bash
+./confighub-setup.sh --explain
+./confighub-setup.sh
+./confighub-verify.sh
+```
+
+This creates real ConfigHub spaces and units for dev, stage, and prod.
+It does not require a cluster, target, or worker.
+
+### E. Apply-here mutation proof
+
+After running `./confighub-setup.sh`:
+
+```bash
+# FEATURE_INVENTORY_RESERVATIONMODE maps to feature.inventory.reservationMode
+# via Spring Boot relaxed binding — the running app reads this value
+cub function do --space inventory-api-prod --unit inventory-api \
+  --change-desc "apply-here: override reservationMode from strict to optimistic for prod rollout" \
+  set-env inventory-api "FEATURE_INVENTORY_RESERVATIONMODE=optimistic"
+```
+
+To verify the app sees the change:
+
+```bash
+cd upstream/app
+FEATURE_INVENTORY_RESERVATIONMODE=optimistic mvn spring-boot:run -q -Dspring-boot.run.profiles=prod
+# curl -s http://localhost:8081/api/inventory/summary | jq .reservationMode
+# expected: "optimistic"
+```
+
+### F. Live follow-on
+
+This example does not yet include a live path.
+
+If the human wants a live next step:
 
 - use [`V2-LIVE-PLAN.md`](./V2-LIVE-PLAN.md) for the concrete same-service
   follow-on
@@ -102,11 +139,21 @@ If the human wants a live next step after understanding the model:
 
 ```bash
 cd incubator/springboot-platform-app
+
+# Structural proof
 ./setup.sh --explain
 ./setup.sh --explain-json | jq '.behaviors'
 ./verify.sh
+
+# Local app proof
 cd upstream/app
 mvn test
+
+# ConfigHub-only proof
+cd ..
+./confighub-setup.sh --explain
+./confighub-setup.sh
+./confighub-verify.sh
 ```
 
 ## What Mutates What
@@ -117,6 +164,10 @@ mvn test
 | `./setup.sh --explain-json` | nothing |
 | `./verify.sh` | nothing |
 | `cd upstream/app && mvn test` | no ConfigHub or cluster writes; local build output only |
+| `./confighub-setup.sh --explain` | nothing |
+| `./confighub-setup.sh` | creates 3 spaces and 3 units in ConfigHub |
+| `./confighub-verify.sh` | nothing (read-only inspection) |
+| `./confighub-cleanup.sh` | deletes all spaces with ExampleName label |
 
 ## What Success Looks Like
 
@@ -132,4 +183,6 @@ You should be able to say clearly:
 
 ## Cleanup
 
-No cleanup is required.
+The structural and local app proofs require no cleanup.
+
+If you ran `./confighub-setup.sh`, clean up with `./confighub-cleanup.sh`.

@@ -9,7 +9,8 @@ case "${1:-}" in
     cat <<'EOF'
 springboot-platform-app
 
-This is a structural, read-only incubator example.
+This is a structural and locally-runnable incubator example with a
+ConfigHub-only proof path.
 
 Stack:
 - Spring Boot app inputs
@@ -17,14 +18,10 @@ Stack:
 - ConfigHub as authority for operational config
 - provenance back to upstream producers
 
-What it proves:
-- one app, inventory-api
-- one materialized operational shape
-- one upstream Spring Boot API that can be tested over HTTP
-- one mutation system with three outcomes:
-  - apply here
-  - lift upstream
-  - block/escalate
+Proof levels:
+1. Structural: fixture files and contracts (this script)
+2. Local app: mvn test and mvn spring-boot:run
+3. ConfigHub-only: ./confighub-setup.sh creates real ConfigHub objects
 
 What it reads:
 - upstream/app/*
@@ -32,13 +29,14 @@ What it reads:
 - operational/*
 - example-summary.json
 
-What it writes:
-- nothing
+What this script writes:
+- nothing (read-only preview only)
 
-Safe next step:
+Safe next steps:
 - run ./setup.sh --explain-json | jq
 - then run ./verify.sh
 - optional local app proof: cd upstream/app && mvn test
+- ConfigHub-only proof: ./confighub-setup.sh --explain
 EOF
     ;;
   --explain-json)
@@ -46,11 +44,13 @@ EOF
     ;;
   *)
     cat <<'EOF' >&2
-This example is structural proof only.
+This example is structural proof by default.
 
 Use one of:
-  ./setup.sh --explain
-  ./setup.sh --explain-json
+  ./setup.sh --explain           Structural preview
+  ./setup.sh --explain-json      Machine-readable contract
+  ./confighub-setup.sh --explain ConfigHub-only preview
+  ./confighub-setup.sh           Create ConfigHub objects (mutating)
 EOF
     exit 2
     ;;
