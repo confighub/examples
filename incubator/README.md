@@ -14,6 +14,7 @@ This directory is for experimental examples before promotion to stable examples.
 - [`cub-proc`](./cub-proc/README.md): public incubator design work for bounded procedures, `Operation` records, and `cub-proc`, grounded in the runnable examples in this repo.
 - [`gitops-import-argo`](./gitops-import-argo/README.md): incubator Argo GitOps import example built from the stable `gitops-import` assets plus stronger contrast fixtures adapted from `cub-scout`.
 - [`gitops-import-flux`](./gitops-import-flux/README.md): incubator Flux GitOps import example built from `cub-scout`'s D2 and podinfo fixtures with the same import-and-evidence verification model as the Argo sibling.
+- [`import-from-bundle`](./import-from-bundle/README.md): incubator offline import example adapted from `cub-scout`, showing dry-run proposal generation from a debug bundle without cluster access.
 - [`connect-and-compare`](./connect-and-compare/README.md): incubator fixture-first compare example adapted from `cub-scout`, showing doctor, compare, and history evidence without a live cluster.
 - [`combined-git-live`](./combined-git-live/README.md): incubator Git-plus-live compare example adapted from `cub-scout`, showing aligned, git-only, and cluster-only results against a real cluster.
 - [`apptique-argo-applicationset`](./apptique-argo-applicationset/README.md): incubator app-style Argo ApplicationSet example adapted from `cub-scout`, showing one generator and one generated Application per environment.
@@ -34,6 +35,7 @@ Start with:
 - [Official GitOps Import docs](https://docs.confighub.com/get-started/examples/gitops-import/)
 - Argo import: [`gitops-import-argo`](./gitops-import-argo/README.md)
 - Flux import: [`gitops-import-flux`](./gitops-import-flux/README.md)
+- Offline import from bundle: [`import-from-bundle`](./import-from-bundle/README.md)
 - Fixture-first compare: [`connect-and-compare`](./connect-and-compare/README.md)
 - Git plus live compare: [`combined-git-live`](./combined-git-live/README.md)
 - App-style Argo layout: [`apptique-argo-applicationset`](./apptique-argo-applicationset/README.md)
