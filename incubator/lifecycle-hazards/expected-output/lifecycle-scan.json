@@ -1,0 +1,63 @@
+{
+  "lifecycleHazards": {
+    "findings": [
+      {
+        "evidence": {
+          "annotation": "helm.sh/hook=post-install,post-upgrade"
+        },
+        "hooks": [
+          "post-install",
+          "post-upgrade"
+        ],
+        "mappedPhase": "PostSync",
+        "namespace": "prod",
+        "remediation": "Split into separate resources with explicit argocd.argoproj.io/hook annotations, or convert to ArgoCD Sync hook",
+        "resource": "Job/db-migrate",
+        "risk": "ArgoCD maps comma-separated Helm hooks to a single phase; behavior may differ from native Helm",
+        "rule": "helm-hook-ambiguity",
+        "severity": "warning"
+      },
+      {
+        "evidence": {
+          "deletePolicy": "before-hook-creation"
+        },
+        "hooks": [
+          "post-install",
+          "post-upgrade"
+        ],
+        "mappedPhase": "PostSync",
+        "namespace": "prod",
+        "remediation": "Ensure Job operations are idempotent, or use hook-succeeded/hook-failed delete policies",
+        "resource": "Job/db-migrate",
+        "risk": "Job with before-hook-creation will rerun on every sync; non-idempotent operations may fail",
+        "rule": "postsync-idempotency-risk",
+        "severity": "warning"
+      }
+    ],
+    "scannedAt": "TIMESTAMP",
+    "summary": {
+      "helmHookAmbiguity": 1,
+      "postSyncIdempotency": 1,
+      "preSyncDependencyRace": 0,
+      "total": 2
+    }
+  },
+  "static": {
+    "file": "FIXTURE_PATH",
+    "findings": [
+      {
+        "category": "CONFIG",
+        "ccve_id": "CCVE-2025-0248",
+        "kind": "Deployment",
+        "message": "Container \"api\" has no resource limits defined",
+        "name": "Missing resource limits",
+        "namespace": "prod",
+        "remediation": "Add resources.limits.cpu and resources.limits.memory",
+        "resource_name": "api",
+        "severity": "warning"
+      }
+    ],
+    "resourceCount": 5,
+    "scannedAt": "TIMESTAMP"
+  }
+}
