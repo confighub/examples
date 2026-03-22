@@ -123,9 +123,21 @@ FEATURE_INVENTORY_RESERVATIONMODE=optimistic mvn spring-boot:run -q -Dspring-boo
 # expected: "optimistic"
 ```
 
-### F. Live follow-on
+### F. Noop target proof
 
-This example does not yet include a live path.
+For the full mutation-to-apply workflow without a cluster:
+
+```bash
+./confighub-setup.sh --with-targets
+./confighub-verify.sh --targets
+```
+
+This adds a server worker, Noop targets, binds units, and applies them.
+The `apply here` mutation survives re-apply.
+
+### G. Live follow-on
+
+This example does not yet include a real Kubernetes cluster path.
 
 If the human wants a live next step:
 
@@ -166,7 +178,9 @@ cd ..
 | `cd upstream/app && mvn test` | no ConfigHub or cluster writes; local build output only |
 | `./confighub-setup.sh --explain` | nothing |
 | `./confighub-setup.sh` | creates 3 spaces and 3 units in ConfigHub |
+| `./confighub-setup.sh --with-targets` | + infra space, server worker, Noop targets, apply |
 | `./confighub-verify.sh` | nothing (read-only inspection) |
+| `./confighub-verify.sh --targets` | nothing (also checks targets and apply status) |
 | `./confighub-cleanup.sh` | deletes all spaces with ExampleName label |
 
 ## What Success Looks Like

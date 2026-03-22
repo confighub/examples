@@ -49,7 +49,7 @@ for file in "${required_files[@]}"; do
 done
 
 jq -e '.example_name == "springboot-platform-app"' "$SUMMARY_JSON" >/dev/null
-jq -e '.proof_type == "structural" or .proof_type == "structural+confighub-only"' "$SUMMARY_JSON" >/dev/null
+jq -e '.proof_type | startswith("structural")' "$SUMMARY_JSON" >/dev/null
 jq -e '.mutates_confighub == false and .mutates_live_infra == false' "$SUMMARY_JSON" >/dev/null
 jq -e '.behaviors | length == 3' "$SUMMARY_JSON" >/dev/null
 jq -e '.behaviors[].name' "$SUMMARY_JSON" >/dev/null

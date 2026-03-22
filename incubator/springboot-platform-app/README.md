@@ -62,12 +62,19 @@ This example has three proof levels:
   on the prod Deployment, which Spring Boot maps to
   `feature.inventory.reservationMode` via relaxed binding
 - the running app reports the changed value via `/api/inventory/summary`
-- no cluster target, worker, or live apply required
+
+### 4. Noop target proof (optional `--with-targets` flag)
+
+- shared infra space with a server worker (`inventory-api-infra`)
+- Noop targets in each environment space (no real cluster needed)
+- units are bound to targets and applied
+- `apply here` mutation survives re-apply: the env var override persists
+  after the unit is applied to the Noop target
+- unit status shows `Ready` / `Synced` / `ApplyCompleted`
 
 It does not yet prove:
 
-- a live cluster apply
-- a worker or target integration
+- real Kubernetes cluster delivery
 - `lift upstream` via GitHub PR
 - `block/escalate` via field-level policy enforcement
 
@@ -90,9 +97,7 @@ For ConfigHub-only proof, also:
 
 You do not need:
 
-- a worker
-- a target
-- a cluster
+- a Kubernetes cluster (Noop targets are used for the apply proof)
 
 ## What This Reads And Writes
 
@@ -417,13 +422,39 @@ FEATURE_INVENTORY_RESERVATIONMODE=optimistic mvn spring-boot:run -q -Dspring-boo
 ./confighub-cleanup.sh
 ```
 
+## Noop Target Proof
+
+Add `--with-targets` to also create a server worker, Noop targets, bind units,
+and apply them. No real cluster required.
+
+```bash
+# Preview
+./confighub-setup.sh --explain --with-targets
+
+# Create everything including targets and apply
+./confighub-setup.sh --with-targets
+
+# Verify including target status
+./confighub-verify.sh --targets
+
+# Mutate prod, then re-apply — mutation survives
+cub function do --space inventory-api-prod --unit inventory-api \
+  --change-desc "apply-here: override reservationMode from strict to optimistic" \
+  set-env inventory-api "FEATURE_INVENTORY_RESERVATIONMODE=optimistic"
+cub unit apply --space inventory-api-prod inventory-api
+
+# Inspect
+cub unit get --space inventory-api-prod --json inventory-api | jq '.UnitStatus'
+
+# Clean up
+./confighub-cleanup.sh
+```
+
 ## What Is Not Yet Proven
 
-- live cluster apply (requires target binding)
+- real Kubernetes cluster delivery (Noop targets accept but do not deploy)
 - `lift upstream` via GitHub PR
 - `block/escalate` via field-level policy enforcement
-- ConfigMap embedded YAML string mutation (product limitation: `set-string-path`
-  cannot address dotted ConfigMap data keys)
 
 If you want the next step after this ConfigHub-only proof:
 

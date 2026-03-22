@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# ConfigHub-only setup for springboot-platform-app
+# ConfigHub setup for springboot-platform-app
 #
 # Creates ConfigHub spaces and units for inventory-api across dev, stage, prod.
-# No cluster, target, or worker required.
 #
 # Usage:
 #   ./confighub-setup.sh --explain          # Human-readable preview (read-only)
 #   ./confighub-setup.sh --explain-json     # Machine-readable preview (read-only)
-#   ./confighub-setup.sh                    # Create ConfigHub objects (mutating)
+#   ./confighub-setup.sh                    # ConfigHub-only (spaces + units)
+#   ./confighub-setup.sh --with-targets     # + infra space, Noop targets, apply
 #
 # Cleanup:
 #   ./confighub-cleanup.sh
@@ -17,6 +17,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CUB="${CUB:-cub}"
 EXAMPLE_LABEL="springboot-platform-app"
+INFRA_SPACE="inventory-api-infra"
 
 ENVS=(dev stage prod)
 
@@ -26,35 +27,53 @@ space_name() {
 
 # --explain: human-readable preview
 show_explain() {
-  cat <<'EOF'
-confighub-setup: ConfigHub-only proof for springboot-platform-app
+  local with_targets="${1:-false}"
+  local proof_label="confighub-only"
+  if [[ "${with_targets}" == "true" ]]; then
+    proof_label="confighub-only + Noop targets"
+  fi
+  cat <<EOF
+confighub-setup: springboot-platform-app
 
-Proof type: confighub-only
-This creates real ConfigHub objects. It does not create targets, workers,
-or apply to a live cluster.
+Proof type: ${proof_label}
 
 What it creates:
 - 3 spaces: inventory-api-dev, inventory-api-stage, inventory-api-prod
 - 1 unit per space: inventory-api (ConfigMap + Deployment + Service)
 - labels: ExampleName=springboot-platform-app, App=inventory-api, Environment=<env>
+EOF
+  if [[ "${with_targets}" == "true" ]]; then
+    cat <<'EOF'
+- 1 infra space: inventory-api-infra (server worker)
+- 1 Noop target per env space (no cluster required)
+- units are bound to targets and applied
 
-What it reads:
-- confighub/inventory-api-dev.yaml
-- confighub/inventory-api-stage.yaml
-- confighub/inventory-api-prod.yaml
+This proves the full ConfigHub mutation-to-apply workflow using
+Noop targets (no real cluster). The Noop worker accepts the apply
+but does not deliver to Kubernetes.
+EOF
+  else
+    cat <<'EOF'
 
-What it does NOT create:
-- targets
-- workers
-- cluster bindings
+This does NOT create targets, workers, or cluster bindings.
+Use --with-targets to add Noop targets and prove the apply workflow.
+EOF
+  fi
+  cat <<'EOF'
 
 Mutating commands used:
 - cub space create
 - cub unit create
-
-Read-only inspection after setup:
-- cub space list --where "Labels.ExampleName = 'springboot-platform-app'" --json
-- cub unit get --space inventory-api-prod --json inventory-api
+EOF
+  if [[ "${with_targets}" == "true" ]]; then
+    cat <<'EOF'
+- cub worker create (server worker)
+- cub target create (Noop)
+- cub unit set-target
+- cub unit apply
+EOF
+  fi
+  cat <<'EOF'
 
 Cleanup:
 - ./confighub-cleanup.sh
@@ -63,51 +82,76 @@ EOF
 
 # --explain-json: machine-readable preview
 show_explain_json() {
-  cat <<'ENDJSON'
+  local with_targets="${1:-false}"
+  if [[ "${with_targets}" == "true" ]]; then
+    cat <<'ENDJSON'
+{
+  "example_name": "springboot-platform-app",
+  "proof_type": "confighub-only+noop-targets",
+  "mutates_confighub": true,
+  "mutates_live_infra": false,
+  "requires_cluster": false,
+  "with_targets": true,
+  "spaces_created": [
+    "inventory-api-infra",
+    "inventory-api-dev",
+    "inventory-api-stage",
+    "inventory-api-prod"
+  ],
+  "units_per_space": ["inventory-api"],
+  "targets_per_space": ["dev", "stage", "prod"],
+  "target_provider": "Noop",
+  "cleanup": "./confighub-cleanup.sh"
+}
+ENDJSON
+  else
+    cat <<'ENDJSON'
 {
   "example_name": "springboot-platform-app",
   "proof_type": "confighub-only",
   "mutates_confighub": true,
   "mutates_live_infra": false,
-  "requires_target": false,
-  "requires_worker": false,
   "requires_cluster": false,
+  "with_targets": false,
   "spaces_created": [
     "inventory-api-dev",
     "inventory-api-stage",
     "inventory-api-prod"
   ],
-  "units_per_space": [
-    "inventory-api"
-  ],
-  "labels": {
-    "ExampleName": "springboot-platform-app",
-    "App": "inventory-api"
-  },
-  "unit_sources": [
-    "confighub/inventory-api-dev.yaml",
-    "confighub/inventory-api-stage.yaml",
-    "confighub/inventory-api-prod.yaml"
-  ],
-  "cleanup": "./confighub-cleanup.sh",
-  "inspect_commands": [
-    "cub space list --where \"Labels.ExampleName = 'springboot-platform-app'\" --json",
-    "cub unit get --space inventory-api-dev --json inventory-api",
-    "cub unit get --space inventory-api-stage --json inventory-api",
-    "cub unit get --space inventory-api-prod --json inventory-api"
-  ]
+  "units_per_space": ["inventory-api"],
+  "cleanup": "./confighub-cleanup.sh"
 }
 ENDJSON
+  fi
 }
+
+WITH_TARGETS=false
 
 case "${1:-}" in
   --explain)
-    show_explain
+    if [[ "${2:-}" == "--with-targets" ]]; then
+      show_explain "true"
+    else
+      show_explain "false"
+    fi
     exit 0
     ;;
   --explain-json)
-    show_explain_json
+    if [[ "${2:-}" == "--with-targets" ]]; then
+      show_explain_json "true"
+    else
+      show_explain_json "false"
+    fi
     exit 0
+    ;;
+  --with-targets)
+    WITH_TARGETS=true
+    ;;
+  "")
+    ;;
+  *)
+    echo "Usage: $0 [--explain [--with-targets]|--explain-json [--with-targets]|--with-targets]" >&2
+    exit 2
     ;;
 esac
 
@@ -122,9 +166,12 @@ command -v jq >/dev/null 2>&1 || {
   exit 1
 }
 
-echo "=== ConfigHub-only setup for springboot-platform-app ==="
+if [[ "${WITH_TARGETS}" == "true" ]]; then
+  echo "=== ConfigHub setup with Noop targets for springboot-platform-app ==="
+else
+  echo "=== ConfigHub-only setup for springboot-platform-app ==="
+fi
 echo ""
-echo "This will create 3 spaces and 3 units in your ConfigHub org."
 echo "All entities are labeled ExampleName=${EXAMPLE_LABEL} for easy cleanup."
 echo ""
 
@@ -170,7 +217,57 @@ done
 echo "  Done."
 echo ""
 
-echo "=== ConfigHub-only setup complete ==="
+# Phase 3: Noop targets (only with --with-targets)
+if [[ "${WITH_TARGETS}" == "true" ]]; then
+  echo "Phase 3: Creating infra space and server worker..."
+
+  ${CUB} space create "${INFRA_SPACE}" \
+    --label "ExampleName=${EXAMPLE_LABEL}" \
+    --label "AppOwner=Platform" \
+    --allow-exists \
+    --quiet
+  echo "  Created infra space: ${INFRA_SPACE}"
+
+  ${CUB} worker create worker --space "${INFRA_SPACE}" --quiet --is-server-worker \
+    --allow-exists 2>/dev/null || true
+  echo "  Created server worker: ${INFRA_SPACE}/worker"
+
+  echo "  Done."
+  echo ""
+
+  echo "Phase 4: Creating Noop targets and binding units..."
+
+  for env in "${ENVS[@]}"; do
+    space="$(space_name "${env}")"
+
+    ${CUB} target create "${env}" '{}' "${INFRA_SPACE}/worker" -p Noop \
+      --space "${space}" \
+      --label "ExampleName=${EXAMPLE_LABEL}" \
+      --label "Environment=${env}" \
+      --allow-exists \
+      --quiet
+    echo "  Created Noop target: ${space}/${env}"
+
+    ${CUB} unit set-target "${env}" --space "${space}" --unit inventory-api --quiet
+    echo "  Bound unit: ${space}/inventory-api -> ${env}"
+  done
+
+  echo "  Done."
+  echo ""
+
+  echo "Phase 5: Applying units..."
+
+  for env in "${ENVS[@]}"; do
+    space="$(space_name "${env}")"
+    ${CUB} unit apply --space "${space}" inventory-api --quiet
+    echo "  Applied: ${space}/inventory-api"
+  done
+
+  echo "  Done."
+  echo ""
+fi
+
+echo "=== Setup complete ==="
 echo ""
 echo "Inspect with:"
 echo "  ${CUB} space list --where \"Labels.ExampleName = '${EXAMPLE_LABEL}'\" --json"

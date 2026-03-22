@@ -1,6 +1,6 @@
 {
   "example_name": "springboot-platform-app",
-  "proof_type": "structural+confighub-only",
+  "proof_type": "structural+confighub-only+noop-targets",
   "stack": [
     "Spring Boot",
     "platform-rendered operational config",
