@@ -254,6 +254,22 @@ That example is for:
 - DOT, SVG, and HTML renderings
 - no ConfigHub mutation
 
+If the human wants to find unmanaged resources in a live cluster, start here:
+
+```bash
+cd incubator/orphans
+./setup.sh --explain
+./setup.sh --explain-json | jq
+./setup.sh
+./verify.sh
+```
+
+That example is for:
+
+- orphan inventory with `map orphans --json`
+- representative native trace capture
+- no ConfigHub mutation
+
 If instead the human wants the layered recipe path rather than the GitOps import wedge, start with the realistic layered app example:
 
 ```bash
