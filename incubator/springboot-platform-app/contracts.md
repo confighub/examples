@@ -28,6 +28,20 @@
 - proves:
   - required files exist
   - the machine-readable contract is internally consistent
+  - the local HTTP-test source files are present
+
+## Local app contract
+
+### `cd upstream/app && mvn test`
+
+- mutates: no ConfigHub state, no cluster state
+- local effects:
+  - Maven target directory
+  - local test runtime only
+- proves:
+  - the Spring Boot app starts in tests
+  - the tests call the HTTP API on a random local port
+  - the default and `prod` profile responses are observable over HTTP
 
 ## Fixture contracts
 

@@ -1,7 +1,5 @@
 inventory:
-  environment: prod
-server:
-  port: 8081
+  environment: stage
 feature:
   inventory:
     reservationMode: strict

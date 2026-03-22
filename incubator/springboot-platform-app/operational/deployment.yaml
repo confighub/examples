@@ -24,6 +24,8 @@ spec:
           env:
             - name: SPRING_CONFIG_ADDITIONAL_LOCATION
               value: /config/
+            - name: SPRING_PROFILES_ACTIVE
+              value: prod
             - name: SPRING_DATASOURCE_URL
               value: jdbc:postgresql://postgres.platform.svc:5432/inventory
             - name: CACHE_BACKEND
