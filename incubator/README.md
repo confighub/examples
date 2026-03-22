@@ -25,12 +25,13 @@ Keep building AI-first examples in `examples/incubator` that give one person a f
 - [`import-from-bundle`](./import-from-bundle/README.md): dry-run import proposal generation from a debug bundle without cluster access.
 - [`fleet-import`](./fleet-import/README.md): multi-cluster aggregation from two existing cluster import JSONs into one unified proposal.
 
-### Live Import And Live Comparison
+### Live Import, Comparison, And Ownership
 
 - [`import-from-live`](./import-from-live/README.md): brownfield discovery example adapted from `cub-scout`, showing how a running cluster can produce a dry-run ConfigHub proposal before any ConfigHub mutation.
 - [`gitops-import-argo`](./gitops-import-argo/README.md): Argo GitOps import example built from the stable `gitops-import` assets plus stronger contrast fixtures adapted from `cub-scout`.
 - [`gitops-import-flux`](./gitops-import-flux/README.md): Flux GitOps import example built from `cub-scout`'s D2 and podinfo fixtures with the same import-and-evidence verification model as the Argo sibling.
 - [`combined-git-live`](./combined-git-live/README.md): Git-plus-live compare example adapted from `cub-scout`, showing aligned, git-only, and cluster-only results against a real cluster.
+- [`custom-ownership-detectors`](./custom-ownership-detectors/README.md): platform-team ownership example adapted from `cub-scout`, showing custom owner names in `map`, `explain`, and `trace` without touching ConfigHub.
 
 ### App-Style GitOps Layouts
 
@@ -65,11 +66,12 @@ Use this order:
   - [`import-from-bundle`](./import-from-bundle/README.md)
   - [`fleet-import`](./fleet-import/README.md)
   - [`demo-data-adt`](./demo-data-adt/README.md)
-- Then live import and live comparison:
+- Then live import, comparison, and ownership:
   - [`import-from-live`](./import-from-live/README.md)
   - [`gitops-import-argo`](./gitops-import-argo/README.md)
   - [`gitops-import-flux`](./gitops-import-flux/README.md)
   - [`combined-git-live`](./combined-git-live/README.md)
+  - [`custom-ownership-detectors`](./custom-ownership-detectors/README.md)
 - Then app-style layouts:
   - [`apptique-argo-applicationset`](./apptique-argo-applicationset/README.md)
   - [`apptique-argo-app-of-apps`](./apptique-argo-app-of-apps/README.md)
