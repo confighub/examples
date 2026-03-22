@@ -16,19 +16,20 @@ It demonstrates one app, `inventory-api`, with three routed outcomes:
 
 ## Proof Types
 
-This example has five proof levels:
+This example has six proof levels:
 
 1. **Structural**: fixture files and contracts (`./setup.sh --explain`)
 2. **Local app**: Spring Boot HTTP tests (`cd upstream/app && mvn test`)
 3. **ConfigHub-only**: real spaces and units (`./confighub-setup.sh`)
 4. **Noop target**: apply workflow with Noop targets (`./confighub-setup.sh --with-targets`)
 5. **Lift-upstream bundle**: read-only Redis patch bundle (`./lift-upstream.sh`)
+6. **Block/escalate boundary**: read-only datasource override attempt (`./block-escalate.sh`)
 
 It does not yet:
 
 - prove a real Kubernetes delivery path
 - create a real GitHub PR
-- prove `block/escalate` in ConfigHub
+- prove actual `block/escalate` enforcement in ConfigHub
 
 ## What You Need Installed
 
@@ -155,6 +156,21 @@ For the Redis caching request:
 This is read-only. It gives you the exact upstream/app and refreshed ConfigHub
 changes that a GitHub PR would need, but it does not create the PR.
 
+### I. Block/escalate boundary proof
+
+For the managed datasource boundary:
+
+```bash
+./block-escalate.sh --explain
+./block-escalate.sh --explain-json | jq
+./block-escalate.sh --render-attempt
+./block-escalate-verify.sh
+```
+
+This is read-only. It gives you the exact dry-run datasource override attempt
+that should eventually be blocked or escalated, and documents the current
+product gap honestly.
+
 If the human wants a live next step:
 
 - use [`V2-LIVE-PLAN.md`](./V2-LIVE-PLAN.md) for the concrete same-service
@@ -201,6 +217,10 @@ cd ..
 | `./lift-upstream.sh --explain-json` | nothing |
 | `./lift-upstream.sh --render-diff` | nothing |
 | `./lift-upstream-verify.sh` | nothing |
+| `./block-escalate.sh --explain` | nothing |
+| `./block-escalate.sh --explain-json` | nothing |
+| `./block-escalate.sh --render-attempt` | nothing |
+| `./block-escalate-verify.sh` | nothing |
 | `./confighub-cleanup.sh` | deletes all spaces with ExampleName label |
 
 ## What Success Looks Like

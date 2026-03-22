@@ -37,7 +37,7 @@ decision, then routes it: apply here, lift upstream, or block/escalate.
 
 ## What This Proves
 
-This example has five proof levels:
+This example has six proof levels:
 
 ### 1. Structural proof
 
@@ -81,6 +81,16 @@ This example has five proof levels:
   - `upstream/app/src/main/resources/application.yaml`
   - refreshed ConfigHub YAMLs for dev, stage, and prod
 - the bundle changes are concrete enough to review before any real PR is opened
+
+### 6. Block/escalate boundary bundle (read-only)
+
+- a concrete datasource override attempt exists for the same `inventory-api`
+  story
+- `./block-escalate.sh --render-attempt` prints the exact dry-run `cub function do`
+  command for overriding `SPRING_DATASOURCE_URL`
+- the route rules and runtime policy make the platform boundary explicit
+- the current product state is classified honestly as "not yet proven" rather
+  than pretending the field policy already exists
 
 It does not yet prove:
 
@@ -164,6 +174,8 @@ These commands do not mutate ConfigHub or live infrastructure.
 | [`changes/01-mutable-in-ch.md`](./changes/01-mutable-in-ch.md) | Direct ConfigHub mutation example |
 | [`changes/02-lift-upstream.md`](./changes/02-lift-upstream.md) | Upstream routing example |
 | [`changes/03-generator-owned.md`](./changes/03-generator-owned.md) | Block/escalate example |
+| [`block-escalate.sh`](./block-escalate.sh) | Read-only datasource override boundary preview |
+| [`block-escalate-verify.sh`](./block-escalate-verify.sh) | Verifies the block/escalate boundary bundle |
 | [`lift-upstream.sh`](./lift-upstream.sh) | Read-only Redis lift-upstream preview and diff renderer |
 | [`lift-upstream-verify.sh`](./lift-upstream-verify.sh) | Verifies the Redis lift-upstream bundle |
 | [`confighub-setup.sh`](./confighub-setup.sh) | ConfigHub-only setup (creates spaces and units) |
@@ -219,6 +231,7 @@ blocked or escalated when they are platform-owned or generator-owned.
 See:
 
 - [`changes/03-generator-owned.md`](./changes/03-generator-owned.md)
+- [`block-escalate.sh`](./block-escalate.sh)
 
 ## Local API Proof
 
@@ -268,6 +281,25 @@ cd incubator/springboot-platform-app
 This does not mutate ConfigHub or Git. It is the concrete proof that the
 `lift upstream` route can be turned into a GitHub-ready patch bundle for the
 same `inventory-api` story.
+
+## Block/escalate Boundary Bundle
+
+The datasource boundary now has a concrete read-only artifact too.
+
+Use:
+
+```bash
+cd incubator/springboot-platform-app
+./block-escalate.sh --explain
+./block-escalate.sh --explain-json | jq
+./block-escalate.sh --render-attempt
+./block-escalate-verify.sh
+```
+
+This does not mutate ConfigHub. It shows the exact dry-run datasource override
+attempt that should eventually be blocked or escalated, while keeping the
+current product boundary explicit: field-level policy enforcement is not yet
+proven.
 
 ## ConfigHub as authority tracking provenance
 

@@ -141,6 +141,40 @@
   - the bundle sets `spring.cache.type=redis`
   - the refreshed ConfigHub YAMLs set `CACHE_BACKEND=redis`
 
+## Block/escalate boundary contracts
+
+### `./block-escalate.sh --explain-json`
+
+- mutates: no
+- output: JSON object describing the datasource override boundary
+- stable fields:
+  - `proof_type`
+  - `current_status`
+  - `route_rule`
+  - `attempted_env_key`
+- proves:
+  - the example has a concrete boundary artifact for the blocked route
+  - the current state is explicitly classified as `not_proven`
+
+### `./block-escalate.sh --render-attempt`
+
+- mutates: no
+- output: shell snippet
+- proves:
+  - the exact dry-run `cub function do` command for the datasource override attempt
+  - the example does not invent an escalation mechanism it does not have
+
+### `./block-escalate-verify.sh`
+
+- mutates: no
+- output: plain text success line
+- stable success text:
+  - `ok: springboot-platform-app block-escalate bundle is consistent`
+- proves:
+  - the route rules mark `spring.datasource.*` as generator-owned
+  - the runtime policy declares a managed datasource boundary
+  - the rendered attempt stays read-only
+
 ## Fixture contracts
 
 ### [`operational/field-routes.yaml`](./operational/field-routes.yaml)

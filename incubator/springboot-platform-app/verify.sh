@@ -33,6 +33,8 @@ required_files=(
   "$ROOT_DIR/changes/01-mutable-in-ch.md"
   "$ROOT_DIR/changes/02-lift-upstream.md"
   "$ROOT_DIR/changes/03-generator-owned.md"
+  "$ROOT_DIR/block-escalate.sh"
+  "$ROOT_DIR/block-escalate-verify.sh"
   "$ROOT_DIR/lift-upstream.sh"
   "$ROOT_DIR/lift-upstream-verify.sh"
   "$ROOT_DIR/lift-upstream/redis-cache/upstream-app/pom.xml"

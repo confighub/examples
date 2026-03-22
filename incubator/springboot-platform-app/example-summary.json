@@ -1,6 +1,6 @@
 {
   "example_name": "springboot-platform-app",
-  "proof_type": "structural+confighub-only+noop-targets+lift-upstream-bundle",
+  "proof_type": "structural+confighub-only+noop-targets+lift-upstream-bundle+block-escalate-boundary",
   "stack": [
     "Spring Boot",
     "platform-rendered operational config",
@@ -86,7 +86,7 @@
         "ConfigMap/data/application.yaml:spring.datasource.url",
         "Deployment/spec/template/spec/containers[0]/env[SPRING_DATASOURCE_URL]"
       ],
-      "confighub_proof": "Not yet proven. Requires field-level policy enforcement in ConfigHub."
+      "confighub_proof": "Not yet proven. A read-only boundary bundle exists: ./block-escalate.sh --render-attempt shows the exact dry-run datasource override that should be blocked or escalated. Full proof requires field-level policy enforcement in ConfigHub."
     }
   ],
   "success_looks_like": [
@@ -95,6 +95,7 @@
     "The three routed outcomes are visible in one app.",
     "ConfigHub-only spaces and units exist for dev, stage, and prod.",
     "The apply-here mutation is proven via FEATURE_INVENTORY_RESERVATIONMODE env var on the prod Deployment, and the running app reports the changed value.",
-    "The lift-upstream route has a deterministic Redis patch bundle and refreshed ConfigHub YAMLs that can be rendered as a GitHub-ready diff."
+    "The lift-upstream route has a deterministic Redis patch bundle and refreshed ConfigHub YAMLs that can be rendered as a GitHub-ready diff.",
+    "The block/escalate route has a read-only boundary bundle that shows the exact attempted datasource override and the current enforcement gap."
   ]
 }
