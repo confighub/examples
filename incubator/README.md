@@ -21,6 +21,7 @@ Keep building AI-first examples in `examples/incubator` that give one person a f
 - [`demo-data-adt`](./demo-data-adt/README.md): scan-first App-Deployment-Target example showing labeled workload fixtures plus immediate static risk findings.
 - [`lifecycle-hazards`](./lifecycle-hazards/README.md): migration-risk example adapted from `cub-scout`, showing hook inventory and Helm-to-Argo lifecycle hazards from one manifest file.
 - [`connected-summary-storage`](./connected-summary-storage/README.md): reporting example adapted from `cub-scout`, showing persisted connected summaries plus dry-run Slack digest generation from local storage.
+- [`artifact-workflow`](./artifact-workflow/README.md): offline bundle example adapted from `cub-scout`, showing inspect, replay, and summarize against a copied debug bundle.
 
 ### Offline Import And Aggregation
 
@@ -73,6 +74,7 @@ Use this order:
   - [`demo-data-adt`](./demo-data-adt/README.md)
   - [`lifecycle-hazards`](./lifecycle-hazards/README.md)
   - [`connected-summary-storage`](./connected-summary-storage/README.md)
+  - [`artifact-workflow`](./artifact-workflow/README.md)
 - Then live import, comparison, ownership, topology, and orphans:
   - [`import-from-live`](./import-from-live/README.md)
   - [`gitops-import-argo`](./gitops-import-argo/README.md)
