@@ -108,6 +108,23 @@ That example is for:
 - import and evidence
 - read-only preview before cluster setup
 
+If the human wants the smallest no-cluster evidence path first, start here:
+
+```bash
+cd incubator/connect-and-compare
+./setup.sh --explain
+./setup.sh --explain-json | jq
+./setup.sh
+./verify.sh
+```
+
+That example is for:
+
+- standalone signal
+- compare output
+- history output
+- no live cluster requirement
+
 If instead the human wants the layered recipe path rather than the GitOps import wedge, start with the realistic layered app example:
 
 ```bash
@@ -269,7 +286,19 @@ It does not mutate ConfigHub by itself. If the human wants to bring a cluster li
 
 - [gitops-import-flux](./gitops-import-flux/README.md)
 
-## 10) App-Style Argo Layout
+## 10) Fixture-First Compare
+
+If the human wants compare and history evidence without needing a live cluster, use:
+
+- [connect-and-compare](./connect-and-compare/README.md)
+
+This example is good for:
+
+- a fast demo of visible value
+- compare output with aligned, git-only, and cluster-only findings
+- history output without claiming runtime authority
+
+## 11) App-Style Argo Layout
 
 If the human wants the matching Argo app-style example, use:
 
@@ -295,7 +324,7 @@ That example is good for:
 - one child Application per environment
 - ownership and provenance checks across the Argo hierarchy
 
-## 11) Related Pages
+## 12) Related Pages
 
 - Repo-level AI path: [../AI_START_HERE.md](../AI_START_HERE.md)
 - Published GitOps import docs: [docs.confighub.com/get-started/examples/gitops-import/](https://docs.confighub.com/get-started/examples/gitops-import/)
