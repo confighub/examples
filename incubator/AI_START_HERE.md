@@ -253,7 +253,23 @@ For the actual runnable implementation of those `vmcluster` flows, point to:
 
 The incubator pages here are for mental model, integration with ConfigHub examples, and future `cub-proc` shaping.
 
-## 9) Related Pages
+## 9) App-Style Flux Layout
+
+If the human wants one concrete app-style example that is not mainly about import, use:
+
+- [apptique-flux-monorepo](./apptique-flux-monorepo/README.md)
+
+This example is good for:
+
+- one app base plus dev and prod overlays
+- Flux Kustomization per environment
+- ownership and provenance checks with `kubectl`, `flux`, and optional `cub-scout`
+
+It does not mutate ConfigHub by itself. If the human wants to bring a cluster like that into ConfigHub, follow it with:
+
+- [gitops-import-flux](./gitops-import-flux/README.md)
+
+## 10) Related Pages
 
 - Repo-level AI path: [../AI_START_HERE.md](../AI_START_HERE.md)
 - Published GitOps import docs: [docs.confighub.com/get-started/examples/gitops-import/](https://docs.confighub.com/get-started/examples/gitops-import/)
