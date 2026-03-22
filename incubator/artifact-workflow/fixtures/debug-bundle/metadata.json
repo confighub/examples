@@ -1,0 +1,24 @@
+{
+  "formatVersion": "v1",
+  "cubScoutVersion": "0.18.0",
+  "createdAt": "2026-02-04T10:00:00Z",
+  "label": "ci-run-12345",
+  "target": {
+    "kind": "Deployment",
+    "name": "web-frontend",
+    "namespace": "production"
+  },
+  "contents": {
+    "hasSession": true,
+    "hasDrift": true,
+    "hasEvents": false,
+    "hasLogs": false,
+    "hasAttribution": true
+  },
+  "gitContext": {
+    "repoRoot": "/home/runner/work/myapp/myapp",
+    "commitSHA": "abc123def456789",
+    "branch": "main",
+    "remoteURL": "https://github.com/myorg/myapp.git"
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "schema_version": "attribution-graph.v1",
+  "generated_from": {
+    "bundle_id": "ci-run-12345",
+    "created_at": "2026-02-04T10:00:00Z",
+    "tool_version": "0.16.0"
+  },
+  "nodes": [
+    {
+      "id": "k8s:Deployment:production:web-frontend",
+      "type": "k8s_object",
+      "ref": {
+        "kind": "Deployment",
+        "name": "web-frontend",
+        "namespace": "production"
+      },
+      "present": true
+    },
+    {
+      "id": "kustomize:overlays/production",
+      "type": "kustomize_overlay",
+      "ref": {
+        "kind": "Kustomization",
+        "name": "overlays/production"
+      },
+      "present": true
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge:kustomize-owns-deployment",
+      "type": "owns",
+      "from": "kustomize:overlays/production",
+      "to": "k8s:Deployment:production:web-frontend",
+      "evidence": "kustomize_overlay"
+    }
+  ],
+  "summary": {
+    "nodes_by_type": {
+      "k8s_object": 1,
+      "kustomize_overlay": 1
+    },
+    "edges_by_type": {
+      "owns": 1
+    },
+    "unattributed_count": 0,
+    "ambiguous_count": 0
+  }
+}

@@ -205,6 +205,23 @@ That example is for:
 - dry-run Slack digest generation with `summary slack --dry-run`
 - no live cluster requirement
 
+If the human wants offline inspection and replay of a captured debug bundle, start here:
+
+```bash
+cd incubator/artifact-workflow
+./setup.sh --explain
+./setup.sh --explain-json | jq
+./setup.sh
+./verify.sh
+```
+
+That example is for:
+
+- `bundle inspect --format json`
+- `bundle replay --format json`
+- `bundle summarize --format json`
+- no live cluster requirement
+
 If the human wants the smallest no-cluster evidence path first, start here:
 
 ```bash
