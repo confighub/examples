@@ -4,7 +4,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FIXTURES_DIR="$SCRIPT_DIR/fixtures"
 OUTPUT_DIR="$SCRIPT_DIR/sample-output"
+VAR_DIR="$SCRIPT_DIR/var"
 CLUSTER_NAME="${CUSTOM_OWNERSHIP_CLUSTER_NAME:-custom-ownership-detectors}"
+KUBECONFIG_PATH="$VAR_DIR/$CLUSTER_NAME.kubeconfig"
 EXPLAIN=0
 EXPLAIN_JSON=0
 
@@ -118,12 +120,13 @@ fi
 
 preflight
 CUB_SCOUT="$(resolve_cub_scout)"
+mkdir -p "$VAR_DIR"
 mkdir -p "$OUTPUT_DIR"
 rm -f "$OUTPUT_DIR"/*.json "$OUTPUT_DIR"/*.txt
 
+export KUBECONFIG="$KUBECONFIG_PATH"
 kind delete cluster --name "$CLUSTER_NAME" >/dev/null 2>&1 || true
-kind create cluster --name "$CLUSTER_NAME" --wait 60s >/dev/null
-kind export kubeconfig --name "$CLUSTER_NAME" >/dev/null 2>&1 || true
+kind create cluster --name "$CLUSTER_NAME" --wait 60s --kubeconfig "$KUBECONFIG_PATH" >/dev/null
 kubectl config use-context "kind-${CLUSTER_NAME}" >/dev/null
 
 kubectl create namespace detectors-demo >/dev/null 2>&1 || true

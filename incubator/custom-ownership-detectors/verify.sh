@@ -3,6 +3,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OUTPUT_DIR="$SCRIPT_DIR/sample-output"
+VAR_DIR="$SCRIPT_DIR/var"
+CLUSTER_NAME="${CUSTOM_OWNERSHIP_CLUSTER_NAME:-custom-ownership-detectors}"
+export KUBECONFIG="$VAR_DIR/$CLUSTER_NAME.kubeconfig"
 
 if [[ ! -f "$OUTPUT_DIR/map.json" ]]; then
   "$SCRIPT_DIR/setup.sh" >/dev/null

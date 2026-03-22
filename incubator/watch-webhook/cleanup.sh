@@ -4,6 +4,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OUTPUT_DIR="$SCRIPT_DIR/sample-output"
 CLUSTER_NAME="${WATCH_WEBHOOK_CLUSTER_NAME:-watch-webhook}"
+VAR_DIR="$SCRIPT_DIR/var"
+export KUBECONFIG="$VAR_DIR/$CLUSTER_NAME.kubeconfig"
 
 if kind get clusters | grep -qx "$CLUSTER_NAME"; then
   kind delete cluster --name "$CLUSTER_NAME" >/dev/null
@@ -16,5 +18,6 @@ rm -f \
   "$OUTPUT_DIR/webhook.stderr.log" \
   "$OUTPUT_DIR/watch.stdout.log" \
   "$OUTPUT_DIR/watch.stderr.log"
+rm -f "$KUBECONFIG"
 
 echo "Cleared local sample output"

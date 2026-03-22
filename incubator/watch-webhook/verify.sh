@@ -3,6 +3,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OUTPUT_DIR="$SCRIPT_DIR/sample-output"
+VAR_DIR="$SCRIPT_DIR/var"
+CLUSTER_NAME="${WATCH_WEBHOOK_CLUSTER_NAME:-watch-webhook}"
+export KUBECONFIG="$VAR_DIR/$CLUSTER_NAME.kubeconfig"
 
 if [[ ! -f "$OUTPUT_DIR/webhook-events.jsonl" ]]; then
   "$SCRIPT_DIR/setup.sh" >/dev/null
