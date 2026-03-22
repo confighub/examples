@@ -269,7 +269,23 @@ It does not mutate ConfigHub by itself. If the human wants to bring a cluster li
 
 - [gitops-import-flux](./gitops-import-flux/README.md)
 
-## 10) Related Pages
+## 10) App-Style Argo Layout
+
+If the human wants the matching Argo app-style example, use:
+
+- [apptique-argo-applicationset](./apptique-argo-applicationset/README.md)
+
+This example is good for:
+
+- one ApplicationSet generator
+- one generated Application per environment
+- ownership and provenance checks with `kubectl` and optional `cub-scout`
+
+It does not mutate ConfigHub by itself. If the human wants to bring a cluster like that into ConfigHub, follow it with:
+
+- [gitops-import-argo](./gitops-import-argo/README.md)
+
+## 11) Related Pages
 
 - Repo-level AI path: [../AI_START_HERE.md](../AI_START_HERE.md)
 - Published GitOps import docs: [docs.confighub.com/get-started/examples/gitops-import/](https://docs.confighub.com/get-started/examples/gitops-import/)
