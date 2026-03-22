@@ -4,12 +4,47 @@ This is the human entry point for the `confighub/examples` repo.
 
 If you want the shortest path to understanding, use this order:
 
-1. look at one GitOps import example with direct evidence
-2. look at one worker extension example
-3. look at one example that teaches the core ConfigHub object model
-4. only then move to the bigger layered or fleet-style examples
+1. look at one no-cluster evidence or offline import example
+2. look at one live GitOps import example with direct evidence
+3. look at one worker extension example
+4. look at one example that teaches the core ConfigHub object model
+5. only then move to the bigger layered or fleet-style examples
 
-## First Path: GitOps Import And Evidence
+## First Path: No Cluster Required
+
+Start here if you want visible value quickly without depending on a live cluster:
+
+- [`incubator/connect-and-compare`](./incubator/connect-and-compare/README.md)
+- [`incubator/import-from-bundle`](./incubator/import-from-bundle/README.md)
+- [`incubator/fleet-import`](./incubator/fleet-import/README.md)
+- [`incubator/demo-data-adt`](./incubator/demo-data-adt/README.md)
+
+Why:
+
+- they show evidence, compare, import proposal, aggregation, and scanning
+- they are easy to review
+- they make mutation boundaries obvious
+- they answer “why does this matter?” quickly
+
+Typical flow:
+
+```bash
+cd incubator/connect-and-compare
+./setup.sh --explain
+./setup.sh
+./verify.sh
+```
+
+For the offline import sibling:
+
+```bash
+cd incubator/import-from-bundle
+./setup.sh --explain
+./setup.sh
+./verify.sh
+```
+
+## Second Path: GitOps Import And Evidence
 
 Start with the published GitOps docs and then use the runnable examples in this repo:
 
@@ -42,7 +77,7 @@ cd incubator/gitops-import-flux
 ./verify.sh
 ```
 
-## Second Path: Worker Extensibility
+## Third Path: Worker Extensibility
 
 If you want to understand how ConfigHub workers are built and extended, go to:
 
@@ -55,7 +90,7 @@ If you want to understand how ConfigHub workers are built and extended, go to:
 
 These show simple bridge and function workers, plus policy and validation examples using the SDK as normal Go modules.
 
-## Third Path: No Cluster Required
+## Fourth Path: Stable ConfigHub Model
 
 Then look at [`promotion-demo-data`](./promotion-demo-data/README.md).
 
@@ -74,7 +109,7 @@ cd promotion-demo-data
 ./cleanup.sh
 ```
 
-## Fourth Path: Learn The Core Object Model
+## Fifth Path: Learn The Core Object Model
 
 Then go to the layered examples package:
 
@@ -101,7 +136,7 @@ cd incubator/global-app-layer/realistic-app
 ./setup.sh --explain
 ```
 
-## Fifth Path: Pick The Right Layered Worked Example
+## Sixth Path: Pick The Right Layered Worked Example
 
 Inside [`incubator/global-app-layer`](./incubator/global-app-layer/README.md):
 
