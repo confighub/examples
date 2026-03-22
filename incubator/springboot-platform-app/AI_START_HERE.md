@@ -16,17 +16,19 @@ It demonstrates one app, `inventory-api`, with three routed outcomes:
 
 ## Proof Types
 
-This example has three proof levels:
+This example has five proof levels:
 
 1. **Structural**: fixture files and contracts (`./setup.sh --explain`)
 2. **Local app**: Spring Boot HTTP tests (`cd upstream/app && mvn test`)
 3. **ConfigHub-only**: real spaces and units (`./confighub-setup.sh`)
+4. **Noop target**: apply workflow with Noop targets (`./confighub-setup.sh --with-targets`)
+5. **Lift-upstream bundle**: read-only Redis patch bundle (`./lift-upstream.sh`)
 
 It does not yet:
 
-- bind targets
-- apply to a cluster
-- prove `lift upstream` or `block/escalate` in ConfigHub
+- prove a real Kubernetes delivery path
+- create a real GitHub PR
+- prove `block/escalate` in ConfigHub
 
 ## What You Need Installed
 
@@ -139,6 +141,20 @@ The `apply here` mutation survives re-apply.
 
 This example does not yet include a real Kubernetes cluster path.
 
+### H. Lift-upstream bundle proof
+
+For the Redis caching request:
+
+```bash
+./lift-upstream.sh --explain
+./lift-upstream.sh --explain-json | jq
+./lift-upstream.sh --render-diff
+./lift-upstream-verify.sh
+```
+
+This is read-only. It gives you the exact upstream/app and refreshed ConfigHub
+changes that a GitHub PR would need, but it does not create the PR.
+
 If the human wants a live next step:
 
 - use [`V2-LIVE-PLAN.md`](./V2-LIVE-PLAN.md) for the concrete same-service
@@ -181,6 +197,10 @@ cd ..
 | `./confighub-setup.sh --with-targets` | + infra space, server worker, Noop targets, apply |
 | `./confighub-verify.sh` | nothing (read-only inspection) |
 | `./confighub-verify.sh --targets` | nothing (also checks targets and apply status) |
+| `./lift-upstream.sh --explain` | nothing |
+| `./lift-upstream.sh --explain-json` | nothing |
+| `./lift-upstream.sh --render-diff` | nothing |
+| `./lift-upstream-verify.sh` | nothing |
 | `./confighub-cleanup.sh` | deletes all spaces with ExampleName label |
 
 ## What Success Looks Like

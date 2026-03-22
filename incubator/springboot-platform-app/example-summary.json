@@ -1,6 +1,6 @@
 {
   "example_name": "springboot-platform-app",
-  "proof_type": "structural+confighub-only+noop-targets",
+  "proof_type": "structural+confighub-only+noop-targets+lift-upstream-bundle",
   "stack": [
     "Spring Boot",
     "platform-rendered operational config",
@@ -72,7 +72,7 @@
         "Deployment/spec/template/spec/containers[0]/env[CACHE_BACKEND]",
         "ConfigMap/data/application.yaml:spring.cache.type"
       ],
-      "confighub_proof": "Not yet proven. Requires GitHub PR integration."
+      "confighub_proof": "Partially proven via the read-only Redis lift-upstream bundle. ./lift-upstream.sh --render-diff produces a GitHub-ready diff for the upstream app inputs and refreshed ConfigHub YAMLs. Actual GitHub PR creation is not yet proven."
     },
     {
       "name": "block_or_escalate",
@@ -94,6 +94,7 @@
     "The upstream app includes HTTP-level tests for the inventory API.",
     "The three routed outcomes are visible in one app.",
     "ConfigHub-only spaces and units exist for dev, stage, and prod.",
-    "The apply-here mutation is proven via FEATURE_INVENTORY_RESERVATIONMODE env var on the prod Deployment, and the running app reports the changed value."
+    "The apply-here mutation is proven via FEATURE_INVENTORY_RESERVATIONMODE env var on the prod Deployment, and the running app reports the changed value.",
+    "The lift-upstream route has a deterministic Redis patch bundle and refreshed ConfigHub YAMLs that can be rendered as a GitHub-ready diff."
   ]
 }
