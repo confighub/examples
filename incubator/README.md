@@ -17,6 +17,7 @@ This directory is for experimental examples before promotion to stable examples.
 - [`import-from-bundle`](./import-from-bundle/README.md): incubator offline import example adapted from `cub-scout`, showing dry-run proposal generation from a debug bundle without cluster access.
 - [`fleet-import`](./fleet-import/README.md): incubator multi-cluster aggregation example adapted from `cub-scout`, showing one unified proposal from two existing cluster import JSONs.
 - [`connect-and-compare`](./connect-and-compare/README.md): incubator fixture-first compare example adapted from `cub-scout`, showing doctor, compare, and history evidence without a live cluster.
+- [`demo-data-adt`](./demo-data-adt/README.md): incubator scan-first ADT example adapted from `cub-scout`, showing labeled workload fixtures plus immediate static risk findings.
 - [`combined-git-live`](./combined-git-live/README.md): incubator Git-plus-live compare example adapted from `cub-scout`, showing aligned, git-only, and cluster-only results against a real cluster.
 - [`apptique-argo-applicationset`](./apptique-argo-applicationset/README.md): incubator app-style Argo ApplicationSet example adapted from `cub-scout`, showing one generator and one generated Application per environment.
 - [`apptique-argo-app-of-apps`](./apptique-argo-app-of-apps/README.md): incubator app-style Argo app-of-apps example adapted from `cub-scout`, showing one root Application and one child Application per environment.
@@ -39,6 +40,7 @@ Start with:
 - Offline import from bundle: [`import-from-bundle`](./import-from-bundle/README.md)
 - Fleet aggregation from existing imports: [`fleet-import`](./fleet-import/README.md)
 - Fixture-first compare: [`connect-and-compare`](./connect-and-compare/README.md)
+- ADT scan-first example: [`demo-data-adt`](./demo-data-adt/README.md)
 - Git plus live compare: [`combined-git-live`](./combined-git-live/README.md)
 - App-style Argo layout: [`apptique-argo-applicationset`](./apptique-argo-applicationset/README.md)
 - App-style Argo hierarchy: [`apptique-argo-app-of-apps`](./apptique-argo-app-of-apps/README.md)
