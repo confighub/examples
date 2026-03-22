@@ -270,6 +270,22 @@ That example is for:
 - representative native trace capture
 - no ConfigHub mutation
 
+If the human wants to stream cluster observation events into an external endpoint, start here:
+
+```bash
+cd incubator/watch-webhook
+./setup.sh --explain
+./setup.sh --explain-json | jq
+./setup.sh
+./verify.sh
+```
+
+That example is for:
+
+- one-shot `watch --webhook` delivery
+- local JSONL capture of webhook events
+- no ConfigHub mutation
+
 If instead the human wants the layered recipe path rather than the GitOps import wedge, start with the realistic layered app example:
 
 ```bash
