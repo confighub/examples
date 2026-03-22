@@ -116,11 +116,12 @@ Important:
 - a good demo should show that the worker is actually ready before mutation
 - in this package, `./preflight-live.sh <space/target>` is the safest way to show that readiness
 
-The worker supports two target types in this example:
+The worker supports three relevant target types in this package:
 
 | Target | Slug | What it does |
 |---|---|---|
 | **Kubernetes (direct)** | `worker-kubernetes-yaml-cluster` | Worker applies YAML directly via `kubectl apply` |
+| **FluxOCI** | `worker-fluxoci-kubernetes-yaml-cluster` | Worker transforms raw Kubernetes YAML into Flux OCIRepository + Kustomization or HelmRelease CRs and waits for Flux reconciliation |
 | **ArgoCDRenderer** | `worker-argocdrenderer-kubernetes-yaml-cluster` | Worker manages Argo CD `Application` CRDs and asks ArgoCD to render them |
 
 **Payload compatibility matters:**
@@ -133,8 +134,13 @@ The worker supports two target types in this example:
 | `gpu-eks-h100-training` | ✅ | ❌ |
 | Brownfield-imported Applications | ✅ | ✅ |
 
-In these examples the direct target is the most fully proven delivery path today.
-The layered variant chain is unchanged conceptually when you change executors, but the unit payload still has to match the target type. The raw-manifest examples in this package are not yet a one-line swap to `ArgoCDRenderer`, and a good delegated-delivery proof still needs explicit Argo-side evidence, not only target binding.
+In these examples the direct target is still the simplest fully proven delivery path today.
+The layered variant chain is unchanged conceptually when you change executors, but the unit payload still has to match the target type. Raw-manifest examples are a good fit for direct Kubernetes delivery and can also be modeled as Flux deployment variants when a `FluxOCI` target is available. They are not a one-line swap to `ArgoCDRenderer`, and a good delegated-delivery proof still needs explicit controller-side evidence, not only target binding.
+
+Flux note:
+- `FluxOCI` is compatible with raw Kubernetes manifest payloads
+- explicit Flux deployment variants are only wired where the example says so
+- `gpu-eks-h100-training` now includes that explicit Flux leaf variant
 
 ### How ArgoCD Integration Works
 
@@ -150,6 +156,19 @@ ConfigHub (materialized Application)
 The current `ArgoCDRenderer` implementation works with Argo CD `Application` resources, not arbitrary raw Kubernetes manifests. It also disables autosync so ArgoCD does not become the workload reconciler for this path. So for an Application-shaped unit, ConfigHub can hand that object to the worker, let ArgoCD render it, and then read back Argo-side evidence about the rendered manifests. But the raw-manifest chains in `realistic-app` and `gpu-eks-h100-training` do not yet fit that target directly.
 
 That is still different from the typical ArgoCD model where Argo watches a Git repo and reconciles workloads. Here, ArgoCD is being used as a render/hydration engine. A separate sync-capable target path is still needed for a true Argo-managed workload proof.
+
+### How Flux Integration Works
+
+When you use the `FluxOCI` target, the flow is:
+
+```
+ConfigHub (materialized raw Kubernetes YAML)
+    → worker (in-cluster agent)
+        → Flux OCIRepository + Kustomization or HelmRelease CRs
+            → Flux reconciles workloads in the cluster
+```
+
+That is a better fit for the raw-manifest chains in `realistic-app` and `gpu-eks-h100-training`. The unit payload stays as Kubernetes YAML, and the target supplies the Flux delivery contract. In `gpu-eks-h100-training`, this is now modeled as a sibling Flux deployment variant at the leaf rather than pretending the direct and Flux paths are the same deployment unit.
 
 That distinction matters for demos:
 
