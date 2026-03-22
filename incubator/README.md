@@ -14,6 +14,7 @@ This directory is for experimental examples before promotion to stable examples.
 - [`cub-proc`](./cub-proc/README.md): public incubator design work for bounded procedures, `Operation` records, and `cub-proc`, grounded in the runnable examples in this repo.
 - [`gitops-import-argo`](./gitops-import-argo/README.md): incubator Argo GitOps import example built from the stable `gitops-import` assets plus stronger contrast fixtures adapted from `cub-scout`.
 - [`gitops-import-flux`](./gitops-import-flux/README.md): incubator Flux GitOps import example built from `cub-scout`'s D2 and podinfo fixtures with the same import-and-evidence verification model as the Argo sibling.
+- [`connect-and-compare`](./connect-and-compare/README.md): incubator fixture-first compare example adapted from `cub-scout`, showing doctor, compare, and history evidence without a live cluster.
 - [`apptique-argo-applicationset`](./apptique-argo-applicationset/README.md): incubator app-style Argo ApplicationSet example adapted from `cub-scout`, showing one generator and one generated Application per environment.
 - [`apptique-argo-app-of-apps`](./apptique-argo-app-of-apps/README.md): incubator app-style Argo app-of-apps example adapted from `cub-scout`, showing one root Application and one child Application per environment.
 - [`apptique-flux-monorepo`](./apptique-flux-monorepo/README.md): incubator app-style Flux monorepo example adapted from `cub-scout`, showing one app base plus dev and prod overlays with ownership and provenance checks.
@@ -32,6 +33,7 @@ Start with:
 - [Official GitOps Import docs](https://docs.confighub.com/get-started/examples/gitops-import/)
 - Argo import: [`gitops-import-argo`](./gitops-import-argo/README.md)
 - Flux import: [`gitops-import-flux`](./gitops-import-flux/README.md)
+- Fixture-first compare: [`connect-and-compare`](./connect-and-compare/README.md)
 - App-style Argo layout: [`apptique-argo-applicationset`](./apptique-argo-applicationset/README.md)
 - App-style Argo hierarchy: [`apptique-argo-app-of-apps`](./apptique-argo-app-of-apps/README.md)
 - App-style Flux layout: [`apptique-flux-monorepo`](./apptique-flux-monorepo/README.md)
