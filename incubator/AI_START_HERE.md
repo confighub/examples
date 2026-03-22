@@ -319,6 +319,22 @@ That example is for:
 - local JSONL capture of webhook events
 - no ConfigHub mutation
 
+If the human wants a live Flux microservice fan-out example, start here:
+
+```bash
+cd incubator/flux-boutique
+./setup.sh --explain
+./setup.sh --explain-json | jq
+./setup.sh
+./verify.sh
+```
+
+That example is for:
+
+- one GitRepository with five Flux Kustomizations
+- map and trace evidence for Flux ownership
+- no ConfigHub mutation
+
 If instead the human wants the layered recipe path rather than the GitOps import wedge, start with the realistic layered app example:
 
 ```bash
