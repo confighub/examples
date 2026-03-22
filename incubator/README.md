@@ -47,6 +47,8 @@ If the goal is to see the smallest live deployment after that bootstrap, use:
 
 - [`vmcluster-nginx-path`](./vmcluster-nginx-path.md)
 
+For both of those paths, the authoritative runnable implementation is Jesper's [`cub-vmcluster`](https://github.com/jesperfj/cub-vmcluster). The incubator pages here explain how that flow fits into the broader ConfigHub example and target model.
+
 ## Stable Examples (outside incubator)
 
 - [`promotion-demo-data`](../promotion-demo-data/README.md): creates 49 spaces and ~154 units using the App-Deployment-Target model. Uses noop bridge, no cluster required. Canonical example of ConfigHub's multi-env promotion model.

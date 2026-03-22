@@ -69,3 +69,5 @@ If you want the strongest current worked evidence for a procedure profile, read:
 The current examples should stay strong without `cub-proc`.
 
 The job of this incubator directory is to make the next operational layer legible and testable against real examples, not to force the examples to wait for a new command surface.
+
+For the `vmcluster`-related profiles in this directory, the runnable implementation is outside this repo in [`jesperfj/cub-vmcluster`](https://github.com/jesperfj/cub-vmcluster). The pages here exist to connect that real implementation to ConfigHub's example system, target model, and future procedure language.
