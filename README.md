@@ -21,11 +21,15 @@ This repo contains examples that demonstrate how [ConfigHub](https://confighub.c
 For the current GitHub + Argo/Flux + AI/CLI + ConfigHub wedge, start here:
 
 - [Official GitOps Import docs](https://docs.confighub.com/get-started/examples/gitops-import/)
+- [`incubator/connect-and-compare`](./incubator/connect-and-compare/README.md)
+- [`incubator/import-from-bundle`](./incubator/import-from-bundle/README.md)
+- [`incubator/fleet-import`](./incubator/fleet-import/README.md)
+- [`incubator/demo-data-adt`](./incubator/demo-data-adt/README.md)
 - [`incubator/gitops-import-argo`](./incubator/gitops-import-argo/README.md)
 - [`incubator/gitops-import-flux`](./incubator/gitops-import-flux/README.md)
 - [`custom-workers`](./custom-workers)
 
-These are the runnable examples for import, evidence, and worker extensibility in this repo today.
+These are the runnable examples for evidence, offline import, live import, and worker extensibility in this repo today.
 
 ## Companion Material
 
