@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: inventory-api
+  datasource:
+    url: jdbc:postgresql://postgres.platform.svc:5432/inventory
+    username: inventory
+server:
+  port: 8080
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

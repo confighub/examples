@@ -15,6 +15,7 @@ This directory is for experimental examples before promotion to stable examples.
 - [`gitops-import-argo`](./gitops-import-argo/README.md): incubator Argo GitOps import example built from the stable `gitops-import` assets plus stronger contrast fixtures adapted from `cub-scout`.
 - [`gitops-import-flux`](./gitops-import-flux/README.md): incubator Flux GitOps import example built from `cub-scout`'s D2 and podinfo fixtures with the same import-and-evidence verification model as the Argo sibling.
 - [`global-app-layer`](./global-app-layer/README.md): recipes and layers package with specs plus four worked examples, including a GPU-flavored chain.
+- [`springboot-platform-app`](./springboot-platform-app/README.md): structural Spring Boot app/platform example for authority vs provenance, with one app and three natural mutation routes.
 - [`cub-proc-fixtures`](./cub-proc-fixtures/README.md): tiny direct and delegated apply fixtures preserved from the earlier `cub-up` exploration.
 - [`vmcluster-from-scratch`](./vmcluster-from-scratch.md): short note for thinking about real cluster bootstrap as cluster first, target second, worker mostly hidden.
 - [`vmcluster-nginx-path`](./vmcluster-nginx-path.md): short note for the smallest real-cluster follow-on path, from ready target to one reachable workload.
@@ -32,6 +33,7 @@ Start with:
 - Helm-first story: [`../helm-platform-components`](../helm-platform-components/README.md) or [cub-scout Helm quickstart](https://github.com/confighub/cub-scout/blob/main/docs/reference/cub-track-quickstart-helm.md)
 - App-Deployment-Target story: [`../promotion-demo-data`](../promotion-demo-data/README.md)
 - Microservice app styles: [cub-scout apptique examples](https://github.com/confighub/cub-scout/tree/main/examples/apptique-examples)
+- Authority vs provenance for one app/platform pair: [`springboot-platform-app`](./springboot-platform-app/README.md)
 
 Use [`global-app-layer`](./global-app-layer/README.md) after that for layered recipe structure, deployment units, and the NVIDIA-shaped chain model.
 
