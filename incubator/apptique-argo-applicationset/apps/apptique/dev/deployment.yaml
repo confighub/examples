@@ -22,11 +22,6 @@ spec:
         environment: dev
     spec:
       serviceAccountName: frontend
-      securityContext:
-        fsGroup: 1000
-        runAsGroup: 1000
-        runAsNonRoot: true
-        runAsUser: 1000
       containers:
         - name: server
           image: nginx:1.27-alpine
@@ -49,13 +44,6 @@ spec:
             httpGet:
               path: /
               port: 80
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - ALL
-            privileged: false
-            readOnlyRootFilesystem: false
 ---
 apiVersion: v1
 kind: Service
