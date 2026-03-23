@@ -30,7 +30,7 @@ The live import and live evidence path is also in place:
 - `watch-webhook`
 - `flux-boutique`
 
-The app-style set is present, but still needs trustworthy live validation:
+The app-style set is now self-contained and live-validated:
 
 - `apptique-flux-monorepo`
 - `apptique-argo-applicationset`
@@ -96,27 +96,15 @@ The following now reflect the no-cluster-first route before live import:
 
 ## What Is Not Done
 
-### 1. Live validation of the app-style examples
+### 1. Promotion criteria and promotion decisions
 
-This is still the main unfinished example-quality task.
+The app-style examples now have one clean self-contained live validation pass, so the next question is no longer whether they work at all. The next question is which incubator examples should graduate, which should stay incubator, and which should remain companion material only.
 
-The app-style examples are documented and structurally validated, but they still need a clean end-to-end live pass on a healthy Docker and kind runtime before promotion is considered.
-
-Priority targets:
-
-- `incubator/apptique-flux-monorepo`
-- `incubator/apptique-argo-applicationset`
-- `incubator/apptique-argo-app-of-apps`
-
-### 2. Promotion criteria and promotion decisions
-
-The incubator set is broad now. The next question is not only what else to add, but also what should graduate, what should stay incubator, and what should remain companion material only.
-
-### 3. Dedicated kubeconfig follow-through for older live examples
+### 2. Dedicated kubeconfig follow-through for older live examples
 
 A safer dedicated-kubeconfig pattern is now proven in the newer live examples and in the safety pass. The rest of the live example surface should converge on that pattern over time.
 
-### 4. Upstream cub-scout contract cleanup
+### 3. Upstream cub-scout contract cleanup
 
 The following upstream mismatches were found and filed:
 
@@ -143,26 +131,19 @@ Success means:
 - the README claims stay aligned with the runtime behavior
 - no example depends on ambient kube state
 
-### Phase 2: Finish trustworthy live validation of the app-style examples
+### Phase 2: Tighten docs from real validation output
 
-Run one clean live validation pass for the app-style examples on a healthy runtime.
+The app-style examples now have a self-contained live validation pass. Keep their docs aligned with exact observed runtime behavior whenever they are touched again.
 
 Success means:
 
-- each example can be applied to a suitable cluster
-- each example has a working `verify.sh` path
-- the evidence in the README matches what the runtime actually produced
-- no example depends on overclaiming controller status or ownership
+- each example still matches the self-contained setup and cleanup flow
+- `verify.sh` still matches what the runtime actually produces
+- no example drifts back toward hidden controller or kubeconfig assumptions
 
-### Phase 3: Tighten docs from real validation output
+### Phase 3: Decide promotions
 
-If live validation exposes mismatches, fix the examples first, then update the docs.
-
-If live validation passes, add only the minimum doc updates needed to reflect exact observed behavior.
-
-### Phase 4: Decide promotions
-
-After live validation, decide which examples should stay incubator and which should move toward stable examples.
+Now that live validation exists for the app-style set, decide which examples should stay incubator and which should move toward stable examples.
 
 The strongest promotion candidates are likely to be:
 
@@ -170,7 +151,7 @@ The strongest promotion candidates are likely to be:
 - one live import or live evidence example
 - possibly one app-style example
 
-### Phase 5: Continue selective adaptation from cub-scout
+### Phase 4: Continue selective adaptation from cub-scout
 
 Only continue pulling examples from `cub-scout` if they add a new capability or operator story that the current incubator set still lacks.
 
