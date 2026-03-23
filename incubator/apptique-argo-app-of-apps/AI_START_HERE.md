@@ -6,6 +6,8 @@ Use this page when you want to drive `apptique-argo-app-of-apps` safely with an 
 
 This example is for a realistic Argo app-of-apps layout.
 
+It creates its own local `kind` cluster, installs Argo CD, and uses a dedicated kubeconfig under `var/`.
+
 It is not an import example and it does not mutate ConfigHub by itself.
 
 ## Read-Only First
@@ -16,8 +18,6 @@ Start here:
 cd incubator/apptique-argo-app-of-apps
 ./setup.sh --explain
 ./setup.sh --explain-json | jq
-kubectl config current-context
-kubectl get applications -n argocd 2>/dev/null || true
 ```
 
 These commands do not mutate ConfigHub and do not mutate live infrastructure.
@@ -29,23 +29,29 @@ These commands do not mutate ConfigHub and do not mutate live infrastructure.
 ./verify.sh
 ```
 
+Optional branch validation:
+
+```bash
+EXAMPLES_GIT_REVISION=<branch-name> ./setup.sh
+```
+
 ## Important Boundaries
 
 - `./setup.sh --explain` is read-only
-- `./setup.sh` mutates live infrastructure
+- `./setup.sh` mutates live infrastructure by creating a cluster, installing Argo CD, and applying the root Application
+- when `EXAMPLES_GIT_REVISION` is not `main`, `./setup.sh` also patches the child Applications so branch-backed validation uses the branch content
 - `./verify.sh` is read-only
-- `./cleanup.sh` deletes the live example resources
-
-This example assumes Argo CD is already installed in the current cluster.
+- `./cleanup.sh` deletes the local `kind` cluster and dedicated kubeconfig
+- this example never writes ConfigHub state
 
 ## What To Verify
 
 Cluster side:
 
 ```bash
-kubectl get applications -n argocd
-kubectl get deployment,service -n apptique-dev
-kubectl get deployment,service -n apptique-prod
+kubectl --kubeconfig var/apptique-argo-app-of-apps.kubeconfig get applications -n argocd
+kubectl --kubeconfig var/apptique-argo-app-of-apps.kubeconfig get deployment,service -n apptique-dev
+kubectl --kubeconfig var/apptique-argo-app-of-apps.kubeconfig get deployment,service -n apptique-prod
 ```
 
 Optional `cub-scout` side:
@@ -53,7 +59,6 @@ Optional `cub-scout` side:
 ```bash
 cub-scout map list -q "owner=ArgoCD"
 cub-scout trace deployment/frontend -n apptique-dev
-cub-scout gitops status
 ```
 
 Use the evidence like this:

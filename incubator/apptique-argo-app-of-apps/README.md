@@ -32,13 +32,15 @@ This example is adapted from the Argo app-of-apps pattern in `cub-scout`:
 It reads:
 
 - the copied root, child Application, and workload manifests in this directory
-- your current Kubernetes context
-- your current Argo CD installation in that cluster
+- a local `kind` cluster created by `setup.sh`
+- a dedicated kubeconfig under `var/`
 
 ## What It Writes
 
 It writes live infrastructure only:
 
+- one local `kind` cluster
+- Argo CD in `argocd`
 - one root Argo Application in `argocd`
 - child Applications for `apptique-dev` and `apptique-prod`
 - the resulting namespaces, deployment, and service
@@ -51,8 +53,6 @@ It does not write ConfigHub state by itself.
 cd incubator/apptique-argo-app-of-apps
 ./setup.sh --explain
 ./setup.sh --explain-json | jq
-kubectl config current-context
-kubectl get applications -n argocd 2>/dev/null || true
 ```
 
 The `--explain` commands are read-only.
@@ -60,20 +60,31 @@ The `--explain` commands are read-only.
 ## Quick Start
 
 ```bash
-cd incubator/apptique-argo-app-of-apps
 ./setup.sh
 ./verify.sh
 ```
+
+## Optional Branch Override
+
+For branch-backed validation before merge:
+
+```bash
+EXAMPLES_GIT_REVISION=<branch-name> ./setup.sh
+```
+
+By default the example uses `main`.
 
 ## Mutation Boundaries
 
 `./setup.sh --explain` and `./setup.sh --explain-json` are read-only.
 
-`./setup.sh` mutates live infrastructure by applying the root Application.
+`./setup.sh` mutates live infrastructure by creating a local `kind` cluster, installing Argo CD, applying the root Application, and letting that root app create the child Applications.
+
+When `EXAMPLES_GIT_REVISION` is not `main`, `setup.sh` also patches the child Applications to sync that branch so pre-merge validation can exercise the branch content honestly.
 
 `./verify.sh` is read-only.
 
-`./cleanup.sh` mutates live infrastructure by deleting the root Application and namespaces.
+`./cleanup.sh` mutates live infrastructure by deleting the local `kind` cluster and dedicated kubeconfig.
 
 ## What Success Looks Like
 
@@ -96,9 +107,9 @@ At the ownership and provenance level, you should be able to trace:
 Direct cluster evidence:
 
 ```bash
-kubectl get applications -n argocd
-kubectl get deployment,service -n apptique-dev
-kubectl get deployment,service -n apptique-prod
+kubectl --kubeconfig var/apptique-argo-app-of-apps.kubeconfig get applications -n argocd
+kubectl --kubeconfig var/apptique-argo-app-of-apps.kubeconfig get deployment,service -n apptique-dev
+kubectl --kubeconfig var/apptique-argo-app-of-apps.kubeconfig get deployment,service -n apptique-prod
 ```
 
 Optional `cub-scout` evidence:

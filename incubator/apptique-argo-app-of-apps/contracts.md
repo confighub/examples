@@ -7,30 +7,34 @@
 - mutates: no
 - proves:
   - the example is Argo-based
-  - it expects an existing Argo CD cluster
+  - it creates its own `kind` cluster
+  - it uses a dedicated kubeconfig under `var/`
+  - it installs Argo CD
   - it will apply one root Application
 - expected anchors:
   - `.example == "apptique-argo-app-of-apps"`
-  - `.mutates == false`
-  - `.argoRequired == true`
+  - `.mutatesConfighub == false`
+  - `.mutatesLiveInfrastructure == true`
+  - `.clusterType == "kind"`
+  - `.argoInstalledBySetup == true`
   - `.applies == ["root/root-app.yaml"]`
 
 ## Live Cluster Contracts
 
-### `kubectl get application -n argocd apptique-apps -o yaml`
+### `kubectl --kubeconfig var/apptique-argo-app-of-apps.kubeconfig get application -n argocd apptique-apps -o yaml`
 
 - mutates: no
 - proves:
   - the root Application exists
   - the root source path is inspectable
 
-### `kubectl get application -n argocd apptique-dev -o yaml`
+### `kubectl --kubeconfig var/apptique-argo-app-of-apps.kubeconfig get application -n argocd apptique-dev -o yaml`
 
 - mutates: no
 - proves:
   - the dev environment is materialized as its own child Application
 
-### `kubectl get deployment -n apptique-dev frontend -o yaml`
+### `kubectl --kubeconfig var/apptique-argo-app-of-apps.kubeconfig get deployment -n apptique-dev frontend -o yaml`
 
 - mutates: no
 - proves:
