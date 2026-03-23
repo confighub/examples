@@ -7,30 +7,34 @@
 - mutates: no
 - proves:
   - the example is Argo-based
-  - it expects an existing Argo CD cluster
+  - it creates its own `kind` cluster
+  - it uses a dedicated kubeconfig under `var/`
+  - it installs Argo CD and the ApplicationSet controller
   - it will apply one ApplicationSet
 - expected anchors:
   - `.example == "apptique-argo-applicationset"`
-  - `.mutates == false`
-  - `.argoRequired == true`
+  - `.mutatesConfighub == false`
+  - `.mutatesLiveInfrastructure == true`
+  - `.clusterType == "kind"`
+  - `.argoInstalledBySetup == true`
   - `.applies == ["bootstrap/applicationset.yaml"]`
 
 ## Live Cluster Contracts
 
-### `kubectl get applicationset -n argocd apptique -o yaml`
+### `kubectl --kubeconfig var/apptique-argo-applicationset.kubeconfig get applicationset -n argocd apptique -o yaml`
 
 - mutates: no
 - proves:
   - the generator exists in the cluster
   - the source repo and path rules are inspectable
 
-### `kubectl get application -n argocd apptique-dev -o yaml`
+### `kubectl --kubeconfig var/apptique-argo-applicationset.kubeconfig get application -n argocd apptique-dev -o yaml`
 
 - mutates: no
 - proves:
   - the dev environment is materialized as its own generated Application
 
-### `kubectl get deployment -n apptique-dev frontend -o yaml`
+### `kubectl --kubeconfig var/apptique-argo-applicationset.kubeconfig get deployment -n apptique-dev frontend -o yaml`
 
 - mutates: no
 - proves:
