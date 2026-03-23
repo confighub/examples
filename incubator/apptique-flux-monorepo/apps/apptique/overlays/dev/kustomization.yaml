@@ -19,8 +19,3 @@ patches:
       - op: replace
         path: /spec/replicas
         value: 1
-      - op: add
-        path: /spec/template/spec/containers/0/env/-
-        value:
-          name: ENV_PLATFORM
-          value: "dev"

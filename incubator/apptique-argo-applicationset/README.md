@@ -33,13 +33,15 @@ This example is adapted from the Argo ApplicationSet pattern in `cub-scout`:
 It reads:
 
 - the copied ApplicationSet and app manifests in this directory
-- your current Kubernetes context
-- your current Argo CD installation in that cluster
+- a local `kind` cluster created by `setup.sh`
+- a dedicated kubeconfig under `var/`
 
 ## What It Writes
 
 It writes live infrastructure only:
 
+- one local `kind` cluster
+- Argo CD in `argocd`
 - one Argo CD ApplicationSet in `argocd`
 - generated Applications for `apptique-dev` and `apptique-prod`
 - the resulting namespaces, deployment, and service
@@ -52,8 +54,6 @@ It does not write ConfigHub state by itself.
 cd incubator/apptique-argo-applicationset
 ./setup.sh --explain
 ./setup.sh --explain-json | jq
-kubectl config current-context
-kubectl get applicationsets -n argocd 2>/dev/null || true
 ```
 
 The `--explain` commands are read-only.
@@ -61,20 +61,29 @@ The `--explain` commands are read-only.
 ## Quick Start
 
 ```bash
-cd incubator/apptique-argo-applicationset
 ./setup.sh
 ./verify.sh
 ```
+
+## Optional Branch Override
+
+For branch-backed validation before merge:
+
+```bash
+EXAMPLES_GIT_REVISION=<branch-name> ./setup.sh
+```
+
+By default the example uses `main`.
 
 ## Mutation Boundaries
 
 `./setup.sh --explain` and `./setup.sh --explain-json` are read-only.
 
-`./setup.sh` mutates live infrastructure by applying the ApplicationSet.
+`./setup.sh` mutates live infrastructure by creating a local `kind` cluster, installing Argo CD, and applying the ApplicationSet.
 
 `./verify.sh` is read-only.
 
-`./cleanup.sh` mutates live infrastructure by deleting the ApplicationSet and namespaces.
+`./cleanup.sh` mutates live infrastructure by deleting the local `kind` cluster and dedicated kubeconfig.
 
 ## What Success Looks Like
 
@@ -97,9 +106,9 @@ At the ownership and provenance level, you should be able to trace:
 Direct cluster evidence:
 
 ```bash
-kubectl get applicationsets,applications -n argocd
-kubectl get deployment,service -n apptique-dev
-kubectl get deployment,service -n apptique-prod
+kubectl --kubeconfig var/apptique-argo-applicationset.kubeconfig get applicationsets,applications -n argocd
+kubectl --kubeconfig var/apptique-argo-applicationset.kubeconfig get deployment,service -n apptique-dev
+kubectl --kubeconfig var/apptique-argo-applicationset.kubeconfig get deployment,service -n apptique-prod
 ```
 
 Optional `cub-scout` evidence:

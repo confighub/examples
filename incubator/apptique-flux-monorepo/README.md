@@ -35,13 +35,15 @@ It reads:
 
 - the copied app manifests under `apps/apptique/`
 - the Flux GitRepository and Kustomization CRs under `infrastructure/` and `clusters/`
-- your current Kubernetes context
-- your current Flux installation in that cluster
+- a local `kind` cluster created by `setup.sh`
+- a dedicated kubeconfig under `var/`
 
 ## What It Writes
 
 It writes live infrastructure only:
 
+- one local `kind` cluster
+- Flux `source-controller` and `kustomize-controller`
 - one Flux GitRepository in `flux-system`
 - one Flux Kustomization for `apptique-dev`
 - optionally one Flux Kustomization for `apptique-prod`
@@ -55,8 +57,6 @@ It does not write ConfigHub state by itself.
 cd incubator/apptique-flux-monorepo
 ./setup.sh --explain
 ./setup.sh --explain-json | jq
-kubectl config current-context
-flux get all -A
 ```
 
 The `--explain` commands are read-only.
@@ -66,7 +66,6 @@ The `--explain` commands are read-only.
 Dev only:
 
 ```bash
-cd incubator/apptique-flux-monorepo
 ./setup.sh
 ./verify.sh
 ```
@@ -78,17 +77,27 @@ Dev and prod:
 ./verify.sh --with-prod
 ```
 
+## Optional Branch Override
+
+For branch-backed validation before merge:
+
+```bash
+EXAMPLES_GIT_REVISION=<branch-name> ./setup.sh --with-prod
+```
+
+By default the example uses `main`.
+
 ## Mutation Boundaries
 
 `./setup.sh --explain` and `./setup.sh --explain-json` are read-only.
 
-`./setup.sh` mutates live infrastructure by applying the GitRepository and the dev Kustomization.
+`./setup.sh` mutates live infrastructure by creating a local `kind` cluster, installing Flux, and applying the GitRepository plus the dev Kustomization.
 
 `./setup.sh --with-prod` mutates live infrastructure further by applying the prod Kustomization.
 
 `./verify.sh` is read-only.
 
-`./cleanup.sh` mutates live infrastructure by deleting the GitRepository, Kustomizations, and namespaces.
+`./cleanup.sh` mutates live infrastructure by deleting the local `kind` cluster and dedicated kubeconfig.
 
 ## What Success Looks Like
 
@@ -113,11 +122,11 @@ At the ownership and provenance level, you should be able to trace:
 Direct cluster evidence:
 
 ```bash
-kubectl get gitrepositories,kustomizations -n flux-system
-kubectl get deployment,service -n apptique-dev
-kubectl get deployment,service -n apptique-prod
-flux get sources git -A
-flux get kustomizations -A
+kubectl --kubeconfig var/apptique-flux-monorepo.kubeconfig get gitrepositories,kustomizations -n flux-system
+kubectl --kubeconfig var/apptique-flux-monorepo.kubeconfig get deployment,service -n apptique-dev
+kubectl --kubeconfig var/apptique-flux-monorepo.kubeconfig get deployment,service -n apptique-prod
+flux --kubeconfig var/apptique-flux-monorepo.kubeconfig get sources git -A
+flux --kubeconfig var/apptique-flux-monorepo.kubeconfig get kustomizations -A
 ```
 
 Optional `cub-scout` evidence:
@@ -148,7 +157,7 @@ That makes it a good companion to:
 
 - [../gitops-import-flux](../gitops-import-flux/README.md)
 - [../gitops-import-argo](../gitops-import-argo/README.md)
-- [../springboot-platform-app](../springboot-platform-app/README.md)
+- [../apptique-argo-applicationset](../apptique-argo-applicationset/README.md)
 
 ## AI-Safe Path
 

@@ -7,38 +7,42 @@
 - mutates: no
 - proves:
   - the example is Flux-based
-  - it expects an existing Flux cluster
+  - it creates its own `kind` cluster
+  - it uses a dedicated kubeconfig under `var/`
+  - it installs the Flux controllers it needs
   - it will apply one GitRepository and one or two Kustomizations
 - expected anchors:
   - `.example == "apptique-flux-monorepo"`
-  - `.mutates == false`
-  - `.fluxRequired == true`
+  - `.mutatesConfighub == false`
+  - `.mutatesLiveInfrastructure == true`
+  - `.clusterType == "kind"`
+  - `.fluxInstalledBySetup == true`
   - `.applies | length >= 2`
 
 ## Live Cluster Contracts
 
-### `kubectl get gitrepository -n flux-system apptique-examples -o yaml`
+### `kubectl --kubeconfig var/apptique-flux-monorepo.kubeconfig get gitrepository -n flux-system apptique-examples -o yaml`
 
 - mutates: no
 - proves:
   - the Git source exists in the cluster
-  - the source URL and branch are inspectable
+  - the source URL and revision are inspectable
 
-### `kubectl get kustomization -n flux-system apptique-dev -o yaml`
+### `kubectl --kubeconfig var/apptique-flux-monorepo.kubeconfig get kustomization -n flux-system apptique-dev -o yaml`
 
 - mutates: no
 - proves:
   - the dev environment is modeled as its own Flux Kustomization
   - the path to the dev overlay is inspectable
 
-### `kubectl get deployment -n apptique-dev frontend -o yaml`
+### `kubectl --kubeconfig var/apptique-flux-monorepo.kubeconfig get deployment -n apptique-dev frontend -o yaml`
 
 - mutates: no
 - proves:
   - the frontend workload exists
   - the dev deployment is materialized in the target namespace
 
-### `flux get kustomizations -A`
+### `flux --kubeconfig var/apptique-flux-monorepo.kubeconfig get kustomizations -A`
 
 - mutates: no
 - proves:
