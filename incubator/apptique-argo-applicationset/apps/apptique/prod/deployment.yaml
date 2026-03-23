@@ -55,7 +55,7 @@ spec:
               drop:
                 - ALL
             privileged: false
-            readOnlyRootFilesystem: true
+            readOnlyRootFilesystem: false
 ---
 apiVersion: v1
 kind: Service
