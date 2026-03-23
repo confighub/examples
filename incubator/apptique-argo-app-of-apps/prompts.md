@@ -12,15 +12,15 @@ Requirements:
 - Use ./setup.sh --explain and ./setup.sh --explain-json first.
 - Be explicit about what mutates live infrastructure.
 - Do not claim this example mutates ConfigHub by itself.
-- Use kubectl for raw cluster facts.
+- Use the dedicated kubeconfig under var/ for cluster checks.
 - If cub-scout is installed, use it for ownership and provenance.
 
 Flow:
-1. inspect the example structure and explain the root plus child Application layout
+1. inspect the example structure and explain the root app plus child app layout
 2. run the read-only preview commands
-3. if Argo CD is already installed in the current cluster, run the setup path
+3. run the setup path
 4. verify the root Application, child Applications, namespaces, deployment, and service
-5. if cub-scout is available, trace the deployment back through the Argo hierarchy
+5. if cub-scout is available, trace the deployment back through the child app to the root app
 6. summarize what the example proves and what it does not prove
 
 At the end, clearly separate:

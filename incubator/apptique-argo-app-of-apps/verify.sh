@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VAR_DIR="$SCRIPT_DIR/var"
+CLUSTER_NAME="${APPTIQUE_ARGO_APPOFAPPS_CLUSTER_NAME:-apptique-argo-app-of-apps}"
+KUBECONFIG_PATH="$VAR_DIR/$CLUSTER_NAME.kubeconfig"
+
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || {
     echo "Missing required command: $1" >&2
@@ -9,6 +14,11 @@ require_cmd() {
 }
 
 require_cmd kubectl
+export KUBECONFIG="$KUBECONFIG_PATH"
+if [[ ! -f "$KUBECONFIG_PATH" ]]; then
+  echo "Missing kubeconfig at $KUBECONFIG_PATH. Run ./setup.sh first." >&2
+  exit 1
+fi
 
 kubectl get application -n argocd apptique-apps >/dev/null
 kubectl get application -n argocd apptique-dev >/dev/null
@@ -24,6 +34,7 @@ kubectl get service -n apptique-prod frontend >/dev/null
 
 if command -v cub-scout >/dev/null 2>&1; then
   cub-scout map list -q "owner=ArgoCD" >/dev/null 2>&1 || true
+  cub-scout trace deployment/frontend -n apptique-dev >/dev/null 2>&1 || true
 fi
 
 echo "All apptique-argo-app-of-apps checks passed."
