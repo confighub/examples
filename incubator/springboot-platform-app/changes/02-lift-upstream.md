@@ -16,6 +16,8 @@ Relevant files:
 - upstream app config: [`../upstream/app/src/main/resources/application.yaml`](../upstream/app/src/main/resources/application.yaml)
 - operational deployment shape: [`../operational/deployment.yaml`](../operational/deployment.yaml)
 - route rule: [`../operational/field-routes.yaml`](../operational/field-routes.yaml)
+- read-only Redis bundle: [`../lift-upstream.sh`](../lift-upstream.sh)
+- refreshed ConfigHub YAMLs: [`../lift-upstream/redis-cache/confighub`](../lift-upstream/redis-cache/confighub/)
 
 What the route means:
 
@@ -23,3 +25,5 @@ What the route means:
 - the durable change should be turned into an upstream app change
 - the platform-rendered operational shape should then be refreshed from that
   new upstream state
+- in this example, `./lift-upstream.sh --render-diff` shows the exact patch
+  bundle for that upstream change
