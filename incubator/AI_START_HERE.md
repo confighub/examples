@@ -335,6 +335,23 @@ That example is for:
 - map and trace evidence for Flux ownership
 - no ConfigHub mutation
 
+If the human wants a broader mixed-ownership cluster with both GitOps-managed and orphan resources, start here:
+
+```bash
+cd incubator/platform-example
+./setup.sh --explain
+./setup.sh --explain-json | jq
+./setup.sh
+./verify.sh
+```
+
+That example is for:
+
+- Flux-managed platform resources
+- explicit orphan inventory beside GitOps resources
+- one representative Flux trace
+- no ConfigHub mutation
+
 If instead the human wants the layered recipe path rather than the GitOps import wedge, start with the realistic layered app example:
 
 ```bash

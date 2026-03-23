@@ -39,6 +39,7 @@ Keep building AI-first examples in `examples/incubator` that give one person a f
 - [`orphans`](./orphans/README.md): unmanaged-resource example adapted from `cub-scout`, showing how `Native` resources surface in orphan inventory on a live cluster.
 - [`watch-webhook`](./watch-webhook/README.md): event-streaming example adapted from `cub-scout`, showing one-shot `watch --webhook` delivery into a local receiver.
 - [`flux-boutique`](./flux-boutique/README.md): Flux microservice fan-out example adapted from `cub-scout`, showing one GitRepository traced through five Kustomizations and services.
+- [`platform-example`](./platform-example/README.md): mixed-ownership example adapted from `cub-scout`, showing Flux-managed platform resources beside unmanaged orphan resources.
 
 ### App-Style GitOps Layouts
 
@@ -86,6 +87,7 @@ Use this order:
   - [`orphans`](./orphans/README.md)
   - [`watch-webhook`](./watch-webhook/README.md)
   - [`flux-boutique`](./flux-boutique/README.md)
+  - [`platform-example`](./platform-example/README.md)
 - Then app-style layouts:
   - [`apptique-argo-applicationset`](./apptique-argo-applicationset/README.md)
   - [`apptique-argo-app-of-apps`](./apptique-argo-app-of-apps/README.md)
