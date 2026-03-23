@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VAR_DIR="$SCRIPT_DIR/var"
+CLUSTER_NAME="${APPTIQUE_FLUX_CLUSTER_NAME:-apptique-flux-monorepo}"
+KUBECONFIG_PATH="$VAR_DIR/$CLUSTER_NAME.kubeconfig"
 WITH_PROD=0
 
 require_cmd() {
@@ -30,6 +34,12 @@ done
 require_cmd kubectl
 require_cmd jq
 
+export KUBECONFIG="$KUBECONFIG_PATH"
+if [[ ! -f "$KUBECONFIG_PATH" ]]; then
+  echo "Missing kubeconfig at $KUBECONFIG_PATH. Run ./setup.sh first." >&2
+  exit 1
+fi
+
 kubectl get gitrepository -n flux-system apptique-examples >/dev/null
 kubectl get kustomization -n flux-system apptique-dev >/dev/null
 kubectl get namespace apptique-dev >/dev/null
@@ -52,6 +62,7 @@ fi
 
 if command -v cub-scout >/dev/null 2>&1; then
   cub-scout map list -q "namespace=apptique-*" >/dev/null 2>&1 || true
+  cub-scout trace deployment/frontend -n apptique-dev >/dev/null 2>&1 || true
 fi
 
 echo "All apptique-flux-monorepo checks passed."

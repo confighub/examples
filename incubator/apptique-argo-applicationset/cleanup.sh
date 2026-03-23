@@ -1,7 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-kubectl delete applicationset apptique -n argocd --ignore-not-found
-kubectl delete namespace apptique-dev apptique-prod --ignore-not-found
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VAR_DIR="$SCRIPT_DIR/var"
+CLUSTER_NAME="${APPTIQUE_ARGO_APPSET_CLUSTER_NAME:-apptique-argo-applicationset}"
+KUBECONFIG_PATH="$VAR_DIR/$CLUSTER_NAME.kubeconfig"
 
-echo "Requested cleanup for apptique Argo ApplicationSet resources."
+if command -v kind >/dev/null 2>&1; then
+  if kind get clusters | grep -qx "$CLUSTER_NAME"; then
+    kind delete cluster --name "$CLUSTER_NAME"
+  fi
+fi
+
+rm -f "$KUBECONFIG_PATH"
+
+echo "Cleaned up apptique Argo ApplicationSet cluster state."
