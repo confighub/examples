@@ -41,7 +41,7 @@ These are already merged on `main` and should be treated as the current canonica
 - `incubator/watch-webhook`
 - `incubator/flux-boutique`
 
-### App-style examples still needing stronger live validation confidence
+### App-style examples now validated live
 
 - `incubator/apptique-flux-monorepo`
 - `incubator/apptique-argo-applicationset`
@@ -122,9 +122,9 @@ What to record:
 - whether the dry-run or compare result still matches the expected output
 - whether any live cluster dependencies have become flaky
 
-### 4. Resume live validation of the app-style examples
+### 4. Re-check the app-style examples after the self-contained pass
 
-This is still the main unfinished example-quality task.
+The app-style set has now had one clean self-contained live validation pass. The next testing pass should confirm that it stays stable on fresh machines.
 
 Targets:
 
@@ -134,9 +134,9 @@ Targets:
 
 What to do:
 
-- only proceed if Docker and kind are healthy
 - prefer one clean cluster per controller family
 - verify with direct evidence, not assumptions
+- confirm the dedicated-kubeconfig and self-install flow still behaves exactly as documented
 
 Minimum evidence to collect:
 
@@ -215,5 +215,5 @@ A good stopping point for the next Claude session is:
 
 - all no-cluster examples re-verified
 - the smaller live examples re-verified with dedicated kubeconfigs
-- at least one clean live validation pass for the app-style set, if the runtime is healthy
+- at least one clean re-validation pass for the app-style set on a fresh runtime
 - a short list of any doc or script fixes discovered during that testing
