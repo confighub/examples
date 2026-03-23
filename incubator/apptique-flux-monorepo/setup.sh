@@ -6,6 +6,7 @@ VAR_DIR="$SCRIPT_DIR/var"
 CLUSTER_NAME="${APPTIQUE_FLUX_CLUSTER_NAME:-apptique-flux-monorepo}"
 KUBECONFIG_PATH="$VAR_DIR/$CLUSTER_NAME.kubeconfig"
 EXAMPLES_GIT_REVISION="${EXAMPLES_GIT_REVISION:-main}"
+ESCAPED_GIT_REVISION="${EXAMPLES_GIT_REVISION//\//\\/}"
 WITH_PROD=0
 EXPLAIN=0
 EXPLAIN_JSON=0
@@ -132,7 +133,7 @@ kubectl wait --for=condition=Established --timeout=120s \
   crd/gitrepositories.source.toolkit.fluxcd.io \
   crd/kustomizations.kustomize.toolkit.fluxcd.io >/dev/null
 
-sed "s/branch: main/branch: $EXAMPLES_GIT_REVISION/" "$SCRIPT_DIR/infrastructure/gitrepository.yaml" | kubectl apply -f - >/dev/null
+sed "s/branch: main/branch: $ESCAPED_GIT_REVISION/" "$SCRIPT_DIR/infrastructure/gitrepository.yaml" | kubectl apply -f - >/dev/null
 kubectl apply -f "$SCRIPT_DIR/clusters/dev/kustomization.yaml" >/dev/null
 if [[ "$WITH_PROD" -eq 1 ]]; then
   kubectl apply -f "$SCRIPT_DIR/clusters/prod/kustomization.yaml" >/dev/null

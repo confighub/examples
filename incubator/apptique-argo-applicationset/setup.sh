@@ -6,6 +6,7 @@ VAR_DIR="$SCRIPT_DIR/var"
 CLUSTER_NAME="${APPTIQUE_ARGO_APPSET_CLUSTER_NAME:-apptique-argo-applicationset}"
 KUBECONFIG_PATH="$VAR_DIR/$CLUSTER_NAME.kubeconfig"
 EXAMPLES_GIT_REVISION="${EXAMPLES_GIT_REVISION:-main}"
+ESCAPED_GIT_REVISION="${EXAMPLES_GIT_REVISION//\//\\/}"
 EXPLAIN=0
 EXPLAIN_JSON=0
 
@@ -128,8 +129,8 @@ kubectl wait --for=condition=Available --timeout=600s \
 kubectl wait --for=condition=Ready --timeout=600s -n argocd pod/argocd-application-controller-0 >/dev/null
 
 sed \
-  -e "s/revision: main/revision: $EXAMPLES_GIT_REVISION/" \
-  -e "s/targetRevision: main/targetRevision: $EXAMPLES_GIT_REVISION/" \
+  -e "s/revision: main/revision: $ESCAPED_GIT_REVISION/" \
+  -e "s/targetRevision: main/targetRevision: $ESCAPED_GIT_REVISION/" \
   "$SCRIPT_DIR/bootstrap/applicationset.yaml" | kubectl apply -f - >/dev/null
 
 wait_for_resource "Application/apptique-dev" kubectl get application -n argocd apptique-dev
