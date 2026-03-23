@@ -106,6 +106,41 @@
 - mutates: yes (ConfigHub only)
 - deletes all spaces with `Labels.ExampleName = 'springboot-platform-app'`
 
+## Lift-upstream bundle contracts
+
+### `./lift-upstream.sh --explain-json`
+
+- mutates: no
+- output: JSON object describing the Redis lift-upstream bundle
+- stable fields:
+  - `proof_type`
+  - `bundle_root`
+  - `target_files`
+  - `render_diff`
+- proves:
+  - the durable upstream files that must change
+  - the refreshed ConfigHub YAMLs that follow from that change
+
+### `./lift-upstream.sh --render-diff`
+
+- mutates: no
+- output: unified diff
+- proves:
+  - the exact GitHub-ready patch for the Redis caching request
+  - the current-to-refreshed delta for upstream app inputs and ConfigHub YAMLs
+
+### `./lift-upstream-verify.sh`
+
+- mutates: no
+- output: plain text success line
+- stable success text:
+  - `ok: springboot-platform-app lift-upstream bundle is consistent`
+- proves:
+  - the Redis bundle files exist
+  - the bundle adds the Redis starter dependency
+  - the bundle sets `spring.cache.type=redis`
+  - the refreshed ConfigHub YAMLs set `CACHE_BACKEND=redis`
+
 ## Fixture contracts
 
 ### [`operational/field-routes.yaml`](./operational/field-routes.yaml)
