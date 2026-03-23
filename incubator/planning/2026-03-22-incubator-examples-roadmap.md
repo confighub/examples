@@ -145,6 +145,10 @@ Success means:
 
 Now that live validation exists for the app-style set, decide which examples should stay incubator and which should move toward stable examples.
 
+Start from:
+
+- `incubator/planning/2026-03-23-incubator-promotion-shortlist.md`
+
 The strongest promotion candidates are likely to be:
 
 - one no-cluster example
