@@ -80,6 +80,27 @@
   - 3 spaces exist with the expected label
   - each space contains an `inventory-api` unit with resources
 
+### `./confighub-setup.sh --with-targets`
+
+- mutates: yes (ConfigHub only, no cluster)
+- creates in addition to the base setup:
+  - 1 infra space: `inventory-api-infra` with a server worker
+  - 1 Noop target per env space
+  - binds units to targets
+  - applies units to Noop targets
+- labels: same as base, plus `AppOwner=Platform` on infra space
+
+### `./confighub-verify.sh --targets`
+
+- mutates: no
+- output: plain text success line
+- stable success text:
+  - `ok: springboot-platform-app ConfigHub objects with targets are consistent`
+- proves:
+  - 4 spaces exist (infra + 3 envs)
+  - each env space has a unit and a target
+  - unit status is `Ready` / `Synced`
+
 ### `./confighub-cleanup.sh`
 
 - mutates: yes (ConfigHub only)
