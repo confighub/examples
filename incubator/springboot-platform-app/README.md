@@ -37,7 +37,7 @@ decision, then routes it: apply here, lift upstream, or block/escalate.
 
 ## What This Proves
 
-This example has three proof levels:
+This example has six proof levels:
 
 ### 1. Structural proof
 
@@ -71,6 +71,26 @@ This example has three proof levels:
 - `apply here` mutation survives re-apply: the env var override persists
   after the unit is applied to the Noop target
 - unit status shows `Ready` / `Synced` / `ApplyCompleted`
+
+### 5. Lift-upstream bundle proof (read-only)
+
+- a deterministic Redis lift-upstream bundle exists for the same `inventory-api`
+  story
+- `./lift-upstream.sh --render-diff` prints the exact GitHub-ready patch for:
+  - `upstream/app/pom.xml`
+  - `upstream/app/src/main/resources/application.yaml`
+  - refreshed ConfigHub YAMLs for dev, stage, and prod
+- the bundle changes are concrete enough to review before any real PR is opened
+
+### 6. Block/escalate boundary bundle (read-only)
+
+- a concrete datasource override attempt exists for the same `inventory-api`
+  story
+- `./block-escalate.sh --render-attempt` prints the exact dry-run `cub function do`
+  command for overriding `SPRING_DATASOURCE_URL`
+- the route rules and runtime policy make the platform boundary explicit
+- the current product state is classified honestly as "not yet proven" rather
+  than pretending the field policy already exists
 
 It does not yet prove:
 
@@ -154,12 +174,21 @@ These commands do not mutate ConfigHub or live infrastructure.
 | [`changes/01-mutable-in-ch.md`](./changes/01-mutable-in-ch.md) | Direct ConfigHub mutation example |
 | [`changes/02-lift-upstream.md`](./changes/02-lift-upstream.md) | Upstream routing example |
 | [`changes/03-generator-owned.md`](./changes/03-generator-owned.md) | Block/escalate example |
+| [`block-escalate.sh`](./block-escalate.sh) | Read-only datasource override boundary preview |
+| [`block-escalate-verify.sh`](./block-escalate-verify.sh) | Verifies the block/escalate boundary bundle |
+| [`lift-upstream.sh`](./lift-upstream.sh) | Read-only Redis lift-upstream preview and diff renderer |
+| [`lift-upstream-verify.sh`](./lift-upstream-verify.sh) | Verifies the Redis lift-upstream bundle |
 | [`confighub-setup.sh`](./confighub-setup.sh) | ConfigHub-only setup (creates spaces and units) |
 | [`confighub-cleanup.sh`](./confighub-cleanup.sh) | ConfigHub-only cleanup |
 | [`confighub-verify.sh`](./confighub-verify.sh) | ConfigHub-only verification |
 | [`confighub/inventory-api-dev.yaml`](./confighub/inventory-api-dev.yaml) | Dev variant unit YAML |
 | [`confighub/inventory-api-stage.yaml`](./confighub/inventory-api-stage.yaml) | Stage variant unit YAML |
 | [`confighub/inventory-api-prod.yaml`](./confighub/inventory-api-prod.yaml) | Prod variant unit YAML |
+| [`lift-upstream/redis-cache/upstream-app/pom.xml`](./lift-upstream/redis-cache/upstream-app/pom.xml) | Redis-ready upstream build input |
+| [`lift-upstream/redis-cache/upstream-app/src/main/resources/application.yaml`](./lift-upstream/redis-cache/upstream-app/src/main/resources/application.yaml) | Redis-ready upstream app config |
+| [`lift-upstream/redis-cache/confighub/inventory-api-dev.yaml`](./lift-upstream/redis-cache/confighub/inventory-api-dev.yaml) | Refreshed dev ConfigHub YAML after lift-upstream |
+| [`lift-upstream/redis-cache/confighub/inventory-api-stage.yaml`](./lift-upstream/redis-cache/confighub/inventory-api-stage.yaml) | Refreshed stage ConfigHub YAML after lift-upstream |
+| [`lift-upstream/redis-cache/confighub/inventory-api-prod.yaml`](./lift-upstream/redis-cache/confighub/inventory-api-prod.yaml) | Refreshed prod ConfigHub YAML after lift-upstream |
 
 ## The Three Outcomes
 
@@ -189,6 +218,7 @@ including later MR/PR linkage.
 See:
 
 - [`changes/02-lift-upstream.md`](./changes/02-lift-upstream.md)
+- [`lift-upstream.sh`](./lift-upstream.sh)
 
 ### 3. `block/escalate`
 
@@ -201,6 +231,7 @@ blocked or escalated when they are platform-owned or generator-owned.
 See:
 
 - [`changes/03-generator-owned.md`](./changes/03-generator-owned.md)
+- [`block-escalate.sh`](./block-escalate.sh)
 
 ## Local API Proof
 
@@ -231,6 +262,44 @@ The main callable endpoints are:
 - `GET /api/inventory/items/{sku}`
 - `GET /api/inventory/summary`
 - `GET /actuator/health`
+
+## Lift-upstream Bundle Proof
+
+The Redis caching request now has a read-only bundle that shows exactly what
+would change upstream and in the refreshed ConfigHub YAMLs.
+
+Use:
+
+```bash
+cd incubator/springboot-platform-app
+./lift-upstream.sh --explain
+./lift-upstream.sh --explain-json | jq
+./lift-upstream.sh --render-diff
+./lift-upstream-verify.sh
+```
+
+This does not mutate ConfigHub or Git. It is the concrete proof that the
+`lift upstream` route can be turned into a GitHub-ready patch bundle for the
+same `inventory-api` story.
+
+## Block/escalate Boundary Bundle
+
+The datasource boundary now has a concrete read-only artifact too.
+
+Use:
+
+```bash
+cd incubator/springboot-platform-app
+./block-escalate.sh --explain
+./block-escalate.sh --explain-json | jq
+./block-escalate.sh --render-attempt
+./block-escalate-verify.sh
+```
+
+This does not mutate ConfigHub. It shows the exact dry-run datasource override
+attempt that should eventually be blocked or escalated, while keeping the
+current product boundary explicit: field-level policy enforcement is not yet
+proven.
 
 ## ConfigHub as authority tracking provenance
 
