@@ -1,5 +1,9 @@
 # Roadmap: Incubator Examples After cub-scout Adaptation
 
+For the current consolidated handover, mission, AI-first rules, and plan, start with:
+
+- `incubator/planning/2026-03-24-next-ai-handover.md`
+
 **Date:** 2026-03-22
 **Status:** Active
 **Scope:** `/Users/alexis/Public/github-repos/examples/incubator`
