@@ -69,24 +69,23 @@ It has now been promoted to the stable repo root as:
 
 - `apptique-flux-monorepo`
 
+### `import-from-bundle`
+
+Completed because:
+
+- cluster-free import proposal generation
+- strong deterministic evidence story
+- natural stable sibling to `connect-and-compare`
+
+It has now been promoted to the stable repo root as:
+
+- `import-from-bundle`
+
 ## Recommended Next Promotion Wave
 
 These are the strongest next candidates right now.
 
-### 1. `incubator/import-from-bundle`
-
-Why it stands out:
-
-- cluster-free import proposal generation
-- natural stable companion to `connect-and-compare`
-- strong deterministic evidence story
-
-Why it should likely be next:
-
-- it is small, honest, and fast to validate
-- it rounds out the no-cluster stable spine
-
-### 2. `incubator/apptique-argo-applicationset`
+### 1. `incubator/apptique-argo-applicationset`
 
 Why it stands out:
 
@@ -94,21 +93,22 @@ Why it stands out:
 - strongest remaining Argo app-layout candidate
 - good stable counterpart to `apptique-flux-monorepo`
 
+Why it should likely be next:
+
+- it broadens the stable set without adding a much more complex controller story
+- it is the cleanest remaining Argo app-style promotion candidate
+
+### 2. `incubator/graph-export`
+
+Why it stands out:
+
+- clean topology artifact story
+- easy to verify with explicit generated outputs
+- adds a different kind of stable evidence example
+
 ## Strong Second-Wave Candidates
 
 These should stay close to the front of the queue after the first wave.
-
-### `incubator/import-from-bundle`
-
-Strong because:
-
-- cluster-free import proposal generation
-- good pair with `connect-and-compare`
-- stable bundle-backed evidence story
-
-Held for second wave because:
-
-- it is slightly more specialized than `connect-and-compare`
 
 ### `incubator/graph-export`
 
@@ -183,8 +183,8 @@ Why:
 
 ## Recommended Next Decision Sequence
 
-1. Promote one no-cluster import sibling next: `import-from-bundle`
-2. Then decide whether the next stable addition should be Argo-focused, topology-focused, or reporting-focused
+1. Promote one Argo app-style example next: `apptique-argo-applicationset`
+2. Then decide whether the next stable addition should be topology-focused, reporting-focused, or another no-cluster evidence example
 
 ## Notes
 

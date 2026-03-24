@@ -1,6 +1,6 @@
 # Import From Bundle
 
-This incubator example adapts the `import-from-bundle` flow from `cub-scout` into the official `examples` repo.
+This stable example adapts the `import-from-bundle` flow from `cub-scout` into the official `examples` repo.
 
 It shows an offline import path:
 
@@ -41,7 +41,7 @@ It does not mutate live infrastructure.
 ## Read-Only First
 
 ```bash
-cd incubator/import-from-bundle
+cd import-from-bundle
 ./setup.sh --explain
 ./setup.sh --explain-json | jq
 ```
@@ -84,7 +84,7 @@ jq '.workloads' sample-output/suggestion.json
 
 ## Why This Example Matters
 
-This gives the incubator set a clean offline import example.
+This gives the stable example set a clean offline import example.
 
 It fits between the fixture-first compare examples and the live import examples:
 

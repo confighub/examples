@@ -17,7 +17,7 @@ If you want the shortest path to understanding, use this order:
 Start here if you want visible value quickly without depending on a live cluster:
 
 - [`connect-and-compare`](./connect-and-compare/README.md)
-- [`incubator/import-from-bundle`](./incubator/import-from-bundle/README.md)
+- [`import-from-bundle`](./import-from-bundle/README.md)
 - [`incubator/fleet-import`](./incubator/fleet-import/README.md)
 - [`incubator/demo-data-adt`](./incubator/demo-data-adt/README.md)
 
@@ -40,7 +40,7 @@ cd connect-and-compare
 For the offline import sibling:
 
 ```bash
-cd incubator/import-from-bundle
+cd import-from-bundle
 ./setup.sh --explain
 ./setup.sh
 ./verify.sh

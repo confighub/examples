@@ -21,12 +21,16 @@ These are already merged on `main` and should be treated as the current canonica
 
 ### No-cluster examples
 
-- `incubator/import-from-bundle`
 - `incubator/fleet-import`
 - `incubator/demo-data-adt`
 - `incubator/lifecycle-hazards`
 - `incubator/connected-summary-storage`
 - `incubator/artifact-workflow`
+
+Stable no-cluster examples already promoted:
+
+- `connect-and-compare`
+- `import-from-bundle`
 
 ### Mixed or live-evidence examples
 
@@ -56,7 +60,6 @@ These should stay green and are the fastest signal.
 
 For each of these:
 
-- `incubator/import-from-bundle`
 - `incubator/fleet-import`
 - `incubator/demo-data-adt`
 - `incubator/lifecycle-hazards`

@@ -12,6 +12,7 @@ This repo contains examples that demonstrate how [ConfigHub](https://confighub.c
 
 - [`connect-and-compare`](./connect-and-compare/README.md): stable no-cluster evidence and compare example.
 - [`import-from-live`](./import-from-live/README.md): stable brownfield discovery and dry-run import proposal example.
+- [`import-from-bundle`](./import-from-bundle/README.md): stable offline dry-run import proposal example backed by a copied debug bundle.
 - [`apptique-flux-monorepo`](./apptique-flux-monorepo/README.md): stable app-style Flux monorepo example with one base plus dev and prod overlays.
 - [`global-app`](./global-app/README.md): classic multi-service app example.
 - [`custom-workers`](./custom-workers): worker extension examples using the ConfigHub SDK as normal Go modules.
@@ -26,8 +27,8 @@ For the current GitHub + Argo/Flux + AI/CLI + ConfigHub wedge, start here:
 - [Official GitOps Import docs](https://docs.confighub.com/get-started/examples/gitops-import/)
 - [`connect-and-compare`](./connect-and-compare/README.md)
 - [`import-from-live`](./import-from-live/README.md)
+- [`import-from-bundle`](./import-from-bundle/README.md)
 - [`apptique-flux-monorepo`](./apptique-flux-monorepo/README.md)
-- [`incubator/import-from-bundle`](./incubator/import-from-bundle/README.md)
 - [`incubator/fleet-import`](./incubator/fleet-import/README.md)
 - [`incubator/demo-data-adt`](./incubator/demo-data-adt/README.md)
 - [`incubator/gitops-import-argo`](./incubator/gitops-import-argo/README.md)
