@@ -1,5 +1,11 @@
 # Claude Testing Handover: Incubator Examples
 
+Superseded as the broad starting point by:
+
+- `incubator/planning/2026-03-24-next-ai-handover.md`
+
+Keep this file for the narrower testing checklist.
+
 **Date:** 2026-03-22
 **Goal:** give a fresh Claude session a clean testing brief for the current incubator set in `confighub/examples`
 
