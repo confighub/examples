@@ -19,13 +19,14 @@ Start here if you want visible value quickly without depending on a live cluster
 - [`connect-and-compare`](./connect-and-compare/README.md)
 - [`import-from-bundle`](./import-from-bundle/README.md)
 - [`connected-summary-storage`](./connected-summary-storage/README.md)
+- [`artifact-workflow`](./artifact-workflow/README.md)
 - [`graph-export`](./graph-export/README.md)
 - [`incubator/fleet-import`](./incubator/fleet-import/README.md)
 - [`incubator/demo-data-adt`](./incubator/demo-data-adt/README.md)
 
 Why:
 
-- they show evidence, compare, reporting, import proposal, aggregation, and scanning
+- they show evidence, compare, reporting, import proposal, offline bundle replay, aggregation, and scanning
 - they also include one small shareable topology artifact path
 - they are easy to review
 - they make mutation boundaries obvious
@@ -53,6 +54,15 @@ For the reporting sibling:
 
 ```bash
 cd connected-summary-storage
+./setup.sh --explain
+./setup.sh
+./verify.sh
+```
+
+For the offline bundle sibling:
+
+```bash
+cd artifact-workflow
 ./setup.sh --explain
 ./setup.sh
 ./verify.sh

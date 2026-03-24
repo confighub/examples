@@ -13,10 +13,10 @@ The no-cluster path is strong enough to stand on its own, and two examples have 
 - `connect-and-compare` (now stable at the repo root)
 - `import-from-bundle` (now stable at the repo root)
 - `connected-summary-storage` (now stable at the repo root)
+- `artifact-workflow` (now stable at the repo root)
 - `fleet-import`
 - `demo-data-adt`
 - `lifecycle-hazards`
-- `artifact-workflow`
 
 The live import and live evidence path is also in place, and one example has already graduated to stable:
 
@@ -96,6 +96,7 @@ The following now reflect the no-cluster-first route before live import:
 - `apptique-argo-applicationset`
 - `graph-export`
 - `connected-summary-storage`
+- `artifact-workflow`
 
 ## What Is Not Done
 
@@ -188,10 +189,10 @@ A candidate is ready to consider for promotion when it meets all of these:
 - `connect-and-compare`
 - `import-from-bundle`
 - `connected-summary-storage`
+- `artifact-workflow`
 - `incubator/fleet-import`
 - `incubator/demo-data-adt`
 - `incubator/lifecycle-hazards`
-- `incubator/artifact-workflow`
 
 ### Best live import and evidence examples
 

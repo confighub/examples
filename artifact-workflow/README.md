@@ -1,6 +1,6 @@
 # Artifact Workflow
 
-This incubator example adapts the artifact workflow from `cub-scout` into the official `examples` repo.
+This stable example adapts the artifact workflow from `cub-scout` into the official `examples` repo.
 
 It shows a small no-cluster offline-debug path:
 
@@ -41,7 +41,7 @@ It does not write ConfigHub state and does not mutate live infrastructure.
 ## Read-Only First
 
 ```bash
-cd incubator/artifact-workflow
+cd artifact-workflow
 ./setup.sh --explain
 ./setup.sh --explain-json | jq
 ```
@@ -92,7 +92,7 @@ jq '{target, gitContext, changes, riskSignals}' sample-output/bundle-summarize.j
 
 ## Why This Example Matters
 
-This gives the incubator set a reproducible offline-debug story.
+This gives the stable example set a reproducible offline-debug story.
 
 It answers a practical question quickly:
 

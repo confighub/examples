@@ -63,13 +63,14 @@ If the user is asking for GitHub import with Argo or Flux, start with the publis
 - [`import-from-live`](./import-from-live/README.md)
 - [`import-from-bundle`](./import-from-bundle/README.md)
 - [`connected-summary-storage`](./connected-summary-storage/README.md)
+- [`artifact-workflow`](./artifact-workflow/README.md)
 - [`incubator/fleet-import`](./incubator/fleet-import/README.md)
 - [`incubator/demo-data-adt`](./incubator/demo-data-adt/README.md)
 - [`graph-export`](./graph-export/README.md)
 - [`incubator/gitops-import-argo`](./incubator/gitops-import-argo/README.md)
 - [`incubator/gitops-import-flux`](./incubator/gitops-import-flux/README.md)
 
-Use the first five when the user wants no-cluster evidence, reporting, or offline import paths before moving into the live Argo and Flux examples.
+Use the first six when the user wants no-cluster evidence, reporting, or offline import paths before moving into the live Argo and Flux examples.
 
 If the user wants a stable app-style GitOps layout rather than an import flow, start here:
 
