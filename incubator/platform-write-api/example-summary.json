@@ -1,0 +1,39 @@
+{
+  "name": "platform-write-api",
+  "title": "Platform Write API",
+  "category": "incubator",
+  "status": "incubator",
+  "scenario": "Platform team with GitOps needs a write API for config changes",
+  "proves": [
+    "ConfigHub as mutation plane (write API for config)",
+    "Three-variant comparison with divergence detection",
+    "Field-level mutation routing (mutable / lift-upstream / blocked)",
+    "Policy-driven refresh preview (merge, not overwrite)"
+  ],
+  "requires": {
+    "cub_cli": true,
+    "confighub_auth": true,
+    "cluster": false,
+    "gitops": false,
+    "java": false
+  },
+  "depends_on": [
+    "springboot-platform-app"
+  ],
+  "pain_points_addressed": [
+    "No write API for config in Git",
+    "CI as hammer for every nail",
+    "Cannot tell what is in Git across environments",
+    "YAML editing is error-prone and requires full Git workflow",
+    "Cannot change organizational structure without restructuring repos"
+  ],
+  "scripts": {
+    "setup.sh": { "mutates": "confighub", "modes": ["--explain", "--explain-json"] },
+    "compare.sh": { "mutates": "nothing", "modes": ["--json"] },
+    "field-routes.sh": { "mutates": "nothing", "modes": ["--explain", "--json"] },
+    "refresh-preview.sh": { "mutates": "nothing", "modes": ["--explain", "--json"] },
+    "mutate.sh": { "mutates": "confighub", "modes": ["--explain", "--dry-run", "--revert"] },
+    "cleanup.sh": { "mutates": "confighub" },
+    "verify.sh": { "mutates": "nothing" }
+  }
+}
