@@ -442,7 +442,7 @@ These documents explain the design thinking behind the examples and the current 
 
 1. [01-nvidia-aicr-fit.md](./01-nvidia-aicr-fit.md) — Why the NVIDIA AICR pattern matters for ConfigHub
 2. [02-recipes-and-layers-spec.md](./02-recipes-and-layers-spec.md) — The recipes-and-layers spec for ConfigHub
-3. [04-review-and-next-steps.md](./04-review-and-next-steps.md) — Current status and the main open gaps
+3. [04-bundles-attestation-and-todo.md](./04-bundles-attestation-and-todo.md) — Current status plus the AICR bundle, integrity, and attestation gap
 
 ## End-to-End Testing
 
