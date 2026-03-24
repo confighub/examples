@@ -81,30 +81,42 @@ It has now been promoted to the stable repo root as:
 
 - `import-from-bundle`
 
+### `apptique-argo-applicationset`
+
+Completed because:
+
+- self-contained and live-validated
+- strongest stable Argo app-layout example in the repo
+- good stable counterpart to `apptique-flux-monorepo`
+
+It has now been promoted to the stable repo root as:
+
+- `apptique-argo-applicationset`
+
 ## Recommended Next Promotion Wave
 
 These are the strongest next candidates right now.
 
-### 1. `incubator/apptique-argo-applicationset`
-
-Why it stands out:
-
-- self-contained and live-validated
-- strongest remaining Argo app-layout candidate
-- good stable counterpart to `apptique-flux-monorepo`
-
-Why it should likely be next:
-
-- it broadens the stable set without adding a much more complex controller story
-- it is the cleanest remaining Argo app-style promotion candidate
-
-### 2. `incubator/graph-export`
+### 1. `incubator/graph-export`
 
 Why it stands out:
 
 - clean topology artifact story
 - easy to verify with explicit generated outputs
 - adds a different kind of stable evidence example
+
+Why it should likely be next:
+
+- it broadens the stable set without adding a heavier controller or bundle workflow
+- it is narrow, honest, and easy to revalidate
+
+### 2. `incubator/connected-summary-storage`
+
+Why it stands out:
+
+- strong reporting and automation story
+- fully no-cluster
+- complements the current evidence spine well
 
 ## Strong Second-Wave Candidates
 
@@ -121,18 +133,6 @@ Strong because:
 Held for second wave because:
 
 - it is more about sharing evidence than about loading data into ConfigHub
-
-### `incubator/apptique-argo-applicationset`
-
-Strong because:
-
-- self-contained and live-validated
-- strong Argo app-layout story
-
-Held for second wave because:
-
-- one stable app-style example is enough for the first promotion wave
-- `apptique-flux-monorepo` is already covering the simpler stable app-layout slot
 
 ## Keep In Incubator For Now
 
@@ -183,8 +183,8 @@ Why:
 
 ## Recommended Next Decision Sequence
 
-1. Promote one Argo app-style example next: `apptique-argo-applicationset`
-2. Then decide whether the next stable addition should be topology-focused, reporting-focused, or another no-cluster evidence example
+1. Promote one narrow evidence example next: `graph-export` or `connected-summary-storage`
+2. Then decide whether the next stable addition should be reporting-focused, topology-focused, or another no-cluster evidence example
 
 ## Notes
 

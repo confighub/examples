@@ -105,12 +105,14 @@ cd incubator/gitops-import-flux
 If you want a stable app-style GitOps layout rather than an import flow, use:
 
 - [`apptique-flux-monorepo`](./apptique-flux-monorepo/README.md)
+- [`apptique-argo-applicationset`](./apptique-argo-applicationset/README.md)
 
 Why:
 
 - it is the cleanest stable "one app, multiple environments" GitOps example in the repo
 - it shows one base plus two environment overlays
 - it is self-contained and live-validated
+- it now has both a Flux and Argo stable path
 
 Typical flow:
 
@@ -119,6 +121,15 @@ cd apptique-flux-monorepo
 ./setup.sh --explain
 ./setup.sh --with-prod
 ./verify.sh --with-prod
+```
+
+For the Argo sibling:
+
+```bash
+cd apptique-argo-applicationset
+./setup.sh --explain
+./setup.sh
+./verify.sh
 ```
 
 ## Fifth Path: Worker Extensibility

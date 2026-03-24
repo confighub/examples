@@ -10,6 +10,10 @@ ESCAPED_GIT_REVISION="${EXAMPLES_GIT_REVISION//\//\\/}"
 EXPLAIN=0
 EXPLAIN_JSON=0
 
+cluster_exists() {
+  docker ps -a --format '{{.Names}}' | grep -qx "${CLUSTER_NAME}-control-plane"
+}
+
 usage() {
   cat <<EOF_USAGE
 Usage:
@@ -96,7 +100,7 @@ if [[ "$EXPLAIN_JSON" -eq 1 ]]; then
       example: "apptique-argo-applicationset",
       mutatesConfighub: false,
       mutatesLiveInfrastructure: true,
-      requires: ["kubectl", "kind"],
+      requires: ["kubectl", "kind", "docker"],
       clusterType: "kind",
       clusterName: $clusterName,
       kubeconfigPath: $kubeconfigPath,
@@ -110,10 +114,11 @@ fi
 
 require_cmd kubectl
 require_cmd kind
+require_cmd docker
 mkdir -p "$VAR_DIR"
 export KUBECONFIG="$KUBECONFIG_PATH"
 
-if kind get clusters | grep -qx "$CLUSTER_NAME"; then
+if cluster_exists; then
   kind delete cluster --name "$CLUSTER_NAME" >/dev/null 2>&1 || true
 fi
 kind create cluster --name "$CLUSTER_NAME" --wait 60s --kubeconfig "$KUBECONFIG_PATH" >/dev/null

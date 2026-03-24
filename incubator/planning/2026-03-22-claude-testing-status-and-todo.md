@@ -45,12 +45,12 @@ Stable no-cluster examples already promoted:
 
 ### App-style examples now validated live
 
-- `incubator/apptique-argo-applicationset`
 - `incubator/apptique-argo-app-of-apps`
 
 Stable app-style example already promoted:
 
 - `apptique-flux-monorepo`
+- `apptique-argo-applicationset`
 
 ## Highest-Priority Testing Tasks
 
@@ -130,7 +130,6 @@ The app-style set has now had one clean self-contained live validation pass. The
 
 Targets:
 
-- `incubator/apptique-argo-applicationset`
 - `incubator/apptique-argo-app-of-apps`
 
 What to do:
