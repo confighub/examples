@@ -10,6 +10,7 @@ This repo contains examples that demonstrate how [ConfigHub](https://confighub.c
 
 ## Examples Catalog
 
+- [`connect-and-compare`](./connect-and-compare/README.md): stable no-cluster evidence and compare example.
 - [`global-app`](./global-app/README.md): classic multi-service app example.
 - [`custom-workers`](./custom-workers): worker extension examples using the ConfigHub SDK as normal Go modules.
 - [`helm-platform-components`](./helm-platform-components/README.md): platform component setup.
@@ -21,7 +22,7 @@ This repo contains examples that demonstrate how [ConfigHub](https://confighub.c
 For the current GitHub + Argo/Flux + AI/CLI + ConfigHub wedge, start here:
 
 - [Official GitOps Import docs](https://docs.confighub.com/get-started/examples/gitops-import/)
-- [`incubator/connect-and-compare`](./incubator/connect-and-compare/README.md)
+- [`connect-and-compare`](./connect-and-compare/README.md)
 - [`incubator/import-from-bundle`](./incubator/import-from-bundle/README.md)
 - [`incubator/fleet-import`](./incubator/fleet-import/README.md)
 - [`incubator/demo-data-adt`](./incubator/demo-data-adt/README.md)

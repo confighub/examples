@@ -21,7 +21,6 @@ These are already merged on `main` and should be treated as the current canonica
 
 ### No-cluster examples
 
-- `incubator/connect-and-compare`
 - `incubator/import-from-bundle`
 - `incubator/fleet-import`
 - `incubator/demo-data-adt`
@@ -55,7 +54,6 @@ These should stay green and are the fastest signal.
 
 For each of these:
 
-- `incubator/connect-and-compare`
 - `incubator/import-from-bundle`
 - `incubator/fleet-import`
 - `incubator/demo-data-adt`

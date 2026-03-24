@@ -46,7 +46,7 @@ Do not continue until I say continue.
 If the user is asking for GitHub import with Argo or Flux, start with the published docs and the runnable incubator examples in this repo:
 
 - [Official GitOps Import docs](https://docs.confighub.com/get-started/examples/gitops-import/)
-- [`incubator/connect-and-compare`](./incubator/connect-and-compare/README.md)
+- [`connect-and-compare`](./connect-and-compare/README.md)
 - [`incubator/import-from-bundle`](./incubator/import-from-bundle/README.md)
 - [`incubator/fleet-import`](./incubator/fleet-import/README.md)
 - [`incubator/demo-data-adt`](./incubator/demo-data-adt/README.md)

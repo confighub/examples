@@ -17,7 +17,6 @@ Keep building AI-first examples in `examples/incubator` that give one person a f
 
 ### No-Cluster Evidence And Inspection
 
-- [`connect-and-compare`](./connect-and-compare/README.md): fixture-first evidence path showing doctor, compare, and history without a live cluster.
 - [`demo-data-adt`](./demo-data-adt/README.md): scan-first App-Deployment-Target example showing labeled workload fixtures plus immediate static risk findings.
 - [`lifecycle-hazards`](./lifecycle-hazards/README.md): migration-risk example adapted from `cub-scout`, showing hook inventory and Helm-to-Argo lifecycle hazards from one manifest file.
 - [`connected-summary-storage`](./connected-summary-storage/README.md): reporting example adapted from `cub-scout`, showing persisted connected summaries plus dry-run Slack digest generation from local storage.
@@ -70,7 +69,7 @@ If the goal is the current GitHub + Argo/Flux + AI/CLI + ConfigHub wedge, do not
 Use this order:
 - [Official GitOps Import docs](https://docs.confighub.com/get-started/examples/gitops-import/)
 - No-cluster evidence first:
-  - [`connect-and-compare`](./connect-and-compare/README.md)
+  - [`../connect-and-compare`](../connect-and-compare/README.md)
   - [`import-from-bundle`](./import-from-bundle/README.md)
   - [`fleet-import`](./fleet-import/README.md)
   - [`demo-data-adt`](./demo-data-adt/README.md)
@@ -115,6 +114,7 @@ For both of those paths, the authoritative runnable implementation is Jesper's [
 
 ## Stable Examples (outside incubator)
 
+- [`../connect-and-compare`](../connect-and-compare/README.md): stable no-cluster evidence example showing doctor, compare, and history without a live cluster.
 - [`promotion-demo-data`](../promotion-demo-data/README.md): creates 49 spaces and ~154 units using the App-Deployment-Target model. Uses noop bridge, no cluster required. Canonical example of ConfigHub's multi-env promotion model.
 - [`../custom-workers`](../custom-workers): official worker extension examples, including bridge workers, function workers, and policy or validation workers.
 
