@@ -136,7 +136,7 @@ It shows a realistic Argo layout teams actually use:
 
 That makes it a good companion to:
 
-- [../apptique-flux-monorepo](../apptique-flux-monorepo/README.md)
+- [../../apptique-flux-monorepo](../../apptique-flux-monorepo/README.md)
 - [../gitops-import-argo](../gitops-import-argo/README.md)
 - [../gitops-import-flux](../gitops-import-flux/README.md)
 

@@ -69,6 +69,17 @@ If the user is asking for GitHub import with Argo or Flux, start with the publis
 
 Use the first four when the user wants no-cluster evidence or offline import paths before moving into the live Argo and Flux examples.
 
+If the user wants a stable app-style GitOps layout rather than an import flow, start here:
+
+- [`apptique-flux-monorepo`](./apptique-flux-monorepo/README.md)
+
+Use it when the user wants:
+
+- one app
+- one shared base
+- dev and prod overlays
+- Flux-managed rollout without the extra complexity of the Argo siblings
+
 If the user is asking about worker extensibility, validation, policy checks, or custom execution paths, use the official worker examples in this repo:
 
 - [`custom-workers/hello-world-bridge`](./custom-workers/hello-world-bridge/README.md)

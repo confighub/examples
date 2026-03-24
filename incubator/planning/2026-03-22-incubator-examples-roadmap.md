@@ -30,9 +30,9 @@ The live import and live evidence path is also in place, and one example has alr
 - `watch-webhook`
 - `flux-boutique`
 
-The app-style set is now self-contained and live-validated:
+The app-style set is now self-contained and live-validated, with one example already promoted:
 
-- `apptique-flux-monorepo`
+- `apptique-flux-monorepo` (now stable at the repo root)
 - `apptique-argo-applicationset`
 - `apptique-argo-app-of-apps`
 
@@ -68,7 +68,6 @@ The following work is already merged on `main`.
 
 ### App-style examples adapted from cub-scout
 
-- `incubator/apptique-flux-monorepo`
 - `incubator/apptique-argo-applicationset`
 - `incubator/apptique-argo-app-of-apps`
 
@@ -96,6 +95,7 @@ The following now reflect the no-cluster-first route before live import:
 
 - `connect-and-compare`
 - `import-from-live`
+- `apptique-flux-monorepo`
 
 ## What Is Not Done
 
@@ -207,7 +207,7 @@ A candidate is ready to consider for promotion when it meets all of these:
 
 ### Best app-style examples
 
-- `incubator/apptique-flux-monorepo`
+- `apptique-flux-monorepo`
 - `incubator/apptique-argo-applicationset`
 - `incubator/apptique-argo-app-of-apps`
 

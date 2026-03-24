@@ -1,6 +1,6 @@
 # Apptique Flux Monorepo
 
-This incubator example adapts the Flux monorepo app-style pattern from `cub-scout` into the official `examples` repo.
+This stable example adapts the Flux monorepo app-style pattern from `cub-scout` into the official `examples` repo.
 
 It shows one realistic GitOps app layout:
 
@@ -21,7 +21,7 @@ Use this example when you want to show:
 - how Flux Kustomizations map environments to namespaces
 - how to verify ownership and provenance with `kubectl`, `flux`, and optionally `cub-scout`
 
-If you want to import a live Flux cluster into ConfigHub, use [../gitops-import-flux](../gitops-import-flux/README.md) after or alongside this example.
+If you want to import a live Flux cluster into ConfigHub, use [../incubator/gitops-import-flux](../incubator/gitops-import-flux/README.md) after or alongside this example.
 
 ## Source
 
@@ -54,7 +54,7 @@ It does not write ConfigHub state by itself.
 ## Read-Only First
 
 ```bash
-cd incubator/apptique-flux-monorepo
+cd apptique-flux-monorepo
 ./setup.sh --explain
 ./setup.sh --explain-json | jq
 ```
@@ -144,7 +144,7 @@ This is the same evidence-first model as the import examples:
 
 ## Why This Example Matters
 
-This gives the incubator set one clear app-style example that is not mainly about import.
+This gives the stable example set one clear app-style example that is not mainly about import.
 
 It shows a realistic app layout teams actually use:
 
@@ -155,9 +155,9 @@ It shows a realistic app layout teams actually use:
 
 That makes it a good companion to:
 
-- [../gitops-import-flux](../gitops-import-flux/README.md)
-- [../gitops-import-argo](../gitops-import-argo/README.md)
-- [../apptique-argo-applicationset](../apptique-argo-applicationset/README.md)
+- [../incubator/gitops-import-flux](../incubator/gitops-import-flux/README.md)
+- [../incubator/gitops-import-argo](../incubator/gitops-import-argo/README.md)
+- [../incubator/apptique-argo-applicationset](../incubator/apptique-argo-applicationset/README.md)
 
 ## AI-Safe Path
 

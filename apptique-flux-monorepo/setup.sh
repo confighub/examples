@@ -11,6 +11,10 @@ WITH_PROD=0
 EXPLAIN=0
 EXPLAIN_JSON=0
 
+cluster_exists() {
+  docker ps -a --format '{{.Names}}' | grep -qx "${CLUSTER_NAME}-control-plane"
+}
+
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || {
     echo "Missing required command: $1" >&2
@@ -89,7 +93,7 @@ if [[ "$EXPLAIN_JSON" -eq 1 ]]; then
       example: $example,
       mutatesConfighub: false,
       mutatesLiveInfrastructure: true,
-      requires: ["kubectl", "flux", "kind"],
+      requires: ["kubectl", "flux", "kind", "docker"],
       clusterType: "kind",
       clusterName: $clusterName,
       kubeconfigPath: $kubeconfigPath,
@@ -108,11 +112,12 @@ fi
 require_cmd kubectl
 require_cmd flux
 require_cmd kind
+require_cmd docker
 
 mkdir -p "$VAR_DIR"
 export KUBECONFIG="$KUBECONFIG_PATH"
 
-if kind get clusters | grep -qx "$CLUSTER_NAME"; then
+if cluster_exists; then
   kind delete cluster --name "$CLUSTER_NAME" >/dev/null 2>&1 || true
 fi
 

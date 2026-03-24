@@ -41,7 +41,6 @@ Keep building AI-first examples in `examples/incubator` that give one person a f
 
 ### App-Style GitOps Layouts
 
-- [`apptique-flux-monorepo`](./apptique-flux-monorepo/README.md): Flux monorepo layout with one app base plus dev and prod overlays.
 - [`apptique-argo-applicationset`](./apptique-argo-applicationset/README.md): Argo ApplicationSet layout with one generator and one generated Application per environment.
 - [`apptique-argo-app-of-apps`](./apptique-argo-app-of-apps/README.md): Argo app-of-apps layout with one root Application and one child Application per environment.
 
@@ -87,9 +86,9 @@ Use this order:
   - [`flux-boutique`](./flux-boutique/README.md)
   - [`platform-example`](./platform-example/README.md)
 - Then app-style layouts:
+  - [`../apptique-flux-monorepo`](../apptique-flux-monorepo/README.md)
   - [`apptique-argo-applicationset`](./apptique-argo-applicationset/README.md)
   - [`apptique-argo-app-of-apps`](./apptique-argo-app-of-apps/README.md)
-  - [`apptique-flux-monorepo`](./apptique-flux-monorepo/README.md)
 - Then worker and model examples:
   - [`../custom-workers`](../custom-workers)
   - [`../promotion-demo-data`](../promotion-demo-data/README.md)
@@ -115,6 +114,7 @@ For both of those paths, the authoritative runnable implementation is Jesper's [
 
 - [`../connect-and-compare`](../connect-and-compare/README.md): stable no-cluster evidence example showing doctor, compare, and history without a live cluster.
 - [`../import-from-live`](../import-from-live/README.md): stable brownfield discovery example showing live-cluster dry-run proposal generation before any ConfigHub mutation.
+- [`../apptique-flux-monorepo`](../apptique-flux-monorepo/README.md): stable app-style Flux example showing one base plus dev and prod overlays with dedicated kubeconfig handling.
 - [`promotion-demo-data`](../promotion-demo-data/README.md): creates 49 spaces and ~154 units using the App-Deployment-Target model. Uses noop bridge, no cluster required. Canonical example of ConfigHub's multi-env promotion model.
 - [`../custom-workers`](../custom-workers): official worker extension examples, including bridge workers, function workers, and policy or validation workers.
 

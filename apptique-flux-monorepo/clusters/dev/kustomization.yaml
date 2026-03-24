@@ -5,7 +5,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 5m
-  path: ./incubator/apptique-flux-monorepo/apps/apptique/overlays/dev
+  path: ./apptique-flux-monorepo/apps/apptique/overlays/dev
   prune: true
   sourceRef:
     kind: GitRepository

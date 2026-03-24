@@ -49,7 +49,7 @@ Before you run this package, pick the smallest demo that matches the user's actu
 | Show me Helm first | [helm-platform-components](../../helm-platform-components/README.md) |
 | Show me the smallest direct apply example | [single-component](./single-component/README.md) |
 | Show me App-Deployment-Target | [promotion-demo-data](../../promotion-demo-data/README.md) |
-| Show me microservices or app-of-apps styles | [apptique-flux-monorepo](../apptique-flux-monorepo/README.md) |
+| Show me microservices or app-of-apps styles | [apptique-flux-monorepo](../../apptique-flux-monorepo/README.md) |
 
 Use `global-app-layer` when the question is specifically about:
 

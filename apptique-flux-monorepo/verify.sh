@@ -32,8 +32,6 @@ while [[ $# -gt 0 ]]; do
 done
 
 require_cmd kubectl
-require_cmd jq
-
 export KUBECONFIG="$KUBECONFIG_PATH"
 if [[ ! -f "$KUBECONFIG_PATH" ]]; then
   echo "Missing kubeconfig at $KUBECONFIG_PATH. Run ./setup.sh first." >&2
