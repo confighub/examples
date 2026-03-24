@@ -11,6 +11,7 @@ This repo contains examples that demonstrate how [ConfigHub](https://confighub.c
 ## Examples Catalog
 
 - [`connect-and-compare`](./connect-and-compare/README.md): stable no-cluster evidence and compare example.
+- [`import-from-live`](./import-from-live/README.md): stable brownfield discovery and dry-run import proposal example.
 - [`global-app`](./global-app/README.md): classic multi-service app example.
 - [`custom-workers`](./custom-workers): worker extension examples using the ConfigHub SDK as normal Go modules.
 - [`helm-platform-components`](./helm-platform-components/README.md): platform component setup.
@@ -23,6 +24,7 @@ For the current GitHub + Argo/Flux + AI/CLI + ConfigHub wedge, start here:
 
 - [Official GitOps Import docs](https://docs.confighub.com/get-started/examples/gitops-import/)
 - [`connect-and-compare`](./connect-and-compare/README.md)
+- [`import-from-live`](./import-from-live/README.md)
 - [`incubator/import-from-bundle`](./incubator/import-from-bundle/README.md)
 - [`incubator/fleet-import`](./incubator/fleet-import/README.md)
 - [`incubator/demo-data-adt`](./incubator/demo-data-adt/README.md)
@@ -30,7 +32,7 @@ For the current GitHub + Argo/Flux + AI/CLI + ConfigHub wedge, start here:
 - [`incubator/gitops-import-flux`](./incubator/gitops-import-flux/README.md)
 - [`custom-workers`](./custom-workers)
 
-These are the runnable examples for evidence, offline import, live import, and worker extensibility in this repo today.
+These are the runnable examples for evidence, brownfield discovery, offline import, live import, and worker extensibility in this repo today.
 
 ## Companion Material
 

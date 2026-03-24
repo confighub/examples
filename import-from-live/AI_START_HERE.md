@@ -18,7 +18,7 @@ For each stage:
 ## Suggested Prompt
 
 ```text
-Read incubator/import-from-live/AI_START_HERE.md and walk me through the demo.
+Read import-from-live/AI_START_HERE.md and walk me through the demo.
 Pause after every stage. Show full output. Give GUI links where possible.
 Do not continue until I say continue.
 ```
@@ -34,7 +34,7 @@ It does not mutate ConfigHub by default.
 ## Stage 1: Preview The Plan (read-only)
 
 ```bash
-cd incubator/import-from-live
+cd import-from-live
 ./setup.sh --explain
 ./setup.sh --explain-json | jq
 ```
@@ -77,8 +77,8 @@ Pause after this stage.
 kubectl get application -n argocd
 kubectl get deployment -n myapp-dev
 kubectl get statefulset -n myapp-prod
-jq '.appSpace' sample-output/suggestion.json
-jq '.units[] | {slug, app, variant}' sample-output/suggestion.json
+jq '.proposal.appSpace' sample-output/suggestion.json
+jq '.proposal.units[] | {slug, app, variant}' sample-output/suggestion.json
 ```
 
 What this proves:

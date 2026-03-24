@@ -5,10 +5,11 @@ This is the human entry point for the `confighub/examples` repo.
 If you want the shortest path to understanding, use this order:
 
 1. look at one no-cluster evidence or offline import example
-2. look at one live GitOps import example with direct evidence
-3. look at one worker extension example
-4. look at one example that teaches the core ConfigHub object model
-5. only then move to the bigger layered or fleet-style examples
+2. look at one live brownfield discovery example
+3. look at one live GitOps import example with direct evidence
+4. look at one worker extension example
+5. look at one example that teaches the core ConfigHub object model
+6. only then move to the bigger layered or fleet-style examples
 
 ## First Path: No Cluster Required
 
@@ -44,7 +45,28 @@ cd incubator/import-from-bundle
 ./verify.sh
 ```
 
-## Second Path: GitOps Import And Evidence
+## Second Path: Brownfield Discovery From A Live Cluster
+
+If you already have a cluster and want a dry-run ConfigHub proposal before any ConfigHub mutation, use:
+
+- [`import-from-live`](./import-from-live/README.md)
+
+Why:
+
+- it starts from live cluster reality
+- it keeps the first ConfigHub mutation optional
+- it is the cleanest single-player bridge from "what is running?" to "what would ConfigHub organize?"
+
+Typical flow:
+
+```bash
+cd import-from-live
+./setup.sh --explain
+./setup.sh
+./verify.sh
+```
+
+## Third Path: GitOps Import And Evidence
 
 Start with the published GitOps docs and then use the runnable examples in this repo:
 
@@ -77,7 +99,7 @@ cd incubator/gitops-import-flux
 ./verify.sh
 ```
 
-## Third Path: Worker Extensibility
+## Fourth Path: Worker Extensibility
 
 If you want to understand how ConfigHub workers are built and extended, go to:
 
@@ -90,7 +112,7 @@ If you want to understand how ConfigHub workers are built and extended, go to:
 
 These show simple bridge and function workers, plus policy and validation examples using the SDK as normal Go modules.
 
-## Fourth Path: Stable ConfigHub Model
+## Fifth Path: Stable ConfigHub Model
 
 Then look at [`promotion-demo-data`](./promotion-demo-data/README.md).
 
@@ -109,7 +131,7 @@ cd promotion-demo-data
 ./cleanup.sh
 ```
 
-## Fifth Path: Learn The Core Object Model
+## Sixth Path: Learn The Core Object Model
 
 Then go to the layered examples package:
 
@@ -136,7 +158,7 @@ cd incubator/global-app-layer/realistic-app
 ./setup.sh --explain
 ```
 
-## Sixth Path: Pick The Right Layered Worked Example
+## Seventh Path: Pick The Right Layered Worked Example
 
 Inside [`incubator/global-app-layer`](./incubator/global-app-layer/README.md):
 

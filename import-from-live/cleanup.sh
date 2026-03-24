@@ -6,7 +6,9 @@ CLUSTER_NAME="${IMPORT_FROM_LIVE_CLUSTER_NAME:-import-from-live}"
 VAR_DIR="$SCRIPT_DIR/var"
 export KUBECONFIG="$VAR_DIR/$CLUSTER_NAME.kubeconfig"
 
-kind delete cluster --name "$CLUSTER_NAME" >/dev/null 2>&1 || true
+if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -qx "${CLUSTER_NAME}-control-plane"; then
+  kind delete cluster --name "$CLUSTER_NAME" >/dev/null 2>&1 || true
+fi
 rm -f "$SCRIPT_DIR"/sample-output/*.json "$SCRIPT_DIR"/sample-output/*.txt
 rm -f "$KUBECONFIG"
 

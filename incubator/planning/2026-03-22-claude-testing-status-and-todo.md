@@ -30,7 +30,6 @@ These are already merged on `main` and should be treated as the current canonica
 
 ### Mixed or live-evidence examples
 
-- `incubator/import-from-live`
 - `incubator/combined-git-live`
 - `incubator/gitops-import-argo`
 - `incubator/gitops-import-flux`
@@ -105,13 +104,12 @@ What to record:
 - whether the evidence captured by the example still matches the current command output
 - whether any README or contract text drifts from runtime behavior
 
-### 3. Re-run `import-from-live` and `combined-git-live`
+### 3. Re-run `combined-git-live`
 
-These are valuable, but they are broader brownfield stories than the smaller live examples above.
+This remains valuable, but it is broader than the smaller live examples above.
 
 Targets:
 
-- `incubator/import-from-live`
 - `incubator/combined-git-live`
 
 What to record:
