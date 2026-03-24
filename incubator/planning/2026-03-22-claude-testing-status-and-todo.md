@@ -24,13 +24,13 @@ These are already merged on `main` and should be treated as the current canonica
 - `incubator/fleet-import`
 - `incubator/demo-data-adt`
 - `incubator/lifecycle-hazards`
-- `incubator/connected-summary-storage`
 - `incubator/artifact-workflow`
 
 Stable no-cluster examples already promoted:
 
 - `connect-and-compare`
 - `import-from-bundle`
+- `connected-summary-storage`
 
 ### Mixed or live-evidence examples
 
@@ -67,7 +67,6 @@ For each of these:
 - `incubator/fleet-import`
 - `incubator/demo-data-adt`
 - `incubator/lifecycle-hazards`
-- `incubator/connected-summary-storage`
 - `incubator/artifact-workflow`
 
 Run:
