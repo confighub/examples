@@ -10,6 +10,10 @@ KUBECONFIG_PATH="$VAR_DIR/$CLUSTER_NAME.kubeconfig"
 EXPLAIN=0
 EXPLAIN_JSON=0
 
+cluster_exists() {
+  docker ps -a --format '{{.Names}}' | grep -qx "${CLUSTER_NAME}-control-plane"
+}
+
 usage() {
   cat <<'EOF_USAGE'
 Usage:
@@ -110,10 +114,11 @@ if [[ "$EXPLAIN_JSON" -eq 1 ]]; then
     writesLocalFilesOnly: false,
     clusterType: "kind",
     clusterName: $cluster_name,
+    kubeconfigPath: $kubeconfig_path,
     outputDir: $output_dir,
     requires: ["kind", "kubectl", "docker", "jq", "cub-scout"],
     command: "cub-scout graph export --format json"
-  }'
+  }' --arg kubeconfig_path "$KUBECONFIG_PATH"
   exit 0
 fi
 
@@ -124,7 +129,9 @@ mkdir -p "$OUTPUT_DIR"
 rm -f "$OUTPUT_DIR"/*
 
 export KUBECONFIG="$KUBECONFIG_PATH"
-kind delete cluster --name "$CLUSTER_NAME" >/dev/null 2>&1 || true
+if cluster_exists; then
+  kind delete cluster --name "$CLUSTER_NAME" >/dev/null 2>&1 || true
+fi
 kind create cluster --name "$CLUSTER_NAME" --wait 60s --kubeconfig "$KUBECONFIG_PATH" >/dev/null
 kubectl config use-context "kind-${CLUSTER_NAME}" >/dev/null
 

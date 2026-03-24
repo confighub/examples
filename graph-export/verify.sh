@@ -16,7 +16,7 @@ kubectl get replicaset -n graph-demo >/dev/null
 kubectl get pod -n graph-demo >/dev/null
 
 jq -e '.schema_version == "graph.v1"' "$OUTPUT_DIR/graph.json" >/dev/null
-jq -e '.cluster == "kind-graph-export"' "$OUTPUT_DIR/graph.json" >/dev/null
+jq -e --arg cluster "kind-${CLUSTER_NAME}" '.cluster == $cluster' "$OUTPUT_DIR/graph.json" >/dev/null
 jq -e '[.nodes[].kind] | index("Deployment") != null' "$OUTPUT_DIR/graph.json" >/dev/null
 jq -e '[.nodes[].kind] | index("ReplicaSet") != null' "$OUTPUT_DIR/graph.json" >/dev/null
 jq -e '[.nodes[].kind] | index("Pod") != null' "$OUTPUT_DIR/graph.json" >/dev/null

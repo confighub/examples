@@ -1,6 +1,6 @@
 # Graph Export
 
-This incubator example adapts the `graph-export` flow from `cub-scout` into the official `examples` repo.
+This stable example adapts the `graph-export` flow from `cub-scout` into the official `examples` repo.
 
 It shows a small live topology path:
 
@@ -52,7 +52,7 @@ It does not write ConfigHub state.
 ## Read-Only First
 
 ```bash
-cd incubator/graph-export
+cd graph-export
 ./setup.sh --explain
 ./setup.sh --explain-json | jq
 ```
@@ -113,7 +113,7 @@ head -n 5 sample-output/graph.html
 
 ## Why This Example Matters
 
-This gives the incubator set a small shareability example that is not about import.
+This gives the stable example set a small shareability example that is not about import.
 
 It answers a practical question quickly:
 

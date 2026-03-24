@@ -18,12 +18,14 @@ Start here if you want visible value quickly without depending on a live cluster
 
 - [`connect-and-compare`](./connect-and-compare/README.md)
 - [`import-from-bundle`](./import-from-bundle/README.md)
+- [`graph-export`](./graph-export/README.md)
 - [`incubator/fleet-import`](./incubator/fleet-import/README.md)
 - [`incubator/demo-data-adt`](./incubator/demo-data-adt/README.md)
 
 Why:
 
 - they show evidence, compare, import proposal, aggregation, and scanning
+- they also include one small shareable topology artifact path
 - they are easy to review
 - they make mutation boundaries obvious
 - they answer “why does this matter?” quickly
@@ -41,6 +43,15 @@ For the offline import sibling:
 
 ```bash
 cd import-from-bundle
+./setup.sh --explain
+./setup.sh
+./verify.sh
+```
+
+For the topology-artifact sibling:
+
+```bash
+cd graph-export
 ./setup.sh --explain
 ./setup.sh
 ./verify.sh
