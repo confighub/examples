@@ -21,17 +21,30 @@ After each stage:
 2. print the full output; do not replace it with a one-line summary
 3. explain what the output means in plain English
 4. print the GUI link or GUI checkpoint if one exists
-5. if there is no GUI checkpoint, say so explicitly
-6. stop and ask `Ready to continue?`
-7. do not move on until the human says to continue
+5. say what the GUI shows today
+6. say what the GUI does not show yet
+7. name the GUI feature ask and cite the issue number if one exists; if no issue exists yet, say that explicitly
+8. tell the human to open the GUI and give them time to inspect it
+9. if there is no GUI checkpoint, say so explicitly
+10. stop and ask `Ready to continue?`
+11. do not move on until the human says to continue
 
 Do not treat these examples like a checklist to finish quickly. Treat the AI as the demo UX.
+
+When a stage has GUI relevance, prefer this shape:
+
+- `GUI now:` exact URL or click path and what is visible today
+- `GUI gap:` what the GUI cannot show yet
+- `GUI feature ask:` what the GUI should show next, with issue number if known
+- `PAUSE:` tell the human to open the GUI and inspect it before continuing
 
 ## Suggested Prompt For Humans
 
 ```text
 Read incubator/<example>/AI_START_HERE.md and walk me through the demo.
-Pause after every stage. Show full output. Give GUI links where possible.
+Pause after every stage. Show full output.
+For each stage, tell me what the GUI shows today, what it does not show yet, and the feature ask.
+Give me time to click through the GUI before continuing.
 Do not continue until I say continue.
 ```
 
@@ -71,6 +84,9 @@ What these commands do not mutate:
 GUI checkpoint:
 
 - for connected ConfigHub state, open the relevant org in ConfigHub and compare the listed spaces or targets to the CLI output
+- GUI now: the spaces or targets you just listed in the CLI
+- GUI gap: the general org pages may still require manual scanning instead of a purpose-built filtered view
+- GUI feature ask: a tighter CLI-to-GUI handoff with direct filtered views and better grouping; cite the issue number if one exists for the example you are running
 
 Pause after this stage.
 

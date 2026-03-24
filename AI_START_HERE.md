@@ -26,10 +26,21 @@ After each stage:
 2. print the full output on screen; do not abbreviate or summarize it away
 3. explain what the output means in plain English
 4. if there is a GUI URL or GUI checkpoint, print it explicitly
-5. stop and ask `Ready to continue?` or `Want to inspect this more?`
-6. do not proceed until the human tells you to continue
+5. say what the GUI shows today
+6. say what the GUI does not show yet
+7. name the GUI feature ask and cite the issue number if one exists; if no issue exists yet, say that explicitly
+8. tell the human to open the GUI and give them time to click through it
+9. stop and ask `Ready to continue?` or `Want to inspect this more?`
+10. do not proceed until the human tells you to continue
 
 If there is no GUI checkpoint for a stage, say that explicitly instead of skipping the note.
+
+When a stage has GUI relevance, prefer this shape:
+
+- `GUI now:` exact URL or click path and what is visible today
+- `GUI gap:` what the GUI cannot show yet
+- `GUI feature ask:` what the GUI should show next, with issue number if known
+- `PAUSE:` tell the human to open the GUI and inspect it before continuing
 
 ## Suggested Prompt For Humans
 
@@ -37,7 +48,9 @@ Use this prompt when you want the AI to behave like a demo guide rather than a f
 
 ```text
 Read the relevant AI_START_HERE.md file and walk me through the demo.
-Pause after every stage. Show full output. Give GUI links where possible.
+Pause after every stage. Show full output.
+For each stage, tell me what the GUI shows today, what it does not show yet, and the feature ask.
+Give me time to click through the GUI before continuing.
 Do not continue until I say continue.
 ```
 
