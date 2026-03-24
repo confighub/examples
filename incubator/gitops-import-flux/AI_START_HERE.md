@@ -2,15 +2,34 @@
 
 Use this page when you want to drive `gitops-import-flux` safely with Codex, Claude, Cursor, or another AI assistant.
 
+## CRITICAL: Demo Pacing
+
+Pause after every stage.
+
+For each stage:
+
+1. run only that stage's commands
+2. print the full output
+3. explain what it means in plain English
+4. print the GUI checkpoint explicitly
+5. ask `Ready to continue?`
+6. wait for the human before continuing
+
+## Suggested Prompt
+
+```text
+Read incubator/gitops-import-flux/AI_START_HERE.md and walk me through the demo.
+Pause after every stage. Show full output. Give GUI links where possible.
+Do not continue until I say continue.
+```
+
 ## What This Example Is For
 
 This example is for GitOps import from a real Flux environment into ConfigHub.
 
 It is the import-and-evidence path, not the layered recipe path.
 
-## Read-Only First
-
-Start with preview commands only:
+## Stage 1: Preview The Plan (read-only)
 
 ```bash
 cd incubator/gitops-import-flux
@@ -23,64 +42,79 @@ flux --version 2>/dev/null || true
 
 These commands do not mutate ConfigHub and do not mutate live infrastructure.
 
-## Recommended Path
+GUI checkpoint:
+
+- none yet; this stage is CLI-only preview
+
+Pause after this stage.
+
+## Stage 2: Build The Local Flux Environment (mutates live infrastructure)
 
 Cluster and Flux only:
 
 ```bash
 ./setup.sh
-./verify.sh
-```
-
-With worker and import path:
-
-```bash
-cub auth login
-export CUB_SPACE=<space>
-./setup.sh --with-worker
-./verify.sh
-cub target list --space "$CUB_SPACE" --json | jq
-cub gitops discover --space "$CUB_SPACE" <kubernetes-target-slug> --json | jq
-cub gitops import --space "$CUB_SPACE" <kubernetes-target-slug> <flux-renderer-target-slug> --wait
 ```
 
 With optional contrast fixtures:
 
 ```bash
-./setup.sh --with-worker --with-contrast
+./setup.sh --with-contrast
 ```
 
-## Important Boundaries
+GUI checkpoint:
 
-- `./setup.sh --explain` is read-only
-- `./setup.sh` mutates live infrastructure
-- `./setup.sh --with-contrast` mutates live infrastructure further
-- `./setup.sh --with-worker` mutates ConfigHub and live infrastructure
-- `cub gitops discover` mutates ConfigHub only
-- `cub gitops import` mutates ConfigHub only
-- `./cleanup.sh` deletes the local kind cluster and local discovery worker state
+- none by default; use the Flux CLI and cluster state as the source of truth
 
-The worker install step preloads the Flux worker image into kind before rollout. If that step still takes time, wait for the Flux targets to appear in `cub target list` before concluding the install is stuck.
+Pause after this stage.
 
-If the worker install succeeds, expect three useful targets:
-- one Kubernetes discovery target
-- one `fluxrenderer` target for import and render
-- one `fluxoci` target for Flux-managed deployment of raw Kubernetes manifests
-
-## What To Verify
-
-Cluster side:
+## Stage 3: Verify Cluster And Flux Evidence (read-only)
 
 ```bash
 export KUBECONFIG=$PWD/var/gitops-import-flux.kubeconfig
+./verify.sh
 flux get all -A
 kubectl get gitrepositories,kustomizations,helmreleases -A
 kubectl get all -A
 ```
 
-ConfigHub side:
+Use the evidence like this:
+
+- `kubectl` and `flux` prove raw cluster facts
+- the contrast path is intentionally mixed and should be shown honestly
+
+What this does not prove:
+
+- no ConfigHub import has happened yet
+
+Pause after this stage.
+
+## Stage 4: Connect Worker And Discover (mutates ConfigHub)
 
 ```bash
+cub auth login
+export CUB_SPACE=<space>
+./setup.sh --with-worker
+cub target list --space "$CUB_SPACE" --json | jq
+cub gitops discover --space "$CUB_SPACE" <kubernetes-target-slug> --json | jq
+```
+
+If the worker install succeeds, expect three useful targets:
+
+- one Kubernetes discovery target
+- one `fluxrenderer` target for import and render
+- one `fluxoci` target for Flux-managed deployment of raw Kubernetes manifests
+
+GUI checkpoint:
+
+- ConfigHub GUI: open space `$CUB_SPACE` and inspect targets plus discovered units
+
+Pause after this stage.
+
+## Stage 5: Import And Verify ConfigHub Evidence (mutates ConfigHub)
+
+```bash
+cub gitops import --space "$CUB_SPACE" <kubernetes-target-slug> <flux-renderer-target-slug> --wait
 cub target list --space "$CUB_SPACE" --json | jq
 cub unit list --space "$CUB_SPACE" --json | jq
 cub unit-action list --space "$CUB_SPACE" <unit-slug>
@@ -96,17 +130,22 @@ cub-scout tree ownership
 
 Use the evidence like this:
 
-- `kubectl` and `flux` prove raw cluster facts
 - ConfigHub proves discover and renderer facts
 - `cub-scout` proves live ownership and GitOps context facts
 
-Expect a mixed result in the contrast path:
+GUI checkpoint:
 
-- `podinfo` should be the healthy reference path
-- the `platform-config` Kustomizations should be visibly broken because their Git source is not ready
-- the two HelmRelease paths should stay source-blocked until their chart sources exist
+- ConfigHub GUI: open space `$CUB_SPACE`, review targets, units, and actions
 
-Do not collapse those into one claim.
+Pause after this stage.
+
+## Stage 6: Cleanup
+
+```bash
+./cleanup.sh
+```
+
+This deletes the local kind cluster and local discovery worker state.
 
 ## Related Files
 
