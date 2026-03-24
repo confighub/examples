@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "confighub.bundle.contents.v1",
+  "bundleDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "components": [
+    {
+      "name": "gpu-operator",
+      "artifactType": "helm-chart",
+      "path": "components/gpu-operator",
+      "valuesDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "readme": "components/gpu-operator/README.md"
+    },
+    {
+      "name": "nvidia-device-plugin",
+      "artifactType": "helm-chart",
+      "path": "components/nvidia-device-plugin",
+      "valuesDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "readme": "components/nvidia-device-plugin/README.md"
+    }
+  ],
+  "deployerPayloads": [
+    {
+      "kind": "OCIArtifact",
+      "reference": "oci://ghcr.io/confighub/examples/gpu-eks-h100-training/cluster-a@sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    {
+      "kind": "FluxKustomization",
+      "path": "flux/cluster-a"
+    }
+  ]
+}

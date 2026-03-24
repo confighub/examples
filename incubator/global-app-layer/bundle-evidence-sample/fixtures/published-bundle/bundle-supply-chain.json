@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "confighub.bundle.supplychain.v1",
+  "bundleDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "sbom": {
+    "reference": "oci://ghcr.io/confighub/examples/gpu-eks-h100-training/sbom@sha256:2222222222222222222222222222222222222222222222222222222222222222",
+    "format": "spdx-json"
+  },
+  "attestations": [
+    {
+      "type": "slsa-provenance",
+      "reference": "oci://ghcr.io/confighub/examples/gpu-eks-h100-training/provenance@sha256:3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    {
+      "type": "cosign-image-attestation",
+      "reference": "oci://ghcr.io/confighub/examples/gpu-eks-h100-training/attestation@sha256:4444444444444444444444444444444444444444444444444444444444444444",
+      "subjectDigests": [
+        "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+        "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+      ]
+    }
+  ],
+  "signatureVerification": {
+    "verified": true,
+    "verifiedAt": "2026-03-24T18:31:30Z",
+    "key": "cosign.pub"
+  }
+}

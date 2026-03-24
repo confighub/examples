@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "confighub.bundle.integrity.v1",
+  "bundleDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "checksums": {
+    "algorithm": "sha256",
+    "manifest": "checksums.txt",
+    "entries": [
+      {
+        "path": "components/gpu-operator/Chart.yaml",
+        "digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      },
+      {
+        "path": "components/nvidia-device-plugin/Chart.yaml",
+        "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      }
+    ]
+  },
+  "verification": {
+    "verified": true,
+    "verifiedAt": "2026-03-24T18:31:00Z",
+    "tool": "sha256sum"
+  }
+}
