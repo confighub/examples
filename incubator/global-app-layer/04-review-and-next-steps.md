@@ -73,6 +73,13 @@ This is still thinner than it should be for first-time live demos.
 
 The examples explain the role of bundles and targets, but the package still does not present a strong end-to-end bundle publication and inspection walkthrough.
 
+That follow-up should also add a short explainer for how NVIDIA AICR talks about bundles, integrity, and attestation, using the NVIDIA blog post [Validate Kubernetes for GPU Infrastructure with Layered, Reproducible Recipes](https://developer.nvidia.com/blog/validate-kubernetes-for-gpu-infrastructure-with-layered-reproducible-recipes/) as a reference point. In particular, explain:
+
+- what the generated bundle contains
+- how integrity checksums fit in
+- what signed SBOMs and image attestations mean in practice
+- how that maps to what ConfigHub should show or preserve in a future bundle story
+
 ### 3. A stronger GUI-led walkthrough
 
 The new value-add guide includes GUI steps, but the package still does not yet have one dedicated GUI-first walkthrough for users who want to understand the chain visually before using the CLI deeply.
