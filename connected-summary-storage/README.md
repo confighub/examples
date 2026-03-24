@@ -1,6 +1,6 @@
 # Connected Summary Storage
 
-This incubator example adapts the `connected-summary-storage` flow from `cub-scout` into the official `examples` repo.
+This stable example adapts the `connected-summary-storage` flow from `cub-scout` into the official `examples` repo.
 
 It shows a small no-cluster reporting path:
 
@@ -28,6 +28,8 @@ It reads:
 - the copied summary-store fixture under `fixtures/summary-store/`
 - the `cub-scout` binary
 
+Because the fixture timestamps are static, the example uses a wide explicit lookback window (`87600h`) instead of the default `24h`.
+
 ## What It Writes
 
 It writes local verification output under `sample-output/`:
@@ -41,7 +43,7 @@ It does not write ConfigHub state and does not mutate live infrastructure.
 ## Read-Only First
 
 ```bash
-cd incubator/connected-summary-storage
+cd connected-summary-storage
 ./setup.sh --explain
 ./setup.sh --explain-json | jq
 ```
@@ -84,11 +86,12 @@ At the Slack digest level you should see:
 jq '{count, entries}' sample-output/summary-list-all.json
 jq '{count, entries}' sample-output/summary-list-kind-dev-prod.json
 jq '{text, blocks}' sample-output/summary-slack-dry-run.json
+jq '.since' sample-output/summary-list-all.json
 ```
 
 ## Why This Example Matters
 
-This gives the incubator set a reporting and automation story built on stored evidence rather than live cluster access.
+This gives the stable example set a reporting and automation story built on stored evidence rather than live cluster access.
 
 It answers a practical question quickly:
 

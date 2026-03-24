@@ -19,7 +19,6 @@ Keep building AI-first examples in `examples/incubator` that give one person a f
 
 - [`demo-data-adt`](./demo-data-adt/README.md): scan-first App-Deployment-Target example showing labeled workload fixtures plus immediate static risk findings.
 - [`lifecycle-hazards`](./lifecycle-hazards/README.md): migration-risk example adapted from `cub-scout`, showing hook inventory and Helm-to-Argo lifecycle hazards from one manifest file.
-- [`connected-summary-storage`](./connected-summary-storage/README.md): reporting example adapted from `cub-scout`, showing persisted connected summaries plus dry-run Slack digest generation from local storage.
 - [`artifact-workflow`](./artifact-workflow/README.md): offline bundle example adapted from `cub-scout`, showing inspect, replay, and summarize against a copied debug bundle.
 
 ### Offline Import And Aggregation
@@ -66,10 +65,10 @@ Use this order:
 - No-cluster evidence first:
   - [`../connect-and-compare`](../connect-and-compare/README.md)
   - [`../import-from-bundle`](../import-from-bundle/README.md)
+  - [`../connected-summary-storage`](../connected-summary-storage/README.md)
   - [`fleet-import`](./fleet-import/README.md)
   - [`demo-data-adt`](./demo-data-adt/README.md)
   - [`lifecycle-hazards`](./lifecycle-hazards/README.md)
-  - [`connected-summary-storage`](./connected-summary-storage/README.md)
   - [`artifact-workflow`](./artifact-workflow/README.md)
 - Then live import, comparison, ownership, topology, and orphans:
   - [`../import-from-live`](../import-from-live/README.md)
@@ -112,6 +111,7 @@ For both of those paths, the authoritative runnable implementation is Jesper's [
 - [`../connect-and-compare`](../connect-and-compare/README.md): stable no-cluster evidence example showing doctor, compare, and history without a live cluster.
 - [`../import-from-live`](../import-from-live/README.md): stable brownfield discovery example showing live-cluster dry-run proposal generation before any ConfigHub mutation.
 - [`../import-from-bundle`](../import-from-bundle/README.md): stable offline import example showing dry-run proposal generation from a copied bundle fixture.
+- [`../connected-summary-storage`](../connected-summary-storage/README.md): stable reporting example showing stored connected summaries plus dry-run Slack digest generation from local storage.
 - [`../apptique-flux-monorepo`](../apptique-flux-monorepo/README.md): stable app-style Flux example showing one base plus dev and prod overlays with dedicated kubeconfig handling.
 - [`../apptique-argo-applicationset`](../apptique-argo-applicationset/README.md): stable Argo ApplicationSet example showing one generator and one generated Application per environment.
 - [`../graph-export`](../graph-export/README.md): stable live topology example showing `graph.v1` JSON plus DOT, SVG, and HTML artifacts from one local cluster.

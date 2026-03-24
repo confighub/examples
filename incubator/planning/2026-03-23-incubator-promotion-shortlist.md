@@ -105,24 +105,23 @@ It has now been promoted to the stable repo root as:
 
 - `graph-export`
 
+### `connected-summary-storage`
+
+Completed because:
+
+- strong reporting and automation story
+- fully no-cluster and deterministic
+- broadens the stable evidence set without adding more live infrastructure
+
+It has now been promoted to the stable repo root as:
+
+- `connected-summary-storage`
+
 ## Recommended Next Promotion Wave
 
 These are the strongest next candidates right now.
 
-### 1. `incubator/connected-summary-storage`
-
-Why it stands out:
-
-- strong reporting and automation story
-- fully no-cluster
-- complements the current evidence spine well
-
-Why it should likely be next:
-
-- it broadens the stable set without introducing another live controller loop
-- it is deterministic and easy to revalidate
-
-### 2. `incubator/artifact-workflow`
+### 1. `incubator/artifact-workflow`
 
 Why it stands out:
 
@@ -183,7 +182,7 @@ Why:
 
 ## Recommended Next Decision Sequence
 
-1. Promote one no-cluster reporting example next: `connected-summary-storage`
+1. Promote one no-cluster bundle or artifact example next: `artifact-workflow`
 2. Then decide whether the next stable addition should be bundle-focused, reporting-focused, or another narrow evidence example
 
 ## Notes

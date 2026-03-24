@@ -13,6 +13,7 @@ This repo contains examples that demonstrate how [ConfigHub](https://confighub.c
 - [`connect-and-compare`](./connect-and-compare/README.md): stable no-cluster evidence and compare example.
 - [`import-from-live`](./import-from-live/README.md): stable brownfield discovery and dry-run import proposal example.
 - [`import-from-bundle`](./import-from-bundle/README.md): stable offline dry-run import proposal example backed by a copied debug bundle.
+- [`connected-summary-storage`](./connected-summary-storage/README.md): stable no-cluster reporting example showing stored connected summaries and dry-run Slack digest generation.
 - [`apptique-flux-monorepo`](./apptique-flux-monorepo/README.md): stable app-style Flux monorepo example with one base plus dev and prod overlays.
 - [`apptique-argo-applicationset`](./apptique-argo-applicationset/README.md): stable Argo ApplicationSet example with generated apps per environment.
 - [`graph-export`](./graph-export/README.md): stable live topology export example producing JSON, DOT, SVG, and HTML artifacts.
@@ -30,6 +31,7 @@ For the current GitHub + Argo/Flux + AI/CLI + ConfigHub wedge, start here:
 - [`connect-and-compare`](./connect-and-compare/README.md)
 - [`import-from-live`](./import-from-live/README.md)
 - [`import-from-bundle`](./import-from-bundle/README.md)
+- [`connected-summary-storage`](./connected-summary-storage/README.md)
 - [`apptique-flux-monorepo`](./apptique-flux-monorepo/README.md)
 - [`apptique-argo-applicationset`](./apptique-argo-applicationset/README.md)
 - [`graph-export`](./graph-export/README.md)
@@ -39,7 +41,7 @@ For the current GitHub + Argo/Flux + AI/CLI + ConfigHub wedge, start here:
 - [`incubator/gitops-import-flux`](./incubator/gitops-import-flux/README.md)
 - [`custom-workers`](./custom-workers)
 
-These are the runnable examples for evidence, brownfield discovery, app-style GitOps layout, offline import, live import, and worker extensibility in this repo today.
+These are the runnable examples for evidence, reporting, brownfield discovery, app-style GitOps layout, offline import, live import, and worker extensibility in this repo today.
 
 ## Companion Material
 

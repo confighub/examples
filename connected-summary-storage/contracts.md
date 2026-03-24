@@ -15,6 +15,7 @@
   - `.mutatesConfighub == false`
   - `.mutatesLiveInfrastructure == false`
   - `.source == "fixtures/summary-store"`
+  - `.summaryWindow == "87600h"`
 
 ## Summary List Contracts
 

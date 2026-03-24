@@ -203,7 +203,7 @@ cd incubator/lifecycle-hazards
 For stored summary reporting and dry-run Slack output:
 
 ```bash
-cd incubator/connected-summary-storage
+cd connected-summary-storage
 ./setup.sh --explain
 ./setup.sh --explain-json | jq
 ./setup.sh
