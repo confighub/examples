@@ -21,19 +21,18 @@ These are already merged on `main` and should be treated as the current canonica
 
 ### No-cluster examples
 
+- `incubator/connect-and-compare`
+- `incubator/import-from-bundle`
+- `incubator/connected-summary-storage`
+- `incubator/artifact-workflow`
 - `incubator/fleet-import`
 - `incubator/demo-data-adt`
 - `incubator/lifecycle-hazards`
 
-Stable no-cluster examples already promoted:
-
-- `connect-and-compare`
-- `import-from-bundle`
-- `connected-summary-storage`
-- `artifact-workflow`
-
 ### Mixed or live-evidence examples
 
+- `incubator/import-from-live`
+- `incubator/graph-export`
 - `incubator/combined-git-live`
 - `incubator/gitops-import-argo`
 - `incubator/gitops-import-flux`
@@ -42,19 +41,11 @@ Stable no-cluster examples already promoted:
 - `incubator/watch-webhook`
 - `incubator/flux-boutique`
 
-Stable live-evidence examples already promoted:
-
-- `import-from-live`
-- `graph-export`
-
 ### App-style examples now validated live
 
+- `incubator/apptique-flux-monorepo`
+- `incubator/apptique-argo-applicationset`
 - `incubator/apptique-argo-app-of-apps`
-
-Stable app-style example already promoted:
-
-- `apptique-flux-monorepo`
-- `apptique-argo-applicationset`
 
 ## Highest-Priority Testing Tasks
 

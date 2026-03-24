@@ -59,23 +59,23 @@ Do not continue until I say continue.
 If the user is asking for GitHub import with Argo or Flux, start with the published docs and the runnable incubator examples in this repo:
 
 - [Official GitOps Import docs](https://docs.confighub.com/get-started/examples/gitops-import/)
-- [`connect-and-compare`](./connect-and-compare/README.md)
-- [`import-from-live`](./import-from-live/README.md)
-- [`import-from-bundle`](./import-from-bundle/README.md)
-- [`connected-summary-storage`](./connected-summary-storage/README.md)
-- [`artifact-workflow`](./artifact-workflow/README.md)
+- [`connect-and-compare`](./incubator/connect-and-compare/README.md)
+- [`import-from-live`](./incubator/import-from-live/README.md)
+- [`import-from-bundle`](./incubator/import-from-bundle/README.md)
+- [`connected-summary-storage`](./incubator/connected-summary-storage/README.md)
+- [`artifact-workflow`](./incubator/artifact-workflow/README.md)
 - [`incubator/fleet-import`](./incubator/fleet-import/README.md)
 - [`incubator/demo-data-adt`](./incubator/demo-data-adt/README.md)
-- [`graph-export`](./graph-export/README.md)
+- [`graph-export`](./incubator/graph-export/README.md)
 - [`incubator/gitops-import-argo`](./incubator/gitops-import-argo/README.md)
 - [`incubator/gitops-import-flux`](./incubator/gitops-import-flux/README.md)
 
 Use the first six when the user wants no-cluster evidence, reporting, or offline import paths before moving into the live Argo and Flux examples.
 
-If the user wants a stable app-style GitOps layout rather than an import flow, start here:
+If the user wants an app-style GitOps layout rather than an import flow, start here:
 
-- [`apptique-flux-monorepo`](./apptique-flux-monorepo/README.md)
-- [`apptique-argo-applicationset`](./apptique-argo-applicationset/README.md)
+- [`apptique-flux-monorepo`](./incubator/apptique-flux-monorepo/README.md)
+- [`apptique-argo-applicationset`](./incubator/apptique-argo-applicationset/README.md)
 
 Use it when the user wants:
 
@@ -88,7 +88,7 @@ Use `apptique-argo-applicationset` when the user wants:
 
 - directory-driven environment discovery
 - generated Argo Applications per environment
-- the clearest stable Argo app-style layout in the repo
+- the clearest incubator Argo app-style layout in the repo
 
 If the user is asking about worker extensibility, validation, policy checks, or custom execution paths, use the official worker examples in this repo:
 

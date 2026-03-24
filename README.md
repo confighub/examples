@@ -10,14 +10,14 @@ This repo contains examples that demonstrate how [ConfigHub](https://confighub.c
 
 ## Examples Catalog
 
-- [`connect-and-compare`](./connect-and-compare/README.md): stable no-cluster evidence and compare example.
-- [`import-from-live`](./import-from-live/README.md): stable brownfield discovery and dry-run import proposal example.
-- [`import-from-bundle`](./import-from-bundle/README.md): stable offline dry-run import proposal example backed by a copied debug bundle.
-- [`connected-summary-storage`](./connected-summary-storage/README.md): stable no-cluster reporting example showing stored connected summaries and dry-run Slack digest generation.
-- [`artifact-workflow`](./artifact-workflow/README.md): stable offline bundle inspection, replay, and summarize example using a copied debug bundle.
-- [`apptique-flux-monorepo`](./apptique-flux-monorepo/README.md): stable app-style Flux monorepo example with one base plus dev and prod overlays.
-- [`apptique-argo-applicationset`](./apptique-argo-applicationset/README.md): stable Argo ApplicationSet example with generated apps per environment.
-- [`graph-export`](./graph-export/README.md): stable live topology export example producing JSON, DOT, SVG, and HTML artifacts.
+- [`incubator/connect-and-compare`](./incubator/connect-and-compare/README.md): incubator no-cluster evidence and compare example.
+- [`incubator/import-from-live`](./incubator/import-from-live/README.md): incubator brownfield discovery and dry-run import proposal example.
+- [`incubator/import-from-bundle`](./incubator/import-from-bundle/README.md): incubator offline dry-run import proposal example backed by a copied debug bundle.
+- [`incubator/connected-summary-storage`](./incubator/connected-summary-storage/README.md): incubator no-cluster reporting example showing stored connected summaries and dry-run Slack digest generation.
+- [`incubator/artifact-workflow`](./incubator/artifact-workflow/README.md): incubator offline bundle inspection, replay, and summarize example using a copied debug bundle.
+- [`incubator/apptique-flux-monorepo`](./incubator/apptique-flux-monorepo/README.md): incubator app-style Flux monorepo example with one base plus dev and prod overlays.
+- [`incubator/apptique-argo-applicationset`](./incubator/apptique-argo-applicationset/README.md): incubator Argo ApplicationSet example with generated apps per environment.
+- [`incubator/graph-export`](./incubator/graph-export/README.md): incubator live topology export example producing JSON, DOT, SVG, and HTML artifacts.
 - [`global-app`](./global-app/README.md): classic multi-service app example.
 - [`custom-workers`](./custom-workers): worker extension examples using the ConfigHub SDK as normal Go modules.
 - [`helm-platform-components`](./helm-platform-components/README.md): platform component setup.
@@ -29,14 +29,14 @@ This repo contains examples that demonstrate how [ConfigHub](https://confighub.c
 For the current GitHub + Argo/Flux + AI/CLI + ConfigHub wedge, start here:
 
 - [Official GitOps Import docs](https://docs.confighub.com/get-started/examples/gitops-import/)
-- [`connect-and-compare`](./connect-and-compare/README.md)
-- [`import-from-live`](./import-from-live/README.md)
-- [`import-from-bundle`](./import-from-bundle/README.md)
-- [`connected-summary-storage`](./connected-summary-storage/README.md)
-- [`artifact-workflow`](./artifact-workflow/README.md)
-- [`apptique-flux-monorepo`](./apptique-flux-monorepo/README.md)
-- [`apptique-argo-applicationset`](./apptique-argo-applicationset/README.md)
-- [`graph-export`](./graph-export/README.md)
+- [`connect-and-compare`](./incubator/connect-and-compare/README.md)
+- [`import-from-live`](./incubator/import-from-live/README.md)
+- [`import-from-bundle`](./incubator/import-from-bundle/README.md)
+- [`connected-summary-storage`](./incubator/connected-summary-storage/README.md)
+- [`artifact-workflow`](./incubator/artifact-workflow/README.md)
+- [`apptique-flux-monorepo`](./incubator/apptique-flux-monorepo/README.md)
+- [`apptique-argo-applicationset`](./incubator/apptique-argo-applicationset/README.md)
+- [`graph-export`](./incubator/graph-export/README.md)
 - [`incubator/fleet-import`](./incubator/fleet-import/README.md)
 - [`incubator/demo-data-adt`](./incubator/demo-data-adt/README.md)
 - [`incubator/gitops-import-argo`](./incubator/gitops-import-argo/README.md)

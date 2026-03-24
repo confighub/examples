@@ -1,0 +1,56 @@
+================================================================================
+ConfigHub Agent: import
+Started: 2026-03-24T22:40:26+01:00
+================================================================================
+
+[22:40:26] Starting import
+[22:40:26] Target: all namespaces (auto-discover)
+[22:40:26] Mode: dry-run
+[22:40:26] Found 3 namespace(s): myapp-dev, myapp-prod, myapp-staging
+
+--- DISCOVERED WORKLOADS ---
+[22:40:26] Found 9 workloads
+[22:40:26]   myapp-dev/api (Deployment) owner=ArgoCD ready=false
+[22:40:26]   myapp-dev/worker (Deployment) owner=ArgoCD ready=false
+[22:40:26]   myapp-dev/redis (StatefulSet) owner=Helm ready=true
+[22:40:26]   myapp-prod/api (Deployment) owner=ArgoCD ready=false
+[22:40:26]   myapp-prod/worker (Deployment) owner=ArgoCD ready=false
+[22:40:26]   myapp-prod/redis (StatefulSet) owner=Helm ready=true
+[22:40:26]   myapp-staging/api (Deployment) owner=ArgoCD ready=false
+[22:40:26]   myapp-staging/worker (Deployment) owner=ArgoCD ready=false
+[22:40:26]   myapp-staging/redis (StatefulSet) owner=Helm ready=true
+
+--- PROPOSAL ---
+[22:40:26] App: myapp-team
+[22:40:26] Units: 3
+[22:40:26]   api (app=api, variant=default)
+[22:40:26]     label: variant=default
+[22:40:26]     label: app=api
+[22:40:26]     label: team=myapp
+[22:40:26]     workload: myapp-dev/api
+[22:40:26]     workload: myapp-prod/api
+[22:40:26]     workload: myapp-staging/api
+[22:40:26]   redis (app=redis, variant=default)
+[22:40:26]     label: variant=default
+[22:40:26]     label: app=redis
+[22:40:26]     label: team=myapp
+[22:40:26]     workload: myapp-dev/redis
+[22:40:26]     workload: myapp-prod/redis
+[22:40:26]     workload: myapp-staging/redis
+[22:40:26]   worker (app=worker, variant=default)
+[22:40:26]     label: variant=default
+[22:40:26]     label: app=worker
+[22:40:26]     label: team=myapp
+[22:40:26]     workload: myapp-dev/worker
+[22:40:26]     workload: myapp-prod/worker
+[22:40:26]     workload: myapp-staging/worker
+[22:40:26] Dry-run mode - no changes made
+
+--- RESULT ---
+[22:40:26] Created: 0
+[22:40:26] Failed: 0
+[22:40:26] Duration: 87ms
+
+
+Completed: 2026-03-24T22:40:26+01:00
+Duration: 87ms

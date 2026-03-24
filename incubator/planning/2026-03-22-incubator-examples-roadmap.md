@@ -8,20 +8,20 @@
 
 The incubator set now has a strong front half and a much broader middle.
 
-The no-cluster path is strong enough to stand on its own, and two examples have already graduated to stable:
+The no-cluster path is strong enough to stand on its own, with several good promotion candidates:
 
-- `connect-and-compare` (now stable at the repo root)
-- `import-from-bundle` (now stable at the repo root)
-- `connected-summary-storage` (now stable at the repo root)
-- `artifact-workflow` (now stable at the repo root)
+- `incubator/connect-and-compare`
+- `incubator/import-from-bundle`
+- `incubator/connected-summary-storage`
+- `incubator/artifact-workflow`
 - `fleet-import`
 - `demo-data-adt`
 - `lifecycle-hazards`
 
-The live import and live evidence path is also in place, and one example has already graduated to stable:
+The live import and live evidence path is also in place, with clear leading candidates:
 
-- `import-from-live` (now stable at the repo root)
-- `graph-export` (now stable at the repo root)
+- `incubator/import-from-live`
+- `incubator/graph-export`
 - `combined-git-live`
 - `gitops-import-argo`
 - `gitops-import-flux`
@@ -30,10 +30,10 @@ The live import and live evidence path is also in place, and one example has alr
 - `watch-webhook`
 - `flux-boutique`
 
-The app-style set is now self-contained and live-validated, with two examples already promoted:
+The app-style set is now self-contained and live-validated:
 
-- `apptique-flux-monorepo` (now stable at the repo root)
-- `apptique-argo-applicationset` (now stable at the repo root)
+- `incubator/apptique-flux-monorepo`
+- `incubator/apptique-argo-applicationset`
 - `apptique-argo-app-of-apps`
 
 The layered package remains the advanced second stop:
@@ -87,16 +87,16 @@ The following now reflect the no-cluster-first route before live import:
 - `incubator/README.md`
 - `incubator/AI_START_HERE.md`
 
-### Promoted stable examples from the current wedge
+### Leading promotion candidates from the current wedge
 
-- `connect-and-compare`
-- `import-from-live`
-- `apptique-flux-monorepo`
-- `import-from-bundle`
-- `apptique-argo-applicationset`
-- `graph-export`
-- `connected-summary-storage`
-- `artifact-workflow`
+- `incubator/connect-and-compare`
+- `incubator/import-from-live`
+- `incubator/apptique-flux-monorepo`
+- `incubator/import-from-bundle`
+- `incubator/apptique-argo-applicationset`
+- `incubator/graph-export`
+- `incubator/connected-summary-storage`
+- `incubator/artifact-workflow`
 
 ## What Is Not Done
 
@@ -186,30 +186,30 @@ A candidate is ready to consider for promotion when it meets all of these:
 
 ### Best no-cluster examples
 
-- `connect-and-compare`
-- `import-from-bundle`
-- `connected-summary-storage`
-- `artifact-workflow`
+- `incubator/connect-and-compare`
+- `incubator/import-from-bundle`
+- `incubator/connected-summary-storage`
+- `incubator/artifact-workflow`
 - `incubator/fleet-import`
 - `incubator/demo-data-adt`
 - `incubator/lifecycle-hazards`
 
 ### Best live import and evidence examples
 
-- `import-from-live`
+- `incubator/import-from-live`
 - `incubator/combined-git-live`
 - `incubator/gitops-import-argo`
 - `incubator/gitops-import-flux`
 - `incubator/custom-ownership-detectors`
-- `graph-export`
+- `incubator/graph-export`
 - `incubator/orphans`
 - `incubator/watch-webhook`
 - `incubator/flux-boutique`
 
 ### Best app-style examples
 
-- `apptique-flux-monorepo`
-- `apptique-argo-applicationset`
+- `incubator/apptique-flux-monorepo`
+- `incubator/apptique-argo-applicationset`
 - `incubator/apptique-argo-app-of-apps`
 
 ### Advanced follow-on material

@@ -62,27 +62,27 @@ If the goal is the current GitHub + Argo/Flux + AI/CLI + ConfigHub wedge, do not
 Use this order:
 - [Official GitOps Import docs](https://docs.confighub.com/get-started/examples/gitops-import/)
 - No-cluster evidence first:
-  - [`../connect-and-compare`](../connect-and-compare/README.md)
-  - [`../import-from-bundle`](../import-from-bundle/README.md)
-  - [`../connected-summary-storage`](../connected-summary-storage/README.md)
-  - [`../artifact-workflow`](../artifact-workflow/README.md)
+  - [`../connect-and-compare`](./connect-and-compare/README.md)
+  - [`../import-from-bundle`](./import-from-bundle/README.md)
+  - [`../connected-summary-storage`](./connected-summary-storage/README.md)
+  - [`../artifact-workflow`](./artifact-workflow/README.md)
   - [`fleet-import`](./fleet-import/README.md)
   - [`demo-data-adt`](./demo-data-adt/README.md)
   - [`lifecycle-hazards`](./lifecycle-hazards/README.md)
 - Then live import, comparison, ownership, topology, and orphans:
-  - [`../import-from-live`](../import-from-live/README.md)
+  - [`../import-from-live`](./import-from-live/README.md)
   - [`gitops-import-argo`](./gitops-import-argo/README.md)
   - [`gitops-import-flux`](./gitops-import-flux/README.md)
   - [`combined-git-live`](./combined-git-live/README.md)
   - [`custom-ownership-detectors`](./custom-ownership-detectors/README.md)
-  - [`../graph-export`](../graph-export/README.md)
+  - [`../graph-export`](./graph-export/README.md)
   - [`orphans`](./orphans/README.md)
   - [`watch-webhook`](./watch-webhook/README.md)
   - [`flux-boutique`](./flux-boutique/README.md)
   - [`platform-example`](./platform-example/README.md)
 - Then app-style layouts:
-  - [`../apptique-flux-monorepo`](../apptique-flux-monorepo/README.md)
-  - [`../apptique-argo-applicationset`](../apptique-argo-applicationset/README.md)
+  - [`../apptique-flux-monorepo`](./apptique-flux-monorepo/README.md)
+  - [`../apptique-argo-applicationset`](./apptique-argo-applicationset/README.md)
   - [`apptique-argo-app-of-apps`](./apptique-argo-app-of-apps/README.md)
 - Then worker and model examples:
   - [`../custom-workers`](../custom-workers)
@@ -105,22 +105,18 @@ If the goal is to see the smallest live deployment after that bootstrap, use:
 
 For both of those paths, the authoritative runnable implementation is Jesper's [`cub-vmcluster`](https://github.com/jesperfj/cub-vmcluster). The incubator pages here explain how that flow fits into the broader ConfigHub example and target model.
 
-## Stable Examples (outside incubator)
+## Examples Outside Incubator
 
-- [`../connect-and-compare`](../connect-and-compare/README.md): stable no-cluster evidence example showing doctor, compare, and history without a live cluster.
-- [`../import-from-live`](../import-from-live/README.md): stable brownfield discovery example showing live-cluster dry-run proposal generation before any ConfigHub mutation.
-- [`../import-from-bundle`](../import-from-bundle/README.md): stable offline import example showing dry-run proposal generation from a copied bundle fixture.
-- [`../connected-summary-storage`](../connected-summary-storage/README.md): stable reporting example showing stored connected summaries plus dry-run Slack digest generation from local storage.
-- [`../artifact-workflow`](../artifact-workflow/README.md): stable offline bundle example showing inspect, replay, and summarize against a copied debug bundle.
-- [`../apptique-flux-monorepo`](../apptique-flux-monorepo/README.md): stable app-style Flux example showing one base plus dev and prod overlays with dedicated kubeconfig handling.
-- [`../apptique-argo-applicationset`](../apptique-argo-applicationset/README.md): stable Argo ApplicationSet example showing one generator and one generated Application per environment.
-- [`../graph-export`](../graph-export/README.md): stable live topology example showing `graph.v1` JSON plus DOT, SVG, and HTML artifacts from one local cluster.
-- [`promotion-demo-data`](../promotion-demo-data/README.md): creates 49 spaces and ~154 units using the App-Deployment-Target model. Uses noop bridge, no cluster required. Canonical example of ConfigHub's multi-env promotion model.
+- [`../gitops-import`](../gitops-import/README.md): canonical GitOps import example and docs companion.
+- [`../global-app`](../global-app/README.md): classic multi-service app example.
+- [`../promotion-demo-data`](../promotion-demo-data/README.md): canonical App-Deployment-Target promotion example, no cluster required.
 - [`../custom-workers`](../custom-workers): official worker extension examples, including bridge workers, function workers, and policy or validation workers.
+- [`../helm-platform-components`](../helm-platform-components/README.md): platform component setup example.
+- [`../vm-fleet`](../vm-fleet/README.md): VM fleet operations example.
 
 ## Purpose
 
-- Keep stable examples easy to trust and review.
+- Keep examples easy to trust and review.
 - Iterate quickly on UX and operational-model ideas.
 - Promote only after clear validation.
 
@@ -128,5 +124,5 @@ For both of those paths, the authoritative runnable implementation is Jesper's [
 
 - Keep changes additive and easy to diff.
 - Include verification commands.
-- Do not break existing stable examples.
+- Do not break existing root examples.
 - For major examples, follow [`ai-example-playbook.md`](./ai-example-playbook.md).

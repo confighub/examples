@@ -1,0 +1,13 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: apptique-examples
+  namespace: flux-system
+spec:
+  interval: 1m
+  url: https://github.com/confighub/examples
+  ref:
+    branch: main
+  ignore: |
+    /*
+    !/incubator/apptique-flux-monorepo/

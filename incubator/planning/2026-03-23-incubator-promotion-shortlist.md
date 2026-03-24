@@ -30,9 +30,9 @@ An incubator example is a strong promotion candidate when it has all of the foll
 - dedicated kubeconfig handling if it is a live example
 - no unresolved upstream caveat at the center of the example's value proposition
 
-## Completed Promotions
+## Current Top Candidates
 
-### `connect-and-compare`
+### `incubator/connect-and-compare`
 
 Completed because:
 
@@ -41,11 +41,9 @@ Completed because:
 - excellent AI-first shape
 - proves immediate value without cluster setup or ConfigHub mutation
 
-It has now been promoted to the stable repo root as:
+It is still a strong candidate if we decide to promote an evidence-first no-cluster example later.
 
-- `connect-and-compare`
-
-### `import-from-live`
+### `incubator/import-from-live`
 
 Completed because:
 
@@ -53,23 +51,19 @@ Completed because:
 - strong answer to "I have a cluster, now what can I do with this?"
 - dry-run proposal generation keeps the mutation boundary honest
 
-It has now been promoted to the stable repo root as:
+It is still a strong candidate if we decide to promote a brownfield discovery example later.
 
-- `import-from-live`
-
-### `apptique-flux-monorepo`
+### `incubator/apptique-flux-monorepo`
 
 Completed because:
 
 - self-contained and live-validated
 - clear app-style layout with one base and two overlays
-- strongest current stable example for "one app, multiple environments"
+- strongest current candidate for "one app, multiple environments"
 
-It has now been promoted to the stable repo root as:
+It is still a strong candidate if we decide to promote one self-contained app-style example later.
 
-- `apptique-flux-monorepo`
-
-### `import-from-bundle`
+### `incubator/import-from-bundle`
 
 Completed because:
 
@@ -77,57 +71,47 @@ Completed because:
 - strong deterministic evidence story
 - natural stable sibling to `connect-and-compare`
 
-It has now been promoted to the stable repo root as:
+It is still a strong candidate if we decide to promote an offline import example later.
 
-- `import-from-bundle`
-
-### `apptique-argo-applicationset`
+### `incubator/apptique-argo-applicationset`
 
 Completed because:
 
 - self-contained and live-validated
-- strongest stable Argo app-layout example in the repo
-- good stable counterpart to `apptique-flux-monorepo`
+- strongest Argo app-layout candidate in the repo
+- good counterpart to `incubator/apptique-flux-monorepo`
 
-It has now been promoted to the stable repo root as:
+It is still a strong candidate if we decide to promote one self-contained Argo app-style example later.
 
-- `apptique-argo-applicationset`
-
-### `graph-export`
+### `incubator/graph-export`
 
 Completed because:
 
 - clean topology artifact story
 - easy to verify with explicit generated outputs
-- adds a different kind of stable evidence example
+- adds a different kind of evidence example
 
-It has now been promoted to the stable repo root as:
+It is still a strong candidate if we decide to promote a topology-artifact example later.
 
-- `graph-export`
-
-### `connected-summary-storage`
+### `incubator/connected-summary-storage`
 
 Completed because:
 
 - strong reporting and automation story
 - fully no-cluster and deterministic
-- broadens the stable evidence set without adding more live infrastructure
+- broadens the evidence set without adding more live infrastructure
 
-It has now been promoted to the stable repo root as:
+It is still a strong candidate if we decide to promote a reporting example later.
 
-- `connected-summary-storage`
-
-### `artifact-workflow`
+### `incubator/artifact-workflow`
 
 Completed because:
 
 - offline bundle inspection and replay story
 - no cluster dependency
-- good stable companion to `import-from-bundle`
+- good companion to `incubator/import-from-bundle`
 
-It has now been promoted to the stable repo root as:
-
-- `artifact-workflow`
+It is still a strong candidate if we decide to promote a bundle-focused offline example later.
 
 ## Recommended Next Promotion Wave
 
