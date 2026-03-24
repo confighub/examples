@@ -104,6 +104,7 @@ It should contain:
 - `01-nvidia-aicr-fit.md`
 - `02-recipes-and-layers-spec.md`
 - `04-bundles-attestation-and-todo.md`
+- `05-bundle-publication-walkthrough.md`
 - `single-component/`
 - `frontend-postgres/`
 - `realistic-app/`

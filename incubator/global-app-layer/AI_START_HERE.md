@@ -58,6 +58,11 @@ Use `global-app-layer` when the question is specifically about:
 - upstream propagation with preserved downstream specialization
 - NVIDIA-shaped configuration chains
 
+If the question is specifically about AICR bundles, checksums, SBOMs, or attestations, also read:
+
+- [05-bundle-publication-walkthrough.md](./05-bundle-publication-walkthrough.md)
+- [04-bundles-attestation-and-todo.md](./04-bundles-attestation-and-todo.md)
+
 ## WET-First, Not Live-First
 
 This package is intended-state first.
