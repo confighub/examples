@@ -294,5 +294,7 @@ That keeps the demo honest and still shows the product direction clearly.
 - [01-nvidia-aicr-fit.md](./01-nvidia-aicr-fit.md)
 - [02-recipes-and-layers-spec.md](./02-recipes-and-layers-spec.md)
 - [04-bundles-attestation-and-todo.md](./04-bundles-attestation-and-todo.md)
+- [bundle-evidence-sample/README.md](./bundle-evidence-sample/README.md)
+- [06-bundle-evidence-gui-spec.md](./06-bundle-evidence-gui-spec.md)
 - [confighub-aicr-value-add.md](./confighub-aicr-value-add.md)
 - [whole-journey.md](./whole-journey.md)

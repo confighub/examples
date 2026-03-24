@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "confighub.bundle.handoff.v1",
+  "bundleDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "deployer": {
+    "kind": "Flux",
+    "namespace": "flux-system",
+    "object": "Kustomization/gpu-training-cluster-a",
+    "consumedAt": "2026-03-24T18:33:00Z",
+    "consumedReference": "oci://ghcr.io/confighub/examples/gpu-eks-h100-training/cluster-a@sha256:1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "liveEvidence": {
+    "cluster": "cluster-a",
+    "namespace": "gpu-system",
+    "objects": [
+      "Deployment/gpu-operator",
+      "DaemonSet/nvidia-device-plugin"
+    ]
+  }
+}

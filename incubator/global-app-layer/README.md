@@ -154,6 +154,8 @@ Supporting documents:
 - [preflight-live.sh](./preflight-live.sh) for live-target readiness checks
 - [whole-journey.md](./whole-journey.md)
 - [05-bundle-publication-walkthrough.md](./05-bundle-publication-walkthrough.md)
+- [bundle-evidence-sample/README.md](./bundle-evidence-sample/README.md)
+- [06-bundle-evidence-gui-spec.md](./06-bundle-evidence-gui-spec.md)
 - [how-it-works.md](./how-it-works.md)
 - [../AGENTS.md](../AGENTS.md) for the incubator AI protocol
 - [../AI-README-FIRST.md](../AI-README-FIRST.md) for fuller incubator AI guidance
@@ -445,6 +447,8 @@ These documents explain the design thinking behind the examples and the current 
 2. [02-recipes-and-layers-spec.md](./02-recipes-and-layers-spec.md) — The recipes-and-layers spec for ConfigHub
 3. [04-bundles-attestation-and-todo.md](./04-bundles-attestation-and-todo.md) — Current status plus the AICR bundle, integrity, and attestation gap
 4. [05-bundle-publication-walkthrough.md](./05-bundle-publication-walkthrough.md) — Honest staged walkthrough for the bundle publication story
+5. [bundle-evidence-sample/README.md](./bundle-evidence-sample/README.md) — Fixture-backed sample for bundle publication, integrity, and handoff evidence
+6. [06-bundle-evidence-gui-spec.md](./06-bundle-evidence-gui-spec.md) — GUI-first view of the bundle evidence story
 
 ## End-to-End Testing
 

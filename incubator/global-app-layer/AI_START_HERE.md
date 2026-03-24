@@ -62,6 +62,8 @@ If the question is specifically about AICR bundles, checksums, SBOMs, or attesta
 
 - [05-bundle-publication-walkthrough.md](./05-bundle-publication-walkthrough.md)
 - [04-bundles-attestation-and-todo.md](./04-bundles-attestation-and-todo.md)
+- [bundle-evidence-sample/README.md](./bundle-evidence-sample/README.md)
+- [06-bundle-evidence-gui-spec.md](./06-bundle-evidence-gui-spec.md)
 
 ## WET-First, Not Live-First
 

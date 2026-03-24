@@ -231,23 +231,31 @@ That is more plausible and more useful than trying to duplicate every external a
 
 ## Open TODOs For This Package
 
-### 1. Turn the new bundle walkthrough into a stronger runnable path
+### 1. Turn the new bundle walkthrough and sample into a stronger runnable path
 
 The package now has:
 
 - [05-bundle-publication-walkthrough.md](./05-bundle-publication-walkthrough.md)
+- [bundle-evidence-sample/README.md](./bundle-evidence-sample/README.md)
 
-The next step is to turn more of that walkthrough into a runnable end-to-end path that shows:
+That is enough to explain the model and to demo local bundle publication evidence honestly.
+
+The next step is to turn more of that into a runnable end-to-end path that shows:
 
 - recipe chain
 - bundle output
 - bundle inspection
 - integrity evidence
 - downstream deploy handoff
+- optional live evidence against a real deployer
 
-### 2. Add one explicit AICR security-evidence explainer to the demos
+### 2. Turn the GUI bundle evidence spec into a concrete product slice
 
-The demos should say plainly:
+The package now has:
+
+- [06-bundle-evidence-gui-spec.md](./06-bundle-evidence-gui-spec.md)
+
+The next step is to turn that into a concrete product or design slice that says plainly:
 
 - generated bundle contents
 - checksum role
@@ -255,9 +263,11 @@ The demos should say plainly:
 - attestation role
 - what is proven vs not proven
 
-### 3. Add one GUI-first bundle page
+and makes those visible in one place instead of across several documents.
 
-A good GUI-first page should show:
+### 3. Keep the GUI-first bundle page grounded in the sample and walkthrough
+
+The GUI page should continue to show:
 
 - recipe provenance on one side
 - bundle facts on the other

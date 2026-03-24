@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "confighub.bundle.record.v1",
+  "bundle": {
+    "uri": "oci://ghcr.io/confighub/examples/gpu-eks-h100-training/cluster-a",
+    "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "publishedAt": "2026-03-24T18:30:00Z",
+  "deployerType": "flux-oci",
+  "deploymentVariant": {
+    "space": "gpu-eks-h100-training-deploy-cluster-a",
+    "unit": "gpu-training-cluster-a-flux"
+  },
+  "recipeManifest": {
+    "space": "gpu-eks-h100-training-recipe",
+    "unit": "gpu-eks-h100-training-manifest",
+    "revision": "rev_gpu_recipe_20260324"
+  },
+  "target": {
+    "space": "gpu-eks-h100-training-targets",
+    "name": "cluster-a-fluxoci",
+    "kind": "FluxOCIWriter"
+  }
+}
