@@ -145,7 +145,7 @@ cd incubator/import-from-bundle
 For a live-cluster dry-run proposal before any ConfigHub mutation:
 
 ```bash
-cd incubator/import-from-live
+cd ../import-from-live
 ./setup.sh --explain
 ./setup.sh --explain-json | jq
 ./setup.sh

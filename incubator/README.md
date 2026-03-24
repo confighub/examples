@@ -29,7 +29,6 @@ Keep building AI-first examples in `examples/incubator` that give one person a f
 
 ### Live Import, Comparison, Ownership, Topology, And Orphans
 
-- [`import-from-live`](./import-from-live/README.md): brownfield discovery example adapted from `cub-scout`, showing how a running cluster can produce a dry-run ConfigHub proposal before any ConfigHub mutation.
 - [`gitops-import-argo`](./gitops-import-argo/README.md): Argo GitOps import example built from the stable `gitops-import` assets plus stronger contrast fixtures adapted from `cub-scout`.
 - [`gitops-import-flux`](./gitops-import-flux/README.md): Flux GitOps import example built from `cub-scout`'s D2 and podinfo fixtures with the same import-and-evidence verification model as the Argo sibling.
 - [`combined-git-live`](./combined-git-live/README.md): Git-plus-live compare example adapted from `cub-scout`, showing aligned, git-only, and cluster-only results against a real cluster.
@@ -77,7 +76,7 @@ Use this order:
   - [`connected-summary-storage`](./connected-summary-storage/README.md)
   - [`artifact-workflow`](./artifact-workflow/README.md)
 - Then live import, comparison, ownership, topology, and orphans:
-  - [`import-from-live`](./import-from-live/README.md)
+  - [`../import-from-live`](../import-from-live/README.md)
   - [`gitops-import-argo`](./gitops-import-argo/README.md)
   - [`gitops-import-flux`](./gitops-import-flux/README.md)
   - [`combined-git-live`](./combined-git-live/README.md)
@@ -115,6 +114,7 @@ For both of those paths, the authoritative runnable implementation is Jesper's [
 ## Stable Examples (outside incubator)
 
 - [`../connect-and-compare`](../connect-and-compare/README.md): stable no-cluster evidence example showing doctor, compare, and history without a live cluster.
+- [`../import-from-live`](../import-from-live/README.md): stable brownfield discovery example showing live-cluster dry-run proposal generation before any ConfigHub mutation.
 - [`promotion-demo-data`](../promotion-demo-data/README.md): creates 49 spaces and ~154 units using the App-Deployment-Target model. Uses noop bridge, no cluster required. Canonical example of ConfigHub's multi-env promotion model.
 - [`../custom-workers`](../custom-workers): official worker extension examples, including bridge workers, function workers, and policy or validation workers.
 

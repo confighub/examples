@@ -39,20 +39,20 @@
 
 ## Import Proposal Contracts
 
-### `jq '.appSpace' sample-output/suggestion.json`
+### `jq '.proposal.appSpace' sample-output/suggestion.json`
 
 - mutates: no
 - proves:
   - the proposal groups these workloads into one App space
 
-### `jq '.units | length' sample-output/suggestion.json`
+### `jq '.proposal.units | length' sample-output/suggestion.json`
 
 - mutates: no
 - proves:
-  - the proposal contains the expected nine units
+  - the proposal contains the expected three aggregated units
 
 ### `diff -u expected-output/suggestion.json sample-output/suggestion.normalized.json`
 
 - mutates: no
 - proves:
-  - the proposal matches the committed expected output for this example
+  - the current proposal contract matches the committed expected output for this example

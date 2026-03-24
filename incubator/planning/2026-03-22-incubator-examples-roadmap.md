@@ -18,9 +18,9 @@ The no-cluster path is strong enough to stand on its own, and one example has al
 - `connected-summary-storage`
 - `artifact-workflow`
 
-The live import and live evidence path is also in place:
+The live import and live evidence path is also in place, and one example has already graduated to stable:
 
-- `import-from-live`
+- `import-from-live` (now stable at the repo root)
 - `combined-git-live`
 - `gitops-import-argo`
 - `gitops-import-flux`
@@ -57,7 +57,6 @@ The following work is already merged on `main`.
 
 ### Live import, ownership, topology, and integration examples
 
-- `incubator/import-from-live`
 - `incubator/combined-git-live`
 - `incubator/gitops-import-argo`
 - `incubator/gitops-import-flux`
@@ -96,6 +95,7 @@ The following now reflect the no-cluster-first route before live import:
 ### Promoted stable examples from the current wedge
 
 - `connect-and-compare`
+- `import-from-live`
 
 ## What Is Not Done
 
@@ -195,7 +195,7 @@ A candidate is ready to consider for promotion when it meets all of these:
 
 ### Best live import and evidence examples
 
-- `incubator/import-from-live`
+- `import-from-live`
 - `incubator/combined-git-live`
 - `incubator/gitops-import-argo`
 - `incubator/gitops-import-flux`

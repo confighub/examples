@@ -1,0 +1,230 @@
+{
+  "evidence": {
+    "source": "cluster"
+  },
+  "namespaces": [
+    "myapp-dev",
+    "myapp-prod",
+    "myapp-staging"
+  ],
+  "proposal": {
+    "appSpace": "myapp-team",
+    "clusterOnly": [
+      {
+        "app": "api",
+        "owner": "ArgoCD",
+        "workloads": [
+          "myapp-dev/api",
+          "myapp-prod/api",
+          "myapp-staging/api"
+        ]
+      },
+      {
+        "app": "worker",
+        "owner": "ArgoCD",
+        "workloads": [
+          "myapp-dev/worker",
+          "myapp-prod/worker",
+          "myapp-staging/worker"
+        ]
+      },
+      {
+        "app": "redis",
+        "owner": "Helm",
+        "workloads": [
+          "myapp-dev/redis",
+          "myapp-prod/redis",
+          "myapp-staging/redis"
+        ]
+      }
+    ],
+    "deployer": "ArgoCD",
+    "units": [
+      {
+        "app": "api",
+        "labels": {
+          "app": "api",
+          "team": "myapp",
+          "variant": "default"
+        },
+        "slug": "api",
+        "status": "cluster-only",
+        "variant": "default",
+        "workloads": [
+          "myapp-dev/api",
+          "myapp-prod/api",
+          "myapp-staging/api"
+        ]
+      },
+      {
+        "app": "redis",
+        "labels": {
+          "app": "redis",
+          "team": "myapp",
+          "variant": "default"
+        },
+        "slug": "redis",
+        "status": "cluster-only",
+        "variant": "default",
+        "workloads": [
+          "myapp-dev/redis",
+          "myapp-prod/redis",
+          "myapp-staging/redis"
+        ]
+      },
+      {
+        "app": "worker",
+        "labels": {
+          "app": "worker",
+          "team": "myapp",
+          "variant": "default"
+        },
+        "slug": "worker",
+        "status": "cluster-only",
+        "variant": "default",
+        "workloads": [
+          "myapp-dev/worker",
+          "myapp-prod/worker",
+          "myapp-staging/worker"
+        ]
+      }
+    ]
+  },
+  "workloads": [
+    {
+      "applicationPath": "envs/dev",
+      "connected": false,
+      "kind": "Deployment",
+      "labels": {
+        "app.kubernetes.io/instance": "myapp-dev",
+        "app.kubernetes.io/name": "api",
+        "argocd.argoproj.io/instance": "myapp-dev"
+      },
+      "name": "api",
+      "namespace": "myapp-dev",
+      "owner": "ArgoCD",
+      "ready": false,
+      "replicas": 1
+    },
+    {
+      "applicationPath": "envs/dev",
+      "connected": false,
+      "kind": "Deployment",
+      "labels": {
+        "app.kubernetes.io/instance": "myapp-dev",
+        "app.kubernetes.io/name": "worker",
+        "argocd.argoproj.io/instance": "myapp-dev"
+      },
+      "name": "worker",
+      "namespace": "myapp-dev",
+      "owner": "ArgoCD",
+      "ready": false,
+      "replicas": 1
+    },
+    {
+      "connected": false,
+      "kind": "StatefulSet",
+      "labels": {
+        "app.kubernetes.io/instance": "redis",
+        "app.kubernetes.io/managed-by": "Helm",
+        "app.kubernetes.io/name": "redis",
+        "helm.sh/chart": "redis-18.6.1"
+      },
+      "name": "redis",
+      "namespace": "myapp-dev",
+      "owner": "Helm",
+      "ready": true,
+      "replicas": 1
+    },
+    {
+      "applicationPath": "envs/prod",
+      "connected": false,
+      "kind": "Deployment",
+      "labels": {
+        "app.kubernetes.io/instance": "myapp-prod",
+        "app.kubernetes.io/name": "api",
+        "argocd.argoproj.io/instance": "myapp-prod"
+      },
+      "name": "api",
+      "namespace": "myapp-prod",
+      "owner": "ArgoCD",
+      "ready": false,
+      "replicas": 3
+    },
+    {
+      "applicationPath": "envs/prod",
+      "connected": false,
+      "kind": "Deployment",
+      "labels": {
+        "app.kubernetes.io/instance": "myapp-prod",
+        "app.kubernetes.io/name": "worker",
+        "argocd.argoproj.io/instance": "myapp-prod"
+      },
+      "name": "worker",
+      "namespace": "myapp-prod",
+      "owner": "ArgoCD",
+      "ready": false,
+      "replicas": 3
+    },
+    {
+      "connected": false,
+      "kind": "StatefulSet",
+      "labels": {
+        "app.kubernetes.io/instance": "redis",
+        "app.kubernetes.io/managed-by": "Helm",
+        "app.kubernetes.io/name": "redis",
+        "helm.sh/chart": "redis-18.6.1"
+      },
+      "name": "redis",
+      "namespace": "myapp-prod",
+      "owner": "Helm",
+      "ready": true,
+      "replicas": 3
+    },
+    {
+      "applicationPath": "envs/staging",
+      "connected": false,
+      "kind": "Deployment",
+      "labels": {
+        "app.kubernetes.io/instance": "myapp-staging",
+        "app.kubernetes.io/name": "api",
+        "argocd.argoproj.io/instance": "myapp-staging"
+      },
+      "name": "api",
+      "namespace": "myapp-staging",
+      "owner": "ArgoCD",
+      "ready": false,
+      "replicas": 2
+    },
+    {
+      "applicationPath": "envs/staging",
+      "connected": false,
+      "kind": "Deployment",
+      "labels": {
+        "app.kubernetes.io/instance": "myapp-staging",
+        "app.kubernetes.io/name": "worker",
+        "argocd.argoproj.io/instance": "myapp-staging"
+      },
+      "name": "worker",
+      "namespace": "myapp-staging",
+      "owner": "ArgoCD",
+      "ready": false,
+      "replicas": 2
+    },
+    {
+      "connected": false,
+      "kind": "StatefulSet",
+      "labels": {
+        "app.kubernetes.io/instance": "redis",
+        "app.kubernetes.io/managed-by": "Helm",
+        "app.kubernetes.io/name": "redis",
+        "helm.sh/chart": "redis-18.6.1"
+      },
+      "name": "redis",
+      "namespace": "myapp-staging",
+      "owner": "Helm",
+      "ready": true,
+      "replicas": 1
+    }
+  ]
+}

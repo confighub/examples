@@ -65,6 +65,10 @@ preflight() {
   fi
 }
 
+cluster_exists() {
+  docker ps -a --format '{{.Names}}' 2>/dev/null | grep -qx "${CLUSTER_NAME}-control-plane"
+}
+
 install_argocd_crd() {
   kubectl apply -f - <<'CRDEOF' >/dev/null
 apiVersion: apiextensions.k8s.io/v1
@@ -153,7 +157,9 @@ mkdir -p "$OUTPUT_DIR"
 rm -f "$OUTPUT_DIR"/*.json "$OUTPUT_DIR"/*.txt
 
 export KUBECONFIG="$KUBECONFIG_PATH"
-kind delete cluster --name "$CLUSTER_NAME" >/dev/null 2>&1 || true
+if cluster_exists; then
+  kind delete cluster --name "$CLUSTER_NAME" >/dev/null 2>&1 || true
+fi
 kind create cluster --name "$CLUSTER_NAME" --wait 60s --kubeconfig "$KUBECONFIG_PATH" >/dev/null
 kubectl config use-context "kind-${CLUSTER_NAME}" >/dev/null
 

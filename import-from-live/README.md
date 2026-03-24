@@ -1,6 +1,6 @@
 # Import From Live
 
-This incubator example adapts the `import-from-live` flow from `cub-scout` into the official `examples` repo.
+This stable example adapts the `import-from-live` flow from `cub-scout` into the official `examples` repo.
 
 It shows a simple brownfield path:
 
@@ -49,7 +49,7 @@ It does not write ConfigHub state unless you run the optional manual follow-on i
 ## Read-Only First
 
 ```bash
-cd incubator/import-from-live
+cd import-from-live
 ./setup.sh --explain
 ./setup.sh --explain-json | jq
 ```
@@ -83,10 +83,10 @@ At the cluster level you should see:
 At the import-proposal level you should see:
 
 - one proposed App space named `myapp-team`
-- nine proposed units
+- three proposed units
 - three apps: `api`, `worker`, and `redis`
-- three variants per app: `dev`, `staging`, and `prod`
-- one skipped native `ConfigMap`
+- one aggregated `default` variant per app
+- workload lists spanning `dev`, `staging`, and `prod`
 
 ## Evidence To Check
 
@@ -103,9 +103,9 @@ Import proposal evidence:
 
 ```bash
 ./verify.sh
-jq '.appSpace' sample-output/suggestion.json
-jq '.units | length' sample-output/suggestion.json
-jq '.units[] | {slug, app, variant}' sample-output/suggestion.json
+jq '.proposal.appSpace' sample-output/suggestion.json
+jq '.proposal.units | length' sample-output/suggestion.json
+jq '.proposal.units[] | {slug, app, variant}' sample-output/suggestion.json
 ```
 
 ## Optional Manual Follow-On
