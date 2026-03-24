@@ -47,6 +47,31 @@ fi
 
 command -v jq >/dev/null 2>&1 || { echo "error: jq not found." >&2; exit 1; }
 
+# ── decode unit data from cub JSON response ──────────────────────────
+# cub unit get --data-only --json returns {Space: ..., Unit: {Data: "<base64>"}}
+# We need a JSON array of K8s docs. This function decodes the base64 Data
+# field, splits on YAML document separators, and produces a JSON array.
+decode_unit_data() {
+  local raw="$1"
+  # If the data is already a JSON array (e.g. from fixture fallback), pass through
+  if echo "$raw" | jq -e 'type == "array"' >/dev/null 2>&1; then
+    echo "$raw"
+    return
+  fi
+  # Extract base64 Data field from cub response and decode to YAML docs array
+  local b64
+  b64=$(echo "$raw" | jq -r '.Unit.Data // empty' 2>/dev/null)
+  if [[ -z "$b64" ]]; then
+    echo "[]"
+    return
+  fi
+  echo "$b64" | base64 -d 2>/dev/null | python3 -c "
+import sys, json, yaml
+docs = list(yaml.safe_load_all(sys.stdin))
+json.dump([d for d in docs if d], sys.stdout)
+" 2>/dev/null || echo "[]"
+}
+
 # ── field model (portable JSON, no bash associative arrays) ──────────
 
 FIELD_MODEL=$(cat <<'ENDJSON'
@@ -154,12 +179,12 @@ echo ""
 RESULT="[]"
 
 for env in "${ENVS[@]}"; do
-  data=""
+  raw=""
   if command -v "${CUB}" >/dev/null 2>&1; then
-    data=$(${CUB} unit get --space "inventory-api-${env}" --data-only --json inventory-api 2>/dev/null || true)
+    raw=$(${CUB} unit get --space "inventory-api-${env}" --data-only --json inventory-api 2>/dev/null || true)
   fi
 
-  if [[ -z "$data" || "$data" == "null" ]]; then
+  if [[ -z "$raw" || "$raw" == "null" ]]; then
     yaml="${SCRIPT_DIR}/confighub/inventory-api-${env}.yaml"
     if [[ -f "$yaml" ]]; then
       data=$(python3 -c "
@@ -174,6 +199,7 @@ json.dump(docs, sys.stdout)
       continue
     fi
   else
+    data=$(decode_unit_data "$raw")
     echo "  ${env}: fetched from ConfigHub"
   fi
 

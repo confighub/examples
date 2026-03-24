@@ -80,8 +80,8 @@ case "${1:-}" in
     echo "Reverting reservation mode to upstream default (strict)..."
     ${CUB} function do --space "${SPACE}" \
       --change-desc "revert: reservation mode back to strict" \
-      -- set-env "${UNIT}" "FEATURE_INVENTORY_RESERVATIONMODE=strict" \
-      --quiet 2>/dev/null || true
+      -- set-env "${UNIT}" "FEATURE_INVENTORY_RESERVATIONMODE=strict" 2>/dev/null || true
+    sleep 2
     echo "Done."
     echo ""
     echo "Verify: ./compare.sh"
@@ -93,6 +93,43 @@ esac
 
 command -v "${CUB}" >/dev/null 2>&1 || { echo "error: cub CLI not found." >&2; exit 1; }
 
+# Decode unit data from cub JSON response (base64 Data → YAML docs array)
+decode_unit_data() {
+  local raw="$1"
+  if echo "$raw" | jq -e 'type == "array"' >/dev/null 2>&1; then
+    echo "$raw"
+    return
+  fi
+  local b64
+  b64=$(echo "$raw" | jq -r '.Unit.Data // empty' 2>/dev/null)
+  if [[ -z "$b64" ]]; then
+    echo "[]"
+    return
+  fi
+  echo "$b64" | base64 -d 2>/dev/null | python3 -c "
+import sys, json, yaml
+docs = list(yaml.safe_load_all(sys.stdin))
+json.dump([d for d in docs if d], sys.stdout)
+" 2>/dev/null || echo "[]"
+}
+
+# Extract FEATURE_INVENTORY_RESERVATIONMODE from unit data
+extract_reservation_mode() {
+  local raw="$1" default_msg="$2"
+  local data
+  data=$(decode_unit_data "$raw")
+  local val
+  val=$(echo "$data" | jq -r '[.[] | select(.kind == "Deployment")
+    | .spec.template.spec.containers[]?.env[]?
+    | select(.name == "FEATURE_INVENTORY_RESERVATIONMODE")
+    | .value] | first // empty' 2>/dev/null)
+  if [[ -n "$val" ]]; then
+    echo "  FEATURE_INVENTORY_RESERVATIONMODE = ${val}"
+  else
+    echo "  ${default_msg}"
+  fi
+}
+
 echo "=== Platform Write API — the mutation ==="
 echo ""
 echo "Changing feature.inventory.reservationMode for ${SPACE}:"
@@ -101,12 +138,12 @@ echo ""
 
 # Show before
 echo "Before:"
-${CUB} unit get --space "${SPACE}" --data-only --json "${UNIT}" 2>/dev/null | \
-  jq -r '[.[] | select(.kind == "Deployment")
-    | .spec.template.spec.containers[]?.env[]?
-    | select(.name == "FEATURE_INVENTORY_RESERVATIONMODE")
-    | "  FEATURE_INVENTORY_RESERVATIONMODE = \(.value)"] | first // "  (not set — using ConfigMap default: strict)"' 2>/dev/null || \
+before_raw=$(${CUB} unit get --space "${SPACE}" --data-only --json "${UNIT}" 2>/dev/null || true)
+if [[ -n "$before_raw" && "$before_raw" != "null" ]]; then
+  extract_reservation_mode "$before_raw" "(not set — using ConfigMap default: strict)"
+else
   echo "  (could not read current value)"
+fi
 
 echo ""
 
@@ -114,19 +151,21 @@ echo ""
 echo "Mutating..."
 ${CUB} function do --space "${SPACE}" \
   --change-desc "apply-here: reservation mode rollout (strict → optimistic)" \
-  -- set-env "${UNIT}" "FEATURE_INVENTORY_RESERVATIONMODE=optimistic" \
-  --quiet 2>/dev/null || true
+  -- set-env "${UNIT}" "FEATURE_INVENTORY_RESERVATIONMODE=optimistic" 2>/dev/null || true
+
+# Wait briefly for the no-op worker to process
+sleep 2
 
 echo ""
 
 # Show after
 echo "After:"
-${CUB} unit get --space "${SPACE}" --data-only --json "${UNIT}" 2>/dev/null | \
-  jq -r '[.[] | select(.kind == "Deployment")
-    | .spec.template.spec.containers[]?.env[]?
-    | select(.name == "FEATURE_INVENTORY_RESERVATIONMODE")
-    | "  FEATURE_INVENTORY_RESERVATIONMODE = \(.value)"] | first // "  (not set)"' 2>/dev/null || \
+after_raw=$(${CUB} unit get --space "${SPACE}" --data-only --json "${UNIT}" 2>/dev/null || true)
+if [[ -n "$after_raw" && "$after_raw" != "null" ]]; then
+  extract_reservation_mode "$after_raw" "(mutation queued — waiting for worker)"
+else
   echo "  (could not read new value)"
+fi
 
 echo ""
 
