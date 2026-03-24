@@ -241,3 +241,33 @@ All scripts fall back to fixture files when ConfigHub is unavailable.
 | `cleanup.sh` | Deletes all spaces labeled `ExampleName=platform-write-api` |
 
 Everything else is read-only.
+
+## GUI deep links
+
+ConfigHub GUI URLs follow these patterns. Use them when guiding humans
+to see the same data in the browser.
+
+| What to show | URL pattern |
+|-------------|------------|
+| All units (filtered) | `https://hub.confighub.com/units?q=inventory-api` |
+| Specific space | `https://hub.confighub.com/spaces/{space-name}` |
+| Specific unit | `https://hub.confighub.com/spaces/{space-name}/units/{unit-name}` |
+| Promotion view | `https://hub.confighub.com/tools/promotion` |
+| GitOps Import | `https://hub.confighub.com/tools/gitops-import` |
+
+Note: Deep link support for individual fields, mutation history, or diff
+views is not available yet. Guide the user to navigate manually when needed.
+If the exact URL patterns above are not working, the base URL is
+`https://hub.confighub.com` — navigate from there.
+
+## New: diff.sh
+
+Compare only the differences between two environments:
+
+```bash
+./diff.sh dev prod        # Human-readable differences
+./diff.sh --json dev prod # Machine-readable
+```
+
+This is a quick way to answer "what's different between dev and prod?"
+without reading the full comparison table.

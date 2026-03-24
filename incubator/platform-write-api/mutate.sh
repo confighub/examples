@@ -8,7 +8,8 @@
 #
 # Usage:
 #   ./mutate.sh              # Run the mutation
-#   ./mutate.sh --explain    # What this does (read-only)
+#   ./mutate.sh --explain    # What this does (read-only, side-by-side visual)
+#   ./mutate.sh --json       # Machine-readable explanation
 #   ./mutate.sh --dry-run    # Show the command without executing
 #   ./mutate.sh --revert     # Revert to the original value
 
@@ -24,22 +25,20 @@ platform-write-api mutate
 
 Demonstrates the "write API" for platform config.
 
-The old way (GitOps-only):
-  1. Clone the repo
-  2. Create a branch
-  3. Find the right YAML file
-  4. Edit the field (hope you get the indentation right)
-  5. Commit and push
-  6. Open a PR
-  7. Wait for review and merge
-  8. Wait for GitOps sync
-
-The ConfigHub way:
-  cub function do --space inventory-api-prod \
-    --change-desc "apply-here: reservation mode rollout" \
-    -- set-env inventory-api "FEATURE_INVENTORY_RESERVATIONMODE=optimistic"
-
-One command. Immediate. Audited. Reversible.
+┌─ GitOps (8 steps) ─────────────────────┬─ ConfigHub (1 command) ──────────────┐
+│                                         │                                      │
+│  ☐ git clone infra-repo                 │  ✓ cub function do \                 │
+│  ☐ git checkout -b feature/rollout      │      --space inventory-api-prod \    │
+│  ☐ find overlays/prod/kustomization...  │      --change-desc "rollout" \       │
+│  ☐ vim values.yaml                      │      -- set-env inventory-api \      │
+│  ☐ git add && git commit                │      "RESERVATION_MODE=optimistic"   │
+│  ☐ git push && gh pr create             │                                      │
+│  ☐ Wait for CI + review                 │  Time:       ~2 seconds              │
+│  ☐ Merge → wait for sync                │  Audit:      automatic               │
+│                                         │  Reversible: ./mutate.sh --revert    │
+│  Time:  15–45 minutes                   │                                      │
+│  Audit: buried in git log               │                                      │
+└─────────────────────────────────────────┴──────────────────────────────────────┘
 
 The mutation:
 - Field: feature.inventory.reservationMode
@@ -62,8 +61,29 @@ What does NOT happen:
 EOF
 }
 
+show_explain_json() {
+  cat <<'EOF'
+{
+  "action": "mutate",
+  "space": "inventory-api-prod",
+  "unit": "inventory-api",
+  "field": "feature.inventory.reservationMode",
+  "envVar": "FEATURE_INVENTORY_RESERVATIONMODE",
+  "from": "strict",
+  "to": "optimistic",
+  "route": "mutable-in-ch",
+  "gitopsSteps": 8,
+  "confighubSteps": 1,
+  "readOnly": false,
+  "reversible": true,
+  "reverseCommand": "./mutate.sh --revert"
+}
+EOF
+}
+
 case "${1:-}" in
   --explain) show_explain; exit 0 ;;
+  --explain-json|--json) show_explain_json; exit 0 ;;
   --dry-run)
     echo "Would run:"
     echo ""
@@ -88,7 +108,7 @@ case "${1:-}" in
     exit 0
     ;;
   "") ;;
-  *) echo "Usage: $0 [--explain|--dry-run|--revert]" >&2; exit 2 ;;
+  *) echo "Usage: $0 [--explain|--json|--dry-run|--revert]" >&2; exit 2 ;;
 esac
 
 command -v "${CUB}" >/dev/null 2>&1 || { echo "error: cub CLI not found." >&2; exit 1; }
