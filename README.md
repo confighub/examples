@@ -14,6 +14,7 @@ This repo contains examples that demonstrate how [ConfigHub](https://confighub.c
 - [`import-from-live`](./import-from-live/README.md): stable brownfield discovery and dry-run import proposal example.
 - [`import-from-bundle`](./import-from-bundle/README.md): stable offline dry-run import proposal example backed by a copied debug bundle.
 - [`connected-summary-storage`](./connected-summary-storage/README.md): stable no-cluster reporting example showing stored connected summaries and dry-run Slack digest generation.
+- [`artifact-workflow`](./artifact-workflow/README.md): stable offline bundle inspection, replay, and summarize example using a copied debug bundle.
 - [`apptique-flux-monorepo`](./apptique-flux-monorepo/README.md): stable app-style Flux monorepo example with one base plus dev and prod overlays.
 - [`apptique-argo-applicationset`](./apptique-argo-applicationset/README.md): stable Argo ApplicationSet example with generated apps per environment.
 - [`graph-export`](./graph-export/README.md): stable live topology export example producing JSON, DOT, SVG, and HTML artifacts.
@@ -32,6 +33,7 @@ For the current GitHub + Argo/Flux + AI/CLI + ConfigHub wedge, start here:
 - [`import-from-live`](./import-from-live/README.md)
 - [`import-from-bundle`](./import-from-bundle/README.md)
 - [`connected-summary-storage`](./connected-summary-storage/README.md)
+- [`artifact-workflow`](./artifact-workflow/README.md)
 - [`apptique-flux-monorepo`](./apptique-flux-monorepo/README.md)
 - [`apptique-argo-applicationset`](./apptique-argo-applicationset/README.md)
 - [`graph-export`](./graph-export/README.md)

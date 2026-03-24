@@ -213,7 +213,7 @@ cd connected-summary-storage
 For offline bundle inspection and replay:
 
 ```bash
-cd incubator/artifact-workflow
+cd artifact-workflow
 ./setup.sh --explain
 ./setup.sh --explain-json | jq
 ./setup.sh

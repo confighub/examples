@@ -117,17 +117,21 @@ It has now been promoted to the stable repo root as:
 
 - `connected-summary-storage`
 
-## Recommended Next Promotion Wave
+### `artifact-workflow`
 
-These are the strongest next candidates right now.
-
-### 1. `incubator/artifact-workflow`
-
-Why it stands out:
+Completed because:
 
 - offline bundle inspection and replay story
 - no cluster dependency
 - good stable companion to `import-from-bundle`
+
+It has now been promoted to the stable repo root as:
+
+- `artifact-workflow`
+
+## Recommended Next Promotion Wave
+
+These are the strongest next candidates right now.
 
 ## Strong Second-Wave Candidates
 
@@ -182,7 +186,7 @@ Why:
 
 ## Recommended Next Decision Sequence
 
-1. Promote one no-cluster bundle or artifact example next: `artifact-workflow`
+1. Decide whether the next stable addition should be another narrow no-cluster evidence example or a more operational live example
 2. Then decide whether the next stable addition should be bundle-focused, reporting-focused, or another narrow evidence example
 
 ## Notes
