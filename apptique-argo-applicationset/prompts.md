@@ -3,7 +3,7 @@
 ## Fresh AI Prompt
 
 ```text
-You are in the apptique-argo-applicationset example in confighub/examples.
+You are in the stable apptique-argo-applicationset example in confighub/examples.
 
 Goal: verify the Argo ApplicationSet app-style pattern safely and explain what it proves.
 

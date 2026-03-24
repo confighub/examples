@@ -9,7 +9,7 @@ spec:
         repoURL: https://github.com/confighub/examples.git
         revision: main
         directories:
-          - path: incubator/apptique-argo-applicationset/apps/apptique/*
+          - path: apptique-argo-applicationset/apps/apptique/*
   template:
     metadata:
       name: 'apptique-{{path.basename}}'

@@ -157,7 +157,7 @@ That makes it a good companion to:
 
 - [../incubator/gitops-import-flux](../incubator/gitops-import-flux/README.md)
 - [../incubator/gitops-import-argo](../incubator/gitops-import-argo/README.md)
-- [../incubator/apptique-argo-applicationset](../incubator/apptique-argo-applicationset/README.md)
+- [../apptique-argo-applicationset](../apptique-argo-applicationset/README.md)
 
 ## AI-Safe Path
 

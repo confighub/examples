@@ -1,6 +1,6 @@
 # Apptique Argo ApplicationSet
 
-This incubator example adapts the Argo CD ApplicationSet app-style pattern from `cub-scout` into the official `examples` repo.
+This stable example adapts the Argo CD ApplicationSet app-style pattern from `cub-scout` into the official `examples` repo.
 
 It shows one realistic Argo GitOps layout:
 
@@ -20,7 +20,7 @@ Use this example when you want to show:
 - how generated Applications map to namespaces and workloads
 - how to verify ownership and provenance with `kubectl` and optionally `cub-scout`
 
-If you want to import a live Argo cluster into ConfigHub, use [../gitops-import-argo](../gitops-import-argo/README.md) after or alongside this example.
+If you want to import a live Argo cluster into ConfigHub, use [../incubator/gitops-import-argo](../incubator/gitops-import-argo/README.md) after or alongside this example.
 
 ## Source
 
@@ -51,7 +51,7 @@ It does not write ConfigHub state by itself.
 ## Read-Only First
 
 ```bash
-cd incubator/apptique-argo-applicationset
+cd apptique-argo-applicationset
 ./setup.sh --explain
 ./setup.sh --explain-json | jq
 ```
@@ -126,7 +126,7 @@ This is the same evidence-first model as the import examples:
 
 ## Why This Example Matters
 
-This gives the incubator set one clear Argo app-style example to pair with the Flux monorepo example.
+This gives the stable example set one clear Argo app-style example to pair with the Flux monorepo example.
 
 It shows a realistic Argo layout teams actually use:
 
@@ -136,9 +136,9 @@ It shows a realistic Argo layout teams actually use:
 
 That makes it a good companion to:
 
-- [../../apptique-flux-monorepo](../../apptique-flux-monorepo/README.md)
-- [../gitops-import-argo](../gitops-import-argo/README.md)
-- [../gitops-import-flux](../gitops-import-flux/README.md)
+- [../apptique-flux-monorepo](../apptique-flux-monorepo/README.md)
+- [../incubator/gitops-import-argo](../incubator/gitops-import-argo/README.md)
+- [../incubator/gitops-import-flux](../incubator/gitops-import-flux/README.md)
 
 ## AI-Safe Path
 

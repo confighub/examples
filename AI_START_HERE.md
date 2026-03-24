@@ -72,6 +72,7 @@ Use the first four when the user wants no-cluster evidence or offline import pat
 If the user wants a stable app-style GitOps layout rather than an import flow, start here:
 
 - [`apptique-flux-monorepo`](./apptique-flux-monorepo/README.md)
+- [`apptique-argo-applicationset`](./apptique-argo-applicationset/README.md)
 
 Use it when the user wants:
 
@@ -79,6 +80,12 @@ Use it when the user wants:
 - one shared base
 - dev and prod overlays
 - Flux-managed rollout without the extra complexity of the Argo siblings
+
+Use `apptique-argo-applicationset` when the user wants:
+
+- directory-driven environment discovery
+- generated Argo Applications per environment
+- the clearest stable Argo app-style layout in the repo
 
 If the user is asking about worker extensibility, validation, policy checks, or custom execution paths, use the official worker examples in this repo:
 
