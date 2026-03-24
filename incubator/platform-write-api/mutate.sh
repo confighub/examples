@@ -172,7 +172,7 @@ echo ""
 # Show mutation history
 echo "Mutation history (last 3):"
 ${CUB} mutation list --space "${SPACE}" --json "${UNIT}" 2>/dev/null | \
-  jq -r '.[-3:][] | "  #\(.MutationNum) \(.CreatedAt | split("T")[0]) \(.Description // "no description")"' 2>/dev/null || \
+  jq -r '.[-3:][] | "  #\(.Mutation.MutationNum) \(.Revision.CreatedAt | split("T")[0]) \(.Revision.Description // "no description")"' 2>/dev/null || \
   echo "  (mutation list not available)"
 
 echo ""
