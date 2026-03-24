@@ -9,6 +9,16 @@ no programmatic way to update a field without a full clone/branch/edit/PR cycle.
 ConfigHub solves this by being the mutation plane. This example proves it with
 a concrete service (`inventory-api`) across three environments.
 
+## The three mutation scenarios
+
+This demo proves three kinds of config change, each with different routing:
+
+| Scenario | Route | Example | Script |
+|----------|-------|---------|--------|
+| 1. Direct mutation | `mutable-in-ch` | Flip a feature flag | `./mutate.sh` |
+| 2. Lift upstream | `lift-upstream` | Enable Redis caching | `./lift-upstream.sh` |
+| 3. Block/escalate | `generator-owned` | Change datasource URL | `./block-escalate.sh` |
+
 ## Safe first steps
 
 ```bash
@@ -17,6 +27,8 @@ a concrete service (`inventory-api`) across three environments.
 ./compare.sh
 ./field-routes.sh prod
 ./refresh-preview.sh prod
+./lift-upstream.sh
+./block-escalate.sh --render-attempt
 ```
 
 All scripts fall back to fixture files when ConfigHub is unavailable.
@@ -25,7 +37,7 @@ All scripts fall back to fixture files when ConfigHub is unavailable.
 
 | If you have... | You can run... |
 |----------------|---------------|
-| Just the repo | All `--explain` modes, `compare.sh`, `field-routes.sh`, `refresh-preview.sh` (fixture fallback) |
+| Just the repo | All `--explain` modes, `compare.sh`, `field-routes.sh`, `refresh-preview.sh`, `lift-upstream.sh`, `block-escalate.sh` (fixture/simulation) |
 | `cub auth login` | `setup.sh`, `mutate.sh`, `cleanup.sh` (ConfigHub mutation) |
 | Java 21 + Maven | `../springboot-platform-app/upstream/app/` — run the actual app |
 
@@ -42,14 +54,24 @@ All scripts fall back to fixture files when ConfigHub is unavailable.
 ./compare.sh
 ./field-routes.sh prod
 
-# 4. Mutate (the "write API" proof)
-./mutate.sh
+# 4. Scenario 1: Direct mutation (the "write API" proof)
+./mutate.sh --explain          # Old way (8 steps) vs new way (1 command)
+./mutate.sh                    # Do the mutation
 
 # 5. Verify mutation
-./compare.sh
-./refresh-preview.sh prod
+./compare.sh                   # See the * divergence marker on prod
+./refresh-preview.sh prod      # See PRESERVE — mutation survives refresh
 
-# 6. Cleanup
+# 6. Scenario 2: Lift upstream (structural changes)
+./lift-upstream.sh             # Routing decision
+./lift-upstream.sh --render-diff  # GitHub-ready patch
+
+# 7. Scenario 3: Block/escalate (platform-owned fields)
+./block-escalate.sh            # Routing decision
+./block-escalate.sh --render-attempt  # Simulated blocked mutation
+
+# 8. Cleanup
+./mutate.sh --revert
 ./cleanup.sh
 ```
 
