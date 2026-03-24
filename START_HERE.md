@@ -6,10 +6,11 @@ If you want the shortest path to understanding, use this order:
 
 1. look at one no-cluster evidence or offline import example
 2. look at one live brownfield discovery example
-3. look at one live GitOps import example with direct evidence
-4. look at one worker extension example
-5. look at one example that teaches the core ConfigHub object model
-6. only then move to the bigger layered or fleet-style examples
+3. look at one app-style GitOps layout example
+4. look at one live GitOps import example with direct evidence
+5. look at one worker extension example
+6. look at one example that teaches the core ConfigHub object model
+7. only then move to the bigger layered or fleet-style examples
 
 ## First Path: No Cluster Required
 
@@ -99,7 +100,28 @@ cd incubator/gitops-import-flux
 ./verify.sh
 ```
 
-## Fourth Path: Worker Extensibility
+## Fourth Path: App-Style GitOps Layout
+
+If you want a stable app-style GitOps layout rather than an import flow, use:
+
+- [`apptique-flux-monorepo`](./apptique-flux-monorepo/README.md)
+
+Why:
+
+- it is the cleanest stable "one app, multiple environments" GitOps example in the repo
+- it shows one base plus two environment overlays
+- it is self-contained and live-validated
+
+Typical flow:
+
+```bash
+cd apptique-flux-monorepo
+./setup.sh --explain
+./setup.sh --with-prod
+./verify.sh --with-prod
+```
+
+## Fifth Path: Worker Extensibility
 
 If you want to understand how ConfigHub workers are built and extended, go to:
 
@@ -112,7 +134,7 @@ If you want to understand how ConfigHub workers are built and extended, go to:
 
 These show simple bridge and function workers, plus policy and validation examples using the SDK as normal Go modules.
 
-## Fifth Path: Stable ConfigHub Model
+## Sixth Path: Stable ConfigHub Model
 
 Then look at [`promotion-demo-data`](./promotion-demo-data/README.md).
 
@@ -131,7 +153,7 @@ cd promotion-demo-data
 ./cleanup.sh
 ```
 
-## Sixth Path: Learn The Core Object Model
+## Seventh Path: Learn The Core Object Model
 
 Then go to the layered examples package:
 
@@ -158,7 +180,7 @@ cd incubator/global-app-layer/realistic-app
 ./setup.sh --explain
 ```
 
-## Seventh Path: Pick The Right Layered Worked Example
+## Eighth Path: Pick The Right Layered Worked Example
 
 Inside [`incubator/global-app-layer`](./incubator/global-app-layer/README.md):
 

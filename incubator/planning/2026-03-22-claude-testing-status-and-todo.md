@@ -41,9 +41,12 @@ These are already merged on `main` and should be treated as the current canonica
 
 ### App-style examples now validated live
 
-- `incubator/apptique-flux-monorepo`
 - `incubator/apptique-argo-applicationset`
 - `incubator/apptique-argo-app-of-apps`
+
+Stable app-style example already promoted:
+
+- `apptique-flux-monorepo`
 
 ## Highest-Priority Testing Tasks
 
@@ -124,7 +127,6 @@ The app-style set has now had one clean self-contained live validation pass. The
 
 Targets:
 
-- `incubator/apptique-flux-monorepo`
 - `incubator/apptique-argo-applicationset`
 - `incubator/apptique-argo-app-of-apps`
 

@@ -3,7 +3,7 @@
 ## Fresh AI Prompt
 
 ```text
-You are in the apptique-flux-monorepo example in confighub/examples.
+You are in the stable apptique-flux-monorepo example in confighub/examples.
 
 Goal: verify the Flux monorepo app-style pattern safely and explain what it proves.
 

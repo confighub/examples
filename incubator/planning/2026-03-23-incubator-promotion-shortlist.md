@@ -57,23 +57,42 @@ It has now been promoted to the stable repo root as:
 
 - `import-from-live`
 
+### `apptique-flux-monorepo`
+
+Completed because:
+
+- self-contained and live-validated
+- clear app-style layout with one base and two overlays
+- strongest current stable example for "one app, multiple environments"
+
+It has now been promoted to the stable repo root as:
+
+- `apptique-flux-monorepo`
+
 ## Recommended Next Promotion Wave
 
 These are the strongest next candidates right now.
 
-### 1. `incubator/apptique-flux-monorepo`
+### 1. `incubator/import-from-bundle`
+
+Why it stands out:
+
+- cluster-free import proposal generation
+- natural stable companion to `connect-and-compare`
+- strong deterministic evidence story
+
+Why it should likely be next:
+
+- it is small, honest, and fast to validate
+- it rounds out the no-cluster stable spine
+
+### 2. `incubator/apptique-argo-applicationset`
 
 Why it stands out:
 
 - self-contained and live-validated
-- clear app-style layout with one base and two overlays
-- easier to reason about than the larger Argo siblings
-
-Why it should likely be the first app-style promotion candidate:
-
-- it is the cleanest app-layout story in the current set
-- it has a straightforward controller and verification model
-- it works well as a template for "one app, multiple environments"
+- strongest remaining Argo app-layout candidate
+- good stable counterpart to `apptique-flux-monorepo`
 
 ## Strong Second-Wave Candidates
 
@@ -112,7 +131,8 @@ Strong because:
 
 Held for second wave because:
 
-- `apptique-flux-monorepo` is slightly smaller and simpler as the first app-style stable example
+- one stable app-style example is enough for the first promotion wave
+- `apptique-flux-monorepo` is already covering the simpler stable app-layout slot
 
 ## Keep In Incubator For Now
 
@@ -163,8 +183,8 @@ Why:
 
 ## Recommended Next Decision Sequence
 
-1. Promote one app-style example next: `apptique-flux-monorepo`
-2. Then decide whether the next stable addition should be Argo-focused, topology-focused, or bundle-focused
+1. Promote one no-cluster import sibling next: `import-from-bundle`
+2. Then decide whether the next stable addition should be Argo-focused, topology-focused, or reporting-focused
 
 ## Notes
 

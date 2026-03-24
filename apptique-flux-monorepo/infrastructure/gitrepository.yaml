@@ -10,4 +10,4 @@ spec:
     branch: main
   ignore: |
     /*
-    !/incubator/apptique-flux-monorepo/
+    !/apptique-flux-monorepo/
