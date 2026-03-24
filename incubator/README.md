@@ -24,7 +24,6 @@ Keep building AI-first examples in `examples/incubator` that give one person a f
 
 ### Offline Import And Aggregation
 
-- [`import-from-bundle`](./import-from-bundle/README.md): dry-run import proposal generation from a debug bundle without cluster access.
 - [`fleet-import`](./fleet-import/README.md): multi-cluster aggregation from two existing cluster import JSONs into one unified proposal.
 
 ### Live Import, Comparison, Ownership, Topology, And Orphans
@@ -68,7 +67,7 @@ Use this order:
 - [Official GitOps Import docs](https://docs.confighub.com/get-started/examples/gitops-import/)
 - No-cluster evidence first:
   - [`../connect-and-compare`](../connect-and-compare/README.md)
-  - [`import-from-bundle`](./import-from-bundle/README.md)
+  - [`../import-from-bundle`](../import-from-bundle/README.md)
   - [`fleet-import`](./fleet-import/README.md)
   - [`demo-data-adt`](./demo-data-adt/README.md)
   - [`lifecycle-hazards`](./lifecycle-hazards/README.md)
@@ -114,6 +113,7 @@ For both of those paths, the authoritative runnable implementation is Jesper's [
 
 - [`../connect-and-compare`](../connect-and-compare/README.md): stable no-cluster evidence example showing doctor, compare, and history without a live cluster.
 - [`../import-from-live`](../import-from-live/README.md): stable brownfield discovery example showing live-cluster dry-run proposal generation before any ConfigHub mutation.
+- [`../import-from-bundle`](../import-from-bundle/README.md): stable offline import example showing dry-run proposal generation from a copied bundle fixture.
 - [`../apptique-flux-monorepo`](../apptique-flux-monorepo/README.md): stable app-style Flux example showing one base plus dev and prod overlays with dedicated kubeconfig handling.
 - [`promotion-demo-data`](../promotion-demo-data/README.md): creates 49 spaces and ~154 units using the App-Deployment-Target model. Uses noop bridge, no cluster required. Canonical example of ConfigHub's multi-env promotion model.
 - [`../custom-workers`](../custom-workers): official worker extension examples, including bridge workers, function workers, and policy or validation workers.

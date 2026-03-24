@@ -61,7 +61,7 @@ If the user is asking for GitHub import with Argo or Flux, start with the publis
 - [Official GitOps Import docs](https://docs.confighub.com/get-started/examples/gitops-import/)
 - [`connect-and-compare`](./connect-and-compare/README.md)
 - [`import-from-live`](./import-from-live/README.md)
-- [`incubator/import-from-bundle`](./incubator/import-from-bundle/README.md)
+- [`import-from-bundle`](./import-from-bundle/README.md)
 - [`incubator/fleet-import`](./incubator/fleet-import/README.md)
 - [`incubator/demo-data-adt`](./incubator/demo-data-adt/README.md)
 - [`incubator/gitops-import-argo`](./incubator/gitops-import-argo/README.md)

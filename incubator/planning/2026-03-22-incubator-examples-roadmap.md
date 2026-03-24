@@ -8,10 +8,10 @@
 
 The incubator set now has a strong front half and a much broader middle.
 
-The no-cluster path is strong enough to stand on its own, and one example has already graduated to stable:
+The no-cluster path is strong enough to stand on its own, and two examples have already graduated to stable:
 
 - `connect-and-compare` (now stable at the repo root)
-- `import-from-bundle`
+- `import-from-bundle` (now stable at the repo root)
 - `fleet-import`
 - `demo-data-adt`
 - `lifecycle-hazards`
@@ -48,7 +48,6 @@ The following work is already merged on `main`.
 
 ### Offline and evidence-first incubator examples
 
-- `incubator/import-from-bundle`
 - `incubator/fleet-import`
 - `incubator/demo-data-adt`
 - `incubator/lifecycle-hazards`
@@ -96,6 +95,7 @@ The following now reflect the no-cluster-first route before live import:
 - `connect-and-compare`
 - `import-from-live`
 - `apptique-flux-monorepo`
+- `import-from-bundle`
 
 ## What Is Not Done
 
@@ -186,7 +186,7 @@ A candidate is ready to consider for promotion when it meets all of these:
 ### Best no-cluster examples
 
 - `connect-and-compare`
-- `incubator/import-from-bundle`
+- `import-from-bundle`
 - `incubator/fleet-import`
 - `incubator/demo-data-adt`
 - `incubator/lifecycle-hazards`

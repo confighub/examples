@@ -151,7 +151,7 @@ cd incubator/gitops-import-flux
 For offline import proposal generation:
 
 ```bash
-cd incubator/import-from-bundle
+cd ../import-from-bundle
 ./setup.sh --explain
 ./setup.sh --explain-json | jq
 ./setup.sh
