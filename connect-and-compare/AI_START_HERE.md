@@ -18,7 +18,7 @@ For each stage:
 ## Suggested Prompt
 
 ```text
-Read incubator/connect-and-compare/AI_START_HERE.md and walk me through the demo.
+Read connect-and-compare/AI_START_HERE.md and walk me through the demo.
 Pause after every stage. Show full output. Do not continue until I say continue.
 ```
 
@@ -36,7 +36,7 @@ Use it when the human wants to show:
 ## Stage 1: Preview The Plan (read-only)
 
 ```bash
-cd incubator/connect-and-compare
+cd connect-and-compare
 ./setup.sh --explain
 ./setup.sh --explain-json | jq
 ```

@@ -8,9 +8,9 @@
 
 The incubator set now has a strong front half and a much broader middle.
 
-The no-cluster path is strong enough to stand on its own:
+The no-cluster path is strong enough to stand on its own, and one example has already graduated to stable:
 
-- `connect-and-compare`
+- `connect-and-compare` (now stable at the repo root)
 - `import-from-bundle`
 - `fleet-import`
 - `demo-data-adt`
@@ -48,7 +48,6 @@ The following work is already merged on `main`.
 
 ### Offline and evidence-first incubator examples
 
-- `incubator/connect-and-compare`
 - `incubator/import-from-bundle`
 - `incubator/fleet-import`
 - `incubator/demo-data-adt`
@@ -93,6 +92,10 @@ The following now reflect the no-cluster-first route before live import:
 - `START_HERE.md`
 - `incubator/README.md`
 - `incubator/AI_START_HERE.md`
+
+### Promoted stable examples from the current wedge
+
+- `connect-and-compare`
 
 ## What Is Not Done
 
@@ -182,7 +185,7 @@ A candidate is ready to consider for promotion when it meets all of these:
 
 ### Best no-cluster examples
 
-- `incubator/connect-and-compare`
+- `connect-and-compare`
 - `incubator/import-from-bundle`
 - `incubator/fleet-import`
 - `incubator/demo-data-adt`

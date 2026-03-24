@@ -30,26 +30,26 @@ An incubator example is a strong promotion candidate when it has all of the foll
 - dedicated kubeconfig handling if it is a live example
 - no unresolved upstream caveat at the center of the example's value proposition
 
-## Recommended First Promotion Wave
+## Completed First Promotion
 
-These are the strongest first candidates right now.
+### `connect-and-compare`
 
-### 1. `incubator/connect-and-compare`
-
-Why it stands out:
+Completed because:
 
 - smallest high-signal no-cluster example
 - deterministic and fast
 - excellent AI-first shape
 - proves immediate value without cluster setup or ConfigHub mutation
 
-Why it should likely go first:
+It has now been promoted to the stable repo root as:
 
-- it is the easiest example to trust
-- it gives one person a fast reason to use the tooling
-- it is a good stable anchor for the no-cluster evidence story
+- `connect-and-compare`
 
-### 2. `incubator/import-from-live`
+## Recommended Next Promotion Wave
+
+These are the strongest next candidates right now.
+
+### 1. `incubator/import-from-live`
 
 Why it stands out:
 
@@ -63,7 +63,7 @@ Why it should likely be the first live promotion candidate:
 - it is easier to explain than the controller-specific import stories
 - it gives ConfigHub a clear ingest-and-organize story
 
-### 3. `incubator/apptique-flux-monorepo`
+### 2. `incubator/apptique-flux-monorepo`
 
 Why it stands out:
 
@@ -165,9 +165,8 @@ Why:
 
 ## Recommended Next Decision Sequence
 
-1. Promote one no-cluster example first: `connect-and-compare`
-2. Promote one live ingest example second: `import-from-live`
-3. Promote one app-style example third: `apptique-flux-monorepo`
+1. Promote one live ingest example next: `import-from-live`
+2. Promote one app-style example after that: `apptique-flux-monorepo`
 4. Only then decide whether the next stable additions should be Argo-focused, topology-focused, or bundle-focused
 
 ## Notes

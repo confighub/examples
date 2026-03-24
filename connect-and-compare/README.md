@@ -1,6 +1,6 @@
 # Connect And Compare
 
-This incubator example adapts the fixture-first `connect-and-compare` flow from `cub-scout` into the official `examples` repo.
+This stable example adapts the fixture-first `connect-and-compare` flow from `cub-scout` into the official `examples` repo.
 
 It shows one of the simplest useful stories in the current wedge:
 
@@ -46,7 +46,7 @@ It does not mutate live infrastructure.
 ## Read-Only First
 
 ```bash
-cd incubator/connect-and-compare
+cd connect-and-compare
 ./setup.sh --explain
 ./setup.sh --explain-json | jq
 ```

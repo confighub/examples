@@ -14,7 +14,7 @@ If you want the shortest path to understanding, use this order:
 
 Start here if you want visible value quickly without depending on a live cluster:
 
-- [`incubator/connect-and-compare`](./incubator/connect-and-compare/README.md)
+- [`connect-and-compare`](./connect-and-compare/README.md)
 - [`incubator/import-from-bundle`](./incubator/import-from-bundle/README.md)
 - [`incubator/fleet-import`](./incubator/fleet-import/README.md)
 - [`incubator/demo-data-adt`](./incubator/demo-data-adt/README.md)
@@ -29,7 +29,7 @@ Why:
 Typical flow:
 
 ```bash
-cd incubator/connect-and-compare
+cd connect-and-compare
 ./setup.sh --explain
 ./setup.sh
 ./verify.sh
