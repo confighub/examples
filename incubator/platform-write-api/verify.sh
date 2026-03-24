@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# Verify that the platform-write-api example is structurally consistent.
+#
+# Checks:
+# - Required scripts exist
+# - Dependency on springboot-platform-app fixtures is satisfied
+# - All scripts have --explain mode
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SPRING_DIR="${SCRIPT_DIR}/../springboot-platform-app"
+ok=true
+
+check_file() {
+  if [[ ! -f "$1" ]]; then
+    echo "FAIL: missing $1" >&2
+    ok=false
+  fi
+}
+
+check_executable() {
+  if [[ ! -x "$1" ]]; then
+    echo "FAIL: not executable $1" >&2
+    ok=false
+  fi
+}
+
+# Own scripts
+for script in setup.sh compare.sh field-routes.sh refresh-preview.sh mutate.sh cleanup.sh verify.sh; do
+  check_file "${SCRIPT_DIR}/${script}"
+  check_executable "${SCRIPT_DIR}/${script}"
+done
+
+# Dependency: springboot-platform-app fixtures
+for env in dev stage prod; do
+  check_file "${SPRING_DIR}/confighub/inventory-api-${env}.yaml"
+done
+check_file "${SPRING_DIR}/operational/field-routes.yaml"
+
+# Dependency: springboot-platform-app scripts we delegate to
+for script in confighub-compare.sh confighub-field-routes.sh confighub-refresh-preview.sh; do
+  check_file "${SPRING_DIR}/${script}"
+  check_executable "${SPRING_DIR}/${script}"
+done
+
+# Check explain modes work
+for script in setup.sh mutate.sh; do
+  if ! "${SCRIPT_DIR}/${script}" --explain > /dev/null 2>&1; then
+    echo "FAIL: ${script} --explain failed" >&2
+    ok=false
+  fi
+done
+
+check_file "${SCRIPT_DIR}/README.md"
+check_file "${SCRIPT_DIR}/AI_START_HERE.md"
+
+if [[ "$ok" == "true" ]]; then
+  echo "ok: platform-write-api example is consistent"
+else
+  echo "FAIL: platform-write-api has issues" >&2
+  exit 1
+fi
