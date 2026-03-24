@@ -16,11 +16,11 @@ If you want the shortest path to understanding, use this order:
 
 Start here if you want visible value quickly without depending on a live cluster:
 
-- [`connect-and-compare`](./connect-and-compare/README.md)
-- [`import-from-bundle`](./import-from-bundle/README.md)
-- [`connected-summary-storage`](./connected-summary-storage/README.md)
-- [`artifact-workflow`](./artifact-workflow/README.md)
-- [`graph-export`](./graph-export/README.md)
+- [`connect-and-compare`](./incubator/connect-and-compare/README.md)
+- [`import-from-bundle`](./incubator/import-from-bundle/README.md)
+- [`connected-summary-storage`](./incubator/connected-summary-storage/README.md)
+- [`artifact-workflow`](./incubator/artifact-workflow/README.md)
+- [`graph-export`](./incubator/graph-export/README.md)
 - [`incubator/fleet-import`](./incubator/fleet-import/README.md)
 - [`incubator/demo-data-adt`](./incubator/demo-data-adt/README.md)
 
@@ -35,7 +35,7 @@ Why:
 Typical flow:
 
 ```bash
-cd connect-and-compare
+cd incubator/connect-and-compare
 ./setup.sh --explain
 ./setup.sh
 ./verify.sh
@@ -44,7 +44,7 @@ cd connect-and-compare
 For the offline import sibling:
 
 ```bash
-cd import-from-bundle
+cd incubator/import-from-bundle
 ./setup.sh --explain
 ./setup.sh
 ./verify.sh
@@ -53,7 +53,7 @@ cd import-from-bundle
 For the reporting sibling:
 
 ```bash
-cd connected-summary-storage
+cd incubator/connected-summary-storage
 ./setup.sh --explain
 ./setup.sh
 ./verify.sh
@@ -62,7 +62,7 @@ cd connected-summary-storage
 For the offline bundle sibling:
 
 ```bash
-cd artifact-workflow
+cd incubator/artifact-workflow
 ./setup.sh --explain
 ./setup.sh
 ./verify.sh
@@ -71,7 +71,7 @@ cd artifact-workflow
 For the topology-artifact sibling:
 
 ```bash
-cd graph-export
+cd incubator/graph-export
 ./setup.sh --explain
 ./setup.sh
 ./verify.sh
@@ -81,7 +81,7 @@ cd graph-export
 
 If you already have a cluster and want a dry-run ConfigHub proposal before any ConfigHub mutation, use:
 
-- [`import-from-live`](./import-from-live/README.md)
+- [`import-from-live`](./incubator/import-from-live/README.md)
 
 Why:
 
@@ -92,7 +92,7 @@ Why:
 Typical flow:
 
 ```bash
-cd import-from-live
+cd incubator/import-from-live
 ./setup.sh --explain
 ./setup.sh
 ./verify.sh
@@ -133,22 +133,22 @@ cd incubator/gitops-import-flux
 
 ## Fourth Path: App-Style GitOps Layout
 
-If you want a stable app-style GitOps layout rather than an import flow, use:
+If you want an app-style GitOps layout rather than an import flow, use:
 
-- [`apptique-flux-monorepo`](./apptique-flux-monorepo/README.md)
-- [`apptique-argo-applicationset`](./apptique-argo-applicationset/README.md)
+- [`apptique-flux-monorepo`](./incubator/apptique-flux-monorepo/README.md)
+- [`apptique-argo-applicationset`](./incubator/apptique-argo-applicationset/README.md)
 
 Why:
 
-- it is the cleanest stable "one app, multiple environments" GitOps example in the repo
+- it is the cleanest incubator "one app, multiple environments" GitOps example in the repo
 - it shows one base plus two environment overlays
 - it is self-contained and live-validated
-- it now has both a Flux and Argo stable path
+- it now has both a Flux and Argo incubator path
 
 Typical flow:
 
 ```bash
-cd apptique-flux-monorepo
+cd incubator/apptique-flux-monorepo
 ./setup.sh --explain
 ./setup.sh --with-prod
 ./verify.sh --with-prod
@@ -157,7 +157,7 @@ cd apptique-flux-monorepo
 For the Argo sibling:
 
 ```bash
-cd apptique-argo-applicationset
+cd incubator/apptique-argo-applicationset
 ./setup.sh --explain
 ./setup.sh
 ./verify.sh

@@ -151,7 +151,7 @@ cd incubator/gitops-import-flux
 For offline import proposal generation:
 
 ```bash
-cd ../import-from-bundle
+cd incubator/import-from-bundle
 ./setup.sh --explain
 ./setup.sh --explain-json | jq
 ./setup.sh
@@ -161,7 +161,7 @@ cd ../import-from-bundle
 For a live-cluster dry-run proposal before any ConfigHub mutation:
 
 ```bash
-cd ../import-from-live
+cd incubator/import-from-live
 ./setup.sh --explain
 ./setup.sh --explain-json | jq
 ./setup.sh
@@ -203,7 +203,7 @@ cd incubator/lifecycle-hazards
 For stored summary reporting and dry-run Slack output:
 
 ```bash
-cd connected-summary-storage
+cd incubator/connected-summary-storage
 ./setup.sh --explain
 ./setup.sh --explain-json | jq
 ./setup.sh
@@ -213,7 +213,7 @@ cd connected-summary-storage
 For offline bundle inspection and replay:
 
 ```bash
-cd artifact-workflow
+cd incubator/artifact-workflow
 ./setup.sh --explain
 ./setup.sh --explain-json | jq
 ./setup.sh
