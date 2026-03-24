@@ -2,15 +2,34 @@
 
 Use this page when you want to drive `gitops-import-argo` safely with Codex, Claude, Cursor, or another AI assistant.
 
+## CRITICAL: Demo Pacing
+
+Pause after every stage.
+
+For each stage:
+
+1. run only that stage's commands
+2. print the full output
+3. explain what it means in plain English
+4. print the GUI checkpoint explicitly
+5. ask `Ready to continue?`
+6. wait for the human before continuing
+
+## Suggested Prompt
+
+```text
+Read incubator/gitops-import-argo/AI_START_HERE.md and walk me through the demo.
+Pause after every stage. Show full output. Give GUI links where possible.
+Do not continue until I say continue.
+```
+
 ## What This Example Is For
 
 This example is for GitOps import from a real ArgoCD environment into ConfigHub.
 
 It is the import-and-evidence path, not the layered recipe path.
 
-## Read-Only First
-
-Start with preview commands only:
+## Stage 1: Preview The Plan (read-only)
 
 ```bash
 cd incubator/gitops-import-argo
@@ -22,60 +41,81 @@ kubectl version --client 2>/dev/null || true
 
 These commands do not mutate ConfigHub and do not mutate live infrastructure.
 
-## Recommended Path
+GUI checkpoint:
+
+- none yet; this stage is CLI-only preview
+
+Pause after this stage.
+
+## Stage 2: Build The Local Argo Environment (mutates live infrastructure)
 
 Cluster and ArgoCD only:
 
 ```bash
 ./setup.sh
-./verify.sh
-```
-
-With worker and import path:
-
-```bash
-cub auth login
-export CUB_SPACE=<space>
-./setup.sh --with-worker
-./verify.sh
-cub target list --space "$CUB_SPACE" --json | jq
-cub gitops discover --space "$CUB_SPACE" worker-kubernetes-yaml-cluster --json | jq
-cub gitops import --space "$CUB_SPACE" worker-kubernetes-yaml-cluster worker-argocdrenderer-kubernetes-yaml-cluster --wait
 ```
 
 With optional contrast fixtures:
 
 ```bash
-./setup.sh --with-worker --with-contrast
+./setup.sh --with-contrast
 ```
 
-If another local example is already using `9080`, this example will choose a free ArgoCD host port in `9080-9099` and record it in `var/argocd-host-port.txt`. You can override that with `export ARGOCD_HOST_PORT=<port>` before running `./setup.sh`.
+If another local example is already using `9080`, this example will choose a free ArgoCD host port in `9080-9099` and record it in `var/argocd-host-port.txt`.
 
-Use `https://localhost:$(cat var/argocd-host-port.txt)` for the ArgoCD UI and API. The certificate warning is expected in this local setup.
+GUI checkpoint:
 
-## Important Boundaries
+- Argo CD UI: `https://localhost:$(cat var/argocd-host-port.txt)`
+- certificate warning is expected in this local setup
 
-- `./setup.sh --explain` is read-only
-- `./setup.sh` mutates live infrastructure
-- `./setup.sh --with-worker` mutates ConfigHub and starts a local worker plus a local ArgoCD API port-forward
-- `cub gitops discover` mutates ConfigHub only
-- `cub gitops import` mutates ConfigHub only
-- `./cleanup.sh` deletes the local kind cluster and local kubeconfig state
+Pause after this stage.
 
-## What To Verify
-
-Cluster side:
+## Stage 3: Verify Cluster And Argo Evidence (read-only)
 
 ```bash
 export KUBECONFIG=$PWD/var/gitops-import-argo.kubeconfig
+./verify.sh
 cat var/argocd-host-port.txt
 kubectl get applications -n argocd
 kubectl get all -A
 ```
 
-ConfigHub side:
+Use the evidence like this:
+
+- `kubectl` proves raw cluster facts
+- Argo UI and Argo objects prove controller-side facts
+
+What this does not prove:
+
+- no ConfigHub import has happened yet
+
+Pause after this stage.
+
+## Stage 4: Connect Worker And Discover (mutates ConfigHub)
 
 ```bash
+cub auth login
+export CUB_SPACE=<space>
+./setup.sh --with-worker
+cub target list --space "$CUB_SPACE" --json | jq
+cub gitops discover --space "$CUB_SPACE" worker-kubernetes-yaml-cluster --json | jq
+```
+
+What this mutates:
+
+- ConfigHub space state
+- local worker process and local Argo API access
+
+GUI checkpoint:
+
+- ConfigHub GUI: open space `$CUB_SPACE` and inspect targets and discovered units
+
+Pause after this stage.
+
+## Stage 5: Import And Verify ConfigHub Evidence (mutates ConfigHub)
+
+```bash
+cub gitops import --space "$CUB_SPACE" worker-kubernetes-yaml-cluster worker-argocdrenderer-kubernetes-yaml-cluster --wait
 cub unit list --space "$CUB_SPACE" --json | jq
 cub unit-action list --space "$CUB_SPACE" <unit-slug>
 ```
@@ -89,16 +129,26 @@ cub-scout map list
 
 Use the evidence like this:
 
-- `kubectl` proves raw cluster facts
 - ConfigHub proves import and renderer facts
 - `cub-scout` proves live ownership and GitOps context facts
 
-Expect a mixed result in the contrast path:
+What this does not prove:
 
-- `cubbychat`, `helm-guestbook`, and `kustomize-guestbook` are the healthy reference applications
-- several other Applications are expected to stay unhealthy or incomplete and should be reported as live evidence, not hidden
+- the contrast path is intentionally mixed; healthy and unhealthy apps should be reported separately
 
-Do not collapse those into one claim.
+GUI checkpoint:
+
+- ConfigHub GUI: open space `$CUB_SPACE`, review units, links, and recent actions
+
+Pause after this stage.
+
+## Stage 6: Cleanup
+
+```bash
+./cleanup.sh
+```
+
+This deletes the local kind cluster and local kubeconfig state.
 
 ## Related Files
 

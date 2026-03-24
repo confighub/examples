@@ -16,6 +16,33 @@ Then use this file for the incubator-specific path:
 
 - [`incubator/AI_START_HERE.md`](./incubator/AI_START_HERE.md)
 
+## CRITICAL: Demo Pacing
+
+When walking a human through any example in this repo, you MUST pause after every stage.
+
+After each stage:
+
+1. run only the command or commands for that stage
+2. print the full output on screen; do not abbreviate or summarize it away
+3. explain what the output means in plain English
+4. if there is a GUI URL or GUI checkpoint, print it explicitly
+5. stop and ask `Ready to continue?` or `Want to inspect this more?`
+6. do not proceed until the human tells you to continue
+
+If there is no GUI checkpoint for a stage, say that explicitly instead of skipping the note.
+
+## Suggested Prompt For Humans
+
+Use this prompt when you want the AI to behave like a demo guide rather than a fast script runner:
+
+```text
+Read the relevant AI_START_HERE.md file and walk me through the demo.
+Pause after every stage. Show full output. Give GUI links where possible.
+Do not continue until I say continue.
+```
+
+## Where To Start
+
 If the user is asking for GitHub import with Argo or Flux, start with the published docs and the runnable incubator examples in this repo:
 
 - [Official GitOps Import docs](https://docs.confighub.com/get-started/examples/gitops-import/)

@@ -2,17 +2,41 @@
 
 Use this page when you want to drive the `global-app-layer` package safely with Codex, Claude, Cursor, or another AI assistant.
 
+## CRITICAL: Demo Pacing
+
+Pause after every stage.
+
+For each stage:
+
+1. run only that stage's commands
+2. print the full output
+3. explain what it means in plain English
+4. print the GUI checkpoint when applicable
+5. ask `Ready to continue?`
+6. wait for the human before proceeding
+
+This package is easy to over-rush. Do not jump from preview to setup to target binding to apply in one burst.
+
+## Suggested Prompt
+
+```text
+Read incubator/global-app-layer/AI_START_HERE.md and walk me through the demo.
+Pause after every stage. Show full output. Give GUI links where possible.
+Do not continue until I say continue.
+```
+
 ## What This Package Is For
 
 This package demonstrates how ConfigHub can represent layered recipes as real versioned config objects.
 
 It is for:
+
 - multi-component app stacks
 - NVIDIA AICR-style layered recipes
 - safe updates and downstream propagation
 - optional direct or delegated delivery after the recipe is materialized
 
-It is **not** only about live deployment. A large part of the value is visible in the ConfigHub database before anything is applied to a cluster.
+It is not only about live deployment. A large part of the value is visible in the ConfigHub database before anything is applied to a cluster.
 
 ## Choose The Smallest Matching Demo
 
@@ -20,14 +44,15 @@ Before you run this package, pick the smallest demo that matches the user's actu
 
 | User goal | Better first stop |
 |---|---|
-| “Show me Argo import from GitHub” | [cub-scout argo-import-confighub-demo](https://github.com/confighub/cub-scout/tree/main/examples/argo-import-confighub-demo) |
-| “Show me Flux import from GitHub” | [cub-scout flux-import-confighub-demo](https://github.com/confighub/cub-scout/tree/main/examples/flux-import-confighub-demo) |
-| “Show me Helm first” | [helm-platform-components](../../helm-platform-components/README.md) and [cub-scout Helm quickstart](https://github.com/confighub/cub-scout/blob/main/docs/reference/cub-track-quickstart-helm.md) |
-| “Show me the smallest direct apply example” | [single-component](./single-component/README.md) |
-| “Show me App-Deployment-Target” | [promotion-demo-data](../../promotion-demo-data/README.md) |
-| “Show me microservices / app-of-apps / monorepo styles” | [global-app](../../global-app/README.md) and [cub-scout apptique examples](https://github.com/confighub/cub-scout/tree/main/examples/apptique-examples) |
+| Show me Argo import from GitHub | [gitops-import-argo](../gitops-import-argo/README.md) |
+| Show me Flux import from GitHub | [gitops-import-flux](../gitops-import-flux/README.md) |
+| Show me Helm first | [helm-platform-components](../../helm-platform-components/README.md) |
+| Show me the smallest direct apply example | [single-component](./single-component/README.md) |
+| Show me App-Deployment-Target | [promotion-demo-data](../../promotion-demo-data/README.md) |
+| Show me microservices or app-of-apps styles | [apptique-flux-monorepo](../apptique-flux-monorepo/README.md) |
 
 Use `global-app-layer` when the question is specifically about:
+
 - layered recipes
 - deployment units at the leaf
 - upstream propagation with preserved downstream specialization
@@ -38,6 +63,7 @@ Use `global-app-layer` when the question is specifically about:
 This package is intended-state first.
 
 The normal path is:
+
 1. preview the layered recipe
 2. materialize it in ConfigHub as WET objects
 3. verify it in ConfigHub
@@ -45,11 +71,8 @@ The normal path is:
 5. optionally apply live
 
 So `setup.sh` is ConfigHub-first, not cluster-first.
-Do not treat these examples as "inspect the cluster first" walkthroughs.
 
-## Safe First Steps
-
-Start with read-only commands only:
+## Stage 1: Preview The Layered Recipe (read-only)
 
 ```bash
 git rev-parse --show-toplevel
@@ -67,47 +90,91 @@ cd realistic-app
 ```
 
 What these do not mutate:
+
 - they do not create spaces
 - they do not create units
 - they do not bind targets
 - they do not apply to a cluster
 
-Once you run `./setup.sh`, use the printed artifacts instead of relying on terminal scrollback:
-- clickable GUI URLs for the recipe space, deploy space, recipe manifest, and one deployment unit
-- durable logs in `.logs/setup.latest.log`, `.logs/set-target.latest.log`, `.logs/verify.latest.log`, and `.logs/cleanup.latest.log`
+GUI checkpoint:
 
-For live delivery, use the package-level preflight before you claim anything is ready:
+- none yet; this stage is preview only
+
+Pause after this stage.
+
+## Stage 2: Materialize In ConfigHub (mutates ConfigHub)
+
+ConfigHub-only path:
 
 ```bash
+cd incubator/global-app-layer/realistic-app
+./setup.sh
+./verify.sh
+```
+
+What you should see after:
+
+- recipe and deploy spaces created in ConfigHub
+- deployment units and links materialized as WET objects
+- durable logs in `.logs/`
+- printed GUI URLs for the recipe space, deploy space, manifest, and one deployment unit
+
+GUI checkpoint:
+
+- open the printed ConfigHub URLs and compare them to the CLI verification output
+
+Pause after this stage.
+
+## Stage 3: Check Live Readiness, Do Not Assume It (read-only)
+
+```bash
+cd incubator/global-app-layer
 ./preflight-live.sh <space/target>
 ./preflight-live.sh <space/target> --json | jq
 ```
 
-## Ready For A Fresh Run
+Interpret the result like this:
 
-Use the same short path across the layered examples:
+- target visibility is not the same as readiness
+- `set-target.sh` is not the same as apply readiness
+- only treat the live path as ready if `applyReady: true`
+
+GUI checkpoint:
+
+- ConfigHub GUI: inspect the chosen target and relevant space before binding anything
+
+Pause after this stage.
+
+## Stage 4: Bind And Verify The Live Path (mutates ConfigHub, may lead to live apply)
+
+Only do this if the human explicitly wants the live path and preflight passed.
 
 ```bash
 cd incubator/global-app-layer/realistic-app
-./setup.sh                              # ConfigHub-only
-./setup.sh <prefix> <space/target>     # with live target
+./setup.sh <prefix> <space/target>
 ./verify.sh
 ```
 
-If you start ConfigHub-only and later want the live path:
+If the example was already materialized without a target:
 
 ```bash
 ./set-target.sh <space/target>
 ```
 
-If the human wants the whole lifecycle instead of only setup + verify, use:
+What this proves:
 
-- [whole-journey.md](./whole-journey.md)
+- target binding is explicit and inspectable
+- deployment units can be prepared for live delivery
 
-That walkthrough covers:
-- live target binding and apply
-- shared upstream updates
-- custom downstream deployment variants
+What this does not prove by itself:
+
+- target binding is not the same as successful live apply
+
+GUI checkpoint:
+
+- ConfigHub GUI: inspect the bound units and target relationships
+
+Pause after this stage.
 
 ## Capability Check
 
@@ -119,85 +186,20 @@ cub context list --json | jq
 cub target list --space "*" --json | jq
 ```
 
-Interpret the result like this:
+Important:
+
 - if `cub` is missing or auth is unavailable, stay in preview mode
 - if auth works but target listing is empty or irrelevant, use ConfigHub-only mode
 - if a real target is visible, run `./preflight-live.sh <space/target>` before you offer the live path
 
-Important:
-- `cub target list` proves visibility, not readiness
-- `set-target.sh` proves binding, not readiness
-- only call the live path ready if `preflight-live.sh` reports `applyReady: true`
-- when exploring Argo integration, distinguish Argo rendering from real Argo-managed sync; the current `ArgoCDRenderer` target is a renderer/hydration path, not the final sync proof
+## ArgoCDRenderer Payload Compatibility
 
-**ArgoCDRenderer payload compatibility:**
 - `ArgoCDRenderer` targets expect units containing ArgoCD `Application` CRDs (`apiVersion: argoproj.io/v1alpha1`)
-- The raw-manifest examples (`realistic-app`, `single-component`, etc.) are **incompatible** with `ArgoCDRenderer`
-- If you try, you'll get: `failed to parse Application: expected apiVersion argoproj.io/v1alpha1, got v1`
-- For ArgoCDRenderer proof, use brownfield-imported Application units (e.g., `argocd-cubbychat-Application-dry`)
-- See [contracts.md](./contracts.md) for the full compatibility matrix
+- the raw-manifest examples (`realistic-app`, `single-component`, and friends) are incompatible with `ArgoCDRenderer`
+- brownfield-imported `Application` units are the correct Argo renderer proof path
+- see [contracts.md](./contracts.md) for the full compatibility matrix
 
-## Capability Branching
-
-### A. Preview only
-
-Use this if the human wants explanation only, or if `cub` auth is unavailable.
-
-Safe path:
-
-```bash
-cd incubator/global-app-layer
-./find-runs.sh --json | jq
-cd realistic-app
-./setup.sh --explain-json | jq
-```
-
-### B. ConfigHub database only
-
-Use this if auth works but there is no worker or target available.
-
-Safe path:
-
-```bash
-cd incubator/global-app-layer/realistic-app
-./setup.sh
-./verify.sh
-```
-
-This writes ConfigHub spaces and units, but does not deploy anything live.
-
-### C. Live target available
-
-Use this only when `./preflight-live.sh <space/target>` reports `applyReady: true`.
-
-Safe path:
-
-```bash
-cd incubator/global-app-layer
-./preflight-live.sh <space/target>
-cd incubator/global-app-layer/realistic-app
-./setup.sh <prefix> <space/target>
-./verify.sh
-```
-
-Then approve and apply the deployment units explicitly.
-
-## Exact Commands To Run
-
-Recommended first walkthrough:
-
-```bash
-cd incubator/global-app-layer/realistic-app
-
-# Preview the full plan first
-./setup.sh --explain
-./setup.sh --explain-json | jq
-
-# Ready for a fresh run
-./setup.sh                              # ConfigHub-only
-./setup.sh <prefix> <space/target>     # with live target
-./verify.sh
-```
+## Smaller Entry Variants
 
 If the user wants the smallest example instead:
 
@@ -217,62 +219,6 @@ cd incubator/global-app-layer/gpu-eks-h100-training
 ./verify.sh
 ```
 
-If the user wants deployment, updates, and custom live variants instead of only ConfigHub-only walkthroughs, switch to [whole-journey.md](./whole-journey.md).
+If the user wants the full lifecycle instead of only setup and verify, use:
 
-## What Mutates What
-
-| Command | Reads | Writes |
-|---|---|---|
-| `./find-runs.sh --json` | ConfigHub labels on spaces/units | nothing |
-| `./preflight-live.sh <space/target>` | ConfigHub target and worker state | nothing |
-| `./setup.sh --explain-json` | local scripts and source manifests | nothing |
-| `./setup.sh` | local source manifests + current ConfigHub org | ConfigHub spaces, units, links, recipe manifest, local `.state/`, local `.logs/setup.latest.log` |
-| `./verify.sh` | ConfigHub objects created by the example | local `.logs/verify.latest.log` |
-| `./set-target.sh <space/target>` | ConfigHub deployment units, target ref | ConfigHub target bindings, local `.logs/set-target.latest.log` |
-| `cub unit apply ...` | ConfigHub deployment units + target + worker | live target state |
-
-## What Success Looks Like
-
-After a successful ConfigHub-only run you should see:
-- five, six, or seven new spaces with a shared prefix
-- units for each layer
-- one recipe manifest in the recipe space
-- `verify.sh` passing
-
-After a successful live path you should also see:
-- `./preflight-live.sh <space/target>` returning `applyReady: true`
-- targets bound on deployment units
-- successful `cub unit apply`
-- for direct targets: worker-mediated apply evidence plus live resources
-- for delegated targets: agent-side objects/sync evidence plus live resources
-
-## GUI Checkpoints
-
-Use the GUI while you go:
-
-1. open the new spaces created by the example prefix
-2. open the recipe space and inspect the recipe manifest unit
-3. open one deployment unit and inspect its upstream chain and current intended state
-4. if a target is set, inspect the deployment unit again and confirm the target binding is visible
-5. if using the live path, inspect the deployment space again after apply and compare intended state vs live result
-
-The easiest way to get there is to use the clickable URLs printed by `./setup.sh`.
-
-## CLI Footguns To Avoid
-
-- use `cub version`, not `cub --version`
-- use `cub context list`, not `cub context current`
-- for machine-readable unit inspection, prefer the exact jq examples in `contracts.md`
-- do not treat a visible target as a live-ready target until `./preflight-live.sh` says so
-
-## Cleanup
-
-Use the example-specific cleanup script:
-
-```bash
-./cleanup.sh
-```
-
-This removes the ConfigHub objects created by the example.
-It does not magically clean unrelated cluster resources if you applied and then changed things outside the example flow.
-The cleanup output is also captured in `.logs/cleanup.latest.log`.
+- [whole-journey.md](./whole-journey.md)

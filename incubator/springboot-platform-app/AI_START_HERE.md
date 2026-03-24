@@ -1,12 +1,39 @@
 # AI Start Here
 
-Use this page when you want to drive `springboot-platform-app` safely with an AI
-assistant.
+Use this page when you want to drive `springboot-platform-app` safely with an AI assistant.
+
+## CRITICAL: Demo Pacing
+
+Pause after every stage.
+
+For each stage:
+
+1. run only that stage's commands
+2. print the full output
+3. explain what it means in plain English
+4. print the GUI checkpoint when applicable
+5. ask `Ready to continue?`
+6. wait for the human before continuing
+
+This example has several mutation-routing scenarios. For each one, explain:
+
+- the pain
+- the fix
+- what you see
+- what this proves
+- what this does not prove
+
+## Suggested Prompt
+
+```text
+Read incubator/springboot-platform-app/AI_START_HERE.md and walk me through the demo.
+Pause after every stage. Show full output. Give GUI links where possible.
+Do not continue until I say continue.
+```
 
 ## What This Example Is For
 
-This is a structural Spring Boot platform/app example for the authority vs
-provenance model, with a locally runnable upstream app.
+This is a structural Spring Boot platform/app example for the authority versus provenance model, with a locally runnable upstream app.
 
 It demonstrates one app, `inventory-api`, with three routed outcomes:
 
@@ -18,12 +45,12 @@ It demonstrates one app, `inventory-api`, with three routed outcomes:
 
 This example has six proof levels:
 
-1. **Structural**: fixture files and contracts (`./setup.sh --explain`)
-2. **Local app**: Spring Boot HTTP tests (`cd upstream/app && mvn test`)
-3. **ConfigHub-only**: real spaces and units (`./confighub-setup.sh`)
-4. **Noop target**: apply workflow with Noop targets (`./confighub-setup.sh --with-targets`)
-5. **Lift-upstream bundle**: read-only Redis patch bundle (`./lift-upstream.sh`)
-6. **Block/escalate boundary**: read-only datasource override attempt (`./block-escalate.sh`)
+1. structural: fixture files and contracts
+2. local app: Spring Boot HTTP tests
+3. ConfigHub-only: real spaces and units
+4. noop target: apply workflow with Noop targets
+5. lift-upstream bundle: read-only Redis patch bundle
+6. block/escalate boundary: read-only datasource override attempt
 
 It does not yet:
 
@@ -31,23 +58,7 @@ It does not yet:
 - create a real GitHub PR
 - prove actual `block/escalate` enforcement in ConfigHub
 
-## What You Need Installed
-
-For structural proof:
-- `bash`
-- `jq`
-
-For local app proof, also:
-- Java 21+
-- Maven
-
-For ConfigHub-only proof, also:
-- `cub` CLI
-- `cub auth login` (authenticated context)
-
-## Safe First Steps
-
-Start read-only:
+## Stage 1: Preview The Structure (read-only)
 
 ```bash
 cd incubator/springboot-platform-app
@@ -58,93 +69,106 @@ cd incubator/springboot-platform-app
 
 These commands do not mutate ConfigHub or live infrastructure.
 
-## Capability Branching
+GUI checkpoint:
 
-### A. Preview only
+- none yet; this stage is CLI-only preview of the model
 
-This is the default and recommended path.
+Pause after this stage.
 
-Use:
-
-```bash
-./setup.sh --explain
-./setup.sh --explain-json | jq
-```
-
-### B. Structural verification
-
-Use:
-
-```bash
-./verify.sh
-```
-
-This checks that the fixture files and machine-readable contract stay aligned.
-
-### C. Local app HTTP proof
-
-Use:
+## Stage 2: Prove The Local App Works (local only)
 
 ```bash
 cd upstream/app
 mvn test
 ```
 
-These tests start the app on a random local port and call the HTTP API.
+What this writes:
 
-### D. ConfigHub-only proof
+- local build output only
 
-Use:
+What you should see after:
+
+- passing HTTP-oriented tests for the local Spring Boot app
+
+GUI checkpoint:
+
+- none; this stage is local-only
+
+Pause after this stage.
+
+## Stage 3: Create ConfigHub Structure (mutates ConfigHub)
 
 ```bash
+cd ..
 ./confighub-setup.sh --explain
 ./confighub-setup.sh
 ./confighub-verify.sh
 ```
 
-This creates real ConfigHub spaces and units for dev, stage, and prod.
-It does not require a cluster, target, or worker.
+What this mutates:
 
-### E. Apply-here mutation proof
+- real ConfigHub spaces and units for dev, stage, and prod
 
-After running `./confighub-setup.sh`:
+What you should see after:
+
+- spaces and units for `inventory-api-*`
+- verification output showing the expected units and relationships
+
+GUI checkpoint:
+
+- ConfigHub GUI: open the spaces and units for the newly created `inventory-api-*` objects
+
+Pause after this stage.
+
+## Stage 4: Apply-Here Mutation Proof (mutates ConfigHub)
 
 ```bash
-# FEATURE_INVENTORY_RESERVATIONMODE maps to feature.inventory.reservationMode
-# via Spring Boot relaxed binding — the running app reads this value
 cub function do --space inventory-api-prod --unit inventory-api \
   --change-desc "apply-here: override reservationMode from strict to optimistic for prod rollout" \
   set-env inventory-api "FEATURE_INVENTORY_RESERVATIONMODE=optimistic"
 ```
 
-To verify the app sees the change:
+What you see after:
+
+- the prod unit shows the env override in ConfigHub
+- local app verification can be run with the same env override
+
+Verification:
 
 ```bash
 cd upstream/app
 FEATURE_INVENTORY_RESERVATIONMODE=optimistic mvn spring-boot:run -q -Dspring-boot.run.profiles=prod
-# curl -s http://localhost:8081/api/inventory/summary | jq .reservationMode
-# expected: "optimistic"
 ```
 
-### F. Noop target proof
+GUI checkpoint:
 
-For the full mutation-to-apply workflow without a cluster:
+- ConfigHub GUI: open the prod unit and inspect the changed env value
+
+Pause after this stage.
+
+## Stage 5: Noop Target Workflow (mutates ConfigHub, not a real cluster)
 
 ```bash
+cd ..
 ./confighub-setup.sh --with-targets
 ./confighub-verify.sh --targets
 ```
 
-This adds a server worker, Noop targets, binds units, and applies them.
-The `apply here` mutation survives re-apply.
+What this proves:
 
-### G. Live follow-on
+- the apply workflow can be exercised end to end without a real cluster
 
-This example does not yet include a real Kubernetes cluster path.
+What this does not prove:
 
-### H. Lift-upstream bundle proof
+- no real Kubernetes delivery path
 
-For the Redis caching request:
+GUI checkpoint:
+
+- ConfigHub GUI: inspect targets, bindings, and apply-related status
+
+Pause after this stage.
+
+## Stage 6: Lift-Upstream Bundle (read-only)
 
 ```bash
 ./lift-upstream.sh --explain
@@ -153,12 +177,17 @@ For the Redis caching request:
 ./lift-upstream-verify.sh
 ```
 
-This is read-only. It gives you the exact upstream/app and refreshed ConfigHub
-changes that a GitHub PR would need, but it does not create the PR.
+What this proves:
 
-### I. Block/escalate boundary proof
+- the exact upstream app and ConfigHub changes needed for the Redis caching request can be rendered read-only
 
-For the managed datasource boundary:
+GUI checkpoint:
+
+- GUI equivalent is not built here; the rendered diff is the source of truth
+
+Pause after this stage.
+
+## Stage 7: Block/Escalate Boundary (read-only)
 
 ```bash
 ./block-escalate.sh --explain
@@ -167,76 +196,25 @@ For the managed datasource boundary:
 ./block-escalate-verify.sh
 ```
 
-This is read-only. It gives you the exact dry-run datasource override attempt
-that should eventually be blocked or escalated, and documents the current
-product gap honestly.
+What this proves:
+
+- the datasource override attempt is visible and explainable
+
+What this does not prove:
+
+- enforcement is still a product gap and is not claimed here
+
+GUI checkpoint:
+
+- GUI equivalent is not built here; use the dry-run output as the evidence
+
+Pause after this stage.
+
+## Follow-On
 
 If the human wants a live next step:
 
-- use [`V2-LIVE-PLAN.md`](./V2-LIVE-PLAN.md) for the concrete same-service
-  follow-on
+- use [V2-LIVE-PLAN.md](./V2-LIVE-PLAN.md) for the concrete same-service follow-on
 - use the GitOps import examples for cluster-first flows
 - use `global-app-layer` for ConfigHub-first layered flows
 - use `cub-gen` plus `cub-scout` when the question is provenance plus runtime
-
-## Exact Commands To Run
-
-```bash
-cd incubator/springboot-platform-app
-
-# Structural proof
-./setup.sh --explain
-./setup.sh --explain-json | jq '.behaviors'
-./verify.sh
-
-# Local app proof
-cd upstream/app
-mvn test
-
-# ConfigHub-only proof
-cd ..
-./confighub-setup.sh --explain
-./confighub-setup.sh
-./confighub-verify.sh
-```
-
-## What Mutates What
-
-| Command | Writes |
-|---|---|
-| `./setup.sh --explain` | nothing |
-| `./setup.sh --explain-json` | nothing |
-| `./verify.sh` | nothing |
-| `cd upstream/app && mvn test` | no ConfigHub or cluster writes; local build output only |
-| `./confighub-setup.sh --explain` | nothing |
-| `./confighub-setup.sh` | creates 3 spaces and 3 units in ConfigHub |
-| `./confighub-setup.sh --with-targets` | + infra space, server worker, Noop targets, apply |
-| `./confighub-verify.sh` | nothing (read-only inspection) |
-| `./confighub-verify.sh --targets` | nothing (also checks targets and apply status) |
-| `./lift-upstream.sh --explain` | nothing |
-| `./lift-upstream.sh --explain-json` | nothing |
-| `./lift-upstream.sh --render-diff` | nothing |
-| `./lift-upstream-verify.sh` | nothing |
-| `./block-escalate.sh --explain` | nothing |
-| `./block-escalate.sh --explain-json` | nothing |
-| `./block-escalate.sh --render-attempt` | nothing |
-| `./block-escalate-verify.sh` | nothing |
-| `./confighub-cleanup.sh` | deletes all spaces with ExampleName label |
-
-## What Success Looks Like
-
-You should be able to say clearly:
-
-- which files are upstream app inputs
-- which files are upstream platform policy
-- which files represent the materialized operational shape
-- that the tests call the app over HTTP, not only Java methods
-- which requests are direct ConfigHub mutations
-- which requests should be routed upstream
-- which requests are blocked or escalated
-
-## Cleanup
-
-The structural and local app proofs require no cleanup.
-
-If you ran `./confighub-setup.sh`, clean up with `./confighub-cleanup.sh`.
