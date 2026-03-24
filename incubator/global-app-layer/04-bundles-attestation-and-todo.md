@@ -231,9 +231,13 @@ That is more plausible and more useful than trying to duplicate every external a
 
 ## Open TODOs For This Package
 
-### 1. Add one end-to-end bundle walkthrough
+### 1. Turn the new bundle walkthrough into a stronger runnable path
 
-The package needs one concrete path that shows:
+The package now has:
+
+- [05-bundle-publication-walkthrough.md](./05-bundle-publication-walkthrough.md)
+
+The next step is to turn more of that walkthrough into a runnable end-to-end path that shows:
 
 - recipe chain
 - bundle output

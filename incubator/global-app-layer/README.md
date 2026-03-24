@@ -153,6 +153,7 @@ Supporting documents:
 - [contracts.md](./contracts.md)
 - [preflight-live.sh](./preflight-live.sh) for live-target readiness checks
 - [whole-journey.md](./whole-journey.md)
+- [05-bundle-publication-walkthrough.md](./05-bundle-publication-walkthrough.md)
 - [how-it-works.md](./how-it-works.md)
 - [../AGENTS.md](../AGENTS.md) for the incubator AI protocol
 - [../AI-README-FIRST.md](../AI-README-FIRST.md) for fuller incubator AI guidance
@@ -443,6 +444,7 @@ These documents explain the design thinking behind the examples and the current 
 1. [01-nvidia-aicr-fit.md](./01-nvidia-aicr-fit.md) — Why the NVIDIA AICR pattern matters for ConfigHub
 2. [02-recipes-and-layers-spec.md](./02-recipes-and-layers-spec.md) — The recipes-and-layers spec for ConfigHub
 3. [04-bundles-attestation-and-todo.md](./04-bundles-attestation-and-todo.md) — Current status plus the AICR bundle, integrity, and attestation gap
+4. [05-bundle-publication-walkthrough.md](./05-bundle-publication-walkthrough.md) — Honest staged walkthrough for the bundle publication story
 
 ## End-to-End Testing
 
