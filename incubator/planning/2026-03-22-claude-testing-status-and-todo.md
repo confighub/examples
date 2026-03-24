@@ -38,10 +38,14 @@ Stable no-cluster examples already promoted:
 - `incubator/gitops-import-argo`
 - `incubator/gitops-import-flux`
 - `incubator/custom-ownership-detectors`
-- `incubator/graph-export`
 - `incubator/orphans`
 - `incubator/watch-webhook`
 - `incubator/flux-boutique`
+
+Stable live-evidence examples already promoted:
+
+- `import-from-live`
+- `graph-export`
 
 ### App-style examples now validated live
 
@@ -90,7 +94,6 @@ Targets:
 
 - `incubator/watch-webhook`
 - `incubator/orphans`
-- `incubator/graph-export`
 - `incubator/custom-ownership-detectors`
 - `incubator/flux-boutique`
 

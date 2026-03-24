@@ -21,11 +21,11 @@ The no-cluster path is strong enough to stand on its own, and two examples have 
 The live import and live evidence path is also in place, and one example has already graduated to stable:
 
 - `import-from-live` (now stable at the repo root)
+- `graph-export` (now stable at the repo root)
 - `combined-git-live`
 - `gitops-import-argo`
 - `gitops-import-flux`
 - `custom-ownership-detectors`
-- `graph-export`
 - `orphans`
 - `watch-webhook`
 - `flux-boutique`
@@ -60,7 +60,6 @@ The following work is already merged on `main`.
 - `incubator/gitops-import-argo`
 - `incubator/gitops-import-flux`
 - `incubator/custom-ownership-detectors`
-- `incubator/graph-export`
 - `incubator/orphans`
 - `incubator/watch-webhook`
 - `incubator/flux-boutique`
@@ -96,6 +95,7 @@ The following now reflect the no-cluster-first route before live import:
 - `apptique-flux-monorepo`
 - `import-from-bundle`
 - `apptique-argo-applicationset`
+- `graph-export`
 
 ## What Is Not Done
 
@@ -200,7 +200,7 @@ A candidate is ready to consider for promotion when it meets all of these:
 - `incubator/gitops-import-argo`
 - `incubator/gitops-import-flux`
 - `incubator/custom-ownership-detectors`
-- `incubator/graph-export`
+- `graph-export`
 - `incubator/orphans`
 - `incubator/watch-webhook`
 - `incubator/flux-boutique`

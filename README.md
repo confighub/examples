@@ -15,6 +15,7 @@ This repo contains examples that demonstrate how [ConfigHub](https://confighub.c
 - [`import-from-bundle`](./import-from-bundle/README.md): stable offline dry-run import proposal example backed by a copied debug bundle.
 - [`apptique-flux-monorepo`](./apptique-flux-monorepo/README.md): stable app-style Flux monorepo example with one base plus dev and prod overlays.
 - [`apptique-argo-applicationset`](./apptique-argo-applicationset/README.md): stable Argo ApplicationSet example with generated apps per environment.
+- [`graph-export`](./graph-export/README.md): stable live topology export example producing JSON, DOT, SVG, and HTML artifacts.
 - [`global-app`](./global-app/README.md): classic multi-service app example.
 - [`custom-workers`](./custom-workers): worker extension examples using the ConfigHub SDK as normal Go modules.
 - [`helm-platform-components`](./helm-platform-components/README.md): platform component setup.
@@ -31,6 +32,7 @@ For the current GitHub + Argo/Flux + AI/CLI + ConfigHub wedge, start here:
 - [`import-from-bundle`](./import-from-bundle/README.md)
 - [`apptique-flux-monorepo`](./apptique-flux-monorepo/README.md)
 - [`apptique-argo-applicationset`](./apptique-argo-applicationset/README.md)
+- [`graph-export`](./graph-export/README.md)
 - [`incubator/fleet-import`](./incubator/fleet-import/README.md)
 - [`incubator/demo-data-adt`](./incubator/demo-data-adt/README.md)
 - [`incubator/gitops-import-argo`](./incubator/gitops-import-argo/README.md)

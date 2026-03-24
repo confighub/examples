@@ -32,7 +32,6 @@ Keep building AI-first examples in `examples/incubator` that give one person a f
 - [`gitops-import-flux`](./gitops-import-flux/README.md): Flux GitOps import example built from `cub-scout`'s D2 and podinfo fixtures with the same import-and-evidence verification model as the Argo sibling.
 - [`combined-git-live`](./combined-git-live/README.md): Git-plus-live compare example adapted from `cub-scout`, showing aligned, git-only, and cluster-only results against a real cluster.
 - [`custom-ownership-detectors`](./custom-ownership-detectors/README.md): platform-team ownership example adapted from `cub-scout`, showing custom owner names in `map`, `explain`, and `trace` without touching ConfigHub.
-- [`graph-export`](./graph-export/README.md): shareable topology example adapted from `cub-scout`, showing `graph.v1` JSON plus DOT, SVG, and HTML artifacts from a live cluster.
 - [`orphans`](./orphans/README.md): unmanaged-resource example adapted from `cub-scout`, showing how `Native` resources surface in orphan inventory on a live cluster.
 - [`watch-webhook`](./watch-webhook/README.md): event-streaming example adapted from `cub-scout`, showing one-shot `watch --webhook` delivery into a local receiver.
 - [`flux-boutique`](./flux-boutique/README.md): Flux microservice fan-out example adapted from `cub-scout`, showing one GitRepository traced through five Kustomizations and services.
@@ -78,7 +77,7 @@ Use this order:
   - [`gitops-import-flux`](./gitops-import-flux/README.md)
   - [`combined-git-live`](./combined-git-live/README.md)
   - [`custom-ownership-detectors`](./custom-ownership-detectors/README.md)
-  - [`graph-export`](./graph-export/README.md)
+  - [`../graph-export`](../graph-export/README.md)
   - [`orphans`](./orphans/README.md)
   - [`watch-webhook`](./watch-webhook/README.md)
   - [`flux-boutique`](./flux-boutique/README.md)
@@ -115,6 +114,7 @@ For both of those paths, the authoritative runnable implementation is Jesper's [
 - [`../import-from-bundle`](../import-from-bundle/README.md): stable offline import example showing dry-run proposal generation from a copied bundle fixture.
 - [`../apptique-flux-monorepo`](../apptique-flux-monorepo/README.md): stable app-style Flux example showing one base plus dev and prod overlays with dedicated kubeconfig handling.
 - [`../apptique-argo-applicationset`](../apptique-argo-applicationset/README.md): stable Argo ApplicationSet example showing one generator and one generated Application per environment.
+- [`../graph-export`](../graph-export/README.md): stable live topology example showing `graph.v1` JSON plus DOT, SVG, and HTML artifacts from one local cluster.
 - [`promotion-demo-data`](../promotion-demo-data/README.md): creates 49 spaces and ~154 units using the App-Deployment-Target model. Uses noop bridge, no cluster required. Canonical example of ConfigHub's multi-env promotion model.
 - [`../custom-workers`](../custom-workers): official worker extension examples, including bridge workers, function workers, and policy or validation workers.
 

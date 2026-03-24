@@ -64,6 +64,7 @@ If the user is asking for GitHub import with Argo or Flux, start with the publis
 - [`import-from-bundle`](./import-from-bundle/README.md)
 - [`incubator/fleet-import`](./incubator/fleet-import/README.md)
 - [`incubator/demo-data-adt`](./incubator/demo-data-adt/README.md)
+- [`graph-export`](./graph-export/README.md)
 - [`incubator/gitops-import-argo`](./incubator/gitops-import-argo/README.md)
 - [`incubator/gitops-import-flux`](./incubator/gitops-import-flux/README.md)
 

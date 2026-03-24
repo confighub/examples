@@ -93,24 +93,23 @@ It has now been promoted to the stable repo root as:
 
 - `apptique-argo-applicationset`
 
-## Recommended Next Promotion Wave
+### `graph-export`
 
-These are the strongest next candidates right now.
-
-### 1. `incubator/graph-export`
-
-Why it stands out:
+Completed because:
 
 - clean topology artifact story
 - easy to verify with explicit generated outputs
 - adds a different kind of stable evidence example
 
-Why it should likely be next:
+It has now been promoted to the stable repo root as:
 
-- it broadens the stable set without adding a heavier controller or bundle workflow
-- it is narrow, honest, and easy to revalidate
+- `graph-export`
 
-### 2. `incubator/connected-summary-storage`
+## Recommended Next Promotion Wave
+
+These are the strongest next candidates right now.
+
+### 1. `incubator/connected-summary-storage`
 
 Why it stands out:
 
@@ -118,21 +117,22 @@ Why it stands out:
 - fully no-cluster
 - complements the current evidence spine well
 
+Why it should likely be next:
+
+- it broadens the stable set without introducing another live controller loop
+- it is deterministic and easy to revalidate
+
+### 2. `incubator/artifact-workflow`
+
+Why it stands out:
+
+- offline bundle inspection and replay story
+- no cluster dependency
+- good stable companion to `import-from-bundle`
+
 ## Strong Second-Wave Candidates
 
 These should stay close to the front of the queue after the first wave.
-
-### `incubator/graph-export`
-
-Strong because:
-
-- clean topology artifact story
-- live but narrow
-- easy to verify with explicit generated outputs
-
-Held for second wave because:
-
-- it is more about sharing evidence than about loading data into ConfigHub
 
 ## Keep In Incubator For Now
 
@@ -183,8 +183,8 @@ Why:
 
 ## Recommended Next Decision Sequence
 
-1. Promote one narrow evidence example next: `graph-export` or `connected-summary-storage`
-2. Then decide whether the next stable addition should be reporting-focused, topology-focused, or another no-cluster evidence example
+1. Promote one no-cluster reporting example next: `connected-summary-storage`
+2. Then decide whether the next stable addition should be bundle-focused, reporting-focused, or another narrow evidence example
 
 ## Notes
 
