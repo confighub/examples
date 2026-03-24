@@ -63,8 +63,12 @@ At the top of the AI guide, tell the AI to:
 2. print full output, not only summaries
 3. explain the output in plain English
 4. print GUI links or GUI checkpoints when they exist
-5. stop and ask whether to continue
-6. wait for the human before moving on
+5. say what the GUI shows today
+6. say what the GUI does not show yet
+7. name the GUI feature ask and cite the issue number if one exists; if not, say that explicitly
+8. tell the human to open the GUI and give them time to click through it
+9. stop and ask whether to continue
+10. wait for the human before moving on
 
 ### Rule 2: Stage-based structure, not bare command lists
 
@@ -77,11 +81,20 @@ Prefer:
 
 Do not present the example as an uninterrupted list of shell commands.
 
-### Rule 3: GUI links at every applicable stage
+### Rule 3: GUI now, GUI gap, and GUI feature ask at every applicable stage
 
 If the stage creates or inspects something with a GUI equivalent, include the GUI route explicitly.
 
 If there is no GUI checkpoint yet, say so instead of leaving it implied.
+
+For every GUI-relevant stage, prefer this exact structure:
+
+- `GUI now:` exact URL or click path and what is visible today
+- `GUI gap:` what the GUI cannot show yet
+- `GUI feature ask:` what the GUI should show next, with issue number if known
+- `PAUSE:` tell the human to open the GUI and inspect it before continuing
+
+Do not stop at "here is the link." The AI should connect the stage to the actual browser experience and the missing product affordance.
 
 ### Rule 4: Include a suggested human prompt
 
@@ -89,7 +102,9 @@ Each important AI guide should include a copyable prompt such as:
 
 ```text
 Read incubator/<example>/AI_START_HERE.md and walk me through the demo.
-Pause after every stage. Show full output. Give GUI links where possible.
+Pause after every stage. Show full output.
+For each stage, tell me what the GUI shows today, what it does not show yet, and the feature ask.
+Give me time to click through the GUI before continuing.
 Do not continue until I say continue.
 ```
 
@@ -106,6 +121,11 @@ For any example that demonstrates mutation or routing, each scenario should cove
 Without all five, the demo either overclaims or undersells.
 
 Every mutating step should also include a concrete `what you see after` section with exact visible evidence.
+
+If the step has a GUI equivalent, `what you see after` should include both:
+
+- CLI-visible evidence
+- GUI-visible evidence
 
 ## Required Doc Shape
 
