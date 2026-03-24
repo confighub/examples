@@ -238,6 +238,60 @@ That means:
 
 This is explained in [how-it-works.md](./how-it-works.md).
 
+### ConfigHub's value add with bundles
+
+This is the key distinction:
+
+- AICR gives you a deployable bundle.
+- ConfigHub gives you trustworthy context around the bundle.
+
+That context is where the operational value starts to show up.
+
+ConfigHub can add value here in at least six ways:
+
+1. Recipe-to-bundle provenance
+
+- which layered recipe produced this bundle
+- which exact unit revisions and deployment variant were involved
+- why this bundle differs from another environment's bundle
+
+2. Safe specialization without forking
+
+- one upstream recipe can feed several deployment variants
+- customer or cluster-local differences can stay local
+- later upstream changes can still propagate without flattening those differences
+
+3. Target-aware publication
+
+- a bundle is not just an artifact in the abstract
+- it is the deployable output for a specific target or delivery path
+- ConfigHub can connect recipe chain, deployment variant, target, and bundle digest or hint
+
+4. Governance before deployment
+
+- review
+- approval
+- policy checks
+- evidence collection
+- comparison against live state
+
+5. Bundle evidence in operational context
+
+- checksums
+- SBOM references
+- attestation references
+- validation outputs
+
+These become more useful when they are connected back to the recipe, target, and deployer that used them.
+
+6. Lifecycle over time
+
+- what changed since the last bundle
+- which environments are still on an older one
+- which upstream change should trigger a new publication
+
+This is the bundle story ConfigHub can own well without trying to replace registries, signing tools, or SBOM stores.
+
 ### Demo: import an existing Argo- or Flux-managed app and show immediate value
 
 #### CLI
