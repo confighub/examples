@@ -55,10 +55,11 @@ cub space list --where "Labels.App = 'inventory-api'" --json
 Print the result. Explain: "These three spaces now exist in ConfigHub. Each one
 represents an environment for inventory-api."
 
-GUI link: "You can see these in the ConfigHub GUI at the Units page. Filter by
-App = inventory-api."
+GUI: "You can see these in the GUI right now. Open https://hub.confighub.com,
+click Units in the sidebar, and type 'inventory-api' in the search bar. You'll
+see three units in a data grid — one per environment."
 
-**Pause.** Wait for the human.
+**Pause.** Wait for the human. Give them time to open the GUI if they want.
 
 ### Stage 2: "What is your config, across all environments?" (read-only)
 
@@ -75,6 +76,11 @@ Point out: "Right now, if you wanted to know what reservationMode is set to in
 prod, you'd have to clone a repo, find the right YAML file, and parse it. Here
 it's one command."
 
+GUI: "In the GUI, you can click into each unit to see its field values, but you
+have to look at one environment at a time. There is no side-by-side comparison
+view across environments yet — that's a planned GUI feature. The CLI table above
+is currently the best way to see all three environments at once."
+
 **Pause.** Wait for the human.
 
 ### Stage 3: "Who owns each field?" (read-only)
@@ -90,6 +96,12 @@ Print the **full output**. Explain the three route types:
 
 Say: "This is field-level governance. Every field has exactly one classification.
 There is no ambiguity about what you can and cannot change."
+
+GUI: "In the GUI, click into the inventory-api-prod unit and look at the rendered
+YAML. You can see the field values, but there are no route badges or ownership
+annotations yet — every field looks equally editable. The colored route badges
+(green=mutable, yellow=lift-upstream, red=generator-owned) are a planned GUI
+feature. For now, the CLI output above is where you see the routing rules."
 
 **Pause.** Wait for the human.
 
@@ -132,9 +144,14 @@ If possible, also show the mutation history:
 cub mutation list --space inventory-api-prod --json inventory-api 2>/dev/null || echo "(mutation list not available in current CLI version)"
 ```
 
-GUI link: "In the GUI, click inventory-api-prod → see the mutation history tab."
+GUI: "Now go back to the GUI. Click on the inventory-api unit in space
+inventory-api-prod. Look at the rendered ConfigMap — the value of
+FEATURE_INVENTORY_RESERVATIONMODE should now say 'optimistic'. Then check
+the Activity or History tab on the unit — you should see the mutation with the
+description 'rollout: reservation mode strict → optimistic', your username,
+and a timestamp. That's the audit trail."
 
-**Pause.** Wait for the human.
+**Pause.** Wait for the human. Give them time to click through the GUI.
 
 ### Stage 6: "Does this survive when the generator re-renders?" (read-only)
 
@@ -150,6 +167,11 @@ Say: "This is the key question for any generated config system. When the
 platform re-renders, does your change survive? The answer is yes, because
 the merge policy is PRESERVE for mutable-in-ch fields. Today this is
 simulated client-side. Server-side enforcement is in development."
+
+GUI: "There is no GUI equivalent for this refresh preview yet. The Promotion
+view shows diffs for upgrades and applies, but there's no 'what would happen
+on re-render' preview. That's a planned feature. The CLI output above is the
+current way to see per-field merge decisions."
 
 **Pause.** Wait for the human.
 
@@ -170,6 +192,9 @@ Say: "The running app reports the new value. The env var
 FEATURE_INVENTORY_RESERVATIONMODE maps to feature.inventory.reservationMode
 via Spring Boot relaxed binding. This is a real HTTP response from a real
 running app."
+
+GUI: "No GUI involvement here — this is a local app proof. The app is running
+on your machine and you can curl it directly."
 
 Kill the background process when done.
 
