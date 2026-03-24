@@ -104,6 +104,10 @@ This matters a lot for reducing confusion.
 
 ConfigHub now has a small layered example package in `examples/incubator/global-app-layer/`, but it still needs a bigger GPU-style example to match the AICR story more directly.
 
+For the bundle, integrity, SBOM, and attestation gap specifically, see:
+
+- [04-bundles-attestation-and-todo.md](./04-bundles-attestation-and-todo.md)
+
 ## Recommended Position
 
 ConfigHub should not try to copy AICR literally. It should adopt the useful pattern:

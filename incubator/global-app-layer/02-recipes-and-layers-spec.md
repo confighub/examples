@@ -103,7 +103,7 @@ It should contain:
 - `00-config-hub-hello-world.md`
 - `01-nvidia-aicr-fit.md`
 - `02-recipes-and-layers-spec.md`
-- `04-review-and-next-steps.md`
+- `04-bundles-attestation-and-todo.md`
 - `single-component/`
 - `frontend-postgres/`
 - `realistic-app/`

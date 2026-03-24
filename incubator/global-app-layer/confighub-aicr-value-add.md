@@ -123,6 +123,10 @@ Use these first if you want the clearest version of that story:
 
 This guide still covers the broader three-story AICR picture, but Story 2 should be read through that narrower current-demo lens.
 
+If you specifically want the bundle, checksum, SBOM, and attestation follow-up, also read:
+
+- [04-bundles-attestation-and-todo.md](./04-bundles-attestation-and-todo.md)
+
 ## Story 1: Safe Updates, Patches, and Upgrades
 
 ### What AICR gives you
