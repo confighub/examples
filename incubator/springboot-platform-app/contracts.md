@@ -48,15 +48,16 @@
 ### `./confighub-setup.sh --explain-json`
 
 - mutates: no
-- output: JSON object describing ConfigHub-only setup plan
+- output: JSON object describing the selected setup plan
 - stable fields:
   - `proof_type`
   - `mutates_confighub`
+  - `mutates_live_infra`
   - `spaces_created`
   - `units_per_space`
-  - `labels`
 - proves:
   - what ConfigHub objects will be created
+  - whether live infrastructure is involved
   - what the cleanup path is
 
 ### `./confighub-setup.sh`
@@ -75,14 +76,50 @@
 - mutates: no
 - output: plain text success line
 - stable success text:
-  - `ok: springboot-platform-app ConfigHub-only objects are consistent`
+  - `ok: springboot-platform-app ConfigHub objects are consistent`
 - proves:
   - 3 spaces exist with the expected label
   - each space contains an `inventory-api` unit with resources
 
 ### `./confighub-setup.sh --with-targets`
 
-- mutates: yes (ConfigHub only, no cluster)
+- mutates: yes (ConfigHub and live infrastructure)
+- creates in addition to the base setup:
+  - no extra example-owned infra space
+  - prod unit namespace rewritten to `inventory-api`
+  - prod unit image rewritten to `inventory-api:local`
+  - prod unit bound to a real Kubernetes target in `WORKER_SPACE`
+  - prod unit applied to the cluster
+  - namespace `inventory-api` created in the cluster
+
+### `./confighub-verify.sh --targets`
+
+- mutates: no
+- output: plain text success line
+- stable success text:
+  - `ok: springboot-platform-app with real Kubernetes deployment is consistent`
+- proves:
+  - 3 example spaces exist
+  - the cluster is reachable
+  - namespace `inventory-api` exists
+  - deployment `inventory-api` is available
+  - at least one pod is running
+  - the prod unit is bound to a Kubernetes target
+
+### `./verify-e2e.sh`
+
+- mutates: no
+- output: plain text summary or JSON with `--json`
+- proves:
+  - the cluster is reachable
+  - namespace, deployment, and pod exist
+  - the prod unit exists in ConfigHub and is bound to a Kubernetes target
+  - the deployed service answers `/api/inventory/summary`
+  - the reported `reservationMode` comes from the actual deployed app
+
+### `./confighub-setup.sh --with-noop-targets`
+
+- mutates: yes (ConfigHub only)
 - creates in addition to the base setup:
   - 1 infra space: `inventory-api-infra` with a server worker
   - 1 Noop target per env space
@@ -90,16 +127,16 @@
   - applies units to Noop targets
 - labels: same as base, plus `AppOwner=Platform` on infra space
 
-### `./confighub-verify.sh --targets`
+### `./confighub-verify.sh --noop-targets`
 
 - mutates: no
 - output: plain text success line
 - stable success text:
-  - `ok: springboot-platform-app ConfigHub objects with targets are consistent`
+  - `ok: springboot-platform-app with Noop targets is consistent`
 - proves:
   - 4 spaces exist (infra + 3 envs)
   - each env space has a unit and a target
-  - unit status is `Ready` / `Synced`
+  - the Noop-target workflow is wired correctly
 
 ### `./confighub-cleanup.sh`
 

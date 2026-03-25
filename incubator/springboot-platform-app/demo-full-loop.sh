@@ -295,7 +295,7 @@ before_rm=$(echo "$BEFORE_RESPONSE" | jq -r '.reservationMode' 2>/dev/null || ec
 after_rm=$(echo "$AFTER_RESPONSE" | jq -r '.reservationMode' 2>/dev/null || echo "?")
 
 if [[ "$before_rm" == "strict" && "$after_rm" == "optimistic" ]]; then
-  echo "║  ✅ PROVEN: apply-here mutation works end to end            ║"
+  echo "║  ✅ PROVEN: stored mutation matches local app replay       ║"
 else
   echo "║  ⚠️  PARTIAL: app values did not change as expected         ║"
 fi
@@ -307,7 +307,7 @@ echo "║                                                              ║"
 echo "║  What is proven:                                             ║"
 echo "║  - ConfigHub stores the mutation with change description     ║"
 echo "║  - The mutation is visible in mutation history               ║"
-echo "║  - The running app reports the changed value                 ║"
+echo "║  - A local app replay reports the changed value              ║"
 echo "║  - The field is classified as mutable-in-ch                  ║"
 echo "║  - A generator refresh would PRESERVE the local mutation     ║"
 echo "║                                                              ║"

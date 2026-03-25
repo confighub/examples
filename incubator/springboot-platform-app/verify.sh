@@ -45,9 +45,16 @@ required_files=(
   "$ROOT_DIR/confighub-setup.sh"
   "$ROOT_DIR/confighub-cleanup.sh"
   "$ROOT_DIR/confighub-verify.sh"
+  "$ROOT_DIR/verify-e2e.sh"
+  "$ROOT_DIR/bin/create-cluster"
+  "$ROOT_DIR/bin/build-image"
+  "$ROOT_DIR/bin/install-worker"
+  "$ROOT_DIR/bin/teardown"
+  "$ROOT_DIR/var/.gitignore"
   "$ROOT_DIR/confighub/inventory-api-dev.yaml"
   "$ROOT_DIR/confighub/inventory-api-stage.yaml"
   "$ROOT_DIR/confighub/inventory-api-prod.yaml"
+  "$ROOT_DIR/upstream/app/Dockerfile"
 )
 
 for file in "${required_files[@]}"; do

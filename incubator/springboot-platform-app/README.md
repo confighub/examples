@@ -37,7 +37,7 @@ decision, then routes it: apply here, lift upstream, or block/escalate.
 
 ## What This Proves
 
-This example has six proof levels:
+This example has seven proof levels:
 
 ### 1. Structural proof
 
@@ -61,15 +61,28 @@ This example has six proof levels:
 - `apply here` mutation proven via `FEATURE_INVENTORY_RESERVATIONMODE` env var
   on the prod Deployment, which Spring Boot maps to
   `feature.inventory.reservationMode` via relaxed binding
-- the running app reports the changed value via `/api/inventory/summary`
+- the changed value is visible in stored ConfigHub config and can be replayed
+  locally or delivered through the real deployment path below
 
-### 4. Noop target proof (optional `--with-targets` flag)
+### 4. Real Kubernetes deployment proof (`--with-targets` flag)
 
+- deploys prod environment to a real Kubernetes cluster (local Kind)
+- ConfigHub mutation → real `kubectl apply` via worker → real running pod
+- HTTP verification hits the actual deployed app
+- mutation changes are visible in the running application
+
+Prerequisites for real deployment:
+- Kind cluster (`./bin/create-cluster`)
+- Docker image built (`./bin/build-image`)
+- ConfigHub worker running (`./bin/install-worker`)
+
+### 4b. Noop target proof (optional `--with-noop-targets` flag)
+
+For simulation without a real cluster:
 - shared infra space with a server worker (`inventory-api-infra`)
 - Noop targets in each environment space (no real cluster needed)
 - units are bound to targets and applied
-- `apply here` mutation survives re-apply: the env var override persists
-  after the unit is applied to the Noop target
+- Noop worker accepts apply but does NOT deliver to Kubernetes
 - unit status shows `Ready` / `Synced` / `ApplyCompleted`
 
 ### 5. Lift-upstream bundle proof (read-only)
@@ -94,9 +107,8 @@ This example has six proof levels:
 
 It does not yet prove:
 
-- real Kubernetes cluster delivery
-- `lift upstream` via GitHub PR
-- `block/escalate` via field-level policy enforcement
+- `lift upstream` via GitHub PR (diff bundle exists but no automated PR)
+- `block/escalate` via field-level policy enforcement (boundary is documented, not server-enforced)
 
 ## Prerequisites
 
@@ -115,9 +127,15 @@ For ConfigHub-only proof, also:
 - `cub` CLI
 - `cub auth login` (authenticated context)
 
-You do not need:
+For real Kubernetes deployment (`--with-targets`), also:
 
-- a Kubernetes cluster (Noop targets are used for the apply proof)
+- `kind` CLI (for local Kubernetes cluster)
+- `kubectl`
+- Docker (for building and running containers)
+
+For Noop simulation (`--with-noop-targets`):
+
+- No additional prerequisites (no real cluster needed)
 
 ## What This Reads And Writes
 
@@ -138,7 +156,14 @@ What the ConfigHub-only scripts write:
 
 - `./confighub-setup.sh` creates spaces and units in ConfigHub
 - `./confighub-cleanup.sh` deletes them
-- no cluster or live infrastructure is touched
+
+What the real deployment scripts write (`--with-targets`):
+
+- `./bin/create-cluster` creates a Kind cluster
+- `./bin/build-image` builds and loads Docker image into Kind
+- `./bin/install-worker` starts a ConfigHub worker process
+- `./confighub-setup.sh --with-targets` deploys to the cluster
+- `./bin/teardown` deletes the cluster and stops the worker
 
 ## Read-Only Preview
 
@@ -481,7 +506,7 @@ cub function do --space inventory-api-prod --unit inventory-api \
 cub function do --space inventory-api-prod --unit inventory-api \
   --output-only yq 'select(.kind == "Deployment") | .spec.template.spec.containers[0].env'
 
-# Verify the app would see the new value (local proof)
+# Verify the app would see the new value (separate local replay, not live deployment)
 cd upstream/app
 FEATURE_INVENTORY_RESERVATIONMODE=optimistic mvn spring-boot:run -q -Dspring-boot.run.profiles=prod &
 # then: curl -s http://localhost:8081/api/inventory/summary | jq .reservationMode
@@ -491,20 +516,83 @@ FEATURE_INVENTORY_RESERVATIONMODE=optimistic mvn spring-boot:run -q -Dspring-boo
 ./confighub-cleanup.sh
 ```
 
-## Noop Target Proof
+## Real Kubernetes Deployment
 
-Add `--with-targets` to also create a server worker, Noop targets, bind units,
-and apply them. No real cluster required.
+This is the **end-to-end proof**: ConfigHub mutation → real kubectl apply → real running pod → HTTP verification.
+
+### Setup Infrastructure
+
+```bash
+# 1. Create Kind cluster
+./bin/create-cluster
+
+# 2. Build and load Docker image
+./bin/build-image
+
+# 3. Start ConfigHub worker (provides real Kubernetes target)
+CUB_SPACE=springboot-infra ./bin/install-worker
+
+# 4. Export KUBECONFIG for kubectl commands
+export KUBECONFIG=var/springboot-platform.kubeconfig
+
+# Optional: if install-worker printed an exact target slug, export it.
+# confighub-setup.sh auto-detects the target when there is exactly one
+# Kubernetes target in WORKER_SPACE.
+# export K8S_TARGET=<printed-target-slug>
+```
+
+### Deploy and Verify
+
+```bash
+# 5. Setup ConfigHub + deploy prod to cluster
+export WORKER_SPACE=springboot-infra
+./confighub-setup.sh --with-targets
+
+# 6. Verify deployment
+./verify-e2e.sh
+# → Shows: reservationMode = strict (from deployed pod)
+
+# 7. Mutate
+cub function do --space inventory-api-prod \
+  --change-desc "rollout: reservation mode strict → optimistic" \
+  -- set-env inventory-api "FEATURE_INVENTORY_RESERVATIONMODE=optimistic"
+
+# 8. Re-apply (triggers real kubectl apply)
+cub unit apply --space inventory-api-prod inventory-api
+
+# 9. Wait for rollout
+kubectl rollout status deployment/inventory-api -n inventory-api
+
+# 10. Verify mutation
+./verify-e2e.sh
+# → Shows: reservationMode = optimistic (mutation is live!)
+
+# 11. Cleanup
+./confighub-cleanup.sh
+./bin/teardown
+```
+
+### What This Proves
+
+- ConfigHub mutation is real (stored in ConfigHub with audit trail)
+- Apply is real (kubectl apply via worker to actual cluster)
+- Deployment is real (pod running in Kind)
+- Verification is real (HTTP call to actual deployed pod)
+
+## Noop Target Proof (Simulation)
+
+Use `--with-noop-targets` for simulation without a real cluster. This proves
+the ConfigHub workflow but does NOT deploy to Kubernetes.
 
 ```bash
 # Preview
-./confighub-setup.sh --explain --with-targets
+./confighub-setup.sh --explain --with-noop-targets
 
-# Create everything including targets and apply
-./confighub-setup.sh --with-targets
+# Create everything including Noop targets and apply
+./confighub-setup.sh --with-noop-targets
 
 # Verify including target status
-./confighub-verify.sh --targets
+./confighub-verify.sh --noop-targets
 
 # Mutate prod, then re-apply — mutation survives
 cub function do --space inventory-api-prod --unit inventory-api \
@@ -519,18 +607,20 @@ cub unit get --space inventory-api-prod --json inventory-api | jq '.UnitStatus'
 ./confighub-cleanup.sh
 ```
 
+**Important:** Noop targets accept applies but do NOT deliver to any cluster.
+The mutation is stored in ConfigHub but there is no running pod to verify.
+Use `--with-targets` for real end-to-end proof.
+
 ## What Is Not Yet Proven
 
-- real Kubernetes cluster delivery (Noop targets accept but do not deploy)
-- `lift upstream` via GitHub PR
-- `block/escalate` via field-level policy enforcement
+- `lift upstream` via GitHub PR (diff bundle exists but no automated PR creation)
+- `block/escalate` via field-level policy enforcement (boundary is documented, not server-enforced)
 
-If you want the next step after this ConfigHub-only proof:
+If you want more:
 
 - use `cub-gen` for source-to-operational provenance
 - use `cub-scout` for live runtime inspection
 - use the GitOps or layered examples in this repo for live ConfigHub flows
-- use [`V2-LIVE-PLAN.md`](./V2-LIVE-PLAN.md) for the full v2 plan
 
 ## Troubleshooting
 
@@ -546,10 +636,9 @@ If you are not in the right directory:
 
 If you expected a live cluster demo:
 
-- this example proves structural, local app, and ConfigHub-only levels
-- it does not yet prove live cluster apply or GitOps integration
-- the concrete follow-on for this same service is
-  [`V2-LIVE-PLAN.md`](./V2-LIVE-PLAN.md)
+- use the "Real Kubernetes Deployment" section above
+- this example now has a direct Kubernetes end-to-end path via `--with-targets`
+- `--with-noop-targets` is the explicit simulation path, not the default
 
 ## Cleanup
 

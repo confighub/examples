@@ -43,20 +43,20 @@ It demonstrates one app, `inventory-api`, with three routed outcomes:
 
 ## Proof Types
 
-This example has six proof levels:
+This example has seven proof levels:
 
 1. structural: fixture files and contracts
 2. local app: Spring Boot HTTP tests
 3. ConfigHub-only: real spaces and units
-4. noop target: apply workflow with Noop targets
-5. lift-upstream bundle: read-only Redis patch bundle
-6. block/escalate boundary: read-only datasource override attempt
+4. **real deployment**: Kind cluster + real kubectl apply + HTTP verification
+5. noop target: apply workflow with Noop targets (simulation)
+6. lift-upstream bundle: read-only Redis patch bundle
+7. block/escalate boundary: read-only datasource override attempt
 
 It does not yet:
 
-- prove a real Kubernetes delivery path
-- create a real GitHub PR
-- prove actual `block/escalate` enforcement in ConfigHub
+- create a real GitHub PR for lift-upstream
+- prove actual `block/escalate` enforcement in ConfigHub (boundary is documented, not server-enforced)
 
 ## Stage 1: Preview The Structure (read-only)
 
@@ -131,7 +131,7 @@ cub function do --space inventory-api-prod --unit inventory-api \
 What you see after:
 
 - the prod unit shows the env override in ConfigHub
-- local app verification can be run with the same env override
+- a separate local replay can be run with the same env override
 
 Verification:
 
@@ -146,21 +146,82 @@ GUI checkpoint:
 
 Pause after this stage.
 
-## Stage 5: Noop Target Workflow (mutates ConfigHub, not a real cluster)
+## Stage 5: Real Kubernetes Deployment (mutates cluster)
+
+This is the **end-to-end proof**: ConfigHub → real kubectl apply → running pod → HTTP verification.
+
+### Prerequisites (run once)
 
 ```bash
-cd ..
+cd incubator/springboot-platform-app
+./bin/create-cluster
+./bin/build-image
+CUB_SPACE=springboot-infra ./bin/install-worker
+export KUBECONFIG=var/springboot-platform.kubeconfig
+# Optional: export K8S_TARGET=<printed-target-slug> if install-worker reported one.
+# confighub-setup.sh auto-detects it when there is exactly one Kubernetes target.
+```
+
+### Deploy and Verify
+
+```bash
+export WORKER_SPACE=springboot-infra
 ./confighub-setup.sh --with-targets
-./confighub-verify.sh --targets
+./verify-e2e.sh
+```
+
+What you should see after:
+
+- Pod running in Kind cluster
+- HTTP response from the actual deployed app
+- `reservationMode = strict` (the default)
+
+### Mutate and Verify
+
+```bash
+cub function do --space inventory-api-prod \
+  --change-desc "rollout: reservation mode strict → optimistic" \
+  -- set-env inventory-api "FEATURE_INVENTORY_RESERVATIONMODE=optimistic"
+cub unit apply --space inventory-api-prod inventory-api
+kubectl rollout status deployment/inventory-api -n inventory-api
+./verify-e2e.sh
+```
+
+What you should see after:
+
+- `reservationMode = optimistic` (mutation is live!)
+
+What this proves:
+
+- ConfigHub mutation → real kubectl apply → real running pod
+- Verification via actual HTTP call to deployed app
+- No simulation, no Noop targets
+
+GUI checkpoint:
+
+- ConfigHub GUI: inspect the prod unit and its mutation history
+- kubectl: `kubectl get pods -n inventory-api`
+
+Pause after this stage.
+
+## Stage 5b: Noop Target Workflow (simulation, no real cluster)
+
+For simulation without a real cluster, use `--with-noop-targets`.
+
+```bash
+./confighub-cleanup.sh  # Clean up from real deployment first
+./confighub-setup.sh --with-noop-targets
+./confighub-verify.sh --noop-targets
 ```
 
 What this proves:
 
-- the apply workflow can be exercised end to end without a real cluster
+- the apply workflow can be exercised without a real cluster
 
-What this does not prove:
+What this does NOT prove:
 
-- no real Kubernetes delivery path
+- no actual Kubernetes delivery (Noop targets accept but don't deploy)
+- no HTTP verification (there's no running pod)
 
 GUI checkpoint:
 
@@ -168,7 +229,7 @@ GUI checkpoint:
 
 Pause after this stage.
 
-## Stage 6: Lift-Upstream Bundle (read-only)
+## Stage 7: Lift-Upstream Bundle (read-only)
 
 ```bash
 ./lift-upstream.sh --explain
@@ -187,7 +248,7 @@ GUI checkpoint:
 
 Pause after this stage.
 
-## Stage 7: Block/Escalate Boundary (read-only)
+## Stage 8: Block/Escalate Boundary (read-only)
 
 ```bash
 ./block-escalate.sh --explain
@@ -210,11 +271,17 @@ GUI checkpoint:
 
 Pause after this stage.
 
+## Stage 9: Cleanup
+
+```bash
+./confighub-cleanup.sh
+./bin/teardown  # If you ran real deployment
+```
+
 ## Follow-On
 
 If the human wants a live next step:
 
-- use [V2-LIVE-PLAN.md](./V2-LIVE-PLAN.md) for the concrete same-service follow-on
 - use the GitOps import examples for cluster-first flows
 - use `global-app-layer` for ConfigHub-first layered flows
 - use `cub-gen` plus `cub-scout` when the question is provenance plus runtime

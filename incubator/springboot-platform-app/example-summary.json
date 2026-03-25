@@ -57,7 +57,7 @@
       "operational_fields": [
         "ConfigMap/data/application-prod.yaml:feature.inventory.reservationMode"
       ],
-      "confighub_proof": "Proven via set-env FEATURE_INVENTORY_RESERVATIONMODE=optimistic on the prod Deployment. Spring Boot relaxed binding maps this env var to feature.inventory.reservationMode. The running app reports the changed value via /api/inventory/summary."
+      "confighub_proof": "Proven via set-env FEATURE_INVENTORY_RESERVATIONMODE=optimistic on the prod Deployment. Spring Boot relaxed binding maps this env var to feature.inventory.reservationMode. The changed value is visible in stored ConfigHub config and can be replayed locally or delivered through the real deployment path."
     },
     {
       "name": "lift_upstream",
@@ -94,7 +94,7 @@
     "The upstream app includes HTTP-level tests for the inventory API.",
     "The three routed outcomes are visible in one app.",
     "ConfigHub-only spaces and units exist for dev, stage, and prod.",
-    "The apply-here mutation is proven via FEATURE_INVENTORY_RESERVATIONMODE env var on the prod Deployment, and the running app reports the changed value.",
+    "The apply-here mutation is proven via FEATURE_INVENTORY_RESERVATIONMODE env var on the prod Deployment, and the changed value can be replayed locally or delivered through the real deployment path.",
     "The lift-upstream route has a deterministic Redis patch bundle and refreshed ConfigHub YAMLs that can be rendered as a GitHub-ready diff.",
     "The block/escalate route has a read-only boundary bundle that shows the exact attempted datasource override and the current enforcement gap."
   ]
