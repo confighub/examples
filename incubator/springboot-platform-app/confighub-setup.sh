@@ -349,12 +349,17 @@ for env in "${ENVS[@]}"; do
     exit 1
   fi
 
+  # Delete existing unit first to ensure fresh YAML content is used
+  # (--allow-exists does not update existing content)
+  if ${CUB} unit get --space "${space}" inventory-api >/dev/null 2>&1; then
+    echo "y" | ${CUB} unit delete --space "${space}" inventory-api >/dev/null 2>&1 || true
+  fi
+
   ${CUB} unit create --space "${space}" inventory-api "${yaml_file}" \
     --label "ExampleName=${EXAMPLE_LABEL}" \
     --label "App=inventory-api" \
     --label "Environment=${env}" \
     --label "Component=backend" \
-    --allow-exists \
     --quiet
   echo "  Created unit: ${space}/inventory-api"
 done

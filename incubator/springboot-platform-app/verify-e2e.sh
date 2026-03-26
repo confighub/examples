@@ -37,15 +37,14 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Track results
-declare -A RESULTS
-RESULTS[cluster]="unknown"
-RESULTS[namespace]="unknown"
-RESULTS[deployment]="unknown"
-RESULTS[pods]="unknown"
-RESULTS[confighub_unit]="unknown"
-RESULTS[http_response]="unknown"
-RESULTS[reservation_mode]="unknown"
+# Track results using simple variables (bash 3.2 compatible)
+RESULT_cluster="unknown"
+RESULT_namespace="unknown"
+RESULT_deployment="unknown"
+RESULT_pods="unknown"
+RESULT_confighub_unit="unknown"
+RESULT_http_response="unknown"
+RESULT_reservation_mode="unknown"
 
 errors=0
 
@@ -72,20 +71,20 @@ fi
 # Check 1: Cluster reachable
 log "Checking cluster..."
 if kubectl cluster-info >/dev/null 2>&1; then
-  RESULTS[cluster]="reachable"
+  RESULT_cluster="reachable"
   check_pass "Cluster is reachable"
 else
-  RESULTS[cluster]="unreachable"
+  RESULT_cluster="unreachable"
   check_fail "Cluster not reachable. Run ./bin/create-cluster and export KUBECONFIG."
 fi
 
 # Check 2: Namespace exists
 log "Checking namespace..."
 if kubectl get namespace "${DEPLOY_NAMESPACE}" >/dev/null 2>&1; then
-  RESULTS[namespace]="exists"
+  RESULT_namespace="exists"
   check_pass "Namespace '${DEPLOY_NAMESPACE}' exists"
 else
-  RESULTS[namespace]="missing"
+  RESULT_namespace="missing"
   check_fail "Namespace '${DEPLOY_NAMESPACE}' not found"
 fi
 
@@ -93,44 +92,45 @@ fi
 log "Checking deployment..."
 DEPLOYMENT_STATUS=$(kubectl get deployment "${SERVICE_NAME}" -n "${DEPLOY_NAMESPACE}" -o jsonpath='{.status.conditions[?(@.type=="Available")].status}' 2>/dev/null || echo "NotFound")
 if [[ "${DEPLOYMENT_STATUS}" == "True" ]]; then
-  RESULTS[deployment]="available"
+  RESULT_deployment="available"
   check_pass "Deployment '${SERVICE_NAME}' is Available"
 elif [[ "${DEPLOYMENT_STATUS}" == "NotFound" ]]; then
-  RESULTS[deployment]="missing"
+  RESULT_deployment="missing"
   check_fail "Deployment '${SERVICE_NAME}' not found"
 else
-  RESULTS[deployment]="not-ready"
+  RESULT_deployment="not-ready"
   check_fail "Deployment '${SERVICE_NAME}' is not Available (status: ${DEPLOYMENT_STATUS})"
 fi
 
 # Check 4: Pods are running
 log "Checking pods..."
-RUNNING_PODS=$(kubectl get pods -n "${DEPLOY_NAMESPACE}" -l app=inventory-api --field-selector=status.phase=Running -o name 2>/dev/null | wc -l | tr -d ' ')
+RUNNING_PODS=$(kubectl get pods -n "${DEPLOY_NAMESPACE}" -l app.kubernetes.io/name=inventory-api --field-selector=status.phase=Running -o name 2>/dev/null | wc -l | tr -d ' ')
 if [[ "${RUNNING_PODS}" -gt 0 ]]; then
-  RESULTS[pods]="${RUNNING_PODS} running"
+  RESULT_pods="${RUNNING_PODS} running"
   check_pass "${RUNNING_PODS} pod(s) running"
 else
-  RESULTS[pods]="0 running"
+  RESULT_pods="0 running"
   check_fail "No running pods found"
   log "    Pod status:"
-  kubectl get pods -n "${DEPLOY_NAMESPACE}" -l app=inventory-api 2>/dev/null | sed 's/^/    /' || true
+  kubectl get pods -n "${DEPLOY_NAMESPACE}" -l app.kubernetes.io/name=inventory-api 2>/dev/null | sed 's/^/    /' || true
 fi
 
 # Check 5: ConfigHub unit exists
 log "Checking ConfigHub unit..."
 if UNIT_JSON=$(${CUB} unit get --space inventory-api-prod --json inventory-api 2>/dev/null); then
-  RESULTS[confighub_unit]="exists"
+  RESULT_confighub_unit="exists"
   check_pass "ConfigHub unit 'inventory-api-prod/inventory-api' exists"
 
-  TARGET_REF=$(echo "${UNIT_JSON}" | jq -r '.UnitStatus.TargetRef // ""')
-  if [[ -n "${TARGET_REF}" ]]; then
-    check_pass "Prod unit target = ${TARGET_REF}"
+  # Check for target in multiple possible locations
+  TARGET_SLUG=$(echo "${UNIT_JSON}" | jq -r '.Target.Slug // .UnitStatus.TargetRef // ""')
+  TARGET_PROVIDER=$(echo "${UNIT_JSON}" | jq -r '.Target.ProviderType // ""')
 
-    TARGET_SPACE="${TARGET_REF%/*}"
-    TARGET_SLUG="${TARGET_REF#*/}"
-    TARGET_PROVIDER=$(${CUB} target list --space "${TARGET_SPACE}" --json 2>/dev/null | \
-      jq -r --arg slug "${TARGET_SLUG}" '[.[] | select(.Target.Slug == $slug)][0].Target.ProviderType // "unknown"')
-    if [[ "${TARGET_PROVIDER,,}" == "kubernetes" ]]; then
+  if [[ -n "${TARGET_SLUG}" ]]; then
+    check_pass "Prod unit target = ${TARGET_SLUG}"
+
+    # Use tr for lowercase (bash 3.2 compatible)
+    TARGET_PROVIDER_LOWER=$(echo "${TARGET_PROVIDER}" | tr '[:upper:]' '[:lower:]')
+    if [[ "${TARGET_PROVIDER_LOWER}" == "kubernetes" ]]; then
       check_pass "Bound target provider is Kubernetes"
     else
       check_fail "Bound target provider is '${TARGET_PROVIDER}', expected Kubernetes"
@@ -139,7 +139,7 @@ if UNIT_JSON=$(${CUB} unit get --space inventory-api-prod --json inventory-api 2
     check_fail "Prod unit is not bound to any target"
   fi
 else
-  RESULTS[confighub_unit]="missing"
+  RESULT_confighub_unit="missing"
   check_fail "ConfigHub unit not found"
 fi
 
@@ -151,7 +151,7 @@ else
 fi
 
 # Check 6: HTTP response (unless --quick)
-if [[ "${QUICK}" == "false" && "${RESULTS[pods]}" != "0 running" ]]; then
+if [[ "${QUICK}" == "false" && "${RESULT_pods}" != "0 running" ]]; then
   log "Checking HTTP response..."
 
   # Start port-forward in background
@@ -169,16 +169,16 @@ if [[ "${QUICK}" == "false" && "${RESULTS[pods]}" != "0 running" ]]; then
   wait "${PF_PID}" 2>/dev/null || true
 
   if [[ -n "${HTTP_RESPONSE}" ]]; then
-    RESULTS[http_response]="success"
+    RESULT_http_response="success"
     check_pass "HTTP response received from ${ENDPOINT}"
 
     # Extract reservationMode
     RESERVATION_MODE=$(echo "${HTTP_RESPONSE}" | jq -r '.reservationMode // empty' 2>/dev/null || echo "")
     if [[ -n "${RESERVATION_MODE}" ]]; then
-      RESULTS[reservation_mode]="${RESERVATION_MODE}"
+      RESULT_reservation_mode="${RESERVATION_MODE}"
       check_pass "reservationMode = ${RESERVATION_MODE}"
     else
-      RESULTS[reservation_mode]="not-found"
+      RESULT_reservation_mode="not-found"
       check_fail "Could not extract reservationMode from response"
     fi
 
@@ -189,27 +189,27 @@ if [[ "${QUICK}" == "false" && "${RESULTS[pods]}" != "0 running" ]]; then
       echo "${HTTP_RESPONSE}" | jq . 2>/dev/null || echo "${HTTP_RESPONSE}"
     fi
   else
-    RESULTS[http_response]="failed"
-    RESULTS[reservation_mode]="unknown"
+    RESULT_http_response="failed"
+    RESULT_reservation_mode="unknown"
     check_fail "No HTTP response from ${ENDPOINT}"
   fi
 elif [[ "${QUICK}" == "true" ]]; then
   log "Skipping HTTP check (--quick mode)"
-  RESULTS[http_response]="skipped"
-  RESULTS[reservation_mode]="skipped"
+  RESULT_http_response="skipped"
+  RESULT_reservation_mode="skipped"
 fi
 
 # Output JSON if requested
 if [[ "${JSON_OUTPUT}" == "true" ]]; then
   cat <<ENDJSON
 {
-  "cluster": "${RESULTS[cluster]}",
-  "namespace": "${RESULTS[namespace]}",
-  "deployment": "${RESULTS[deployment]}",
-  "pods": "${RESULTS[pods]}",
-  "confighub_unit": "${RESULTS[confighub_unit]}",
-  "http_response": "${RESULTS[http_response]}",
-  "reservation_mode": "${RESULTS[reservation_mode]}",
+  "cluster": "${RESULT_cluster}",
+  "namespace": "${RESULT_namespace}",
+  "deployment": "${RESULT_deployment}",
+  "pods": "${RESULT_pods}",
+  "confighub_unit": "${RESULT_confighub_unit}",
+  "http_response": "${RESULT_http_response}",
+  "reservation_mode": "${RESULT_reservation_mode}",
   "errors": ${errors}
 }
 ENDJSON
@@ -224,7 +224,7 @@ if [[ ${errors} -eq 0 ]]; then
   log "========================================="
   log ""
   log "The application is deployed and responding."
-  log "reservationMode = ${RESULTS[reservation_mode]}"
+  log "reservationMode = ${RESULT_reservation_mode}"
   log ""
   log "To test a mutation:"
   log "  cub function do --space inventory-api-prod \\"
@@ -242,7 +242,7 @@ else
   log "Troubleshooting:"
   log "  kubectl get pods -n ${DEPLOY_NAMESPACE}"
   log "  kubectl describe deployment ${SERVICE_NAME} -n ${DEPLOY_NAMESPACE}"
-  log "  kubectl logs -n ${DEPLOY_NAMESPACE} -l app=inventory-api"
+  log "  kubectl logs -n ${DEPLOY_NAMESPACE} -l app.kubernetes.io/name=inventory-api"
   log "========================================="
 fi
 
