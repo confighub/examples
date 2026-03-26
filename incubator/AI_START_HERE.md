@@ -11,6 +11,22 @@ Default rule:
 - prefer JSON output
 - only mutate ConfigHub when the human asks for that next step
 
+## Reality Rules
+
+- Use "real end-to-end" only when ConfigHub stores the config, the mutation is real, apply uses a non-`Noop` target, a real app or controller receives the change, and live verification proves the result.
+- Do not offer `Noop` targets unless the human explicitly asks for them or agrees they are needed for a narrow proof.
+- If an example is import-only, evidence-only, controller-layout only, offline, or `Noop`-based, say that explicitly before you run any mutating step.
+- If the human asks for real ConfigHub apply end-to-end, lead with [`global-app-layer`](./global-app-layer/README.md) or [`springboot-platform-app`](./springboot-platform-app/README.md) (with `--with-targets`), not [`platform-write-api`](./platform-write-api/README.md).
+
+## Argo And Flux Name Map
+
+- Argo import from GitHub: [`gitops-import-argo`](./gitops-import-argo/README.md)
+- Flux import from GitHub, including podinfo and D2 contrast: [`gitops-import-flux`](./gitops-import-flux/README.md)
+- Argo ApplicationSet app-style example: [`apptique-argo-applicationset`](./apptique-argo-applicationset/README.md)
+- Argo app-of-apps example: [`apptique-argo-app-of-apps`](./apptique-argo-app-of-apps/README.md)
+- Flux monorepo app-style example: [`apptique-flux-monorepo`](./apptique-flux-monorepo/README.md)
+- Flux multi-service fan-out example: [`flux-boutique`](./flux-boutique/README.md)
+
 ## CRITICAL: Demo Pacing
 
 When walking a human through any incubator example, you MUST pause after every stage.

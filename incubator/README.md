@@ -13,6 +13,38 @@ Keep building AI-first examples in `examples/incubator` that give one person a f
 - Incubator AI protocol: [`AGENTS.md`](./AGENTS.md)
 - Fuller incubator AI guide: [`AI-README-FIRST.md`](./AI-README-FIRST.md)
 
+## Reality Rules
+
+- "End-to-end" means every step is real: ConfigHub stores the config, the mutation is real, apply uses a non-`Noop` target, a real app or controller receives the change, and verification checks live behavior.
+- `Noop` targets are opt-in only. If an example uses `Noop`, it must say so explicitly and it does not count as 100% real end-to-end.
+- Some examples are still real live examples without being ConfigHub-apply examples. Those are valid, but they must be labeled honestly as import, evidence, or controller-layout demos.
+
+## Example Reality Guide
+
+- `100% real e2e through ConfigHub apply`: [`global-app-layer/single-component`](./global-app-layer/single-component/README.md), [`global-app-layer/frontend-postgres`](./global-app-layer/frontend-postgres/README.md), and [`global-app-layer/realistic-app`](./global-app-layer/realistic-app/README.md) when you bind them to a real non-`Noop` target and verify the deployed result on the cluster.
+- `Both options`: [`global-app-layer`](./global-app-layer/README.md) is ConfigHub-first and read-only-first by default, but its worked examples can continue to a real live apply path. [`global-app-layer/gpu-eks-h100-training`](./global-app-layer/gpu-eks-h100-training/README.md) is the clearest "both options" example because it can stay structural or continue into real direct and `fluxoci` delivery branches. [`springboot-platform-app`](./springboot-platform-app/README.md) supports both real Kubernetes deployment (`--with-targets`) and Noop simulation (`--with-noop-targets`).
+- `Real live, but not ConfigHub apply`: [`import-from-live`](./import-from-live/README.md), [`graph-export`](./graph-export/README.md), [`combined-git-live`](./combined-git-live/README.md), [`gitops-import-argo`](./gitops-import-argo/README.md), [`gitops-import-flux`](./gitops-import-flux/README.md), [`custom-ownership-detectors`](./custom-ownership-detectors/README.md), [`orphans`](./orphans/README.md), [`watch-webhook`](./watch-webhook/README.md), [`flux-boutique`](./flux-boutique/README.md), [`platform-example`](./platform-example/README.md), [`apptique-flux-monorepo`](./apptique-flux-monorepo/README.md), [`apptique-argo-applicationset`](./apptique-argo-applicationset/README.md), and [`apptique-argo-app-of-apps`](./apptique-argo-app-of-apps/README.md).
+- `Simulated, offline, or Noop-only`: [`connect-and-compare`](./connect-and-compare/README.md), [`import-from-bundle`](./import-from-bundle/README.md), [`connected-summary-storage`](./connected-summary-storage/README.md), [`artifact-workflow`](./artifact-workflow/README.md), [`fleet-import`](./fleet-import/README.md), [`demo-data-adt`](./demo-data-adt/README.md), [`lifecycle-hazards`](./lifecycle-hazards/README.md), [`platform-write-api`](./platform-write-api/README.md), and [`promotion-demo-data-verify`](./promotion-demo-data-verify/README.md).
+
+One important current example is not real e2e today:
+
+- [`platform-write-api`](./platform-write-api/README.md): real ConfigHub mutation story, but no live delivery; no cluster is touched.
+
+## Where The Argo And Flux Examples Went
+
+If you are looking for older Argo or Flux names, these are the current examples:
+
+| Looking for | Current example |
+|---|---|
+| Argo import from GitHub | [`gitops-import-argo`](./gitops-import-argo/README.md) |
+| Flux import from GitHub, including podinfo and D2 contrast | [`gitops-import-flux`](./gitops-import-flux/README.md) |
+| Argo ApplicationSet app-style layout | [`apptique-argo-applicationset`](./apptique-argo-applicationset/README.md) |
+| Argo app-of-apps layout | [`apptique-argo-app-of-apps`](./apptique-argo-app-of-apps/README.md) |
+| Flux monorepo app-style layout | [`apptique-flux-monorepo`](./apptique-flux-monorepo/README.md) |
+| Flux multi-service fan-out from one `GitRepository` | [`flux-boutique`](./flux-boutique/README.md) |
+| Mixed Flux-managed plus native platform ownership | [`platform-example`](./platform-example/README.md) |
+| Git plus live comparison against a real cluster | [`combined-git-live`](./combined-git-live/README.md) |
+
 ## Current Experiments
 
 ### No-Cluster Evidence And Inspection
