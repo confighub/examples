@@ -29,6 +29,8 @@ This example is for GitOps import from a real Flux environment into ConfigHub.
 
 It is the import-and-evidence path, not the layered recipe path.
 
+The standard story here is the healthy `podinfo` path. Do not add `--with-contrast` until after the human has already seen value from that path.
+
 ## Stage 1: Preview The Plan (read-only)
 
 ```bash

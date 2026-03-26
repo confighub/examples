@@ -15,6 +15,14 @@ Use this example when you want to show that ConfigHub can import GitOps-managed 
 
 This is not the layered recipe story from `global-app-layer`. This is the import-and-evidence story.
 
+## Standard Story
+
+This is the standard Argo story in the incubator.
+
+Lead with the healthy guestbook applications first. They are the front door for showing a real ArgoCD environment, direct cluster evidence, and then ConfigHub discover/import against the same controller-owned objects.
+
+Do not lead with `--with-contrast`. The brownfield contrast fixtures are useful, but they are second-pass material after the guestbook path has already created value.
+
 ## What It Reads
 
 It reads:
@@ -64,7 +72,7 @@ These commands do not create a cluster, do not create ConfigHub objects, and do 
 
 ## Quick Start
 
-Cluster and ArgoCD only:
+Standard first pass: healthy Argo path only.
 
 ```bash
 cd incubator/gitops-import-argo
@@ -72,19 +80,22 @@ cd incubator/gitops-import-argo
 ./verify.sh
 ```
 
-Cluster, ArgoCD, and optional contrast fixtures:
-
-```bash
-./setup.sh --with-contrast
-./verify.sh
-```
-
-Cluster, ArgoCD, ConfigHub worker, and optional contrast fixtures:
+If you want the ConfigHub import path in the same session:
 
 ```bash
 cub auth login
 export CUB_SPACE=<space>
-./setup.sh --with-worker --with-contrast
+./setup.sh --with-worker
+./verify.sh
+cub target list --space "$CUB_SPACE" --json | jq
+cub gitops discover --space "$CUB_SPACE" worker-kubernetes-yaml-cluster --json | jq
+cub gitops import --space "$CUB_SPACE" worker-kubernetes-yaml-cluster worker-argocdrenderer-kubernetes-yaml-cluster --wait
+```
+
+Only after the standard path lands, add optional contrast fixtures:
+
+```bash
+./setup.sh --with-contrast
 ./verify.sh
 ```
 

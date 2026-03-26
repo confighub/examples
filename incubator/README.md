@@ -45,6 +45,14 @@ If you are looking for older Argo or Flux names, these are the current examples:
 | Mixed Flux-managed plus native platform ownership | [`platform-example`](./platform-example/README.md) |
 | Git plus live comparison against a real cluster | [`combined-git-live`](./combined-git-live/README.md) |
 
+## Standard Stories
+
+If you need one standard Argo story and one standard Flux story, use these:
+
+- `Standard Argo story`: [`gitops-import-argo`](./gitops-import-argo/README.md), centered on the real Argo-synced guestbook applications. Lead with the healthy guestbook path first. Treat the brownfield contrast fixtures as a second-pass follow-on, not the front door.
+- `Standard Flux story`: [`gitops-import-flux`](./gitops-import-flux/README.md), centered on the real Flux-managed `podinfo` path. Lead with `podinfo` first. Treat the D2 contrast fixtures as a second-pass follow-on, not the front door.
+- `5-10 minute bar`: by minute 10, the human should have one concrete reason to care. That means a healthy controller-owned app they can inspect now, plus a clear ConfigHub discover/import step or imported result. If setup time eats the whole window, the story is not ready as the standard front door.
+
 ## Current Experiments
 
 ### No-Cluster Evidence And Inspection
@@ -58,8 +66,8 @@ If you are looking for older Argo or Flux names, these are the current examples:
 
 ### Live Import, Comparison, Ownership, Topology, And Orphans
 
-- [`gitops-import-argo`](./gitops-import-argo/README.md): Argo GitOps import example built from the stable `gitops-import` assets plus stronger contrast fixtures adapted from `cub-scout`.
-- [`gitops-import-flux`](./gitops-import-flux/README.md): Flux GitOps import example built from `cub-scout`'s D2 and podinfo fixtures with the same import-and-evidence verification model as the Argo sibling.
+- [`gitops-import-argo`](./gitops-import-argo/README.md): standard Argo story, built around the healthy guestbook import path first, with stronger contrast fixtures adapted from `cub-scout` available later.
+- [`gitops-import-flux`](./gitops-import-flux/README.md): standard Flux story, built around the healthy `podinfo` import path first, with D2 contrast fixtures available later.
 - [`combined-git-live`](./combined-git-live/README.md): Git-plus-live compare example adapted from `cub-scout`, showing aligned, git-only, and cluster-only results against a real cluster.
 - [`custom-ownership-detectors`](./custom-ownership-detectors/README.md): platform-team ownership example adapted from `cub-scout`, showing custom owner names in `map`, `explain`, and `trace` without touching ConfigHub.
 - [`orphans`](./orphans/README.md): unmanaged-resource example adapted from `cub-scout`, showing how `Native` resources surface in orphan inventory on a live cluster.
@@ -91,8 +99,14 @@ If you are looking for older Argo or Flux names, these are the current examples:
 
 If the goal is the current GitHub + Argo/Flux + AI/CLI + ConfigHub wedge, do not start with `global-app-layer`.
 
-Use this order:
+Start with one standard story:
 - [Official GitOps Import docs](https://docs.confighub.com/get-started/examples/gitops-import/)
+- Argo: [`gitops-import-argo`](./gitops-import-argo/README.md) with the guestbook path first
+- Flux: [`gitops-import-flux`](./gitops-import-flux/README.md) with the `podinfo` path first
+
+Use the contrast-heavy siblings and follow-ons only after one of those standard stories has already created value.
+
+Use these before or after the standard stories when you need a narrower follow-on:
 - No-cluster evidence first:
   - [`../connect-and-compare`](./connect-and-compare/README.md)
   - [`../import-from-bundle`](./import-from-bundle/README.md)
@@ -101,10 +115,8 @@ Use this order:
   - [`fleet-import`](./fleet-import/README.md)
   - [`demo-data-adt`](./demo-data-adt/README.md)
   - [`lifecycle-hazards`](./lifecycle-hazards/README.md)
-- Then live import, comparison, ownership, topology, and orphans:
+- Other live import, comparison, ownership, topology, and orphan paths:
   - [`../import-from-live`](./import-from-live/README.md)
-  - [`gitops-import-argo`](./gitops-import-argo/README.md)
-  - [`gitops-import-flux`](./gitops-import-flux/README.md)
   - [`combined-git-live`](./combined-git-live/README.md)
   - [`custom-ownership-detectors`](./custom-ownership-detectors/README.md)
   - [`../graph-export`](./graph-export/README.md)
@@ -112,11 +124,11 @@ Use this order:
   - [`watch-webhook`](./watch-webhook/README.md)
   - [`flux-boutique`](./flux-boutique/README.md)
   - [`platform-example`](./platform-example/README.md)
-- Then app-style layouts:
+- App-style layouts:
   - [`../apptique-flux-monorepo`](./apptique-flux-monorepo/README.md)
   - [`../apptique-argo-applicationset`](./apptique-argo-applicationset/README.md)
   - [`apptique-argo-app-of-apps`](./apptique-argo-app-of-apps/README.md)
-- Then worker and model examples:
+- Worker and model examples:
   - [`../custom-workers`](../custom-workers)
   - [`../promotion-demo-data`](../promotion-demo-data/README.md)
   - [`springboot-platform-app`](./springboot-platform-app/README.md)

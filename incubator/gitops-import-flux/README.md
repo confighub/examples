@@ -15,6 +15,14 @@ Use this example when you want to show that ConfigHub can import GitOps-managed 
 
 This is the import-and-evidence story, not the layered recipe story.
 
+## Standard Story
+
+This is the standard Flux story in the incubator.
+
+Lead with the healthy `podinfo` path first. It is the front door for showing a real Flux environment, direct cluster evidence, and then ConfigHub discover/import against the same controller-owned objects.
+
+Do not lead with `--with-contrast`. The D2 brownfield fixtures are useful, but they are second-pass material after the `podinfo` path has already created value.
+
 ## What It Reads
 
 It reads:
@@ -62,7 +70,7 @@ These commands do not create a cluster, do not create ConfigHub objects, and do 
 
 ## Quick Start
 
-Cluster and Flux only:
+Standard first pass: healthy Flux path only.
 
 ```bash
 cd incubator/gitops-import-flux
@@ -70,19 +78,22 @@ cd incubator/gitops-import-flux
 ./verify.sh
 ```
 
-Cluster, Flux, and optional contrast fixtures:
-
-```bash
-./setup.sh --with-contrast
-./verify.sh
-```
-
-Cluster, Flux, ConfigHub workers, and optional contrast fixtures:
+If you want the ConfigHub import path in the same session:
 
 ```bash
 cub auth login
 export CUB_SPACE=<space>
-./setup.sh --with-worker --with-contrast
+./setup.sh --with-worker
+./verify.sh
+cub target list --space "$CUB_SPACE" --json | jq
+cub gitops discover --space "$CUB_SPACE" <kubernetes-target-slug> --json | jq
+cub gitops import --space "$CUB_SPACE" <kubernetes-target-slug> <flux-renderer-target-slug> --wait
+```
+
+Only after the standard path lands, add optional contrast fixtures:
+
+```bash
+./setup.sh --with-contrast
 ./verify.sh
 ```
 

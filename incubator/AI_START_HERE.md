@@ -27,6 +27,14 @@ Default rule:
 - Flux monorepo app-style example: [`apptique-flux-monorepo`](./apptique-flux-monorepo/README.md)
 - Flux multi-service fan-out example: [`flux-boutique`](./flux-boutique/README.md)
 
+## Standard Stories
+
+When the human says "show me Argo" or "show me Flux", do not fan out across the whole catalog first.
+
+- `Standard Argo story`: [`gitops-import-argo`](./gitops-import-argo/README.md), centered on the healthy guestbook applications. Start with the healthy Argo path. Only add the brownfield contrast fixtures on a second pass.
+- `Standard Flux story`: [`gitops-import-flux`](./gitops-import-flux/README.md), centered on the healthy `podinfo` path. Start with `podinfo`. Only add the D2 contrast fixtures on a second pass.
+- `5-10 minute bar`: by minute 10, the human should either see a healthy controller-owned app and the exact next ConfigHub import step, or already see ConfigHub discover/import evidence. If not, the story is not ready as the standard front door.
+
 ## CRITICAL: Demo Pacing
 
 When walking a human through any incubator example, you MUST pause after every stage.
@@ -144,23 +152,29 @@ Start with the published docs for the overall story:
 
 - [Official GitOps Import docs](https://docs.confighub.com/get-started/examples/gitops-import/)
 
-Then use the runnable incubator examples here.
+Then use one standard story and keep the first pass narrow.
 
-If the human wants the Argo import path, start here:
+If the human wants the Argo import path, start with the healthy guestbook story, not the contrast fixtures:
 
 ```bash
 cd incubator/gitops-import-argo
 ./setup.sh --explain
 ./setup.sh --explain-json | jq
+./setup.sh
+./verify.sh
 ```
 
-If the human wants the matching Flux import path, start here:
+If the human wants the matching Flux import path, start with the healthy `podinfo` story, not the D2 contrast fixtures:
 
 ```bash
 cd incubator/gitops-import-flux
 ./setup.sh --explain
 ./setup.sh --explain-json | jq
+./setup.sh
+./verify.sh
 ```
+
+Only add `--with-contrast` after the human has already seen value from the standard story. If they want the ConfigHub part immediately and have auth ready, continue with `--with-worker`, then `cub gitops discover` and `cub gitops import`.
 
 ### Path B: No-cluster import and evidence
 

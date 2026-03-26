@@ -98,7 +98,7 @@ cd incubator/import-from-live
 ./verify.sh
 ```
 
-## Third Path: GitOps Import And Evidence
+## Third Path: Standard GitOps Import Stories
 
 Start with the published GitOps docs and then use the runnable examples in this repo:
 
@@ -112,13 +112,20 @@ Why:
 - they focus on import, rendered manifests, and evidence
 - they do not depend on ConfigHub being the workload applier
 - they use direct cluster inspection and `cub-scout` as verification layers
+- they are now the standard GitOps stories to optimize for first
+
+Use them like this:
+
+- Argo standard: start with the healthy guestbook path in [`incubator/gitops-import-argo`](./incubator/gitops-import-argo/README.md). Add the brownfield contrast fixtures only after the guestbook path has created value.
+- Flux standard: start with the healthy `podinfo` path in [`incubator/gitops-import-flux`](./incubator/gitops-import-flux/README.md). Add the D2 contrast fixtures only after `podinfo` has created value.
+- Readiness bar: if either story cannot create value in 5-10 minutes, it is not ready as the standard front door.
 
 Typical flow:
 
 ```bash
 cd incubator/gitops-import-argo
 ./setup.sh --explain
-./setup.sh --with-worker --with-contrast
+./setup.sh
 ./verify.sh
 ```
 
@@ -127,7 +134,7 @@ For the Flux sibling:
 ```bash
 cd incubator/gitops-import-flux
 ./setup.sh --explain
-./setup.sh --with-worker --with-contrast
+./setup.sh
 ./verify.sh
 ```
 
