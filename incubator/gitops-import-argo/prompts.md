@@ -34,12 +34,12 @@ If the local ArgoCD port is already in use, notice the chosen host port and veri
 After the example is running, verify:
 - the cluster is reachable
 - ArgoCD applications exist
-- the healthy reference applications (`cubbychat`, `helm-guestbook`, `kustomize-guestbook`) are present
+- the healthy reference applications (`helm-guestbook`, `kustomize-guestbook`) are present and healthy
 - the worker targets exist if configured
 - `cub gitops discover` found resources
 - `cub gitops import` created `-dry` and `-wet` units
 - the renderer stage completed without overclaiming live reconciliation
-- any failing ArgoCD Applications are reported as live evidence, not hidden
+- any failing contrast Applications are reported as live evidence, not hidden
 - `cub-scout` status and ownership views if `cub-scout` is installed
 
 Separate cluster evidence, ConfigHub evidence, and `cub-scout` evidence in the final summary.

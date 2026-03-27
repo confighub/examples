@@ -76,7 +76,7 @@ if $EXPLAIN_JSON; then
   "writes": [
     "kind cluster",
     "ArgoCD installation",
-    "ArgoCD applications and application sets",
+    "healthy guestbook ArgoCD applications",
     "optional ConfigHub worker",
     "optional contrast fixtures",
     "local var/*.kubeconfig, argocd-admin-password.txt, and argocd-host-port.txt"
@@ -95,11 +95,11 @@ ArgoCD host port: $ARGOCD_HOST_PORT
 Default steps:
 - create a kind cluster named $CLUSTER_NAME
 - install ArgoCD into that cluster
-- create projects and ApplicationSets from the sample GitOps repo
+- apply the healthy guestbook Applications to ArgoCD
 
 Optional steps:
 - install a ConfigHub worker if --with-worker is set and CUB_SPACE is available
-- apply contrast fixtures from cub-scout if --with-contrast is set
+- apply brownfield contrast fixtures from cub-scout if --with-contrast is set
 
 Writes:
 - local kind cluster state

@@ -31,7 +31,9 @@ while IFS= read -r image; do
     if ! docker image inspect "$image" >/dev/null 2>&1; then
         docker pull "$image"
     fi
-    kind load docker-image --name "$CLUSTER_NAME" "$image"
+    if ! kind load docker-image --name "$CLUSTER_NAME" "$image"; then
+        echo "Warning: failed to preload $image into kind; continuing and letting the cluster pull it directly" >&2
+    fi
 done < <(awk '/image:/ {print $2}' "$MANIFEST_FILE" | sort -u)
 
 kubectl apply -f "$MANIFEST_FILE"

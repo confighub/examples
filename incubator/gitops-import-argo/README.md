@@ -29,7 +29,8 @@ It reads:
 
 - local setup scripts in `bin/`
 - the kind cluster config in `cluster/`
-- the sample ArgoCD GitOps repo referenced by `bin/setup-apps`
+- the local guestbook Application fixture in `fixtures/argocd/`
+- the upstream `argocd-example-apps` repo referenced by those guestbook Applications
 - optional contrast fixtures in `fixtures/`
 - your current `cub` auth and `CUB_SPACE` if you install the worker
 
@@ -49,7 +50,7 @@ It writes live infrastructure:
 
 - a kind cluster
 - ArgoCD installation in that cluster
-- ArgoCD projects, applications, and application sets
+- healthy guestbook ArgoCD Applications by default
 - optional contrast fixtures
 
 It writes ConfigHub state only if you choose the worker and import path:
@@ -103,7 +104,7 @@ Only after the standard path lands, add optional contrast fixtures:
 
 `./setup.sh --explain` and `./setup.sh --explain-json` are read-only.
 
-`./setup.sh` mutates live infrastructure by creating a cluster and installing ArgoCD.
+`./setup.sh` mutates live infrastructure by creating a cluster, installing ArgoCD, and applying the healthy guestbook Applications.
 
 `./setup.sh --with-worker` mutates ConfigHub and local process state by creating a worker, starting a local ArgoCD API port-forward, generating an ArgoCD API token, and starting a local Kubernetes plus ArgoCD renderer worker.
 
@@ -161,8 +162,8 @@ At the ConfigHub level, after discover and import, you should see:
 
 In the current contrast setup, the most useful live outcome is mixed on purpose:
 
-- `cubbychat`, `helm-guestbook`, and `kustomize-guestbook` are the healthy reference applications
-- several platform and brownfield-style applications remain broken or incomplete in ArgoCD
+- `helm-guestbook` and `kustomize-guestbook` are the healthy reference applications
+- if `--with-contrast` is used, the brownfield fixtures add extra Argo-shaped objects that should be inspected separately from the healthy guestbook path
 
 That gives the example immediate value: the import path shows which Applications render cleanly and which ones already have live controller-side problems.
 
@@ -212,13 +213,14 @@ Important: import and renderer evidence are not the same thing as proving that a
 
 ## Known Live Outcome
 
-On the live run used to validate this incubator example:
+On the fresh standard-path run executed on March 27, 2026:
 
-- `cub gitops discover` found 12 ArgoCD `Application` resources
-- `argocd-cubbychat-Application-dry`, `argocd-helm-guestbook-Application-dry`, and `argocd-kustomize-guestbook-Application-dry` completed successfully
-- several other dry units failed with real Argo-side render issues, including manifest timeouts and controller-side reconciliation problems
+- `./setup.sh` completed in about 157 seconds on a clean local kind cluster
+- `helm-guestbook` and `kustomize-guestbook` both reached `Synced` and `Healthy`
+- the guestbook workloads in the `guestbook` namespace were running and available
+- `cub-scout gitops status` reported both deployers healthy
 
-That is a good wedge result. It proves ConfigHub can import and render the healthy paths while surfacing real ArgoCD problems immediately.
+That is the current front-door proof. It shows a healthy real ArgoCD environment quickly, before you add the optional brownfield contrast path or the ConfigHub worker/import path.
 
 ## Interpreting ArgoCDRenderer Evidence
 

@@ -21,12 +21,40 @@ echo "==> Checking ArgoCD namespace"
 kubectl get namespace argocd >/dev/null
 
 echo "==> Checking the healthy reference applications"
-kubectl -n argocd get application cubbychat >/dev/null
 kubectl -n argocd get application helm-guestbook >/dev/null
 kubectl -n argocd get application kustomize-guestbook >/dev/null
 
+wait_for_application() {
+    local app_name=$1
+    local attempts=${2:-36}
+    local delay=${3:-5}
+    local status
+    local health
+    local attempt
+
+    for attempt in $(seq 1 "$attempts"); do
+        status=$(kubectl -n argocd get application "$app_name" -o jsonpath='{.status.sync.status}' 2>/dev/null || true)
+        health=$(kubectl -n argocd get application "$app_name" -o jsonpath='{.status.health.status}' 2>/dev/null || true)
+        if [ "$status" = "Synced" ] && [ "$health" = "Healthy" ]; then
+            echo "$app_name is Synced and Healthy"
+            return 0
+        fi
+        sleep "$delay"
+    done
+
+    echo "Timed out waiting for $app_name to become Synced and Healthy" >&2
+    kubectl -n argocd get application "$app_name" -o wide >&2 || true
+    return 1
+}
+
+wait_for_application helm-guestbook
+wait_for_application kustomize-guestbook
+
 echo "==> Checking ArgoCD applications"
 kubectl get applications -n argocd
+
+echo "==> Checking guestbook workloads"
+kubectl get all -n guestbook
 
 echo "==> Checking ConfigHub worker deployment if present"
 if [ -f "$PROJECT_DIR/var/worker.pid" ]; then
@@ -57,5 +85,5 @@ else
 fi
 
 echo "Verification completed."
-echo "This example expects a mixed ArgoCD state: a few healthy reference applications and several deliberately failing contrast applications."
-echo "Treat the failing ArgoCD objects above as evidence, not as a script failure."
+echo "Default path: the healthy guestbook Applications should be ready."
+echo "If you added --with-contrast, expect extra brownfield fixtures and possibly failing contrast objects."

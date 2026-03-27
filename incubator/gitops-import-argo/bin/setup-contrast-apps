@@ -40,9 +40,6 @@ retry_apply "$PROJECT_DIR/fixtures/contrast/deployments.yaml"
 retry_apply "$PROJECT_DIR/fixtures/contrast/statefulsets.yaml"
 retry_apply "$PROJECT_DIR/fixtures/contrast/native.yaml"
 
-echo "Applying real guestbook Applications for ArgoCD sync..."
-retry_apply "$PROJECT_DIR/fixtures/argocd/guestbook-apps.yaml"
-
 echo "Contrast fixtures applied."
 echo "Check Applications with: kubectl get applications -n argocd"
 echo "Check workloads with: kubectl get all -A"

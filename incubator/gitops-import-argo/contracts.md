@@ -28,7 +28,8 @@ This file documents the safest stable inspection paths for `gitops-import-argo`.
 - proves:
   - the cluster is reachable
   - the `argocd` namespace exists
-  - ArgoCD applications are listable
+  - the default guestbook Applications exist and can become `Synced` plus `Healthy`
+  - guestbook workloads are listable in the `guestbook` namespace
   - the local worker pid and log are visible if present
   - the local ArgoCD port-forward pid is visible if present
 

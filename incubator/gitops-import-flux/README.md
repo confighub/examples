@@ -214,14 +214,14 @@ Important: import and renderer evidence are not the same thing as proving that a
 
 ## Known Live Outcome
 
-On the live run used to validate this incubator example:
+On the fresh standard-path run executed on March 27, 2026:
 
-- `cub gitops discover` found 7 Flux deployers
-- `flux-system-podinfo-Kustomization-dry` completed successfully and rendered WET output
-- the `platform-config` Kustomizations failed with `GitRepository flux-system/platform-config has no artifact in status`
-- the two HelmRelease dry units remained source-blocked until the missing chart sources were resolved
+- `./setup.sh` completed in about 203 seconds on a clean local kind cluster
+- the real `podinfo` GitRepository and Kustomization both reached `Ready=True`
+- the `podinfo` Deployment became available with `2/2` replicas ready
+- `cub-scout gitops status` reported the one default deployer healthy
 
-That is a good wedge result. It proves ConfigHub can import and render the healthy path while also surfacing controller-side problems immediately.
+That is the current front-door proof. It shows a healthy real Flux environment quickly, before you add the optional contrast path or the ConfigHub worker/import path.
 
 ## Optional Contrast Path
 
