@@ -1,54 +1,287 @@
 # AI Start Here
 
-Walk the user through a real ConfigHub → Kubernetes deployment.
+Use this page when you want to drive `springboot-platform-app` safely with an AI assistant.
 
-## The Demo
+## CRITICAL: Demo Pacing
+
+Pause after every stage.
+
+For each stage:
+
+1. run only that stage's commands
+2. print the full output
+3. explain what it means in plain English
+4. print the GUI checkpoint when applicable
+5. ask `Ready to continue?`
+6. wait for the human before continuing
+
+This example has several mutation-routing scenarios. For each one, explain:
+
+- the pain
+- the fix
+- what you see
+- what this proves
+- what this does not prove
+
+## Suggested Prompt
+
+```text
+Read incubator/springboot-platform-app/AI_START_HERE.md and walk me through the demo.
+Pause after every stage. Show full output. Give GUI links where possible.
+Do not continue until I say continue.
+```
+
+## What This Example Is For
+
+This is a structural Spring Boot platform/app example for the authority versus provenance model, with a locally runnable upstream app.
+
+It demonstrates one app, `inventory-api`, with three routed outcomes:
+
+- `apply here`
+- `lift upstream`
+- `block/escalate`
+
+## Proof Types
+
+This example has seven proof levels:
+
+1. structural: fixture files and contracts
+2. local app: Spring Boot HTTP tests
+3. ConfigHub-only: real spaces and units
+4. **real deployment**: Kind cluster + real kubectl apply + HTTP verification
+5. noop target: apply workflow with Noop targets (simulation)
+6. lift-upstream bundle: read-only Redis patch bundle
+7. block/escalate boundary: read-only datasource override attempt
+
+It does not yet:
+
+- create a real GitHub PR for lift-upstream
+- prove actual `block/escalate` enforcement in ConfigHub (boundary is documented, not server-enforced)
+
+## Stage 1: Preview The Structure (read-only)
 
 ```bash
 cd incubator/springboot-platform-app
+./setup.sh --explain
+./setup.sh --explain-json | jq
+./verify.sh
+```
 
-# 1. Setup (takes ~2 min)
+These commands do not mutate ConfigHub or live infrastructure.
+
+GUI checkpoint:
+
+- none yet; this stage is CLI-only preview of the model
+
+Pause after this stage.
+
+## Stage 2: Prove The Local App Works (local only)
+
+```bash
+cd upstream/app
+mvn test
+```
+
+What this writes:
+
+- local build output only
+
+What you should see after:
+
+- passing HTTP-oriented tests for the local Spring Boot app
+
+GUI checkpoint:
+
+- none; this stage is local-only
+
+Pause after this stage.
+
+## Stage 3: Create ConfigHub Structure (mutates ConfigHub)
+
+```bash
+cd ..
+./confighub-setup.sh --explain
+./confighub-setup.sh
+./confighub-verify.sh
+```
+
+What this mutates:
+
+- real ConfigHub spaces and units for dev, stage, and prod
+
+What you should see after:
+
+- spaces and units for `inventory-api-*`
+- verification output showing the expected units and relationships
+
+GUI checkpoint:
+
+- ConfigHub GUI: open the spaces and units for the newly created `inventory-api-*` objects
+
+Pause after this stage.
+
+## Stage 4: Apply-Here Mutation Proof (mutates ConfigHub)
+
+```bash
+cub function do --space inventory-api-prod --unit inventory-api \
+  --change-desc "apply-here: override reservationMode from strict to optimistic for prod rollout" \
+  set-env inventory-api "FEATURE_INVENTORY_RESERVATIONMODE=optimistic"
+```
+
+What you see after:
+
+- the prod unit shows the env override in ConfigHub
+- a separate local replay can be run with the same env override
+
+Verification:
+
+```bash
+cd upstream/app
+FEATURE_INVENTORY_RESERVATIONMODE=optimistic mvn spring-boot:run -q -Dspring-boot.run.profiles=prod
+```
+
+GUI checkpoint:
+
+- ConfigHub GUI: open the prod unit and inspect the changed env value
+
+Pause after this stage.
+
+## Stage 5: Real Kubernetes Deployment (mutates cluster)
+
+This is the **end-to-end proof**: ConfigHub → real kubectl apply → running pod → HTTP verification.
+
+### Prerequisites (run once)
+
+```bash
+cd incubator/springboot-platform-app
 ./bin/create-cluster
 ./bin/build-image
 CUB_SPACE=springboot-infra ./bin/install-worker
-
-# 2. Deploy
-export WORKER_SPACE=springboot-infra
-./confighub-setup.sh --with-targets
-
-# 3. Verify
-./verify-e2e.sh
-# Shows: reservationMode = strict
-
-# 4. Mutate
-cub function do --space inventory-api-prod \
-  --change-desc "change reservation mode" \
-  -- set-env inventory-api "FEATURE_INVENTORY_RESERVATIONMODE=optimistic"
-cub unit apply --space inventory-api-prod inventory-api
-
-# 5. Verify mutation
-./verify-e2e.sh
-# Shows: reservationMode = optimistic
-
-# 6. Cleanup
-./confighub-cleanup.sh
-./bin/teardown
+export KUBECONFIG=var/springboot-platform.kubeconfig
+# Optional: export K8S_TARGET=<printed-target-slug> if install-worker reported one.
+# confighub-setup.sh auto-detects it when there is exactly one Kubernetes target.
 ```
 
-## What to Explain
+### Deploy and Verify
 
-After step 3: "The app is deployed. The HTTP response comes from a real pod in the Kind cluster."
+```bash
+export WORKER_SPACE=springboot-infra
+./confighub-setup.sh --with-targets
+./verify-e2e.sh
+```
 
-After step 5: "The mutation went through ConfigHub, got applied via kubectl, and the running app now returns the new value. This is real end-to-end."
+What you should see after:
 
-## What NOT to Claim
+- Pod running in Kind cluster
+- HTTP response from the actual deployed app
+- `reservationMode = strict` (the default)
 
-This example does NOT prove:
-- Lift-upstream (routing changes to PRs) - just a design doc
-- Block/escalate (policy enforcement) - just a design doc
+### Mutate and Verify
 
-Only claim what's actually running.
+```bash
+cub function do --space inventory-api-prod \
+  --change-desc "rollout: reservation mode strict → optimistic" \
+  -- set-env inventory-api "FEATURE_INVENTORY_RESERVATIONMODE=optimistic"
+cub unit apply --space inventory-api-prod inventory-api
+kubectl rollout status deployment/inventory-api -n inventory-api
+./verify-e2e.sh
+```
 
-## Pacing
+What you should see after:
 
-Pause after each numbered step. Show full output. Let the user inspect before continuing.
+- `reservationMode = optimistic` (mutation is live!)
+
+What this proves:
+
+- ConfigHub mutation → real kubectl apply → real running pod
+- Verification via actual HTTP call to deployed app
+- No simulation, no Noop targets
+
+GUI checkpoint:
+
+- ConfigHub GUI: inspect the prod unit and its mutation history
+- kubectl: `kubectl get pods -n inventory-api`
+
+Pause after this stage.
+
+## Stage 5b: Noop Target Workflow (simulation, no real cluster)
+
+For simulation without a real cluster, use `--with-noop-targets`.
+
+```bash
+./confighub-cleanup.sh  # Clean up from real deployment first
+./confighub-setup.sh --with-noop-targets
+./confighub-verify.sh --noop-targets
+```
+
+What this proves:
+
+- the apply workflow can be exercised without a real cluster
+
+What this does NOT prove:
+
+- no actual Kubernetes delivery (Noop targets accept but don't deploy)
+- no HTTP verification (there's no running pod)
+
+GUI checkpoint:
+
+- ConfigHub GUI: inspect targets, bindings, and apply-related status
+
+Pause after this stage.
+
+## Stage 7: Lift-Upstream Bundle (read-only)
+
+```bash
+./lift-upstream.sh --explain
+./lift-upstream.sh --explain-json | jq
+./lift-upstream.sh --render-diff
+./lift-upstream-verify.sh
+```
+
+What this proves:
+
+- the exact upstream app and ConfigHub changes needed for the Redis caching request can be rendered read-only
+
+GUI checkpoint:
+
+- GUI equivalent is not built here; the rendered diff is the source of truth
+
+Pause after this stage.
+
+## Stage 8: Block/Escalate Boundary (read-only)
+
+```bash
+./block-escalate.sh --explain
+./block-escalate.sh --explain-json | jq
+./block-escalate.sh --render-attempt
+./block-escalate-verify.sh
+```
+
+What this proves:
+
+- the datasource override attempt is visible and explainable
+
+What this does not prove:
+
+- enforcement is still a product gap and is not claimed here
+
+GUI checkpoint:
+
+- GUI equivalent is not built here; use the dry-run output as the evidence
+
+Pause after this stage.
+
+## Stage 9: Cleanup
+
+```bash
+./confighub-cleanup.sh
+./bin/teardown  # If you ran real deployment
+```
+
+## Follow-On
+
+If the human wants a live next step:
+
+- use the GitOps import examples for cluster-first flows
+- use `global-app-layer` for ConfigHub-first layered flows
+- use `cub-gen` plus `cub-scout` when the question is provenance plus runtime
