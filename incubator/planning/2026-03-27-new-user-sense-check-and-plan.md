@@ -26,6 +26,7 @@ The remaining problem:
 
 - the repo still presents too many categories before it gives one simple mental model
 - a new user can tell that there are many examples, but not yet why ConfigHub itself is worth learning before they start reading example families
+- the NVIDIA-shaped examples are explained better than before, but they are still not planned as a first-class real end-to-end proof track
 
 ## What Already Works For A New User
 
@@ -116,6 +117,16 @@ Several individual example READMEs are now clearer than the package-level landin
 
 That means a user often has to click into a subexample before the story becomes crisp.
 
+### 6. NVIDIA is still structurally clearer than it is operationally proven
+
+`incubator/global-app-layer/gpu-eks-h100-training` now explains why it exists, but it is still mainly a model and structure story.
+
+A new user can understand the NVIDIA-shaped chain better than before, but they still cannot point to one standard NVIDIA example and say:
+
+> this is a fully real ConfigHub-to-deployment-to-verification proof on real GPU-capable infrastructure
+
+That is a gap.
+
 ## New-User Mental Model We Should Optimize For
 
 If the incubator is working, a new user should be able to understand ConfigHub like this:
@@ -130,6 +141,14 @@ If the incubator is working, a new user should be able to understand ConfigHub l
 That is the product shape.
 
 The examples should feel like proofs of those six reasons, not like a file browser of unrelated demos.
+
+For NVIDIA specifically, the same rule applies:
+
+1. `Model`: ConfigHub can represent the layered GPU-oriented stack correctly
+2. `Apply`: ConfigHub can deliver that stack through a real target
+3. `Verify`: a real GPU-capable environment shows the result, not just structural YAML proof
+
+Right now the incubator tells the first story better than the second and third.
 
 ## Plan
 
@@ -200,12 +219,33 @@ For the strongest front-door examples, say what the user should see first and ro
 
 This keeps the examples accountable to the 5-10 minute standard.
 
+### Phase 7: Add an explicit NVIDIA real e2e track
+
+The current plan is not strong enough here. It treats NVIDIA mostly as a layered-model story.
+
+We need one explicit incubator plan for a real NVIDIA-shaped end-to-end proof:
+
+- real GPU-capable cluster or cluster path
+- real non-`Noop` target
+- real ConfigHub apply
+- real deployment result
+- real verification that checks the deployed outcome rather than only the stored config
+
+This does not need to start as the biggest possible GPU stack. It should start as the smallest believable real proof that still deserves the NVIDIA framing.
+
+Candidate direction:
+
+- keep `gpu-eks-h100-training` as the model and layering example
+- add or evolve one separate `gpu-eks-h100-training-real-e2e` style path only when it can honestly prove real deployment and verification
+- until then, keep the current GPU example labeled as structural or both-options, not as a fully proven real e2e standard
+
 ## Highest-Value Next Actions
 
 1. Create one incubator-local `WHY_CONFIGHUB.md` or equivalent front-door explainer
 2. Rewrite the top of `incubator/README.md` around the four reasons above
 3. Add a tiny glossary page and link to it from the landing docs
 4. Tighten `global-app-layer/AI_START_HERE.md` so it routes by reason more explicitly
+5. Write a dedicated NVIDIA real-e2e plan that names the cluster, target, apply path, and verification contract explicitly
 
 ## Working Rule For Future Example Docs
 
@@ -214,3 +254,7 @@ For every incubator example, a brand-new user should be able to answer these thr
 1. Why does this example exist?
 2. Why would I run this instead of the neighboring example?
 3. Is this import, inspect, mutate, apply, model, or procedure?
+
+For NVIDIA-shaped examples, add a fourth question:
+
+4. Is this only structural, or is it a fully real end-to-end proof?
