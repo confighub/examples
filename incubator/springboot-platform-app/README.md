@@ -14,6 +14,12 @@ inspectable.
 It is the mutation plane: the place where operational changes are requested,
 decided, and routed.
 
+## What This Example Is For
+
+Use this when the reason for the demo is to explain one real app across three mutation outcomes: apply here, lift upstream, and block or escalate.
+
+This example exists to show that ConfigHub is not only an import or evidence tool. It can sit between app teams and platform teams as the decision point for real operational changes, and it now includes a real Kubernetes deployment path for the direct-apply case.
+
 ## Stack And Scenario
 
 This example is for:

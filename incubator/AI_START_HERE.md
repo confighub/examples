@@ -35,6 +35,18 @@ When the human says "show me Argo" or "show me Flux", do not fan out across the 
 - `Standard Flux story`: [`gitops-import-flux`](./gitops-import-flux/README.md), centered on the healthy `podinfo` path. Start with `podinfo`. Only add the D2 contrast fixtures on a second pass.
 - `5-10 minute bar`: by minute 10, the human should either see a healthy controller-owned app and the exact next ConfigHub import step, or already see ConfigHub discover/import evidence. If not, the story is not ready as the standard front door.
 
+## Choose By Reason
+
+If the human describes the reason they need an example, route like this:
+
+- `why ConfigHub should exist as a write API`: [`platform-write-api`](./platform-write-api/README.md)
+- `one real app with apply here vs lift upstream vs block or escalate`: [`springboot-platform-app`](./springboot-platform-app/README.md)
+- `smallest layered recipe proof`: [`global-app-layer/single-component`](./global-app-layer/single-component/README.md)
+- `small app-level layered recipe`: [`global-app-layer/frontend-postgres`](./global-app-layer/frontend-postgres/README.md)
+- `realistic layered app`: [`global-app-layer/realistic-app`](./global-app-layer/realistic-app/README.md)
+- `NVIDIA-shaped layered stack`: [`global-app-layer/gpu-eks-h100-training`](./global-app-layer/gpu-eks-h100-training/README.md)
+- `bounded-procedure design work rather than a runnable front door`: [`cub-proc`](./cub-proc/README.md)
+
 ## CRITICAL: Demo Pacing
 
 When walking a human through any incubator example, you MUST pause after every stage.

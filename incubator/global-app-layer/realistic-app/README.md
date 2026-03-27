@@ -14,6 +14,12 @@ It keeps the same recipe model:
 
 The recipe is still the ordered chain of variants, not the bundle. What changes here is that the layer model now governs a recognisable small app, not just a pair of components.
 
+## What This Example Is For
+
+Use this when you need the clearest layered recipe story that still feels like a real application.
+
+This example exists to prove that the same chain model can govern a backend, frontend, and database together, and then carry that app cleanly into the live deployment follow-on path.
+
 ## Stack And Scenario
 
 This example is for:

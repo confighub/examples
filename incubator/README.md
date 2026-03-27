@@ -53,6 +53,22 @@ If you need one standard Argo story and one standard Flux story, use these:
 - `Standard Flux story`: [`gitops-import-flux`](./gitops-import-flux/README.md), centered on the real Flux-managed `podinfo` path. Lead with `podinfo` first. Treat the D2 contrast fixtures as a second-pass follow-on, not the front door.
 - `5-10 minute bar`: by minute 10, the human should have one concrete reason to care. That means a healthy controller-owned app they can inspect now, plus a clear ConfigHub discover/import step or imported result. If setup time eats the whole window, the story is not ready as the standard front door.
 
+## Choose By Reason
+
+If the example names are not helping, pick by the reason it exists:
+
+- `I need the clearest Argo import proof`: [`gitops-import-argo`](./gitops-import-argo/README.md)
+- `I need the clearest Flux import proof`: [`gitops-import-flux`](./gitops-import-flux/README.md)
+- `I need to explain why ConfigHub is a write API for config`: [`platform-write-api`](./platform-write-api/README.md)
+- `I need a real app plus real deploy/apply proof`: [`springboot-platform-app`](./springboot-platform-app/README.md)
+- `I need the smallest layered recipe walkthrough`: [`global-app-layer/single-component`](./global-app-layer/single-component/README.md)
+- `I need a small app-level layered recipe`: [`global-app-layer/frontend-postgres`](./global-app-layer/frontend-postgres/README.md)
+- `I need the most realistic layered app in this package`: [`global-app-layer/realistic-app`](./global-app-layer/realistic-app/README.md)
+- `I need the NVIDIA-shaped layered stack story`: [`global-app-layer/gpu-eks-h100-training`](./global-app-layer/gpu-eks-h100-training/README.md)
+- `I need Git versus live evidence on one cluster`: [`combined-git-live`](./combined-git-live/README.md)
+- `I need ownership or orphan evidence`: [`custom-ownership-detectors`](./custom-ownership-detectors/README.md) or [`orphans`](./orphans/README.md)
+- `I need bounded-procedure design work, not a runnable front door`: [`cub-proc`](./cub-proc/README.md)
+
 ## Current Experiments
 
 ### No-Cluster Evidence And Inspection

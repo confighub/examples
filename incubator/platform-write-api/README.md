@@ -1,5 +1,11 @@
 # Platform Write API
 
+## What This Example Is For
+
+Use this when the reason for the demo is to explain why ConfigHub should exist as the write API for operational config.
+
+This example exists to make the mutation-plane argument concrete without depending on a live deployment: compare environments, show routing rules, mutate config directly, and prove that generator refresh does not automatically erase intentional changes.
+
 ## Stack and Scenario
 
 A platform team runs hundreds of services on Kubernetes with GitOps (Flux or Argo).

@@ -10,6 +10,14 @@ Important note:
 - it uses stub images so the recipe shape can be reviewed and exercised on ordinary clusters, including local `kind`
 - to run real NVIDIA GPU software, swap in the real NVIDIA images and point the deployment at GPU-capable nodes
 
+## What This Package Is For
+
+Use this package when the reason for the demo is layered composition.
+
+This is the place to show that ConfigHub can materialize one ordered recipe chain across spaces, preserve ancestry with clone links, and optionally carry that recipe all the way to a real target.
+
+Do not use this package as the first-stop GitOps import wedge. Use it when you specifically need layered recipes, deployment variants, or the NVIDIA-shaped chain model.
+
 ## Stack And Scenario
 
 This package is for:

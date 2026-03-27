@@ -10,6 +10,12 @@ It keeps the same model:
 
 The recipe is still the ordered chain of variants, not the bundle. The difference here is that two components move through the same layer spaces together.
 
+## What This Example Is For
+
+Use this when `single-component` is too small but a full three-tier app would hide the point.
+
+This example exists to show the first app-level recipe in the package: two components, shared layers, component-specific mutations, and one recipe manifest that proves the app moves as a coordinated unit.
+
 ## Stack And Scenario
 
 This example is for:

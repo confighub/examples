@@ -16,6 +16,12 @@ It keeps the recipe-and-layer model intentionally reviewable:
 
 The point is not to recreate all of NVIDIA AICR. The point is to show how ConfigHub can model the same kind of layered, reproducible recipe with real units, real variant links, and an explicit recipe manifest that spans more than one related component.
 
+## What This Example Is For
+
+Use this when the reason for the demo is the NVIDIA-shaped chain model rather than a generic web app.
+
+This example exists to make layered GPU-oriented recipes reviewable on ordinary clusters. It proves the structure, provenance, and deployment variants of that stack without pretending to be a full functional NVIDIA runtime.
+
 ## Stack And Scenario
 
 This example is for:

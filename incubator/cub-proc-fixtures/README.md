@@ -8,6 +8,12 @@ This directory preserves the only parts of the earlier `cub-up` exploration that
 These are not the main incubator entrypoint.
 They are small reference inputs for `cub-proc` design and testing.
 
+## What These Fixtures Are For
+
+Use these only when the reason for the work is tiny direct-vs-delegated apply fixtures.
+
+This directory exists to preserve the smallest useful seed inputs for `cub-proc` thinking and apply-mode experiments. It is not meant to compete with the runnable incubator examples.
+
 ## What is here
 
 - [`global-app`](./global-app/up.yaml): minimal direct apply seed

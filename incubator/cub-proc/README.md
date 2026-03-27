@@ -22,6 +22,12 @@ The incubator GitOps import examples already show the operational gaps clearly. 
 
 That is why the `cub-proc` design belongs here.
 
+## What This Design Work Is For
+
+Use this directory when the reason for the work is operational procedure design, not a runnable example front door.
+
+This material exists to explain why certain ConfigHub tasks need a bounded-procedure record, and to connect that design idea directly to the runnable incubator examples that expose the gap today.
+
 ## What Is Here
 
 - [03-cub-proc-prd.md](./03-cub-proc-prd.md): product framing for `cub-proc` and `Operation` records

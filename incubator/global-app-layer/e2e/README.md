@@ -7,6 +7,12 @@ It combines two things that belong together:
 - full lifecycle tests across brownfield, greenfield, and bridge flows
 - shared delivery helpers for applying a single example directly or via ArgoCD
 
+## What This Test Layer Is For
+
+Use this when the reason for the work is lifecycle proof, not example onboarding.
+
+This directory exists to exercise the package as a system: brownfield import, greenfield build-up, bridge flows, and delivery helpers that show what a real end-to-end test of `global-app-layer` should look like.
+
 ## The Three Lifecycle Flows
 
 ### 1. Brownfield (`01-brownfield.sh`)

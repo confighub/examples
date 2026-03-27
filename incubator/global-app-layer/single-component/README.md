@@ -10,6 +10,12 @@ It demonstrates the model:
 
 The recipe is the ordered chain of variants, not the bundle.
 
+## What This Example Is For
+
+Use this when you need the smallest believable proof that layered recipes are real ConfigHub objects, not just a diagram.
+
+This example exists to teach the core chain model with the least moving parts: one component, one deploy-stage stub, one recipe manifest, and one optional live apply path.
+
 ## Stack And Scenario
 
 This example is for:
