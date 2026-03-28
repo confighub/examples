@@ -27,6 +27,7 @@ The remaining problem:
 - the repo still presents too many categories before it gives one simple mental model
 - a new user can tell that there are many examples, but not yet why ConfigHub itself is worth learning before they start reading example families
 - the NVIDIA-shaped examples are explained better than before, but they are still not planned as a first-class real end-to-end proof track
+- the AICR bundle story is documented honestly, but it is still mostly a walkthrough plus a fixture-backed sample rather than a real end-to-end publication and inspection proof
 
 ## What Already Works For A New User
 
@@ -127,6 +128,25 @@ A new user can understand the NVIDIA-shaped chain better than before, but they s
 
 That is a gap.
 
+### 7. The AICR bundle story is easier to describe than to prove
+
+The bundle material is useful:
+
+- `incubator/global-app-layer/05-bundle-publication-walkthrough.md`
+- `incubator/global-app-layer/bundle-evidence-sample/README.md`
+- `incubator/global-app-layer/04-bundles-attestation-and-todo.md`
+
+But a new user still cannot point to one standard bundle example and say:
+
+> this is a real bundle publication, with real bundle facts, real integrity evidence, real supply-chain evidence, and a real downstream handoff tied to the same digest
+
+Today the bundle story is best understood as:
+
+- recipe side: real and better proven
+- bundle side: explained honestly, partly runnable, still not a first-class real proof
+
+That is another gap.
+
 ## New-User Mental Model We Should Optimize For
 
 If the incubator is working, a new user should be able to understand ConfigHub like this:
@@ -145,10 +165,21 @@ The examples should feel like proofs of those six reasons, not like a file brows
 For NVIDIA specifically, the same rule applies:
 
 1. `Model`: ConfigHub can represent the layered GPU-oriented stack correctly
-2. `Apply`: ConfigHub can deliver that stack through a real target
-3. `Verify`: a real GPU-capable environment shows the result, not just structural YAML proof
+2. `Publish`: ConfigHub can preserve the bundle facts that come out of the recipe and delivery path
+3. `Apply`: ConfigHub can deliver that stack through a real target
+4. `Verify`: a real GPU-capable environment shows the result, not just structural YAML proof
 
 Right now the incubator tells the first story better than the second and third.
+
+For AICR bundles specifically, the mental model should be:
+
+1. the layered recipe produces a deployable bundle for a target
+2. ConfigHub preserves the bundle URI, digest, and publication context
+3. ConfigHub preserves integrity and supply-chain evidence such as checksums, SBOM references, and attestation references
+4. a downstream deployer consumes that same bundle digest
+5. a later operator can inspect both the recipe provenance and the bundle evidence without guessing
+
+Right now the incubator explains that shape well, but proves it only partly through sample evidence.
 
 ## Plan
 
@@ -239,6 +270,28 @@ Candidate direction:
 - add or evolve one separate `gpu-eks-h100-training-real-e2e` style path only when it can honestly prove real deployment and verification
 - until then, keep the current GPU example labeled as structural or both-options, not as a fully proven real e2e standard
 
+### Phase 8: Add an explicit AICR bundle real-proof track
+
+The current plan is also not strong enough for bundles.
+
+We need one explicit incubator plan for a believable AICR bundle proof:
+
+- real bundle publication record with URI or OCI reference
+- real bundle digest
+- real publication context linking back to the deployment variant, target, and recipe manifest or unit revisions
+- real integrity evidence such as checksum material and verification result
+- real supply-chain evidence such as SBOM references, attestation references, provenance statement references, or signature result
+- real downstream handoff that consumes the same published digest
+
+This does not need to start with the biggest GPU stack either. It should start as the smallest honest bundle proof that still deserves the AICR framing.
+
+Candidate direction:
+
+- keep `bundle-evidence-sample` as the honest fixture-backed explainer
+- keep `05-bundle-publication-walkthrough.md` as the staged product/story document
+- add or evolve one separate real bundle proof only when there is a durable publication record and inspection path that is not just fixture output
+- until then, keep the bundle story labeled as walkthrough plus sample, not as a fully proven real bundle flow
+
 ## Highest-Value Next Actions
 
 1. Create one incubator-local `WHY_CONFIGHUB.md` or equivalent front-door explainer
@@ -246,6 +299,7 @@ Candidate direction:
 3. Add a tiny glossary page and link to it from the landing docs
 4. Tighten `global-app-layer/AI_START_HERE.md` so it routes by reason more explicitly
 5. Write a dedicated NVIDIA real-e2e plan that names the cluster, target, apply path, and verification contract explicitly
+6. Write a dedicated AICR bundle plan that names the publication record, digest source, integrity evidence, supply-chain evidence, and handoff contract explicitly
 
 ## Working Rule For Future Example Docs
 
@@ -258,3 +312,7 @@ For every incubator example, a brand-new user should be able to answer these thr
 For NVIDIA-shaped examples, add a fourth question:
 
 4. Is this only structural, or is it a fully real end-to-end proof?
+
+For NVIDIA bundle-shaped examples, add a fifth question:
+
+5. Is this a real published bundle flow, or a walkthrough/sample explaining what the real flow should preserve?

@@ -38,6 +38,21 @@ It is for:
 
 It is not only about live deployment. A large part of the value is visible in the ConfigHub database before anything is applied to a cluster.
 
+## Bundle Boundary
+
+If the question is specifically about AICR bundles, checksums, SBOMs, or attestations, be explicit:
+
+- this package explains the bundle story honestly
+- it includes a fixture-backed evidence sample
+- it does not yet prove a fully real in-product bundle publication and inspection flow
+
+Use these files with that boundary in mind:
+
+- [05-bundle-publication-walkthrough.md](./05-bundle-publication-walkthrough.md)
+- [04-bundles-attestation-and-todo.md](./04-bundles-attestation-and-todo.md)
+- [bundle-evidence-sample/README.md](./bundle-evidence-sample/README.md)
+- [06-bundle-evidence-gui-spec.md](./06-bundle-evidence-gui-spec.md)
+
 ## Choose The Smallest Matching Demo
 
 Before you run this package, pick the smallest demo that matches the user's actual question:

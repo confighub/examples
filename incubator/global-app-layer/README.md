@@ -10,6 +10,22 @@ Important note:
 - it uses stub images so the recipe shape can be reviewed and exercised on ordinary clusters, including local `kind`
 - to run real NVIDIA GPU software, swap in the real NVIDIA images and point the deployment at GPU-capable nodes
 
+## Bundle Status
+
+The AICR bundle material in this package is useful, but it is not yet a fully real end-to-end bundle publication proof.
+
+Today the honest status is:
+
+- recipe and layering side: real and better proven
+- bundle publication side: explained clearly, with a fixture-backed evidence sample
+- full real bundle publication and inspection flow: not yet proven here
+
+Use these files accordingly:
+
+- [05-bundle-publication-walkthrough.md](./05-bundle-publication-walkthrough.md) for the staged story
+- [bundle-evidence-sample/README.md](./bundle-evidence-sample/README.md) for the smallest concrete evidence sample
+- [04-bundles-attestation-and-todo.md](./04-bundles-attestation-and-todo.md) for the current gap list
+
 ## What This Package Is For
 
 Use this package when the reason for the demo is layered composition.
