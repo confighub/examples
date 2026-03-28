@@ -4,6 +4,7 @@ Use this page as the single AI-oriented handoff page for the current incubator w
 
 If you need the stricter protocol first, read [AGENTS.md](./AGENTS.md).
 If you need the fuller incubator AI guide, read [AI-README-FIRST.md](./AI-README-FIRST.md).
+If you need to explain ConfigHub to a new user first, read [WHY_CONFIGHUB.md](./WHY_CONFIGHUB.md).
 
 Default rule:
 
@@ -11,12 +12,49 @@ Default rule:
 - prefer JSON output
 - only mutate ConfigHub when the human asks for that next step
 
+## Route By Reason First
+
+Before choosing an example, identify the user's reason:
+
+| Reason | What they want | First choice |
+|--------|----------------|--------------|
+| **Import** | See what exists in Git, clusters, or controllers | [gitops-import-argo](./gitops-import-argo/README.md) or [gitops-import-flux](./gitops-import-flux/README.md) |
+| **Mutate** | Make controlled changes through ConfigHub | [platform-write-api](./platform-write-api/README.md) |
+| **Apply** | Deploy real workloads to real targets | [springboot-platform-app](./springboot-platform-app/README.md) or [global-app-layer/single-component](./global-app-layer/single-component/README.md) |
+| **Model** | Represent layered or governed config | [global-app-layer](./global-app-layer/README.md) |
+
+## Delivery Matrix
+
+Know which delivery mode is in scope before making claims:
+
+| Delivery Mode | Status | When to use |
+|---------------|--------|-------------|
+| **Direct Kubernetes** | Fully working | Simplest real proof. No controller required. |
+| **Flux OCI** | Current standard | Controller-oriented delivery. Flux manages workload lifecycle. |
+| **Argo OCI** | Target-state, not implemented | Future standard for Argo. Do not claim this exists yet. |
+| **Renderer-only (ArgoCDRenderer)** | Working, limited scope | Renderer/hydration path. Not the same as OCI delivery. |
+
+Critical distinctions:
+
+- `FluxOCI` is the current standard controller-oriented delivery path
+- `ArgoCDRenderer` is **not** Argo OCI delivery — it is a renderer path that expects Argo `Application` payloads
+- Argo OCI is the target-state direction for Argo, but it is not implemented yet
+- Do not conflate renderer paths with OCI bundle delivery
+
 ## Reality Rules
 
 - Use "real end-to-end" only when ConfigHub stores the config, the mutation is real, apply uses a non-`Noop` target, a real app or controller receives the change, and live verification proves the result.
 - Do not offer `Noop` targets unless the human explicitly asks for them or agrees they are needed for a narrow proof.
 - If an example is import-only, evidence-only, controller-layout only, offline, or `Noop`-based, say that explicitly before you run any mutating step.
 - If the human asks for real ConfigHub apply end-to-end, lead with [`global-app-layer`](./global-app-layer/README.md) or [`springboot-platform-app`](./springboot-platform-app/README.md) (with `--with-targets`), not [`platform-write-api`](./platform-write-api/README.md).
+
+## Standard Stories
+
+When the human says "show me Argo" or "show me Flux", do not fan out across the whole catalog first.
+
+- `Standard Argo story`: [`gitops-import-argo`](./gitops-import-argo/README.md), centered on the healthy guestbook applications. Start with the healthy Argo path. Only add the brownfield contrast fixtures on a second pass.
+- `Standard Flux story`: [`gitops-import-flux`](./gitops-import-flux/README.md), centered on the healthy `podinfo` path. Start with `podinfo`. Only add the D2 contrast fixtures on a second pass.
+- `5-10 minute bar`: by minute 10, the human should either see a healthy controller-owned app and the exact next ConfigHub import step, or already see ConfigHub discover/import evidence. If not, the story is not ready as the standard front door.
 
 ## Argo And Flux Name Map
 
@@ -27,17 +65,9 @@ Default rule:
 - Flux monorepo app-style example: [`apptique-flux-monorepo`](./apptique-flux-monorepo/README.md)
 - Flux multi-service fan-out example: [`flux-boutique`](./flux-boutique/README.md)
 
-## Standard Stories
+## Detailed Reason Routing
 
-When the human says "show me Argo" or "show me Flux", do not fan out across the whole catalog first.
-
-- `Standard Argo story`: [`gitops-import-argo`](./gitops-import-argo/README.md), centered on the healthy guestbook applications. Start with the healthy Argo path. Only add the brownfield contrast fixtures on a second pass.
-- `Standard Flux story`: [`gitops-import-flux`](./gitops-import-flux/README.md), centered on the healthy `podinfo` path. Start with `podinfo`. Only add the D2 contrast fixtures on a second pass.
-- `5-10 minute bar`: by minute 10, the human should either see a healthy controller-owned app and the exact next ConfigHub import step, or already see ConfigHub discover/import evidence. If not, the story is not ready as the standard front door.
-
-## Choose By Reason
-
-If the human describes the reason they need an example, route like this:
+If the human describes a more specific reason:
 
 - `why ConfigHub should exist as a write API`: [`platform-write-api`](./platform-write-api/README.md)
 - `one real app with apply here vs lift upstream vs block or escalate`: [`springboot-platform-app`](./springboot-platform-app/README.md)

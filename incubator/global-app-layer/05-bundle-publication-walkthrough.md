@@ -27,18 +27,38 @@ It already proves:
 - deployment variants at the leaf
 - target binding and delivery-path choice
 - recipe provenance across clone chains and recipe manifests
+- **Flux OCI** as a working controller-oriented bundle delivery path
 
 It does not yet fully prove:
 
-- end-to-end bundle publication as a first-class flow
+- end-to-end bundle publication as a first-class in-product flow
 - bundle inspection in ConfigHub
 - attached SBOM, checksum, or attestation inspection in ConfigHub
+- **Argo OCI** bundle delivery (target-state, not yet implemented)
+
+## Delivery Matrix For Bundle Publication
+
+| Delivery Mode | Status | Bundle Story |
+|---------------|--------|--------------|
+| **Direct Kubernetes** | Fully working | Worker applies, no OCI bundle |
+| **Flux OCI** | Current standard | OCI bundle published, Flux reconciles |
+| **Argo OCI** | Target-state, not implemented | OCI bundle published, Argo reconciles |
+| **ArgoCDRenderer** | Working, limited scope | Renderer path only, not bundle delivery |
+
+**Flux OCI** is the current standard for the bundle publication story. It proves:
+
+- OCI artifact published to registry
+- Bundle digest recorded
+- Flux consumes the exact digest
+- Controller manages workload lifecycle
+
+**ArgoCDRenderer** is not the same as Argo OCI bundle delivery. It is a renderer path that expects Argo `Application` payloads and does not publish OCI bundles.
 
 So the right way to use this page is:
 
-- show what is already real
+- show what is already real (recipe provenance, Flux OCI)
 - show what the next bundle product surface should look like
-- be explicit about what is still a gap
+- be explicit about what is still a gap (Argo OCI, in-product bundle inspection)
 
 ## Stage 1: Inspect The Recipe Chain
 
@@ -221,9 +241,18 @@ A believable AICR-shaped ConfigHub story should then show what consumed the arti
 
 That means showing one of:
 
-- direct apply path
-- Argo CD handoff
-- Flux handoff
+| Delivery Mode | What Gets Published | What Consumes It |
+|---------------|---------------------|------------------|
+| Direct Kubernetes | Nothing (worker applies directly) | Cluster via worker |
+| **Flux OCI** (current standard) | OCI artifact | Flux OCIRepository + Kustomization |
+| **Argo OCI** (target-state) | OCI artifact | Argo Application pointing at OCI source |
+| ArgoCDRenderer | Argo Application CRD | ArgoCD renderer API (not workload delivery) |
+
+**Flux OCI** is the current standard for the bundle handoff story because it proves the complete flow: OCI publication, controller consumption, workload delivery.
+
+**Argo OCI** is the target-state direction but is not yet implemented.
+
+**ArgoCDRenderer** does not publish bundles — it sends Application CRDs to ArgoCD for rendering. It is a companion path, not the bundle delivery standard.
 
 The important point is not that ConfigHub must be the only deployer.
 The important point is that the published bundle and the chosen deployment path stay connected.

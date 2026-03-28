@@ -10,6 +10,23 @@ Important note:
 - it uses stub images so the recipe shape can be reviewed and exercised on ordinary clusters, including local `kind`
 - to run real NVIDIA GPU software, swap in the real NVIDIA images and point the deployment at GPU-capable nodes
 
+## Delivery Matrix
+
+This package supports multiple delivery modes. Know which one applies:
+
+| Delivery Mode | Status | Description |
+|---------------|--------|-------------|
+| **Direct Kubernetes** | Fully working | Worker applies YAML via `kubectl apply`. Simplest real proof. |
+| **Flux OCI** | Current standard | Worker publishes OCI artifact, Flux reconciles workloads. |
+| **Argo OCI** | Target-state, not implemented | Future standard for Argo. Spec only, no implementation yet. |
+| **ArgoCDRenderer** | Working, limited scope | Renderer path. Expects Argo `Application` payloads, not raw manifests. |
+
+For controller-oriented delivery in this package:
+
+- **Flux OCI** is the current standard path — see `gpu-eks-h100-training` for an explicit Flux leaf variant
+- **Argo OCI** is the target-state direction, but not yet implemented
+- **ArgoCDRenderer** is **not** Argo OCI delivery — it is a renderer path that does not reconcile workloads
+
 ## Bundle Status
 
 The AICR bundle material in this package is useful, but it is not yet a fully real end-to-end bundle publication proof.
@@ -18,6 +35,8 @@ Today the honest status is:
 
 - recipe and layering side: real and better proven
 - bundle publication side: explained clearly, with a fixture-backed evidence sample
+- Flux OCI: working controller-oriented bundle path
+- Argo OCI: target-state, not yet implemented
 - full real bundle publication and inspection flow: not yet proven here
 
 Use these files accordingly:
@@ -103,8 +122,9 @@ In live mode you should additionally expect:
 - `./preflight-live.sh <space/target>` showing `applyReady: true` before any mutation
 - deployment units bound to a real target
 - successful `cub unit apply`
-- for direct targets: worker-mediated apply evidence plus live cluster resources
-- for delegated targets: agent-side objects and sync/health evidence plus live cluster resources
+- for direct Kubernetes targets: worker-mediated apply evidence plus live cluster resources
+- for Flux OCI targets: OCI artifact published, Flux reconciliation evidence, plus live cluster resources
+- for ArgoCDRenderer targets: renderer-side evidence only (this is not workload delivery)
 
 ## What Good Demos Should Prove
 
@@ -125,8 +145,10 @@ If you take this package further into live delivery follow-ons, a believable liv
 
 What these demos should also make visible:
 
-- direct worker delivery is already a strong proof path in this package
-- delegated GitOps-agent delivery is a must-have proof path for the AICR story
+- direct Kubernetes delivery is already a strong proof path in this package
+- Flux OCI is the current standard controller-oriented delivery path
+- Argo OCI is the target-state standard for Argo, not yet implemented
+- ArgoCDRenderer is a renderer path, not workload delivery — do not conflate these
 - worker resilience still needs to be demonstrated more explicitly through reconnect, retry, and resume behavior rather than treated as a hidden assumption
 
 ## AI-Safe Path
@@ -473,6 +495,7 @@ These documents explain the design thinking behind the examples and the current 
 4. [05-bundle-publication-walkthrough.md](./05-bundle-publication-walkthrough.md) — Honest staged walkthrough for the bundle publication story
 5. [bundle-evidence-sample/README.md](./bundle-evidence-sample/README.md) — Fixture-backed sample for bundle publication, integrity, and handoff evidence
 6. [06-bundle-evidence-gui-spec.md](./06-bundle-evidence-gui-spec.md) — GUI-first view of the bundle evidence story
+7. [07-argo-oci-spec.md](./07-argo-oci-spec.md) — Argo OCI specification (target-state, not yet implemented)
 
 ## End-to-End Testing
 

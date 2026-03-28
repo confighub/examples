@@ -10,6 +10,17 @@ It keeps the same model:
 
 The recipe is still the ordered chain of variants, not the bundle. The difference here is that two components move through the same layer spaces together.
 
+## Delivery Matrix
+
+| Delivery Mode | Status | Notes |
+|---------------|--------|-------|
+| **Direct Kubernetes** | Fully working | Worker applies YAML via `kubectl apply`. |
+| **Flux OCI** | Not yet implemented | Same contract as `single-component`. |
+| **Argo OCI** | Not yet implemented | Target-state direction. |
+| **ArgoCDRenderer** | Incompatible | Expects Argo `Application` payloads, not raw manifests. |
+
+This example currently proves **Direct Kubernetes** delivery only. For Flux OCI, see [`gpu-eks-h100-training`](../gpu-eks-h100-training/README.md).
+
 ## What This Example Is For
 
 Use this when `single-component` is too small but a full three-tier app would hide the point.

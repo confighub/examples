@@ -1,7 +1,12 @@
 # New-User Sense Check And Plan
 
-**Date:** 2026-03-27  
+**Date:** 2026-03-27
 **Repo:** `/Users/alexis/Public/github-repos/examples`
+
+For the OCI-standardization direction and delivery matrix decisions, also read:
+
+- `incubator/planning/2026-03-28-oci-standard-aicr-bundles-and-today-plan.md`
+- `incubator/WHY_CONFIGHUB.md` (new front door with glossary and delivery matrix)
 
 ## Lens
 
@@ -325,13 +330,13 @@ Candidate direction:
 
 ## Highest-Value Next Actions
 
-1. Create one incubator-local `WHY_CONFIGHUB.md` or equivalent front-door explainer
-2. Rewrite the top of `incubator/README.md` around the four reasons above
-3. Add a tiny glossary page and link to it from the landing docs
-4. Tighten `global-app-layer/AI_START_HERE.md` so it routes by reason more explicitly
+1. Create one incubator-local `WHY_CONFIGHUB.md` or equivalent front-door explainer — **DONE** (see `incubator/WHY_CONFIGHUB.md`)
+2. Rewrite the top of `incubator/README.md` around the four reasons above — **DONE**
+3. Add a tiny glossary page and link to it from the landing docs — **DONE** (included in `WHY_CONFIGHUB.md`)
+4. Tighten `global-app-layer/AI_START_HERE.md` so it routes by reason more explicitly — **DONE**
 5. Write a dedicated NVIDIA real-e2e plan that names the cluster, target, apply path, and verification contract explicitly
-6. Write a dedicated AICR bundle plan that names the publication record, digest source, integrity evidence, supply-chain evidence, and handoff contract explicitly
-7. Standardize the delivery-mode language so the front door distinguishes direct apply, Flux OCI, Argo OCI, and renderer-only paths
+6. Write a dedicated AICR bundle plan that names the publication record, digest source, integrity evidence, supply-chain evidence, and handoff contract explicitly — **PARTIALLY DONE** (bundle docs updated, Argo OCI spec written)
+7. Standardize the delivery-mode language so the front door distinguishes direct apply, Flux OCI, Argo OCI, and renderer-only paths — **DONE**
 
 ## Working Rule For Future Example Docs
 

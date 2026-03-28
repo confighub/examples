@@ -10,6 +10,19 @@ It demonstrates the model:
 
 The recipe is the ordered chain of variants, not the bundle.
 
+## Delivery Matrix
+
+| Delivery Mode | Status | Notes |
+|---------------|--------|-------|
+| **Direct Kubernetes** | Fully working | Worker applies YAML via `kubectl apply`. Smallest real proof. |
+| **Flux OCI** | Not yet implemented | Contract documented below. See `gpu-eks-h100-training` for a working example. |
+| **Argo OCI** | Not yet implemented | Target-state direction. Spec to be written. |
+| **ArgoCDRenderer** | Incompatible | Expects Argo `Application` payloads, not raw manifests. |
+
+This is the smallest layered recipe example. It currently proves **Direct Kubernetes** delivery only.
+
+For controller-oriented delivery (Flux OCI), see [`gpu-eks-h100-training`](../gpu-eks-h100-training/README.md) which has explicit Flux deployment variants.
+
 ## What This Example Is For
 
 Use this when you need the smallest believable proof that layered recipes are real ConfigHub objects, not just a diagram.
@@ -192,3 +205,39 @@ That is why this example uses both:
 - real variant-chain units for execution
 - one explicit recipe manifest unit for explanation and review
 - one placeholder-based base recipe file to show the source shape before values are materialized
+
+## Flux OCI Implementation Contract
+
+This example does not yet have Flux OCI support. Here is the exact contract for adding it:
+
+### What needs to be added
+
+1. **Flux deployment space**: `<prefix>-deploy-cluster-a-flux`
+2. **Flux deployment unit**: `backend-cluster-a-flux` cloned from the recipe unit
+3. **Flux deployment stub**: `postgres-stub-cluster-a-flux` cloned from the deploy stub
+4. **Recipe manifest update**: Include the Flux deployment variant in the recipe manifest
+
+### File changes required
+
+| File | Change |
+|------|--------|
+| `lib.sh` | Add `DEPLOY_FLUX_SPACE_SUFFIX`, `flux_deploy_space()`, Flux variant in `DEPLOY_VARIANTS` |
+| `setup.sh` | Create Flux deploy space and clone units |
+| `verify.sh` | Verify Flux deployment units exist and have correct ancestry |
+| `set-target.sh` | Accept `--flux <target>` and bind Flux deployment units |
+| `recipe.base.yaml` | Add Flux deployment variant placeholders |
+
+### Verification contract
+
+A working Flux OCI proof must show:
+
+1. Flux deployment unit exists with correct upstream (recipe unit)
+2. Flux deployment unit is bound to a `FluxOCI` or `FluxOCIWriter` target
+3. `cub unit apply` publishes an OCI artifact
+4. Flux `OCIRepository` and `Kustomization` resources are created
+5. Flux reconciles the workload to the cluster
+6. Live cluster resources match the expected state
+
+### Reference implementation
+
+See [`gpu-eks-h100-training`](../gpu-eks-h100-training/README.md) for a working example with both Direct and Flux deployment variants.

@@ -16,6 +16,22 @@ It keeps the recipe-and-layer model intentionally reviewable:
 
 The point is not to recreate all of NVIDIA AICR. The point is to show how ConfigHub can model the same kind of layered, reproducible recipe with real units, real variant links, and an explicit recipe manifest that spans more than one related component.
 
+## Delivery Matrix
+
+| Delivery Mode | Status | Notes |
+|---------------|--------|-------|
+| **Direct Kubernetes** | Fully working | Worker applies YAML via `kubectl apply`. |
+| **Flux OCI** | Fully working | Explicit Flux deployment variant. Current standard controller path. |
+| **Argo OCI** | Not yet implemented | Target-state direction. Spec to be written. |
+| **ArgoCDRenderer** | Incompatible | Expects Argo `Application` payloads, not raw manifests. |
+
+This example has **both Direct Kubernetes and Flux OCI** working:
+
+- Direct deployment variant: `<prefix>-deploy-cluster-a`
+- Flux deployment variant: `<prefix>-deploy-cluster-a-flux`
+
+Use this as the reference implementation for Flux OCI in the layered recipe examples.
+
 ## What This Example Is For
 
 Use this when the reason for the demo is the NVIDIA-shaped chain model rather than a generic web app.

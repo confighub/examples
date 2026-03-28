@@ -1,14 +1,39 @@
 # Examples Incubator
 
-This directory is for experimental examples before promotion to stable examples.
+This directory contains experimental examples for ConfigHub. Start by picking your reason.
 
-Current focus:
+## Why ConfigHub?
 
-Keep building AI-first examples in `examples/incubator` that give one person a fast reason to use ConfigHub, especially by adapting the best `cub-scout` flows into official, evidence-first examples.
+ConfigHub is a management layer for operational configuration. It imports, validates, mutates, and delivers config through governed workflows. See [WHY_CONFIGHUB.md](./WHY_CONFIGHUB.md) for the full explanation.
+
+## Choose By Reason
+
+| Reason | What you want | Start here |
+|--------|---------------|------------|
+| **Import** | See what you already have in Git, clusters, or controllers | [gitops-import-argo](./gitops-import-argo/README.md) or [gitops-import-flux](./gitops-import-flux/README.md) |
+| **Mutate** | Make controlled changes through a governed write API | [platform-write-api](./platform-write-api/README.md) |
+| **Apply** | Deploy real workloads through real targets | [springboot-platform-app](./springboot-platform-app/README.md) or [global-app-layer/single-component](./global-app-layer/single-component/README.md) |
+| **Model** | Represent layered or governed config structures | [global-app-layer](./global-app-layer/README.md) |
+
+## Delivery Matrix
+
+ConfigHub supports multiple delivery modes. Know which one you need:
+
+| Delivery Mode | Description | Status |
+|---------------|-------------|--------|
+| **Direct Kubernetes** | Worker applies YAML via `kubectl apply` | Simplest real proof. Fully working. |
+| **Flux OCI** | Worker publishes OCI artifact, Flux reconciles | Current standard controller path. |
+| **Argo OCI** | ConfigHub publishes OCI, Argo reconciles | Target-state standard. Not yet implemented. |
+| **Renderer-only** | Worker sends payloads to a renderer (e.g., `ArgoCDRenderer`) | Companion path. Not the same as OCI delivery. |
+
+For controller-oriented delivery: **Flux OCI** is the current standard. **Argo OCI** is the target direction.
+
+`ArgoCDRenderer` is a valid renderer path but should not be confused with Argo OCI delivery. See [global-app-layer/contracts.md](./global-app-layer/contracts.md) for payload compatibility.
 
 ## Entry Paths
 
 - For humans: [`../START_HERE.md`](../START_HERE.md)
+- Why ConfigHub: [`WHY_CONFIGHUB.md`](./WHY_CONFIGHUB.md)
 - For AI assistants: [`AI_START_HERE.md`](./AI_START_HERE.md)
 - Incubator AI protocol: [`AGENTS.md`](./AGENTS.md)
 - Fuller incubator AI guide: [`AI-README-FIRST.md`](./AI-README-FIRST.md)

@@ -2,6 +2,24 @@
 
 This file documents the safest stable inspection paths for `global-app-layer`.
 
+## Delivery Matrix
+
+This package supports multiple delivery modes. Know which one applies before making claims:
+
+| Delivery Mode | Status | Payload Compatibility | What it proves |
+|---------------|--------|----------------------|----------------|
+| **Direct Kubernetes** | Fully working | Raw K8s manifests | Worker applies directly to cluster |
+| **Flux OCI** | Current standard | Raw K8s manifests | OCI bundle published, Flux reconciles workloads |
+| **Argo OCI** | Target-state, not implemented | Raw K8s manifests (planned) | OCI bundle published, Argo reconciles workloads |
+| **ArgoCDRenderer** | Working, limited scope | Argo `Application` CRDs only | Renderer path. Not workload delivery. |
+
+**Critical distinctions:**
+
+- **Flux OCI** is the current standard for controller-oriented bundle delivery
+- **Argo OCI** is the target-state direction, but is not yet implemented
+- **ArgoCDRenderer** is **not** Argo OCI delivery — it expects Argo `Application` payloads and does not reconcile workloads
+- Raw-manifest examples work with Direct Kubernetes and Flux OCI, but **not** with ArgoCDRenderer
+
 ## Read-Only Contracts
 
 ### `./find-runs.sh --json`

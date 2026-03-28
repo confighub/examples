@@ -38,12 +38,32 @@ It is for:
 
 It is not only about live deployment. A large part of the value is visible in the ConfigHub database before anything is applied to a cluster.
 
+## Delivery Matrix
+
+Know which delivery mode is in scope before making claims:
+
+| Delivery Mode | Status | Use case |
+|---------------|--------|----------|
+| **Direct Kubernetes** | Fully working | Simplest real proof. No controller required. |
+| **Flux OCI** | Current standard | Controller-oriented delivery. Flux manages workload lifecycle. |
+| **Argo OCI** | Target-state, not implemented | Future standard for Argo. Do not claim this exists yet. |
+| **ArgoCDRenderer** | Working, limited scope | Renderer path only. Expects Argo `Application` payloads. |
+
+Critical distinctions:
+
+- **Flux OCI** is the current standard controller-oriented delivery path
+- **ArgoCDRenderer** is **not** Argo OCI delivery — it is a renderer path for hydration only
+- **Argo OCI** is the target-state direction, but the implementation does not exist yet
+- Raw-manifest examples work with Direct Kubernetes and Flux OCI, but not with ArgoCDRenderer
+
 ## Bundle Boundary
 
 If the question is specifically about AICR bundles, checksums, SBOMs, or attestations, be explicit:
 
 - this package explains the bundle story honestly
 - it includes a fixture-backed evidence sample
+- Flux OCI is the current controller-oriented bundle path
+- Argo OCI is the target-state path, not yet implemented
 - it does not yet prove a fully real in-product bundle publication and inspection flow
 
 Use these files with that boundary in mind:

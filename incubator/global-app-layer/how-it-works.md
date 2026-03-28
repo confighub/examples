@@ -118,11 +118,17 @@ Important:
 
 The worker supports three relevant target types in this package:
 
-| Target | Slug | What it does |
-|---|---|---|
-| **Kubernetes (direct)** | `worker-kubernetes-yaml-cluster` | Worker applies YAML directly via `kubectl apply` |
-| **FluxOCI** | `worker-fluxoci-kubernetes-yaml-cluster` | Worker transforms raw Kubernetes YAML into Flux OCIRepository + Kustomization or HelmRelease CRs and waits for Flux reconciliation |
-| **ArgoCDRenderer** | `worker-argocdrenderer-kubernetes-yaml-cluster` | Worker manages Argo CD `Application` CRDs and asks ArgoCD to render them |
+| Target | Slug | What it does | Status |
+|---|---|---|---|
+| **Direct Kubernetes** | `worker-kubernetes-yaml-cluster` | Worker applies YAML directly via `kubectl apply` | Fully working. Simplest real proof. |
+| **Flux OCI** | `worker-fluxoci-kubernetes-yaml-cluster` | Worker publishes OCI artifact, Flux reconciles workloads | Current standard controller path. |
+| **ArgoCDRenderer** | `worker-argocdrenderer-kubernetes-yaml-cluster` | Worker sends Argo `Application` CRDs to ArgoCD for rendering | Renderer path only. Not workload delivery. |
+
+**Important distinctions:**
+
+- **Flux OCI** is the current standard for controller-oriented bundle delivery
+- **ArgoCDRenderer** is a renderer path — it expects Argo `Application` payloads, not raw manifests, and does not reconcile workloads
+- **Argo OCI** (publishing OCI artifacts for Argo to reconcile) is the target-state direction, but is not yet implemented
 
 **Payload compatibility matters:**
 
@@ -142,7 +148,7 @@ Flux note:
 - explicit Flux deployment variants are only wired where the example says so
 - `gpu-eks-h100-training` now includes that explicit Flux leaf variant
 
-### How ArgoCD Integration Works
+### How ArgoCDRenderer Works (Renderer Path, Not OCI Delivery)
 
 When you use the `ArgoCDRenderer` target, the flow is:
 
@@ -153,29 +159,52 @@ ConfigHub (materialized Application)
             → rendered manifests returned to ConfigHub
 ```
 
-The current `ArgoCDRenderer` implementation works with Argo CD `Application` resources, not arbitrary raw Kubernetes manifests. It also disables autosync so ArgoCD does not become the workload reconciler for this path. So for an Application-shaped unit, ConfigHub can hand that object to the worker, let ArgoCD render it, and then read back Argo-side evidence about the rendered manifests. But the raw-manifest chains in `realistic-app` and `gpu-eks-h100-training` do not yet fit that target directly.
+**This is not Argo OCI delivery.** `ArgoCDRenderer` is a renderer path:
 
-That is still different from the typical ArgoCD model where Argo watches a Git repo and reconciles workloads. Here, ArgoCD is being used as a render/hydration engine. A separate sync-capable target path is still needed for a true Argo-managed workload proof.
+- It works with Argo CD `Application` resources only, not raw Kubernetes manifests
+- It disables autosync — ArgoCD does not reconcile workloads
+- ArgoCD is used as a render/hydration engine, not a deployment controller
+- The raw-manifest examples in this package do not work with `ArgoCDRenderer`
 
-### How Flux Integration Works
+**Argo OCI** (the target-state standard) would be different:
+
+- ConfigHub publishes an OCI artifact
+- Argo `Application` points at that OCI artifact as its source
+- Argo reconciles workloads from the OCI artifact
+- That implementation does not exist yet
+
+Do not conflate `ArgoCDRenderer` with Argo OCI delivery. They are different paths with different purposes.
+
+### How Flux OCI Works (Current Standard Controller Path)
 
 When you use the `FluxOCI` target, the flow is:
 
 ```
 ConfigHub (materialized raw Kubernetes YAML)
     → worker (in-cluster agent)
-        → Flux OCIRepository + Kustomization or HelmRelease CRs
-            → Flux reconciles workloads in the cluster
+        → OCI artifact published to registry
+            → Flux OCIRepository + Kustomization or HelmRelease CRs
+                → Flux reconciles workloads in the cluster
 ```
 
-That is a better fit for the raw-manifest chains in `realistic-app` and `gpu-eks-h100-training`. The unit payload stays as Kubernetes YAML, and the target supplies the Flux delivery contract. In `gpu-eks-h100-training`, this is now modeled as a sibling Flux deployment variant at the leaf rather than pretending the direct and Flux paths are the same deployment unit.
+**Flux OCI is the current standard for controller-oriented bundle delivery:**
 
-That distinction matters for demos:
+- Raw Kubernetes YAML payloads work directly with Flux OCI
+- The worker publishes an OCI artifact and creates Flux resources to consume it
+- Flux manages the workload lifecycle (reconciliation, drift detection, rollback)
+- This proves the full OCI bundle flow: publication, controller consumption, workload delivery
 
-- if the proof is about direct worker delivery, show worker readiness plus cluster results
-- if the proof is about Argo rendering, show worker readiness, Argo `Application` objects, and rendered-manifest evidence
-- do not call `ArgoCDRenderer` a real Argo-sync proof for workloads
-- do not treat a hybrid helper that runs `kubectl apply` and then creates an Argo Application as the same thing as a real Argo-backed target proof
+In `gpu-eks-h100-training`, Flux OCI is modeled as a sibling deployment variant at the leaf rather than pretending direct and Flux paths are the same unit.
+
+**Proof requirements for each delivery mode:**
+
+| Delivery Mode | What to show |
+|---------------|--------------|
+| Direct Kubernetes | Worker readiness, `cub unit apply`, live cluster resources |
+| Flux OCI | Worker readiness, OCI artifact published, Flux reconciliation evidence, live cluster resources |
+| ArgoCDRenderer | Worker readiness, Argo `Application` objects, rendered manifests (not workload delivery) |
+
+Do not call `ArgoCDRenderer` a real Argo-sync proof for workloads. Do not treat hybrid helpers that run `kubectl apply` and then create an Argo Application as the same thing as a real OCI-backed controller proof.
 
 ### Brownfield: The Reverse Direction
 
