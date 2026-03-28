@@ -4,6 +4,10 @@ For the current consolidated handover, mission, AI-first rules, and plan, start 
 
 - `incubator/planning/2026-03-24-next-ai-handover.md`
 
+For the current OCI-standardization, AICR-bundle direction, and focused today sequence, also read:
+
+- `incubator/planning/2026-03-28-oci-standard-aicr-bundles-and-today-plan.md`
+
 **Date:** 2026-03-22
 **Status:** Active
 **Scope:** `/Users/alexis/Public/github-repos/examples/incubator`

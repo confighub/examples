@@ -4,6 +4,10 @@ Superseded as the broad starting point by:
 
 - `incubator/planning/2026-03-24-next-ai-handover.md`
 
+For the current focused OCI-standardization and AICR-bundle sequence, also read:
+
+- `incubator/planning/2026-03-28-oci-standard-aicr-bundles-and-today-plan.md`
+
 Keep this file for the narrower testing checklist.
 
 **Date:** 2026-03-22

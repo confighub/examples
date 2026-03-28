@@ -118,7 +118,20 @@ Several individual example READMEs are now clearer than the package-level landin
 
 That means a user often has to click into a subexample before the story becomes crisp.
 
-### 6. NVIDIA is still structurally clearer than it is operationally proven
+### 6. Delivery modes are still not explained as one coherent matrix
+
+The repo is much better than before, but a new user still has to infer too much about the difference between:
+
+- direct Kubernetes apply
+- Flux OCI delivery
+- renderer-oriented paths such as `ArgoCDRenderer`
+- future Argo OCI delivery
+
+That matters because the product promise changes depending on which one is in use.
+
+The front door should make this explicit early.
+
+### 7. NVIDIA is still structurally clearer than it is operationally proven
 
 `incubator/global-app-layer/gpu-eks-h100-training` now explains why it exists, but it is still mainly a model and structure story.
 
@@ -128,7 +141,7 @@ A new user can understand the NVIDIA-shaped chain better than before, but they s
 
 That is a gap.
 
-### 7. The AICR bundle story is easier to describe than to prove
+### 8. The AICR bundle story is easier to describe than to prove
 
 The bundle material is useful:
 
@@ -204,6 +217,13 @@ Make the incubator landing docs route first by:
 
 Only after that should the docs branch into Argo, Flux, Spring Boot, layered recipes, or procedure design.
 
+As part of that rewrite, the front door should also introduce one delivery matrix:
+
+- direct Kubernetes
+- Flux OCI
+- Argo OCI
+- renderer-only companion paths
+
 ### Phase 3: Add a one-line “This proves X, not Y” contract to more READMEs
 
 The best examples already imply this.
@@ -239,6 +259,17 @@ The strongest candidates for this next pass are:
 - `incubator/global-app-layer/AI_START_HERE.md`
 - `incubator/gitops-import-argo/AI_START_HERE.md`
 - `incubator/gitops-import-flux/AI_START_HERE.md`
+
+### Phase 5b: Make OCI delivery modes explicit
+
+The repo should stop making readers infer this from scattered example docs.
+
+Make one shared explanation of:
+
+- why direct apply is still the simplest live proof
+- why Flux OCI is the current standard controller-oriented bundle path
+- why Argo OCI is the right next standard for Argo
+- why `ArgoCDRenderer` should stay labeled as renderer-oriented until an OCI-backed Argo path exists
 
 ### Phase 6: Add “expected first value” timing to the standard examples
 
@@ -300,6 +331,7 @@ Candidate direction:
 4. Tighten `global-app-layer/AI_START_HERE.md` so it routes by reason more explicitly
 5. Write a dedicated NVIDIA real-e2e plan that names the cluster, target, apply path, and verification contract explicitly
 6. Write a dedicated AICR bundle plan that names the publication record, digest source, integrity evidence, supply-chain evidence, and handoff contract explicitly
+7. Standardize the delivery-mode language so the front door distinguishes direct apply, Flux OCI, Argo OCI, and renderer-only paths
 
 ## Working Rule For Future Example Docs
 

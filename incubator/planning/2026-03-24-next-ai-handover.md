@@ -4,6 +4,10 @@
 **Repo:** `/Users/alexis/Public/github-repos/examples`  
 **Current `origin/main`:** `a28ab7b680cb32a2b0465dcf663de821a97eed5d`
 
+For the current OCI-standardization, AICR-bundle, and focused today sequence, also read:
+
+- `incubator/planning/2026-03-28-oci-standard-aicr-bundles-and-today-plan.md`
+
 ## Mission
 
 The current mission for `confighub/examples` is:
@@ -262,6 +266,9 @@ Next likely AICR steps:
   - integrity evidence
   - SBOMs and attestations
   - downstream handoff
+- standardize the controller-oriented bundle path around OCI
+- keep `FluxOCI` as the current standard controller path
+- keep `ArgoCDRenderer` clearly separate from a future Argo OCI path
 
 ### 4. Keep `springboot-platform-app` in view
 
@@ -280,19 +287,19 @@ Use the existing example docs and `V2-LIVE-PLAN.md` in that example directory as
 
 ### Phase 1
 
-- re-run the no-cluster examples and collect a short evidence log
+- execute the focused front-door and OCI planning sequence from `2026-03-28-oci-standard-aicr-bundles-and-today-plan.md`
 
 ### Phase 2
 
-- re-run the smaller live examples with dedicated kubeconfigs
+- if docs and contracts were updated, re-run only the smallest affected examples and collect a short evidence log
 
 ### Phase 3
 
-- check the remaining AI guides for pacing quality and GUI honesty
+- check the remaining AI guides for pacing quality, GUI honesty, and delivery-mode clarity
 
 ### Phase 4
 
-- pick one next `cub-scout` adaptation only if it adds a clearly new story
+- only after the OCI/controller path is clearer, pick one next implementation slice
 
 ### Phase 5
 
