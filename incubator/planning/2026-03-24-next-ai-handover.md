@@ -227,7 +227,26 @@ Do not build a new example around a known broken contract without linking the is
 
 ## Highest-Value Next Work
 
-### 1. Keep improving AI-first behavior
+### 1. Re-prove the recent examples end to end with evidence in hand
+
+Before more doc polishing or new variants, re-run the examples we have recently changed and collect short evidence logs.
+
+Top priority list:
+
+- `incubator/springboot-platform-app` full live mutation loop
+- `incubator/gitops-import-argo`
+- `incubator/gitops-import-flux`
+- `incubator/global-app-layer/single-component` with `FluxOCI`
+- `incubator/global-app-layer/single-component` with `ArgoCDOCI`
+- `incubator/global-app-layer/gpu-eks-h100-training` with `FluxOCI`
+- `incubator/global-app-layer/gpu-eks-h100-training` with `ArgoCDOCI`
+
+Working rule:
+
+- do not call a path “real e2e” unless the evidence log shows controller or worker evidence plus live workload evidence
+- if a path is implemented but not freshly proven, narrow the docs instead of widening the claim
+
+### 2. Keep improving AI-first behavior
 
 Highest-priority AI-first follow-through:
 
@@ -237,7 +256,7 @@ Highest-priority AI-first follow-through:
   - `incubator/global-app-layer/AI_START_HERE.md`
   - any `global-app-layer` subexample AI guides
 
-### 2. Continue selective `cub-scout` adaptation
+### 3. Continue selective `cub-scout` adaptation
 
 Only keep adapting examples from `cub-scout` if they add a genuinely new operator or workflow story.
 
@@ -248,7 +267,7 @@ Good adaptations are:
 - easy to validate
 - clear about mutation boundaries
 
-### 3. Keep the AICR bundle story getting more concrete
+### 4. Keep the AICR bundle story getting more concrete
 
 Current AICR bundle material now includes:
 
@@ -270,7 +289,7 @@ Next likely AICR steps:
 - keep `FluxOCI` as the current standard controller path
 - keep `ArgoCDRenderer` clearly separate from a future Argo OCI path
 
-### 4. Keep `springboot-platform-app` in view
+### 5. Keep `springboot-platform-app` in view
 
 Important local handover notes existed outside git and have now been intentionally replaced by this tracked handover.
 
@@ -287,21 +306,25 @@ Use the existing example docs and `V2-LIVE-PLAN.md` in that example directory as
 
 ### Phase 1
 
-- execute the focused front-door and OCI planning sequence from `2026-03-28-oci-standard-aicr-bundles-and-today-plan.md`
+- run the proof-first evidence pass for the recently changed examples listed above
 
 ### Phase 2
 
-- if docs and contracts were updated, re-run only the smallest affected examples and collect a short evidence log
+- if any example fails or is only partly proven, narrow the docs and contracts before adding more work
 
 ### Phase 3
 
-- check the remaining AI guides for pacing quality, GUI honesty, and delivery-mode clarity
+- only after the proof pass is stable, continue the focused front-door and OCI planning sequence from `2026-03-28-oci-standard-aicr-bundles-and-today-plan.md`
 
 ### Phase 4
 
-- only after the OCI/controller path is clearer, pick one next implementation slice
+- check the remaining AI guides for pacing quality, GUI honesty, and delivery-mode clarity
 
 ### Phase 5
+
+- only after the OCI/controller path is clearer and proven, pick one next implementation slice
+
+### Phase 6
 
 - revisit whether any example should ever be promoted, but only after an explicit user request
 

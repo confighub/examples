@@ -224,7 +224,31 @@ This strategy is ready when all of these are true:
 
 Claude should work in this order and stop after each numbered step with a short evidence note.
 
-### 1. Front Door First
+### 1. Proof First
+
+Before more docs or new claims, re-run the recently changed examples and capture short evidence logs.
+
+Required list:
+
+- `incubator/springboot-platform-app` full live mutation loop
+- `incubator/gitops-import-argo`
+- `incubator/gitops-import-flux`
+- `incubator/global-app-layer/single-component` with `FluxOCI`
+- `incubator/global-app-layer/single-component` with `ArgoCDOCI`
+- `incubator/global-app-layer/gpu-eks-h100-training` with `FluxOCI`
+- `incubator/global-app-layer/gpu-eks-h100-training` with `ArgoCDOCI`
+
+For each, record:
+
+- exact commands run
+- what mutated
+- controller or worker evidence
+- live workload evidence
+- whether the current docs are still honest
+
+If an example is implemented but not freshly proven, narrow the docs before doing more work.
+
+### 2. Front Door First
 
 Execute Phase 1 and Phase 2 from `2026-03-27-new-user-sense-check-and-plan.md`:
 
@@ -238,7 +262,7 @@ Important requirement:
 - route by reason first: import, mutate, apply, model
 - include the delivery matrix language so the front door already distinguishes direct apply, Flux OCI, Argo OCI, and renderer-only paths
 
-### 2. Standardize The OCI Language In Layered Docs
+### 3. Standardize The OCI Language In Layered Docs
 
 Then update the package-level layered docs so they all use the same matrix:
 
@@ -250,7 +274,7 @@ Then update the package-level layered docs so they all use the same matrix:
 The key output from this step is not implementation yet.
 It is one stable shared vocabulary.
 
-### 3. Pick And Tighten The Small OCI Standard
+### 4. Pick And Tighten The Small OCI Standard
 
 Pick the smallest honest OCI-capable example.
 
@@ -267,7 +291,7 @@ For the chosen example, either:
 
 Do not jump to GPU first if the small proof is still fuzzy.
 
-### 4. Update The AICR Bundle Contract
+### 5. Update The AICR Bundle Contract
 
 Then tighten the AICR bundle docs so they explicitly say:
 
@@ -284,7 +308,7 @@ Relevant files:
 - `incubator/global-app-layer/bundle-evidence-sample/README.md`
 - `incubator/global-app-layer/gpu-eks-h100-training/README.md`
 
-### 5. Write The Argo OCI Spec
+### 6. Write The Argo OCI Spec
 
 Do not over-implement if the provider path is not ready.
 
@@ -299,7 +323,7 @@ Write a crisp spec that names:
 
 This is the handoff packet for the next implementation pass.
 
-### 6. Cleanup And Re-Point Existing Plans
+### 7. Cleanup And Re-Point Existing Plans
 
 Before stopping:
 
