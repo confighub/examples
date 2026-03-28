@@ -1,9 +1,10 @@
 # Argo OCI Specification
 
-**Status:** Target-state design. Not yet implemented.
+**Status:** Implementation exists. Ready for example variants.
+**Provider Type:** `ArgoCDOCI`
 **ArgoCD Support:** Confirmed. ArgoCD v3.1+ (August 2025) has native OCI support.
 
-This document specifies the Argo OCI delivery path for ConfigHub. It defines what needs to be built for Argo to have the same OCI bundle contract as Flux OCI.
+This document specifies the Argo OCI delivery path for ConfigHub. The worker implementation already exists at `confighub/public/bridge-impl/argocd/argocd_oci.go`.
 
 ## Why This Spec Exists
 
@@ -32,26 +33,25 @@ Do not conflate ArgoCDRenderer with this spec. They are different paths with dif
 ### Provider Name
 
 ```
-ArgoOCI
-```
-
-or
-
-```
-ArgoOCIWriter
+ArgoCDOCI
 ```
 
 ### Target Slug Pattern
 
 ```
-worker-argooci-kubernetes-yaml-cluster
+worker-argocdoci-kubernetes-yaml-cluster
 ```
 
 ### Provider Type
 
 ```yaml
-providerType: ArgoOCI
-deliveryMode: argo-oci
+providerType: ArgoCDOCI
+```
+
+### Implementation Location
+
+```
+confighub/public/bridge-impl/argocd/argocd_oci.go
 ```
 
 ## Unit Payload Shape
@@ -191,89 +191,50 @@ ConfigHub unit revision → OCI artifact digest → Argo targetRevision → depl
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| ArgoOCI provider type | **Not implemented** | New worker provider type required |
-| OCI publication logic | Partially exists | Reuse from FluxOCI |
-| Argo Application creation | Not implemented | New worker logic |
-| Application source contract | Spec only | ArgoCD v3.1+ confirmed |
-| Verification helpers | Not implemented | Need new verification scripts |
-| Example deployment variant | **Blocked** | Requires ArgoOCI provider first |
+| ArgoCDOCI provider type | **Exists** | `confighub/public/bridge-impl/argocd/argocd_oci.go` |
+| OCI publication logic | Exists | Built into ArgoCDOCI provider |
+| Argo Application creation | Exists | Auto-generates Application CRs |
+| Application source contract | Exists | ArgoCD v3.1+ OCI source format |
+| Repo credentials | Exists | Auto-generates repo-creds Secret |
+| Verification helpers | Needed | Add to example scripts |
+| Example deployment variant | **Ready to add** | No blockers |
 
-## Worker Implementation Gap
+## Existing Worker Implementation
 
-**The ArgoOCI provider does not exist in the worker.**
-
-This is the primary implementation gap. Until the worker has an ArgoOCI provider:
-
-1. No Argo OCI deployment variant can be added to the examples
-2. No Argo OCI proof can be demonstrated
-3. The spec remains target-state only
-
-### What the worker needs to implement
+The `ArgoCDOCI` provider already exists and implements:
 
 ```go
-// Pseudocode for ArgoOCI provider
-type ArgoOCIProvider struct {
-    // Registry configuration for OCI artifact publication
-    RegistryURL string
-
-    // ArgoCD API configuration for Application management
-    ArgoCDServer string
-    ArgoCDNamespace string
-}
-
-func (p *ArgoOCIProvider) Apply(unit Unit) error {
-    // 1. Render unit data to manifest bytes
-    manifests := renderManifests(unit)
-
-    // 2. Package as OCI artifact (reuse FluxOCI logic)
-    artifact := packageOCIArtifact(manifests)
-
-    // 3. Push to registry
-    digest := pushToRegistry(p.RegistryURL, artifact)
-
-    // 4. Create/update Argo Application pointing at OCI source
-    app := &argocdv1alpha1.Application{
-        ObjectMeta: metav1.ObjectMeta{
-            Name: unit.Slug,
-            Namespace: p.ArgoCDNamespace,
-            Labels: map[string]string{
-                "confighub.com/managed-by": "worker",
-                "confighub.com/bundle-digest": digest,
-            },
-        },
-        Spec: argocdv1alpha1.ApplicationSpec{
-            Source: argocdv1alpha1.ApplicationSource{
-                RepoURL: fmt.Sprintf("oci://%s/%s", p.RegistryURL, unit.Slug),
-                TargetRevision: digest,
-                Path: ".",
-            },
-            Destination: argocdv1alpha1.ApplicationDestination{
-                Server: "https://kubernetes.default.svc",
-                Namespace: unit.TargetNamespace,
-            },
-            SyncPolicy: &argocdv1alpha1.SyncPolicy{
-                Automated: &argocdv1alpha1.SyncPolicyAutomated{
-                    Prune: true,
-                    SelfHeal: true,
-                },
-            },
-        },
-    }
-
-    // 5. Wait for sync/health (or return async)
-    return createOrUpdateApplication(app)
+type ArgoCDOCIWorker struct {
+    KubernetesBridgeWorker
+    workerID     string  // For OCI auth
+    workerSecret string  // For OCI auth
 }
 ```
 
-### Blockers for example deployment variants
+### Key Features
 
-The examples (`single-component`, `gpu-eks-h100-training`) cannot add Argo OCI deployment variants until:
+- **OCI URL handling**: Auto-constructs `oci://host/confighub/space-slug/unit-slug:reference`
+- **Application generation**: Creates ArgoCD Application CRs with OCI source
+- **Repo credentials**: Auto-generates `confighub-oci-creds-{host}` Secret
+- **Sync monitoring**: Tracks sync status, health status, and operation state
+- **Drift detection**: Detects content drift via diff-patch analysis
+- **Helm support**: Auto-detects Helm units and generates Helm-style Applications
 
-1. The worker has an `ArgoOCI` or `ArgoOCIWriter` provider type
-2. A target with that provider type can be created
-3. The example scripts can detect and route to the Argo variant
+### Configuration Parameters
 
-Once the provider exists, adding the example variant is straightforward:
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `ArgoCDNamespace` | `argocd` | Where to create Application CRs |
+| `DestinationServer` | `https://kubernetes.default.svc` | Target cluster |
+| `DestinationNamespace` | `default` | Target namespace |
+| `Project` | `default` | ArgoCD project |
+| `SyncPolicy` | `manual` | `automated` or `manual` |
+| `PruneEnabled` | false | ArgoCD prune option |
+| `SelfHealEnabled` | false | ArgoCD self-heal option |
+
+### Adding Example Variant
+
+Now that the provider exists, adding the variant is straightforward:
 
 ```bash
 # In lib.sh
@@ -284,11 +245,10 @@ DEPLOY_VARIANTS=(direct flux argo)
 # In setup.sh
 create_space_if_missing "$(argo_deploy_space)" "${argo_deploy_space_labels[@]}"
 create_clone_unit "$(argo_deploy_space)" "${DEPLOY_ARGO_UNIT}" "$(recipe_space)" "${RECIPE_UNIT}"
-# Apply same mutations as other variants
 
 # In set-target.sh
 case "${provider_type}" in
-  ArgoOCI|ArgoOCIWriter) variant="argo" ;;
+  ArgoCDOCI) variant="argo" ;;
 esac
 ```
 
@@ -367,12 +327,13 @@ Should ConfigHub control sync policy, or leave it to operator configuration?
 ## Next Steps
 
 1. ~~Confirm Argo OCI source support and version requirements~~ **DONE** — ArgoCD v3.1+ confirmed
-2. **Implement ArgoOCI provider type in worker** — Primary blocker
-3. Add ArgoOCI deployment variant to `single-component` and `gpu-eks-h100-training` — Blocked on step 2
-4. Add verification scripts for Argo sync/health evidence — Blocked on step 2
-5. Document the end-to-end proof flow — Blocked on step 2
+2. ~~Implement ArgoCDOCI provider type in worker~~ **EXISTS** — `confighub/public/bridge-impl/argocd/argocd_oci.go`
+3. **Add ArgoCDOCI deployment variant to `single-component`** — Ready to implement
+4. **Add ArgoCDOCI deployment variant to `gpu-eks-h100-training`** — Ready to implement
+5. Add verification scripts for Argo sync/health evidence
+6. Document the end-to-end proof flow
 
-**The critical path is step 2.** Everything else is blocked until the worker has the ArgoOCI provider.
+**No blockers.** The provider exists. Example variants can be added now.
 
 ## Related Documents
 

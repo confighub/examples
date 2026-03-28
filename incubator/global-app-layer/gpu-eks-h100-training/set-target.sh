@@ -20,16 +20,20 @@ for target_ref in "$@"; do
   set_target_for_compatible_units "${target_ref}"
 done
 
-save_state "${PREFIX}" "${DIRECT_TARGET_REF:-}" "${FLUX_TARGET_REF:-}"
-refresh_recipe_manifest_unit "${DIRECT_TARGET_REF:-}" "${FLUX_TARGET_REF:-}"
+save_state "${PREFIX}" "${DIRECT_TARGET_REF:-}" "${FLUX_TARGET_REF:-}" "${ARGO_TARGET_REF:-}"
+refresh_recipe_manifest_unit "${DIRECT_TARGET_REF:-}" "${FLUX_TARGET_REF:-}" "${ARGO_TARGET_REF:-}"
 
 echo "Updated deployment targets for ${EXAMPLE_NAME}"
 echo "- direct variant target: ${DIRECT_TARGET_REF:-<unset>}"
 echo "- flux variant target: ${FLUX_TARGET_REF:-<unset>}"
+echo "- argo variant target: ${ARGO_TARGET_REF:-<unset>}"
 if [[ -n "${DIRECT_TARGET_REF:-}" ]]; then
   echo "- direct bundle hint: $(bundle_hint_from_target_ref "${DIRECT_TARGET_REF}")"
 fi
 if [[ -n "${FLUX_TARGET_REF:-}" ]]; then
   echo "- flux bundle hint: $(bundle_hint_from_target_ref "${FLUX_TARGET_REF}")"
+fi
+if [[ -n "${ARGO_TARGET_REF:-}" ]]; then
+  echo "- argo bundle hint: $(bundle_hint_from_target_ref "${ARGO_TARGET_REF}")"
 fi
 show_summary

@@ -17,14 +17,13 @@ This package supports multiple delivery modes. Know which one applies:
 | Delivery Mode | Status | Description |
 |---------------|--------|-------------|
 | **Direct Kubernetes** | Fully working | Worker applies YAML via `kubectl apply`. Simplest real proof. |
-| **Flux OCI** | Current standard | Worker publishes OCI artifact, Flux reconciles workloads. |
-| **Argo OCI** | Target-state, not implemented | Future standard for Argo. Spec only, no implementation yet. |
+| **Flux OCI** | Fully working | Worker publishes OCI artifact, Flux reconciles workloads. |
+| **Argo OCI** | Fully working | Worker publishes OCI artifact, ArgoCD v3.1+ reconciles workloads. |
 | **ArgoCDRenderer** | Working, limited scope | Renderer path. Expects Argo `Application` payloads, not raw manifests. |
 
 For controller-oriented delivery in this package:
 
-- **Flux OCI** is the current standard path — see `gpu-eks-h100-training` for an explicit Flux leaf variant
-- **Argo OCI** is the target-state direction, but not yet implemented
+- **Flux OCI** and **Argo OCI** are both working paths — see `single-component` and `gpu-eks-h100-training` for explicit deployment variants
 - **ArgoCDRenderer** is **not** Argo OCI delivery — it is a renderer path that does not reconcile workloads
 
 ## Bundle Status
@@ -36,7 +35,7 @@ Today the honest status is:
 - recipe and layering side: real and better proven
 - bundle publication side: explained clearly, with a fixture-backed evidence sample
 - Flux OCI: working controller-oriented bundle path
-- Argo OCI: target-state, not yet implemented
+- Argo OCI: working controller-oriented bundle path (requires ArgoCD v3.1+)
 - full real bundle publication and inspection flow: not yet proven here
 
 Use these files accordingly:
@@ -113,7 +112,7 @@ What it writes:
 ## What You Should Expect To See
 
 In ConfigHub-only mode you should expect:
-- five, six, or seven new spaces sharing one prefix
+- five to eight new spaces sharing one prefix
 - units for each layer in the chain
 - one recipe manifest unit
 - `verify.sh` passing
@@ -124,6 +123,7 @@ In live mode you should additionally expect:
 - successful `cub unit apply`
 - for direct Kubernetes targets: worker-mediated apply evidence plus live cluster resources
 - for Flux OCI targets: OCI artifact published, Flux reconciliation evidence, plus live cluster resources
+- for Argo OCI targets: OCI artifact published, ArgoCD Application synced and healthy, plus live cluster resources
 - for ArgoCDRenderer targets: renderer-side evidence only (this is not workload delivery)
 
 ## What Good Demos Should Prove
@@ -146,8 +146,7 @@ If you take this package further into live delivery follow-ons, a believable liv
 What these demos should also make visible:
 
 - direct Kubernetes delivery is already a strong proof path in this package
-- Flux OCI is the current standard controller-oriented delivery path
-- Argo OCI is the target-state standard for Argo, not yet implemented
+- Flux OCI and Argo OCI are both working controller-oriented delivery paths
 - ArgoCDRenderer is a renderer path, not workload delivery — do not conflate these
 - worker resilience still needs to be demonstrated more explicitly through reconnect, retry, and resume behavior rather than treated as a hidden assumption
 
@@ -346,7 +345,7 @@ Three components (`backend` + `frontend` + `postgres`) — no stubs needed becau
 
 ### gpu-eks-h100-training
 
-This is NVIDIA's actual layering model: `base → platform(EKS) → accelerator(H100) → OS(Ubuntu) → recipe(training)` with two deployment variants at the leaf. Two components (`gpu-operator` + `nvidia-device-plugin`) with one direct deployment variant and one Flux deployment variant. Uses stub container images (`nginx:1.27-alpine`, `busybox:1.37`) so it runs on any cluster including local `kind`, but the structure is real — swap the images for NVIDIA's actual operator images and point at a GPU node pool and it works. Proves ConfigHub can express the same structure as NVIDIA's AICR pattern with real units, real variant links, real provenance tracking, and explicit deployment variants.
+This is NVIDIA's actual layering model: `base → platform(EKS) → accelerator(H100) → OS(Ubuntu) → recipe(training)` with three deployment variants at the leaf. Two components (`gpu-operator` + `nvidia-device-plugin`) with direct, Flux, and Argo deployment variants. Uses stub container images (`nginx:1.27-alpine`, `busybox:1.37`) so it runs on any cluster including local `kind`, but the structure is real — swap the images for NVIDIA's actual operator images and point at a GPU node pool and it works. Proves ConfigHub can express the same structure as NVIDIA's AICR pattern with real units, real variant links, real provenance tracking, and explicit deployment variants.
 
 If you can model NVIDIA's most complex recipe pattern in ConfigHub, you can model many layered patterns.
 
@@ -356,10 +355,10 @@ Every example creates real ConfigHub spaces, units, and layered variant chains. 
 
 | Example | Components | Layers | What it proves |
 |---|---|---|---|
-| [single-component](./single-component/) | backend + postgres stub | 5 (base → region → role → recipe → deploy) | The layered variant model works end-to-end |
+| [single-component](./single-component/) | backend + postgres stub | 5 (base → region → role → recipe → deploy) + 3 deployment variants | The layered variant model works end-to-end with all delivery modes |
 | [frontend-postgres](./frontend-postgres/) | frontend + postgres + backend stub | 5 | Dependencies can be stubs inside ConfigHub |
 | [realistic-app](./realistic-app/) | backend + frontend + postgres | 5 | A real multi-tier app works without stubs |
-| [gpu-eks-h100-training](./gpu-eks-h100-training/) | gpu-operator + nvidia-device-plugin | 5 shared layers + 2 deployment variants | NVIDIA's actual layering model in ConfigHub with explicit direct and Flux leaves |
+| [gpu-eks-h100-training](./gpu-eks-h100-training/) | gpu-operator + nvidia-device-plugin | 5 shared layers + 3 deployment variants | NVIDIA's actual layering model in ConfigHub with all delivery modes |
 
 ## How It Works
 
@@ -495,7 +494,7 @@ These documents explain the design thinking behind the examples and the current 
 4. [05-bundle-publication-walkthrough.md](./05-bundle-publication-walkthrough.md) — Honest staged walkthrough for the bundle publication story
 5. [bundle-evidence-sample/README.md](./bundle-evidence-sample/README.md) — Fixture-backed sample for bundle publication, integrity, and handoff evidence
 6. [06-bundle-evidence-gui-spec.md](./06-bundle-evidence-gui-spec.md) — GUI-first view of the bundle evidence story
-7. [07-argo-oci-spec.md](./07-argo-oci-spec.md) — Argo OCI specification (target-state, not yet implemented)
+7. [07-argo-oci-spec.md](./07-argo-oci-spec.md) — Argo OCI specification and implementation details
 
 ## End-to-End Testing
 

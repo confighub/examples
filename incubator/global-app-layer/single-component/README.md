@@ -16,15 +16,16 @@ The recipe is the ordered chain of variants, not the bundle.
 |---------------|--------|-------|
 | **Direct Kubernetes** | Fully working | Worker applies YAML via `kubectl apply`. Smallest real proof. |
 | **Flux OCI** | Fully working | Explicit Flux deployment variant. Current standard controller path. |
-| **Argo OCI** | Not yet implemented | Target-state direction. See [`07-argo-oci-spec.md`](../07-argo-oci-spec.md). |
+| **Argo OCI** | Fully working | Explicit Argo deployment variant. Requires ArgoCD v3.1+. See [`07-argo-oci-spec.md`](../07-argo-oci-spec.md). |
 | **ArgoCDRenderer** | Incompatible | Expects Argo `Application` payloads, not raw manifests. |
 
-This example has **both Direct Kubernetes and Flux OCI** working:
+This example has **all three delivery modes** working:
 
 - Direct deployment variant: `<prefix>-deploy-cluster-a`
 - Flux deployment variant: `<prefix>-deploy-cluster-a-flux`
+- Argo deployment variant: `<prefix>-deploy-cluster-a-argo`
 
-This is the smallest layered recipe example with full OCI bundle delivery support.
+This is the smallest layered recipe example with full OCI bundle delivery support for both Flux and Argo.
 
 ## What This Example Is For
 
@@ -54,10 +55,10 @@ What it reads:
 - current ConfigHub context and optional target ref
 
 What it writes:
-- six ConfigHub spaces with a shared prefix
+- seven ConfigHub spaces with a shared prefix
 - one layered backend chain
-- two deployment variants at the leaf (direct and flux)
-- two deploy-stage `postgres-stub` variants
+- three deployment variants at the leaf (direct, flux, and argo)
+- three deploy-stage `postgres-stub` variants
 - one recipe manifest unit
 - optional target bindings for each variant
 - optional live deployment state only if you explicitly bind and apply
@@ -65,10 +66,10 @@ What it writes:
 ## What You Should Expect To See
 
 In ConfigHub-only mode:
-- six spaces sharing one prefix
+- seven spaces sharing one prefix
 - one layered backend chain
-- two deployment variants at the leaf
-- two deploy-stage stubs
+- three deployment variants at the leaf
+- three deploy-stage stubs
 - one recipe manifest unit
 - `verify.sh` passing
 
@@ -92,7 +93,7 @@ One component from `global-app`:
 
 - source manifest: `../../../global-app/baseconfig/backend.yaml`
 
-One materialized chain with two deployment variants:
+One materialized chain with three deployment variants:
 
 ```mermaid
 flowchart LR
@@ -101,11 +102,13 @@ flowchart LR
   Role --> Recipe["backend-recipe-us-staging"]
   Recipe --> DirectDeploy["backend-cluster-a"]
   Recipe --> FluxDeploy["backend-cluster-a-flux"]
+  Recipe --> ArgoDeploy["backend-cluster-a-argo"]
   DirectDeploy --> DirectBundle["direct apply"]
   FluxDeploy --> FluxBundle["OCI bundle → Flux"]
+  ArgoDeploy --> ArgoBundle["OCI bundle → Argo"]
 ```
 
-The chain is split across six spaces:
+The chain is split across seven spaces:
 
 - `catalog-base`
 - `catalog-us`
@@ -113,6 +116,7 @@ The chain is split across six spaces:
 - `recipe-us-staging`
 - `deploy-cluster-a` (direct variant)
 - `deploy-cluster-a-flux` (Flux variant)
+- `deploy-cluster-a-argo` (Argo variant)
 
 The example also writes an explicit recipe manifest unit into the recipe space. ConfigHub does not need a first-class `Recipe` type for the chain to work. The variant chain is what ConfigHub executes; the recipe manifest is the receipt that explains how it was assembled.
 
@@ -170,9 +174,10 @@ If you did not pass targets during setup:
 ```bash
 ./set-target.sh <kubernetes-target>   # binds the direct deployment variant
 ./set-target.sh <fluxoci-target>      # binds the Flux deployment variant
+./set-target.sh <argocdoci-target>    # binds the Argo deployment variant
 ```
 
-Then you can use normal ConfigHub apply flow on either deployment variant:
+Then you can use normal ConfigHub apply flow on any deployment variant:
 
 Direct variant:
 ```bash
@@ -186,11 +191,18 @@ cub unit approve --space <prefix>-deploy-cluster-a-flux backend-cluster-a-flux
 cub unit apply --space <prefix>-deploy-cluster-a-flux backend-cluster-a-flux
 ```
 
+Argo variant:
+```bash
+cub unit approve --space <prefix>-deploy-cluster-a-argo backend-cluster-a-argo
+cub unit apply --space <prefix>-deploy-cluster-a-argo backend-cluster-a-argo
+```
+
 The bundle belongs to the target. The recipe manifest records the chain that produced the deployment, and includes bundle hints once targets are set.
 
 Supported live target provider types:
 - `Kubernetes` → direct deployment variant
 - `FluxOCI` or `FluxOCIWriter` → Flux deployment variant
+- `ArgoCDOCI` → Argo deployment variant
 
 ## Inspecting the Result
 
@@ -200,6 +212,9 @@ cub unit get --space <prefix>-deploy-cluster-a --data-only backend-cluster-a
 
 # Show the Flux deployment data
 cub unit get --space <prefix>-deploy-cluster-a-flux --data-only backend-cluster-a-flux
+
+# Show the Argo deployment data
+cub unit get --space <prefix>-deploy-cluster-a-argo --data-only backend-cluster-a-argo
 
 # Show the explicit recipe manifest
 cub unit get --space <prefix>-recipe-us-staging --data-only recipe-us-staging
@@ -242,4 +257,13 @@ A working Flux OCI proof must show:
 5. Flux reconciles the workload to the cluster
 6. Live cluster resources match the expected state
 
-For the Argo OCI verification contract (target-state, not yet implemented), see [`07-argo-oci-spec.md`](../07-argo-oci-spec.md).
+A working Argo OCI proof must show:
+
+1. Argo deployment unit exists with correct upstream (recipe unit)
+2. Argo deployment unit is bound to an `ArgoCDOCI` target
+3. `cub unit apply` publishes an OCI artifact
+4. ArgoCD `Application` resource is created with OCI source
+5. ArgoCD syncs and reports Healthy status
+6. Live cluster resources match the expected state
+
+For full Argo OCI specification, see [`07-argo-oci-spec.md`](../07-argo-oci-spec.md).

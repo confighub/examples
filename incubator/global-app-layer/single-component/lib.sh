@@ -18,6 +18,7 @@ ROLE_SPACE_SUFFIX="catalog-us-staging"
 RECIPE_SPACE_SUFFIX="recipe-us-staging"
 DEPLOY_SPACE_SUFFIX="deploy-cluster-a"
 DEPLOY_FLUX_SPACE_SUFFIX="deploy-cluster-a-flux"
+DEPLOY_ARGO_SPACE_SUFFIX="deploy-cluster-a-argo"
 
 BASE_UNIT="backend-base"
 REGION_UNIT="backend-us"
@@ -25,9 +26,10 @@ ROLE_UNIT="backend-us-staging"
 RECIPE_UNIT="backend-recipe-us-staging"
 DEPLOY_UNIT="backend-cluster-a"
 DEPLOY_FLUX_UNIT="backend-cluster-a-flux"
+DEPLOY_ARGO_UNIT="backend-cluster-a-argo"
 RECIPE_MANIFEST_UNIT="recipe-us-staging"
 
-DEPLOY_VARIANTS=(direct flux)
+DEPLOY_VARIANTS=(direct flux argo)
 
 REGION_VALUE="US"
 ROLE_VALUE="staging"
@@ -95,16 +97,18 @@ load_state() {
   source "${STATE_FILE}"
   : "${DIRECT_TARGET_REF:=${TARGET_REF:-}}"
   : "${FLUX_TARGET_REF:=}"
+  : "${ARGO_TARGET_REF:=}"
 }
 
 save_state() {
   local prefix="$1"
   local direct_target_ref="${2:-}"
   local flux_target_ref="${3:-}"
+  local argo_target_ref="${4:-}"
 
   ensure_state_dir
-  printf 'PREFIX=%q\nTARGET_REF=%q\nDIRECT_TARGET_REF=%q\nFLUX_TARGET_REF=%q\nDEPLOY_NAMESPACE=%q\n' \
-    "${prefix}" "${direct_target_ref}" "${direct_target_ref}" "${flux_target_ref}" "${DEPLOY_NAMESPACE}" >"${STATE_FILE}"
+  printf 'PREFIX=%q\nTARGET_REF=%q\nDIRECT_TARGET_REF=%q\nFLUX_TARGET_REF=%q\nARGO_TARGET_REF=%q\nDEPLOY_NAMESPACE=%q\n' \
+    "${prefix}" "${direct_target_ref}" "${direct_target_ref}" "${flux_target_ref}" "${argo_target_ref}" "${DEPLOY_NAMESPACE}" >"${STATE_FILE}"
 }
 
 state_prefix() {
@@ -140,11 +144,16 @@ flux_deploy_space() {
   space_name "${DEPLOY_FLUX_SPACE_SUFFIX}"
 }
 
+argo_deploy_space() {
+  space_name "${DEPLOY_ARGO_SPACE_SUFFIX}"
+}
+
 deploy_space_for_variant() {
   local variant="$1"
   case "${variant}" in
     direct) deploy_space ;;
     flux) flux_deploy_space ;;
+    argo) argo_deploy_space ;;
     *)
       echo "Unknown deployment variant: ${variant}" >&2
       exit 1
@@ -157,6 +166,7 @@ deployment_unit_name() {
   case "${variant}" in
     direct) echo "${DEPLOY_UNIT}" ;;
     flux) echo "${DEPLOY_FLUX_UNIT}" ;;
+    argo) echo "${DEPLOY_ARGO_UNIT}" ;;
     *)
       echo "Unknown deployment variant: ${variant}" >&2
       exit 1
@@ -326,6 +336,7 @@ deployment_variant_for_provider_type() {
   case "${provider_type}" in
     Kubernetes) echo "direct" ;;
     FluxOCI|FluxOCIWriter) echo "flux" ;;
+    ArgoCDOCI) echo "argo" ;;
     *) echo "" ;;
   esac
 }
@@ -335,6 +346,7 @@ supported_target_description() {
 Supported live target provider types for this example:
 - Kubernetes -> direct deployment variant
 - FluxOCI or FluxOCIWriter -> Flux deployment variant
+- ArgoCDOCI -> Argo deployment variant
 EOF_TARGETS
 }
 
@@ -376,6 +388,11 @@ set_target_for_compatible_units() {
       cub unit set-target "${target_ref}" --space "$(flux_deploy_space)" --unit "${DEPLOY_FLUX_UNIT}"
       cub unit set-target "${target_ref}" --space "$(flux_deploy_space)" --unit "postgres-stub-flux"
       FLUX_TARGET_REF="${target_ref}"
+      ;;
+    argo)
+      cub unit set-target "${target_ref}" --space "$(argo_deploy_space)" --unit "${DEPLOY_ARGO_UNIT}"
+      cub unit set-target "${target_ref}" --space "$(argo_deploy_space)" --unit "postgres-stub-argo"
+      ARGO_TARGET_REF="${target_ref}"
       ;;
     *)
       echo "Unsupported target provider type: ${provider_type}" >&2
@@ -435,7 +452,7 @@ Inputs:
 - deploy namespace: ${DEPLOY_NAMESPACE}
 - targets: ${target_display}
 
-This example materializes one recipe chain and two deployment variants at the leaf.
+This example materializes one recipe chain and three deployment variants at the leaf.
 The shared recipe is the app-level intent; the deployment units are the leaf deployment variants.
 
 Spaces that ./setup.sh will create:
@@ -444,7 +461,8 @@ Spaces that ./setup.sh will create:
 - $(role_space)
 - $(recipe_space)
 - $(deploy_space)        # direct deployment variant
-- $(flux_deploy_space)   # Flux deployment variant
+- $(flux_deploy_space)   # Flux OCI deployment variant
+- $(argo_deploy_space)   # Argo OCI deployment variant
 
 Variant chain:
 - $(base_space)/${BASE_UNIT}
@@ -453,16 +471,18 @@ Variant chain:
 - $(recipe_space)/${RECIPE_UNIT}
 - $(deploy_space)/${DEPLOY_UNIT} (direct)
 - $(flux_deploy_space)/${DEPLOY_FLUX_UNIT} (flux)
+- $(argo_deploy_space)/${DEPLOY_ARGO_UNIT} (argo)
 
 Dependency stub:
 - $(deploy_space)/${DEPLOY_STUB_UNIT} (direct)
 - $(flux_deploy_space)/postgres-stub-flux (flux)
+- $(argo_deploy_space)/postgres-stub-argo (argo)
 
 Layer mutations:
 - region: set backend REGION=${REGION_VALUE} and regional ingress host
 - role: set ROLE=${ROLE_VALUE}, replicas=2, and LOG_LEVEL=info
 - recipe: set CHAT_TITLE for the resolved recipe
-- deployment (both variants): set namespace=${DEPLOY_NAMESPACE}, CLUSTER=${DEPLOY_NAMESPACE}, and deployment ingress host
+- deployment (all variants): set namespace=${DEPLOY_NAMESPACE}, CLUSTER=${DEPLOY_NAMESPACE}, and deployment ingress host
 - dependency stub: create postgres stub and set its namespace
 
 Recipe manifest:
@@ -480,6 +500,7 @@ Core cub commands:
 - cub function do set-namespace
 - cub unit set-target <kubernetes-target>   # for direct variant
 - cub unit set-target <fluxoci-target>      # for flux variant
+- cub unit set-target <argocdoci-target>    # for argo variant
 EOF_PLAN
 }
 
@@ -501,12 +522,14 @@ show_setup_plan_json() {
     --arg recipeSpace "$(recipe_space)" \
     --arg directDeploySpace "$(deploy_space)" \
     --arg fluxDeploySpace "$(flux_deploy_space)" \
+    --arg argoDeploySpace "$(argo_deploy_space)" \
     --arg baseUnit "${BASE_UNIT}" \
     --arg regionUnit "${REGION_UNIT}" \
     --arg roleUnit "${ROLE_UNIT}" \
     --arg recipeUnit "${RECIPE_UNIT}" \
     --arg directDeployUnit "${DEPLOY_UNIT}" \
     --arg fluxDeployUnit "${DEPLOY_FLUX_UNIT}" \
+    --arg argoDeployUnit "${DEPLOY_ARGO_UNIT}" \
     --arg stubUnit "${DEPLOY_STUB_UNIT}" \
     --arg manifestUnit "${RECIPE_MANIFEST_UNIT}" \
     --arg manifestTemplate "${RECIPE_BASE_TEMPLATE}" \
@@ -524,7 +547,8 @@ show_setup_plan_json() {
         {stage: "role", space: $roleSpace},
         {stage: "recipe", space: $recipeSpace},
         {stage: "deployment", variant: "direct", space: $directDeploySpace},
-        {stage: "deployment", variant: "flux", space: $fluxDeploySpace}
+        {stage: "deployment", variant: "flux", space: $fluxDeploySpace},
+        {stage: "deployment", variant: "argo", space: $argoDeploySpace}
       ],
       components: [
         {
@@ -538,13 +562,14 @@ show_setup_plan_json() {
           ],
           deploymentVariants: [
             {variant: "direct", space: $directDeploySpace, unit: $directDeployUnit},
-            {variant: "flux", space: $fluxDeploySpace, unit: $fluxDeployUnit}
+            {variant: "flux", space: $fluxDeploySpace, unit: $fluxDeployUnit},
+            {variant: "argo", space: $argoDeploySpace, unit: $argoDeployUnit}
           ],
           mutations: [
             {stage: "region", summary: "set backend REGION and regional ingress host"},
             {stage: "role", summary: "set ROLE, replicas, and LOG_LEVEL"},
             {stage: "recipe", summary: "set CHAT_TITLE"},
-            {stage: "deploymentVariants", summary: "set namespace, CLUSTER, and deployment ingress host on both variants"}
+            {stage: "deploymentVariants", summary: "set namespace, CLUSTER, and deployment ingress host on all variants"}
           ]
         },
         {
@@ -553,7 +578,8 @@ show_setup_plan_json() {
           stub: true,
           deploymentVariants: [
             {variant: "direct", space: $directDeploySpace, unit: $stubUnit},
-            {variant: "flux", space: $fluxDeploySpace, unit: "postgres-stub-flux"}
+            {variant: "flux", space: $fluxDeploySpace, unit: "postgres-stub-flux"},
+            {variant: "argo", space: $argoDeploySpace, unit: "postgres-stub-argo"}
           ],
           mutations: [
             {stage: "deployment", summary: "set namespace"}
@@ -575,7 +601,8 @@ show_setup_plan_json() {
         "cub function do set-string-path",
         "cub function do set-namespace",
         "cub unit set-target <kubernetes target>",
-        "cub unit set-target <fluxoci target>"
+        "cub unit set-target <fluxoci target>",
+        "cub unit set-target <argocdoci target>"
       ]
     }'
 }
@@ -588,17 +615,20 @@ render_recipe_manifest() {
   local output_path="$1"
   local direct_target_ref="$2"
   local flux_target_ref="$3"
+  local argo_target_ref="${4:-}"
   local effective_direct_target_ref="${direct_target_ref:-unset}"
   local effective_flux_target_ref="${flux_target_ref:-unset}"
+  local effective_argo_target_ref="${argo_target_ref:-unset}"
 
-  local base_rev region_rev role_rev recipe_rev deploy_rev flux_deploy_rev
-  local base_hash region_hash role_hash recipe_hash deploy_hash flux_deploy_hash
+  local base_rev region_rev role_rev recipe_rev deploy_rev flux_deploy_rev argo_deploy_rev
+  local base_hash region_hash role_hash recipe_hash deploy_hash flux_deploy_hash argo_deploy_hash
   base_rev="$(get_unit_field "$(base_space)" "${BASE_UNIT}" HeadRevisionNum)"
   region_rev="$(get_unit_field "$(region_space)" "${REGION_UNIT}" HeadRevisionNum)"
   role_rev="$(get_unit_field "$(role_space)" "${ROLE_UNIT}" HeadRevisionNum)"
   recipe_rev="$(get_unit_field "$(recipe_space)" "${RECIPE_UNIT}" HeadRevisionNum)"
   deploy_rev="$(get_unit_field "$(deploy_space)" "${DEPLOY_UNIT}" HeadRevisionNum)"
   flux_deploy_rev="$(get_unit_field "$(flux_deploy_space)" "${DEPLOY_FLUX_UNIT}" HeadRevisionNum)"
+  argo_deploy_rev="$(get_unit_field "$(argo_deploy_space)" "${DEPLOY_ARGO_UNIT}" HeadRevisionNum)"
 
   base_hash="$(get_unit_field "$(base_space)" "${BASE_UNIT}" DataHash || true)"
   region_hash="$(get_unit_field "$(region_space)" "${REGION_UNIT}" DataHash || true)"
@@ -606,6 +636,7 @@ render_recipe_manifest() {
   recipe_hash="$(get_unit_field "$(recipe_space)" "${RECIPE_UNIT}" DataHash || true)"
   deploy_hash="$(get_unit_field "$(deploy_space)" "${DEPLOY_UNIT}" DataHash || true)"
   flux_deploy_hash="$(get_unit_field "$(flux_deploy_space)" "${DEPLOY_FLUX_UNIT}" DataHash || true)"
+  argo_deploy_hash="$(get_unit_field "$(argo_deploy_space)" "${DEPLOY_ARGO_UNIT}" DataHash || true)"
 
   sed \
     -e "s|confighubplaceholder-chain-name|${CHAIN_LABEL}|g" \
@@ -635,10 +666,16 @@ render_recipe_manifest() {
     -e "s|confighubplaceholder-flux-deploy-unit|${DEPLOY_FLUX_UNIT}|g" \
     -e "s|confighubplaceholder-flux-deploy-revision|${flux_deploy_rev}|g" \
     -e "s|confighubplaceholder-flux-deploy-hash|${flux_deploy_hash}|g" \
+    -e "s|confighubplaceholder-argo-deploy-space|$(argo_deploy_space)|g" \
+    -e "s|confighubplaceholder-argo-deploy-unit|${DEPLOY_ARGO_UNIT}|g" \
+    -e "s|confighubplaceholder-argo-deploy-revision|${argo_deploy_rev}|g" \
+    -e "s|confighubplaceholder-argo-deploy-hash|${argo_deploy_hash}|g" \
     -e "s|confighubplaceholder-direct-target-ref|${effective_direct_target_ref}|g" \
     -e "s|confighubplaceholder-direct-bundle-hint|$(bundle_hint_from_target_ref "${direct_target_ref}")|g" \
     -e "s|confighubplaceholder-flux-target-ref|${effective_flux_target_ref}|g" \
     -e "s|confighubplaceholder-flux-bundle-hint|$(bundle_hint_from_target_ref "${flux_target_ref}")|g" \
+    -e "s|confighubplaceholder-argo-target-ref|${effective_argo_target_ref}|g" \
+    -e "s|confighubplaceholder-argo-bundle-hint|$(bundle_hint_from_target_ref "${argo_target_ref}")|g" \
     -e "s|confighubplaceholder-target-ref|${effective_direct_target_ref}|g" \
     -e "s|confighubplaceholder-bundle-hint|$(bundle_hint_from_target_ref "${direct_target_ref}")|g" \
     "${RECIPE_BASE_TEMPLATE}" >"${output_path}"
@@ -647,9 +684,10 @@ render_recipe_manifest() {
 refresh_recipe_manifest_unit() {
   local direct_target_ref="$1"
   local flux_target_ref="$2"
+  local argo_target_ref="${3:-}"
   local rendered_manifest="${STATE_DIR}/recipe-us-staging.rendered.yaml"
   ensure_state_dir
-  render_recipe_manifest "${rendered_manifest}" "${direct_target_ref}" "${flux_target_ref}"
+  render_recipe_manifest "${rendered_manifest}" "${direct_target_ref}" "${flux_target_ref}" "${argo_target_ref}"
 
   if unit_exists "$(recipe_space)" "${RECIPE_MANIFEST_UNIT}"; then
     cub unit update --space "$(recipe_space)" "${RECIPE_MANIFEST_UNIT}" "${rendered_manifest}"
@@ -661,13 +699,16 @@ refresh_recipe_manifest_unit() {
 }
 
 show_summary() {
-  local recipe_space_url deploy_space_url flux_deploy_space_url recipe_unit_url deploy_unit_url flux_deploy_unit_url
+  local recipe_space_url deploy_space_url flux_deploy_space_url argo_deploy_space_url
+  local recipe_unit_url deploy_unit_url flux_deploy_unit_url argo_deploy_unit_url
   recipe_space_url="$(gui_space_url "$(recipe_space)")"
   deploy_space_url="$(gui_space_url "$(deploy_space)")"
   flux_deploy_space_url="$(gui_space_url "$(flux_deploy_space)")"
+  argo_deploy_space_url="$(gui_space_url "$(argo_deploy_space)")"
   recipe_unit_url="$(gui_unit_url "$(recipe_space)" "${RECIPE_MANIFEST_UNIT}")"
   deploy_unit_url="$(gui_unit_url "$(deploy_space)" "${DEPLOY_UNIT}")"
   flux_deploy_unit_url="$(gui_unit_url "$(flux_deploy_space)" "${DEPLOY_FLUX_UNIT}")"
+  argo_deploy_unit_url="$(gui_unit_url "$(argo_deploy_space)" "${DEPLOY_ARGO_UNIT}")"
   cat <<EOF_SUMMARY
 Created global-app layered chain with prefix: $(state_prefix)
 
@@ -678,6 +719,7 @@ Spaces:
 - $(recipe_space)
 - $(deploy_space)
 - $(flux_deploy_space)
+- $(argo_deploy_space)
 
 Units:
 - $(base_space)/${BASE_UNIT}
@@ -689,25 +731,32 @@ Units:
 - $(deploy_space)/${DEPLOY_STUB_UNIT}
 - $(flux_deploy_space)/${DEPLOY_FLUX_UNIT}
 - $(flux_deploy_space)/postgres-stub-flux
+- $(argo_deploy_space)/${DEPLOY_ARGO_UNIT}
+- $(argo_deploy_space)/postgres-stub-argo
 
 Model:
 - shared recipe: ${CHAIN_LABEL}
 - deployment variants:
   - direct: ${DEPLOY_UNIT}
   - flux: ${DEPLOY_FLUX_UNIT}
+  - argo: ${DEPLOY_ARGO_UNIT}
 - supported live targets:
   - Kubernetes -> direct variant
   - FluxOCI / FluxOCIWriter -> flux variant
+  - ArgoCDOCI -> argo variant
 - direct target: ${DIRECT_TARGET_REF:-<unset>}
 - flux target: ${FLUX_TARGET_REF:-<unset>}
+- argo target: ${ARGO_TARGET_REF:-<unset>}
 
 GUI:
 - Recipe space: ${recipe_space_url}
 - Direct deploy space: ${deploy_space_url}
 - Flux deploy space: ${flux_deploy_space_url}
+- Argo deploy space: ${argo_deploy_space_url}
 - Recipe manifest: ${recipe_unit_url}
 - Direct deployment unit: ${deploy_unit_url}
 - Flux deployment unit: ${flux_deploy_unit_url}
+- Argo deployment unit: ${argo_deploy_unit_url}
 
 Logs:
 - Setup log: $(current_log_path setup)
@@ -720,8 +769,10 @@ Next steps:
 2. ./upgrade-chain.sh ${DEFAULT_IMAGE_TAG}
 3. ./set-target.sh <kubernetes-target>        # binds the direct deployment variant
 4. ./set-target.sh <fluxoci-target>           # binds the Flux deployment variant
-5. cub unit approve --space $(deploy_space) ${DEPLOY_UNIT} && cub unit apply --space $(deploy_space) ${DEPLOY_UNIT}
-6. cub unit approve --space $(flux_deploy_space) ${DEPLOY_FLUX_UNIT} && cub unit apply --space $(flux_deploy_space) ${DEPLOY_FLUX_UNIT}
-7. Review recipe manifest: cub unit get --space $(recipe_space) --data-only ${RECIPE_MANIFEST_UNIT}
+5. ./set-target.sh <argocdoci-target>         # binds the Argo deployment variant
+6. cub unit approve --space $(deploy_space) ${DEPLOY_UNIT} && cub unit apply --space $(deploy_space) ${DEPLOY_UNIT}
+7. cub unit approve --space $(flux_deploy_space) ${DEPLOY_FLUX_UNIT} && cub unit apply --space $(flux_deploy_space) ${DEPLOY_FLUX_UNIT}
+8. cub unit approve --space $(argo_deploy_space) ${DEPLOY_ARGO_UNIT} && cub unit apply --space $(argo_deploy_space) ${DEPLOY_ARGO_UNIT}
+9. Review recipe manifest: cub unit get --space $(recipe_space) --data-only ${RECIPE_MANIFEST_UNIT}
 EOF_SUMMARY
 }

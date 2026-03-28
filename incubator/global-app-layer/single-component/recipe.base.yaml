@@ -34,13 +34,32 @@ spec:
       revision: confighubplaceholder-recipe-revision
       dataHash: confighubplaceholder-recipe-hash
       mutationDelta: set CHAT_TITLE to recipe-specific value
-    - name: deployment
+  deploymentVariants:
+    - name: direct
       space: confighubplaceholder-deploy-space
       unit: confighubplaceholder-deploy-unit
       revision: confighubplaceholder-deploy-revision
       dataHash: confighubplaceholder-deploy-hash
       mutationDelta: set namespace=cluster-a, CLUSTER env var, and deployment host
-  publish:
-    targetRef: confighubplaceholder-target-ref
-    bundleHint: confighubplaceholder-bundle-hint
-    note: The bundle is the deployable output of the deployment unit's target, not the source of truth for the layer chain.
+      providerType: Kubernetes
+      targetRef: confighubplaceholder-direct-target-ref
+      bundleHint: confighubplaceholder-direct-bundle-hint
+    - name: flux
+      space: confighubplaceholder-flux-deploy-space
+      unit: confighubplaceholder-flux-deploy-unit
+      revision: confighubplaceholder-flux-deploy-revision
+      dataHash: confighubplaceholder-flux-deploy-hash
+      mutationDelta: set namespace=cluster-a, CLUSTER env var, and deployment host
+      providerType: FluxOCI
+      targetRef: confighubplaceholder-flux-target-ref
+      bundleHint: confighubplaceholder-flux-bundle-hint
+    - name: argo
+      space: confighubplaceholder-argo-deploy-space
+      unit: confighubplaceholder-argo-deploy-unit
+      revision: confighubplaceholder-argo-deploy-revision
+      dataHash: confighubplaceholder-argo-deploy-hash
+      mutationDelta: set namespace=cluster-a, CLUSTER env var, and deployment host
+      providerType: ArgoCDOCI
+      targetRef: confighubplaceholder-argo-target-ref
+      bundleHint: confighubplaceholder-argo-bundle-hint
+  note: The bundle is the deployable output of each deployment variant's target. The recipe unit (above) is the shared app-level intent.

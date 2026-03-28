@@ -22,15 +22,16 @@ The point is not to recreate all of NVIDIA AICR. The point is to show how Config
 |---------------|--------|-------|
 | **Direct Kubernetes** | Fully working | Worker applies YAML via `kubectl apply`. |
 | **Flux OCI** | Fully working | Explicit Flux deployment variant. Current standard controller path. |
-| **Argo OCI** | Not yet implemented | Target-state direction. Spec to be written. |
+| **Argo OCI** | Fully working | Explicit Argo deployment variant. Requires ArgoCD v3.1+. See [`07-argo-oci-spec.md`](../07-argo-oci-spec.md). |
 | **ArgoCDRenderer** | Incompatible | Expects Argo `Application` payloads, not raw manifests. |
 
-This example has **both Direct Kubernetes and Flux OCI** working:
+This example has **all three delivery modes** working:
 
 - Direct deployment variant: `<prefix>-deploy-cluster-a`
 - Flux deployment variant: `<prefix>-deploy-cluster-a-flux`
+- Argo deployment variant: `<prefix>-deploy-cluster-a-argo`
 
-Use this as the reference implementation for Flux OCI in the layered recipe examples.
+Use this as the reference implementation for OCI bundle delivery in the layered recipe examples.
 
 ## What This Example Is For
 
@@ -60,21 +61,22 @@ What it reads:
 - current ConfigHub context and optional target ref
 
 What it writes:
-- seven ConfigHub spaces with a shared prefix
+- eight ConfigHub spaces with a shared prefix
 - units for each layer of both components
 - clone links / variant ancestry
 - one stack-level recipe manifest
 - one direct deployment unit per component in the direct deploy space
 - one Flux deployment unit per component in the Flux deploy space
+- one Argo deployment unit per component in the Argo deploy space
 - optional target bindings
 - optional live deployment state only if you explicitly bind and apply
 
 ## What You Should Expect To See
 
 In ConfigHub-only mode:
-- seven spaces sharing one prefix
+- eight spaces sharing one prefix
 - two layered GPU chains
-- two deployment variants at the leaf
+- three deployment variants at the leaf
 - one recipe manifest unit
 - `verify.sh` passing
 
@@ -128,6 +130,7 @@ flowchart LR
   GOS --> GRecipe["gpu-operator-eks-h100-ubuntu-training"]
   GRecipe --> GDeploy["gpu-operator-cluster-a"]
   GRecipe --> GFlux["gpu-operator-cluster-a-flux"]
+  GRecipe --> GArgo["gpu-operator-cluster-a-argo"]
 
   PBase["nvidia-device-plugin-base"] --> PPlatform["nvidia-device-plugin-eks"]
   PPlatform --> PAccel["nvidia-device-plugin-eks-h100"]
@@ -135,9 +138,10 @@ flowchart LR
   POS --> PRecipe["nvidia-device-plugin-eks-h100-ubuntu-training"]
   PRecipe --> PDeploy["nvidia-device-plugin-cluster-a"]
   PRecipe --> PFlux["nvidia-device-plugin-cluster-a-flux"]
+  PRecipe --> PArgo["nvidia-device-plugin-cluster-a-argo"]
 ```
 
-The chains are split across seven shared spaces:
+The chains are split across eight shared spaces:
 
 - `catalog-base`
 - `catalog-eks`
@@ -146,6 +150,7 @@ The chains are split across seven shared spaces:
 - `recipe-eks-h100-ubuntu-training`
 - `deploy-cluster-a`
 - `deploy-cluster-a-flux`
+- `deploy-cluster-a-argo`
 
 The example also writes one explicit recipe manifest unit into the recipe space:
 
@@ -172,13 +177,13 @@ Component-specific mutations:
   - `accelerator`: set `ACCELERATOR=h100` and `NODE_SELECTOR=nvidia-h100`
   - `os`: set `OS_FAMILY=ubuntu` and `DRIVER_BRANCH=550-ubuntu22.04`
   - `recipe`: set `WORKLOAD_INTENT=training` and `VALIDATION_PROFILE=training-smoke`
-  - `deployment variants`: set namespace and `CLUSTER=cluster-a` on both the direct and Flux leaves
+  - `deployment variants`: set namespace and `CLUSTER=cluster-a` on all three leaves (direct, flux, argo)
 - `nvidia-device-plugin`
   - `platform`: set `CLOUD_PROVIDER=eks` and `PLUGIN_CONFIG=eks-gp3`
   - `accelerator`: set `ACCELERATOR=h100` and `NODE_SELECTOR=nvidia-h100`
   - `os`: set `OS_FAMILY=ubuntu` and `PLUGIN_CONFIG=ubuntu-h100`
   - `recipe`: set `WORKLOAD_INTENT=training` and `PLUGIN_CONFIG=training-smoke`
-  - `deployment variants`: set namespace and `CLUSTER=cluster-a` on both the direct and Flux leaves
+  - `deployment variants`: set namespace and `CLUSTER=cluster-a` on all three leaves (direct, flux, argo)
 
 This is the main user-facing point of the example: one recipe can govern multiple related components while keeping shared layer meaning and component-specific changes separate. The variant chains are what ConfigHub executes; the recipe manifest is the receipt that explains the full GPU stack.
 
@@ -188,6 +193,7 @@ It also fits the App-Deployment-Target model used elsewhere in the examples:
 - this example now materializes:
   - one direct deployment variant
   - one Flux deployment variant
+  - one Argo deployment variant
 
 ## Quick Start
 
@@ -204,6 +210,7 @@ cd incubator/global-app-layer/gpu-eks-h100-training
 ./setup.sh                                            # ConfigHub-only
 ./setup.sh <prefix> <kubernetes-target>               # bind direct variant during setup
 ./setup.sh <prefix> <kubernetes-target> <fluxoci-target>  # bind direct and Flux variants during setup
+./setup.sh <prefix> <kubernetes-target> <fluxoci-target> <argocdoci-target>  # bind all three variants
 ./verify.sh
 ```
 
@@ -225,9 +232,10 @@ If you did not pass a target during setup:
 ```bash
 ./set-target.sh <kubernetes-target>
 ./set-target.sh <fluxoci-target>
+./set-target.sh <argocdoci-target>
 ```
 
-Then you can use normal ConfigHub apply flow on either deployment variant.
+Then you can use normal ConfigHub apply flow on any deployment variant.
 
 Direct Kubernetes variant:
 
@@ -249,10 +257,21 @@ cub unit apply --space <prefix>-deploy-cluster-a-flux gpu-operator-cluster-a-flu
 cub unit apply --space <prefix>-deploy-cluster-a-flux nvidia-device-plugin-cluster-a-flux
 ```
 
+Argo deployment variant:
+
+```bash
+cub unit approve --space <prefix>-deploy-cluster-a-argo gpu-operator-cluster-a-argo
+cub unit approve --space <prefix>-deploy-cluster-a-argo nvidia-device-plugin-cluster-a-argo
+
+cub unit apply --space <prefix>-deploy-cluster-a-argo gpu-operator-cluster-a-argo
+cub unit apply --space <prefix>-deploy-cluster-a-argo nvidia-device-plugin-cluster-a-argo
+```
+
 Important:
-- this example now supports two honest live paths:
+- this example now supports three honest live paths:
   - `Kubernetes` target -> direct deployment variant
   - `FluxOCI` or `FluxOCIWriter` target -> Flux deployment variant
+  - `ArgoCDOCI` target -> Argo deployment variant
 - the deployment units here are raw Kubernetes manifests
 - the current `ArgoCDRenderer` path is renderer-oriented and expects Argo CD `Application` payloads, so the helper scripts still reject it for this example instead of implying a real Argo-sync proof
 - `FluxRenderer` is the import-and-render path for existing Flux resources, not the deployment bridge for this example
@@ -267,6 +286,9 @@ cub unit get --space <prefix>-deploy-cluster-a --data-only gpu-operator-cluster-
 
 # Show the Flux deployment variant
 cub unit get --space <prefix>-deploy-cluster-a-flux --data-only gpu-operator-cluster-a-flux
+
+# Show the Argo deployment variant
+cub unit get --space <prefix>-deploy-cluster-a-argo --data-only gpu-operator-cluster-a-argo
 
 # Show the explicit recipe manifest
 cub unit get --space <prefix>-recipe-eks-h100-ubuntu-training --data-only recipe-eks-h100-ubuntu-training-stack

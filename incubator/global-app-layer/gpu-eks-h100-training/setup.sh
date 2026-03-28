@@ -31,6 +31,7 @@ if [[ "${mode}" != "run" ]]; then
   PREFIX="${prefix:-<generated-prefix>}"
   DIRECT_TARGET_REF=""
   FLUX_TARGET_REF=""
+  ARGO_TARGET_REF=""
   if [[ "${mode}" == "explain-json" ]]; then
     require_jq
     if [[ "${#target_refs[@]}" -gt 0 ]]; then
@@ -67,7 +68,7 @@ if [[ "${#target_refs[@]}" -gt 0 ]]; then
   done
 fi
 
-save_state "${prefix}" "" ""
+save_state "${prefix}" "" "" ""
 load_state
 
 _mapfile base_space_labels < <(space_label_args base)
@@ -77,6 +78,7 @@ _mapfile os_space_labels < <(space_label_args os --label "Platform=${PLATFORM_VA
 _mapfile recipe_space_labels < <(space_label_args recipe --label "Platform=${PLATFORM_VALUE}" --label "Accelerator=${ACCELERATOR_VALUE}" --label "OS=${OS_VALUE}" --label "Intent=${INTENT_VALUE}")
 _mapfile direct_deploy_space_labels < <(space_label_args deployment --label "Platform=${PLATFORM_VALUE}" --label "Accelerator=${ACCELERATOR_VALUE}" --label "OS=${OS_VALUE}" --label "Intent=${INTENT_VALUE}" --label "Cluster=${DEPLOY_NAMESPACE}" --label "DeliveryVariant=direct")
 _mapfile flux_deploy_space_labels < <(space_label_args deployment --label "Platform=${PLATFORM_VALUE}" --label "Accelerator=${ACCELERATOR_VALUE}" --label "OS=${OS_VALUE}" --label "Intent=${INTENT_VALUE}" --label "Cluster=${DEPLOY_NAMESPACE}" --label "DeliveryVariant=flux")
+_mapfile argo_deploy_space_labels < <(space_label_args deployment --label "Platform=${PLATFORM_VALUE}" --label "Accelerator=${ACCELERATOR_VALUE}" --label "OS=${OS_VALUE}" --label "Intent=${INTENT_VALUE}" --label "Cluster=${DEPLOY_NAMESPACE}" --label "DeliveryVariant=argo")
 
 echo "==> Creating spaces"
 create_space_if_missing "$(base_space)" "${base_space_labels[@]}"
@@ -86,6 +88,7 @@ create_space_if_missing "$(os_space)" "${os_space_labels[@]}"
 create_space_if_missing "$(recipe_space)" "${recipe_space_labels[@]}"
 create_space_if_missing "$(deploy_space)" "${direct_deploy_space_labels[@]}"
 create_space_if_missing "$(flux_deploy_space)" "${flux_deploy_space_labels[@]}"
+create_space_if_missing "$(argo_deploy_space)" "${argo_deploy_space_labels[@]}"
 
 for component in "${COMPONENTS[@]}"; do
   echo "==> Creating base unit for ${component}"
@@ -121,6 +124,11 @@ for component in "${COMPONENTS[@]}"; do
   _mapfile flux_deploy_unit_labels < <(label_args deployment "${component}" --label "Platform=${PLATFORM_VALUE}" --label "Accelerator=${ACCELERATOR_VALUE}" --label "OS=${OS_VALUE}" --label "Intent=${INTENT_VALUE}" --label "Cluster=${DEPLOY_NAMESPACE}" --label "DeliveryVariant=flux")
   create_clone_unit "$(flux_deploy_space)" "$(deployment_unit_name "${component}" flux)" "$(recipe_space)" "$(unit_name "${component}" recipe)" "${flux_deploy_unit_labels[@]}"
   apply_deploy_mutations "${component}" flux
+
+  echo "==> Creating Argo deployment clone for ${component}"
+  _mapfile argo_deploy_unit_labels < <(label_args deployment "${component}" --label "Platform=${PLATFORM_VALUE}" --label "Accelerator=${ACCELERATOR_VALUE}" --label "OS=${OS_VALUE}" --label "Intent=${INTENT_VALUE}" --label "Cluster=${DEPLOY_NAMESPACE}" --label "DeliveryVariant=argo")
+  create_clone_unit "$(argo_deploy_space)" "$(deployment_unit_name "${component}" argo)" "$(recipe_space)" "$(unit_name "${component}" recipe)" "${argo_deploy_unit_labels[@]}"
+  apply_deploy_mutations "${component}" argo
 done
 
 if [[ "${#target_refs[@]}" -gt 0 ]]; then
@@ -128,10 +136,10 @@ if [[ "${#target_refs[@]}" -gt 0 ]]; then
   for target_ref in "${target_refs[@]}"; do
     set_target_for_compatible_units "${target_ref}"
   done
-  save_state "${PREFIX}" "${DIRECT_TARGET_REF:-}" "${FLUX_TARGET_REF:-}"
+  save_state "${PREFIX}" "${DIRECT_TARGET_REF:-}" "${FLUX_TARGET_REF:-}" "${ARGO_TARGET_REF:-}"
 fi
 
 echo "==> Rendering explicit GPU recipe manifest"
-refresh_recipe_manifest_unit "${DIRECT_TARGET_REF:-}" "${FLUX_TARGET_REF:-}"
+refresh_recipe_manifest_unit "${DIRECT_TARGET_REF:-}" "${FLUX_TARGET_REF:-}" "${ARGO_TARGET_REF:-}"
 
 show_summary

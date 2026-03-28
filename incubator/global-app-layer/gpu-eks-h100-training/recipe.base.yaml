@@ -64,6 +64,12 @@ spec:
           revision: confighubplaceholder-gpu-operator-deployment-flux-revision
           dataHash: confighubplaceholder-gpu-operator-deployment-flux-hash
           mutationDelta: set namespace=cluster-a and CLUSTER=cluster-a for Flux OCI delivery
+        - name: argo
+          space: confighubplaceholder-gpu-operator-deployment-argo-space
+          unit: confighubplaceholder-gpu-operator-deployment-argo-unit
+          revision: confighubplaceholder-gpu-operator-deployment-argo-revision
+          dataHash: confighubplaceholder-gpu-operator-deployment-argo-hash
+          mutationDelta: set namespace=cluster-a and CLUSTER=cluster-a for Argo OCI delivery
     - name: nvidia-device-plugin
       layers:
         - name: base
@@ -109,6 +115,12 @@ spec:
           revision: confighubplaceholder-nvidia-device-plugin-deployment-flux-revision
           dataHash: confighubplaceholder-nvidia-device-plugin-deployment-flux-hash
           mutationDelta: set namespace=cluster-a and CLUSTER=cluster-a for Flux OCI delivery
+        - name: argo
+          space: confighubplaceholder-nvidia-device-plugin-deployment-argo-space
+          unit: confighubplaceholder-nvidia-device-plugin-deployment-argo-unit
+          revision: confighubplaceholder-nvidia-device-plugin-deployment-argo-revision
+          dataHash: confighubplaceholder-nvidia-device-plugin-deployment-argo-hash
+          mutationDelta: set namespace=cluster-a and CLUSTER=cluster-a for Argo OCI delivery
   publish:
     variants:
       - name: direct
@@ -119,3 +131,7 @@ spec:
         targetRef: confighubplaceholder-flux-target-ref
         bundleHint: confighubplaceholder-flux-bundle-hint
         note: The bundle is the deployable output of the Flux deployment units' target, not the source of truth for the layer chain.
+      - name: argo
+        targetRef: confighubplaceholder-argo-target-ref
+        bundleHint: confighubplaceholder-argo-bundle-hint
+        note: The bundle is the deployable output of the Argo deployment units' target, not the source of truth for the layer chain.
