@@ -122,6 +122,7 @@ bridge_worker_slug="$(printf '%s\n' "${target_doc}" | jq -r '.BridgeWorker.Slug 
 delivery_mode="unknown"
 case "${provider_type}" in
   Kubernetes) delivery_mode="direct" ;;
+  ArgoCDOCI) delivery_mode="argo-oci" ;;
   ArgoCDRenderer) delivery_mode="argocd-render" ;;
   FluxOCI|FluxOCIWriter) delivery_mode="flux-oci" ;;
 esac
@@ -185,6 +186,12 @@ next_steps_json="$(
             "treat this as a Flux-managed deployment target for raw Kubernetes manifests",
             "bind the target to the Flux deployment variant, not the direct deployment variant",
             "verify Flux OCIRepository and Kustomization or HelmRelease objects plus live resources after apply"
+          ]
+        elif $deliveryMode == "argo-oci" then
+          [
+            "treat this as an Argo-managed OCI deployment target",
+            "bind the target to the Argo deployment variant, not the direct deployment variant",
+            "verify Argo Application sync and health evidence plus live resources after apply"
           ]
         elif $deliveryMode == "argocd-render" then
           [
@@ -256,6 +263,8 @@ else
       echo "- direct apply is expected to work if you approve and apply the units"
     elif [[ "${delivery_mode}" == "flux-oci" ]]; then
       echo "- this target can drive a Flux-managed deployment path for raw manifests if the example has an explicit Flux deployment variant"
+    elif [[ "${delivery_mode}" == "argo-oci" ]]; then
+      echo "- this target can drive an Argo-managed OCI deployment path if the example has an explicit Argo deployment variant"
     elif [[ "${delivery_mode}" == "argocd-render" ]]; then
       echo "- the renderer target looks reachable, but this is not by itself proof of Argo-managed workload sync"
     else

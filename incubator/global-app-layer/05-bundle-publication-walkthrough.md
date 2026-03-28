@@ -34,7 +34,6 @@ It does not yet fully prove:
 - end-to-end bundle publication as a first-class in-product flow
 - bundle inspection in ConfigHub
 - attached SBOM, checksum, or attestation inspection in ConfigHub
-- **Argo OCI** bundle delivery (target-state, not yet implemented)
 
 ## Delivery Matrix For Bundle Publication
 
@@ -42,7 +41,7 @@ It does not yet fully prove:
 |---------------|--------|--------------|
 | **Direct Kubernetes** | Fully working | Worker applies, no OCI bundle |
 | **Flux OCI** | Current standard | OCI bundle published, Flux reconciles |
-| **Argo OCI** | Target-state, not implemented | OCI bundle published, Argo reconciles |
+| **Argo OCI** | Implemented in selected examples | OCI bundle published, Argo reconciles |
 | **ArgoCDRenderer** | Working, limited scope | Renderer path only, not bundle delivery |
 
 **Flux OCI** is the current standard for the bundle publication story. It proves:
@@ -56,9 +55,9 @@ It does not yet fully prove:
 
 So the right way to use this page is:
 
-- show what is already real (recipe provenance, Flux OCI)
+- show what is already real (recipe provenance, Flux OCI, Argo OCI in selected examples)
 - show what the next bundle product surface should look like
-- be explicit about what is still a gap (Argo OCI, in-product bundle inspection)
+- be explicit about what is still a gap (in-product bundle inspection, richer evidence surfaces)
 
 ## Stage 1: Inspect The Recipe Chain
 
@@ -250,7 +249,7 @@ That means showing one of:
 
 **Flux OCI** is the current standard for the bundle handoff story because it proves the complete flow: OCI publication, controller consumption, workload delivery.
 
-**Argo OCI** is the target-state direction but is not yet implemented.
+**Argo OCI** now exists in `single-component` and `gpu-eks-h100-training`, but package-level bundle inspection and evidence views are still incomplete.
 
 **ArgoCDRenderer** does not publish bundles — it sends Application CRDs to ArgoCD for rendering. It is a companion path, not the bundle delivery standard.
 

@@ -46,15 +46,15 @@ Know which delivery mode is in scope before making claims:
 |---------------|--------|----------|
 | **Direct Kubernetes** | Fully working | Simplest real proof. No controller required. |
 | **Flux OCI** | Current standard | Controller-oriented delivery. Flux manages workload lifecycle. |
-| **Argo OCI** | Target-state, not implemented | Future standard for Argo. Do not claim this exists yet. |
+| **Argo OCI** | Implemented in selected examples | Controller-oriented delivery for `single-component` and `gpu-eks-h100-training`. Requires ArgoCD v3.1+. |
 | **ArgoCDRenderer** | Working, limited scope | Renderer path only. Expects Argo `Application` payloads. |
 
 Critical distinctions:
 
 - **Flux OCI** is the current standard controller-oriented delivery path
 - **ArgoCDRenderer** is **not** Argo OCI delivery — it is a renderer path for hydration only
-- **Argo OCI** is the target-state direction, but the implementation does not exist yet
-- Raw-manifest examples work with Direct Kubernetes and Flux OCI, but not with ArgoCDRenderer
+- **Argo OCI** is now implemented in `single-component` and `gpu-eks-h100-training`, but only claim it when controller and live evidence are shown
+- Raw-manifest examples work with Direct Kubernetes and Flux OCI broadly, and selected examples now also work with Argo OCI, but not with ArgoCDRenderer
 
 ## Bundle Boundary
 
@@ -63,7 +63,7 @@ If the question is specifically about AICR bundles, checksums, SBOMs, or attesta
 - this package explains the bundle story honestly
 - it includes a fixture-backed evidence sample
 - Flux OCI is the current controller-oriented bundle path
-- Argo OCI is the target-state path, not yet implemented
+- Argo OCI is now implemented in selected examples, but package-level bundle inspection is still incomplete
 - it does not yet prove a fully real in-product bundle publication and inspection flow
 
 Use these files with that boundary in mind:

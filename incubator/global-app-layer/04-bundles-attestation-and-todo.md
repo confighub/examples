@@ -48,12 +48,12 @@ The package now has one place for:
 
 - direct Kubernetes delivery (fully working)
 - Flux OCI delivery (current standard controller-oriented bundle path)
-- Argo OCI delivery (target-state, not yet implemented)
+- Argo OCI delivery (implemented in `single-component` and `gpu-eks-h100-training`)
 - ArgoCDRenderer (renderer path, not workload delivery)
 - brownfield import
 - bridge flows between import and layering
 
-The key distinction: **Flux OCI** is the current standard for controller-oriented bundle delivery. **Argo OCI** is the target-state direction but is not yet implemented. **ArgoCDRenderer** is a renderer path that expects Argo `Application` payloads — it is not the same as OCI bundle delivery.
+The key distinction: **Flux OCI** is the current standard for controller-oriented bundle delivery. **Argo OCI** is now implemented in selected examples, but it still needs explicit controller and live evidence when claimed. **ArgoCDRenderer** is a renderer path that expects Argo `Application` payloads — it is not the same as OCI bundle delivery.
 
 ### 4. The package is easier to explain
 

@@ -18,12 +18,12 @@ This package supports multiple delivery modes. Know which one applies:
 |---------------|--------|-------------|
 | **Direct Kubernetes** | Fully working | Worker applies YAML via `kubectl apply`. Simplest real proof. |
 | **Flux OCI** | Fully working | Worker publishes OCI artifact, Flux reconciles workloads. |
-| **Argo OCI** | Fully working | Worker publishes OCI artifact, ArgoCD v3.1+ reconciles workloads. |
+| **Argo OCI** | Implemented in selected examples | Worker publishes OCI artifact, ArgoCD v3.1+ reconciles workloads in `single-component` and `gpu-eks-h100-training`. |
 | **ArgoCDRenderer** | Working, limited scope | Renderer path. Expects Argo `Application` payloads, not raw manifests. |
 
 For controller-oriented delivery in this package:
 
-- **Flux OCI** and **Argo OCI** are both working paths — see `single-component` and `gpu-eks-h100-training` for explicit deployment variants
+- **Flux OCI** is the current standard controller path, and **Argo OCI** is now implemented in `single-component` and `gpu-eks-h100-training`
 - **ArgoCDRenderer** is **not** Argo OCI delivery — it is a renderer path that does not reconcile workloads
 
 ## Bundle Status
@@ -35,7 +35,7 @@ Today the honest status is:
 - recipe and layering side: real and better proven
 - bundle publication side: explained clearly, with a fixture-backed evidence sample
 - Flux OCI: working controller-oriented bundle path
-- Argo OCI: working controller-oriented bundle path (requires ArgoCD v3.1+)
+- Argo OCI: implemented controller-oriented bundle path in selected examples (requires ArgoCD v3.1+)
 - full real bundle publication and inspection flow: not yet proven here
 
 Use these files accordingly:
@@ -146,7 +146,7 @@ If you take this package further into live delivery follow-ons, a believable liv
 What these demos should also make visible:
 
 - direct Kubernetes delivery is already a strong proof path in this package
-- Flux OCI and Argo OCI are both working controller-oriented delivery paths
+- Flux OCI is the current standard controller-oriented delivery path, and Argo OCI is now implemented in selected examples
 - ArgoCDRenderer is a renderer path, not workload delivery — do not conflate these
 - worker resilience still needs to be demonstrated more explicitly through reconnect, retry, and resume behavior rather than treated as a hidden assumption
 

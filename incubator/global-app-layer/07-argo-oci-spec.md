@@ -328,12 +328,12 @@ Should ConfigHub control sync policy, or leave it to operator configuration?
 
 1. ~~Confirm Argo OCI source support and version requirements~~ **DONE** — ArgoCD v3.1+ confirmed
 2. ~~Implement ArgoCDOCI provider type in worker~~ **EXISTS** — `confighub/public/bridge-impl/argocd/argocd_oci.go`
-3. **Add ArgoCDOCI deployment variant to `single-component`** — Ready to implement
-4. **Add ArgoCDOCI deployment variant to `gpu-eks-h100-training`** — Ready to implement
+3. ~~Add ArgoCDOCI deployment variant to `single-component`~~ **DONE**
+4. ~~Add ArgoCDOCI deployment variant to `gpu-eks-h100-training`~~ **DONE**
 5. Add verification scripts for Argo sync/health evidence
 6. Document the end-to-end proof flow
 
-**No blockers.** The provider exists. Example variants can be added now.
+**Remaining gaps:** shared verification helpers, package-level proof wording, and end-to-end evidence capture.
 
 ## Related Documents
 

@@ -22,7 +22,7 @@ The point is not to recreate all of NVIDIA AICR. The point is to show how Config
 |---------------|--------|-------|
 | **Direct Kubernetes** | Fully working | Worker applies YAML via `kubectl apply`. |
 | **Flux OCI** | Fully working | Explicit Flux deployment variant. Current standard controller path. |
-| **Argo OCI** | Fully working | Explicit Argo deployment variant. Requires ArgoCD v3.1+. See [`07-argo-oci-spec.md`](../07-argo-oci-spec.md). |
+| **Argo OCI** | Implemented | Explicit Argo deployment variant. Requires ArgoCD v3.1+. See [`07-argo-oci-spec.md`](../07-argo-oci-spec.md). |
 | **ArgoCDRenderer** | Incompatible | Expects Argo `Application` payloads, not raw manifests. |
 
 This example has **all three delivery modes** working:

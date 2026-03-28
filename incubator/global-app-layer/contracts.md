@@ -10,15 +10,15 @@ This package supports multiple delivery modes. Know which one applies before mak
 |---------------|--------|----------------------|----------------|
 | **Direct Kubernetes** | Fully working | Raw K8s manifests | Worker applies directly to cluster |
 | **Flux OCI** | Current standard | Raw K8s manifests | OCI bundle published, Flux reconciles workloads |
-| **Argo OCI** | Target-state, not implemented | Raw K8s manifests (planned) | OCI bundle published, Argo reconciles workloads |
+| **Argo OCI** | Implemented in selected examples | Raw K8s manifests where an explicit Argo variant exists | OCI bundle published, Argo reconciles workloads |
 | **ArgoCDRenderer** | Working, limited scope | Argo `Application` CRDs only | Renderer path. Not workload delivery. |
 
 **Critical distinctions:**
 
 - **Flux OCI** is the current standard for controller-oriented bundle delivery
-- **Argo OCI** is the target-state direction, but is not yet implemented
+- **Argo OCI** is now implemented in `single-component` and `gpu-eks-h100-training`, but still needs controller and live evidence when claimed
 - **ArgoCDRenderer** is **not** Argo OCI delivery — it expects Argo `Application` payloads and does not reconcile workloads
-- Raw-manifest examples work with Direct Kubernetes and Flux OCI, but **not** with ArgoCDRenderer
+- Raw-manifest examples do **not** work with ArgoCDRenderer; selected raw-manifest examples now also support Argo OCI
 
 ## Read-Only Contracts
 
@@ -204,7 +204,7 @@ When a run succeeds in ConfigHub-only mode, expect:
 
 When the live path also succeeds, expect:
 - `./preflight-live.sh <space/target>` to report `applyReady: true`
-- `./preflight-live.sh <space/target> --json` to make the delivery mode explicit (`direct` vs `argocd-render`)
+- `./preflight-live.sh <space/target> --json` to make the delivery mode explicit (`direct`, `flux-oci`, `argo-oci`, or `argocd-render`)
 - target binding visible on deployment units
 - successful `cub unit apply`
 - for direct targets: resulting live state visible via ConfigHub and the cluster target

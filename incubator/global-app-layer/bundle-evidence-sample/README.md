@@ -20,7 +20,7 @@ This is **sample evidence**, not a real bundle publication flow.
 | **Recipe provenance** | Real (from `gpu-eks-h100-training`) |
 | **Bundle publication** | Fixture-backed sample |
 | **Flux OCI delivery** | Current standard controller path (real in `gpu-eks-h100-training`) |
-| **Argo OCI delivery** | Target-state, not yet implemented |
+| **Argo OCI delivery** | Implemented in selected examples (`single-component`, `gpu-eks-h100-training`) |
 | **In-product bundle inspection** | Not yet available |
 
 Use this sample to understand what the bundle evidence story should contain. For a real OCI bundle proof, see [`gpu-eks-h100-training`](../gpu-eks-h100-training/README.md) with a FluxOCI target.

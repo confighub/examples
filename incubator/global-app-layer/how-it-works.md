@@ -122,13 +122,14 @@ The worker supports three relevant target types in this package:
 |---|---|---|---|
 | **Direct Kubernetes** | `worker-kubernetes-yaml-cluster` | Worker applies YAML directly via `kubectl apply` | Fully working. Simplest real proof. |
 | **Flux OCI** | `worker-fluxoci-kubernetes-yaml-cluster` | Worker publishes OCI artifact, Flux reconciles workloads | Current standard controller path. |
+| **Argo OCI** | `worker-argocdoci-kubernetes-yaml-cluster` | Worker publishes OCI artifact, writes an Argo `Application`, and Argo reconciles workloads | Implemented in `single-component` and `gpu-eks-h100-training`. |
 | **ArgoCDRenderer** | `worker-argocdrenderer-kubernetes-yaml-cluster` | Worker sends Argo `Application` CRDs to ArgoCD for rendering | Renderer path only. Not workload delivery. |
 
 **Important distinctions:**
 
 - **Flux OCI** is the current standard for controller-oriented bundle delivery
 - **ArgoCDRenderer** is a renderer path — it expects Argo `Application` payloads, not raw manifests, and does not reconcile workloads
-- **Argo OCI** (publishing OCI artifacts for Argo to reconcile) is the target-state direction, but is not yet implemented
+- **Argo OCI** is now implemented in `single-component` and `gpu-eks-h100-training`, but should only be claimed with controller and live evidence
 
 **Payload compatibility matters:**
 
@@ -166,12 +167,12 @@ ConfigHub (materialized Application)
 - ArgoCD is used as a render/hydration engine, not a deployment controller
 - The raw-manifest examples in this package do not work with `ArgoCDRenderer`
 
-**Argo OCI** (the target-state standard) would be different:
+**Argo OCI** is different:
 
 - ConfigHub publishes an OCI artifact
 - Argo `Application` points at that OCI artifact as its source
 - Argo reconciles workloads from the OCI artifact
-- That implementation does not exist yet
+- That path now exists for `single-component` and `gpu-eks-h100-training`
 
 Do not conflate `ArgoCDRenderer` with Argo OCI delivery. They are different paths with different purposes.
 
