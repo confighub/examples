@@ -191,12 +191,106 @@ ConfigHub unit revision → OCI artifact digest → Argo targetRevision → depl
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| ArgoOCI provider type | Not implemented | New worker provider type |
+| ArgoOCI provider type | **Not implemented** | New worker provider type required |
 | OCI publication logic | Partially exists | Reuse from FluxOCI |
 | Argo Application creation | Not implemented | New worker logic |
-| Application source contract | Spec only | Needs Argo OCI support |
+| Application source contract | Spec only | ArgoCD v3.1+ confirmed |
 | Verification helpers | Not implemented | Need new verification scripts |
-| Example deployment variant | Not implemented | Add to `gpu-eks-h100-training` |
+| Example deployment variant | **Blocked** | Requires ArgoOCI provider first |
+
+## Worker Implementation Gap
+
+**The ArgoOCI provider does not exist in the worker.**
+
+This is the primary implementation gap. Until the worker has an ArgoOCI provider:
+
+1. No Argo OCI deployment variant can be added to the examples
+2. No Argo OCI proof can be demonstrated
+3. The spec remains target-state only
+
+### What the worker needs to implement
+
+```go
+// Pseudocode for ArgoOCI provider
+type ArgoOCIProvider struct {
+    // Registry configuration for OCI artifact publication
+    RegistryURL string
+
+    // ArgoCD API configuration for Application management
+    ArgoCDServer string
+    ArgoCDNamespace string
+}
+
+func (p *ArgoOCIProvider) Apply(unit Unit) error {
+    // 1. Render unit data to manifest bytes
+    manifests := renderManifests(unit)
+
+    // 2. Package as OCI artifact (reuse FluxOCI logic)
+    artifact := packageOCIArtifact(manifests)
+
+    // 3. Push to registry
+    digest := pushToRegistry(p.RegistryURL, artifact)
+
+    // 4. Create/update Argo Application pointing at OCI source
+    app := &argocdv1alpha1.Application{
+        ObjectMeta: metav1.ObjectMeta{
+            Name: unit.Slug,
+            Namespace: p.ArgoCDNamespace,
+            Labels: map[string]string{
+                "confighub.com/managed-by": "worker",
+                "confighub.com/bundle-digest": digest,
+            },
+        },
+        Spec: argocdv1alpha1.ApplicationSpec{
+            Source: argocdv1alpha1.ApplicationSource{
+                RepoURL: fmt.Sprintf("oci://%s/%s", p.RegistryURL, unit.Slug),
+                TargetRevision: digest,
+                Path: ".",
+            },
+            Destination: argocdv1alpha1.ApplicationDestination{
+                Server: "https://kubernetes.default.svc",
+                Namespace: unit.TargetNamespace,
+            },
+            SyncPolicy: &argocdv1alpha1.SyncPolicy{
+                Automated: &argocdv1alpha1.SyncPolicyAutomated{
+                    Prune: true,
+                    SelfHeal: true,
+                },
+            },
+        },
+    }
+
+    // 5. Wait for sync/health (or return async)
+    return createOrUpdateApplication(app)
+}
+```
+
+### Blockers for example deployment variants
+
+The examples (`single-component`, `gpu-eks-h100-training`) cannot add Argo OCI deployment variants until:
+
+1. The worker has an `ArgoOCI` or `ArgoOCIWriter` provider type
+2. A target with that provider type can be created
+3. The example scripts can detect and route to the Argo variant
+
+Once the provider exists, adding the example variant is straightforward:
+
+```bash
+# In lib.sh
+DEPLOY_ARGO_SPACE_SUFFIX="deploy-cluster-a-argo"
+DEPLOY_ARGO_UNIT="backend-cluster-a-argo"
+DEPLOY_VARIANTS=(direct flux argo)
+
+# In setup.sh
+create_space_if_missing "$(argo_deploy_space)" "${argo_deploy_space_labels[@]}"
+create_clone_unit "$(argo_deploy_space)" "${DEPLOY_ARGO_UNIT}" "$(recipe_space)" "${RECIPE_UNIT}"
+# Apply same mutations as other variants
+
+# In set-target.sh
+case "${provider_type}" in
+  ArgoOCI|ArgoOCIWriter) variant="argo" ;;
+esac
+```
 
 ## Comparison With Flux OCI
 
@@ -272,11 +366,13 @@ Should ConfigHub control sync policy, or leave it to operator configuration?
 
 ## Next Steps
 
-1. Confirm Argo OCI source support and version requirements
-2. Implement ArgoOCI provider type in worker
-3. Add ArgoOCI deployment variant to `gpu-eks-h100-training`
-4. Add verification scripts for Argo sync/health evidence
-5. Document the end-to-end proof flow
+1. ~~Confirm Argo OCI source support and version requirements~~ **DONE** — ArgoCD v3.1+ confirmed
+2. **Implement ArgoOCI provider type in worker** — Primary blocker
+3. Add ArgoOCI deployment variant to `single-component` and `gpu-eks-h100-training` — Blocked on step 2
+4. Add verification scripts for Argo sync/health evidence — Blocked on step 2
+5. Document the end-to-end proof flow — Blocked on step 2
+
+**The critical path is step 2.** Everything else is blocked until the worker has the ArgoOCI provider.
 
 ## Related Documents
 
