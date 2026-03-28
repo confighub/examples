@@ -10,18 +10,32 @@ require_jq
 begin_log_capture set-target
 load_state
 
-if [[ $# -ne 1 ]]; then
-  echo "Usage: $0 <space/target-or-target-slug>" >&2
+if [[ $# -lt 1 ]]; then
+  echo "Usage: $0 <space/target-or-target-slug> [additional-targets...]" >&2
+  echo "" >&2
+  supported_target_description >&2
   exit 1
 fi
 
-target_ref="$1"
+for target_ref in "$@"; do
+  assert_supported_live_target "${target_ref}"
+  echo "==> Setting target ${target_ref}"
+  set_target_for_compatible_units "${target_ref}"
+done
 
-cub unit set-target "${target_ref}" --space "$(deploy_space)" --unit "${DEPLOY_UNIT}"
-save_state "${PREFIX}" "${target_ref}"
-TARGET_REF="${target_ref}"
-refresh_recipe_manifest_unit "${target_ref}"
+save_state "${PREFIX}" "${DIRECT_TARGET_REF:-}" "${FLUX_TARGET_REF:-}"
+refresh_recipe_manifest_unit "${DIRECT_TARGET_REF:-}" "${FLUX_TARGET_REF:-}"
 
-echo "Updated deployment target for $(deploy_space)/${DEPLOY_UNIT}: ${target_ref}"
-echo "Bundle hint: $(bundle_hint_from_target_ref "${target_ref}")"
-show_summary "${target_ref}"
+echo ""
+echo "Target configuration:"
+echo "- direct variant target: ${DIRECT_TARGET_REF:-<unset>}"
+echo "- flux variant target: ${FLUX_TARGET_REF:-<unset>}"
+echo ""
+if [[ -n "${DIRECT_TARGET_REF:-}" ]]; then
+  echo "- direct bundle hint: $(bundle_hint_from_target_ref "${DIRECT_TARGET_REF}")"
+fi
+if [[ -n "${FLUX_TARGET_REF:-}" ]]; then
+  echo "- flux bundle hint: $(bundle_hint_from_target_ref "${FLUX_TARGET_REF}")"
+fi
+
+show_summary

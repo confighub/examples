@@ -11,10 +11,10 @@ begin_log_capture verify
 load_state
 ensure_state_dir
 
-for space in "$(base_space)" "$(region_space)" "$(role_space)" "$(recipe_space)" "$(deploy_space)"; do
+for space in "$(base_space)" "$(region_space)" "$(role_space)" "$(recipe_space)" "$(deploy_space)" "$(flux_deploy_space)"; do
   echo "==> Checking space exists: ${space}"
   cub space get "${space}" >/dev/null
- done
+done
 
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "${tmp_dir}"' EXIT
@@ -24,6 +24,7 @@ region_file="${tmp_dir}/region.yaml"
 role_file="${tmp_dir}/role.yaml"
 recipe_file="${tmp_dir}/recipe.yaml"
 deploy_file="${tmp_dir}/deploy.yaml"
+flux_deploy_file="${tmp_dir}/flux-deploy.yaml"
 manifest_file="${tmp_dir}/recipe-manifest.yaml"
 
 unit_data_to_file "$(base_space)" "${BASE_UNIT}" "${base_file}"
@@ -31,6 +32,7 @@ unit_data_to_file "$(region_space)" "${REGION_UNIT}" "${region_file}"
 unit_data_to_file "$(role_space)" "${ROLE_UNIT}" "${role_file}"
 unit_data_to_file "$(recipe_space)" "${RECIPE_UNIT}" "${recipe_file}"
 unit_data_to_file "$(deploy_space)" "${DEPLOY_UNIT}" "${deploy_file}"
+unit_data_to_file "$(flux_deploy_space)" "${DEPLOY_FLUX_UNIT}" "${flux_deploy_file}"
 unit_data_to_file "$(recipe_space)" "${RECIPE_MANIFEST_UNIT}" "${manifest_file}"
 
 echo "==> Verifying clone chain"
@@ -51,6 +53,9 @@ actual="$(get_unit_field "$(recipe_space)" "${RECIPE_UNIT}" UpstreamUnitID)"
 actual="$(get_unit_field "$(deploy_space)" "${DEPLOY_UNIT}" UpstreamUnitID)"
 [[ "${actual}" == "${recipe_id}" ]] || { echo "Clone chain broken: deploy upstream ${actual} != recipe ${recipe_id}" >&2; exit 1; }
 
+actual="$(get_unit_field "$(flux_deploy_space)" "${DEPLOY_FLUX_UNIT}" UpstreamUnitID)"
+[[ "${actual}" == "${recipe_id}" ]] || { echo "Clone chain broken: flux deploy upstream ${actual} != recipe ${recipe_id}" >&2; exit 1; }
+
 echo "==> Verifying layer-specific mutations"
 assert_contains "${base_file}" 'OLLAMA_ENABLED'
 assert_contains "${region_file}" 'name: REGION'
@@ -63,6 +68,11 @@ assert_contains "${deploy_file}" "namespace: ${DEPLOY_NAMESPACE}"
 assert_contains "${deploy_file}" 'name: CLUSTER'
 assert_contains "${deploy_file}" "$(deploy_backend_hostname)"
 
+echo "==> Verifying Flux deployment variant mutations"
+assert_contains "${flux_deploy_file}" "namespace: ${DEPLOY_NAMESPACE}"
+assert_contains "${flux_deploy_file}" 'name: CLUSTER'
+assert_contains "${flux_deploy_file}" "$(deploy_backend_hostname)"
+
 echo "==> Verifying explicit recipe manifest"
 assert_contains "${manifest_file}" 'kind: Recipe'
 assert_contains "${manifest_file}" 'name: global-app-us-staging'
@@ -70,9 +80,14 @@ assert_contains "${manifest_file}" "space: $(base_space)"
 assert_contains "${manifest_file}" "space: $(deploy_space)"
 assert_contains "${manifest_file}" 'bundleHint:'
 
-if [[ -n "${TARGET_REF:-}" ]]; then
-  echo "==> Verifying deployment has a target"
+if [[ -n "${DIRECT_TARGET_REF:-}" ]]; then
+  echo "==> Verifying direct deployment has a target"
   get_unit_field "$(deploy_space)" "${DEPLOY_UNIT}" TargetID >/dev/null
+fi
+
+if [[ -n "${FLUX_TARGET_REF:-}" ]]; then
+  echo "==> Verifying Flux deployment has a target"
+  get_unit_field "$(flux_deploy_space)" "${DEPLOY_FLUX_UNIT}" TargetID >/dev/null
 fi
 
 echo "All global-app-layer single-component checks passed."

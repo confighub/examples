@@ -15,13 +15,16 @@ The recipe is the ordered chain of variants, not the bundle.
 | Delivery Mode | Status | Notes |
 |---------------|--------|-------|
 | **Direct Kubernetes** | Fully working | Worker applies YAML via `kubectl apply`. Smallest real proof. |
-| **Flux OCI** | Not yet implemented | Contract documented below. See `gpu-eks-h100-training` for a working example. |
-| **Argo OCI** | Not yet implemented | Target-state direction. Spec to be written. |
+| **Flux OCI** | Fully working | Explicit Flux deployment variant. Current standard controller path. |
+| **Argo OCI** | Not yet implemented | Target-state direction. See [`07-argo-oci-spec.md`](../07-argo-oci-spec.md). |
 | **ArgoCDRenderer** | Incompatible | Expects Argo `Application` payloads, not raw manifests. |
 
-This is the smallest layered recipe example. It currently proves **Direct Kubernetes** delivery only.
+This example has **both Direct Kubernetes and Flux OCI** working:
 
-For controller-oriented delivery (Flux OCI), see [`gpu-eks-h100-training`](../gpu-eks-h100-training/README.md) which has explicit Flux deployment variants.
+- Direct deployment variant: `<prefix>-deploy-cluster-a`
+- Flux deployment variant: `<prefix>-deploy-cluster-a-flux`
+
+This is the smallest layered recipe example with full OCI bundle delivery support.
 
 ## What This Example Is For
 
@@ -51,26 +54,29 @@ What it reads:
 - current ConfigHub context and optional target ref
 
 What it writes:
-- five ConfigHub spaces with a shared prefix
+- six ConfigHub spaces with a shared prefix
 - one layered backend chain
-- one deploy-stage `postgres-stub`
+- two deployment variants at the leaf (direct and flux)
+- two deploy-stage `postgres-stub` variants
 - one recipe manifest unit
-- optional target bindings
+- optional target bindings for each variant
 - optional live deployment state only if you explicitly bind and apply
 
 ## What You Should Expect To See
 
 In ConfigHub-only mode:
-- five spaces sharing one prefix
+- six spaces sharing one prefix
 - one layered backend chain
-- one deploy-stage stub
+- two deployment variants at the leaf
+- two deploy-stage stubs
 - one recipe manifest unit
 - `verify.sh` passing
 
 In live mode:
-- deployment units bound to a target
+- deployment variants bound to compatible targets
 - successful `cub unit apply`
-- live resources visible in the chosen target path
+- for direct targets: worker-mediated apply evidence plus live cluster resources
+- for Flux OCI targets: OCI artifact published, Flux reconciliation evidence, plus live cluster resources
 
 ## AI-Safe Path
 
@@ -86,24 +92,27 @@ One component from `global-app`:
 
 - source manifest: `../../../global-app/baseconfig/backend.yaml`
 
-One materialized chain:
+One materialized chain with two deployment variants:
 
 ```mermaid
 flowchart LR
   Base["backend-base"] --> Region["backend-us"]
   Region --> Role["backend-us-staging"]
   Role --> Recipe["backend-recipe-us-staging"]
-  Recipe --> Deploy["backend-cluster-a"]
-  Deploy --> Bundle["target bundle / OCI"]
+  Recipe --> DirectDeploy["backend-cluster-a"]
+  Recipe --> FluxDeploy["backend-cluster-a-flux"]
+  DirectDeploy --> DirectBundle["direct apply"]
+  FluxDeploy --> FluxBundle["OCI bundle → Flux"]
 ```
 
-The chain is split across five spaces:
+The chain is split across six spaces:
 
 - `catalog-base`
 - `catalog-us`
 - `catalog-us-staging`
 - `recipe-us-staging`
-- `deploy-cluster-a`
+- `deploy-cluster-a` (direct variant)
+- `deploy-cluster-a-flux` (Flux variant)
 
 The example also writes an explicit recipe manifest unit into the recipe space. ConfigHub does not need a first-class `Recipe` type for the chain to work. The variant chain is what ConfigHub executes; the recipe manifest is the receipt that explains how it was assembled.
 
@@ -134,8 +143,9 @@ cd incubator/global-app-layer/single-component
 ./setup.sh --explain-json | jq
 
 # Ready for a fresh run
-./setup.sh                              # ConfigHub-only
-./setup.sh <prefix> <space/target>     # with live target
+./setup.sh                                              # ConfigHub-only
+./setup.sh <prefix> <kubernetes-target>                 # with direct target
+./setup.sh <prefix> <kubernetes-target> <fluxoci-target>  # with both variants
 ./verify.sh
 ```
 
@@ -155,26 +165,41 @@ This is the important part of the example: upgrades move down the chain without 
 
 ## Optional Target + Bundle Story
 
-If you did not pass a target during setup:
+If you did not pass targets during setup:
 
 ```bash
-./set-target.sh <space/target>
+./set-target.sh <kubernetes-target>   # binds the direct deployment variant
+./set-target.sh <fluxoci-target>      # binds the Flux deployment variant
 ```
 
-Then you can use normal ConfigHub apply flow on the deployment unit:
+Then you can use normal ConfigHub apply flow on either deployment variant:
 
+Direct variant:
 ```bash
 cub unit approve --space <prefix>-deploy-cluster-a backend-cluster-a
 cub unit apply --space <prefix>-deploy-cluster-a backend-cluster-a
 ```
 
-The bundle belongs to the target. The recipe manifest records the chain that produced the deployment, and includes a bundle hint once a target is set.
+Flux variant:
+```bash
+cub unit approve --space <prefix>-deploy-cluster-a-flux backend-cluster-a-flux
+cub unit apply --space <prefix>-deploy-cluster-a-flux backend-cluster-a-flux
+```
+
+The bundle belongs to the target. The recipe manifest records the chain that produced the deployment, and includes bundle hints once targets are set.
+
+Supported live target provider types:
+- `Kubernetes` → direct deployment variant
+- `FluxOCI` or `FluxOCIWriter` → Flux deployment variant
 
 ## Inspecting the Result
 
 ```bash
-# Show the deployment data
+# Show the direct deployment data
 cub unit get --space <prefix>-deploy-cluster-a --data-only backend-cluster-a
+
+# Show the Flux deployment data
+cub unit get --space <prefix>-deploy-cluster-a-flux --data-only backend-cluster-a-flux
 
 # Show the explicit recipe manifest
 cub unit get --space <prefix>-recipe-us-staging --data-only recipe-us-staging
@@ -206,28 +231,7 @@ That is why this example uses both:
 - one explicit recipe manifest unit for explanation and review
 - one placeholder-based base recipe file to show the source shape before values are materialized
 
-## Flux OCI Implementation Contract
-
-This example does not yet have Flux OCI support. Here is the exact contract for adding it:
-
-### What needs to be added
-
-1. **Flux deployment space**: `<prefix>-deploy-cluster-a-flux`
-2. **Flux deployment unit**: `backend-cluster-a-flux` cloned from the recipe unit
-3. **Flux deployment stub**: `postgres-stub-cluster-a-flux` cloned from the deploy stub
-4. **Recipe manifest update**: Include the Flux deployment variant in the recipe manifest
-
-### File changes required
-
-| File | Change |
-|------|--------|
-| `lib.sh` | Add `DEPLOY_FLUX_SPACE_SUFFIX`, `flux_deploy_space()`, Flux variant in `DEPLOY_VARIANTS` |
-| `setup.sh` | Create Flux deploy space and clone units |
-| `verify.sh` | Verify Flux deployment units exist and have correct ancestry |
-| `set-target.sh` | Accept `--flux <target>` and bind Flux deployment units |
-| `recipe.base.yaml` | Add Flux deployment variant placeholders |
-
-### Verification contract
+## Verification Contract
 
 A working Flux OCI proof must show:
 
@@ -238,6 +242,4 @@ A working Flux OCI proof must show:
 5. Flux reconciles the workload to the cluster
 6. Live cluster resources match the expected state
 
-### Reference implementation
-
-See [`gpu-eks-h100-training`](../gpu-eks-h100-training/README.md) for a working example with both Direct and Flux deployment variants.
+For the Argo OCI verification contract (target-state, not yet implemented), see [`07-argo-oci-spec.md`](../07-argo-oci-spec.md).

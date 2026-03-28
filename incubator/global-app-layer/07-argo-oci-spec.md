@@ -1,6 +1,7 @@
 # Argo OCI Specification
 
 **Status:** Target-state design. Not yet implemented.
+**ArgoCD Support:** Confirmed. ArgoCD v3.1+ (August 2025) has native OCI support.
 
 This document specifies the Argo OCI delivery path for ConfigHub. It defines what needs to be built for Argo to have the same OCI bundle contract as Flux OCI.
 
@@ -222,12 +223,32 @@ Until all five are demonstrated, Argo OCI is not proven.
 
 ## Open Questions
 
-### 1. Argo OCI Source Support
+### 1. Argo OCI Source Support — ANSWERED
 
-Does current ArgoCD support OCI artifacts as Application sources natively?
+**Yes.** ArgoCD v3.1+ (August 2025) has native OCI support.
 
-- If yes, the worker creates Applications with OCI sources
-- If no, additional configuration or Argo version requirements apply
+Application spec format:
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: my-app
+  namespace: argocd
+spec:
+  source:
+    repoURL: oci://registry.example.com/bundles/my-app
+    targetRevision: sha256:abc123...  # or tag
+    path: .
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: production
+```
+
+Requirement: ArgoCD v3.1 or later.
+
+Sources:
+- [Argo CD OCI User Guide](https://argo-cd.readthedocs.io/en/latest/user-guide/oci/)
+- [Argo CD v3.1 OCI Support Announcement](https://www.infoq.com/news/2025/08/argocd-oci-support-new-ui/)
 
 ### 2. Registry Configuration
 

@@ -21,6 +21,6 @@ cub unit push-upgrade --space "$(role_space)" "${ROLE_UNIT}"
 cub unit push-upgrade --space "$(recipe_space)" "${RECIPE_UNIT}"
 
 echo "==> Refreshing explicit recipe manifest"
-refresh_recipe_manifest_unit "${TARGET_REF:-}"
+refresh_recipe_manifest_unit "${DIRECT_TARGET_REF:-}" "${FLUX_TARGET_REF:-}"
 
 echo "Upgrade propagation complete. Run ./verify.sh to inspect the chain."
