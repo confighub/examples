@@ -60,6 +60,24 @@ GUI now: Nothing created yet — this is a preview.
 
 ---
 
+### Stage 2b: "How does field ownership work?" (read-only, optional)
+
+If the human wants to understand why some fields are "apply-here" vs "blocked", show the generator:
+
+Run: `../springboot-platform-app/generator/render.sh --trace`
+
+Print the full output. Explain:
+- The generator transforms app inputs + platform policies into Kubernetes manifests
+- Platform policy fields (like datasource) become **generator-owned** (blocked)
+- App config fields (like feature flags) remain **app-owned** (mutable)
+- Understanding the generator explains field ownership
+
+GUI now: Nothing — this is CLI-only understanding of the transformation.
+
+**PAUSE.** Wait for the human.
+
+---
+
 ### Stage 3: "Create the config" (mutates ConfigHub)
 
 Ask: "This will create 4 spaces (3 env + 1 infra), 3 units, 3 noop targets, and apply all units. OK?"

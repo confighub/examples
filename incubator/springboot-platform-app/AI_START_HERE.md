@@ -75,7 +75,32 @@ GUI checkpoint:
 
 Pause after this stage.
 
-## Stage 2: Prove The Local App Works (local only)
+## Stage 2: Understand The Generator (read-only)
+
+The generator is the transformation step that takes app inputs + platform policies and produces operational Kubernetes config.
+
+```bash
+./generator/render.sh --explain
+./generator/render.sh --trace
+```
+
+What you should see:
+
+- The 5 key transformations (app name extraction, datasource injection, port mapping, config embedding, profile activation)
+- Field-by-field mapping from inputs to outputs
+- Which fields are generator-owned (platform-controlled) vs app-owned
+
+Why this matters:
+
+Understanding the generator is key to understanding field ownership. When you know how a field got into `operational/deployment.yaml`, you know whether it's mutable-in-ch, lift-upstream, or generator-owned (blocked).
+
+GUI checkpoint:
+
+- none; this stage is CLI-only
+
+Pause after this stage.
+
+## Stage 3: Prove The Local App Works (local only)
 
 ```bash
 cd upstream/app
@@ -96,7 +121,7 @@ GUI checkpoint:
 
 Pause after this stage.
 
-## Stage 3: Create ConfigHub Structure (mutates ConfigHub)
+## Stage 4: Create ConfigHub Structure (mutates ConfigHub)
 
 ```bash
 cd ..
@@ -120,7 +145,7 @@ GUI checkpoint:
 
 Pause after this stage.
 
-## Stage 4: Apply-Here Mutation Proof (mutates ConfigHub)
+## Stage 5: Apply-Here Mutation Proof (mutates ConfigHub)
 
 ```bash
 cub function do --space inventory-api-prod --unit inventory-api \
@@ -146,7 +171,7 @@ GUI checkpoint:
 
 Pause after this stage.
 
-## Stage 5: Real Kubernetes Deployment (mutates cluster)
+## Stage 6: Real Kubernetes Deployment (mutates cluster)
 
 This is the **end-to-end proof**: ConfigHub → real kubectl apply → running pod → HTTP verification.
 
@@ -204,7 +229,7 @@ GUI checkpoint:
 
 Pause after this stage.
 
-## Stage 5b: Noop Target Workflow (simulation, no real cluster)
+## Stage 6b: Noop Target Workflow (simulation, no real cluster)
 
 For simulation without a real cluster, use `--with-noop-targets`.
 

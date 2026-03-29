@@ -43,6 +43,29 @@ Once platform-rendered operational config is in ConfigHub, every governed
 change request enters there. ConfigHub records the request, provenance, and
 decision, then routes it: apply here, lift upstream, or block/escalate.
 
+## The Generator
+
+The generator is the transformation step that takes app inputs + platform policies and produces operational Kubernetes config:
+
+```
+upstream/app/           + upstream/platform/ → operational/
+(Spring app inputs)       (Platform policies)   (Kubernetes manifests)
+```
+
+To see how this works:
+
+```bash
+./generator/render.sh --explain       # What the generator does
+./generator/render.sh --trace         # Field-by-field mapping
+```
+
+Understanding the generator is key to understanding field ownership. When you know how a field got into `operational/deployment.yaml`, you know whether it's:
+- **mutable-in-ch**: App-owned, safe to change locally in ConfigHub
+- **lift-upstream**: App-owned, but durable changes should go back to source
+- **generator-owned**: Platform-controlled, changes are blocked
+
+See [`generator/README.md`](./generator/README.md) for the full transformation documentation.
+
 ## What This Proves
 
 This example has seven proof levels:
@@ -200,6 +223,8 @@ These commands do not mutate ConfigHub or live infrastructure.
 | [`upstream/app/src/test/java/com/example/inventory/api/InventoryControllerProdHttpTest.java`](./upstream/app/src/test/java/com/example/inventory/api/InventoryControllerProdHttpTest.java) | HTTP-level test for prod profile |
 | [`upstream/platform/runtime-policy.yaml`](./upstream/platform/runtime-policy.yaml) | Platform-owned runtime policy |
 | [`upstream/platform/slo-policy.yaml`](./upstream/platform/slo-policy.yaml) | Platform-owned SLO policy |
+| [`generator/render.sh`](./generator/render.sh) | Shows how upstream inputs become operational config |
+| [`generator/README.md`](./generator/README.md) | Documents the generator transformation |
 | [`operational/configmap.yaml`](./operational/configmap.yaml) | Materialized operational config |
 | [`operational/deployment.yaml`](./operational/deployment.yaml) | Materialized deployment shape |
 | [`operational/service.yaml`](./operational/service.yaml) | Materialized service |

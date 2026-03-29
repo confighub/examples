@@ -76,8 +76,23 @@ This is an app-centric wrapper, not a fork. All implementation lives in [`../spr
 | `./verify.sh` delegates | `./verify.sh` checks fixtures |
 | `./cleanup.sh` delegates | `./confighub-cleanup.sh` deletes |
 | Three flow docs | Three change docs + lift-upstream bundle + block-escalate boundary |
+| Field ownership understanding | `generator/` shows the transformation |
 
 Use this example when you want to understand the story. Use `springboot-platform-app` when you need the full implementation detail.
+
+## Understanding Field Ownership
+
+To understand why some fields are "apply-here" vs "block/escalate", see the generator that transforms app inputs into operational config:
+
+```bash
+# See how inputs become outputs
+../springboot-platform-app/generator/render.sh --explain
+
+# Field-by-field mapping
+../springboot-platform-app/generator/render.sh --trace
+```
+
+The generator shows how platform policy (`upstream/platform/runtime-policy.yaml`) gets injected into the Kubernetes Deployment, making those fields platform-owned and blocked from local mutation.
 
 ## Try a Mutation
 
