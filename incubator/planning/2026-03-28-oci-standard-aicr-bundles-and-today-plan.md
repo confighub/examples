@@ -4,6 +4,10 @@
 **Repo:** `/Users/alexis/Public/github-repos/examples`  
 **Scope:** `/Users/alexis/Public/github-repos/examples/incubator`
 
+For the current milestone map, start with:
+
+- `incubator/planning/README.md`
+
 ## Why This Plan Exists
 
 The recent chat clarified three important points:

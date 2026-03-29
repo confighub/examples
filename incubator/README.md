@@ -23,10 +23,10 @@ ConfigHub supports multiple delivery modes. Know which one you need:
 |---------------|-------------|--------|
 | **Direct Kubernetes** | Worker applies YAML via `kubectl apply` | Simplest real proof. Fully working. |
 | **Flux OCI** | Worker publishes OCI artifact, Flux reconciles | Current standard controller path. |
-| **Argo OCI** | ConfigHub publishes OCI, Argo reconciles | Target-state standard. Not yet implemented. |
+| **Argo OCI** | ConfigHub publishes OCI, Argo reconciles | Implemented in selected examples. Claim it only when controller and live evidence are shown. |
 | **Renderer-only** | Worker sends payloads to a renderer (e.g., `ArgoCDRenderer`) | Companion path. Not the same as OCI delivery. |
 
-For controller-oriented delivery: **Flux OCI** is the current standard. **Argo OCI** is the target direction.
+For controller-oriented delivery: **Flux OCI** is the current standard. **Argo OCI** now exists in selected examples, but it still needs the same controller and live evidence discipline.
 
 `ArgoCDRenderer` is a valid renderer path but should not be confused with Argo OCI delivery. See [global-app-layer/contracts.md](./global-app-layer/contracts.md) for payload compatibility.
 
@@ -37,6 +37,7 @@ For controller-oriented delivery: **Flux OCI** is the current standard. **Argo O
 - For AI assistants: [`AI_START_HERE.md`](./AI_START_HERE.md)
 - Incubator AI protocol: [`AGENTS.md`](./AGENTS.md)
 - Fuller incubator AI guide: [`AI-README-FIRST.md`](./AI-README-FIRST.md)
+- Planning and milestones: [`planning/README.md`](./planning/README.md)
 
 ## Reality Rules
 

@@ -5,6 +5,7 @@ Use this page as the single AI-oriented handoff page for the current incubator w
 If you need the stricter protocol first, read [AGENTS.md](./AGENTS.md).
 If you need the fuller incubator AI guide, read [AI-README-FIRST.md](./AI-README-FIRST.md).
 If you need to explain ConfigHub to a new user first, read [WHY_CONFIGHUB.md](./WHY_CONFIGHUB.md).
+If you need the current pacing standard, read [standard-ai-demo-pacing.md](./standard-ai-demo-pacing.md).
 
 Default rule:
 
@@ -31,14 +32,14 @@ Know which delivery mode is in scope before making claims:
 |---------------|--------|-------------|
 | **Direct Kubernetes** | Fully working | Simplest real proof. No controller required. |
 | **Flux OCI** | Current standard | Controller-oriented delivery. Flux manages workload lifecycle. |
-| **Argo OCI** | Target-state, not implemented | Future standard for Argo. Do not claim this exists yet. |
+| **Argo OCI** | Implemented in selected examples | Use only where the example explicitly wires it and you can show controller plus live evidence. |
 | **Renderer-only (ArgoCDRenderer)** | Working, limited scope | Renderer/hydration path. Not the same as OCI delivery. |
 
 Critical distinctions:
 
 - `FluxOCI` is the current standard controller-oriented delivery path
 - `ArgoCDRenderer` is **not** Argo OCI delivery — it is a renderer path that expects Argo `Application` payloads
-- Argo OCI is the target-state direction for Argo, but it is not implemented yet
+- Argo OCI is now implemented in selected examples, but it should only be claimed with controller and live evidence
 - Do not conflate renderer paths with OCI bundle delivery
 
 ## Reality Rules
@@ -84,7 +85,7 @@ When walking a human through any incubator example, you MUST pause after every s
 After each stage:
 
 1. run only that stage's commands
-2. print the full output; do not replace it with a one-line summary
+2. show the output faithfully; if it is long, keep the important section visible and do not replace it with a one-line summary
 3. explain what the output means in plain English
 4. print the GUI link or GUI checkpoint if one exists
 5. say what the GUI shows today
@@ -108,7 +109,7 @@ When a stage has GUI relevance, prefer this shape:
 
 ```text
 Read incubator/<example>/AI_START_HERE.md and walk me through the demo.
-Pause after every stage. Show full output.
+Pause after every stage. Show the output clearly.
 For each stage, tell me what the GUI shows today, what it does not show yet, and the feature ask.
 Give me time to click through the GUI before continuing.
 Do not continue until I say continue.

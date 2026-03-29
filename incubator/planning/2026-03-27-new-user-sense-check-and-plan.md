@@ -3,6 +3,10 @@
 **Date:** 2026-03-27
 **Repo:** `/Users/alexis/Public/github-repos/examples`
 
+For the current milestone map, start with:
+
+- `incubator/planning/README.md`
+
 For the OCI-standardization direction and delivery matrix decisions, also read:
 
 - `incubator/planning/2026-03-28-oci-standard-aicr-bundles-and-today-plan.md`

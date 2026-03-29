@@ -4,6 +4,10 @@
 **Repo:** `/Users/alexis/Public/github-repos/examples`  
 **Current `origin/main`:** `a28ab7b680cb32a2b0465dcf663de821a97eed5d`
 
+For the current milestone map, start with:
+
+- `incubator/planning/README.md`
+
 For the current OCI-standardization, AICR-bundle, and focused today sequence, also read:
 
 - `incubator/planning/2026-03-28-oci-standard-aicr-bundles-and-today-plan.md`
@@ -29,13 +33,13 @@ Follow the pacing and presentation rules from:
 - `AI_START_HERE.md`
 - `incubator/AI_START_HERE.md`
 - `incubator/ai-example-playbook.md`
-- `~/Desktop/advisory-ai-demo-pacing.md`
+- `incubator/standard-ai-demo-pacing.md`
 
 That means:
 
 - use stage-based demo structure
 - pause after every stage
-- print full output, not summaries only
+- show output faithfully, not one-line summaries only
 - explicitly say what mutates and what does not
 - when a GUI checkpoint exists, include:
   - `GUI now`
