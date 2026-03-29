@@ -90,12 +90,12 @@ When `cub unit apply` is called with an ArgoOCI target, the worker should:
 
 1. **Render** the unit's current data
 2. **Package** the rendered manifests as an OCI artifact
-3. **Push** the artifact to the configured OCI registry
+3. **Publish** the artifact to ConfigHub's native OCI origin (external registries are optional caches/mirrors)
 4. **Record** the publication facts:
 
 ```yaml
 bundlePublication:
-  uri: oci://registry.example.com/bundles/my-app
+  uri: oci://confighub.example.com/v2/my-space/my-app
   digest: sha256:abc123...
   publishedAt: 2026-03-28T12:00:00Z
   target: my-space/worker-argooci-kubernetes-yaml-cluster
@@ -120,7 +120,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: oci://registry.example.com/bundles/my-app
+    repoURL: oci://confighub.example.com/v2/my-space/my-app  # ConfigHub-native OCI origin
     targetRevision: sha256:abc123...  # exact digest
     path: .
   destination:
@@ -134,7 +134,7 @@ spec:
 
 Key requirements:
 
-- Source is the OCI artifact, not a Git repo
+- Source is the ConfigHub-native OCI origin (external registries are optional)
 - `targetRevision` is the exact digest from publication
 - Labels connect the Application back to ConfigHub
 - SyncPolicy enables Argo to manage the workload lifecycle
@@ -146,8 +146,8 @@ A real Argo OCI proof must show all of these:
 ### 1. Publication Evidence
 
 ```bash
-# OCI artifact exists with correct digest
-crane manifest oci://registry.example.com/bundles/my-app@sha256:abc123...
+# OCI artifact exists with correct digest at ConfigHub-native OCI origin
+crane manifest oci://confighub.example.com/v2/my-space/my-app@sha256:abc123...
 ```
 
 ### 2. Argo Application Evidence
@@ -256,9 +256,9 @@ esac
 
 | Aspect | Flux OCI | Argo OCI |
 |--------|----------|----------|
-| Status | Current standard | Target-state |
+| Status | Current standard | Implemented |
 | Unit payload | Raw K8s manifests | Raw K8s manifests |
-| OCI publication | Worker publishes | Worker publishes |
+| OCI origin | ConfigHub-native (external registries optional) | ConfigHub-native (external registries optional) |
 | Controller resource | OCIRepository + Kustomization | Application with OCI source |
 | Reconciliation | Flux manages | Argo manages |
 | Sync evidence | Kustomization status | Application sync/health |
@@ -304,13 +304,15 @@ Sources:
 - [Argo CD OCI User Guide](https://argo-cd.readthedocs.io/en/latest/user-guide/oci/)
 - [Argo CD v3.1 OCI Support Announcement](https://www.infoq.com/news/2025/08/argocd-oci-support-new-ui/)
 
-### 2. Registry Configuration
+### 2. Registry Configuration — ANSWERED
 
-How should the worker discover or configure the OCI registry for Argo?
+ConfigHub's native OCI origin is the default. The standard delivery path is:
 
-- Per-target configuration?
-- Space-level configuration?
-- Worker-level default?
+```
+ConfigHub-native OCI origin -> Argo -> cluster
+```
+
+External registries (caches, mirrors, air-gap staging) are optional integrations where needed, not the default required path.
 
 ### 3. Application Namespace
 

@@ -14,7 +14,7 @@
 - expected anchors:
   - `.example == "global-app-layer-gpu-eks-h100-training"`
   - `.mutates == false`
-  - `.spaces | length == 7`
+  - `.spaces | length == 8`
   - `.components | length == 2`
   - `.recipeManifest.unit == "recipe-eks-h100-ubuntu-training-stack"`
 

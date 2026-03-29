@@ -1,24 +1,33 @@
-# OCI Distribution Architecture: Zot + Spegel
+# OCI Distribution Architecture: Zot + Spegel (Historical Exploration)
 
-> **Note**: This document explores a Zot + Spegel architecture. See [proposal-oci-api-confighub.md](../proposal-oci-api-confighub.md) for the recommended approach: ConfigHub exposes an OCI Distribution API directly, eliminating the need for Zot.
+> **Status**: ConfigHub now exposes a native OCI Distribution API. This document is preserved as historical exploration of an alternative architecture. It is **not the recommended approach**.
+>
+> The standard delivery path is:
+> ```
+> ConfigHub-native OCI origin -> Flux/Argo -> cluster
+> ```
+>
+> External registries, caches, and mirrors (including Zot, Spegel, Harbor, etc.) remain optional for specific needs like air-gap workflows, regional caching, or compliance requirements.
 
-This document specifies an OCI artifact distribution architecture for ConfigHub bundle delivery.
+This document explored an OCI artifact distribution architecture before ConfigHub's native OCI API existed.
 
-## Problem Statement
+## Historical Problem Statement
 
-ConfigHub publishes OCI bundles (Kubernetes manifests, Helm charts) that Flux and Argo consume. Current architecture requires:
+Before ConfigHub had native OCI support, the architecture required:
 
 1. ConfigHub server pushes to an external OCI registry (e.g., GHCR, ECR)
 2. Flux/Argo controllers pull from that registry
 3. Each cluster independently pulls the same artifacts
 
-This creates:
+This created:
 - External registry dependency
 - Network egress costs
 - Rate limiting exposure
 - Latency for distributed clusters
 
-## Proposed Architecture
+**This problem is now solved by ConfigHub's native OCI API.** The exploration below remains for reference on caching and distribution layers that may still be useful for large-scale deployments.
+
+## Historical Proposed Architecture (Superseded)
 
 ```
                     ┌─────────────────────┐

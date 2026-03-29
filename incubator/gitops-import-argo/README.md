@@ -224,6 +224,8 @@ That is the current front-door proof. It shows a healthy real ArgoCD environment
 
 ## Interpreting ArgoCDRenderer Evidence
 
+> **Important**: `ArgoCDRenderer` is **not** Argo OCI delivery. It is a renderer path that expects Argo `Application` CRD payloads. For native Argo OCI delivery (where ConfigHub publishes OCI artifacts that Argo consumes), see `global-app-layer/single-component` or `global-app-layer/gpu-eks-h100-training` with an `ArgoCDOCI` target.
+
 When the imported unit is itself an ArgoCD `Application`, the `ArgoCDRenderer` path can prove useful things, but it is still only a partial proof.
 
 It can prove that:

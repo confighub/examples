@@ -1,8 +1,27 @@
-# Proposal: ConfigHub Should Have an OCI Distribution API
+# ConfigHub Native OCI Distribution API
 
-## Summary
+> **Status**: The core OCI Distribution API surface is now implemented in ConfigHub. This document preserves the original proposal rationale and describes the remaining documentation, productization, and proof gaps. Treat this as design context and gap tracking, not as a request for a missing feature.
 
-ConfigHub should expose a read-only OCI Distribution API.
+## Current Status
+
+ConfigHub now exposes a native OCI Distribution API. The core capability exists:
+
+- Flux and Argo can consume ConfigHub as an OCI origin without requiring a separate registry
+- The standard controller path is: `ConfigHub-native OCI origin -> Flux/Argo -> cluster`
+- External registries remain optional for caching, mirroring, compliance, or air-gap workflows
+
+**Remaining gaps** (documentation and proof, not core capability):
+- User-facing OCI documentation in main ConfigHub docs (not yet merged)
+- Full end-to-end proof in these incubator examples showing: `ConfigHub revision -> OCI ref/digest -> controller source -> live workload evidence`
+- Productization polish (error messages, CLI discoverability, GUI evidence views)
+
+The sections below preserve the original proposal rationale for context.
+
+---
+
+## Original Proposal Summary
+
+ConfigHub exposes a read-only OCI Distribution API.
 
 That would make ConfigHub the origin for controller-oriented bundle delivery:
 
@@ -22,9 +41,9 @@ Modern controller-oriented delivery has converged on OCI transport:
 
 So when a ConfigHub user wants controller-driven delivery instead of direct `kubectl apply`, OCI is no longer optional in practice.
 
-## ConfigHub Needs an Out-of-the-Box Option
+## ConfigHub Provides an Out-of-the-Box Option
 
-Today the direct Kubernetes story is simple:
+The direct Kubernetes story is simple:
 
 ```text
 ConfigHub -> worker -> cluster
@@ -46,7 +65,7 @@ That adds a second operational system before the user has even proven the deploy
 
 That is too much burden for the default path.
 
-If ConfigHub can already offer an out-of-the-box direct apply story, it should also be able to offer an out-of-the-box OCI origin for Flux and Argo. Adding third-party OCI technology should stay optional, not mandatory.
+ConfigHub offers both an out-of-the-box direct apply story and an out-of-the-box OCI origin for Flux and Argo. Third-party OCI technology remains optional, not mandatory.
 
 ## ConfigHub Is Authoritative
 
@@ -78,9 +97,9 @@ not:
 ConfigHub (authoritative) -> copy/sync -> registry -> Flux/Argo
 ```
 
-## OCI Should Be a Gateway, Not a Separate System
+## OCI Is a Gateway, Not a Separate System
 
-ConfigHub should expose the OCI Distribution API as another protocol surface over deployment output.
+ConfigHub exposes the OCI Distribution API as another protocol surface over deployment output.
 
 Conceptually:
 
@@ -99,9 +118,9 @@ Conceptually:
 
 `cub` already reaches ConfigHub through one interface. The GUI reaches it through another. Flux, Argo, and OCI tooling should be able to do the same through `/v2/...`.
 
-## What ConfigHub Would Serve
+## What ConfigHub Serves
 
-ConfigHub should expose a stable OCI view of the deployment output for a specific deployment variant and target path.
+ConfigHub exposes a stable OCI view of the deployment output for a specific deployment variant and target path.
 
 That identity should be deployment-oriented, not just storage-oriented. The important user-facing identity is:
 
@@ -323,14 +342,14 @@ The first cut should not require:
 ## Conclusion
 
 Flux and Argo need OCI.
-ConfigHub needs an out-of-the-box controller path.
-ConfigHub is already authoritative for approved deployment state.
+ConfigHub provides an out-of-the-box controller path.
+ConfigHub is authoritative for approved deployment state.
 
-So ConfigHub should expose OCI directly.
+ConfigHub exposes OCI directly.
 
-That makes OCI a transport and gateway layer over ConfigHub's authoritative deployment output.
+OCI is a transport and gateway layer over ConfigHub's authoritative deployment output.
 
-It keeps the default path simple:
+The default path is simple:
 
 - direct Kubernetes when you want the smallest real proof
 - Flux OCI when you want the standard controller path

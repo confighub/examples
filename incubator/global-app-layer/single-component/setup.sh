@@ -18,7 +18,13 @@ case "${1:-}" in
 esac
 
 prefix="${1:-}"
-shift || true
+shift_count=0
+if [[ -n "${prefix}" ]]; then
+  shift_count=1
+fi
+if [[ "${shift_count}" -gt 0 ]]; then
+  shift
+fi
 target_refs=("$@")
 
 if [[ "${mode}" != "run" ]]; then
@@ -28,9 +34,17 @@ if [[ "${mode}" != "run" ]]; then
   ARGO_TARGET_REF=""
   if [[ "${mode}" == "explain-json" ]]; then
     require_jq
-    show_setup_plan_json "${target_refs[@]}"
+    if [[ "${#target_refs[@]}" -gt 0 ]]; then
+      show_setup_plan_json "${target_refs[@]}"
+    else
+      show_setup_plan_json
+    fi
   else
-    show_setup_plan "${target_refs[@]}"
+    if [[ "${#target_refs[@]}" -gt 0 ]]; then
+      show_setup_plan "${target_refs[@]}"
+    else
+      show_setup_plan
+    fi
   fi
   exit 0
 fi

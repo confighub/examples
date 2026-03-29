@@ -51,8 +51,8 @@ ConfigHub supports multiple delivery modes. The right choice depends on your env
 | Delivery Mode | What It Does | When To Use |
 |---------------|--------------|-------------|
 | **Direct Kubernetes** | Worker applies YAML directly via `kubectl apply` | Simplest real proof. No controller required. |
-| **Flux OCI** | Worker publishes an OCI artifact, Flux reconciles workloads from it | Standard controller path today. Flux manages workload lifecycle. |
-| **Argo OCI** | ConfigHub publishes an OCI artifact, Argo reconciles from it | Implemented in selected examples. Claim it only when controller and live evidence are shown. |
+| **Flux OCI** | Worker publishes to ConfigHub-native OCI origin, Flux reconciles workloads from it | Standard controller path today. Flux manages workload lifecycle. External registries are optional. |
+| **Argo OCI** | ConfigHub publishes to native OCI origin, Argo reconciles from it | Implemented in selected examples. Claim it only when controller and live evidence are shown. |
 | **Renderer-only** | Worker sends payloads to a renderer (e.g., `ArgoCDRenderer`) for hydration | Companion path for rendering. Not the same as OCI delivery. |
 
 For most examples in this repo:

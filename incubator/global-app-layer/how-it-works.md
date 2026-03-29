@@ -121,8 +121,8 @@ The worker supports three relevant target types in this package:
 | Target | Slug | What it does | Status |
 |---|---|---|---|
 | **Direct Kubernetes** | `worker-kubernetes-yaml-cluster` | Worker applies YAML directly via `kubectl apply` | Fully working. Simplest real proof. |
-| **Flux OCI** | `worker-fluxoci-kubernetes-yaml-cluster` | Worker publishes OCI artifact, Flux reconciles workloads | Current standard controller path. |
-| **Argo OCI** | `worker-argocdoci-kubernetes-yaml-cluster` | Worker publishes OCI artifact, writes an Argo `Application`, and Argo reconciles workloads | Implemented in `single-component` and `gpu-eks-h100-training`. |
+| **Flux OCI** | `worker-fluxoci-kubernetes-yaml-cluster` | Worker publishes to ConfigHub-native OCI origin, Flux reconciles workloads | Current standard controller path. |
+| **Argo OCI** | `worker-argocdoci-kubernetes-yaml-cluster` | Worker publishes to ConfigHub-native OCI origin, creates Argo `Application` with OCI source, Argo reconciles workloads | Implemented in `single-component` and `gpu-eks-h100-training`. |
 | **ArgoCDRenderer** | `worker-argocdrenderer-kubernetes-yaml-cluster` | Worker sends Argo `Application` CRDs to ArgoCD for rendering | Renderer path only. Not workload delivery. |
 
 **Important distinctions:**
@@ -183,7 +183,7 @@ When you use the `FluxOCI` target, the flow is:
 ```
 ConfigHub (materialized raw Kubernetes YAML)
     → worker (in-cluster agent)
-        → OCI artifact published to registry
+        → OCI artifact published to ConfigHub-native OCI origin
             → Flux OCIRepository + Kustomization or HelmRelease CRs
                 → Flux reconciles workloads in the cluster
 ```
@@ -191,9 +191,10 @@ ConfigHub (materialized raw Kubernetes YAML)
 **Flux OCI is the current standard for controller-oriented bundle delivery:**
 
 - Raw Kubernetes YAML payloads work directly with Flux OCI
-- The worker publishes an OCI artifact and creates Flux resources to consume it
+- The worker publishes to ConfigHub's native OCI origin, then creates Flux resources to consume it
+- External registries (caches, mirrors) are optional, not required for the default path
 - Flux manages the workload lifecycle (reconciliation, drift detection, rollback)
-- This proves the full OCI bundle flow: publication, controller consumption, workload delivery
+- Full proof requires: ConfigHub revision → OCI ref/digest → controller source → live workload evidence
 
 In `gpu-eks-h100-training`, Flux OCI is modeled as a sibling deployment variant at the leaf rather than pretending direct and Flux paths are the same unit.
 

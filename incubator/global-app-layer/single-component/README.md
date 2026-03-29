@@ -77,7 +77,8 @@ In live mode:
 - deployment variants bound to compatible targets
 - successful `cub unit apply`
 - for direct targets: worker-mediated apply evidence plus live cluster resources
-- for Flux OCI targets: OCI artifact published, Flux reconciliation evidence, plus live cluster resources
+- for Flux OCI targets: OCI ref/digest published to ConfigHub-native OCI origin, Flux OCIRepository pointing at that digest, reconciliation evidence, plus live cluster resources
+- for Argo OCI targets: OCI ref/digest published, ArgoCD Application with OCI source, Synced and Healthy status, plus live cluster resources
 
 ## AI-Safe Path
 
@@ -248,22 +249,28 @@ That is why this example uses both:
 
 ## Verification Contract
 
-A working Flux OCI proof must show:
+> **Important**: "Publishes an OCI artifact" by itself is not sufficient proof. The full proof chain requires evidence at each step.
+
+A working Flux OCI proof must show the complete chain:
 
 1. Flux deployment unit exists with correct upstream (recipe unit)
 2. Flux deployment unit is bound to a `FluxOCI` or `FluxOCIWriter` target
-3. `cub unit apply` publishes an OCI artifact
-4. Flux `OCIRepository` and `Kustomization` resources are created
-5. Flux reconciles the workload to the cluster
+3. `cub unit apply` publishes to ConfigHub-native OCI origin with recorded **ref and digest**
+4. Flux `OCIRepository` points at that exact OCI ref/digest
+5. Flux `Kustomization` reports reconciliation success
 6. Live cluster resources match the expected state
 
-A working Argo OCI proof must show:
+Evidence chain: `ConfigHub revision -> OCI ref/digest -> controller source -> live workload`
+
+A working Argo OCI proof must show the complete chain:
 
 1. Argo deployment unit exists with correct upstream (recipe unit)
 2. Argo deployment unit is bound to an `ArgoCDOCI` target
-3. `cub unit apply` publishes an OCI artifact
-4. ArgoCD `Application` resource is created with OCI source
-5. ArgoCD syncs and reports Healthy status
+3. `cub unit apply` publishes to ConfigHub-native OCI origin with recorded **ref and digest**
+4. ArgoCD `Application` resource points at that exact OCI source and digest
+5. ArgoCD reports Synced and Healthy status
 6. Live cluster resources match the expected state
+
+Evidence chain: `ConfigHub revision -> OCI ref/digest -> controller source -> live workload`
 
 For full Argo OCI specification, see [`07-argo-oci-spec.md`](../07-argo-oci-spec.md).

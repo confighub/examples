@@ -141,6 +141,8 @@ The worker installer preloads the Flux controller images and the ConfigHub Flux 
 
 The `fluxoci` target is useful beyond this import example. It is the deployment bridge that raw-manifest examples such as `incubator/global-app-layer/gpu-eks-h100-training` can bind to when they want a Flux-managed deployment variant.
 
+> **Note**: This example provisions the `fluxoci` target infrastructure, but it does not by itself prove native OCI delivery. For native OCI proof, use this example to set up the infrastructure, then use `global-app-layer/single-component` or `global-app-layer/gpu-eks-h100-training` with a Flux deployment variant to demonstrate the full proof chain: `ConfigHub revision -> OCI ref/digest -> Flux OCIRepository -> live workload`.
+
 ## What Success Looks Like
 
 At the cluster level you should see:
