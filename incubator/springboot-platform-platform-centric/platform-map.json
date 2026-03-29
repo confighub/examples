@@ -1,0 +1,121 @@
+{
+  "platform": {
+    "name": "springboot-platform",
+    "description": "Heroku-like Spring Boot platform with managed services and runtime policies",
+    "provides": [
+      {
+        "name": "managed-datasource",
+        "type": "postgres-shared",
+        "description": "PostgreSQL with HA, encryption, automated backups"
+      },
+      {
+        "name": "runtime-hardening",
+        "description": "Security defaults: runAsNonRoot, mTLS sidecar"
+      },
+      {
+        "name": "observability",
+        "description": "Health endpoints, SLO targets (99.9% availability, p95 < 250ms)"
+      }
+    ],
+    "controls": [
+      {
+        "field_pattern": "spring.datasource.*",
+        "owner": "platform-engineering",
+        "action": "generator-owned",
+        "reason": "Managed datasource boundary"
+      },
+      {
+        "field_pattern": "securityContext.*",
+        "owner": "platform-engineering",
+        "action": "generator-owned",
+        "reason": "Runtime hardening policy"
+      }
+    ],
+    "contacts": {
+      "slack": "#platform-support",
+      "email": "platform@example.com"
+    }
+  },
+  "apps": [
+    {
+      "name": "inventory-api",
+      "description": "Inventory management service with feature flags",
+      "source": "../springboot-platform-app/upstream/app",
+      "deployments": [
+        {
+          "name": "dev",
+          "space": "inventory-api-dev",
+          "unit": "inventory-api",
+          "default_target_mode": "noop"
+        },
+        {
+          "name": "stage",
+          "space": "inventory-api-stage",
+          "unit": "inventory-api",
+          "default_target_mode": "noop"
+        },
+        {
+          "name": "prod",
+          "space": "inventory-api-prod",
+          "unit": "inventory-api",
+          "default_target_mode": "noop"
+        }
+      ],
+      "app_owned_fields": [
+        {
+          "pattern": "feature.inventory.*",
+          "action": "mutable-in-ch",
+          "example": "reservationMode=optimistic"
+        }
+      ],
+      "lift_upstream_fields": [
+        {
+          "pattern": "spring.cache.*",
+          "action": "lift-upstream",
+          "example": "Adding Redis caching"
+        }
+      ]
+    },
+    {
+      "name": "catalog-api",
+      "description": "Product catalog service",
+      "source": "./apps/catalog-api",
+      "deployments": [
+        {
+          "name": "dev",
+          "space": "catalog-api-dev",
+          "unit": "catalog-api",
+          "default_target_mode": "noop"
+        },
+        {
+          "name": "prod",
+          "space": "catalog-api-prod",
+          "unit": "catalog-api",
+          "default_target_mode": "noop"
+        }
+      ],
+      "app_owned_fields": [
+        {
+          "pattern": "feature.catalog.*",
+          "action": "mutable-in-ch",
+          "example": "searchEnabled=true"
+        }
+      ]
+    }
+  ],
+  "target_modes": {
+    "noop": {
+      "description": "Apply workflow works. Noop worker accepts but doesn't deploy.",
+      "cluster_required": false
+    },
+    "unbound": {
+      "description": "No targets. Units exist in ConfigHub only.",
+      "cluster_required": false
+    },
+    "real": {
+      "description": "Apply delivers to live Kubernetes cluster.",
+      "cluster_required": true
+    }
+  },
+  "example_label": "springboot-platform-platform-centric"
+}

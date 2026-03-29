@@ -1,6 +1,18 @@
 # Spring Boot generator example
 
-> **Quick start:** If you want the fastest path to understanding this story, start with the [app-centric sibling](../springboot-platform-app-centric/README.md). It presents the same example in app/deployment/target terms first, without the implementation detail.
+## The Sequence
+
+This is **#1** in a sequence of three related examples:
+
+| # | Example | Focus |
+|---|---------|-------|
+| **1** | **This example** | Generator story (cub-gen): how app+platform → operational |
+| 2 | [`springboot-platform-app-centric`](../springboot-platform-app-centric/) | App-centric: App → Deployments → Targets |
+| 3 | [`springboot-platform-platform-centric`](../springboot-platform-platform-centric/) | Platform-centric: Platform → Apps → Deployments |
+
+**Start here** if you want to understand the generator/authority story.
+**Start with #2** for the app/deployment/target model.
+**Start with #3** for multiple apps sharing one platform.
 
 Example is a Heroku-like Spring Boot "platform" service such as
 `inventory-api`, with `dev`, `stage`, and `prod` deployments.

@@ -1,0 +1,71 @@
+apiVersion: platform.confighub.io/v1alpha1
+kind: Platform
+metadata:
+  name: springboot-platform
+  labels:
+    example: springboot-platform-platform-centric
+spec:
+  description: |
+    Heroku-like Spring Boot platform providing managed datasource,
+    runtime hardening, and observability defaults. Multiple apps
+    run on this platform and inherit its policies.
+
+  # What the platform provides to all apps
+  provides:
+    - name: managed-datasource
+      type: postgres-shared
+      description: Managed PostgreSQL with HA, encryption, and automated backups
+      fieldPattern: spring.datasource.*
+      guarantees:
+        - high-availability
+        - encryption-at-rest
+        - automated-backups
+        - connection-pooling
+
+    - name: runtime-hardening
+      description: Security defaults for production workloads
+      fieldPattern: securityContext.*
+      requires:
+        - runAsNonRoot: true
+        - requireMtlsSidecar: true
+
+    - name: observability
+      description: Health endpoints and SLO targets
+      requires:
+        - actuatorHealth: /actuator/health
+      slo:
+        availability: "99.9%"
+        p95LatencyMs: 250
+
+  # Platform-wide field controls (apply to all apps)
+  fieldRoutes:
+    - match: spring.datasource.*
+      owner: platform-engineering
+      action: generator-owned
+      provides: managed-datasource
+      reason: Datasource connectivity is managed by platform for HA and security
+      blocked: true
+
+    - match: securityContext.*
+      owner: platform-engineering
+      action: generator-owned
+      provides: runtime-hardening
+      reason: Runtime hardening must remain platform-controlled
+      blocked: true
+
+  # Apps on this platform
+  apps:
+    - name: inventory-api
+      source: ../springboot-platform-app/upstream/app
+      deployments: [dev, stage, prod]
+
+    - name: catalog-api
+      source: ./apps/catalog-api
+      deployments: [dev, prod]
+
+  # Escalation contacts
+  contacts:
+    platform-engineering:
+      slack: "#platform-support"
+      email: platform@example.com
+      escalation: "For blocked field changes, open a ticket in JIRA"

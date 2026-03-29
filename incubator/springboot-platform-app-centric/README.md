@@ -2,6 +2,20 @@
 
 One app. Three deployments. Three mutation outcomes.
 
+## The Sequence
+
+This is **#2** in a sequence of three related examples:
+
+| # | Example | Focus |
+|---|---------|-------|
+| 1 | [`springboot-platform-app`](../springboot-platform-app/) | Generator story (cub-gen): how app+platform → operational |
+| **2** | **This example** | App-centric: App → Deployments → Targets |
+| 3 | [`springboot-platform-platform-centric`](../springboot-platform-platform-centric/) | Platform-centric: Platform → Apps → Deployments |
+
+**Start with #1** if you want to understand the generator/authority story.
+**Start here** for the app/deployment/target model.
+**Start with #3** for multiple apps sharing one platform.
+
 ## The App
 
 **inventory-api**: A Spring Boot service that manages inventory items with feature flags and runtime tuning.
