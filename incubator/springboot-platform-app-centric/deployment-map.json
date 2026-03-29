@@ -1,0 +1,68 @@
+{
+  "app": {
+    "name": "inventory-api",
+    "description": "Spring Boot inventory service",
+    "source": "../springboot-platform-app/upstream/app"
+  },
+  "deployments": [
+    {
+      "name": "dev",
+      "space": "inventory-api-dev",
+      "purpose": "Development environment for iteration",
+      "default_target_mode": "noop"
+    },
+    {
+      "name": "stage",
+      "space": "inventory-api-stage",
+      "purpose": "Staging environment for validation",
+      "default_target_mode": "noop"
+    },
+    {
+      "name": "prod",
+      "space": "inventory-api-prod",
+      "purpose": "Production environment",
+      "default_target_mode": "noop"
+    }
+  ],
+  "target_modes": {
+    "unbound": {
+      "description": "No target. Units exist in ConfigHub only.",
+      "cluster_required": false,
+      "setup_flag": "--confighub-only"
+    },
+    "noop": {
+      "description": "Noop targets. Apply workflow works, but no real cluster delivery.",
+      "cluster_required": false,
+      "setup_flag": null,
+      "default": true
+    },
+    "real": {
+      "description": "Real Kubernetes targets. Apply delivers to live cluster.",
+      "cluster_required": true,
+      "setup_flag": "--with-targets"
+    }
+  },
+  "mutation_outcomes": [
+    {
+      "name": "apply-here",
+      "description": "Direct mutation in ConfigHub. Change survives refreshes.",
+      "example_field": "feature.inventory.reservationMode",
+      "owner": "app-team",
+      "flow": "flows/apply-here.md"
+    },
+    {
+      "name": "lift-upstream",
+      "description": "Route change back to app source. Triggers upstream PR.",
+      "example_field": "spring.cache.*",
+      "owner": "app-team",
+      "flow": "flows/lift-upstream.md"
+    },
+    {
+      "name": "block-escalate",
+      "description": "Block or escalate. Platform-owned field requires approval.",
+      "example_field": "spring.datasource.*",
+      "owner": "platform-engineering",
+      "flow": "flows/block-escalate.md"
+    }
+  ]
+}

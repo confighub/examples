@@ -98,6 +98,28 @@ cd incubator/import-from-live
 ./verify.sh
 ```
 
+## App-Centric Mutation Story
+
+If you want to understand how ConfigHub routes operational changes through one app, use:
+
+- [`incubator/springboot-platform-app-centric`](./incubator/springboot-platform-app-centric/README.md)
+
+Why:
+
+- it shows one app (`inventory-api`) with three deployments (dev, stage, prod)
+- it shows three target modes: unbound, noop, real
+- it shows the three mutation outcomes: apply here, lift upstream, block/escalate
+- it works out of the box with noop targets (no cluster required)
+
+Typical flow:
+
+```bash
+cd incubator/springboot-platform-app-centric
+./setup.sh --explain
+./setup.sh
+./verify.sh
+```
+
 ## Third Path: Standard GitOps Import Stories
 
 Start with the published GitOps docs and then use the runnable examples in this repo:

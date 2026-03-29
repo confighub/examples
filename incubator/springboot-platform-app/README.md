@@ -1,5 +1,7 @@
 # Spring Boot generator example
 
+> **Quick start:** If you want the fastest path to understanding this story, start with the [app-centric sibling](../springboot-platform-app-centric/README.md). It presents the same example in app/deployment/target terms first, without the implementation detail.
+
 Example is a Heroku-like Spring Boot "platform" service such as
 `inventory-api`, with `dev`, `stage`, and `prod` deployments.
 
