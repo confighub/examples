@@ -19,22 +19,27 @@ For AI-first pacing and rollout:
 
 ### Milestone 1: Re-prove the Recent Real Examples
 
+**Status (2026-03-29):** Partial. Direct Kubernetes and Flux import work. FluxOCI/ArgoCDOCI blocked by missing worker image.
+
 Goal:
 
 - capture fresh evidence for the examples we now describe as real or nearly real
 
 Main examples:
 
-- `incubator/springboot-platform-app`
-- `incubator/gitops-import-argo`
-- `incubator/gitops-import-flux`
-- `incubator/global-app-layer/single-component` with `FluxOCI`
-- `incubator/global-app-layer/single-component` with `ArgoCDOCI`
-- `incubator/global-app-layer/gpu-eks-h100-training` with `FluxOCI`
-- `incubator/global-app-layer/gpu-eks-h100-training` with `ArgoCDOCI`
+- `incubator/springboot-platform-app` — ⚠️ partial (worker connection issue)
+- `incubator/gitops-import-argo` — ❌ blocked (cluster creation failed)
+- `incubator/gitops-import-flux` — ⚠️ partial (Flux works, FluxOCI worker missing)
+- `incubator/global-app-layer/single-component` with `FluxOCI` — ❌ blocked (no FluxOCI target)
+- `incubator/global-app-layer/single-component` with `ArgoCDOCI` — ❌ blocked (no ArgoCDOCI target)
+- `incubator/global-app-layer/gpu-eks-h100-training` with `FluxOCI` — ❌ blocked (no FluxOCI target)
+- `incubator/global-app-layer/gpu-eks-h100-training` with `ArgoCDOCI` — ❌ blocked (no ArgoCDOCI target)
+
+Key blocker: Worker image `ghcr.io/confighubai/confighub-worker:52afd7a...` not found in registry.
 
 Supporting docs:
 
+- [2026-03-29-milestone1-proof-pass-results.md](./2026-03-29-milestone1-proof-pass-results.md) — **latest results and lessons learned**
 - [2026-03-24-next-ai-handover.md](./2026-03-24-next-ai-handover.md)
 - [2026-03-22-claude-testing-status-and-todo.md](./2026-03-22-claude-testing-status-and-todo.md)
 - [2026-03-28-oci-standard-aicr-bundles-and-today-plan.md](./2026-03-28-oci-standard-aicr-bundles-and-today-plan.md)
@@ -79,12 +84,21 @@ Supporting docs:
 
 ### Milestone 4: Standardize the OCI Controller Story
 
+**Status (2026-03-29):** Documentation complete. All delivery matrices standardized. Live proof pending Milestone 1 blockers.
+
 Goal:
 
 - keep direct Kubernetes as the simplest proof
 - keep Flux OCI as the current standard controller path
 - keep Argo OCI honest and evidence-backed where it exists
 - tighten the bundle language around target-specific output
+
+Completed:
+
+- Delivery matrix standardized across all layered docs
+- Argo OCI status changed from "in selected examples" to "Implemented"
+- ConfigHub-native OCI origin language applied consistently
+- ArgoCDRenderer clearly distinguished from Argo OCI delivery
 
 Supporting docs:
 
