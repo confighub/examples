@@ -47,7 +47,7 @@ cub unit get --space inventory-api-prod inventory-api --json | jq '.Unit.Objects
 # Make the change
 cub function do --space inventory-api-prod --unit inventory-api \
   --change-desc "rollout: optimistic reservation mode" \
-  set-env FEATURE_INVENTORY_RESERVATIONMODE optimistic
+  set-env inventory-api FEATURE_INVENTORY_RESERVATIONMODE=optimistic
 
 # Apply to target
 cub unit apply --space inventory-api-prod inventory-api

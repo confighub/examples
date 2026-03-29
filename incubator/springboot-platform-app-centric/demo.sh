@@ -39,7 +39,7 @@ EOF
     cat <<'EOF'
 Try it:
   cub function do --space inventory-api-prod --unit inventory-api \
-    set-env FEATURE_INVENTORY_RESERVATIONMODE optimistic
+    set-env inventory-api FEATURE_INVENTORY_RESERVATIONMODE=optimistic
 
   cub unit apply --space inventory-api-prod inventory-api
 

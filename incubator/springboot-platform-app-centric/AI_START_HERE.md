@@ -109,7 +109,7 @@ Run:
 ```bash
 cub function do --space inventory-api-prod --unit inventory-api \
   --change-desc "demo: reservation mode strict → optimistic" \
-  set-env FEATURE_INVENTORY_RESERVATIONMODE optimistic
+  set-env inventory-api FEATURE_INVENTORY_RESERVATIONMODE=optimistic
 ```
 
 Print the output. Then show the change:
