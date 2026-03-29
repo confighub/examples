@@ -45,9 +45,9 @@ Know which delivery mode is in scope before making claims:
 | Delivery Mode | Status | Use case |
 |---------------|--------|----------|
 | **Direct Kubernetes** | Fully working | Simplest real proof. No controller required. |
-| **Flux OCI** | Current standard | Controller-oriented delivery. Flux manages workload lifecycle. |
-| **Argo OCI** | Implemented in selected examples | Controller-oriented delivery for `single-component` and `gpu-eks-h100-training`. Requires ArgoCD v3.1+. |
-| **ArgoCDRenderer** | Working, limited scope | Renderer path only. Expects Argo `Application` payloads. |
+| **Flux OCI** | Current standard | Worker publishes to ConfigHub-native OCI origin. Flux manages workload lifecycle. |
+| **Argo OCI** | Implemented | Worker publishes to ConfigHub-native OCI origin. Argo reconciles workloads. |
+| **ArgoCDRenderer** | Working, limited scope | Renderer path only. Expects Argo `Application` payloads. Not OCI delivery. |
 
 Critical distinctions:
 

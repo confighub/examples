@@ -46,10 +46,12 @@ It does not yet fully prove:
 
 **Flux OCI** is the current standard for the bundle publication story. It proves:
 
-- OCI artifact published to registry
-- Bundle digest recorded
-- Flux consumes the exact digest
+- OCI artifact published to ConfigHub-native OCI origin (external registries optional)
+- Bundle ref and digest recorded
+- Flux OCIRepository consumes the exact digest
 - Controller manages workload lifecycle
+
+Full proof chain: `ConfigHub revision → OCI ref/digest → Flux OCIRepository → live workload`
 
 **ArgoCDRenderer** is not the same as Argo OCI bundle delivery. It is a renderer path that expects Argo `Application` payloads and does not publish OCI bundles.
 
@@ -243,8 +245,8 @@ That means showing one of:
 | Delivery Mode | What Gets Published | What Consumes It |
 |---------------|---------------------|------------------|
 | Direct Kubernetes | Nothing (worker applies directly) | Cluster via worker |
-| **Flux OCI** (current standard) | OCI artifact | Flux OCIRepository + Kustomization |
-| **Argo OCI** (target-state) | OCI artifact | Argo Application pointing at OCI source |
+| **Flux OCI** (current standard) | OCI artifact to ConfigHub-native origin | Flux OCIRepository + Kustomization |
+| **Argo OCI** (implemented) | OCI artifact to ConfigHub-native origin | Argo Application with OCI source |
 | ArgoCDRenderer | Argo Application CRD | ArgoCD renderer API (not workload delivery) |
 
 **Flux OCI** is the current standard for the bundle handoff story because it proves the complete flow: OCI publication, controller consumption, workload delivery.

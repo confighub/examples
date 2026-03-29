@@ -17,9 +17,9 @@ This package supports multiple delivery modes. Know which one applies:
 | Delivery Mode | Status | Description |
 |---------------|--------|-------------|
 | **Direct Kubernetes** | Fully working | Worker applies YAML via `kubectl apply`. Simplest real proof. |
-| **Flux OCI** | Fully working | Worker publishes OCI artifact, Flux reconciles workloads. |
-| **Argo OCI** | Implemented in selected examples | Worker publishes OCI artifact, ArgoCD v3.1+ reconciles workloads in `single-component` and `gpu-eks-h100-training`. |
-| **ArgoCDRenderer** | Working, limited scope | Renderer path. Expects Argo `Application` payloads, not raw manifests. |
+| **Flux OCI** | Current standard | Worker publishes to ConfigHub-native OCI origin, Flux reconciles workloads. External registries optional. |
+| **Argo OCI** | Implemented | Worker publishes to ConfigHub-native OCI origin, ArgoCD v3.1+ reconciles workloads. Available in `single-component` and `gpu-eks-h100-training`. |
+| **ArgoCDRenderer** | Working, limited scope | Renderer path. Expects Argo `Application` payloads, not raw manifests. Not OCI delivery. |
 
 For controller-oriented delivery in this package:
 

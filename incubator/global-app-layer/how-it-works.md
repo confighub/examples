@@ -122,14 +122,14 @@ The worker supports three relevant target types in this package:
 |---|---|---|---|
 | **Direct Kubernetes** | `worker-kubernetes-yaml-cluster` | Worker applies YAML directly via `kubectl apply` | Fully working. Simplest real proof. |
 | **Flux OCI** | `worker-fluxoci-kubernetes-yaml-cluster` | Worker publishes to ConfigHub-native OCI origin, Flux reconciles workloads | Current standard controller path. |
-| **Argo OCI** | `worker-argocdoci-kubernetes-yaml-cluster` | Worker publishes to ConfigHub-native OCI origin, creates Argo `Application` with OCI source, Argo reconciles workloads | Implemented in `single-component` and `gpu-eks-h100-training`. |
+| **Argo OCI** | `worker-argocdoci-kubernetes-yaml-cluster` | Worker publishes to ConfigHub-native OCI origin, Argo reconciles workloads | Implemented. |
 | **ArgoCDRenderer** | `worker-argocdrenderer-kubernetes-yaml-cluster` | Worker sends Argo `Application` CRDs to ArgoCD for rendering | Renderer path only. Not workload delivery. |
 
 **Important distinctions:**
 
 - **Flux OCI** is the current standard for controller-oriented bundle delivery
+- **Argo OCI** is implemented — claim it with controller and live evidence
 - **ArgoCDRenderer** is a renderer path — it expects Argo `Application` payloads, not raw manifests, and does not reconcile workloads
-- **Argo OCI** is now implemented in `single-component` and `gpu-eks-h100-training`, but should only be claimed with controller and live evidence
 
 **Payload compatibility matters:**
 
@@ -204,6 +204,7 @@ In `gpu-eks-h100-training`, Flux OCI is modeled as a sibling deployment variant 
 |---------------|--------------|
 | Direct Kubernetes | Worker readiness, `cub unit apply`, live cluster resources |
 | Flux OCI | Worker readiness, OCI artifact published, Flux reconciliation evidence, live cluster resources |
+| Argo OCI | Worker readiness, OCI artifact published, Argo `Application` with OCI source, Argo reconciliation evidence, live cluster resources |
 | ArgoCDRenderer | Worker readiness, Argo `Application` objects, rendered manifests (not workload delivery) |
 
 Do not call `ArgoCDRenderer` a real Argo-sync proof for workloads. Do not treat hybrid helpers that run `kubectl apply` and then create an Argo Application as the same thing as a real OCI-backed controller proof.

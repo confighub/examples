@@ -9,9 +9,9 @@ This package supports multiple delivery modes. Know which one applies before mak
 | Delivery Mode | Status | Payload Compatibility | What it proves |
 |---------------|--------|----------------------|----------------|
 | **Direct Kubernetes** | Fully working | Raw K8s manifests | Worker applies directly to cluster |
-| **Flux OCI** | Current standard | Raw K8s manifests | OCI bundle published, Flux reconciles workloads |
-| **Argo OCI** | Implemented in selected examples | Raw K8s manifests where an explicit Argo variant exists | OCI bundle published, Argo reconciles workloads |
-| **ArgoCDRenderer** | Working, limited scope | Argo `Application` CRDs only | Renderer path. Not workload delivery. |
+| **Flux OCI** | Current standard | Raw K8s manifests | ConfigHub-native OCI origin → Flux reconciles workloads |
+| **Argo OCI** | Implemented | Raw K8s manifests (where explicit Argo variant exists) | ConfigHub-native OCI origin → Argo reconciles workloads |
+| **ArgoCDRenderer** | Working, limited scope | Argo `Application` CRDs only | Renderer path. Not OCI delivery. |
 
 **Critical distinctions:**
 
