@@ -66,6 +66,26 @@ Understanding the generator is key to understanding field ownership. When you kn
 
 See [`generator/README.md`](./generator/README.md) for the full transformation documentation.
 
+## The Platform
+
+The platform defines what capabilities apps get automatically and which fields are platform-controlled:
+
+```bash
+# See what the platform provides and controls
+./generator/render.sh --platform-summary
+
+# Check if a specific field is mutable
+./generator/render.sh --explain-field spring.datasource.url
+```
+
+| Capability | What You Get | Platform Controls |
+|------------|--------------|-------------------|
+| Managed Datasource | PostgreSQL connection | HA, encryption, backups |
+| Runtime Hardening | Secure defaults | runAsNonRoot, mTLS |
+| Observability | Health endpoints | Alerting at SLO targets |
+
+See [`docs/platform-onboarding.md`](./docs/platform-onboarding.md) for the full platform guide.
+
 ## What This Proves
 
 This example has seven proof levels:
@@ -221,6 +241,7 @@ These commands do not mutate ConfigHub or live infrastructure.
 | [`upstream/app/src/main/resources/application-prod.yaml`](./upstream/app/src/main/resources/application-prod.yaml) | Prod app overrides |
 | [`upstream/app/src/test/java/com/example/inventory/api/InventoryControllerHttpTest.java`](./upstream/app/src/test/java/com/example/inventory/api/InventoryControllerHttpTest.java) | HTTP-level test for default profile |
 | [`upstream/app/src/test/java/com/example/inventory/api/InventoryControllerProdHttpTest.java`](./upstream/app/src/test/java/com/example/inventory/api/InventoryControllerProdHttpTest.java) | HTTP-level test for prod profile |
+| [`upstream/platform/platform.yaml`](./upstream/platform/platform.yaml) | Consolidated platform manifest (provides + field routes) |
 | [`upstream/platform/runtime-policy.yaml`](./upstream/platform/runtime-policy.yaml) | Platform-owned runtime policy |
 | [`upstream/platform/slo-policy.yaml`](./upstream/platform/slo-policy.yaml) | Platform-owned SLO policy |
 | [`generator/render.sh`](./generator/render.sh) | Shows how upstream inputs become operational config |
@@ -247,6 +268,8 @@ These commands do not mutate ConfigHub or live infrastructure.
 | [`lift-upstream/redis-cache/confighub/inventory-api-dev.yaml`](./lift-upstream/redis-cache/confighub/inventory-api-dev.yaml) | Refreshed dev ConfigHub YAML after lift-upstream |
 | [`lift-upstream/redis-cache/confighub/inventory-api-stage.yaml`](./lift-upstream/redis-cache/confighub/inventory-api-stage.yaml) | Refreshed stage ConfigHub YAML after lift-upstream |
 | [`lift-upstream/redis-cache/confighub/inventory-api-prod.yaml`](./lift-upstream/redis-cache/confighub/inventory-api-prod.yaml) | Refreshed prod ConfigHub YAML after lift-upstream |
+| [`docs/platform-onboarding.md`](./docs/platform-onboarding.md) | Platform onboarding guide for app teams |
+| [`docs/platform-concept-design.md`](./docs/platform-concept-design.md) | Platform concept design rationale |
 
 ## The Three Outcomes
 

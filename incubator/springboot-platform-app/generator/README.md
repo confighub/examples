@@ -33,6 +33,21 @@ This directory makes visible the "generator" - the transformation step that comb
 
 # What would change if re-rendered
 ./render.sh --diff
+
+# Platform discovery (NEW)
+./render.sh --platform-summary           # What the platform provides/controls
+./render.sh --explain-field <field>      # Why a field is blocked/mutable
+```
+
+### Platform Discovery Examples
+
+```bash
+# Understand the platform boundary
+./render.sh --platform-summary
+
+# Check if a field is mutable
+./render.sh --explain-field spring.datasource.url
+./render.sh --explain-field feature.inventory.reservationMode
 ```
 
 ## Why This Matters

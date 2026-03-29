@@ -6,10 +6,12 @@
 #   (Spring app inputs)   (Platform policies)   (Kubernetes manifests)
 #
 # Usage:
-#   ./render.sh --explain       Human-readable explanation
-#   ./render.sh --explain-json  Machine-readable explanation
-#   ./render.sh --trace         Show field-by-field mapping
-#   ./render.sh --diff          Show what would change if re-rendered
+#   ./render.sh --explain             Human-readable explanation
+#   ./render.sh --explain-json        Machine-readable explanation
+#   ./render.sh --trace               Field-by-field mapping
+#   ./render.sh --diff                Show what would change if re-rendered
+#   ./render.sh --platform-summary    What the platform provides and controls
+#   ./render.sh --explain-field FIELD Explain why a field is blocked/mutable
 
 set -euo pipefail
 
@@ -27,6 +29,9 @@ PLATFORM_SLO="${ROOT_DIR}/upstream/platform/slo-policy.yaml"
 OP_DEPLOYMENT="${ROOT_DIR}/operational/deployment.yaml"
 OP_CONFIGMAP="${ROOT_DIR}/operational/configmap.yaml"
 OP_SERVICE="${ROOT_DIR}/operational/service.yaml"
+
+# Platform manifest
+PLATFORM_MANIFEST="${ROOT_DIR}/upstream/platform/platform.yaml"
 
 explain_human() {
   cat <<'EOF'
@@ -195,6 +200,194 @@ spec.ports[0].targetPort: 8081  ← from application-prod.yaml server.port
 EOF
 }
 
+platform_summary() {
+  cat <<'EOF'
+================================================================================
+                         PLATFORM SUMMARY
+================================================================================
+
+Platform: springboot-platform
+Description: Heroku-like Spring Boot platform with managed datasource,
+             runtime hardening, and observability defaults.
+
+WHAT THE PLATFORM PROVIDES
+--------------------------
+┌─────────────────────┬──────────────────────────────────────────────────────┐
+│ Capability          │ Description                                          │
+├─────────────────────┼──────────────────────────────────────────────────────┤
+│ managed-datasource  │ PostgreSQL with HA, encryption, automated backups   │
+│ runtime-hardening   │ Security defaults (runAsNonRoot, mTLS sidecar)       │
+│ observability       │ Health endpoints, SLO: 99.9% avail, p95 < 250ms     │
+└─────────────────────┴──────────────────────────────────────────────────────┘
+
+FIELD OWNERSHIP
+---------------
+App-Owned (mutable-in-ch) — Safe to change in ConfigHub:
+  ✓ feature.inventory.*    Per-deployment rollout tuning
+                           Example: FEATURE_INVENTORY_RESERVATIONMODE=optimistic
+
+App-Owned (lift-upstream) — Changes go back to app source:
+  ↑ spring.cache.*         Cache adoption needs code changes
+                           Example: Adding Redis caching
+
+Platform-Owned (blocked) — Contact platform-engineering:
+  ✗ spring.datasource.*    Managed datasource boundary
+  ✗ securityContext.*      Runtime hardening policy
+
+ESCALATION
+----------
+For changes to blocked fields:
+  Slack: #platform-support
+  Email: platform@example.com
+  Process: Open a ticket explaining why the change is needed
+
+See: upstream/platform/platform.yaml for full policy details
+================================================================================
+EOF
+}
+
+explain_field() {
+  local field="${1:-}"
+  if [[ -z "${field}" ]]; then
+    echo "Usage: $0 --explain-field <field-pattern>"
+    echo "Example: $0 --explain-field spring.datasource.url"
+    exit 2
+  fi
+
+  echo "================================================================================"
+  echo "                    FIELD EXPLANATION: ${field}"
+  echo "================================================================================"
+  echo ""
+
+  # Match against known patterns
+  case "${field}" in
+    feature.inventory.*|feature.inventory.*)
+      cat <<'EOF'
+Field Pattern: feature.inventory.*
+Owner: app-team
+Action: mutable-in-ch ✓
+Blocked: No
+
+Reason:
+  Per-deployment rollout tuning is app-team safe. These fields control
+  feature flags and operational behavior that don't require upstream
+  code changes.
+
+Example:
+  cub function do --space inventory-api-prod --unit inventory-api \
+    set-env inventory-api FEATURE_INVENTORY_RESERVATIONMODE=optimistic
+
+What happens:
+  1. Change is stored in ConfigHub with audit trail
+  2. Field survives future generator refreshes (PRESERVE policy)
+  3. Apply delivers the change to targets
+
+Source:
+  upstream/platform/platform.yaml → spec.fieldRoutes[0]
+EOF
+      ;;
+    spring.cache.*|spring.cache.*)
+      cat <<'EOF'
+Field Pattern: spring.cache.*
+Owner: app-team
+Action: lift-upstream ↑
+Blocked: No (but requires upstream PR)
+
+Reason:
+  Cache adoption changes the app contract and requires upstream code
+  changes. Adding Redis caching needs pom.xml dependencies and
+  application.yaml configuration.
+
+What happens:
+  1. ConfigHub captures the intent
+  2. A PR is created against the app source repo
+  3. After merge, platform re-renders operational config
+  4. ConfigHub refreshes from the new state
+
+Preview:
+  ./lift-upstream.sh --render-diff
+
+Source:
+  upstream/platform/platform.yaml → spec.fieldRoutes[1]
+EOF
+      ;;
+    spring.datasource.*|spring.datasource.*)
+      cat <<'EOF'
+Field Pattern: spring.datasource.*
+Owner: platform-engineering
+Action: generator-owned ✗
+Blocked: YES
+
+Reason:
+  Datasource connectivity is managed by platform for HA and security.
+  The platform provides a managed PostgreSQL service with:
+  - High availability
+  - Encryption at rest
+  - Automated backups
+  - Connection pooling
+
+What happens if you try to change it:
+  1. ConfigHub should block the mutation
+  2. You receive an error with escalation instructions
+  3. Contact platform-engineering via #platform-support
+
+Transformation:
+  Input:  runtime-policy.yaml → managedDatasource: postgres-shared
+  Output: deployment.yaml → env.SPRING_DATASOURCE_URL
+
+Source:
+  upstream/platform/platform.yaml → spec.fieldRoutes[2]
+  upstream/platform/platform.yaml → spec.provides[managed-datasource]
+EOF
+      ;;
+    securityContext.*|securityContext.*)
+      cat <<'EOF'
+Field Pattern: securityContext.*
+Owner: platform-engineering
+Action: generator-owned ✗
+Blocked: YES
+
+Reason:
+  Runtime hardening must remain platform-controlled. The platform
+  enforces security defaults:
+  - runAsNonRoot: true
+  - mTLS sidecar injection
+
+What happens if you try to change it:
+  1. ConfigHub should block the mutation
+  2. You receive an error with escalation instructions
+  3. Contact platform-engineering via #platform-support
+
+Source:
+  upstream/platform/platform.yaml → spec.fieldRoutes[3]
+  upstream/platform/platform.yaml → spec.provides[runtime-hardening]
+EOF
+      ;;
+    *)
+      cat <<EOF
+Field Pattern: ${field}
+Status: Unknown
+
+This field is not explicitly listed in the platform policy.
+
+Default behavior:
+  - If it's in operational/configmap.yaml: likely app-owned
+  - If it's injected by the generator: likely platform-owned
+
+Check:
+  ./render.sh --trace
+  grep "${field}" upstream/platform/platform.yaml
+
+For help:
+  Slack: #platform-support
+EOF
+      ;;
+  esac
+
+  echo ""
+  echo "================================================================================"
+}
+
 show_diff() {
   echo "=================================================================================="
   echo "                         RE-RENDER DIFF PREVIEW"
@@ -238,13 +431,27 @@ case "${1:-}" in
   --diff)
     show_diff
     ;;
+  --platform-summary)
+    platform_summary
+    ;;
+  --explain-field)
+    explain_field "${2:-}"
+    ;;
   *)
-    echo "Usage: $0 [--explain|--explain-json|--trace|--diff]"
+    echo "Usage: $0 <command>"
     echo ""
-    echo "  --explain       Human-readable explanation of the generator"
-    echo "  --explain-json  Machine-readable explanation"
-    echo "  --trace         Field-by-field mapping from inputs to outputs"
-    echo "  --diff          Show what would change if re-rendered"
+    echo "Commands:"
+    echo "  --explain             Human-readable explanation of the generator"
+    echo "  --explain-json        Machine-readable explanation"
+    echo "  --trace               Field-by-field mapping from inputs to outputs"
+    echo "  --diff                Show what would change if re-rendered"
+    echo "  --platform-summary    What the platform provides and controls"
+    echo "  --explain-field FIELD Explain why a field is blocked/mutable"
+    echo ""
+    echo "Examples:"
+    echo "  $0 --platform-summary"
+    echo "  $0 --explain-field spring.datasource.url"
+    echo "  $0 --explain-field feature.inventory.reservationMode"
     exit 2
     ;;
 esac
