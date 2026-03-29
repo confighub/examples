@@ -496,7 +496,7 @@ These documents explain the design thinking behind the examples and the current 
 6. [06-bundle-evidence-gui-spec.md](./06-bundle-evidence-gui-spec.md) — GUI-first view of the bundle evidence story
 7. [07-argo-oci-spec.md](./07-argo-oci-spec.md) — Argo OCI specification and implementation details
 8. [08-oci-distribution-spec.md](./08-oci-distribution-spec.md) — OCI distribution architecture exploration (Zot + Spegel)
-9. [09-confighub-oci-api-proposal.md](./09-confighub-oci-api-proposal.md) — Proposal: ConfigHub native OCI Distribution API
+9. [proposal-oci-api-confighub.md](../proposal-oci-api-confighub.md) — Proposal: ConfigHub native OCI Distribution API
 
 ## End-to-End Testing
 

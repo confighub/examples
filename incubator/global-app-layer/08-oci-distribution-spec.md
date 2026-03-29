@@ -1,6 +1,6 @@
 # OCI Distribution Architecture: Zot + Spegel
 
-> **Note**: This document explores a Zot + Spegel architecture. See [09-confighub-oci-api-proposal.md](./09-confighub-oci-api-proposal.md) for the recommended approach: ConfigHub exposes an OCI Distribution API directly, eliminating the need for Zot.
+> **Note**: This document explores a Zot + Spegel architecture. See [proposal-oci-api-confighub.md](../proposal-oci-api-confighub.md) for the recommended approach: ConfigHub exposes an OCI Distribution API directly, eliminating the need for Zot.
 
 This document specifies an OCI artifact distribution architecture for ConfigHub bundle delivery.
 

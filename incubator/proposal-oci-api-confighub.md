@@ -1,31 +1,28 @@
-# Why ConfigHub Should Have an OCI Distribution API
+# Proposal: ConfigHub Should Have an OCI Distribution API
 
 ## Summary
 
 ConfigHub should expose a read-only OCI Distribution API.
 
-This would make ConfigHub the **origin** for controller-oriented bundle delivery:
+That would make ConfigHub the origin for controller-oriented bundle delivery:
 
-- **Direct Kubernetes** remains the simplest real apply path
-- **Flux OCI** becomes the standard controller path without forcing a separate registry
-- **Argo OCI** gets the same model
-- external OCI registries stay optional for caching, mirroring, compliance, or air-gap workflows
+- Flux and Argo get an out-of-the-box OCI path without requiring a separate registry first
+- customers can still connect external OCI registries and tools for caching, mirroring, compliance, or air-gap workflows
+- direct worker apply to Kubernetes remains available where that is the better fit
 
-OCI is the transport, not a new product category. Flux, Argo, Helm, `oras`, `crane`, and `skopeo` should be able to talk to ConfigHub through a protocol they already understand.
+OCI is the transport here, not a separate product category. This should also help standard tools such as `oras`, `crane`, `skopeo`, and Helm.
 
-## The Problem
+## Flux And Argo Need OCI
 
-### Flux and Argo Need OCI
+Modern controller-oriented delivery has converged on OCI transport:
 
-Modern controller-oriented delivery has converged on OCI as the transport layer:
-
-- **Flux** consumes OCI artifacts through `OCIRepository`
-- **Argo CD 3.1+** can use OCI as an application source
-- **Helm** now treats OCI as a standard distribution path
+- Flux consumes OCI artifacts through `OCIRepository`
+- Argo CD 3.1+ can use OCI as an application source
+- Helm now treats OCI as a standard distribution path
 
 So when a ConfigHub user wants controller-driven delivery instead of direct `kubectl apply`, OCI is no longer optional in practice.
 
-### ConfigHub Needs an Out-of-the-Box Option
+## ConfigHub Needs an Out-of-the-Box Option
 
 Today the direct Kubernetes story is simple:
 
@@ -49,9 +46,9 @@ That adds a second operational system before the user has even proven the deploy
 
 That is too much burden for the default path.
 
-If ConfigHub can already offer an out-of-the-box direct apply story, it should also be able to offer an out-of-the-box OCI origin for Flux and Argo.
+If ConfigHub can already offer an out-of-the-box direct apply story, it should also be able to offer an out-of-the-box OCI origin for Flux and Argo. Adding third-party OCI technology should stay optional, not mandatory.
 
-### ConfigHub Is Already Authoritative
+## ConfigHub Is Authoritative
 
 ConfigHub is already the authoritative store for:
 
@@ -81,9 +78,7 @@ not:
 ConfigHub (authoritative) -> copy/sync -> registry -> Flux/Argo
 ```
 
-## The Proposal
-
-### OCI Should Be a Gateway, Not a Separate System
+## OCI Should Be a Gateway, Not a Separate System
 
 ConfigHub should expose the OCI Distribution API as another protocol surface over deployment output.
 
@@ -104,9 +99,9 @@ Conceptually:
 
 `cub` already reaches ConfigHub through one interface. The GUI reaches it through another. Flux, Argo, and OCI tooling should be able to do the same through `/v2/...`.
 
-### What ConfigHub Would Serve
+## What ConfigHub Would Serve
 
-ConfigHub should expose a stable OCI view of the **deployment output for a specific deployment variant and target path**.
+ConfigHub should expose a stable OCI view of the deployment output for a specific deployment variant and target path.
 
 That identity should be deployment-oriented, not just storage-oriented. The important user-facing identity is:
 
@@ -116,11 +111,16 @@ That identity should be deployment-oriented, not just storage-oriented. The impo
 
 Internally, ConfigHub can still map that to spaces, units, revisions, and stored data. The proposal should describe the OCI artifact as a deployment artifact, not as a raw database row.
 
-### Start With Read-Only Distribution
+## Start With Read-Only Distribution
 
 The first milestone should be a read-only OCI Distribution API.
 
-That is enough for Flux OCI, Argo OCI, OCI inspection with standard tools, and mirroring to third-party registries.
+That is enough for:
+
+- Flux OCI consumption
+- Argo OCI consumption
+- OCI inspection with standard tools
+- mirroring to third-party registries
 
 Minimum endpoints:
 
@@ -131,7 +131,7 @@ Minimum endpoints:
 - `HEAD /v2/<repo>/blobs/<digest>`
 - `GET /v2/<repo>/blobs/<digest>`
 
-Do **not** make push support part of the first proposal.
+Do not make push support part of the first proposal.
 
 `oras push` or `crane push` creating ConfigHub units raises separate product questions about:
 
@@ -256,11 +256,11 @@ We need to distinguish:
 
 So the right claim is:
 
-- **shared identity system where possible**
+- shared identity system where possible
 
 not:
 
-- **the exact same creds everywhere**
+- the exact same creds everywhere
 
 ### Proof Standard
 
@@ -291,7 +291,18 @@ That gives ConfigHub a simpler Argo story than renderer-only workflows: publish 
 
 ### Standard OCI Tooling
 
-Once ConfigHub exposes OCI directly, standard tools become available without special adapters: `oras`, `crane`, and `skopeo`. That matters for inspection, mirroring, air-gap staging, and evidence capture.
+Once ConfigHub exposes OCI directly, standard tools become available without special adapters:
+
+- `oras`
+- `crane`
+- `skopeo`
+
+That matters for:
+
+- inspection
+- mirroring
+- air-gap staging
+- evidence capture
 
 ## Recommended First Scope
 
@@ -303,9 +314,9 @@ The first cut should be:
 4. direct controller consumption by Flux and Argo
 5. optional cache or mirror layers in front of or downstream from ConfigHub
 
-The first cut should **not** require:
+The first cut should not require:
 
-- write/push support
+- write or push support
 - replacing every external registry workflow
 - inventing a new bundle product model separate from ConfigHub deployment state
 
