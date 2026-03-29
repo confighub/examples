@@ -64,17 +64,29 @@ If the human wants the same plan in machine-readable form, also run:
 
 ---
 
-### Stage 2b: "How does field ownership work?" (read-only, optional)
+### Stage 2b: "How does field ownership work?" (read-only)
 
-If the human wants to understand why some fields are "apply-here" vs "blocked", show the generator:
+Show the **field lineage** - why some fields are mutable vs blocked:
 
-Run: `../springboot-platform-app/generator/render.sh --trace`
+Run: `../springboot-platform-app/generator/render.sh --explain-field spring.datasource.url`
 
 Print the full output. Explain:
-- The generator transforms app inputs + platform policies into Kubernetes manifests
-- Platform policy fields (like datasource) become **generator-owned** (blocked)
-- App config fields (like feature flags) remain **app-owned** (mutable)
-- Understanding the generator explains field ownership
+- This field is BLOCKED because the generator injects it from platform policy
+- It's not in the app inputs at all - it comes from `runtime-policy.yaml`
+- This is the provenance: where the field value comes from
+
+Now show a mutable field:
+
+Run: `../springboot-platform-app/generator/render.sh --explain-field feature.inventory.reservationMode`
+
+Explain:
+- This field is MUTABLE because it comes from app inputs
+- The generator passes it through without transformation
+- App team owns it, so ConfigHub can change it directly
+
+For the full transformation trace:
+
+Run: `../springboot-platform-app/generator/render.sh --trace`
 
 GUI now: Nothing — this is CLI-only understanding of the transformation.
 
@@ -113,6 +125,16 @@ Print the full output for all three scenarios. Explain:
 - **Lift upstream**: `spring.cache.*` — needs to go back to app source (Redis example)
 - **Block/escalate**: `spring.datasource.*` — platform-owned, requires approval
 
+Each outcome is determined by **field lineage** (where the value comes from):
+
+| Outcome | Field Lineage | Provenance |
+|---------|---------------|------------|
+| Apply here | App inputs, runtime tuning | Mutation history in ConfigHub |
+| Lift upstream | App inputs, but needs code change | PR bundle to source repo |
+| Block/escalate | Platform policy (not app inputs) | Escalation to platform team |
+
+To see why a specific field routes a certain way, use `--explain-field` (see Stage 2b).
+
 GUI now: Open https://hub.confighub.com → Spaces → click `inventory-api-prod` → click the `inventory-api` unit → see the rendered ConfigMap and Deployment YAML.
 
 GUI gap: There are no route badges showing which fields are mutable vs platform-owned. Every field looks equally editable.
@@ -138,12 +160,18 @@ Print the output. Then show the change:
 
 Run: `cub unit get --space inventory-api-prod inventory-api --json | jq '.Unit.Objects[] | select(.kind == "Deployment") | .spec.template.spec.containers[0].env[] | select(.name == "FEATURE_INVENTORY_RESERVATIONMODE")'`
 
-Explain: The env var now says `optimistic`. This mutation:
+Now show the **provenance** - the mutation history:
+
+Run: `cub mutation list --space inventory-api-prod --json inventory-api | jq '[.[-1] | {mutationNum, description, author: .Author.Email, createdAt: .CreatedAt}]'`
+
+Print the output. Explain: The env var now says `optimistic`. This mutation:
 - Is stored in ConfigHub with your author identity
-- Has a timestamp and change description
+- Has a timestamp and change description (visible in mutation history)
 - Will survive future refreshes (PRESERVE policy for mutable-in-ch fields)
 
-GUI now: Open https://hub.confighub.com → Spaces → `inventory-api-prod` → `inventory-api` unit → look at the Deployment YAML → find `FEATURE_INVENTORY_RESERVATIONMODE`. It should say `optimistic`.
+The mutation history is the **audit trail** - every change is recorded with who, when, and why.
+
+GUI now: Open https://hub.confighub.com → Spaces → `inventory-api-prod` → `inventory-api` unit → look at the Deployment YAML → find `FEATURE_INVENTORY_RESERVATIONMODE`. It should say `optimistic`. Click "History" to see the mutation.
 
 GUI gap: The mutation history exists but doesn't highlight which specific fields changed.
 
@@ -163,6 +191,41 @@ Print the output. Explain:
 - This proves the workflow works; use `--with-targets` for real delivery
 
 GUI now: Open https://hub.confighub.com → Spaces → `inventory-api-prod` → `inventory-api` unit → check the sync status. It should show `Synced` or `ApplyCompleted`.
+
+**PAUSE.** Wait for the human.
+
+---
+
+### Stage 6b: "Running app sees the change" (optional, requires Java)
+
+Ask: "Do you want to see the running app confirm the mutation? This requires Java 21+ and Maven."
+
+If yes, run:
+
+```bash
+cd ../springboot-platform-app/upstream/app
+FEATURE_INVENTORY_RESERVATIONMODE=optimistic \
+  mvn spring-boot:run -q -Dspring-boot.run.profiles=prod \
+  -Dspring-boot.run.arguments="--server.port=8081" &
+APP_PID=$!
+sleep 10  # Wait for app to start
+curl -s http://localhost:8081/api/inventory/summary | jq
+kill $APP_PID
+cd ../../springboot-platform-app-centric
+```
+
+What you should see:
+
+```json
+{
+  "service": "inventory-api",
+  "environment": "prod",
+  "reservationMode": "optimistic",
+  "cacheBackend": "none"
+}
+```
+
+Explain: The running app reports `optimistic` - the mutation from Stage 5 is visible in a real HTTP response.
 
 **PAUSE.** Wait for the human.
 

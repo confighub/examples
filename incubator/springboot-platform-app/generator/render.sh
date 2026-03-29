@@ -10,8 +10,7 @@
 #   ./render.sh --explain-json        Machine-readable explanation
 #   ./render.sh --trace               Field-by-field mapping
 #   ./render.sh --diff                Show what would change if re-rendered
-#   ./render.sh --platform-summary    What the platform provides and controls
-#   ./render.sh --explain-field FIELD Explain why a field is blocked/mutable
+#   ./render.sh --explain-field FIELD Why a specific field is blocked/mutable
 
 set -euo pipefail
 
@@ -29,9 +28,6 @@ PLATFORM_SLO="${ROOT_DIR}/upstream/platform/slo-policy.yaml"
 OP_DEPLOYMENT="${ROOT_DIR}/operational/deployment.yaml"
 OP_CONFIGMAP="${ROOT_DIR}/operational/configmap.yaml"
 OP_SERVICE="${ROOT_DIR}/operational/service.yaml"
-
-# Platform manifest
-PLATFORM_MANIFEST="${ROOT_DIR}/upstream/platform/platform.yaml"
 
 explain_human() {
   cat <<'EOF'
@@ -200,52 +196,6 @@ spec.ports[0].targetPort: 8081  ← from application-prod.yaml server.port
 EOF
 }
 
-platform_summary() {
-  cat <<'EOF'
-================================================================================
-                         PLATFORM SUMMARY
-================================================================================
-
-Platform: springboot-platform
-Description: Heroku-like Spring Boot platform with managed datasource,
-             runtime hardening, and observability defaults.
-
-WHAT THE PLATFORM PROVIDES
---------------------------
-┌─────────────────────┬──────────────────────────────────────────────────────┐
-│ Capability          │ Description                                          │
-├─────────────────────┼──────────────────────────────────────────────────────┤
-│ managed-datasource  │ PostgreSQL with HA, encryption, automated backups   │
-│ runtime-hardening   │ Security defaults (runAsNonRoot, mTLS sidecar)       │
-│ observability       │ Health endpoints, SLO: 99.9% avail, p95 < 250ms     │
-└─────────────────────┴──────────────────────────────────────────────────────┘
-
-FIELD OWNERSHIP
----------------
-App-Owned (mutable-in-ch) — Safe to change in ConfigHub:
-  ✓ feature.inventory.*    Per-deployment rollout tuning
-                           Example: FEATURE_INVENTORY_RESERVATIONMODE=optimistic
-
-App-Owned (lift-upstream) — Changes go back to app source:
-  ↑ spring.cache.*         Cache adoption needs code changes
-                           Example: Adding Redis caching
-
-Platform-Owned (blocked) — Contact platform-engineering:
-  ✗ spring.datasource.*    Managed datasource boundary
-  ✗ securityContext.*      Runtime hardening policy
-
-ESCALATION
-----------
-For changes to blocked fields:
-  Slack: #platform-support
-  Email: platform@example.com
-  Process: Open a ticket explaining why the change is needed
-
-See: upstream/platform/platform.yaml for full policy details
-================================================================================
-EOF
-}
-
 explain_field() {
   local field="${1:-}"
   if [[ -z "${field}" ]]; then
@@ -259,21 +209,24 @@ explain_field() {
   echo "================================================================================"
   echo ""
 
-  # Match against known patterns
+  # Match against known patterns based on generator transformation rules
   case "${field}" in
-    feature.inventory.*|feature.inventory.*)
+    feature.inventory.*|feature.inventory.reservationMode)
       cat <<'EOF'
 Field Pattern: feature.inventory.*
 Owner: app-team
-Action: mutable-in-ch ✓
-Blocked: No
+Route: mutable-in-ch ✓
 
-Reason:
+Generator Transformation:
+  Input:  upstream/app/src/main/resources/application.yaml
+  Output: operational/configmap.yaml (embedded in data)
+
+Why Mutable:
   Per-deployment rollout tuning is app-team safe. These fields control
-  feature flags and operational behavior that don't require upstream
-  code changes.
+  feature flags that don't require upstream code changes or platform
+  re-rendering.
 
-Example:
+Example mutation:
   cub function do --space inventory-api-prod --unit inventory-api \
     set-env inventory-api FEATURE_INVENTORY_RESERVATIONMODE=optimistic
 
@@ -281,22 +234,22 @@ What happens:
   1. Change is stored in ConfigHub with audit trail
   2. Field survives future generator refreshes (PRESERVE policy)
   3. Apply delivers the change to targets
-
-Source:
-  upstream/platform/platform.yaml → spec.fieldRoutes[0]
 EOF
       ;;
-    spring.cache.*|spring.cache.*)
+    spring.cache.*|spring.cache.type)
       cat <<'EOF'
 Field Pattern: spring.cache.*
 Owner: app-team
-Action: lift-upstream ↑
-Blocked: No (but requires upstream PR)
+Route: lift-upstream ↑
 
-Reason:
+Generator Transformation:
+  Input:  upstream/app/src/main/resources/application.yaml
+  Output: operational/configmap.yaml (embedded) + deployment.yaml env
+
+Why Lift-Upstream:
   Cache adoption changes the app contract and requires upstream code
   changes. Adding Redis caching needs pom.xml dependencies and
-  application.yaml configuration.
+  application.yaml configuration that the generator must re-process.
 
 What happens:
   1. ConfigHub captures the intent
@@ -304,63 +257,52 @@ What happens:
   3. After merge, platform re-renders operational config
   4. ConfigHub refreshes from the new state
 
-Preview:
+Preview the bundle:
   ./lift-upstream.sh --render-diff
-
-Source:
-  upstream/platform/platform.yaml → spec.fieldRoutes[1]
 EOF
       ;;
-    spring.datasource.*|spring.datasource.*)
+    spring.datasource.*|spring.datasource.url)
       cat <<'EOF'
 Field Pattern: spring.datasource.*
 Owner: platform-engineering
-Action: generator-owned ✗
-Blocked: YES
+Route: generator-owned ✗ BLOCKED
 
-Reason:
-  Datasource connectivity is managed by platform for HA and security.
-  The platform provides a managed PostgreSQL service with:
-  - High availability
-  - Encryption at rest
-  - Automated backups
-  - Connection pooling
+Generator Transformation:
+  Input:  upstream/platform/runtime-policy.yaml → managedDatasource: postgres-shared
+  Output: operational/deployment.yaml → env.SPRING_DATASOURCE_URL
+
+Why Blocked:
+  The generator injects this field from platform policy. It's not in the
+  app inputs at all - it comes from runtime-policy.yaml. The platform
+  provides a managed PostgreSQL service with HA, encryption, and backups.
 
 What happens if you try to change it:
   1. ConfigHub should block the mutation
   2. You receive an error with escalation instructions
   3. Contact platform-engineering via #platform-support
 
-Transformation:
-  Input:  runtime-policy.yaml → managedDatasource: postgres-shared
-  Output: deployment.yaml → env.SPRING_DATASOURCE_URL
-
-Source:
-  upstream/platform/platform.yaml → spec.fieldRoutes[2]
-  upstream/platform/platform.yaml → spec.provides[managed-datasource]
+See the transformation:
+  ./render.sh --trace | grep -A2 "managedDatasource"
 EOF
       ;;
-    securityContext.*|securityContext.*)
+    securityContext.*|securityContext.runAsNonRoot)
       cat <<'EOF'
 Field Pattern: securityContext.*
 Owner: platform-engineering
-Action: generator-owned ✗
-Blocked: YES
+Route: generator-owned ✗ BLOCKED
 
-Reason:
-  Runtime hardening must remain platform-controlled. The platform
-  enforces security defaults:
-  - runAsNonRoot: true
-  - mTLS sidecar injection
+Generator Transformation:
+  Input:  upstream/platform/runtime-policy.yaml → runAsNonRoot: true
+  Output: operational/deployment.yaml → securityContext
+
+Why Blocked:
+  Runtime hardening is platform-controlled. The generator injects
+  security defaults that must not diverge per-deployment.
 
 What happens if you try to change it:
   1. ConfigHub should block the mutation
   2. You receive an error with escalation instructions
   3. Contact platform-engineering via #platform-support
-
-Source:
-  upstream/platform/platform.yaml → spec.fieldRoutes[3]
-  upstream/platform/platform.yaml → spec.provides[runtime-hardening]
 EOF
       ;;
     *)
@@ -368,18 +310,15 @@ EOF
 Field Pattern: ${field}
 Status: Unknown
 
-This field is not explicitly listed in the platform policy.
+This field is not explicitly listed in the generator's field routes.
 
-Default behavior:
-  - If it's in operational/configmap.yaml: likely app-owned
-  - If it's injected by the generator: likely platform-owned
+To understand where a field comes from:
+  ./render.sh --trace | grep -i "${field}"
 
-Check:
-  ./render.sh --trace
-  grep "${field}" upstream/platform/platform.yaml
+If it's in operational/configmap.yaml: likely app-owned (mutable or lift-upstream)
+If it's injected as env var by generator: likely platform-owned (blocked)
 
-For help:
-  Slack: #platform-support
+For help: Slack #platform-support
 EOF
       ;;
   esac
@@ -431,9 +370,6 @@ case "${1:-}" in
   --diff)
     show_diff
     ;;
-  --platform-summary)
-    platform_summary
-    ;;
   --explain-field)
     explain_field "${2:-}"
     ;;
@@ -445,11 +381,9 @@ case "${1:-}" in
     echo "  --explain-json        Machine-readable explanation"
     echo "  --trace               Field-by-field mapping from inputs to outputs"
     echo "  --diff                Show what would change if re-rendered"
-    echo "  --platform-summary    What the platform provides and controls"
-    echo "  --explain-field FIELD Explain why a field is blocked/mutable"
+    echo "  --explain-field FIELD Why a specific field is blocked/mutable"
     echo ""
     echo "Examples:"
-    echo "  $0 --platform-summary"
     echo "  $0 --explain-field spring.datasource.url"
     echo "  $0 --explain-field feature.inventory.reservationMode"
     exit 2

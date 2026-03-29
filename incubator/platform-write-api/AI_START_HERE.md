@@ -111,6 +111,22 @@ Explain:
 - `spring.cache.*` is app-owned but routes upstream because it changes the app contract
 - `spring.datasource.*` is platform-owned and blocked
 
+Now show the **field lineage** - where does each field come from?
+
+Run:
+
+```bash
+../springboot-platform-app/generator/render.sh --explain-field spring.datasource.url
+../springboot-platform-app/generator/render.sh --explain-field feature.inventory.reservationMode
+```
+
+Explain:
+
+- `spring.datasource.url` is BLOCKED because the generator injects it from platform policy (not app inputs)
+- `feature.inventory.reservationMode` is MUTABLE because it comes from app inputs
+
+This is **provenance** - understanding where field values come from determines how they can be changed.
+
 GUI now: if objects already exist, open ConfigHub and inspect the `inventory-api-prod` unit YAML.
 
 GUI gap: the GUI does not annotate fields with their route or owner, so the user cannot see why one field is safe and another is blocked.
@@ -161,13 +177,29 @@ Explain:
 - this is audited, attributable, and reversible
 - this is not yet a live deployment proof because there is no real target here
 
-GUI now: open the `inventory-api` unit in `inventory-api-prod` and inspect the rendered Deployment data.
+Now show the **provenance** - the mutation history:
+
+Run:
+
+```bash
+cub mutation list --space inventory-api-prod --json inventory-api | \
+  jq '[.[-1] | {mutationNum, description, author: .Author.Email, createdAt: .CreatedAt}]'
+```
+
+Explain:
+
+- Every mutation is recorded with who, when, and why
+- The change description "apply-here: reservation mode rollout" is in the audit trail
+- Your author identity and timestamp are captured
+- This is the **provenance** for direct mutations - the decision log that ConfigHub provides
+
+GUI now: open the `inventory-api` unit in `inventory-api-prod` and inspect the rendered Deployment data. Click "History" to see the mutation with your change description.
 
 GUI gap: the mutation history does not highlight the exact field delta inline.
 
 GUI feature ask: field-level mutation diffs in the history view. No issue filed yet.
 
-PAUSE: let the human inspect the changed field before verifying preservation.
+PAUSE: let the human inspect the changed field and mutation history before verifying preservation.
 
 ## Stage 6: Verify that the mutation survives refresh (read-only)
 
@@ -193,7 +225,46 @@ GUI feature ask: preserve/refresh decision explanations for mutated fields. No i
 
 PAUSE: make sure the human has seen both the divergence and the preservation logic.
 
-## Stage 7: Show the other two routing outcomes (read-only)
+## Stage 7: Running App Sees The Change (optional, requires Java)
+
+Ask: "Do you want to see the running app confirm the mutation? This requires Java 21+ and Maven."
+
+If yes, run:
+
+```bash
+cd ../springboot-platform-app/upstream/app
+FEATURE_INVENTORY_RESERVATIONMODE=optimistic \
+  mvn spring-boot:run -q -Dspring-boot.run.profiles=prod \
+  -Dspring-boot.run.arguments="--server.port=8081" &
+APP_PID=$!
+sleep 10  # Wait for app to start
+curl -s http://localhost:8081/api/inventory/summary | jq
+kill $APP_PID
+cd ../../..
+```
+
+What you should see:
+
+```json
+{
+  "service": "inventory-api",
+  "environment": "prod",
+  "reservationMode": "optimistic",
+  "cacheBackend": "none"
+}
+```
+
+Explain:
+
+- The running app reports `optimistic` - the mutation is visible
+- Real HTTP response, real Spring Boot app
+- This proves ConfigHub mutations can be replayed to a live app
+
+GUI now: no GUI involvement — this is a local app proof.
+
+PAUSE: if skipped, explain this is optional and move to the next stage.
+
+## Stage 8: Show the other two routing outcomes (read-only)
 
 Run:
 
@@ -218,7 +289,7 @@ GUI feature ask: route-aware request timeline plus blocked-request review queue.
 
 PAUSE: this is where the user decides whether they care more about direct mutation, upstream routing, or policy enforcement.
 
-## Stage 8: Cleanup
+## Stage 9: Cleanup
 
 Run:
 

@@ -82,21 +82,17 @@ See [`generator/README.md`](./generator/README.md) for the full transformation d
 
 The platform defines what capabilities apps get automatically and which fields are platform-controlled:
 
-```bash
-# See what the platform provides and controls
-./generator/render.sh --platform-summary
-
-# Check if a specific field is mutable
-./generator/render.sh --explain-field spring.datasource.url
-```
-
 | Capability | What You Get | Platform Controls |
 |------------|--------------|-------------------|
 | Managed Datasource | PostgreSQL connection | HA, encryption, backups |
 | Runtime Hardening | Secure defaults | runAsNonRoot, mTLS |
 | Observability | Health endpoints | Alerting at SLO targets |
 
-See [`docs/platform-onboarding.md`](./docs/platform-onboarding.md) for the full platform guide.
+```bash
+# Why is a field blocked or mutable?
+./generator/render.sh --explain-field spring.datasource.url
+./generator/render.sh --explain-field feature.inventory.reservationMode
+```
 
 ## What This Proves
 
@@ -280,8 +276,6 @@ These commands do not mutate ConfigHub or live infrastructure.
 | [`lift-upstream/redis-cache/confighub/inventory-api-dev.yaml`](./lift-upstream/redis-cache/confighub/inventory-api-dev.yaml) | Refreshed dev ConfigHub YAML after lift-upstream |
 | [`lift-upstream/redis-cache/confighub/inventory-api-stage.yaml`](./lift-upstream/redis-cache/confighub/inventory-api-stage.yaml) | Refreshed stage ConfigHub YAML after lift-upstream |
 | [`lift-upstream/redis-cache/confighub/inventory-api-prod.yaml`](./lift-upstream/redis-cache/confighub/inventory-api-prod.yaml) | Refreshed prod ConfigHub YAML after lift-upstream |
-| [`docs/platform-onboarding.md`](./docs/platform-onboarding.md) | Platform onboarding guide for app teams |
-| [`docs/platform-concept-design.md`](./docs/platform-concept-design.md) | Platform concept design rationale |
 
 ## The Three Outcomes
 

@@ -90,6 +90,18 @@ What you should see:
 - Field-by-field mapping from inputs to outputs
 - Which fields are generator-owned (platform-controlled) vs app-owned
 
+Now ask "why is this field blocked?":
+
+```bash
+./generator/render.sh --explain-field spring.datasource.url
+./generator/render.sh --explain-field feature.inventory.reservationMode
+```
+
+What you should see:
+
+- `spring.datasource.url` is BLOCKED because the generator injects it from platform policy
+- `feature.inventory.reservationMode` is MUTABLE because it comes from app inputs
+
 Why this matters:
 
 Understanding the generator is key to understanding field ownership. When you know how a field got into `operational/deployment.yaml`, you know whether it's mutable-in-ch, lift-upstream, or generator-owned (blocked).
@@ -158,16 +170,76 @@ What you see after:
 - the prod unit shows the env override in ConfigHub
 - a separate local replay can be run with the same env override
 
-Verification:
+Now show the **provenance** - the mutation history:
 
 ```bash
-cd upstream/app
-FEATURE_INVENTORY_RESERVATIONMODE=optimistic mvn spring-boot:run -q -Dspring-boot.run.profiles=prod
+cub mutation list --space inventory-api-prod --json inventory-api | \
+  jq '[.[-1] | {mutationNum, description, author: .Author.Email, createdAt: .CreatedAt}]'
 ```
+
+What you should see:
+
+- The mutation number and timestamp
+- Your change description ("apply-here: override reservationMode...")
+- Your author identity (email)
+
+This is the audit trail. Every mutation is recorded with who, when, and why.
 
 GUI checkpoint:
 
 - ConfigHub GUI: open the prod unit and inspect the changed env value
+- ConfigHub GUI: click "History" to see the mutation with your change description
+
+Pause after this stage.
+
+## Stage 5b: Running App Sees The Change (optional, requires Java)
+
+This is the lightweight proof that the app sees the mutation - no cluster needed.
+
+Start the Spring Boot app locally with the mutated value:
+
+```bash
+cd upstream/app
+FEATURE_INVENTORY_RESERVATIONMODE=optimistic \
+  mvn spring-boot:run -q -Dspring-boot.run.profiles=prod \
+  -Dspring-boot.run.arguments="--server.port=8081" &
+APP_PID=$!
+sleep 10  # Wait for app to start
+```
+
+Curl the app to verify:
+
+```bash
+curl -s http://localhost:8081/api/inventory/summary | jq
+```
+
+What you should see:
+
+```json
+{
+  "service": "inventory-api",
+  "environment": "prod",
+  "reservationMode": "optimistic",
+  "cacheBackend": "none"
+}
+```
+
+The running app reports `optimistic` - the mutation is visible! This proves:
+
+- The mutation stored in ConfigHub can be replayed locally
+- The Spring Boot app reads the env var and reports the new value
+- Real HTTP response, real app
+
+Stop the app:
+
+```bash
+kill $APP_PID
+cd ../..
+```
+
+GUI checkpoint:
+
+- none; this is a local-only proof
 
 Pause after this stage.
 
@@ -256,6 +328,20 @@ Pause after this stage.
 
 ## Stage 7: Lift-Upstream Bundle (read-only)
 
+First, show the **field lineage** - why does this field need to go upstream?
+
+```bash
+./generator/render.sh --explain-field spring.cache.type
+```
+
+What you should see:
+
+- Owner: app-team
+- Route: lift-upstream
+- Why: Cache adoption changes the app contract, needs code changes
+
+Now show the bundle that would be created:
+
 ```bash
 ./lift-upstream.sh --explain
 ./lift-upstream.sh --explain-json | jq
@@ -265,7 +351,8 @@ Pause after this stage.
 
 What this proves:
 
-- the exact upstream app and ConfigHub changes needed for the Redis caching request can be rendered read-only
+- The field lineage explains WHY it routes to lift-upstream
+- The exact upstream app and ConfigHub changes needed for the Redis caching request can be rendered read-only
 
 GUI checkpoint:
 
@@ -274,6 +361,20 @@ GUI checkpoint:
 Pause after this stage.
 
 ## Stage 8: Block/Escalate Boundary (read-only)
+
+First, show the **field lineage** - why is this field blocked?
+
+```bash
+./generator/render.sh --explain-field spring.datasource.url
+```
+
+What you should see:
+
+- Owner: platform-engineering
+- Route: generator-owned (BLOCKED)
+- Why: The generator injects this from platform policy, not app inputs
+
+Now show what happens when you try to change it:
 
 ```bash
 ./block-escalate.sh --explain
@@ -284,7 +385,9 @@ Pause after this stage.
 
 What this proves:
 
-- the datasource override attempt is visible and explainable
+- The field lineage explains WHY it's blocked (comes from platform policy)
+- The datasource override attempt is visible and explainable
+- The escalation path is documented
 
 What this does not prove:
 

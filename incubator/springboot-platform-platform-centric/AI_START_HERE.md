@@ -114,13 +114,16 @@ GUI now: Open https://hub.confighub.com → click **Spaces** → filter by label
 
 ---
 
-### Stage 6: "Why is this field blocked?" (read-only)
+### Stage 6: "Why is this field blocked?" (field lineage)
+
+This is about **provenance** - understanding where field values come from.
 
 Run: `./platform.sh --explain-field spring.datasource.url`
 
 Print the full output. Explain:
-- This field is platform-owned, applies to ALL apps
+- This field is platform-owned, applies to ALL apps on this platform
 - The platform provides managed-datasource with HA, encryption, backups
+- The generator injects this from platform policy, not app inputs
 - App teams cannot change it — they must contact #platform-support
 
 Then show an app-owned field:
@@ -129,7 +132,13 @@ Run: `./platform.sh --explain-field feature.inventory.reservationMode`
 
 Explain:
 - This field is app-owned (inventory-api only)
+- It comes from app inputs, not platform policy
 - Safe to change directly in ConfigHub
+
+The difference in **field lineage** determines the mutation route:
+- Platform policy → blocked
+- App inputs (runtime tuning) → mutable
+- App inputs (code change needed) → lift-upstream
 
 **PAUSE.** Wait for the human.
 
@@ -154,6 +163,53 @@ cub function do --space catalog-api-prod --unit catalog-api \
 ```
 
 Explain: Both mutations succeed because they're app-owned fields. Platform-owned fields would be blocked.
+
+Now show the **provenance** - the mutation history:
+
+```bash
+cub mutation list --space inventory-api-prod --json inventory-api | \
+  jq '[.[-1] | {mutationNum, description, author: .Author.Email, createdAt: .CreatedAt}]'
+```
+
+Print the output. Explain:
+- Every mutation is recorded with who, when, and why
+- The change description you provided is in the audit trail
+- This is the provenance for apply-here mutations
+
+**PAUSE.** Wait for the human.
+
+---
+
+### Stage 7b: "Running app sees the change" (optional, requires Java)
+
+Ask: "Do you want to see the running app confirm the mutation? This requires Java 21+ and Maven."
+
+If yes, run:
+
+```bash
+cd ../springboot-platform-app/upstream/app
+FEATURE_INVENTORY_RESERVATIONMODE=optimistic \
+  mvn spring-boot:run -q -Dspring-boot.run.profiles=prod \
+  -Dspring-boot.run.arguments="--server.port=8081" &
+APP_PID=$!
+sleep 10  # Wait for app to start
+curl -s http://localhost:8081/api/inventory/summary | jq
+kill $APP_PID
+cd ../../springboot-platform-platform-centric
+```
+
+What you should see:
+
+```json
+{
+  "service": "inventory-api",
+  "environment": "prod",
+  "reservationMode": "optimistic",
+  "cacheBackend": "none"
+}
+```
+
+Explain: The inventory-api app reports `optimistic` - the mutation is visible. This proves mutations on this platform's apps can be verified locally.
 
 **PAUSE.** Wait for the human.
 
