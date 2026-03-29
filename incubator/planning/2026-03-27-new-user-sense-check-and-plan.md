@@ -278,7 +278,7 @@ Make one shared explanation of:
 - why direct apply is still the simplest live proof
 - why Flux OCI is the current standard controller-oriented bundle path
 - why Argo OCI is the right next standard for Argo
-- why `ArgoCDRenderer` should stay labeled as renderer-oriented until an OCI-backed Argo path exists
+- why `ArgoCDRenderer` should stay labeled as renderer-oriented (Argo OCI is now implemented as a separate path)
 
 ### Phase 6: Add “expected first value” timing to the standard examples
 
@@ -334,14 +334,14 @@ Candidate direction:
 
 ## Highest-Value Next Actions
 
-1. Re-prove the recently changed examples with short evidence logs before claiming they are real end to end
+1. Re-prove the recently changed examples with short evidence logs before claiming they are real end to end — **PARTIALLY DONE** (read-only proof pass completed, live controller proof still pending)
 2. Create one incubator-local `WHY_CONFIGHUB.md` or equivalent front-door explainer — **DONE** (see `incubator/WHY_CONFIGHUB.md`)
 3. Rewrite the top of `incubator/README.md` around the four reasons above — **DONE**
 4. Add a tiny glossary page and link to it from the landing docs — **DONE** (included in `WHY_CONFIGHUB.md`)
 5. Tighten `global-app-layer/AI_START_HERE.md` so it routes by reason more explicitly — **DONE**
 6. Write a dedicated NVIDIA real-e2e plan that names the cluster, target, apply path, and verification contract explicitly
-7. Write a dedicated AICR bundle plan that names the publication record, digest source, integrity evidence, supply-chain evidence, and handoff contract explicitly — **PARTIALLY DONE** (bundle docs updated, Argo OCI spec written)
-8. Standardize the delivery-mode language so the front door distinguishes direct apply, Flux OCI, Argo OCI, and renderer-only paths — **DONE**
+7. Write a dedicated AICR bundle plan that names the publication record, digest source, integrity evidence, supply-chain evidence, and handoff contract explicitly — **DONE** (bundle docs updated, Argo OCI spec written, delivery matrix standardized)
+8. Standardize the delivery-mode language so the front door distinguishes direct apply, Flux OCI, Argo OCI, and renderer-only paths — **DONE** (all layered docs now use consistent ConfigHub-native OCI language)
 
 ## Working Rule For Future Example Docs
 

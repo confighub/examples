@@ -279,6 +279,14 @@ Current AICR bundle material now includes:
 - `incubator/global-app-layer/05-bundle-publication-walkthrough.md`
 - `incubator/global-app-layer/06-bundle-evidence-gui-spec.md`
 - `incubator/global-app-layer/bundle-evidence-sample/`
+- `incubator/global-app-layer/07-argo-oci-spec.md`
+
+Current delivery matrix (standardized across layered docs):
+
+- **Direct Kubernetes**: Fully working. Simplest real proof.
+- **Flux OCI**: Current standard. Worker publishes to ConfigHub-native OCI origin, Flux reconciles.
+- **Argo OCI**: Implemented. Worker publishes to ConfigHub-native OCI origin, Argo reconciles.
+- **ArgoCDRenderer**: Renderer path only. Not OCI delivery.
 
 Next likely AICR steps:
 
@@ -289,9 +297,6 @@ Next likely AICR steps:
   - integrity evidence
   - SBOMs and attestations
   - downstream handoff
-- standardize the controller-oriented bundle path around OCI
-- keep `FluxOCI` as the current standard controller path
-- keep `ArgoCDRenderer` clearly separate from a future Argo OCI path
 
 ### 5. Keep `springboot-platform-app` in view
 

@@ -41,7 +41,7 @@ It does not yet fully prove:
 |---------------|--------|--------------|
 | **Direct Kubernetes** | Fully working | Worker applies, no OCI bundle |
 | **Flux OCI** | Current standard | OCI bundle published, Flux reconciles |
-| **Argo OCI** | Implemented in selected examples | OCI bundle published, Argo reconciles |
+| **Argo OCI** | Implemented | OCI bundle published to ConfigHub-native origin, Argo reconciles |
 | **ArgoCDRenderer** | Working, limited scope | Renderer path only, not bundle delivery |
 
 **Flux OCI** is the current standard for the bundle publication story. It proves:

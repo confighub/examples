@@ -32,14 +32,14 @@ Know which delivery mode is in scope before making claims:
 |---------------|--------|-------------|
 | **Direct Kubernetes** | Fully working | Simplest real proof. No controller required. |
 | **Flux OCI** | Current standard | Controller-oriented delivery. Flux manages workload lifecycle. |
-| **Argo OCI** | Implemented in selected examples | Use only where the example explicitly wires it and you can show controller plus live evidence. |
+| **Argo OCI** | Implemented | Use only where the example explicitly wires it and you can show controller plus live evidence. |
 | **Renderer-only (ArgoCDRenderer)** | Working, limited scope | Renderer/hydration path. Not the same as OCI delivery. |
 
 Critical distinctions:
 
 - `FluxOCI` is the current standard controller-oriented delivery path
 - `ArgoCDRenderer` is **not** Argo OCI delivery — it is a renderer path that expects Argo `Application` payloads
-- Argo OCI is now implemented in selected examples, but it should only be claimed with controller and live evidence
+- Argo OCI is implemented, but it should only be claimed with controller and live evidence
 - Do not conflate renderer paths with OCI bundle delivery
 
 ## Reality Rules
