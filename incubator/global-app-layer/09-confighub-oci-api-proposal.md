@@ -8,11 +8,10 @@ This would make ConfigHub the **origin** for controller-oriented bundle delivery
 
 - **Direct Kubernetes** remains the simplest real apply path
 - **Flux OCI** becomes the standard controller path without forcing a separate registry
-- **Argo OCI** gets the same clean model
+- **Argo OCI** gets the same model
 - external OCI registries stay optional for caching, mirroring, compliance, or air-gap workflows
 
-The point is not to turn ConfigHub into "yet another registry product".
-The point is to let Flux, Argo, Helm, `oras`, `crane`, and `skopeo` talk to ConfigHub through a protocol they already understand.
+OCI is the transport, not a new product category. Flux, Argo, Helm, `oras`, `crane`, and `skopeo` should be able to talk to ConfigHub through a protocol they already understand.
 
 ## The Problem
 
@@ -109,26 +108,19 @@ Conceptually:
 
 ConfigHub should expose a stable OCI view of the **deployment output for a specific deployment variant and target path**.
 
-That identity should be deployment-oriented, not just storage-oriented.
-
-The important user-facing identity is:
+That identity should be deployment-oriented, not just storage-oriented. The important user-facing identity is:
 
 - which deployment variant this is
 - which target or delivery mode it is for
 - which exact revision or digest it represents
 
-Internally, ConfigHub can still map that to spaces, units, revisions, and stored data. But the proposal should model the OCI artifact as a deployment artifact, not as a raw database row.
+Internally, ConfigHub can still map that to spaces, units, revisions, and stored data. The proposal should describe the OCI artifact as a deployment artifact, not as a raw database row.
 
 ### Start With Read-Only Distribution
 
 The first milestone should be a read-only OCI Distribution API.
 
-That is enough for:
-
-- Flux OCI consumption
-- Argo OCI consumption
-- OCI inspection with standard tools
-- mirroring to third-party registries
+That is enough for Flux OCI, Argo OCI, OCI inspection with standard tools, and mirroring to third-party registries.
 
 Minimum endpoints:
 
@@ -185,9 +177,7 @@ ConfigHub revision -> sync job -> registry tag -> controller source -> live work
 
 ### Better Audit Story
 
-ConfigHub already owns the approval and provenance context.
-
-If ConfigHub also serves the OCI artifact, then the operator can inspect one system for:
+ConfigHub already owns the approval and provenance context. If it also serves the OCI artifact, the operator can inspect one system for:
 
 - what was approved
 - what digest was published
@@ -243,7 +233,7 @@ This keeps one authoritative origin while still supporting:
 - ACR
 - disconnected or staged environments
 
-The important point is that ConfigHub should be able to feed those systems cleanly, not require them as the only starting point.
+ConfigHub should be able to feed those systems cleanly. They should not be required as the only starting point.
 
 ## Identity, Auth, And Proof
 
@@ -291,36 +281,17 @@ That is the standard both Flux OCI and Argo OCI should meet.
 
 Flux can consume ConfigHub output without requiring a separate registry as the first step.
 
-That gives ConfigHub a cleaner controller-oriented path for:
-
-- OCIRepository
-- Kustomization
-- HelmRelease-backed flows
+That gives ConfigHub a straightforward controller-oriented path for `OCIRepository`, `Kustomization`, and HelmRelease-backed flows.
 
 ### Argo
 
-Argo can use the same origin model once OCI-backed Application sources are in play.
+Argo can use the same origin model through OCI-backed Application sources.
 
-That gives ConfigHub a cleaner Argo story than renderer-only workflows:
-
-- publish deployment output
-- point Argo at the OCI source
-- let Argo reconcile workloads from that source
+That gives ConfigHub a simpler Argo story than renderer-only workflows: publish deployment output, point Argo at the OCI source, and let Argo reconcile workloads from that source.
 
 ### Standard OCI Tooling
 
-Once ConfigHub exposes OCI directly, standard tools become available without special adapters:
-
-- `oras`
-- `crane`
-- `skopeo`
-
-That matters for:
-
-- inspection
-- mirroring
-- air-gap staging
-- evidence capture
+Once ConfigHub exposes OCI directly, standard tools become available without special adapters: `oras`, `crane`, and `skopeo`. That matters for inspection, mirroring, air-gap staging, and evidence capture.
 
 ## Recommended First Scope
 
