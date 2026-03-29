@@ -189,8 +189,8 @@ Incubator:
 - [ ] `incubator/demo-data-adt/AI_START_HERE.md`
 - [ ] `incubator/fleet-import/AI_START_HERE.md`
 - [ ] `incubator/flux-boutique/AI_START_HERE.md`
-- [ ] `incubator/gitops-import-argo/AI_START_HERE.md`
-- [ ] `incubator/gitops-import-flux/AI_START_HERE.md`
+- [x] `incubator/gitops-import-argo/AI_START_HERE.md`
+- [x] `incubator/gitops-import-flux/AI_START_HERE.md`
 - [ ] `incubator/graph-export/AI_START_HERE.md`
 - [ ] `incubator/import-from-bundle/AI_START_HERE.md`
 - [ ] `incubator/import-from-live/AI_START_HERE.md`
@@ -199,17 +199,17 @@ Incubator:
 - [ ] `incubator/platform-example/AI_START_HERE.md`
 - [x] `incubator/platform-write-api/AI_START_HERE.md`
 - [ ] `incubator/springboot-platform-app-centric/AI_START_HERE.md`
-- [ ] `incubator/springboot-platform-app/AI_START_HERE.md`
+- [x] `incubator/springboot-platform-app/AI_START_HERE.md`
 - [ ] `incubator/watch-webhook/AI_START_HERE.md`
 
 Global app layer:
 
-- [ ] `incubator/global-app-layer/AI_START_HERE.md`
+- [x] `incubator/global-app-layer/AI_START_HERE.md`
 - [ ] `incubator/global-app-layer/bundle-evidence-sample/AI_START_HERE.md`
 - [ ] `incubator/global-app-layer/frontend-postgres/AI_START_HERE.md`
 - [ ] `incubator/global-app-layer/gpu-eks-h100-training/AI_START_HERE.md`
 - [ ] `incubator/global-app-layer/realistic-app/AI_START_HERE.md`
-- [ ] `incubator/global-app-layer/single-component/AI_START_HERE.md`
+- [x] `incubator/global-app-layer/single-component/AI_START_HERE.md`
 
 ---
 

@@ -138,11 +138,13 @@ What these do not mutate:
 - they do not bind targets
 - they do not apply to a cluster
 
-GUI checkpoint:
+GUI now: None yet; this stage is preview only.
 
-- none yet; this stage is preview only
+GUI gap: No visual recipe preview before materialization.
 
-Pause after this stage.
+GUI ask: "Preview Recipe" button that shows planned spaces/units before creation.
+
+**PAUSE.** Wait for the human.
 
 ## Stage 2: Materialize In ConfigHub (mutates ConfigHub)
 
@@ -161,11 +163,13 @@ What you should see after:
 - durable logs in `.logs/`
 - printed GUI URLs for the recipe space, deploy space, manifest, and one deployment unit
 
-GUI checkpoint:
+GUI now: Open the printed ConfigHub URLs and compare them to the CLI verification output.
 
-- open the printed ConfigHub URLs and compare them to the CLI verification output
+GUI gap: No visual diff between "before setup" and "after setup".
 
-Pause after this stage.
+GUI ask: Space creation wizard showing before/after comparison.
+
+**PAUSE.** Wait for the human.
 
 ## Stage 3: Check Live Readiness, Do Not Assume It (read-only)
 
@@ -181,11 +185,13 @@ Interpret the result like this:
 - `set-target.sh` is not the same as apply readiness
 - only treat the live path as ready if `applyReady: true`
 
-GUI checkpoint:
+GUI now: ConfigHub GUI: inspect the chosen target and relevant space before binding anything.
 
-- ConfigHub GUI: inspect the chosen target and relevant space before binding anything
+GUI gap: No preflight status shown on target card.
 
-Pause after this stage.
+GUI ask: Preflight check result (applyReady: true/false) shown on target card before binding.
+
+**PAUSE.** Wait for the human.
 
 ## Stage 4: Bind And Verify The Live Path (mutates ConfigHub, may lead to live apply)
 
@@ -212,11 +218,13 @@ What this does not prove by itself:
 
 - target binding is not the same as successful live apply
 
-GUI checkpoint:
+GUI now: ConfigHub GUI: inspect the bound units and target relationships.
 
-- ConfigHub GUI: inspect the bound units and target relationships
+GUI gap: No unified view showing deployment variant with target binding status.
 
-Pause after this stage.
+GUI ask: Deployment variant matrix with target binding status and apply readiness.
+
+**PAUSE.** Wait for the human.
 
 ## Capability Check
 
