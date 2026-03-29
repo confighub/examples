@@ -56,6 +56,10 @@ Print the full ADT diagram. Explain:
 
 GUI now: Nothing created yet — this is a preview.
 
+If the human wants the same plan in machine-readable form, also run:
+
+`./setup.sh --explain-json | jq`
+
 **PAUSE.** Wait for the human.
 
 ---

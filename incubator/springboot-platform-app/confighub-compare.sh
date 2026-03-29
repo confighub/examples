@@ -40,9 +40,15 @@ Commands used:
 EOF
 }
 
+JSON_OUTPUT=false
+
 if [[ "${1:-}" == "--explain" ]]; then
   show_explain
   exit 0
+fi
+
+if [[ "${1:-}" == "--json" ]]; then
+  JSON_OUTPUT=true
 fi
 
 command -v jq >/dev/null 2>&1 || { echo "error: jq not found." >&2; exit 1; }
@@ -172,8 +178,10 @@ extract_value() {
 
 # ── fetch unit data per environment ──────────────────────────────────
 
-echo "Fetching unit data from ConfigHub..."
-echo ""
+if [[ "${JSON_OUTPUT}" != "true" ]]; then
+  echo "Fetching unit data from ConfigHub..."
+  echo ""
+fi
 
 # Build result as JSON array
 RESULT="[]"
@@ -193,14 +201,20 @@ with open('${yaml}') as f:
     docs = list(yaml.safe_load_all(f))
 json.dump(docs, sys.stdout)
 " 2>/dev/null || echo "[]")
-      echo "  ${env}: using fixture fallback"
+      if [[ "${JSON_OUTPUT}" != "true" ]]; then
+        echo "  ${env}: using fixture fallback"
+      fi
     else
-      echo "  ${env}: no data available"
+      if [[ "${JSON_OUTPUT}" != "true" ]]; then
+        echo "  ${env}: no data available"
+      fi
       continue
     fi
   else
     data=$(decode_unit_data "$raw")
-    echo "  ${env}: fetched from ConfigHub"
+    if [[ "${JSON_OUTPUT}" != "true" ]]; then
+      echo "  ${env}: fetched from ConfigHub"
+    fi
   fi
 
   for ((i=0; i<num_fields; i++)); do
@@ -223,7 +237,9 @@ json.dump(docs, sys.stdout)
   done
 done
 
-echo ""
+if [[ "${JSON_OUTPUT}" != "true" ]]; then
+  echo ""
+fi
 
 # ── JSON output ──────────────────────────────────────────────────────
 
@@ -234,8 +250,13 @@ if [[ "${1:-}" == "--json" ]]; then
     display=$(echo "$FIELD_MODEL" | jq -r ".[$i].display")
     route=$(echo "$FIELD_MODEL" | jq -r ".[$i].route")
     field_obj=$(echo "$RESULT" | jq --argjson idx "$i" --arg d "$display" --arg r "$route" '
-      { display: $d, route: $r, values:
-        [.[] | select(.fieldIndex == $idx)] | reduce .[] as $item ({}; .[$item.env] = { value: $item.value, diverged: $item.diverged })
+      {
+        display: $d,
+        route: $r,
+        values: (
+          reduce (.[] | select(.fieldIndex == $idx)) as $item
+            ({}; .[$item.env] = { value: $item.value, diverged: $item.diverged })
+        )
       }
     ')
     output=$(echo "$output" | jq --arg d "$display" --argjson obj "$field_obj" '.[$d] = $obj')

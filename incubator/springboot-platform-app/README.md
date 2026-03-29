@@ -644,10 +644,59 @@ cub unit get --space inventory-api-prod --json inventory-api | jq '.UnitStatus'
 The mutation is stored in ConfigHub but there is no running pod to verify.
 Use `--with-targets` for real end-to-end proof.
 
+## Alternative Delivery Modes: Flux OCI and Argo OCI
+
+This example uses direct Kubernetes delivery (`kubectl apply` via worker). ConfigHub
+also supports controller-based delivery where Flux or ArgoCD reconciles from an OCI
+artifact published by ConfigHub.
+
+| Delivery Mode | Provider Type | What Happens |
+|--------------|---------------|--------------|
+| Direct (this example) | `Kubernetes` | Worker applies via kubectl |
+| Flux OCI | `FluxOCI` | Worker publishes to OCI, Flux reconciles |
+| Argo OCI | `ArgoCDOCI` | Worker publishes to OCI, ArgoCD reconciles |
+
+### Why Use Controller-Based Delivery?
+
+David Flanagan's feedback: "The worker doing kubectl apply is a reconciler like Porch."
+
+Controller-based delivery separates concerns:
+- ConfigHub publishes the **artifact** (OCI bundle with manifests)
+- Flux/ArgoCD does the **reconciliation** (continuous delivery to cluster)
+- Clear separation between "what to deploy" and "how to deploy"
+
+### Reference Examples
+
+For full Flux OCI and Argo OCI implementation, see:
+
+- [`global-app-layer/single-component`](../global-app-layer/single-component/) - One component with all three delivery variants
+- [`global-app-layer/gpu-eks-h100-training`](../global-app-layer/gpu-eks-h100-training/) - Multi-component with Flux OCI
+
+Key patterns from these examples:
+
+1. **Separate deployment spaces per variant**: `{app}-deploy-cluster-a` (direct) vs `{app}-deploy-cluster-a-flux` (Flux)
+2. **Clone units for each variant**: All variants clone from the same recipe unit
+3. **Provider-type-aware target binding**: FluxOCI targets bind to Flux units
+4. **Labels for filtering**: `DeliveryVariant=flux` or `DeliveryVariant=direct`
+
+### Future: Adding Flux OCI to This Example
+
+To add Flux OCI delivery to springboot-platform-app:
+
+1. Create Flux variant spaces: `inventory-api-prod-flux`
+2. Clone units from existing spaces: `inventory-api-flux` from `inventory-api`
+3. Create FluxOCI target with OCI registry and Flux controller config
+4. Bind Flux units to FluxOCI targets
+5. Apply triggers OCI publish → Flux reconciles
+
+This is tracked but not yet implemented. The mutation routing story (apply-here,
+lift-upstream, block-escalate) is delivery-mode agnostic.
+
 ## What Is Not Yet Proven
 
 - `lift upstream` via GitHub PR (diff bundle exists but no automated PR creation)
 - `block/escalate` via field-level policy enforcement (boundary is documented, not server-enforced)
+- Flux OCI or Argo OCI delivery (direct Kubernetes only; see global-app-layer for OCI examples)
 
 If you want more:
 

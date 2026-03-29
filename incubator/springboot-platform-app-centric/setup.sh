@@ -6,6 +6,7 @@
 #
 # Usage:
 #   ./setup.sh --explain              # Show the ADT view (read-only)
+#   ./setup.sh --explain-json         # Show the setup plan as JSON (read-only)
 #   ./setup.sh --explain --confighub-only   # Explain confighub-only mode
 #   ./setup.sh --explain --with-targets     # Explain real-target mode
 #   ./setup.sh                         # Default: noop targets (no cluster needed)
@@ -166,14 +167,70 @@ Delegation:
 EOF
 }
 
+show_explain_json() {
+  local mode="${1:-noop}"
+  local selected_flag="null"
+  local mutates_live="false"
+  local cluster_required="false"
+  local creates_infra_space="false"
+  local creates_targets="false"
+  local applies_units="false"
+
+  case "${mode}" in
+    "noop")
+      creates_infra_space="true"
+      creates_targets="true"
+      applies_units="true"
+      ;;
+    "confighub-only")
+      selected_flag="\"--confighub-only\""
+      ;;
+    "real")
+      selected_flag="\"--with-targets\""
+      mutates_live="true"
+      cluster_required="true"
+      creates_targets="true"
+      applies_units="true"
+      ;;
+  esac
+
+  cat <<EOF
+{
+  "example_name": "springboot-platform-app-centric",
+  "proof_type": "app-centric-wrapper",
+  "selected_mode": "${mode}",
+  "selected_setup_flag": ${selected_flag},
+  "default_mode": "noop",
+  "mutates_confighub": true,
+  "mutates_live_infra": ${mutates_live},
+  "cluster_required": ${cluster_required},
+  "creates_infra_space": ${creates_infra_space},
+  "creates_targets": ${creates_targets},
+  "applies_units": ${applies_units},
+  "deployment_map": "./deployment-map.json",
+  "delegates_to": "../springboot-platform-app/confighub-setup.sh",
+  "next_steps": [
+    "./setup.sh",
+    "./verify.sh",
+    "./cleanup.sh"
+  ]
+}
+EOF
+}
+
 # Parse arguments
 MODE="noop"
 EXPLAIN=false
+EXPLAIN_JSON=false
 
 while [[ $# -gt 0 ]]; do
   case "${1}" in
     --explain)
       EXPLAIN=true
+      shift
+      ;;
+    --explain-json)
+      EXPLAIN_JSON=true
       shift
       ;;
     --confighub-only)
@@ -185,7 +242,7 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     *)
-      echo "Usage: $0 [--explain] [--confighub-only|--with-targets]" >&2
+      echo "Usage: $0 [--explain|--explain-json] [--confighub-only|--with-targets]" >&2
       exit 2
       ;;
   esac
@@ -193,6 +250,11 @@ done
 
 if [[ "${EXPLAIN}" == "true" ]]; then
   show_explain "${MODE}"
+  exit 0
+fi
+
+if [[ "${EXPLAIN_JSON}" == "true" ]]; then
+  show_explain_json "${MODE}"
   exit 0
 fi
 

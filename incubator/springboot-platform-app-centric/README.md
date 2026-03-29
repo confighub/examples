@@ -28,6 +28,8 @@ Targets control where a unit delivers. This example supports three modes:
 
 The default (`./setup.sh`) uses noop targets so you can see the full mutation-to-apply workflow immediately without a cluster.
 
+**Alternative delivery modes:** This example uses direct Kubernetes delivery. For Flux OCI or Argo OCI delivery (where Flux/ArgoCD reconciles from an OCI artifact), see [`global-app-layer/single-component`](../global-app-layer/single-component/).
+
 ## The Three Mutation Outcomes
 
 When you change a field in this app's operational config, one of three things happens:
@@ -45,6 +47,7 @@ See the [flows/](./flows/) directory for detailed walkthroughs of each outcome.
 ```bash
 # See what this will do (read-only)
 ./setup.sh --explain
+./setup.sh --explain-json | jq
 
 # Set up with noop targets (default, no cluster needed)
 ./setup.sh
@@ -61,9 +64,17 @@ See the [flows/](./flows/) directory for detailed walkthroughs of each outcome.
 | Command | What it does |
 |---------|--------------|
 | `./setup.sh --explain` | Show the ADT view (read-only) |
+| `./setup.sh --explain-json` | Machine-readable setup plan |
 | `./setup.sh` | Create spaces, units, noop targets, and apply |
 | `./setup.sh --confighub-only` | Create spaces and units without targets |
 | `./setup.sh --with-targets` | Deploy to real Kubernetes (requires cluster + worker) |
+
+## AI Handoff
+
+- AI guide: [`AI_START_HERE.md`](./AI_START_HERE.md)
+- Copyable prompts: [`prompts.md`](./prompts.md)
+- Stable contracts: [`contracts.md`](./contracts.md)
+- Machine-readable app/deployment map: [`deployment-map.json`](./deployment-map.json)
 
 ## How This Relates to springboot-platform-app
 
@@ -118,6 +129,8 @@ This mutation applies directly because `feature.inventory.*` fields route to `ap
 springboot-platform-app-centric/
   README.md                 # This file
   AI_START_HERE.md          # AI assistant guide
+  prompts.md                # Copyable AI prompts
+  contracts.md              # Stable command contracts
   deployment-map.json       # Machine-readable ADT map
   setup.sh                  # Setup (delegates)
   demo.sh                   # Demo the three outcomes

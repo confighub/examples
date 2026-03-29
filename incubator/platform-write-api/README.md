@@ -62,15 +62,35 @@ No script touches Git or any cluster.
 ```bash
 # What would be created
 ./setup.sh --explain
+./setup.sh --explain-json | jq
 
 # Field routing rules (from fixtures, no ConfigHub needed)
 ./field-routes.sh prod
+./field-routes.sh prod --json | jq
 
 # Three-variant comparison (from fixtures)
 ./compare.sh
+./compare.sh --json | jq
 
 # What happens on generator refresh (from fixtures)
 ./refresh-preview.sh prod
+./refresh-preview.sh prod --json | jq
+```
+
+## AI Handoff
+
+- AI guide: [`AI_START_HERE.md`](./AI_START_HERE.md)
+- Copyable prompts: [`prompts.md`](./prompts.md)
+- Stable contracts: [`contracts.md`](./contracts.md)
+
+The safest AI path is:
+
+```bash
+./setup.sh --explain
+./setup.sh --explain-json | jq
+./compare.sh --json | jq
+./field-routes.sh prod --json | jq
+./refresh-preview.sh prod --json | jq
 ```
 
 ## Run It

@@ -14,6 +14,8 @@ PARENT_DIR="${SCRIPT_DIR}/../springboot-platform-app"
 local_files=(
   "${SCRIPT_DIR}/README.md"
   "${SCRIPT_DIR}/AI_START_HERE.md"
+  "${SCRIPT_DIR}/prompts.md"
+  "${SCRIPT_DIR}/contracts.md"
   "${SCRIPT_DIR}/deployment-map.json"
   "${SCRIPT_DIR}/setup.sh"
   "${SCRIPT_DIR}/demo.sh"
@@ -41,6 +43,7 @@ jq -e '.app.name == "inventory-api"' "${SCRIPT_DIR}/deployment-map.json" >/dev/n
 jq -e '.deployments | length == 3' "${SCRIPT_DIR}/deployment-map.json" >/dev/null
 jq -e '.target_modes | keys | length == 3' "${SCRIPT_DIR}/deployment-map.json" >/dev/null
 jq -e '.mutation_outcomes | length == 3' "${SCRIPT_DIR}/deployment-map.json" >/dev/null
+"${SCRIPT_DIR}/setup.sh" --explain-json | jq -e '.example_name == "springboot-platform-app-centric"' >/dev/null
 
 echo "ok: springboot-platform-app-centric wrapper files are consistent"
 
