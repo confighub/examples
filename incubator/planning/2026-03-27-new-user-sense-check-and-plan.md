@@ -58,7 +58,7 @@ This is the strongest current part of the incubator.
 The newer “What this example is for” sections remove a lot of guesswork, especially in:
 
 - `incubator/platform-write-api`
-- `incubator/springboot-platform-app`
+- `spring-platform/springboot-platform-app`
 - `incubator/global-app-layer/*`
 - `incubator/cub-proc`
 

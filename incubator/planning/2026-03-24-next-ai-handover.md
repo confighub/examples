@@ -110,7 +110,7 @@ If a `cub-scout` command contract is weaker than the example claims, keep the ex
 
 ### Structural and advanced examples
 
-- `incubator/springboot-platform-app`
+- `spring-platform/springboot-platform-app`
 - `incubator/global-app-layer`
 - `incubator/cub-proc`
 - `incubator/vmcluster-from-scratch.md`
@@ -237,7 +237,7 @@ Before more doc polishing or new variants, re-run the examples we have recently 
 
 Top priority list:
 
-- `incubator/springboot-platform-app` full live mutation loop
+- `spring-platform/springboot-platform-app` full live mutation loop
 - `incubator/gitops-import-argo`
 - `incubator/gitops-import-flux`
 - `incubator/global-app-layer/single-component` with `FluxOCI`
@@ -256,7 +256,7 @@ Highest-priority AI-first follow-through:
 
 - make sure the remaining `AI_START_HERE.md` files fully follow the newer pacing guidance
 - especially:
-  - `incubator/springboot-platform-app/AI_START_HERE.md`
+  - `spring-platform/springboot-platform-app/AI_START_HERE.md`
   - `incubator/global-app-layer/AI_START_HERE.md`
   - any `global-app-layer` subexample AI guides
 

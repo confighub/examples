@@ -41,7 +41,7 @@ for operational config — the write API that platforms are missing.
 - `python3` (for YAML parsing in scripts)
 
 Optional (for the Spring Boot app proof):
-- Java 21+, Maven (see `../springboot-platform-app/` for the runnable app)
+- Java 21+, Maven (see `../spring-platform/springboot-platform-app/` for the runnable app)
 
 ## What This Reads and Writes
 
@@ -161,7 +161,7 @@ After `./mutate.sh`:
 
 ## What This Does Not Prove
 
-- **Live cluster delivery.** No targets, no pods. Use `../springboot-platform-app/`
+- **Live cluster delivery.** No targets, no pods. Use `../spring-platform/springboot-platform-app/`
   with `--with-targets` for noop target proof.
 - **Automated lift-upstream PR creation.** The diff bundle exists but no PR is created.
 - **Block/escalate enforcement.** The boundary rules exist but are not server-enforced.

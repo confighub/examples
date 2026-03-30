@@ -45,8 +45,8 @@ examples/incubator/lifecycle-hazards/AI_START_HERE.md
 examples/incubator/orphans/AI_START_HERE.md
 examples/incubator/platform-example/AI_START_HERE.md
 examples/incubator/platform-write-api/AI_START_HERE.md
-examples/incubator/springboot-platform-app-centric/AI_START_HERE.md
-examples/incubator/springboot-platform-app/AI_START_HERE.md
+examples/spring-platform/springboot-platform-app-centric/AI_START_HERE.md
+examples/spring-platform/springboot-platform-app/AI_START_HERE.md
 examples/incubator/watch-webhook/AI_START_HERE.md
 ```
 

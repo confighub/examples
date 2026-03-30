@@ -102,6 +102,13 @@ The app-centric example (#2) shows one app with three deployments. This example 
 ./platform.sh --explain-field spring.datasource.url
 ```
 
+## AI Handoff
+
+- Folder-level AI entry point: [`../AI_START_HERE.md`](../AI_START_HERE.md)
+- AI guide: [`AI_START_HERE.md`](./AI_START_HERE.md)
+- Canonical pacing standard: [`../../incubator/docs/ai-first-demo-standard.md`](../../incubator/docs/ai-first-demo-standard.md)
+- Longer pacing guide: [`../../incubator/standard-ai-demo-pacing.md`](../../incubator/standard-ai-demo-pacing.md)
+
 ## Files
 
 ```

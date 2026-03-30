@@ -9,7 +9,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SPRING_DIR="${SCRIPT_DIR}/../springboot-platform-app"
+SPRING_DIR="${SCRIPT_DIR}/../spring-platform/springboot-platform-app"
 CUB="${CUB:-cub}"
 EXAMPLE_LABEL="platform-write-api"
 # Reuse the shared server worker from the promotions example (one per org)
@@ -86,7 +86,7 @@ for env in "${ENVS[@]}"; do
 
   if [[ ! -f "$yaml" ]]; then
     echo "error: missing ${yaml}" >&2
-    echo "This example reuses fixtures from ../springboot-platform-app/confighub/" >&2
+    echo "This example reuses fixtures from ../spring-platform/springboot-platform-app/confighub/" >&2
     exit 1
   fi
 

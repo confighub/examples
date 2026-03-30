@@ -69,16 +69,16 @@ The following 31 files need to be reviewed and updated:
 - [ ] `./incubator/orphans/AI_START_HERE.md`
 - [ ] `./incubator/platform-example/AI_START_HERE.md`
 - [ ] `./incubator/platform-write-api/AI_START_HERE.md`
-- [x] `./incubator/springboot-platform-app-centric/AI_START_HERE.md` ✅
-- [x] `./incubator/springboot-platform-app/AI_START_HERE.md` ✅
+- [x] `./spring-platform/springboot-platform-app-centric/AI_START_HERE.md` ✅
+- [x] `./spring-platform/springboot-platform-app/AI_START_HERE.md` ✅
 - [ ] `./incubator/watch-webhook/AI_START_HERE.md`
 
 ## Reference Implementation
 
 See these examples that already follow the standard:
 
-- `incubator/springboot-platform-app-centric/AI_START_HERE.md`
-- `incubator/springboot-platform-app/AI_START_HERE.md`
+- `spring-platform/springboot-platform-app-centric/AI_START_HERE.md`
+- `spring-platform/springboot-platform-app/AI_START_HERE.md`
 
 ## Why This Matters
 

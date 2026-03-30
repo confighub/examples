@@ -21,7 +21,7 @@ Before choosing an example, identify the user's reason:
 |--------|----------------|--------------|
 | **Import** | See what exists in Git, clusters, or controllers | [gitops-import-argo](./gitops-import-argo/README.md) or [gitops-import-flux](./gitops-import-flux/README.md) |
 | **Mutate** | Make controlled changes through ConfigHub | [platform-write-api](./platform-write-api/README.md) |
-| **Apply** | Deploy real workloads to real targets | [springboot-platform-app](./springboot-platform-app/README.md) or [global-app-layer/single-component](./global-app-layer/single-component/README.md) |
+| **Apply** | Deploy real workloads to real targets | [springboot-platform-app](../spring-platform/springboot-platform-app/README.md) or [global-app-layer/single-component](./global-app-layer/single-component/README.md) |
 | **Model** | Represent layered or governed config | [global-app-layer](./global-app-layer/README.md) |
 
 ## Delivery Matrix
@@ -47,7 +47,7 @@ Critical distinctions:
 - Use "real end-to-end" only when ConfigHub stores the config, the mutation is real, apply uses a non-`Noop` target, a real app or controller receives the change, and live verification proves the result.
 - Do not offer `Noop` targets unless the human explicitly asks for them or agrees they are needed for a narrow proof.
 - If an example is import-only, evidence-only, controller-layout only, offline, or `Noop`-based, say that explicitly before you run any mutating step.
-- If the human asks for real ConfigHub apply end-to-end, lead with [`global-app-layer`](./global-app-layer/README.md) or [`springboot-platform-app`](./springboot-platform-app/README.md) (with `--with-targets`), not [`platform-write-api`](./platform-write-api/README.md).
+- If the human asks for real ConfigHub apply end-to-end, lead with [`global-app-layer`](./global-app-layer/README.md) or [`springboot-platform-app`](../spring-platform/springboot-platform-app/README.md) (with `--with-targets`), not [`platform-write-api`](./platform-write-api/README.md).
 
 ## Standard Stories
 
@@ -71,7 +71,7 @@ When the human says "show me Argo" or "show me Flux", do not fan out across the 
 If the human describes a more specific reason:
 
 - `why ConfigHub should exist as a write API`: [`platform-write-api`](./platform-write-api/README.md)
-- `one real app with apply here vs lift upstream vs block or escalate`: [`springboot-platform-app`](./springboot-platform-app/README.md)
+- `one real app with apply here vs lift upstream vs block or escalate`: [`springboot-platform-app`](../spring-platform/springboot-platform-app/README.md)
 - `smallest layered recipe proof`: [`global-app-layer/single-component`](./global-app-layer/single-component/README.md)
 - `small app-level layered recipe`: [`global-app-layer/frontend-postgres`](./global-app-layer/frontend-postgres/README.md)
 - `realistic layered app`: [`global-app-layer/realistic-app`](./global-app-layer/realistic-app/README.md)

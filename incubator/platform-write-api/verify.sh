@@ -9,7 +9,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SPRING_DIR="${SCRIPT_DIR}/../springboot-platform-app"
+SPRING_DIR="${SCRIPT_DIR}/../spring-platform/springboot-platform-app"
 ok=true
 
 check_file() {

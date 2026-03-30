@@ -27,7 +27,7 @@ Goal:
 
 Main examples:
 
-- `incubator/springboot-platform-app` — ✅ proven (full mutation chain: ConfigHub → deployment → HTTP)
+- `spring-platform/springboot-platform-app` — ✅ proven (full mutation chain: ConfigHub → deployment → HTTP)
 - `incubator/gitops-import-argo` — ✅ proven (ArgoCD healthy, both guestbook apps Synced+Healthy)
 - `incubator/gitops-import-flux` — ⚠️ partial (cluster deleted, Flux worked but FluxOCI worker missing)
 - `incubator/global-app-layer/single-component` with `FluxOCI` — ❌ blocked (no FluxOCI target)
@@ -63,8 +63,8 @@ That means:
 
 Supporting docs:
 
-- [../springboot-platform-app/README.md](../springboot-platform-app/README.md)
-- [../springboot-platform-app-centric/README.md](../springboot-platform-app-centric/README.md)
+- [../../spring-platform/springboot-platform-app/README.md](../../spring-platform/springboot-platform-app/README.md)
+- [../../spring-platform/springboot-platform-app-centric/README.md](../../spring-platform/springboot-platform-app-centric/README.md)
 - [2026-03-27-new-user-sense-check-and-plan.md](./2026-03-27-new-user-sense-check-and-plan.md)
 
 ### Milestone 3: Make AI-First the Default Story

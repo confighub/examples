@@ -102,7 +102,7 @@ cd incubator/import-from-live
 
 If you want to understand how ConfigHub routes operational changes through one app, use:
 
-- [`incubator/springboot-platform-app-centric`](./incubator/springboot-platform-app-centric/README.md)
+- [`spring-platform/springboot-platform-app-centric`](./spring-platform/springboot-platform-app-centric/README.md)
 
 Why:
 
@@ -114,7 +114,7 @@ Why:
 Typical flow:
 
 ```bash
-cd incubator/springboot-platform-app-centric
+cd spring-platform/springboot-platform-app-centric
 ./setup.sh --explain
 ./setup.sh
 ./verify.sh

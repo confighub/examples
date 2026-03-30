@@ -46,7 +46,7 @@ It proves three routing outcomes:
 |----------------|---------------|
 | Just the repo | `./setup.sh --explain`, `./setup.sh --explain-json`, `./compare.sh --json`, `./field-routes.sh --json`, `./refresh-preview.sh --json`, `./lift-upstream.sh`, `./block-escalate.sh` |
 | `cub auth login` | `./setup.sh`, `./mutate.sh`, `./cleanup.sh` |
-| Java 21 + Maven | the runnable sibling at `../springboot-platform-app/upstream/app/` |
+| Java 21 + Maven | the runnable sibling at `../spring-platform/springboot-platform-app/upstream/app/` |
 
 All read-only scripts fall back to local fixtures when ConfigHub is unavailable.
 
@@ -116,8 +116,8 @@ Now show the **field lineage** - where does each field come from?
 Run:
 
 ```bash
-../springboot-platform-app/generator/render.sh --explain-field spring.datasource.url
-../springboot-platform-app/generator/render.sh --explain-field feature.inventory.reservationMode
+../spring-platform/springboot-platform-app/generator/render.sh --explain-field spring.datasource.url
+../spring-platform/springboot-platform-app/generator/render.sh --explain-field feature.inventory.reservationMode
 ```
 
 Explain:
@@ -232,7 +232,7 @@ Ask: "Do you want to see the running app confirm the mutation? This requires Jav
 If yes, run:
 
 ```bash
-cd ../springboot-platform-app/upstream/app
+cd ../spring-platform/springboot-platform-app/upstream/app
 FEATURE_INVENTORY_RESERVATIONMODE=optimistic \
   mvn spring-boot:run -q -Dspring-boot.run.profiles=prod \
   -Dspring-boot.run.arguments="--server.port=8081" &

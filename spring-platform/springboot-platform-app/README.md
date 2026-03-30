@@ -51,6 +51,15 @@ The main question it answers is:
 mutation, a change routed back to the Spring app inputs, or a platform-owned
 field that gets blocked or escalated?"
 
+## AI Handoff
+
+- Folder-level AI entry point: [`../AI_START_HERE.md`](../AI_START_HERE.md)
+- This example's AI guide: [`AI_START_HERE.md`](./AI_START_HERE.md)
+- Copyable prompts: [`prompts.md`](./prompts.md)
+- Stable contracts: [`contracts.md`](./contracts.md)
+- Canonical pacing standard: [`../../incubator/docs/ai-first-demo-standard.md`](../../incubator/docs/ai-first-demo-standard.md)
+- Longer pacing guide: [`../../incubator/standard-ai-demo-pacing.md`](../../incubator/standard-ai-demo-pacing.md)
+
 Once platform-rendered operational config is in ConfigHub, every governed
 change request enters there. ConfigHub records the request, provenance, and
 decision, then routes it: apply here, lift upstream, or block/escalate.
@@ -229,7 +238,7 @@ What the real deployment scripts write (`--with-targets`):
 Start here:
 
 ```bash
-cd incubator/springboot-platform-app
+cd spring-platform/springboot-platform-app
 ./setup.sh --explain
 ./setup.sh --explain-json | jq
 ```
@@ -327,7 +336,7 @@ The upstream Spring Boot app is now real enough to call and test locally.
 Use:
 
 ```bash
-cd incubator/springboot-platform-app/upstream/app
+cd spring-platform/springboot-platform-app/upstream/app
 mvn test
 ```
 
@@ -337,7 +346,7 @@ do not mutate ConfigHub or live infrastructure.
 To run the app manually:
 
 ```bash
-cd incubator/springboot-platform-app/upstream/app
+cd spring-platform/springboot-platform-app/upstream/app
 mvn spring-boot:run
 curl -s http://localhost:8080/api/inventory/summary | jq
 curl -s http://localhost:8080/api/inventory/items | jq
@@ -358,7 +367,7 @@ would change upstream and in the refreshed ConfigHub YAMLs.
 Use:
 
 ```bash
-cd incubator/springboot-platform-app
+cd spring-platform/springboot-platform-app
 ./lift-upstream.sh --explain
 ./lift-upstream.sh --explain-json | jq
 ./lift-upstream.sh --render-diff
@@ -376,7 +385,7 @@ The datasource boundary now has a concrete read-only artifact too.
 Use:
 
 ```bash
-cd incubator/springboot-platform-app
+cd spring-platform/springboot-platform-app
 ./block-escalate.sh --explain
 ./block-escalate.sh --explain-json | jq
 ./block-escalate.sh --render-attempt
@@ -478,7 +487,7 @@ One app, three requests, one activity log:
 ## Exact CLI Sequence
 
 ```bash
-cd incubator/springboot-platform-app
+cd spring-platform/springboot-platform-app
 
 # Human-readable preview
 ./setup.sh --explain
@@ -743,7 +752,7 @@ If `jq` is missing:
 If you are not in the right directory:
 
 - run `git rev-parse --show-toplevel`
-- then `cd <repo-root>/incubator/springboot-platform-app`
+- then `cd <repo-root>/spring-platform/springboot-platform-app`
 
 If you expected a live cluster demo:
 

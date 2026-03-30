@@ -228,7 +228,7 @@ Recommended v2 phases:
 The future v2 example should still open with a safe preview path:
 
 ```bash
-cd incubator/springboot-platform-app
+cd spring-platform/springboot-platform-app
 ./setup.sh --explain
 ./setup.sh --explain-json | jq
 ./verify.sh

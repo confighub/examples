@@ -36,7 +36,7 @@ Use ConfigHub as a write API for operational config. Apply governed changes thro
 
 Deliver real changes to real targets. ConfigHub stores the intended state, renders it for the target, and applies through workers or controllers with verification.
 
-**Start here**: [springboot-platform-app](./springboot-platform-app/README.md) or [global-app-layer/single-component](./global-app-layer/single-component/README.md)
+**Start here**: [springboot-platform-app](../spring-platform/springboot-platform-app/README.md) or [global-app-layer/single-component](./global-app-layer/single-component/README.md)
 
 ### Model
 

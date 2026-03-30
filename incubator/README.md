@@ -12,7 +12,7 @@ ConfigHub is a management layer for operational configuration. It imports, valid
 |--------|---------------|------------|
 | **Import** | See what you already have in Git, clusters, or controllers | [gitops-import-argo](./gitops-import-argo/README.md) or [gitops-import-flux](./gitops-import-flux/README.md) |
 | **Mutate** | Make controlled changes through a governed write API | [platform-write-api](./platform-write-api/README.md) |
-| **Apply** | Deploy real workloads through real targets | [springboot-platform-app-centric](./springboot-platform-app-centric/README.md) (start here) or [global-app-layer/single-component](./global-app-layer/single-component/README.md) |
+| **Apply** | Deploy real workloads through real targets | [springboot-platform-app-centric](../spring-platform/springboot-platform-app-centric/README.md) (start here) or [global-app-layer/single-component](./global-app-layer/single-component/README.md) |
 | **Model** | Represent layered or governed config structures | [global-app-layer](./global-app-layer/README.md) |
 
 ## Delivery Matrix
@@ -48,7 +48,7 @@ For controller-oriented delivery: **Flux OCI** is the current standard. **Argo O
 ## Example Reality Guide
 
 - `100% real e2e through ConfigHub apply`: [`global-app-layer/single-component`](./global-app-layer/single-component/README.md), [`global-app-layer/frontend-postgres`](./global-app-layer/frontend-postgres/README.md), and [`global-app-layer/realistic-app`](./global-app-layer/realistic-app/README.md) when you bind them to a real non-`Noop` target and verify the deployed result on the cluster.
-- `Both options`: [`global-app-layer`](./global-app-layer/README.md) is ConfigHub-first and read-only-first by default, but its worked examples can continue to a real live apply path. [`global-app-layer/gpu-eks-h100-training`](./global-app-layer/gpu-eks-h100-training/README.md) is the clearest "both options" example because it can stay structural or continue into real direct and `fluxoci` delivery branches. [`springboot-platform-app-centric`](./springboot-platform-app-centric/README.md) (and its underlying [`springboot-platform-app`](./springboot-platform-app/README.md)) supports both real Kubernetes deployment (`--with-targets`) and Noop simulation (default).
+- `Both options`: [`global-app-layer`](./global-app-layer/README.md) is ConfigHub-first and read-only-first by default, but its worked examples can continue to a real live apply path. [`global-app-layer/gpu-eks-h100-training`](./global-app-layer/gpu-eks-h100-training/README.md) is the clearest "both options" example because it can stay structural or continue into real direct and `fluxoci` delivery branches. [`springboot-platform-app-centric`](../spring-platform/springboot-platform-app-centric/README.md) (and its underlying [`springboot-platform-app`](../spring-platform/springboot-platform-app/README.md)) supports both real Kubernetes deployment (`--with-targets`) and Noop simulation (default).
 - `Real live, but not ConfigHub apply`: [`import-from-live`](./import-from-live/README.md), [`graph-export`](./graph-export/README.md), [`combined-git-live`](./combined-git-live/README.md), [`gitops-import-argo`](./gitops-import-argo/README.md), [`gitops-import-flux`](./gitops-import-flux/README.md), [`custom-ownership-detectors`](./custom-ownership-detectors/README.md), [`orphans`](./orphans/README.md), [`watch-webhook`](./watch-webhook/README.md), [`flux-boutique`](./flux-boutique/README.md), [`platform-example`](./platform-example/README.md), [`apptique-flux-monorepo`](./apptique-flux-monorepo/README.md), [`apptique-argo-applicationset`](./apptique-argo-applicationset/README.md), and [`apptique-argo-app-of-apps`](./apptique-argo-app-of-apps/README.md).
 - `Simulated, offline, or Noop-only`: [`connect-and-compare`](./connect-and-compare/README.md), [`import-from-bundle`](./import-from-bundle/README.md), [`connected-summary-storage`](./connected-summary-storage/README.md), [`artifact-workflow`](./artifact-workflow/README.md), [`fleet-import`](./fleet-import/README.md), [`demo-data-adt`](./demo-data-adt/README.md), [`lifecycle-hazards`](./lifecycle-hazards/README.md), [`platform-write-api`](./platform-write-api/README.md), and [`promotion-demo-data-verify`](./promotion-demo-data-verify/README.md).
 
@@ -86,7 +86,7 @@ If the example names are not helping, pick by the reason it exists:
 - `I need the clearest Argo import proof`: [`gitops-import-argo`](./gitops-import-argo/README.md)
 - `I need the clearest Flux import proof`: [`gitops-import-flux`](./gitops-import-flux/README.md)
 - `I need to explain why ConfigHub is a write API for config`: [`platform-write-api`](./platform-write-api/README.md)
-- `I need a real app plus real deploy/apply proof`: [`springboot-platform-app-centric`](./springboot-platform-app-centric/README.md) (app-centric front door) or [`springboot-platform-app`](./springboot-platform-app/README.md) (implementation detail)
+- `I need a real app plus real deploy/apply proof`: [`springboot-platform-app-centric`](../spring-platform/springboot-platform-app-centric/README.md) (app-centric front door) or [`springboot-platform-app`](../spring-platform/springboot-platform-app/README.md) (implementation detail)
 - `I need the smallest layered recipe walkthrough`: [`global-app-layer/single-component`](./global-app-layer/single-component/README.md)
 - `I need a small app-level layered recipe`: [`global-app-layer/frontend-postgres`](./global-app-layer/frontend-postgres/README.md)
 - `I need the most realistic layered app in this package`: [`global-app-layer/realistic-app`](./global-app-layer/realistic-app/README.md)
@@ -123,8 +123,8 @@ If the example names are not helping, pick by the reason it exists:
 
 ### Structural And Model Examples
 
-- [`springboot-platform-app-centric`](./springboot-platform-app-centric/README.md): App-centric front door for the Spring Boot mutation story. One app, three deployments, three target modes, three mutation outcomes. Start here.
-- [`springboot-platform-app`](./springboot-platform-app/README.md): Spring Boot app/platform implementation detail with one app and three natural mutation routes. Full fixture and proof reference.
+- [`springboot-platform-app-centric`](../spring-platform/springboot-platform-app-centric/README.md): App-centric front door for the Spring Boot mutation story. One app, three deployments, three target modes, three mutation outcomes. Start here.
+- [`springboot-platform-app`](../spring-platform/springboot-platform-app/README.md): Spring Boot app/platform implementation detail with one app and three natural mutation routes. Full fixture and proof reference.
 - [`promotion-demo-data-verify`](./promotion-demo-data-verify/README.md): verification wrapper for the stable `promotion-demo-data` example.
 
 ### Advanced Composition And Deployment Variants
@@ -174,7 +174,7 @@ Use these before or after the standard stories when you need a narrower follow-o
 - Worker and model examples:
   - [`../custom-workers`](../custom-workers)
   - [`../promotion-demo-data`](../promotion-demo-data/README.md)
-  - [`springboot-platform-app`](./springboot-platform-app/README.md)
+  - [`springboot-platform-app`](../spring-platform/springboot-platform-app/README.md)
 
 Use [`global-app-layer`](./global-app-layer/README.md) after that for layered recipe structure, deployment units, and the NVIDIA-shaped chain model.
 

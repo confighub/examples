@@ -26,7 +26,7 @@ This example has several mutation-routing scenarios. For each one, explain:
 ## Suggested Prompt
 
 ```text
-Read incubator/springboot-platform-app/AI_START_HERE.md and walk me through the demo.
+Read spring-platform/springboot-platform-app/AI_START_HERE.md and walk me through the demo.
 Pause after every stage. Show full output. Give GUI links where possible.
 Do not continue until I say continue.
 ```
@@ -61,7 +61,7 @@ It does not yet:
 ## Stage 1: Preview The Structure (read-only)
 
 ```bash
-cd incubator/springboot-platform-app
+cd spring-platform/springboot-platform-app
 ./setup.sh --explain
 ./setup.sh --explain-json | jq
 ./verify.sh
@@ -250,7 +250,7 @@ This is the **end-to-end proof**: ConfigHub → real kubectl apply → running p
 ### Prerequisites (run once)
 
 ```bash
-cd incubator/springboot-platform-app
+cd spring-platform/springboot-platform-app
 ./bin/create-cluster
 ./bin/build-image
 CUB_SPACE=springboot-infra ./bin/install-worker

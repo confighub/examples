@@ -85,10 +85,13 @@ See the [flows/](./flows/) directory for detailed walkthroughs of each outcome.
 
 ## AI Handoff
 
+- Folder-level AI entry point: [`../AI_START_HERE.md`](../AI_START_HERE.md)
 - AI guide: [`AI_START_HERE.md`](./AI_START_HERE.md)
 - Copyable prompts: [`prompts.md`](./prompts.md)
 - Stable contracts: [`contracts.md`](./contracts.md)
 - Machine-readable app/deployment map: [`deployment-map.json`](./deployment-map.json)
+- Canonical pacing standard: [`../../incubator/docs/ai-first-demo-standard.md`](../../incubator/docs/ai-first-demo-standard.md)
+- Longer pacing guide: [`../../incubator/standard-ai-demo-pacing.md`](../../incubator/standard-ai-demo-pacing.md)
 
 ## How This Relates to springboot-platform-app
 

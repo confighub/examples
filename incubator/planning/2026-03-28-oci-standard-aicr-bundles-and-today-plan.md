@@ -234,7 +234,7 @@ Before more docs or new claims, re-run the recently changed examples and capture
 
 Required list:
 
-- `incubator/springboot-platform-app` full live mutation loop
+- `spring-platform/springboot-platform-app` full live mutation loop
 - `incubator/gitops-import-argo`
 - `incubator/gitops-import-flux`
 - `incubator/global-app-layer/single-component` with `FluxOCI`

@@ -11,10 +11,10 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SPRING_DIR="${SCRIPT_DIR}/../springboot-platform-app"
+SPRING_DIR="${SCRIPT_DIR}/../spring-platform/springboot-platform-app"
 
 if [[ ! -x "${SPRING_DIR}/confighub-compare.sh" ]]; then
-  echo "error: ../springboot-platform-app/confighub-compare.sh not found" >&2
+  echo "error: ../spring-platform/springboot-platform-app/confighub-compare.sh not found" >&2
   echo "This example depends on the springboot-platform-app fixtures." >&2
   exit 1
 fi

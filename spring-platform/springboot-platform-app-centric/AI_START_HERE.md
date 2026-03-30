@@ -17,7 +17,7 @@ This is a demo, not a script execution. The value is in understanding each step.
 ## Suggested prompt
 
 ```
-Read incubator/springboot-platform-app-centric/AI_START_HERE.md and walk me through the demo.
+Read spring-platform/springboot-platform-app-centric/AI_START_HERE.md and walk me through the demo.
 Pause after every stage. Show full output. Give GUI links where possible.
 Don't move on until I say continue.
 ```
