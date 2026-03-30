@@ -14,7 +14,7 @@ Attempted live controller proof pass for Milestone 1. Significant progress on 20
 | springboot-platform-app | ✅ Proven | Full proof chain: ConfigHub mutation → deployment update → HTTP response shows `pessimistic`. Worker bug discovered (reports success but doesn't apply), manual kubectl apply works. |
 | gitops-import-flux | ⚠️ Partial (deleted) | Cluster created, Flux controllers healthy, podinfo deployed via Flux. FluxOCI worker failed to install. Cluster deleted to free resources. |
 | gitops-import-argo | ✅ Proven | Cluster running, ArgoCD healthy, helm-guestbook and kustomize-guestbook both Synced+Healthy. |
-| single-component FluxOCI | ❌ Blocked | No FluxOCI target available. |
+| single-component FluxOCI | ❌ Blocked | FluxOCI target works, worker creates Flux resources, but OCI registry endpoint returns 404. See [#4088](https://github.com/confighubai/confighub/issues/4088#issuecomment-4153829480). |
 | single-component ArgoCDOCI | ❌ Blocked | No ArgoCDOCI target available. |
 | gpu-eks-h100-training FluxOCI | ❌ Blocked | No FluxOCI target available. |
 | gpu-eks-h100-training ArgoCDOCI | ❌ Blocked | No ArgoCDOCI target available. |

@@ -19,7 +19,7 @@ For AI-first pacing and rollout:
 
 ### Milestone 1: Re-prove the Recent Real Examples
 
-**Status (2026-03-30):** Significant progress. Direct Kubernetes proven. ArgoCD import proven. FluxOCI/ArgoCDOCI blocked by missing worker image.
+**Status (2026-03-30):** Direct Kubernetes and ArgoCD import proven. FluxOCI blocked by OCI endpoint (404).
 
 Goal:
 
@@ -27,15 +27,15 @@ Goal:
 
 Main examples:
 
-- `spring-platform/springboot-platform-app` — ✅ proven (full mutation chain: ConfigHub → deployment → HTTP)
+- `incubator/springboot-platform-app` — ✅ proven (full mutation chain: ConfigHub → deployment → HTTP)
 - `incubator/gitops-import-argo` — ✅ proven (ArgoCD healthy, both guestbook apps Synced+Healthy)
-- `incubator/gitops-import-flux` — ⚠️ partial (cluster deleted, Flux worked but FluxOCI worker missing)
-- `incubator/global-app-layer/single-component` with `FluxOCI` — ❌ blocked (no FluxOCI target)
-- `incubator/global-app-layer/single-component` with `ArgoCDOCI` — ❌ blocked (no ArgoCDOCI target)
-- `incubator/global-app-layer/gpu-eks-h100-training` with `FluxOCI` — ❌ blocked (no FluxOCI target)
-- `incubator/global-app-layer/gpu-eks-h100-training` with `ArgoCDOCI` — ❌ blocked (no ArgoCDOCI target)
+- `incubator/gitops-import-flux` — ✅ proven (Flux works, FluxOCI worker installs with updated cub v0.1.24)
+- `incubator/global-app-layer/single-component` with `FluxOCI` — ❌ blocked (OCI endpoint 404, see [#4088](https://github.com/confighubai/confighub/issues/4088))
+- `incubator/global-app-layer/single-component` with `ArgoCDOCI` — ❌ blocked (same OCI endpoint issue)
+- `incubator/global-app-layer/gpu-eks-h100-training` with `FluxOCI` — ❌ blocked (same OCI endpoint issue)
+- `incubator/global-app-layer/gpu-eks-h100-training` with `ArgoCDOCI` — ❌ blocked (same OCI endpoint issue)
 
-Key blocker: Worker image `ghcr.io/confighubai/confighub-worker:52afd7a...` not found in registry.
+Key blocker: OCI Distribution API at `oci.hub.confighub.com` returns 404. Worker creates Flux resources correctly but Flux cannot pull artifacts.
 
 Known issue: Worker apply bug discovered - worker reports success but doesn't apply changes. Manual kubectl apply works.
 
