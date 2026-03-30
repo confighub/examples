@@ -1,104 +1,50 @@
 # Spring Platform Examples
 
-One underlying model. Three views.
-
-## The Model
-
-All three examples show the same `cub-gen` generator story:
+Start here because this is where Spring/Kubernetes teams already are: app config, platform policy, generated manifests, and ownership boundaries.
 
 ```
 App inputs + Platform inputs → Generator → Operational config → ConfigHub → Delivery
 ```
 
-Every example demonstrates the same mutation routes:
+## Three Views of the Same Model
+
+| Example | What it shows | Start here if... |
+|---------|---------------|------------------|
+| [`springboot-platform-app`](./springboot-platform-app/) | Generator transformation and field lineage | You want to understand how config gets generated |
+| [`springboot-platform-app-centric`](./springboot-platform-app-centric/) | One app across dev/stage/prod | You want to see one app across environments |
+| [`springboot-platform-platform-centric`](./springboot-platform-platform-centric/) | Platform organizing multiple apps | You manage multiple apps (experimental) |
+
+All three share the same mutation routes:
 
 | Route | When | Example |
 |-------|------|---------|
-| Apply here | Field is app-owned, safe to mutate locally | `feature.inventory.reservationMode` |
-| Lift upstream | Change should flow back to app source | `spring.cache.*` (adding Redis) |
-| Block/escalate | Field is platform-owned | `spring.datasource.*` |
+| Apply here | App-owned, safe to mutate locally | `feature.inventory.reservationMode` |
+| Lift upstream | Needs source change | `spring.cache.*` |
+| Block/escalate | Platform-owned | `spring.datasource.*` |
 
-## The Three Views
-
-| View | Example | Core question answered |
-|------|---------|------------------------|
-| Plain ConfigHub | [`springboot-platform-app`](./springboot-platform-app/) | How does `cub-gen` transform app + platform into governed operational config? |
-| ADT | [`springboot-platform-app-centric`](./springboot-platform-app-centric/) | How do I understand one app across deployments and targets? |
-| Experimental ADTP | [`springboot-platform-platform-centric`](./springboot-platform-platform-centric/) | How do I make platform explicit above apps and deployments? |
-
-### Plain ConfigHub / Generator View
-
-**Start here** to understand:
-
-- How app inputs and platform policies become operational Kubernetes config
-- How ConfigHub stores and governs that config
-- How field lineage determines mutation routes
-- The generator transformation in detail
-
-See: [`springboot-platform-app/README.md`](./springboot-platform-app/README.md)
-
-### ADT View (App → Deployments → Targets)
-
-**Start here** to understand:
-
-- One app (`inventory-api`) across three deployments (dev, stage, prod)
-- How deployments map to ConfigHub spaces
-- How targets control where config delivers
-- The three mutation outcomes for any field change
-
-See: [`springboot-platform-app-centric/README.md`](./springboot-platform-app-centric/README.md)
-
-### Experimental ADTP View (Platform → Apps → Deployments → Targets)
-
-**Start here** to understand:
-
-- One platform organizing multiple apps
-- What is platform-owned vs app-owned
-- How apps inherit platform policies
-- Platform-wide discovery commands
-
-Note: ADTP is experimental. The model is sound but tooling is incomplete.
-
-See: [`springboot-platform-platform-centric/README.md`](./springboot-platform-platform-centric/README.md)
-
-## Which View Should I Start With?
-
-| Your question | Start with |
-|---------------|------------|
-| How does the generator transform inputs into operational config? | Plain ConfigHub |
-| Show me one app across dev/stage/prod | ADT |
-| How do I organize multiple apps under one platform? | Experimental ADTP |
-| What is field lineage and why does it matter? | Plain ConfigHub |
-| How do mutations get routed to the right outcome? | Any (same model) |
-
-## What Is Real Today
-
-The core example (`springboot-platform-app`) has the fullest implementation. The other two examples share most capabilities but differ in target modes:
+## What's Implemented
 
 | Capability | Status |
 |------------|--------|
 | Generator transformation | Real |
 | Field lineage / explain-field | Real |
-| ConfigHub mutation storage | Real |
-| Mutation history / audit trail | Real |
-| Refresh preview | Real |
-| Real Kubernetes delivery | Real (Kind cluster, core example only) |
+| ConfigHub mutation + history | Real |
+| Real Kubernetes delivery | Real (core example) / Noop only (others) |
 | Noop target simulation | Real |
-| Running app HTTP verification | Real |
+| `lift upstream` automated PR | Bundle only, no PR |
+| `block/escalate` enforcement | Documented, not enforced |
 
-## What Is Not Implemented Yet
+## Quick Start
 
-| Capability | Status |
-|------------|--------|
-| `lift upstream` automated PR | Bundle exists, no automated PR |
-| `block/escalate` server-side enforcement | Documented, not enforced |
-| Flux/Argo delivery path | See `global-app-layer` examples |
+Pick an example and run:
 
-## AI-First Guidance
+```bash
+cd springboot-platform-app    # or -app-centric, or -platform-centric
+./setup.sh --explain          # see what it does (read-only)
+./setup.sh                    # create ConfigHub objects
+./verify.sh                   # check consistency
+```
 
-If you are driving these examples with an AI assistant:
+## AI Guidance
 
-- Folder-level AI guide: [`AI_START_HERE.md`](./AI_START_HERE.md)
-- Canonical pacing standard: [`../incubator/docs/ai-first-demo-standard.md`](../incubator/docs/ai-first-demo-standard.md)
-
-Each example also has its own `AI_START_HERE.md` for example-specific guidance.
+Each example has an `AI_START_HERE.md` for paced demos. Start with [`AI_START_HERE.md`](./AI_START_HERE.md) for orientation.
