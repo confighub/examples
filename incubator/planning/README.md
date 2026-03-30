@@ -19,7 +19,7 @@ For AI-first pacing and rollout:
 
 ### Milestone 1: Re-prove the Recent Real Examples
 
-**Status (2026-03-29):** Partial. Direct Kubernetes and Flux import work. FluxOCI/ArgoCDOCI blocked by missing worker image.
+**Status (2026-03-30):** Significant progress. Direct Kubernetes proven. ArgoCD import proven. FluxOCI/ArgoCDOCI blocked by missing worker image.
 
 Goal:
 
@@ -27,15 +27,17 @@ Goal:
 
 Main examples:
 
-- `incubator/springboot-platform-app` — ⚠️ partial (worker connection issue)
-- `incubator/gitops-import-argo` — ❌ blocked (cluster creation failed)
-- `incubator/gitops-import-flux` — ⚠️ partial (Flux works, FluxOCI worker missing)
+- `incubator/springboot-platform-app` — ✅ proven (full mutation chain: ConfigHub → deployment → HTTP)
+- `incubator/gitops-import-argo` — ✅ proven (ArgoCD healthy, both guestbook apps Synced+Healthy)
+- `incubator/gitops-import-flux` — ⚠️ partial (cluster deleted, Flux worked but FluxOCI worker missing)
 - `incubator/global-app-layer/single-component` with `FluxOCI` — ❌ blocked (no FluxOCI target)
 - `incubator/global-app-layer/single-component` with `ArgoCDOCI` — ❌ blocked (no ArgoCDOCI target)
 - `incubator/global-app-layer/gpu-eks-h100-training` with `FluxOCI` — ❌ blocked (no FluxOCI target)
 - `incubator/global-app-layer/gpu-eks-h100-training` with `ArgoCDOCI` — ❌ blocked (no ArgoCDOCI target)
 
 Key blocker: Worker image `ghcr.io/confighubai/confighub-worker:52afd7a...` not found in registry.
+
+Known issue: Worker apply bug discovered - worker reports success but doesn't apply changes. Manual kubectl apply works.
 
 Supporting docs:
 

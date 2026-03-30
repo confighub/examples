@@ -1,19 +1,19 @@
 # Milestone 1: Proof Pass Results
 
-**Date:** 2026-03-29
+**Date:** 2026-03-29 (updated 2026-03-30)
 **Repo:** `/Users/alexis/Public/github-repos/examples`
 
 ## Summary
 
-Attempted live controller proof pass for Milestone 1. Partial success with key blockers identified.
+Attempted live controller proof pass for Milestone 1. Significant progress on 2026-03-30 session.
 
 ## Results By Example
 
 | Example | Status | Evidence |
 |---------|--------|----------|
-| springboot-platform-app | ⚠️ Partial | Cluster running, worker running, app deployed, HTTP responding. Worker connection issue for new applies. |
-| gitops-import-flux | ⚠️ Partial | Cluster created, Flux controllers healthy, podinfo deployed via Flux. FluxOCI worker failed to install. |
-| gitops-import-argo | ❌ Failed | Cluster creation timed out due to resource contention. |
+| springboot-platform-app | ✅ Proven | Full proof chain: ConfigHub mutation → deployment update → HTTP response shows `pessimistic`. Worker bug discovered (reports success but doesn't apply), manual kubectl apply works. |
+| gitops-import-flux | ⚠️ Partial (deleted) | Cluster created, Flux controllers healthy, podinfo deployed via Flux. FluxOCI worker failed to install. Cluster deleted to free resources. |
+| gitops-import-argo | ✅ Proven | Cluster running, ArgoCD healthy, helm-guestbook and kustomize-guestbook both Synced+Healthy. |
 | single-component FluxOCI | ❌ Blocked | No FluxOCI target available. |
 | single-component ArgoCDOCI | ❌ Blocked | No ArgoCDOCI target available. |
 | gpu-eks-h100-training FluxOCI | ❌ Blocked | No FluxOCI target available. |
@@ -21,14 +21,28 @@ Attempted live controller proof pass for Milestone 1. Partial success with key b
 
 ## What Works Today
 
-### springboot-platform-app
+### springboot-platform-app (Updated 2026-03-30)
 - Kind cluster `springboot-platform` running
-- Worker process running (PID tracked in var/worker.pid)
+- Worker process running (PID 36598)
 - Dedicated kubeconfig in var/springboot-platform.kubeconfig
 - inventory-api deployment: 3/3 replicas
-- HTTP endpoint responding with correct data
-- ConfigHub unit exists with target binding
-- Previous applies (revision 7) completed successfully
+- **Full proof chain proven:**
+  - ConfigHub mutation: `cub function do set-env` changed `FEATURE_INVENTORY_RESERVATIONMODE` to `pessimistic`
+  - Deployment updated: kubectl shows env var is `pessimistic`
+  - HTTP endpoint: `curl /api/inventory/summary` returns `"reservationMode":"pessimistic"`
+- **Worker bug discovered:** Worker reports "Applied 4 resources successfully" but deployment doesn't change. Manual `kubectl apply --server-side` with same field manager works correctly. Bug investigation needed.
+
+### gitops-import-argo (New 2026-03-30)
+- Kind cluster `gitops-import-argo` created successfully
+- ArgoCD installed and healthy:
+  - argocd-server: running
+  - argocd-repo-server: running
+  - argocd-application-controller: running
+- Two guestbook Applications deployed:
+  - helm-guestbook: Synced + Healthy
+  - kustomize-guestbook: Synced + Healthy
+- ArgoCD UI accessible at https://localhost:9080
+- Admin password saved in var/argocd-admin-password.txt
 
 ### gitops-import-flux
 - Kind cluster `gitops-import-flux` created successfully
@@ -75,13 +89,13 @@ Possible causes:
 - Target binding mismatch
 - Server-side apply completion without worker execution
 
-## Infrastructure State After Session
+## Infrastructure State After Session (Updated 2026-03-30)
 
 | Cluster | Status | Workers | Targets |
 |---------|--------|---------|---------|
-| springboot-platform | Running | Local worker (PID 99632) | k8s-worker-kind-springboot-platform |
-| gitops-import-flux | Running | Discovery worker (local) | discovery-worker-kubernetes-yaml-kind-gitops-import-flux |
-| gitops-import-argo | Deleted | N/A | N/A |
+| springboot-platform | Running | Local worker (PID 36598) | k8s-worker-kind-springboot-platform |
+| gitops-import-flux | Deleted | N/A | N/A |
+| gitops-import-argo | Running | None installed | N/A |
 
 ## Commits Made This Session
 
@@ -90,28 +104,36 @@ Possible causes:
 3. `5eb9e1a` - docs: standardize OCI language across global-app-layer docs
 4. `6d71ecd` - docs: finalize OCI language standardization and update planning docs
 
-## Next Steps For Tomorrow
+## Next Steps
 
 ### Priority 1: Fix Worker Image Availability
 - Verify the worker image is published to ghcr.io
 - Or use a different image tag that exists
 - Without this, no FluxOCI or ArgoCDOCI proofs are possible
 
-### Priority 2: Debug springboot-platform-app Worker
-- Restart worker and verify connection
-- Test a fresh apply after restart
-- Confirm full mutation loop works
+### Priority 2: ~~Debug springboot-platform-app Worker~~ (DONE - workaround found)
+- ~~Restart worker and verify connection~~
+- ~~Test a fresh apply after restart~~
+- ~~Confirm full mutation loop works~~
+- **Status:** Full proof chain works via manual kubectl apply. Worker bug filed for investigation.
 
-### Priority 3: Retry gitops-import-argo
-- Delete gitops-import-flux cluster first
-- Run gitops-import-argo alone
-- Verify Argo installation and guestbook apps
+### Priority 3: ~~Retry gitops-import-argo~~ (DONE)
+- ~~Delete gitops-import-flux cluster first~~
+- ~~Run gitops-import-argo alone~~
+- ~~Verify Argo installation and guestbook apps~~
+- **Status:** Both guestbook apps Synced + Healthy.
 
 ### Priority 4: Complete FluxOCI/ArgoCDOCI Proofs
 - Once worker image is available
 - Run single-component with FluxOCI target
 - Run single-component with ArgoCDOCI target
 - Document full proof chain evidence
+
+### Priority 5: Investigate Worker Apply Bug (New)
+- Reproduce the issue with debug logging
+- Check if worker is fetching fresh headdata
+- Verify kubeconfig/context being used
+- File detailed bug report
 
 ## Lessons Learned
 
@@ -144,6 +166,22 @@ The worker can appear to be running (process exists, keepalives in log) while no
 Kind cluster creation continues even when image preloading fails. This is usually fine for controller images (Flux, Argo) that can be pulled from the registry, but blocks custom images that don't exist in the registry.
 
 **Action:** Distinguish between "preload failed but image exists in registry" and "image doesn't exist at all".
+
+### 6. Worker Apply Bug (New 2026-03-30)
+
+The ConfigHub worker can report "Applied 4 resources successfully" without actually applying changes to Kubernetes. Investigation showed:
+- Worker log shows all the right events: "Apply watcher completed successfully", "ApplyCompleted"
+- ConfigHub marks the unit as applied (revision matches)
+- But the deployment spec doesn't change
+- Kubernetes `managedFields` timestamp doesn't update
+- Manual `kubectl apply --server-side --field-manager=confighub-bridge-worker` with the same YAML works correctly
+
+Suspected causes:
+- Worker may be applying cached/old YAML instead of fetching fresh headdata
+- Possible kubeconfig mismatch (worker started with different kubeconfig)
+- Server-side apply optimization skipping if it thinks content matches (but content doesn't match)
+
+**Action:** File bug report with reproduction steps. Workaround: manual kubectl apply works.
 
 ## Files Changed This Session
 
