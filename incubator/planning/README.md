@@ -15,6 +15,16 @@ For AI-first pacing and rollout:
 - [../standard-ai-demo-pacing.md](../standard-ai-demo-pacing.md)
 - [2026-03-29-ai-first-demo-pacing-rollout-issue-draft.md](./2026-03-29-ai-first-demo-pacing-rollout-issue-draft.md)
 
+## Operating Principles
+
+These rules apply across all examples work:
+
+1. **Real end-to-end means every step is real.** ConfigHub mutation, apply, target delivery, running app, and live verification must all be genuine.
+2. **Noop targets are opt-in only.** They must never be presented as real e2e proof.
+3. **If an example is not freshly proven, the docs must say so plainly.** Do not assume docs equal proof.
+4. **Keep incubator work in incubator.** Do not promote examples to root unless explicitly asked.
+5. **Prefer short, honest, example-local docs** over repo-wide taxonomy sprawl.
+
 ## Current Milestones
 
 ### Milestone 1: Re-prove the Recent Real Examples
