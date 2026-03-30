@@ -59,7 +59,7 @@ Then install using `cub worker install`:
 
 ### Verifying the worker
 
-Create a the base directory and a test subdirectory (which will become a target):
+Create the base directory and a test subdirectory (which will become a target):
 
     mkdir -p /tmp/confighub-example-bridge/dev
 
@@ -73,7 +73,7 @@ Note: You may see warnings about uninitialized loggers - these can be safely ign
 
 Create a unit with some Kubernetes compliant YAML content:
 
-    cub unit create myapp test_input.yaml --target example-bridge-filesystem-kubernetes-yaml-dev
+    cub unit create myapp test_input.yaml --target hello-bridge-filesystem-kubernetes-yaml-dev
 
 Apply the unit to your bridge target:
 
@@ -83,30 +83,27 @@ The bridge will write the configuration to `/tmp/confighub-example-bridge/dev/my
 
 ## Bridge Operations
 
-Bridges implement five core operation. An operation is always performed on a config unit. The following properties apply:
-
-- The unit in question must first be associated with a target made available by the bridge
-- The unit and the target must have the same toolchain. E.g. you cannot create a properties file as a unit and associate it with a kubernetes/yaml target.
+Bridges implement five core operations. An operation is always performed on a config Unit. The Unit must be associated with a Target made available by the bridge, and the Unit's ToolchainType must match one of the Target's ConfigTypes.
 
 ### 1. Apply
 
-Applies configuration to the target system. In this example, it creates/updates files on the filesystem.
+Applies configuration to the target system. The bridge receives the Unit's Data (desired configuration) and should write/deploy it to the target. The bridge should return updated LiveData and LiveState on completion. In this example, Apply writes files on the filesystem.
 
     cub unit apply myapp
 
 ### 2. Refresh
 
-Reads the current state from the target and detects drift. Returns whether the live state matches the desired state.
+Reads the current state from the target and detects drift. The bridge compares the live state with the expected Data and reports whether drift was detected. It should return updated LiveData on completion.
 
     cub unit refresh myapp
 
 ### 3. Import
 
-Discover existing resources in the target system. In this example, it can theoretically discover files in a target subdir that it doesn't yet know about, but this feature is not implemented right now for this example.
+Discovers existing resources in the target system and imports them as Data. In this example, it reads a file from the target directory.
 
 ### 4. Destroy
 
-Removes configuration from the target system. In this example, it deletes files.
+Removes configuration from the target system. In this example, it deletes files. The bridge should return empty LiveData after destruction.
 
     cub unit destroy myapp
 
@@ -116,24 +113,137 @@ Performs cleanup operations after other actions. Implementation-specific.
 
 ## Core Concepts
 
-### Bridge Interface
+### BridgeWorker Interface
 
-Every bridge must implement the `Bridge` interface:
+Every bridge must implement the `BridgeWorker` interface (aliased as `Bridge`):
 
 ```go
-type Bridge interface {
-    Info(opts InfoOptions) BridgeInfo
-    Apply(ctx BridgeContext, payload BridgePayload) error
-    Refresh(ctx BridgeContext, payload BridgePayload) error
-    Import(ctx BridgeContext, payload BridgePayload) error
-    Destroy(ctx BridgeContext, payload BridgePayload) error
-    Finalize(ctx BridgeContext, payload BridgePayload) error
+type BridgeWorker interface {
+    ID() BridgeWorkerID
+    Info(InfoOptions) BridgeWorkerInfo
+    Apply(BridgeWorkerContext, BridgeWorkerPayload) error
+    Refresh(BridgeWorkerContext, BridgeWorkerPayload) error
+    Import(BridgeWorkerContext, BridgeWorkerPayload) error
+    Destroy(BridgeWorkerContext, BridgeWorkerPayload) error
+    Finalize(BridgeWorkerContext, BridgeWorkerPayload) error
+}
+```
+
+The SDK also provides shorter aliases: `Bridge` for `BridgeWorker`, `BridgeContext` for `BridgeWorkerContext`, `BridgePayload` for `BridgeWorkerPayload`, and `BridgeInfo` for `BridgeWorkerInfo`.
+
+### Bridge Identification
+
+The `ID()` method returns a `BridgeWorkerID` that identifies the bridge by its `ProviderType` and the `ToolchainTypes` it supports:
+
+```go
+func (eb *ExampleBridge) ID() api.BridgeWorkerID {
+    return api.BridgeWorkerID{
+        ProviderType:   ProviderFilesystem,
+        ToolchainTypes: []workerapi.ToolchainType{workerapi.ToolchainKubernetesYAML},
+    }
+}
+```
+
+The `ProviderType` identifies a particular bridge implementation. Each bridge should define a unique `ProviderType` that the worker's dispatcher uses to route operations to the correct bridge. It is best practice for the `ProviderType` to be globally unique, but this is not strictly required.
+
+### Capabilities and ConfigTypes
+
+The `Info()` method returns a `BridgeWorkerInfo` describing the bridge's capabilities. This includes the `SupportedConfigTypes` and `AvailableTargets` discovered by the bridge.
+
+Each `SupportedConfigType` contains a `ConfigTypeSignature` with:
+
+- **ProviderType** - Identifies this bridge implementation (e.g., `"Filesystem"`, `"Kubernetes"`, `"ConfigMapRenderer"`)
+- **ToolchainType** - The configuration toolchain/format of the Data (e.g., `"Kubernetes/YAML"`, `"AppConfig/YAML"`, `"AppConfig/TOML"`)
+- **LiveStateType** (optional) - The toolchain/format of the LiveState (e.g., `"Kubernetes/YAML"`). Required in order to invoke functions on LiveState.
+- **Options** (optional) - A list of `BridgeOption` definitions supported by this ConfigType
+
+```go
+func (eb *ExampleBridge) Info(opts api.InfoOptions) api.BridgeInfo {
+    // Discover targets by scanning subdirectories
+    var targets []api.Target
+    entries, _ := os.ReadDir(eb.baseDir)
+    for _, entry := range entries {
+        if entry.IsDir() {
+            targets = append(targets, api.Target{
+                BridgeHandle: entry.Name(),
+                Name:         api.GenerateTargetName(opts.WorkerSlug, ProviderFilesystem, workerapi.ToolchainKubernetesYAML, entry.Name()),
+            })
+        }
+    }
+
+    return api.BridgeInfo{
+        SupportedConfigTypes: []*api.SupportedConfigType{
+            {
+                ConfigTypeSignature: api.ConfigTypeSignature{
+                    ConfigType: api.ConfigType{
+                        ToolchainType: workerapi.ToolchainKubernetesYAML,
+                        ProviderType:  ProviderFilesystem,
+                    },
+                    Options: []api.BridgeOption{
+                        {
+                            Name:        "SubDir",
+                            Description: "Optional subdirectory within the BridgeHandle directory",
+                            Required:    false,
+                            DataType:    funcapi.DataTypeString,
+                            Example:     "app1",
+                        },
+                    },
+                },
+                AvailableTargets: targets,
+            },
+        },
+    }
+}
+```
+
+### Bridge Options
+
+Bridges can define `BridgeOption` entries in their `ConfigTypeSignature` to declare configurable parameters. Each option has:
+
+- **Name** - Option name in PascalCase (e.g., `"DirName"`, `"FluxNamespace"`)
+- **Description** - Human-readable description
+- **Required** - Whether the option must be provided
+- **DataType** - The data type of the option value (e.g., string, int, bool)
+- **Example** (optional) - An example value
+
+Options are set on Target entities (and optionally per-Unit via `TargetOptions`). They are validated against the BridgeWorker's defined Options for the matching ProviderType+ToolchainType+LiveStateType signature. When an operation is dispatched, the bridge receives the merged option values in `BridgeWorkerPayload.TargetOptions`.
+
+In this example, the `BridgeHandle` identifies the top-level target directory (e.g., `"dev"`), and an optional `SubDir` option allows targeting a subdirectory within it:
+
+```go
+func parseTargetDir(payload api.BridgeWorkerPayload) string {
+    dir := payload.BridgeHandle
+    if dir == "" {
+        dir = "default"
+    }
+    if subDir, ok := payload.TargetOptions["SubDir"]; ok && subDir != "" {
+        dir = filepath.Join(dir, subDir)
+    }
+    return dir
 }
 ```
 
 ### Target Discovery
 
-The `Info()` method returns available targets. In this example it treats a sub-directory as a target. In other (more realistic) use cases, a target may be a Kubernetes cluster represented by a kubecontext, it may be a namespace in a kube cluster or it may be an IaaS cloud identity.
+The bridge may discover multiple systems under management of the same ConfigType signature, each with their own context (including credentials and coordinates). These are published as `AvailableTargets` for each `SupportedConfigType`.
+
+Each `AvailableTarget` has:
+
+- **BridgeHandle** - A unique identifier within the bridge implementation for looking up the appropriate context (credentials, coordinates, etc.) when processing operations. The worker should be able to map a BridgeHandle back to the correct context.
+- **Name** (optional) - If non-empty, ConfigHub will attempt to automatically create a Target entity with that slug in the same Space as the worker.
+
+In this example, each subdirectory is a target, and the directory name serves as the BridgeHandle:
+
+```go
+api.Target{
+    BridgeHandle: entry.Name(),
+    Name:         api.GenerateTargetName(opts.WorkerSlug, ProviderFilesystem, workerapi.ToolchainKubernetesYAML, entry.Name()),
+}
+```
+
+### Targets in ConfigHub
+
+A Target entity created in ConfigHub supports one or more ConfigTypes, each with ProviderType, ToolchainType, LiveStateType, and optional Options. These are validated against the ConfigTypes supported by the corresponding BridgeWorker. A Unit's ToolchainType and optional ProviderType are validated against the attached Target's ConfigTypes.
 
 ### Status Reporting
 
@@ -141,16 +251,15 @@ Bridges report operation progress using `SendStatus()`. For example:
 
 ```go
 startTime := time.Now()
-// Send initial status
 if err := ctx.SendStatus(&api.ActionResult{
     UnitID:            payload.UnitID,
     SpaceID:           payload.SpaceID,
     QueuedOperationID: payload.QueuedOperationID,
-    ActionResultBaseMeta: api.ActionResultMeta{
+    ActionResultBaseMeta: api.ActionResultBaseMeta{
         Action:    api.ActionApply,
         Result:    api.ActionResultNone,
         Status:    api.ActionStatusProgressing,
-        Message:   fmt.Sprintf("Starting apply operation for %s", eb.name),
+        Message:   "Starting apply operation",
         StartedAt: startTime,
     },
 }); err != nil {
@@ -160,31 +269,30 @@ if err := ctx.SendStatus(&api.ActionResult{
 // ... perform operation ...
 
 terminatedAt := time.Now()
-// Send completion status
 return ctx.SendStatus(&api.ActionResult{
     UnitID:            payload.UnitID,
     SpaceID:           payload.SpaceID,
     QueuedOperationID: payload.QueuedOperationID,
-    ActionResultBaseMeta: api.ActionResultMeta{
+    ActionResultBaseMeta: api.ActionResultBaseMeta{
         Action:       api.ActionApply,
         Result:       api.ActionResultApplyCompleted,
         Status:       api.ActionStatusCompleted,
-        Message:      fmt.Sprintf("Successfully wrote configuration to %s at %s", filepath, time.Now().Format(time.RFC3339)),
+        Message:      "Successfully applied configuration",
         StartedAt:    startTime,
         TerminatedAt: &terminatedAt,
     },
-    Data:      payload.Data,
-    LiveData:  payload.Data,
+    Data:     payload.Data,
+    LiveData: payload.Data,
 })
 ```
 
 ### Drift Detection
 
-The Refresh operation compares the live state as expected by ConfigHub with the actual live state in the infrastructure. In this example, it simply does a byte comparison between the unit data in ConfigHub and the file contents in the corresponding file.
+The Refresh operation compares the live state in the target system with the expected configuration Data. In this example, it does a byte comparison between the Unit's Data and the file contents. The bridge reports `ActionResultRefreshAndDrifted` or `ActionResultRefreshAndNoDrift` accordingly.
 
 ## Bridge Registration
 
-Register your bridge with the dispatcher and pass the dispatcher to ConfighubConnector:
+Register your bridge with the dispatcher and pass the dispatcher to the Connector:
 
 ```go
 bridgeDispatcher := worker.NewBridgeDispatcher()
@@ -198,49 +306,41 @@ connector, err := worker.NewConnector(worker.ConnectorOptions{
 })
 ```
 
-## Target Parameters
-
-Bridges can accept parameters from targets. This example uses `dir_name` to determine which subdirectory to use:
-
-```go
-func parseTargetParams(payload api.BridgeWorkerPayload) (string, error) {
-    var params map[string]interface{}
-    if len(payload.TargetParams) > 0 {
-        if err := json.Unmarshal(payload.TargetParams, &params); err != nil {
-            return "", fmt.Errorf("failed to parse target params: %v", err)
-        }
-    }
-
-    // Get directory name from the parameter I set in Info()
-    if dirName, ok := params["dir_name"].(string); ok && dirName != "" {
-        return dirName, nil
-    }
-
-    // Default to "default" if no directory name found
-    return "default", nil
-}
-```
-
 ## Data Types
 
-### BridgePayload
+### BridgeWorkerPayload
 
-Contains all information about the operation:
+Contains all information about the operation dispatched to the bridge:
 
-- `UnitID`, `SpaceID`, `QueuedOperationID` - Identifiers
-- `UnitSlug` - Human-readable unit name
-- `Data` - Desired configuration (YAML/JSON)
-- `LiveData` - Last live configuration from previous operations
-- `TargetParams` - Target-specific parameters
-- `ToolchainType`, `ProviderType` - Configuration type info
+- `QueuedOperationID` - Links this operation back to the original request
+- `ToolchainType` - Configuration toolchain/format of the Unit (e.g., `"Kubernetes/YAML"`)
+- `ProviderType` - ProviderType of the Target attached to the Unit
+- `BridgeHandle` - Identifier for the Target's credentials and coordinates within this bridge
+- `UnitID`, `SpaceID`, `OrganizationID` - Entity identifiers
+- `UnitSlug`, `SpaceSlug` - Human-readable slugs
+- `UnitLabels`, `UnitAnnotations`, `SpaceLabels`, `SpaceAnnotations` - Metadata
+- `TargetID` - UUID of the Target attached to the Unit
+- `TargetOptions` - Merged bridge option values from the Target and Unit for the matching ConfigType
+- `Data` - Current configuration data for the Unit. This is what Apply, Destroy, Refresh, and Import primarily operate on.
+- `LiveData` - Live resources as of the most recent action, in the same representation as Data (i.e., same ToolchainType). May be used for drift detection in comparisons with Data.
+- `LiveState` - Live state as of the most recent action. The content is ProviderType-specific, with the toolchain/format identified by the ConfigType's LiveStateType. Functions may operate on LiveState as well as on Data.
+- `BridgeState` - Additional ProviderType-specific state used by the bridge. Currently considered internal to the bridge and does not have a defined toolchain/format.
+- `DryRun` - Whether the action is a dry run
+- `RevisionNum`, `LiveRevisionNum` - Sequence numbers for revision tracking
+- `DriftReconciliationMode` - The drift reconciliation mode for the unit
 
 ### ActionResult
 
-Reports operation status and results:
+Reports operation status and results back to ConfigHub:
 
-- `ActionResultBaseMeta` - Action type, status, messages, timing
-- `Data` - Updated configuration (for Import)
-- `LiveData` - Current state after operation
+- `UnitID`, `SpaceID`, `QueuedOperationID` - Entity identifiers
+- `ActionResultBaseMeta` - Action type, result, status, message, timing
+- `Data` - Updated configuration data (e.g., for Import)
+- `LiveData` - The bridge should return updated LiveData on all operations, representing the live resources in the same format as Data (ToolchainType)
+- `LiveState` - The bridge should return updated LiveState on all operations. The content is ProviderType-specific (format identified by LiveStateType)
+- `BridgeState` - Additional ProviderType-specific state used by the bridge
+- `ResourceStatuses` - Per-resource sync and readiness status
+- `ErrorMessages` - Warning or error messages to surface to the user
 
 ## Best Practices
 
@@ -263,7 +363,7 @@ if err != nil {
         UnitID:            payload.UnitID,
         SpaceID:           payload.SpaceID,
         QueuedOperationID: payload.QueuedOperationID,
-        ActionResultBaseMeta: api.ActionResultMeta{
+        ActionResultBaseMeta: api.ActionResultBaseMeta{
             Action:       api.ActionApply,
             Result:       api.ActionResultApplyFailed,
             Status:       api.ActionStatusFailed,
@@ -283,12 +383,6 @@ For long-running operations, send periodic status updates:
 1. Initial "progressing" status when starting
 2. Intermediate updates for multi-step operations
 3. Final "completed" or "failed" status
-
-### Target Management
-
-- Targets are owned by the bridge and advertised to ConfigHub
-- Targets can in some cases be manually created in ConfigHub
-- Right now, the bridge is responsible for given each target a unique name within a space. This is not ideal and will be reconsidered.
 
 ## Example Implementations
 

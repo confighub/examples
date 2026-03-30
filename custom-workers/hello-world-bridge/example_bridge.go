@@ -4,12 +4,12 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 
+	funcapi "github.com/confighub/sdk/core/function/api"
 	"github.com/confighub/sdk/core/worker/api"
 	"github.com/confighub/sdk/core/workerapi"
 )
@@ -52,38 +52,44 @@ func (eb *ExampleBridge) ID() api.BridgeWorkerID {
 // Info returns information about the bridge's capabilities
 // For this particular bridge, it will offer a target for each subdirectory in the base directory.
 func (eb *ExampleBridge) Info(opts api.InfoOptions) api.BridgeInfo {
-	// Scan for subdirectories
+	// Scan for subdirectories to discover available targets.
+	// Each subdirectory becomes a target, identified by its BridgeHandle.
+	// If Name is non-empty, ConfigHub will attempt to auto-create a Target entity with that slug.
 	var targets []api.Target
 	entries, err := os.ReadDir(eb.baseDir)
 	if err != nil {
 		fmt.Printf("Failed to read directory %s: %v\n", eb.baseDir, err)
 		fmt.Println("Returning no available targets")
 	} else {
-		// create a target for each subdirectory
 		for _, entry := range entries {
 			if entry.IsDir() {
 				targets = append(targets, api.Target{
-					Name: api.GenerateTargetName(opts.WorkerSlug, ProviderFilesystem, workerapi.ToolchainKubernetesYAML, entry.Name()),
-					Params: map[string]interface{}{
-						"description": fmt.Sprintf("Filesystem target for directory: %s", entry.Name()),
-						"dir_name":    entry.Name(),
-					},
+					BridgeHandle: entry.Name(),
+					Name:         api.GenerateTargetName(opts.WorkerSlug, ProviderFilesystem, workerapi.ToolchainKubernetesYAML, entry.Name()),
 				})
 			}
 		}
 	}
 	return api.BridgeInfo{
-		// a single bridge can support multiple config types.
-		// One config type is a tuple of toolchain type and provider type along with a list of already known targets.
-		// ConfigHub users can create additional targets for a config type. Those targets will get routed to this bridge.
-		// That means that if you assign a unit to the target and perform a bridge operation, the bridge will be called
-		// with the unit and the target.
+		// A bridge can support multiple ConfigTypes. Each ConfigType is a
+		// (ProviderType, ToolchainType, LiveStateType) tuple, optionally with
+		// BridgeOptions, plus a list of AvailableTargets discovered by the bridge.
+		// ConfigHub users can also create additional Targets for a ConfigType.
 		SupportedConfigTypes: []*api.SupportedConfigType{
 			{
 				ConfigTypeSignature: api.ConfigTypeSignature{
 					ConfigType: api.ConfigType{
 						ToolchainType: workerapi.ToolchainKubernetesYAML,
 						ProviderType:  ProviderFilesystem,
+					},
+					Options: []api.BridgeOption{
+						{
+							Name:        "SubDir",
+							Description: "Optional subdirectory within the BridgeHandle directory",
+							Required:    false,
+							DataType:    funcapi.DataTypeString,
+							Example:     "app1",
+						},
 					},
 				},
 				AvailableTargets: targets,
@@ -117,11 +123,8 @@ func (eb *ExampleBridge) Apply(ctx api.BridgeContext, payload api.BridgePayload)
 		return fmt.Errorf("failed to create base directory: %w", err)
 	}
 
-	// Get target name from payload parameters
-	targetName, err := parseTargetParams(payload)
-	if err != nil {
-		return fmt.Errorf("failed to parse target parameters: %w", err)
-	}
+	// Get target directory from bridge options or BridgeHandle
+	targetName := parseTargetDir(payload)
 
 	// Create target subdirectory
 	targetDir := filepath.Join(eb.baseDir, targetName)
@@ -177,11 +180,8 @@ func (eb *ExampleBridge) Refresh(ctx api.BridgeContext, payload api.BridgePayloa
 		return err
 	}
 
-	// Get target name from payload parameters
-	targetName, err := parseTargetParams(payload)
-	if err != nil {
-		return fmt.Errorf("failed to parse target parameters: %w", err)
-	}
+	// Get target directory from bridge options or BridgeHandle
+	targetName := parseTargetDir(payload)
 
 	// Create filename from unit slug
 	filename := fmt.Sprintf("%s.yaml", payload.UnitSlug)
@@ -263,11 +263,8 @@ func (eb *ExampleBridge) Import(ctx api.BridgeContext, payload api.BridgePayload
 		return err
 	}
 
-	// Get target name from payload parameters
-	targetName, err := parseTargetParams(payload)
-	if err != nil {
-		return fmt.Errorf("failed to parse target parameters: %w", err)
-	}
+	// Get target directory from bridge options or BridgeHandle
+	targetName := parseTargetDir(payload)
 
 	// Create filename from unit slug
 	filename := fmt.Sprintf("%s.yaml", payload.UnitSlug)
@@ -323,11 +320,8 @@ func (eb *ExampleBridge) Destroy(ctx api.BridgeContext, payload api.BridgePayloa
 		return err
 	}
 
-	// Get target name from payload parameters
-	targetName, err := parseTargetParams(payload)
-	if err != nil {
-		return fmt.Errorf("failed to parse target parameters: %w", err)
-	}
+	// Get target directory from bridge options or BridgeHandle
+	targetName := parseTargetDir(payload)
 
 	// Create filename from unit slug
 	filename := fmt.Sprintf("%s.yaml", payload.UnitSlug)
@@ -380,22 +374,17 @@ func (eb *ExampleBridge) Finalize(ctx api.BridgeContext, payload api.BridgePaylo
 	})
 }
 
-// parseTargetParams extracts the target name from the target parameters
-func parseTargetParams(payload api.BridgeWorkerPayload) (string, error) {
-	var params map[string]interface{}
-	if len(payload.TargetParams) > 0 {
-		if err := json.Unmarshal(payload.TargetParams, &params); err != nil {
-			return "", fmt.Errorf("failed to parse target params: %v", err)
-		}
+// parseTargetDir builds the target directory path from BridgeHandle and optional SubDir option.
+// The resulting path is BridgeHandle/SubDir (or just BridgeHandle if SubDir is not set).
+func parseTargetDir(payload api.BridgeWorkerPayload) string {
+	dir := payload.BridgeHandle
+	if dir == "" {
+		dir = "default"
 	}
-
-	// Get directory name from the parameter I set in Info()
-	if dirName, ok := params["dir_name"].(string); ok && dirName != "" {
-		return dirName, nil
+	if subDir, ok := payload.TargetOptions["SubDir"]; ok && subDir != "" {
+		dir = filepath.Join(dir, subDir)
 	}
-
-	// Default to "default" if no directory name found
-	return "default", nil
+	return dir
 }
 
 // Ensure ExampleBridge implements the Bridge interface
