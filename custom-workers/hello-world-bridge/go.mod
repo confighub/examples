@@ -2,7 +2,7 @@ module github.com/confighub/examples/custom-workers/hello-world-bridge
 
 go 1.25.0
 
-require github.com/confighub/sdk/core v0.1.12
+require github.com/confighub/sdk/core v0.1.24
 
 require (
 	cel.dev/expr v0.24.0 // indirect
@@ -52,6 +52,7 @@ require (
 	github.com/prometheus/otlptranslator v0.0.2 // indirect
 	github.com/prometheus/procfs v0.17.0 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
+	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3 // indirect
 	github.com/shirou/gopsutil/v3 v3.24.5 // indirect
 	github.com/stoewer/go-strcase v1.3.0 // indirect
 	github.com/swaggest/jsonschema-go v0.3.78 // indirect
