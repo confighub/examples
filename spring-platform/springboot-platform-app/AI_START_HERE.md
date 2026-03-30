@@ -1,64 +1,29 @@
-# AI Start Here
+# AI Start Here: Spring Boot Generator Example
 
-Use this page when you want to drive `springboot-platform-app` safely with an AI assistant.
+This page helps AI assistants guide humans through this example.
 
-## CRITICAL: Demo Pacing
+Read the [`README.md`](./README.md) first. It explains the model. This page
+explains how to demo it.
 
-Pause after every stage.
+## Demo Pacing Rules
 
-For each stage:
+Pause after every stage:
 
-1. run only that stage's commands
-2. print the full output
-3. explain what it means in plain English
-4. print the GUI checkpoint when applicable
-5. ask `Ready to continue?`
-6. wait for the human before continuing
-
-This example has several mutation-routing scenarios. For each one, explain:
-
-- the pain
-- the fix
-- what you see
-- what this proves
-- what this does not prove
+1. Run only that stage's commands
+2. Print the full output (do not summarize)
+3. Explain what the output means
+4. Print GUI checkpoints where applicable
+5. Ask "Ready to continue?" and wait
 
 ## Suggested Prompt
 
 ```text
 Read spring-platform/springboot-platform-app/AI_START_HERE.md and walk me through the demo.
-Pause after every stage. Show full output. Give GUI links where possible.
+Pause after every stage. Show full output. Explain how app inputs and platform policy become operational config.
 Do not continue until I say continue.
 ```
 
-## What This Example Is For
-
-This is a structural Spring Boot platform/app example for the authority versus provenance model, with a locally runnable upstream app.
-
-It demonstrates one app, `inventory-api`, with three routed outcomes:
-
-- `apply here`
-- `lift upstream`
-- `block/escalate`
-
-## Proof Types
-
-This example has seven proof levels:
-
-1. structural: fixture files and contracts
-2. local app: Spring Boot HTTP tests
-3. ConfigHub-only: real spaces and units
-4. **real deployment**: Kind cluster + real kubectl apply + HTTP verification
-5. noop target: apply workflow with Noop targets (simulation)
-6. lift-upstream bundle: read-only Redis patch bundle
-7. block/escalate boundary: read-only datasource override attempt
-
-It does not yet:
-
-- create a real GitHub PR for lift-upstream
-- prove actual `block/escalate` enforcement in ConfigHub (boundary is documented, not server-enforced)
-
-## Stage 1: Preview The Structure (read-only)
+## Stage 1: Preview (read-only)
 
 ```bash
 cd spring-platform/springboot-platform-app
@@ -67,211 +32,123 @@ cd spring-platform/springboot-platform-app
 ./verify.sh
 ```
 
-These commands do not mutate ConfigHub or live infrastructure.
+What to explain:
+- The stack and scenario
+- What the structural scripts read
+- The three mutation routes
 
-GUI checkpoint:
+GUI checkpoint: none (CLI preview only)
 
-- none yet; this stage is CLI-only preview of the model
+**PAUSE.**
 
-Pause after this stage.
-
-## Stage 2: Understand The Generator (read-only)
-
-The generator is the transformation step that takes app inputs + platform policies and produces operational Kubernetes config.
+## Stage 2: Generator Transformation (read-only)
 
 ```bash
 ./generator/render.sh --explain
 ./generator/render.sh --trace
 ```
 
-What you should see:
+What to explain:
+- How app inputs + platform policies become operational config
+- The 5 key transformations
+- Field-by-field mapping
 
-- The 5 key transformations (app name extraction, datasource injection, port mapping, config embedding, profile activation)
-- Field-by-field mapping from inputs to outputs
-- Which fields are generator-owned (platform-controlled) vs app-owned
-
-Now ask "why is this field blocked?":
+Then show field lineage:
 
 ```bash
 ./generator/render.sh --explain-field spring.datasource.url
 ./generator/render.sh --explain-field feature.inventory.reservationMode
 ```
 
-What you should see:
+What to explain:
+- `spring.datasource.url` is BLOCKED (generator injects from platform)
+- `feature.inventory.reservationMode` is MUTABLE (comes from app inputs)
 
-- `spring.datasource.url` is BLOCKED because the generator injects it from platform policy
-- `feature.inventory.reservationMode` is MUTABLE because it comes from app inputs
+GUI checkpoint: none
 
-Why this matters:
+**PAUSE.**
 
-Understanding the generator is key to understanding field ownership. When you know how a field got into `operational/deployment.yaml`, you know whether it's mutable-in-ch, lift-upstream, or generator-owned (blocked).
-
-GUI checkpoint:
-
-- none; this stage is CLI-only
-
-Pause after this stage.
-
-## Stage 3: Prove The Local App Works (local only)
+## Stage 3: Local App Proof (optional, requires Java)
 
 ```bash
 cd upstream/app
 mvn test
+cd ../..
 ```
 
-What this writes:
+What to explain:
+- The Spring Boot app starts in tests
+- HTTP tests call the API
+- Default and prod profile responses are observable
 
-- local build output only
+GUI checkpoint: none
 
-What you should see after:
+**PAUSE.**
 
-- passing HTTP-oriented tests for the local Spring Boot app
-
-GUI checkpoint:
-
-- none; this stage is local-only
-
-Pause after this stage.
-
-## Stage 4: Create ConfigHub Structure (mutates ConfigHub)
+## Stage 4: ConfigHub Setup (mutates ConfigHub)
 
 ```bash
-cd ..
 ./confighub-setup.sh --explain
 ./confighub-setup.sh
 ./confighub-verify.sh
 ```
 
-What this mutates:
+What to explain:
+- Creates 3 spaces: dev, stage, prod
+- Each space contains one unit: `inventory-api`
+- Labels enable filtering and cleanup
 
-- real ConfigHub spaces and units for dev, stage, and prod
+GUI checkpoint: Open ConfigHub GUI → Spaces → filter by `ExampleName=springboot-platform-app`
 
-What you should see after:
+**PAUSE.**
 
-- spaces and units for `inventory-api-*`
-- verification output showing the expected units and relationships
-
-GUI checkpoint:
-
-- ConfigHub GUI: open the spaces and units for the newly created `inventory-api-*` objects
-
-Pause after this stage.
-
-## Stage 5: Apply-Here Mutation Proof (mutates ConfigHub)
+## Stage 5: Apply-Here Mutation (mutates ConfigHub)
 
 ```bash
 cub function do --space inventory-api-prod --unit inventory-api \
-  --change-desc "apply-here: override reservationMode from strict to optimistic for prod rollout" \
+  --change-desc "apply-here: reservation mode strict → optimistic" \
   set-env inventory-api "FEATURE_INVENTORY_RESERVATIONMODE=optimistic"
 ```
 
-What you see after:
-
-- the prod unit shows the env override in ConfigHub
-- a separate local replay can be run with the same env override
-
-Now show the **provenance** - the mutation history:
+Then show the mutation history:
 
 ```bash
 cub mutation list --space inventory-api-prod --json inventory-api | \
   jq '[.[-1] | {mutationNum, description, author: .Author.Email, createdAt: .CreatedAt}]'
 ```
 
-What you should see:
+What to explain:
+- The mutation is stored in ConfigHub
+- The audit trail records who, when, and why
+- This mutation survives future refreshes
 
-- The mutation number and timestamp
-- Your change description ("apply-here: override reservationMode...")
-- Your author identity (email)
+GUI checkpoint: Open unit → History → see the mutation
 
-This is the audit trail. Every mutation is recorded with who, when, and why.
+**PAUSE.**
 
-GUI checkpoint:
+## Stage 6: Real Kubernetes Deployment (optional, requires Kind)
 
-- ConfigHub GUI: open the prod unit and inspect the changed env value
-- ConfigHub GUI: click "History" to see the mutation with your change description
-
-Pause after this stage.
-
-## Stage 5b: Running App Sees The Change (optional, requires Java)
-
-This is the lightweight proof that the app sees the mutation - no cluster needed.
-
-Start the Spring Boot app locally with the mutated value:
+### Prerequisites
 
 ```bash
-cd upstream/app
-FEATURE_INVENTORY_RESERVATIONMODE=optimistic \
-  mvn spring-boot:run -q -Dspring-boot.run.profiles=prod \
-  -Dspring-boot.run.arguments="--server.port=8081" &
-APP_PID=$!
-sleep 10  # Wait for app to start
-```
-
-Curl the app to verify:
-
-```bash
-curl -s http://localhost:8081/api/inventory/summary | jq
-```
-
-What you should see:
-
-```json
-{
-  "service": "inventory-api",
-  "environment": "prod",
-  "reservationMode": "optimistic",
-  "cacheBackend": "none"
-}
-```
-
-The running app reports `optimistic` - the mutation is visible! This proves:
-
-- The mutation stored in ConfigHub can be replayed locally
-- The Spring Boot app reads the env var and reports the new value
-- Real HTTP response, real app
-
-Stop the app:
-
-```bash
-kill $APP_PID
-cd ../..
-```
-
-GUI checkpoint:
-
-- none; this is a local-only proof
-
-Pause after this stage.
-
-## Stage 6: Real Kubernetes Deployment (mutates cluster)
-
-This is the **end-to-end proof**: ConfigHub → real kubectl apply → running pod → HTTP verification.
-
-### Prerequisites (run once)
-
-```bash
-cd spring-platform/springboot-platform-app
 ./bin/create-cluster
 ./bin/build-image
 CUB_SPACE=springboot-infra ./bin/install-worker
 export KUBECONFIG=var/springboot-platform.kubeconfig
-# Optional: export K8S_TARGET=<printed-target-slug> if install-worker reported one.
-# confighub-setup.sh auto-detects it when there is exactly one Kubernetes target.
+export WORKER_SPACE=springboot-infra
 ```
 
 ### Deploy and Verify
 
 ```bash
-export WORKER_SPACE=springboot-infra
 ./confighub-setup.sh --with-targets
 ./verify-e2e.sh
 ```
 
-What you should see after:
-
-- Pod running in Kind cluster
-- HTTP response from the actual deployed app
-- `reservationMode = strict` (the default)
+What to explain:
+- ConfigHub mutation → real kubectl apply → running pod
+- HTTP verification hits the actual deployed app
+- No simulation
 
 ### Mutate and Verify
 
@@ -284,132 +161,56 @@ kubectl rollout status deployment/inventory-api -n inventory-api
 ./verify-e2e.sh
 ```
 
-What you should see after:
+GUI checkpoint: kubectl get pods -n inventory-api
 
-- `reservationMode = optimistic` (mutation is live!)
-
-What this proves:
-
-- ConfigHub mutation → real kubectl apply → real running pod
-- Verification via actual HTTP call to deployed app
-- No simulation, no Noop targets
-
-GUI checkpoint:
-
-- ConfigHub GUI: inspect the prod unit and its mutation history
-- kubectl: `kubectl get pods -n inventory-api`
-
-Pause after this stage.
-
-## Stage 6b: Noop Target Workflow (simulation, no real cluster)
-
-For simulation without a real cluster, use `--with-noop-targets`.
-
-```bash
-./confighub-cleanup.sh  # Clean up from real deployment first
-./confighub-setup.sh --with-noop-targets
-./confighub-verify.sh --noop-targets
-```
-
-What this proves:
-
-- the apply workflow can be exercised without a real cluster
-
-What this does NOT prove:
-
-- no actual Kubernetes delivery (Noop targets accept but don't deploy)
-- no HTTP verification (there's no running pod)
-
-GUI checkpoint:
-
-- ConfigHub GUI: inspect targets, bindings, and apply-related status
-
-Pause after this stage.
+**PAUSE.**
 
 ## Stage 7: Lift-Upstream Bundle (read-only)
 
-First, show the **field lineage** - why does this field need to go upstream?
-
 ```bash
 ./generator/render.sh --explain-field spring.cache.type
-```
-
-What you should see:
-
-- Owner: app-team
-- Route: lift-upstream
-- Why: Cache adoption changes the app contract, needs code changes
-
-Now show the bundle that would be created:
-
-```bash
 ./lift-upstream.sh --explain
-./lift-upstream.sh --explain-json | jq
 ./lift-upstream.sh --render-diff
 ./lift-upstream-verify.sh
 ```
 
-What this proves:
+What to explain:
+- Field lineage shows why this routes to lift-upstream
+- The bundle shows exact changes to upstream inputs
+- The bundle shows refreshed ConfigHub YAMLs
+- No automated PR yet
 
-- The field lineage explains WHY it routes to lift-upstream
-- The exact upstream app and ConfigHub changes needed for the Redis caching request can be rendered read-only
+GUI checkpoint: none
 
-GUI checkpoint:
-
-- GUI equivalent is not built here; the rendered diff is the source of truth
-
-Pause after this stage.
+**PAUSE.**
 
 ## Stage 8: Block/Escalate Boundary (read-only)
 
-First, show the **field lineage** - why is this field blocked?
-
 ```bash
 ./generator/render.sh --explain-field spring.datasource.url
-```
-
-What you should see:
-
-- Owner: platform-engineering
-- Route: generator-owned (BLOCKED)
-- Why: The generator injects this from platform policy, not app inputs
-
-Now show what happens when you try to change it:
-
-```bash
 ./block-escalate.sh --explain
-./block-escalate.sh --explain-json | jq
 ./block-escalate.sh --render-attempt
 ./block-escalate-verify.sh
 ```
 
-What this proves:
+What to explain:
+- Field lineage shows why this is blocked
+- The boundary is documented
+- Server-side enforcement is not yet implemented
 
-- The field lineage explains WHY it's blocked (comes from platform policy)
-- The datasource override attempt is visible and explainable
-- The escalation path is documented
+GUI checkpoint: none
 
-What this does not prove:
-
-- enforcement is still a product gap and is not claimed here
-
-GUI checkpoint:
-
-- GUI equivalent is not built here; use the dry-run output as the evidence
-
-Pause after this stage.
+**PAUSE.**
 
 ## Stage 9: Cleanup
 
 ```bash
 ./confighub-cleanup.sh
-./bin/teardown  # If you ran real deployment
+./bin/teardown  # if you ran real deployment
 ```
 
-## Follow-On
+## What This Does Not Prove
 
-If the human wants a live next step:
-
-- use the GitOps import examples for cluster-first flows
-- use `global-app-layer` for ConfigHub-first layered flows
-- use `cub-gen` plus `cub-scout` when the question is provenance plus runtime
+- `lift upstream` via automated GitHub PR
+- `block/escalate` via server-side enforcement
+- Flux/Argo delivery (see `global-app-layer` examples)

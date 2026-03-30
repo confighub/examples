@@ -1,0 +1,86 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: inventory-api
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: inventory-api
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: inventory-api-config
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: inventory-api
+data:
+  application.yaml: |
+    spring:
+      application:
+        name: inventory-api
+      datasource:
+        url: jdbc:postgresql://postgres.platform.svc:5432/inventory
+        username: inventory
+    inventory:
+      environment: dev
+    management:
+      endpoints:
+        web:
+          exposure:
+            include: health,info
+    feature:
+      inventory:
+        reservationMode: optimistic
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inventory-api
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: inventory-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: inventory-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: inventory-api
+    spec:
+      serviceAccountName: inventory-api
+      containers:
+        - name: inventory-api
+          image: ghcr.io/example/inventory-api:1.0.0
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SPRING_CONFIG_ADDITIONAL_LOCATION
+              value: /config/
+            - name: SPRING_PROFILES_ACTIVE
+              value: default
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://postgres.platform.svc:5432/inventory
+            - name: CACHE_BACKEND
+              value: none
+          volumeMounts:
+            - name: app-config
+              mountPath: /config
+      volumes:
+        - name: app-config
+          configMap:
+            name: inventory-api-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: inventory-api
+  namespace: apps
+spec:
+  selector:
+    app.kubernetes.io/name: inventory-api
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080

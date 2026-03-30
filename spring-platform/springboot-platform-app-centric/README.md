@@ -1,26 +1,103 @@
-# Spring Boot Platform App (App-Centric View)
+# Spring Boot Platform App (ADT View)
 
-One app. Three deployments. Three mutation outcomes.
+One app across deployments and targets: App → Deployments → Targets.
 
-## The Sequence
+## This View
 
-This is **#2** in a sequence of three related examples:
+This is the **ADT (App → Deployments → Targets)** view of the Spring platform model.
 
-| # | Example | Focus |
-|---|---------|-------|
-| 1 | [`springboot-platform-app`](../springboot-platform-app/) | Generator story (cub-gen): how app+platform → operational |
-| **2** | **This example** | App-centric: App → Deployments → Targets |
-| 3 | [`springboot-platform-platform-centric`](../springboot-platform-platform-centric/) | Platform-centric: Platform → Apps → Deployments |
+Use this example to understand:
 
-**Start with #1** if you want to understand the generator/authority story.
-**Start here** for the app/deployment/target model.
-**Start with #3** for multiple apps sharing one platform.
+- How one app (`inventory-api`) maps to multiple deployments
+- How each deployment becomes a ConfigHub space
+- How targets control where config delivers
+- The three mutation outcomes for any field change
 
-## The App
+This is the best place to understand the app-deployment-target model.
 
-**inventory-api**: A Spring Boot service that manages inventory items with feature flags and runtime tuning.
+## The Same Underlying Model
 
-## The Deployments
+This is one of three views of the same underlying system:
+
+| View | Example | Core question answered |
+|------|---------|------------------------|
+| Plain ConfigHub | [`springboot-platform-app`](../springboot-platform-app/) | How does `cub-gen` transform app + platform into governed operational config? |
+| **ADT** | **This example** | How do I understand one app across deployments and targets? |
+| Experimental ADTP | [`springboot-platform-platform-centric`](../springboot-platform-platform-centric/) | How do I make platform explicit above apps and deployments? |
+
+All three examples share the same mutation routes and truth matrix structure. This example supports the same target modes as the core example.
+
+## What Is Real Today
+
+| Capability | Status |
+|------------|--------|
+| Generator transformation | Real |
+| Field lineage / explain-field | Real |
+| ConfigHub mutation storage | Real |
+| Mutation history / audit trail | Real |
+| Refresh preview | Real |
+| Real Kubernetes delivery | Real (Kind cluster) |
+| Noop target simulation | Real |
+| Running app HTTP verification | Real |
+
+## What Is Simulated Today
+
+| Capability | Status |
+|------------|--------|
+| Noop target mode | Simulated (accepts apply, does not deliver) |
+
+## What Is Not Implemented Yet
+
+| Capability | Status |
+|------------|--------|
+| `lift upstream` automated PR | Bundle exists, no automated PR creation |
+| `block/escalate` server-side enforcement | Documented, not enforced |
+| Flux/Argo delivery path | See `global-app-layer` examples |
+
+## Quick Start
+
+```bash
+cd spring-platform/springboot-platform-app-centric
+
+# Preview the ADT view (read-only)
+./setup.sh --explain
+./setup.sh --explain-json | jq
+
+# Create spaces, units, noop targets, and apply (default)
+./setup.sh
+
+# Verify
+./verify.sh
+
+# Clean up
+./cleanup.sh
+```
+
+### Setup Options
+
+| Command | What it does |
+|---------|--------------|
+| `./setup.sh` | Full setup with noop targets (default) |
+| `./setup.sh --confighub-only` | Spaces and units only, no targets |
+| `./setup.sh --with-targets` | Deploy to real Kubernetes (requires cluster) |
+
+## Artifact Chain
+
+The app flows through deployments to targets:
+
+```
+App: inventory-api
+│
+├── Deployment: dev   → Space: inventory-api-dev   → Target: noop/real
+├── Deployment: stage → Space: inventory-api-stage → Target: noop/real
+└── Deployment: prod  → Space: inventory-api-prod  → Target: noop/real
+```
+
+### The App
+
+**inventory-api**: A Spring Boot service managing inventory items with feature flags and runtime tuning.
+
+### The Deployments
 
 | Deployment | Space | Purpose |
 |------------|-------|---------|
@@ -30,149 +107,110 @@ This is **#2** in a sequence of three related examples:
 
 Each deployment is a ConfigHub space containing one unit (`inventory-api`).
 
-## Target Modes
-
-Targets control where a unit delivers. This example supports three modes:
+### The Targets
 
 | Mode | What it does | Cluster required? |
 |------|--------------|-------------------|
-| **noop** (default) | Apply workflow works. Noop worker accepts but doesn't deploy. | No |
-| unbound | No targets. Units exist in ConfigHub only. | No |
-| real | Apply delivers to live Kubernetes cluster. | Yes |
+| noop (default) | Apply workflow works, no delivery | No |
+| unbound | No targets, units exist only | No |
+| real | Apply delivers to Kubernetes | Yes |
 
-The default (`./setup.sh`) uses noop targets so you can see the full mutation-to-apply workflow immediately without a cluster.
-
-**Alternative delivery modes:** This example uses direct Kubernetes delivery. For Flux OCI or Argo OCI delivery (where Flux/ArgoCD reconciles from an OCI artifact), see [`global-app-layer/single-component`](../global-app-layer/single-component/).
-
-## The Three Mutation Outcomes
+## Mutation Routes
 
 When you change a field in this app's operational config, one of three things happens:
 
-| Outcome | When | Example |
-|---------|------|---------|
-| **Apply here** | Field is app-owned and safe to mutate locally | `feature.inventory.reservationMode` |
-| **Lift upstream** | Change should flow back to app source | `spring.cache.*` (adding Redis) |
-| **Block / escalate** | Field is platform-owned and requires approval | `spring.datasource.*` |
+| Route | When | Example field |
+|-------|------|---------------|
+| Apply here | App-owned, safe to mutate locally | `feature.inventory.reservationMode` |
+| Lift upstream | App-owned, but needs source change | `spring.cache.*` |
+| Block/escalate | Platform-owned | `spring.datasource.*` |
 
-See the [flows/](./flows/) directory for detailed walkthroughs of each outcome.
-
-## Quick Start
+### Apply Here
 
 ```bash
-# See what this will do (read-only)
-./setup.sh --explain
-./setup.sh --explain-json | jq
-
-# Set up with noop targets (default, no cluster needed)
-./setup.sh
-
-# Verify everything is consistent
-./verify.sh
-
-# Clean up when done
-./cleanup.sh
-```
-
-## Setup Options
-
-| Command | What it does |
-|---------|--------------|
-| `./setup.sh --explain` | Show the ADT view (read-only) |
-| `./setup.sh --explain-json` | Machine-readable setup plan |
-| `./setup.sh` | Create spaces, units, noop targets, and apply |
-| `./setup.sh --confighub-only` | Create spaces and units without targets |
-| `./setup.sh --with-targets` | Deploy to real Kubernetes (requires cluster + worker) |
-
-## AI Handoff
-
-- Folder-level AI entry point: [`../AI_START_HERE.md`](../AI_START_HERE.md)
-- AI guide: [`AI_START_HERE.md`](./AI_START_HERE.md)
-- Copyable prompts: [`prompts.md`](./prompts.md)
-- Stable contracts: [`contracts.md`](./contracts.md)
-- Machine-readable app/deployment map: [`deployment-map.json`](./deployment-map.json)
-- Canonical pacing standard: [`../../incubator/docs/ai-first-demo-standard.md`](../../incubator/docs/ai-first-demo-standard.md)
-- Longer pacing guide: [`../../incubator/standard-ai-demo-pacing.md`](../../incubator/standard-ai-demo-pacing.md)
-
-## How This Relates to springboot-platform-app
-
-This is an app-centric wrapper, not a fork. All implementation lives in [`../springboot-platform-app/`](../springboot-platform-app/).
-
-| Here | There |
-|------|-------|
-| App/deployment/target story | Space/unit/worker implementation |
-| `./setup.sh` delegates | `./confighub-setup.sh` does the work |
-| `./verify.sh` delegates | `./verify.sh` checks fixtures |
-| `./cleanup.sh` delegates | `./confighub-cleanup.sh` deletes |
-| Three flow docs | Three change docs + lift-upstream bundle + block-escalate boundary |
-| Field ownership understanding | `generator/` shows the transformation |
-
-Use this example when you want to understand the story. Use `springboot-platform-app` when you need the full implementation detail.
-
-## Understanding Field Ownership
-
-To understand why some fields are "apply-here" vs "block/escalate", see the generator that transforms app inputs into operational config:
-
-```bash
-# See how inputs become outputs
-../springboot-platform-app/generator/render.sh --explain
-
-# Field-by-field mapping
-../springboot-platform-app/generator/render.sh --trace
-```
-
-The generator shows how platform policy (`upstream/platform/runtime-policy.yaml`) gets injected into the Kubernetes Deployment, making those fields platform-owned and blocked from local mutation.
-
-## Try a Mutation
-
-After setup, try changing a feature flag:
-
-```bash
-# See current value
-cub unit get --space inventory-api-prod inventory-api --json | jq '.Unit.Objects'
-
-# Change the reservation mode (apply-here outcome)
+# Change the reservation mode for prod
 cub function do --space inventory-api-prod --unit inventory-api \
-  set-env inventory-api FEATURE_INVENTORY_RESERVATIONMODE=optimistic
+  --change-desc "apply-here: reservation mode strict → optimistic" \
+  set-env inventory-api "FEATURE_INVENTORY_RESERVATIONMODE=optimistic"
 
 # Re-apply to target
 cub unit apply --space inventory-api-prod inventory-api
 ```
 
-This mutation applies directly because `feature.inventory.*` fields route to `apply-here`.
+This mutation is stored in ConfigHub and survives future refreshes.
 
-## Files
+### Lift Upstream
 
+See: [`flows/lift-upstream.md`](./flows/lift-upstream.md)
+
+The Redis caching request would change upstream inputs, not just ConfigHub state.
+
+### Block/Escalate
+
+See: [`flows/block-escalate.md`](./flows/block-escalate.md)
+
+The datasource field is platform-owned and should be blocked or escalated.
+
+### Understanding Field Ownership
+
+To see why a field routes to a particular outcome, check the field routing rules in `../shared/field-routes.yaml` or use the core example's generator:
+
+```bash
+# View field routing rules
+cat ../shared/field-routes.yaml
+
+# Or use the core example's explain-field command
+../springboot-platform-app/generator/render.sh --explain-field spring.datasource.url
+# → BLOCKED: generator injects from platform policy
 ```
-springboot-platform-app-centric/
-  README.md                 # This file
-  AI_START_HERE.md          # AI assistant guide
-  prompts.md                # Copyable AI prompts
-  contracts.md              # Stable command contracts
-  deployment-map.json       # Machine-readable ADT map
-  setup.sh                  # Setup (delegates)
-  demo.sh                   # Demo the three outcomes
-  verify.sh                 # Verify (delegates)
-  cleanup.sh                # Cleanup (delegates)
-  flows/
-    apply-here.md           # Apply-here walkthrough
-    lift-upstream.md        # Lift-upstream walkthrough
-    block-escalate.md       # Block/escalate walkthrough
-```
+
+## Compare This View To The Other Two
+
+| Aspect | Plain ConfigHub | ADT (this) | Experimental ADTP |
+|--------|-----------------|------------|-------------------|
+| Focus | Generator transformation | App across environments | Platform organizing apps |
+| Entry question | How does config get generated? | How does my app deploy? | How do I manage multiple apps? |
+| Key insight | Field lineage → mutation routes | Deployments → spaces | Platform → apps |
+| Best for | Understanding the machinery | Operating one app | Platform team operations |
+
+## Key Files
+
+### Public Commands
+
+| Command | Purpose |
+|---------|---------|
+| `./setup.sh --explain` | Preview the ADT view |
+| `./setup.sh` | Create spaces, units, targets, apply |
+| `./verify.sh` | Verify setup |
+| `./cleanup.sh` | Delete all created objects |
+| `./demo.sh` | Show the three mutation outcomes |
+
+### Flow Documentation
+
+| Path | Purpose |
+|------|---------|
+| `flows/apply-here.md` | Apply-here mutation walkthrough |
+| `flows/lift-upstream.md` | Lift-upstream mutation walkthrough |
+| `flows/block-escalate.md` | Block/escalate mutation walkthrough |
+
+### Configuration
+
+| Path | Purpose |
+|------|---------|
+| `deployment-map.json` | Machine-readable ADT map |
 
 ## Prerequisites
 
-- `cub` CLI installed and authenticated (`cub auth login`)
-- `jq` for JSON handling
+**Basic:**
+- `cub` CLI, authenticated (`cub auth login`)
+- `jq`
 
-For real Kubernetes deployment (`--with-targets`):
-- Kind or other Kubernetes cluster
-- Docker for building images
-- See `../springboot-platform-app/README.md` for full prerequisites
+**Real Kubernetes deployment:**
+- `kind`, `kubectl`, Docker
+- See [`../springboot-platform-app/README.md`](../springboot-platform-app/README.md) for setup
 
-## Cleanup
+## AI Handoff
 
-```bash
-./cleanup.sh
-```
-
-This deletes all ConfigHub spaces labeled with this example.
+- AI guide: [`AI_START_HERE.md`](./AI_START_HERE.md)
+- Copyable prompts: [`prompts.md`](./prompts.md)
+- Stable contracts: [`contracts.md`](./contracts.md)

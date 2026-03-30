@@ -1,69 +1,34 @@
 # AI Start Here: Spring Platform Examples
 
-Use this page when you want an AI assistant to guide a human through the Spring
-platform examples from the new `spring-platform/` location.
+This page helps AI assistants guide humans through the Spring platform examples.
 
-## CRITICAL: Demo pacing
+Read the folder [`README.md`](./README.md) first. It explains the model. This page
+explains how to demo it.
 
-When walking a human through any Spring platform example, you MUST pause after
-every stage.
+## Demo Pacing Rules
 
-After each stage:
-1. Run the command(s) for that stage
-2. Show the output faithfully on screen. If it is long, keep the important section visible and do not replace it with a one-line summary
+When walking a human through any Spring platform example:
+
+1. Run only one stage's commands at a time
+2. Print the full output (do not summarize)
 3. Explain what the output means in plain English
-4. If there is a GUI URL or click path, print it
-5. STOP and ask "Ready to continue?" or "Want to explore this more?"
+4. If there is a GUI URL, print it
+5. Ask "Ready to continue?" and wait for confirmation
 6. Only proceed when the human says to continue
 
-This is a demo, not a race to the end.
+This is a demo, not a script execution.
 
-## Start With The Canonical Standards
+## Choosing an Entry Point
 
-Before driving one of these examples, read:
+| Human wants to understand | Use this example |
+|---------------------------|------------------|
+| Generator transformation and field lineage | [`springboot-platform-app`](./springboot-platform-app/AI_START_HERE.md) |
+| One app across dev/stage/prod | [`springboot-platform-app-centric`](./springboot-platform-app-centric/AI_START_HERE.md) |
+| One platform with multiple apps | [`springboot-platform-platform-centric`](./springboot-platform-platform-centric/AI_START_HERE.md) |
 
-- [`../incubator/docs/ai-first-demo-standard.md`](../incubator/docs/ai-first-demo-standard.md)
-- [`../incubator/standard-ai-demo-pacing.md`](../incubator/standard-ai-demo-pacing.md)
+## Suggested Prompts
 
-Those two docs define the pacing rules and the AI-first demo expectations for
-the whole examples repo.
-
-## Then Pick One Spring Entry Point
-
-### 1. App-centric front door
-
-Use:
-
-- [`springboot-platform-app-centric/AI_START_HERE.md`](./springboot-platform-app-centric/AI_START_HERE.md)
-
-Use this when the human wants:
-
-- one app
-- three deployments
-- clear mutation outcomes
-- the easiest story-first path
-
-Suggested prompt:
-
-```text
-Read spring-platform/springboot-platform-app-centric/AI_START_HERE.md and walk me through the demo.
-Pause after every stage. Show full output. Give GUI links where possible.
-Do not continue until I say continue.
-```
-
-### 2. Generator and authority story
-
-Use:
-
-- [`springboot-platform-app/AI_START_HERE.md`](./springboot-platform-app/AI_START_HERE.md)
-
-Use this when the human wants:
-
-- the generator model
-- provenance and field lineage
-- ConfigHub as the authority and governance layer
-
-Suggested prompt:
+### For generator and field lineage story
 
 ```text
 Read spring-platform/springboot-platform-app/AI_START_HERE.md and walk me through the demo.
@@ -71,22 +36,33 @@ Pause after every stage. Show full output. Explain how app inputs and platform p
 Do not continue until I say continue.
 ```
 
-### 3. Platform-centric view
+### For app/deployment/target story
 
-Use:
+```text
+Read spring-platform/springboot-platform-app-centric/AI_START_HERE.md and walk me through the demo.
+Pause after every stage. Show full output. Give GUI links where possible.
+Do not continue until I say continue.
+```
 
-- [`springboot-platform-platform-centric/AI_START_HERE.md`](./springboot-platform-platform-centric/AI_START_HERE.md)
-
-Use this when the human wants:
-
-- shared platform contracts
-- multiple apps on one platform
-- the platform -> apps -> deployments mental model
-
-Suggested prompt:
+### For platform-centric story
 
 ```text
 Read spring-platform/springboot-platform-platform-centric/AI_START_HERE.md and walk me through the demo.
 Pause after every stage. Show full output. Explain what is platform-owned versus app-owned.
 Do not continue until I say continue.
 ```
+
+## What All Three Examples Share
+
+All three examples demonstrate the same underlying model:
+
+- Same generator story: app inputs + platform inputs → operational config
+- Same mutation routes: apply-here, lift-upstream, block/escalate
+- Same implementation status (see folder README for truth matrix)
+
+The difference is the viewing angle, not the implementation.
+
+## Reference
+
+- Canonical pacing standard: [`../incubator/docs/ai-first-demo-standard.md`](../incubator/docs/ai-first-demo-standard.md)
+- Longer demo-pacing guide: [`../incubator/standard-ai-demo-pacing.md`](../incubator/standard-ai-demo-pacing.md)

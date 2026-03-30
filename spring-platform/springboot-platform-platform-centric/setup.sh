@@ -11,7 +11,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PARENT_DIR="${SCRIPT_DIR}/../springboot-platform-app"
+SHARED_DIR="${SCRIPT_DIR}/../shared"
 CUB="${CUB:-cub}"
 EXAMPLE_LABEL="springboot-platform-platform-centric"
 
@@ -117,7 +117,7 @@ echo ""
 echo "Phase 2: Creating inventory-api (3 deployments)..."
 for env in dev stage prod; do
   space="inventory-api-${env}"
-  yaml_file="${PARENT_DIR}/confighub/inventory-api-${env}.yaml"
+  yaml_file="${SHARED_DIR}/confighub/inventory-api-${env}.yaml"
 
   ${CUB} space create "${space}" \
     --label "ExampleName=${EXAMPLE_LABEL}" \

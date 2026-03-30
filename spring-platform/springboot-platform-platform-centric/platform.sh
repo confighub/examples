@@ -163,9 +163,9 @@ Reason:
   - Connection pooling
 
 What happens if you try to change it:
-  1. ConfigHub should block the mutation
-  2. You receive an error with escalation instructions
-  3. Contact platform-engineering via #platform-support
+  The boundary is documented; server-side enforcement is not yet implemented.
+  In production, this mutation would be blocked or escalated.
+  Contact platform-engineering via #platform-support
 
 Source:
   platform.yaml → spec.fieldRoutes[spring.datasource.*]
@@ -187,8 +187,9 @@ Reason:
   - mTLS sidecar injection
 
 What happens if you try to change it:
-  1. ConfigHub should block the mutation
-  2. Contact platform-engineering via #platform-support
+  The boundary is documented; server-side enforcement is not yet implemented.
+  In production, this mutation would be blocked or escalated.
+  Contact platform-engineering via #platform-support
 
 Source:
   platform.yaml → spec.fieldRoutes[securityContext.*]

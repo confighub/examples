@@ -1,12 +1,14 @@
 # Contracts
 
-## Read-only contracts
+Stable command outputs for automation and testing.
+
+## Read-Only Contracts
 
 ### `./setup.sh --explain-json`
 
-- mutates: no
-- output: JSON object from [`example-summary.json`](./example-summary.json)
-- stable fields:
+- Mutates: no
+- Output: JSON object from [`example-summary.json`](./example-summary.json)
+- Stable fields:
   - `example_name`
   - `proof_type`
   - `mutates_confighub`
@@ -14,214 +16,115 @@
   - `reads`
   - `behaviors[].name`
   - `behaviors[].default_route`
-- proves:
-  - the example shape
-  - the read-only status
-  - the three behavior categories
 
 ### `./verify.sh`
 
-- mutates: no
-- output: plain text success line
-- stable success text:
-  - `ok: springboot-platform-app fixtures are consistent`
-- proves:
-  - required files exist
-  - the machine-readable contract is internally consistent
-  - the local HTTP-test source files are present
+- Mutates: no
+- Output: plain text
+- Stable success text: `ok: springboot-platform-app fixtures are consistent`
 
-## Local app contract
+### `./generator/render.sh --explain`
 
-### `cd upstream/app && mvn test`
+- Mutates: no
+- Output: plain text description of the generator transformation
 
-- mutates: no ConfigHub state, no cluster state
-- local effects:
-  - Maven target directory
-  - local test runtime only
-- proves:
-  - the Spring Boot app starts in tests
-  - the tests call the HTTP API on a random local port
-  - the default and `prod` profile responses are observable over HTTP
+### `./generator/render.sh --explain-field <field>`
 
-## ConfigHub-only contracts
+- Mutates: no
+- Output: plain text showing field lineage and mutation route
+
+## ConfigHub Contracts
 
 ### `./confighub-setup.sh --explain-json`
 
-- mutates: no
-- output: JSON object describing the selected setup plan
-- stable fields:
+- Mutates: no
+- Output: JSON object describing the setup plan
+- Stable fields:
   - `proof_type`
   - `mutates_confighub`
   - `mutates_live_infra`
   - `spaces_created`
   - `units_per_space`
-- proves:
-  - what ConfigHub objects will be created
-  - whether live infrastructure is involved
-  - what the cleanup path is
 
 ### `./confighub-setup.sh`
 
-- mutates: yes (ConfigHub only)
-- creates:
+- Mutates: yes (ConfigHub only)
+- Creates:
   - 3 spaces: `inventory-api-dev`, `inventory-api-stage`, `inventory-api-prod`
   - 1 unit per space: `inventory-api`
-- labels:
+- Labels:
   - `ExampleName=springboot-platform-app`
   - `App=inventory-api`
   - `Environment=<env>`
 
-### `./confighub-verify.sh`
-
-- mutates: no
-- output: plain text success line
-- stable success text:
-  - `ok: springboot-platform-app ConfigHub objects are consistent`
-- proves:
-  - 3 spaces exist with the expected label
-  - each space contains an `inventory-api` unit with resources
-
 ### `./confighub-setup.sh --with-targets`
 
-- mutates: yes (ConfigHub and live infrastructure)
-- creates in addition to the base setup:
-  - no extra example-owned infra space
-  - prod unit namespace rewritten to `inventory-api`
-  - prod unit image rewritten to `inventory-api:local`
-  - prod unit bound to a real Kubernetes target in `WORKER_SPACE`
-  - prod unit applied to the cluster
-  - namespace `inventory-api` created in the cluster
+- Mutates: yes (ConfigHub and Kubernetes cluster)
+- Additional effects:
+  - Prod unit bound to Kubernetes target
+  - Prod unit applied to cluster
+  - Namespace `inventory-api` created
 
-### `./confighub-verify.sh --targets`
+### `./confighub-verify.sh`
 
-- mutates: no
-- output: plain text success line
-- stable success text:
-  - `ok: springboot-platform-app with real Kubernetes deployment is consistent`
-- proves:
-  - 3 example spaces exist
-  - the cluster is reachable
-  - namespace `inventory-api` exists
-  - deployment `inventory-api` is available
-  - at least one pod is running
-  - the prod unit is bound to a Kubernetes target
-
-### `./verify-e2e.sh`
-
-- mutates: no
-- output: plain text summary or JSON with `--json`
-- proves:
-  - the cluster is reachable
-  - namespace, deployment, and pod exist
-  - the prod unit exists in ConfigHub and is bound to a Kubernetes target
-  - the deployed service answers `/api/inventory/summary`
-  - the reported `reservationMode` comes from the actual deployed app
-
-### `./confighub-setup.sh --with-noop-targets`
-
-- mutates: yes (ConfigHub only)
-- creates in addition to the base setup:
-  - 1 infra space: `inventory-api-infra` with a server worker
-  - 1 Noop target per env space
-  - binds units to targets
-  - applies units to Noop targets
-- labels: same as base, plus `AppOwner=Platform` on infra space
-
-### `./confighub-verify.sh --noop-targets`
-
-- mutates: no
-- output: plain text success line
-- stable success text:
-  - `ok: springboot-platform-app with Noop targets is consistent`
-- proves:
-  - 4 spaces exist (infra + 3 envs)
-  - each env space has a unit and a target
-  - the Noop-target workflow is wired correctly
+- Mutates: no
+- Stable success text: `ok: springboot-platform-app ConfigHub objects are consistent`
 
 ### `./confighub-cleanup.sh`
 
-- mutates: yes (ConfigHub only)
-- deletes all spaces with `Labels.ExampleName = 'springboot-platform-app'`
+- Mutates: yes (ConfigHub only)
+- Deletes all spaces with `Labels.ExampleName = 'springboot-platform-app'`
 
-## Lift-upstream bundle contracts
+## Route Bundle Contracts
 
 ### `./lift-upstream.sh --explain-json`
 
-- mutates: no
-- output: JSON object describing the Redis lift-upstream bundle
-- stable fields:
+- Mutates: no
+- Output: JSON object describing the Redis lift-upstream bundle
+- Stable fields:
   - `proof_type`
   - `bundle_root`
   - `target_files`
   - `render_diff`
-- proves:
-  - the durable upstream files that must change
-  - the refreshed ConfigHub YAMLs that follow from that change
 
 ### `./lift-upstream.sh --render-diff`
 
-- mutates: no
-- output: unified diff
-- proves:
-  - the exact GitHub-ready patch for the Redis caching request
-  - the current-to-refreshed delta for upstream app inputs and ConfigHub YAMLs
+- Mutates: no
+- Output: unified diff showing upstream and ConfigHub changes
 
 ### `./lift-upstream-verify.sh`
 
-- mutates: no
-- output: plain text success line
-- stable success text:
-  - `ok: springboot-platform-app lift-upstream bundle is consistent`
-- proves:
-  - the Redis bundle files exist
-  - the bundle adds the Redis starter dependency
-  - the bundle sets `spring.cache.type=redis`
-  - the refreshed ConfigHub YAMLs set `CACHE_BACKEND=redis`
-
-## Block/escalate boundary contracts
+- Mutates: no
+- Stable success text: `ok: springboot-platform-app lift-upstream bundle is consistent`
 
 ### `./block-escalate.sh --explain-json`
 
-- mutates: no
-- output: JSON object describing the datasource override boundary
-- stable fields:
+- Mutates: no
+- Output: JSON object describing the datasource boundary
+- Stable fields:
   - `proof_type`
   - `current_status`
   - `route_rule`
   - `attempted_env_key`
-- proves:
-  - the example has a concrete boundary artifact for the blocked route
-  - the current state is explicitly classified as `not_proven`
 
 ### `./block-escalate.sh --render-attempt`
 
-- mutates: no
-- output: shell snippet
-- proves:
-  - the exact dry-run `cub function do` command for the datasource override attempt
-  - the example does not invent an escalation mechanism it does not have
+- Mutates: no
+- Output: shell snippet showing the dry-run override command
 
 ### `./block-escalate-verify.sh`
 
-- mutates: no
-- output: plain text success line
-- stable success text:
-  - `ok: springboot-platform-app block-escalate bundle is consistent`
-- proves:
-  - the route rules mark `spring.datasource.*` as generator-owned
-  - the runtime policy declares a managed datasource boundary
-  - the rendered attempt stays read-only
+- Mutates: no
+- Stable success text: `ok: springboot-platform-app block-escalate bundle is consistent`
 
-## Fixture contracts
+## End-to-End Contracts
 
-### [`operational/field-routes.yaml`](./operational/field-routes.yaml)
+### `./verify-e2e.sh`
 
-- mutates: no
-- stable fields:
-  - `routes[].match`
-  - `routes[].owner`
-  - `routes[].defaultAction`
-- proves:
-  - which fields are direct ConfigHub mutations
-  - which fields are routed upstream
-  - which fields are platform-owned
+- Mutates: no
+- Requires: Kind cluster with deployed app
+- Proves:
+  - Cluster is reachable
+  - Namespace, deployment, and pod exist
+  - Service answers `/api/inventory/summary`
+  - Reported `reservationMode` comes from actual deployed app

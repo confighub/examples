@@ -40,7 +40,7 @@
     {
       "name": "inventory-api",
       "description": "Inventory management service with feature flags",
-      "source": "../springboot-platform-app/upstream/app",
+      "source": "inventory-api Spring Boot application",
       "deployments": [
         {
           "name": "dev",
@@ -106,15 +106,21 @@
   "target_modes": {
     "noop": {
       "description": "Apply workflow works. Noop worker accepts but doesn't deploy.",
-      "cluster_required": false
+      "cluster_required": false,
+      "implemented": true,
+      "default": true
     },
     "unbound": {
       "description": "No targets. Units exist in ConfigHub only.",
-      "cluster_required": false
+      "cluster_required": false,
+      "implemented": false,
+      "note": "Not exposed by this example's setup.sh"
     },
     "real": {
       "description": "Apply delivers to live Kubernetes cluster.",
-      "cluster_required": true
+      "cluster_required": true,
+      "implemented": false,
+      "note": "Not implemented in this example. See springboot-platform-app for real Kubernetes delivery."
     }
   },
   "example_label": "springboot-platform-platform-centric"

@@ -1,16 +1,23 @@
 #!/usr/bin/env bash
-# Verify springboot-platform-app-centric
+# Verify springboot-platform-app-centric fixtures
 #
-# Checks:
-# 1. Local files in this wrapper exist
-# 2. Delegates to parent example for fixture verification
+# Checks that all required files exist and are consistent.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PARENT_DIR="${SCRIPT_DIR}/../springboot-platform-app"
+SHARED_DIR="${SCRIPT_DIR}/../shared"
 
-# Check local wrapper files
+errors=0
+
+check_file() {
+  if [[ ! -f "$1" ]]; then
+    echo "error: missing $1" >&2
+    errors=$((errors + 1))
+  fi
+}
+
+# Check local ADT files
 local_files=(
   "${SCRIPT_DIR}/README.md"
   "${SCRIPT_DIR}/AI_START_HERE.md"
@@ -27,32 +34,69 @@ local_files=(
 )
 
 for file in "${local_files[@]}"; do
-  if [[ ! -f "${file}" ]]; then
-    echo "missing required file: ${file}" >&2
-    exit 1
-  fi
+  check_file "${file}"
 done
 
-# Verify deployment-map.json structure
+# Check shared files this example depends on
+shared_files=(
+  "${SHARED_DIR}/confighub/inventory-api-dev.yaml"
+  "${SHARED_DIR}/confighub/inventory-api-stage.yaml"
+  "${SHARED_DIR}/confighub/inventory-api-prod.yaml"
+  "${SHARED_DIR}/field-routes.yaml"
+)
+
+for file in "${shared_files[@]}"; do
+  check_file "${file}"
+done
+
+# Check jq is available
 command -v jq >/dev/null 2>&1 || {
   echo "error: jq not found" >&2
   exit 1
 }
 
-jq -e '.app.name == "inventory-api"' "${SCRIPT_DIR}/deployment-map.json" >/dev/null
-jq -e '.deployments | length == 3' "${SCRIPT_DIR}/deployment-map.json" >/dev/null
-jq -e '.target_modes | keys | length == 3' "${SCRIPT_DIR}/deployment-map.json" >/dev/null
-jq -e '.mutation_outcomes | length == 3' "${SCRIPT_DIR}/deployment-map.json" >/dev/null
-"${SCRIPT_DIR}/setup.sh" --explain-json | jq -e '.example_name == "springboot-platform-app-centric"' >/dev/null
+# Verify deployment-map.json structure
+jq -e '.app.name == "inventory-api"' "${SCRIPT_DIR}/deployment-map.json" >/dev/null || {
+  echo "error: deployment-map.json missing app.name" >&2
+  errors=$((errors + 1))
+}
 
-echo "ok: springboot-platform-app-centric wrapper files are consistent"
+jq -e '.deployments | length == 3' "${SCRIPT_DIR}/deployment-map.json" >/dev/null || {
+  echo "error: deployment-map.json should have 3 deployments" >&2
+  errors=$((errors + 1))
+}
 
-# Delegate to parent verification
-if [[ ! -f "${PARENT_DIR}/verify.sh" ]]; then
-  echo "error: Parent verify.sh not found at ${PARENT_DIR}/verify.sh" >&2
+jq -e '.target_modes | keys | length == 3' "${SCRIPT_DIR}/deployment-map.json" >/dev/null || {
+  echo "error: deployment-map.json should have 3 target modes" >&2
+  errors=$((errors + 1))
+}
+
+jq -e '.mutation_outcomes | length == 3' "${SCRIPT_DIR}/deployment-map.json" >/dev/null || {
+  echo "error: deployment-map.json should have 3 mutation outcomes" >&2
+  errors=$((errors + 1))
+}
+
+# Verify setup.sh --explain-json output
+"${SCRIPT_DIR}/setup.sh" --explain-json | jq -e '.example_name == "springboot-platform-app-centric"' >/dev/null || {
+  echo "error: setup.sh --explain-json has wrong example_name" >&2
+  errors=$((errors + 1))
+}
+
+"${SCRIPT_DIR}/setup.sh" --explain-json | jq -e '.proof_type == "adt-view"' >/dev/null || {
+  echo "error: setup.sh --explain-json has wrong proof_type" >&2
+  errors=$((errors + 1))
+}
+
+# Check scripts are executable
+for script in setup.sh verify.sh cleanup.sh demo.sh; do
+  if [[ ! -x "${SCRIPT_DIR}/${script}" ]]; then
+    echo "warning: ${script} is not executable" >&2
+  fi
+done
+
+if [[ ${errors} -gt 0 ]]; then
+  echo "fail: ${errors} error(s) found" >&2
   exit 1
 fi
 
-echo ""
-echo "Delegating to parent example verification..."
-exec "${PARENT_DIR}/verify.sh"
+echo "ok: springboot-platform-app-centric fixtures are consistent"

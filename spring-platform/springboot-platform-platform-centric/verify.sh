@@ -6,7 +6,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PARENT_DIR="${SCRIPT_DIR}/../springboot-platform-app"
+SHARED_DIR="${SCRIPT_DIR}/../shared"
 
 errors=0
 
@@ -36,11 +36,11 @@ check_file "${SCRIPT_DIR}/platform.sh"
 check_file "${SCRIPT_DIR}/apps/catalog-api/dev.yaml"
 check_file "${SCRIPT_DIR}/apps/catalog-api/prod.yaml"
 
-# Check parent example exists
-check_dir "${PARENT_DIR}"
-check_file "${PARENT_DIR}/confighub/inventory-api-dev.yaml"
-check_file "${PARENT_DIR}/confighub/inventory-api-stage.yaml"
-check_file "${PARENT_DIR}/confighub/inventory-api-prod.yaml"
+# Check shared resources exist
+check_dir "${SHARED_DIR}"
+check_file "${SHARED_DIR}/confighub/inventory-api-dev.yaml"
+check_file "${SHARED_DIR}/confighub/inventory-api-stage.yaml"
+check_file "${SHARED_DIR}/confighub/inventory-api-prod.yaml"
 
 # Check platform-map.json is valid JSON
 if ! jq empty "${SCRIPT_DIR}/platform-map.json" 2>/dev/null; then
@@ -56,6 +56,17 @@ fi
 
 if ! jq -e '.apps | length == 2' "${SCRIPT_DIR}/platform-map.json" >/dev/null 2>&1; then
   echo "error: platform-map.json should have 2 apps" >&2
+  errors=$((errors + 1))
+fi
+
+# Verify target modes match actual implementation
+if ! jq -e '.target_modes.noop.implemented == true' "${SCRIPT_DIR}/platform-map.json" >/dev/null 2>&1; then
+  echo "error: platform-map.json should mark noop as implemented" >&2
+  errors=$((errors + 1))
+fi
+
+if ! jq -e '.target_modes.real.implemented == false' "${SCRIPT_DIR}/platform-map.json" >/dev/null 2>&1; then
+  echo "error: platform-map.json should mark real as not implemented" >&2
   errors=$((errors + 1))
 fi
 

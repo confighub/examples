@@ -1,16 +1,19 @@
 #!/usr/bin/env bash
-# Cleanup springboot-platform-app-centric
+# Cleanup for springboot-platform-app-centric
 #
-# Delegates to the parent example's cleanup script.
+# Deletes all ConfigHub objects created by setup.sh
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PARENT_DIR="${SCRIPT_DIR}/../springboot-platform-app"
+CUB="${CUB:-cub}"
+EXAMPLE_LABEL="springboot-platform-app-centric"
 
-if [[ ! -f "${PARENT_DIR}/confighub-cleanup.sh" ]]; then
-  echo "error: Parent cleanup script not found at ${PARENT_DIR}/confighub-cleanup.sh" >&2
-  exit 1
-fi
+echo "=== Cleaning up springboot-platform-app-centric ==="
+echo ""
+echo "This will delete ALL spaces with label ExampleName=${EXAMPLE_LABEL}"
+echo ""
 
-exec "${PARENT_DIR}/confighub-cleanup.sh"
+${CUB} space delete --where "Labels.ExampleName = '${EXAMPLE_LABEL}'" --recursive
+
+echo ""
+echo "=== Cleanup complete ==="

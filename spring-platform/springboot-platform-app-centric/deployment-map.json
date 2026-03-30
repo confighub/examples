@@ -2,7 +2,7 @@
   "app": {
     "name": "inventory-api",
     "description": "Spring Boot inventory service",
-    "source": "../springboot-platform-app/upstream/app"
+    "source": "inventory-api Spring Boot application"
   },
   "deployments": [
     {
@@ -52,7 +52,7 @@
     },
     {
       "name": "lift-upstream",
-      "description": "Route change back to app source. Triggers upstream PR.",
+      "description": "Route change back to app source. Bundle exists; automated PR creation is not implemented yet.",
       "example_field": "spring.cache.*",
       "owner": "app-team",
       "flow": "flows/lift-upstream.md"

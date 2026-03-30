@@ -1,43 +1,84 @@
-# Spring Boot Platform (Platform-Centric View)
+# Spring Boot Platform (Experimental ADTP View)
 
-One platform. Multiple apps. Shared policies.
+One platform organizing multiple apps: Platform → Apps → Deployments → Targets.
 
-## The Sequence
+**Note:** ADTP is experimental. The model is sound but tooling is incomplete.
 
-This is the **third** in a sequence of three related examples:
+## This View
 
-| # | Example | Focus | Model |
-|---|---------|-------|-------|
-| 1 | [`springboot-platform-app`](../springboot-platform-app/) | Generator story | How cub-gen transforms app+platform → operational |
-| 2 | [`springboot-platform-app-centric`](../springboot-platform-app-centric/) | App-centric view | App → Deployments → Targets |
-| 3 | **This example** | Platform-centric view | Platform → Apps → Deployments → Targets |
+This is the **Experimental ADTP (Platform → Apps → Deployments → Targets)** view of the Spring platform model.
 
-**Start with #1** if you want to understand the generator/authority story.
-**Start with #2** if you want to understand one app across environments.
-**Start with #3 (here)** if you want to understand how multiple apps share a platform.
+Use this example to understand:
 
-## The Platform
+- How one platform organizes multiple apps
+- What is platform-owned vs app-owned
+- How apps inherit platform policies
+- Platform-wide discovery commands
 
-**springboot-platform**: A Heroku-like Spring Boot platform providing managed services and runtime policies.
+This is the best place to understand platform-centric operations.
 
-| Provides | Description |
-|----------|-------------|
-| Managed Datasource | PostgreSQL with HA, encryption, backups |
-| Runtime Hardening | runAsNonRoot, mTLS sidecar |
-| Observability | Health endpoints, SLO targets |
+## The Same Underlying Model
 
-## The Apps
+This is one of three views of the same underlying system:
 
-Two apps run on this platform:
+| View | Example | Core question answered |
+|------|---------|------------------------|
+| Plain ConfigHub | [`springboot-platform-app`](../springboot-platform-app/) | How does `cub-gen` transform app + platform into governed operational config? |
+| ADT | [`springboot-platform-app-centric`](../springboot-platform-app-centric/) | How do I understand one app across deployments and targets? |
+| **Experimental ADTP** | **This example** | How do I make platform explicit above apps and deployments? |
 
-| App | Description | Deployments |
-|-----|-------------|-------------|
-| `inventory-api` | Inventory management service | dev, stage, prod |
-| `catalog-api` | Product catalog service | dev, prod |
+All three examples share the same mutation routes and truth matrix structure. This example currently supports noop targets only.
 
-Both apps inherit the platform's policies and get the same managed services.
+## What Is Real Today
 
-## The Model
+| Capability | Status |
+|------------|--------|
+| Generator transformation | Real |
+| Field lineage / explain-field | Real |
+| ConfigHub mutation storage | Real |
+| Mutation history / audit trail | Real |
+| Refresh preview | Real |
+| Real Kubernetes delivery | Noop only (real targets not implemented in this example) |
+| Noop target simulation | Real |
+| Running app HTTP verification | Real |
+
+## What Is Simulated Today
+
+| Capability | Status |
+|------------|--------|
+| Noop target mode | Simulated (accepts apply, does not deliver) |
+
+## What Is Not Implemented Yet
+
+| Capability | Status |
+|------------|--------|
+| `lift upstream` automated PR | Bundle exists, no automated PR creation |
+| `block/escalate` server-side enforcement | Documented, not enforced |
+| Flux/Argo delivery path | See `global-app-layer` examples |
+| Platform-as-resource in ConfigHub | Experimental (label-based grouping only) |
+
+## Quick Start
+
+```bash
+cd spring-platform/springboot-platform-platform-centric
+
+# Preview the platform and all apps (read-only)
+./setup.sh --explain
+cat platform-map.json | jq
+
+# Create everything (6 spaces, 5 units)
+./setup.sh
+
+# Verify
+./verify.sh
+
+# Clean up
+./cleanup.sh
+```
+
+## Artifact Chain
+
+The platform organizes apps through deployments to targets:
 
 ```
 Platform: springboot-platform
@@ -61,35 +102,28 @@ Platform: springboot-platform
     └── Deployment: prod  → Space: catalog-api-prod
 ```
 
-## Quick Start
+### The Platform
 
-```bash
-# See the platform and all apps
-./setup.sh --explain
-cat platform-map.json | jq
+**springboot-platform**: A Heroku-like Spring Boot platform providing managed services and runtime policies.
 
-# Create everything (5 spaces, 5 units)
-./setup.sh
+| Provides | Description |
+|----------|-------------|
+| Managed Datasource | PostgreSQL with HA, encryption, backups |
+| Runtime Hardening | runAsNonRoot, mTLS sidecar |
+| Observability | Health endpoints, SLO targets |
 
-# Verify
-./verify.sh
+### The Apps
 
-# Clean up
-./cleanup.sh
-```
+Two apps run on this platform:
 
-## What This Adds Over app-centric
+| App | Description | Deployments |
+|-----|-------------|-------------|
+| `inventory-api` | Inventory management service | dev, stage, prod |
+| `catalog-api` | Product catalog service | dev, prod |
 
-The app-centric example (#2) shows one app with three deployments. This example adds:
+Both apps inherit the platform's policies and get the same managed services.
 
-| Concept | app-centric | platform-centric |
-|---------|-------------|------------------|
-| Apps | 1 (inventory-api) | 2+ (inventory-api, catalog-api) |
-| Platform | Implicit in generator | Explicit resource |
-| Shared policies | Per-app field-routes | Platform-wide policies |
-| Discovery | Per-app commands | Platform-wide commands |
-
-## Platform Discovery
+### Platform Discovery
 
 ```bash
 # See what the platform provides to all apps
@@ -102,52 +136,86 @@ The app-centric example (#2) shows one app with three deployments. This example 
 ./platform.sh --explain-field spring.datasource.url
 ```
 
-## AI Handoff
+## Mutation Routes
 
-- Folder-level AI entry point: [`../AI_START_HERE.md`](../AI_START_HERE.md)
-- AI guide: [`AI_START_HERE.md`](./AI_START_HERE.md)
-- Canonical pacing standard: [`../../incubator/docs/ai-first-demo-standard.md`](../../incubator/docs/ai-first-demo-standard.md)
-- Longer pacing guide: [`../../incubator/standard-ai-demo-pacing.md`](../../incubator/standard-ai-demo-pacing.md)
+When you change a field in any app's operational config, one of three things happens:
 
-## Files
+| Route | When | Example field |
+|-------|------|---------------|
+| Apply here | App-owned, safe to mutate locally | `feature.inventory.reservationMode` |
+| Lift upstream | App-owned, but needs source change | `spring.cache.*` |
+| Block/escalate | Platform-owned | `spring.datasource.*` |
 
-```
-springboot-platform-platform-centric/
-  README.md                 # This file
-  AI_START_HERE.md          # AI assistant guide
-  platform-map.json         # Machine-readable PADT map
-  platform.yaml             # Platform definition
-  setup.sh                  # Setup (creates all spaces/units)
-  platform.sh               # Platform discovery commands
-  verify.sh                 # Verify
-  cleanup.sh                # Cleanup
-  apps/
-    inventory-api/          # App definition (delegates to springboot-platform-app)
-    catalog-api/            # Second app definition
+### Platform-Owned Fields
+
+The platform controls fields that apps should never diverge:
+
+```bash
+./platform.sh --explain-field spring.datasource.url
+# → BLOCKED: platform provides managed-datasource
 ```
 
-## How This Relates to the Other Examples
+### App-Owned Fields
 
-This example **delegates** to `springboot-platform-app` for implementation:
+Apps can mutate their own feature flags:
 
-| Here | There |
-|------|-------|
-| Platform definition | Generator + policies |
-| App: inventory-api | Full implementation |
-| App: catalog-api | Minimal addition |
-| Platform discovery | Generator discovery |
+```bash
+./platform.sh --explain-field feature.inventory.reservationMode
+# → MUTABLE: app-owned, safe to change
 
-The platform-centric view **organizes** multiple apps under one platform without duplicating implementation.
+# Mutate on inventory-api
+cub function do --space inventory-api-prod --unit inventory-api \
+  --change-desc "apply-here: reservation mode → optimistic" \
+  set-env inventory-api "FEATURE_INVENTORY_RESERVATIONMODE=optimistic"
+
+# Mutate on catalog-api
+cub function do --space catalog-api-prod --unit catalog-api \
+  --change-desc "apply-here: enable recommendations" \
+  set-env catalog-api "FEATURE_CATALOG_RECOMMENDATIONSENABLED=true"
+```
+
+## Compare This View To The Other Two
+
+| Aspect | Plain ConfigHub | ADT | Experimental ADTP (this) |
+|--------|-----------------|-----|--------------------------|
+| Focus | Generator transformation | App across environments | Platform organizing apps |
+| Entry question | How does config get generated? | How does my app deploy? | How do I manage multiple apps? |
+| Key insight | Field lineage → mutation routes | Deployments → spaces | Platform → apps |
+| Best for | Understanding the machinery | Operating one app | Platform team operations |
+
+## Key Files
+
+### Public Commands
+
+| Command | Purpose |
+|---------|---------|
+| `./setup.sh --explain` | Preview the platform view |
+| `./setup.sh` | Create all spaces and units |
+| `./verify.sh` | Verify setup |
+| `./cleanup.sh` | Delete all created objects |
+| `./platform.sh --summary` | Platform capabilities |
+| `./platform.sh --apps` | Apps on this platform |
+| `./platform.sh --explain-field` | Field ownership |
+
+### Configuration
+
+| Path | Purpose |
+|------|---------|
+| `platform-map.json` | Machine-readable ADTP map |
+| `platform.yaml` | Platform definition |
+| `apps/catalog-api/` | App definition (catalog-api) |
+| `../shared/confighub/` | Shared unit YAMLs (inventory-api) |
 
 ## Prerequisites
 
-- `cub` CLI installed and authenticated (`cub auth login`)
-- `jq` for JSON handling
+**Basic:**
+- `cub` CLI, authenticated (`cub auth login`)
+- `jq`
 
-## Cleanup
+**Real Kubernetes deployment:**
+- `kind`, `kubectl`, Docker
+- See [`../springboot-platform-app/README.md`](../springboot-platform-app/README.md) for setup
 
-```bash
-./cleanup.sh
-```
+## AI Handoff
 
-This deletes all ConfigHub spaces labeled with this example.
+- AI guide: [`AI_START_HERE.md`](./AI_START_HERE.md)

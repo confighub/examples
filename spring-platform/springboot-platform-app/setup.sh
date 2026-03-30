@@ -7,36 +7,38 @@ SUMMARY_JSON="$ROOT_DIR/example-summary.json"
 case "${1:-}" in
   --explain)
     cat <<'EOF'
-springboot-platform-app
+================================================================================
+                    PLAIN CONFIGHUB / GENERATOR VIEW
+================================================================================
 
-This is a structural and locally-runnable incubator example with a
-ConfigHub-only proof path.
+This is the core Spring platform example showing how cub-gen transforms
+app inputs + platform inputs into governed operational config.
 
-Stack:
-- Spring Boot app inputs
-- platform runtime policy
-- ConfigHub as authority for operational config
-- provenance back to upstream producers
+THE MODEL:
+  App inputs (upstream/app/)
+    + Platform inputs (upstream/platform/)
+    → Generator (generator/render.sh)
+    → Operational outputs (operational/, confighub/)
+    → ConfigHub (units across dev, stage, prod)
 
-Proof levels:
-1. Structural: fixture files and contracts (this script)
-2. Local app: mvn test and mvn spring-boot:run
-3. ConfigHub-only: ./confighub-setup.sh creates real ConfigHub objects
+WHAT THIS SHOWS:
+  - How generator produces field lineage and mutation routes
+  - How ConfigHub stores governed operational config
+  - How field ownership determines what can be mutated where
+  - How changes flow: apply-here, lift-upstream, or block/escalate
 
-What it reads:
-- upstream/app/*
-- upstream/platform/*
-- operational/*
-- example-summary.json
+TARGET MODES:
+  - ConfigHub-only: ./confighub-setup.sh (no cluster)
+  - Noop targets: ./confighub-setup.sh --with-noop-targets (simulation)
+  - Real Kubernetes: ./confighub-setup.sh --with-targets (requires cluster)
 
-What this script writes:
-- nothing (read-only preview only)
+NEXT STEPS:
+  ./verify.sh                        Check fixture consistency
+  ./confighub-setup.sh --explain     Preview ConfigHub setup
+  ./generator/render.sh --explain    See generator transformation
 
-Safe next steps:
-- run ./setup.sh --explain-json | jq
-- then run ./verify.sh
-- optional local app proof: cd upstream/app && mvn test
-- ConfigHub-only proof: ./confighub-setup.sh --explain
+See README.md for the full model explanation.
+================================================================================
 EOF
     ;;
   --explain-json)
@@ -44,13 +46,14 @@ EOF
     ;;
   *)
     cat <<'EOF' >&2
-This example is structural proof by default.
+Usage: ./setup.sh [--explain|--explain-json]
 
-Use one of:
-  ./setup.sh --explain           Structural preview
-  ./setup.sh --explain-json      Machine-readable contract
-  ./confighub-setup.sh --explain ConfigHub-only preview
-  ./confighub-setup.sh           Create ConfigHub objects (mutating)
+  --explain           Human-readable preview of the generator view
+  --explain-json      Machine-readable example contract
+
+For ConfigHub operations:
+  ./confighub-setup.sh --explain    Preview ConfigHub setup
+  ./confighub-setup.sh              Create ConfigHub objects (mutating)
 EOF
     exit 2
     ;;

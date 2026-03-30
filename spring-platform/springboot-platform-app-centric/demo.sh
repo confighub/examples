@@ -10,7 +10,6 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PARENT_DIR="${SCRIPT_DIR}/../springboot-platform-app"
 CUB="${CUB:-cub}"
 
 show_apply_here() {
@@ -48,7 +47,8 @@ EOF
 
   cat <<'EOF'
 See: flows/apply-here.md
-     ../springboot-platform-app/changes/01-mutable-in-ch.md
+
+Field routing rules: ../shared/field-routes.yaml
 ================================================================================
 EOF
 }
@@ -74,19 +74,15 @@ The change:
 
 What happens:
   - ConfigHub captures the intent
-  - A PR is created against the app source repo
+  - A lift-upstream bundle is produced (automated PR creation is not implemented yet)
+  - Developer manually creates a PR with the bundle contents
   - After merge, platform re-renders operational config
   - ConfigHub refreshes from the new rendered state
 
-EOF
-
-  cat <<'EOF'
-Preview the bundle:
-  ../springboot-platform-app/lift-upstream.sh --render-diff
-
 See: flows/lift-upstream.md
-     ../springboot-platform-app/changes/02-lift-upstream.md
-     ../springboot-platform-app/lift-upstream/redis-cache/
+
+Field routing rules: ../shared/field-routes.yaml
+For bundle details, see the core example: springboot-platform-app/lift-upstream/
 ================================================================================
 EOF
 }
@@ -111,18 +107,14 @@ The change:
   - App team cannot mutate this field directly
 
 What happens:
-  - ConfigHub blocks or flags the mutation
-  - Platform engineer is notified (escalation)
+  - The boundary is documented and previewed
+  - Server-side enforcement is not implemented yet
+  - In production, platform engineer would be notified (escalation)
   - Change requires platform approval or platform path
 
-EOF
-
-  cat <<'EOF'
-Preview the blocked attempt:
-  ../springboot-platform-app/block-escalate.sh --render-attempt
-
 See: flows/block-escalate.md
-     ../springboot-platform-app/changes/03-generator-owned.md
+
+Field routing rules: ../shared/field-routes.yaml
 ================================================================================
 EOF
 }

@@ -1,12 +1,14 @@
 # Contracts
 
-## Read-only contracts
+Stable command outputs for automation and testing.
+
+## Read-Only Contracts
 
 ### `./deployment-map.json`
 
-- mutates: no
-- output: JSON object
-- stable fields:
+- Mutates: no
+- Output: JSON object
+- Stable fields:
   - `app.name`
   - `app.source`
   - `deployments[].name`
@@ -17,87 +19,67 @@
   - `mutation_outcomes[].name`
   - `mutation_outcomes[].example_field`
   - `mutation_outcomes[].flow`
-- proves:
-  - the app/deployment/target model
-  - the three target modes
-  - the three mutation outcomes
 
 ### `./setup.sh --explain-json`
 
-- mutates: no
-- output: JSON object
-- stable fields:
-  - `example_name`
-  - `proof_type`
+- Mutates: no
+- Output: JSON object
+- Stable fields:
+  - `example_name` = `springboot-platform-app-centric`
+  - `proof_type` = `adt-view`
   - `selected_mode`
-  - `selected_setup_flag`
-  - `default_mode`
   - `mutates_confighub`
   - `mutates_live_infra`
   - `cluster_required`
-  - `creates_infra_space`
-  - `creates_targets`
-  - `applies_units`
   - `deployment_map`
-  - `delegates_to`
-- proves:
-  - which setup mode is in scope
-  - whether the selected mode touches live infrastructure
-  - where the wrapper delegates implementation work
 
 ### `./setup.sh --explain`
 
-- mutates: no
-- output: plain text ADT diagram
-- stable text anchors:
+- Mutates: no
+- Output: plain text ADT diagram
+- Stable text anchors:
   - `APP - DEPLOYMENT - TARGET VIEW`
   - `MUTATION OUTCOMES`
-  - `Delegation:`
-- proves:
-  - the human-readable story for the selected mode
 
 ### `./demo.sh`
 
-- mutates: no
-- output: plain text sections
-- stable section headers:
+- Mutates: no
+- Output: plain text sections
+- Stable section headers:
   - `APPLY HERE`
   - `LIFT UPSTREAM`
   - `BLOCK / ESCALATE`
-- proves:
-  - the three mutation outcomes exist in one app story
-  - each outcome points to the matching lower-level flow docs
 
-## Mutating contracts
+## Mutating Contracts
 
 ### `./setup.sh`
 
-- mutates: yes
-- default mode:
-  - writes ConfigHub spaces, units, noop targets, and applies units
-- real-target mode:
-  - also touches live Kubernetes infrastructure
-- proves:
-  - the app-centric wrapper can drive the full underlying example
+- Mutates: yes (ConfigHub)
+- Default mode creates:
+  - 4 spaces (3 env + 1 infra)
+  - 3 units
+  - 3 noop targets
+  - Applies all units
+
+### `./setup.sh --confighub-only`
+
+- Mutates: yes (ConfigHub only)
+- Creates spaces and units without targets
+
+### `./setup.sh --with-targets`
+
+- Mutates: yes (ConfigHub and Kubernetes cluster)
+- Deploys to real Kubernetes cluster
 
 ### `./cleanup.sh`
 
-- mutates: yes
-- delegates to:
-  - `../springboot-platform-app/confighub-cleanup.sh`
-- proves:
-  - wrapper cleanup stays aligned with the parent example
+- Mutates: yes (ConfigHub only)
+- Deletes all spaces with `Labels.ExampleName = 'springboot-platform-app-centric'`
 
-## Verification contract
+## Verification Contract
 
 ### `./verify.sh`
 
-- mutates: no
-- output: plain text success lines
-- stable success text:
-  - `ok: springboot-platform-app-centric wrapper files are consistent`
-- proves:
-  - the wrapper file bundle exists
-  - `deployment-map.json` remains structurally valid
-  - `./setup.sh --explain-json` remains parseable
-  - the parent example verification still passes
+- Mutates: no
+- Output: plain text
+- Stable success text: `ok: springboot-platform-app-centric is consistent`

@@ -20,8 +20,8 @@ Relevant files:
 What the route means:
 
 - the app team should not mutate this field directly
-- ConfigHub should block or escalate the request
-- a platform engineer may later approve or make the change through the platform
-  path
+- the boundary is documented; server-side enforcement is not yet implemented
+- in production, ConfigHub would block or escalate the request
+- a platform engineer may approve or make the change through the platform path
 - in this example, `./block-escalate.sh --render-attempt` shows the exact
-  dry-run datasource override that should eventually be blocked or escalated
+  dry-run datasource override that documents the intended boundary

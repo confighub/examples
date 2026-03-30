@@ -253,9 +253,10 @@ Why Lift-Upstream:
 
 What happens:
   1. ConfigHub captures the intent
-  2. A PR is created against the app source repo
-  3. After merge, platform re-renders operational config
-  4. ConfigHub refreshes from the new state
+  2. A lift-upstream bundle is produced (automated PR creation is not implemented yet)
+  3. Developer manually creates a PR with the bundle contents
+  4. After merge, platform re-renders operational config
+  5. ConfigHub refreshes from the new state
 
 Preview the bundle:
   ./lift-upstream.sh --render-diff
@@ -277,9 +278,9 @@ Why Blocked:
   provides a managed PostgreSQL service with HA, encryption, and backups.
 
 What happens if you try to change it:
-  1. ConfigHub should block the mutation
-  2. You receive an error with escalation instructions
-  3. Contact platform-engineering via #platform-support
+  The boundary is documented; server-side enforcement is not yet implemented.
+  In production, this mutation would be blocked or escalated.
+  Contact platform-engineering via #platform-support
 
 See the transformation:
   ./render.sh --trace | grep -A2 "managedDatasource"
@@ -300,9 +301,9 @@ Why Blocked:
   security defaults that must not diverge per-deployment.
 
 What happens if you try to change it:
-  1. ConfigHub should block the mutation
-  2. You receive an error with escalation instructions
-  3. Contact platform-engineering via #platform-support
+  The boundary is documented; server-side enforcement is not yet implemented.
+  In production, this mutation would be blocked or escalated.
+  Contact platform-engineering via #platform-support
 EOF
       ;;
     *)
