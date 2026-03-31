@@ -88,3 +88,4 @@ Experimental ConfigHub examples before promotion to stable.
 - Do not break existing root examples
 - For major examples, follow [`ai-example-playbook.md`](./ai-example-playbook.md)
 - All runnable examples must pass [`ai-guide-standard.md`](./ai-guide-standard.md)
+- For machine-readable contracts, see [`EXAMPLE_CONTRACT_STANDARD.md`](../EXAMPLE_CONTRACT_STANDARD.md)

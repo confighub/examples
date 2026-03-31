@@ -6,6 +6,7 @@ This repo contains runnable examples for ConfigHub.
 
 - AI assistants: [`AGENTS.md`](./AGENTS.md)
 - AI assistants with more context: [`AI-README-FIRST.md`](./AI-README-FIRST.md)
+- Example contract standard: [`EXAMPLE_CONTRACT_STANDARD.md`](./EXAMPLE_CONTRACT_STANDARD.md)
 
 ## Safe First Checks
 

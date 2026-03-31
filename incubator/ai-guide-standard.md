@@ -1,10 +1,12 @@
 # AI Guide Standard
 
-This doc explains the enforced contract for incubator AI guides. All runnable examples must pass `scripts/verify.sh`.
+This doc explains the enforced contract for AI guides. The verifier (`scripts/verify.sh`) currently covers 30 examples: 26 incubator + 4 stable.
+
+For the machine-readable contract (`--explain-json`, `contracts.md`), see [EXAMPLE_CONTRACT_STANDARD.md](../EXAMPLE_CONTRACT_STANDARD.md).
 
 ## Required Files
 
-Every runnable incubator example must have:
+Every runnable example must have:
 
 | File | Purpose |
 |------|---------|
@@ -45,15 +47,22 @@ To add a new example, add its path to the `ai_guide_examples` array.
 
 ## Exemptions
 
-Some lightweight examples are exempt from `contracts.md`:
+Some examples are exempt from `contracts.md` or `--explain` requirements:
 
 ```bash
 exempt_from_contracts=(
   "${repo_root}/incubator/watch-webhook"
+  "${repo_root}/campaigns-demo"
+  "${repo_root}/promotion-demo-data"
+)
+
+exempt_from_explain=(
+  "${repo_root}/campaigns-demo"
+  "${repo_root}/promotion-demo-data"
 )
 ```
 
-Keep exemptions small.
+Keep exemptions small. See [EXAMPLE_CONTRACT_STANDARD.md](../EXAMPLE_CONTRACT_STANDARD.md) for exemption criteria.
 
 ## Related
 
