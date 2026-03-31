@@ -32,8 +32,9 @@ If you are not logged in yet, run `cub auth login` before the `cub` commands.
 
 ## Recommended Starting Points
 
-- If you want to explore Campaigns and compliance workflows, start with [`campaigns-demo`](./campaigns-demo/README.md).
-- If you want the quickest no-cluster path, start with [`promotion-demo-data`](./promotion-demo-data/README.md).
+- If you want to explore Campaigns and compliance workflows, start with [`campaigns-demo`](./campaigns-demo/README.md). ([AI guide](./campaigns-demo/AI_START_HERE.md))
+- If you want the quickest no-cluster path, start with [`promotion-demo-data`](./promotion-demo-data/README.md). ([AI guide](./promotion-demo-data/AI_START_HERE.md))
+- If you want the platform/generator model, start with [`spring-platform`](./spring-platform/). ([AI guide](./spring-platform/springboot-platform-app-centric/AI_START_HERE.md))
 - If you want GitOps import, start with [`gitops-import`](./gitops-import/README.md) and the [Official GitOps Import docs](https://docs.confighub.com/get-started/examples/gitops-import/).
 - If you want worker extensibility, start with [`custom-workers`](./custom-workers/).
 - If you want a classic multi-service example, use [`global-app`](./global-app/README.md).

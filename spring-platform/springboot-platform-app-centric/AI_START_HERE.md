@@ -2,58 +2,115 @@
 
 Read [`README.md`](./README.md) first. This page explains how to demo it.
 
-## Demo Pacing
+## CRITICAL: Demo Pacing
 
-1. Run one stage at a time
-2. Print full output (do not summarize)
-3. Explain what you see
-4. Ask "Ready to continue?" before proceeding
+When walking a human through this example, pause after every stage.
 
-## Stage 1: What Is This App?
+After each stage:
+1. Run the commands for that stage
+2. Show full output (do not summarize)
+3. Explain what the output means
+4. If there is a GUI checkpoint, print it
+5. Ask "Ready to continue?"
+6. Wait for the human before proceeding
+
+## Suggested Prompt
+
+```text
+Read spring-platform/springboot-platform-app-centric/AI_START_HERE.md and walk me through the demo.
+Pause after every stage. Show full output. Do not continue until I say continue.
+```
+
+## What This Example Teaches
+
+After this demo, the human will understand:
+- The App-Deployment-Target model
+- How ConfigHub spaces represent deployments
+- The three mutation outcomes (apply-here, lift-upstream, block-escalate)
+- How to run mutations with full audit trail
+
+No cluster required. Uses noop targets.
+
+## Stage 1: "What Is This App?" (read-only)
 
 ```bash
 cd spring-platform/springboot-platform-app-centric
 cat deployment-map.json | jq
 ```
 
-You'll see: `inventory-api` with three deployments (dev, stage, prod), each becoming a ConfigHub space.
+What to explain:
+- `inventory-api` is the app
+- Three deployments: dev, stage, prod
+- Each deployment becomes a ConfigHub space
 
-**PAUSE.**
+GUI now: No GUI checkpoint for this stage — this is CLI-only orientation.
 
-## Stage 2: Preview Setup
+GUI gap: No visual map of app → deployment → target relationships.
+
+GUI feature ask: App deployment topology view. No issue filed yet.
+
+**PAUSE.** Wait for the human.
+
+## Stage 2: "Preview Setup" (read-only)
 
 ```bash
 ./setup.sh --explain
+./setup.sh --explain-json | jq
 ```
 
-You'll see: ASCII diagram of App → Deployments → Targets, and the three mutation outcomes.
+What to explain:
+- ASCII diagram shows the App → Deployments → Targets structure
+- Three mutation outcomes are listed
+- This is read-only — no ConfigHub changes yet
 
-**PAUSE.**
+GUI now: No GUI checkpoint for this stage — preview is CLI-only.
 
-## Stage 3: Create The Config
+GUI gap: No web-based preview of setup plan.
+
+GUI feature ask: Setup preview wizard. No issue filed yet.
+
+**PAUSE.** Wait for the human.
+
+## Stage 3: "Create The Config" (mutates ConfigHub)
 
 ```bash
 ./setup.sh
 cub space list --where "Labels.ExampleName = 'springboot-platform-app-centric'" --json | jq '.[].Space.Slug'
 ```
 
-You'll see: 4 spaces created (3 env + 1 infra), each env space with a unit and noop target.
+What to explain:
+- 4 spaces created (3 env + 1 infra)
+- Each env space has a unit and noop target
+- The noop target accepts applies but doesn't deliver
 
-GUI checkpoint: ConfigHub → Spaces → filter `ExampleName=springboot-platform-app-centric`
+GUI now: ConfigHub → Spaces → filter `ExampleName=springboot-platform-app-centric`
 
-**PAUSE.**
+GUI gap: No way to see deployment hierarchy at a glance.
 
-## Stage 4: Three Mutation Outcomes
+GUI feature ask: Space grouping by app. No issue filed yet.
+
+**PAUSE.** Wait for the human.
+
+## Stage 4: "Three Mutation Outcomes" (read-only)
 
 ```bash
 ./demo.sh
 ```
 
-You'll see: apply-here, lift-upstream, and block/escalate routes with example fields.
+What to explain:
+- **apply-here**: changes apply directly (e.g., feature flags)
+- **lift-upstream**: changes require upstream input modification (e.g., database)
+- **block-escalate**: changes are blocked by platform policy (e.g., secrets)
 
-**PAUSE.**
+GUI now: No GUI checkpoint — this stage explains concepts via CLI output.
 
-## Stage 5: Try A Mutation
+GUI gap: No visual mutation route badges on fields.
+
+GUI feature ask: Color-coded field ownership indicators. No issue filed yet.
+
+**PAUSE.** Wait for the human.
+
+## Stage 5: "Try A Mutation" (mutates ConfigHub)
 
 ```bash
 cub function do --space inventory-api-prod --unit inventory-api \
@@ -64,29 +121,63 @@ cub mutation list --space inventory-api-prod --json inventory-api | \
   jq '[.[-1] | {mutationNum, description, author: .Author.Email, createdAt: .CreatedAt}]'
 ```
 
-You'll see: mutation stored with audit trail.
+What to explain:
+- The mutation is stored with full audit trail
+- Author email and timestamp are captured
+- This proves the ConfigHub mutation plane works
 
-GUI checkpoint: Open unit → History
+GUI now: Open unit → History tab → see the mutation with author and description.
 
-**PAUSE.**
+GUI gap: No diff view showing exactly what changed.
 
-## Stage 6: Apply To Target
+GUI feature ask: Inline mutation diff viewer. No issue filed yet.
+
+**PAUSE.** Wait for the human.
+
+## Stage 6: "Apply To Target" (mutates target — noop in this example)
 
 ```bash
 cub unit apply --space inventory-api-prod inventory-api
 ```
 
-You'll see: unit applied to noop target (accepts but doesn't deliver).
+What to explain:
+- Unit is applied to the noop target
+- Noop target accepts but doesn't deliver to a real cluster
+- In a real setup, this would update Kubernetes
 
-**PAUSE.**
+GUI now: Unit → Apply status shows "applied" state.
 
-## Stage 7: Cleanup
+GUI gap: No live cluster feedback in this noop example.
+
+GUI feature ask: Apply status with cluster health indicator. No issue filed yet.
+
+**PAUSE.** Wait for the human.
+
+## Stage 7: "Cleanup"
 
 ```bash
 ./cleanup.sh
 ```
 
+This removes all spaces and units created by this demo.
+
+## What Mutates What
+
+| Command | Writes |
+|---------|--------|
+| `./setup.sh --explain` | Nothing |
+| `./setup.sh --explain-json` | Nothing |
+| `./setup.sh` | ConfigHub spaces, units, targets |
+| `cub function do` | Unit mutation |
+| `cub unit apply` | Target apply (noop in this example) |
+| `./cleanup.sh` | Deletes ConfigHub objects |
+
 ## Not Yet Implemented
 
 - `lift upstream` automated PR
 - `block/escalate` server-side enforcement
+
+## Related Files
+
+- [README.md](./README.md)
+- [contracts.md](./contracts.md)

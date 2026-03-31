@@ -2,14 +2,36 @@
 
 Read [`README.md`](./README.md) first. This page explains how to demo it.
 
-## Demo Pacing
+## CRITICAL: Demo Pacing
 
-1. Run one stage at a time
-2. Print full output (do not summarize)
-3. Explain what you see
-4. Ask "Ready to continue?" before proceeding
+When walking a human through this example, pause after every stage.
 
-## Stage 1: Preview
+After each stage:
+1. Run the commands for that stage
+2. Show full output (do not summarize)
+3. Explain what the output means
+4. If there is a GUI checkpoint, print it
+5. Ask "Ready to continue?"
+6. Wait for the human before proceeding
+
+## Suggested Prompt
+
+```text
+Read spring-platform/springboot-platform-app/AI_START_HERE.md and walk me through the demo.
+Pause after every stage. Show full output. Do not continue until I say continue.
+```
+
+## What This Example Teaches
+
+After this demo, the human will understand:
+- The generator model (inputs + policies → operational config)
+- Field-level lineage tracing
+- The three mutation routes: apply-here, lift-upstream, block-escalate
+- How field ownership determines what changes are allowed
+
+No cluster required. Uses ConfigHub-only mode by default.
+
+## Stage 1: "Preview" (read-only)
 
 ```bash
 cd spring-platform/springboot-platform-app
@@ -17,18 +39,31 @@ cd spring-platform/springboot-platform-app
 ./verify.sh
 ```
 
-You'll see: the generator model, input/output paths, and the three mutation routes.
+What to explain:
+- Shows the generator model structure
+- Lists input/output paths
+- Describes the three mutation routes
+- Verify confirms local fixtures are in place
 
-**PAUSE.**
+GUI now: No GUI checkpoint for this stage — preview is CLI-only.
 
-## Stage 2: Generator Transformation
+GUI gap: No web-based generator diagram.
+
+GUI feature ask: Generator lineage visualization. No issue filed yet.
+
+**PAUSE.** Wait for the human.
+
+## Stage 2: "Generator Transformation" (read-only)
 
 ```bash
 ./generator/render.sh --explain
 ./generator/render.sh --trace
 ```
 
-You'll see: how app inputs + platform policies become operational config, field by field.
+What to explain:
+- App inputs + platform policies combine to produce operational config
+- The trace shows field-by-field transformation
+- Each field has a known origin
 
 Then show field lineage:
 
@@ -37,11 +72,19 @@ Then show field lineage:
 ./generator/render.sh --explain-field feature.inventory.reservationMode
 ```
 
-You'll see: `spring.datasource.url` is BLOCKED (platform-injected), `feature.inventory.reservationMode` is MUTABLE (app-owned).
+What to explain:
+- `spring.datasource.url` is BLOCKED (platform-injected)
+- `feature.inventory.reservationMode` is MUTABLE (app-owned)
 
-**PAUSE.**
+GUI now: No GUI checkpoint — lineage is CLI-only for now.
 
-## Stage 3: ConfigHub Setup
+GUI gap: No field ownership badges in the GUI.
+
+GUI feature ask: Color-coded field ownership in unit viewer. No issue filed yet.
+
+**PAUSE.** Wait for the human.
+
+## Stage 3: "ConfigHub Setup" (mutates ConfigHub)
 
 ```bash
 ./confighub-setup.sh --explain
@@ -49,13 +92,20 @@ You'll see: `spring.datasource.url` is BLOCKED (platform-injected), `feature.inv
 ./confighub-verify.sh
 ```
 
-You'll see: 3 spaces created (dev, stage, prod), each with one unit (`inventory-api`).
+What to explain:
+- 3 spaces created (dev, stage, prod)
+- Each has one unit (`inventory-api`)
+- Verify confirms the expected structure
 
-GUI checkpoint: ConfigHub → Spaces → filter `ExampleName=springboot-platform-app`
+GUI now: ConfigHub → Spaces → filter `ExampleName=springboot-platform-app`
 
-**PAUSE.**
+GUI gap: No visual generator lineage from GUI.
 
-## Stage 4: Apply-Here Mutation
+GUI feature ask: Upstream inputs visible from unit view. No issue filed yet.
+
+**PAUSE.** Wait for the human.
+
+## Stage 4: "Apply-Here Mutation" (mutates ConfigHub)
 
 ```bash
 cub function do --space inventory-api-prod --unit inventory-api \
@@ -66,13 +116,19 @@ cub mutation list --space inventory-api-prod --json inventory-api | \
   jq '[.[-1] | {mutationNum, description, author: .Author.Email, createdAt: .CreatedAt}]'
 ```
 
-You'll see: the mutation stored with full audit trail.
+What to explain:
+- The mutation is stored with full audit trail
+- Apply-here works because the field is app-owned
 
-GUI checkpoint: Open unit → History
+GUI now: Open unit → History tab → see the mutation.
 
-**PAUSE.**
+GUI gap: No indication that this field was apply-here vs another route.
 
-## Stage 5: Lift-Upstream Bundle
+GUI feature ask: Route badge on mutation history entries. No issue filed yet.
+
+**PAUSE.** Wait for the human.
+
+## Stage 5: "Lift-Upstream Bundle" (read-only)
 
 ```bash
 ./generator/render.sh --explain-field spring.cache.type
@@ -80,11 +136,20 @@ GUI checkpoint: Open unit → History
 ./lift-upstream.sh --render-diff
 ```
 
-You'll see: the Redis cache bundle showing exact changes needed in upstream inputs.
+What to explain:
+- Shows the Redis cache bundle
+- Demonstrates what upstream changes would be needed
+- The diff shows exact input modifications required
 
-**PAUSE.**
+GUI now: No GUI checkpoint — lift-upstream is CLI-only.
 
-## Stage 6: Block/Escalate Boundary
+GUI gap: No lift-upstream proposal workflow in GUI.
+
+GUI feature ask: Upstream change proposal wizard. No issue filed yet.
+
+**PAUSE.** Wait for the human.
+
+## Stage 6: "Block/Escalate Boundary" (read-only)
 
 ```bash
 ./generator/render.sh --explain-field spring.datasource.url
@@ -92,15 +157,26 @@ You'll see: the Redis cache bundle showing exact changes needed in upstream inpu
 ./block-escalate.sh --render-attempt
 ```
 
-You'll see: the boundary documentation. Server-side enforcement is not yet implemented.
+What to explain:
+- Shows the boundary documentation
+- Platform-owned fields cannot be mutated directly
+- Server-side enforcement is not yet implemented
 
-**PAUSE.**
+GUI now: No GUI checkpoint — boundary documentation is CLI-only.
 
-## Stage 7: Cleanup
+GUI gap: No visual indication of blocked fields.
+
+GUI feature ask: Red "blocked" badge on platform-owned fields. No issue filed yet.
+
+**PAUSE.** Wait for the human.
+
+## Stage 7: "Cleanup"
 
 ```bash
 ./confighub-cleanup.sh
 ```
+
+This removes all spaces and units created by this demo.
 
 ## Optional: Real Kubernetes
 
@@ -115,7 +191,23 @@ export KUBECONFIG=var/springboot-platform.kubeconfig WORKER_SPACE=springboot-inf
 ./bin/teardown
 ```
 
+## What Mutates What
+
+| Command | Writes |
+|---------|--------|
+| `./setup.sh --explain` | Nothing |
+| `./generator/render.sh --explain` | Nothing |
+| `./confighub-setup.sh --explain` | Nothing |
+| `./confighub-setup.sh` | ConfigHub spaces, units |
+| `cub function do` | Unit mutation |
+| `./confighub-cleanup.sh` | Deletes ConfigHub objects |
+
 ## Not Yet Implemented
 
 - `lift upstream` automated PR
 - `block/escalate` server-side enforcement
+
+## Related Files
+
+- [README.md](./README.md)
+- [contracts.md](./contracts.md)

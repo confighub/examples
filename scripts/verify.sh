@@ -82,10 +82,16 @@ done
 
 # ==================== AI Guide Standard Checks ====================
 #
-# These checks verify that important runnable incubator examples follow
-# the AI-first demo pacing standard. Keep the exemption list small.
+# These checks verify that important examples follow the AI-first demo
+# pacing standard. Incubator examples require contracts.md and --explain
+# support. Stable examples have lighter requirements.
 
 ai_guide_examples=(
+  # stable examples
+  "${repo_root}/spring-platform/springboot-platform-app-centric"
+  "${repo_root}/spring-platform/springboot-platform-app"
+  "${repo_root}/campaigns-demo"
+  "${repo_root}/promotion-demo-data"
   # global-app-layer examples
   "${repo_root}/incubator/global-app-layer/single-component"
   "${repo_root}/incubator/global-app-layer/frontend-postgres"
@@ -122,6 +128,14 @@ ai_guide_examples=(
 # Examples intentionally exempt from contracts.md requirement
 exempt_from_contracts=(
   "${repo_root}/incubator/watch-webhook"  # lightweight event example
+  "${repo_root}/campaigns-demo"           # stable demo data
+  "${repo_root}/promotion-demo-data"      # stable demo data
+)
+
+# Examples exempt from setup.sh --explain requirement
+exempt_from_explain=(
+  "${repo_root}/campaigns-demo"           # stable demo data
+  "${repo_root}/promotion-demo-data"      # stable demo data
 )
 
 for example_dir in "${ai_guide_examples[@]}"; do
@@ -154,8 +168,15 @@ for example_dir in "${ai_guide_examples[@]}"; do
     exit 1
   fi
 
-  # Check setup.sh supports --explain
-  if [[ -f "${example_dir}/setup.sh" ]]; then
+  # Check setup.sh supports --explain (unless exempt)
+  is_explain_exempt=false
+  for exempt in "${exempt_from_explain[@]}"; do
+    if [[ "${example_dir}" == "${exempt}" ]]; then
+      is_explain_exempt=true
+      break
+    fi
+  done
+  if [[ "${is_explain_exempt}" == "false" && -f "${example_dir}/setup.sh" ]]; then
     if ! grep -q '\-\-explain' "${example_dir}/setup.sh"; then
       echo "FAIL: ${example_name}/setup.sh does not support --explain" >&2
       exit 1
