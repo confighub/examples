@@ -86,19 +86,42 @@ done
 # the AI-first demo pacing standard. Keep the exemption list small.
 
 ai_guide_examples=(
+  # global-app-layer examples
   "${repo_root}/incubator/global-app-layer/single-component"
   "${repo_root}/incubator/global-app-layer/frontend-postgres"
   "${repo_root}/incubator/global-app-layer/realistic-app"
   "${repo_root}/incubator/global-app-layer/gpu-eks-h100-training"
+  "${repo_root}/incubator/global-app-layer/bundle-evidence-sample"
+  # gitops import examples
   "${repo_root}/incubator/gitops-import-argo"
   "${repo_root}/incubator/gitops-import-flux"
+  # mutation examples
   "${repo_root}/incubator/platform-write-api"
+  # apptique examples
+  "${repo_root}/incubator/apptique-argo-app-of-apps"
+  "${repo_root}/incubator/apptique-argo-applicationset"
+  "${repo_root}/incubator/apptique-flux-monorepo"
+  # discovery and evidence examples
+  "${repo_root}/incubator/artifact-workflow"
+  "${repo_root}/incubator/combined-git-live"
+  "${repo_root}/incubator/connect-and-compare"
+  "${repo_root}/incubator/connected-summary-storage"
+  "${repo_root}/incubator/custom-ownership-detectors"
+  "${repo_root}/incubator/demo-data-adt"
+  "${repo_root}/incubator/fleet-import"
+  "${repo_root}/incubator/flux-boutique"
+  "${repo_root}/incubator/graph-export"
+  "${repo_root}/incubator/import-from-bundle"
+  "${repo_root}/incubator/import-from-live"
+  "${repo_root}/incubator/lifecycle-hazards"
+  "${repo_root}/incubator/orphans"
+  "${repo_root}/incubator/platform-example"
   "${repo_root}/incubator/watch-webhook"
 )
 
-# Examples intentionally exempt from full standard (lighter examples)
+# Examples intentionally exempt from contracts.md requirement
 exempt_from_contracts=(
-  "${repo_root}/incubator/watch-webhook"
+  "${repo_root}/incubator/watch-webhook"  # lightweight event example
 )
 
 for example_dir in "${ai_guide_examples[@]}"; do

@@ -31,7 +31,7 @@ It creates a small local `kind` cluster with mixed Argo, Helm, and native owners
 
 It does not mutate ConfigHub by default.
 
-## Stage 1: Preview The Plan (read-only)
+## Stage 1: "Preview The Plan" (read-only)
 
 ```bash
 cd incubator/import-from-live
@@ -41,13 +41,15 @@ cd incubator/import-from-live
 
 These commands do not mutate ConfigHub and do not mutate live infrastructure.
 
-GUI checkpoint:
+GUI now: No GUI checkpoint — this stage is CLI-only preview.
 
-- none yet; this stage is CLI-only preview
+GUI gap: No visual preview of import plan.
 
-Pause after this stage.
+GUI feature ask: Import plan preview in ConfigHub. No issue filed yet.
 
-## Stage 2: Build The Brownfield Cluster (mutates live infrastructure)
+**PAUSE.** Wait for the human.
+
+## Stage 2: "Build The Brownfield Cluster" (mutates live infrastructure)
 
 ```bash
 ./setup.sh
@@ -64,13 +66,15 @@ What you should see after:
 - Helm and native fixtures in the cluster
 - `sample-output/suggestion.json`
 
-GUI checkpoint:
+GUI now: No GUI checkpoint — this example is about cluster-side evidence and dry-run output.
 
-- none by default; this example is about cluster-side evidence and dry-run output rather than a GUI walkthrough
+GUI gap: No brownfield discovery preview in ConfigHub.
 
-Pause after this stage.
+GUI feature ask: Live cluster discovery wizard. No issue filed yet.
 
-## Stage 3: Verify The Cluster And Dry-Run Proposal (read-only)
+**PAUSE.** Wait for the human.
+
+## Stage 3: "Verify The Cluster And Dry-Run Proposal" (read-only)
 
 ```bash
 ./verify.sh
@@ -91,11 +95,13 @@ What this does not prove:
 
 - no ConfigHub mutation has happened yet
 
-GUI checkpoint:
+GUI now: No GUI checkpoint yet — if human imports for real, next stop is ConfigHub space/unit list.
 
-- if the human later chooses to import for real, the next GUI stop would be the ConfigHub space and unit list for the imported proposal
+GUI gap: No dry-run proposal preview in GUI.
 
-Pause after this stage.
+GUI feature ask: Import proposal review page before committing. No issue filed yet.
+
+**PAUSE.** Wait for the human.
 
 ## Stage 4: Optional Real Import (mutates ConfigHub)
 

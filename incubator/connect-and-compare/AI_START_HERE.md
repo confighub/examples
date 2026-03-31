@@ -33,7 +33,7 @@ Use it when the human wants to show:
 - history output
 - no live cluster requirement
 
-## Stage 1: Preview The Plan (read-only)
+## Stage 1: "Preview The Plan" (read-only)
 
 ```bash
 cd incubator/connect-and-compare
@@ -47,13 +47,15 @@ What this does not mutate:
 - live infrastructure
 - any shared local state beyond reading fixtures
 
-GUI checkpoint:
+GUI now: No GUI checkpoint — this is a local-only example.
 
-- none for this local-only example
+GUI gap: No ConfigHub integration for fixture-based evidence.
 
-Pause after this stage.
+GUI feature ask: Fixture upload and comparison in ConfigHub. No issue filed yet.
 
-## Stage 2: Generate The Sample Evidence (local write only)
+**PAUSE.** Wait for the human.
+
+## Stage 2: "Generate The Sample Evidence" (local write only)
 
 ```bash
 ./setup.sh
@@ -69,13 +71,15 @@ What you should see after:
 - `sample-output/03-compare.json`
 - `sample-output/04-history.txt`
 
-GUI checkpoint:
+GUI now: No GUI checkpoint — this is a local-only example.
 
-- none for this local-only example
+GUI gap: No visual comparison viewer for local evidence.
 
-Pause after this stage.
+GUI feature ask: Evidence comparison dashboard. No issue filed yet.
 
-## Stage 3: Verify The Evidence (read-only against local output)
+**PAUSE.** Wait for the human.
+
+## Stage 3: "Verify The Evidence" (read-only)
 
 ```bash
 ./verify.sh
@@ -96,11 +100,13 @@ What this does not prove:
 - no ConfigHub mutation
 - no live cluster state
 
-GUI checkpoint:
+GUI now: No GUI checkpoint — this is a local-only example.
 
-- none for this local-only example
+GUI gap: No history viewer for review trails.
 
-Pause after this stage.
+GUI feature ask: Review trail viewer in ConfigHub. No issue filed yet.
+
+**PAUSE.** Wait for the human.
 
 ## Stage 4: Cleanup (local only)
 
