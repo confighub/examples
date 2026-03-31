@@ -56,7 +56,7 @@ Suggested sections:
 
 This is the critical file. Copy and adapt this structure:
 
-```md
+````md
 # AI Start Here: <Example Name>
 
 ## CRITICAL: Demo Pacing
@@ -81,7 +81,7 @@ Pause after every stage. Show full output.
 For each stage, tell me what the GUI shows today, what it does not show yet, and the feature ask.
 Give me time to click through the GUI before continuing.
 Do not continue until I say continue.
-`` `
+```
 
 ## What This Example Teaches
 
@@ -100,9 +100,9 @@ Do not continue until I say continue.
 
 Run:
 
-`` `bash
+```bash
 <command>
-`` `
+```
 
 What to explain:
 
@@ -124,9 +124,9 @@ Ask: "<Confirmation question about what will be created/changed>"
 
 Run:
 
-`` `bash
+```bash
 <command>
-`` `
+```
 
 What to explain:
 
@@ -152,9 +152,9 @@ GUI feature ask: <feature request with issue number if known>
 
 Run:
 
-`` `bash
+```bash
 ./cleanup.sh
-`` `
+```
 
 This removes all objects created by the demo.
 
@@ -174,7 +174,7 @@ This removes all objects created by the demo.
 - [README.md](./README.md)
 - [contracts.md](./contracts.md)
 - [prompts.md](./prompts.md)
-```
+````
 
 **Important notes for authors:**
 
