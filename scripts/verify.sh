@@ -80,4 +80,101 @@ for bundle_root in "${bundle_roots[@]}"; do
   done < <(find "${bundle_root}" -mindepth 1 -maxdepth 1 -type d | sort)
 done
 
+# ==================== AI Guide Standard Checks ====================
+#
+# These checks verify that important runnable incubator examples follow
+# the AI-first demo pacing standard. Keep the exemption list small.
+
+ai_guide_examples=(
+  "${repo_root}/incubator/global-app-layer/single-component"
+  "${repo_root}/incubator/global-app-layer/frontend-postgres"
+  "${repo_root}/incubator/global-app-layer/realistic-app"
+  "${repo_root}/incubator/global-app-layer/gpu-eks-h100-training"
+  "${repo_root}/incubator/gitops-import-argo"
+  "${repo_root}/incubator/gitops-import-flux"
+  "${repo_root}/incubator/platform-write-api"
+  "${repo_root}/incubator/watch-webhook"
+)
+
+# Examples intentionally exempt from full standard (lighter examples)
+exempt_from_contracts=(
+  "${repo_root}/incubator/watch-webhook"
+)
+
+for example_dir in "${ai_guide_examples[@]}"; do
+  example_name="${example_dir##*/}"
+  echo "==> Checking AI guide standard: ${example_name}"
+
+  # Check README.md exists
+  if [[ ! -f "${example_dir}/README.md" ]]; then
+    echo "FAIL: ${example_name} missing README.md" >&2
+    exit 1
+  fi
+
+  # Check AI_START_HERE.md exists
+  ai_guide="${example_dir}/AI_START_HERE.md"
+  if [[ ! -f "${ai_guide}" ]]; then
+    echo "FAIL: ${example_name} missing AI_START_HERE.md" >&2
+    exit 1
+  fi
+
+  # Check contracts.md exists (unless exempt)
+  is_exempt=false
+  for exempt in "${exempt_from_contracts[@]}"; do
+    if [[ "${example_dir}" == "${exempt}" ]]; then
+      is_exempt=true
+      break
+    fi
+  done
+  if [[ "${is_exempt}" == "false" && ! -f "${example_dir}/contracts.md" ]]; then
+    echo "FAIL: ${example_name} missing contracts.md" >&2
+    exit 1
+  fi
+
+  # Check setup.sh supports --explain
+  if [[ -f "${example_dir}/setup.sh" ]]; then
+    if ! grep -q '\-\-explain' "${example_dir}/setup.sh"; then
+      echo "FAIL: ${example_name}/setup.sh does not support --explain" >&2
+      exit 1
+    fi
+    # Check setup.sh supports --explain-json
+    if ! grep -q '\-\-explain-json' "${example_dir}/setup.sh"; then
+      echo "FAIL: ${example_name}/setup.sh does not support --explain-json" >&2
+      exit 1
+    fi
+  fi
+
+  # Check AI guide contains ## CRITICAL: Demo Pacing (case-insensitive)
+  if ! grep -qi '## CRITICAL.*Demo.*Pacing' "${ai_guide}"; then
+    echo "FAIL: ${example_name}/AI_START_HERE.md missing '## CRITICAL: Demo Pacing'" >&2
+    exit 1
+  fi
+
+  # Check AI guide contains ## Suggested Prompt
+  if ! grep -qi '## Suggested Prompt' "${ai_guide}"; then
+    echo "FAIL: ${example_name}/AI_START_HERE.md missing '## Suggested Prompt'" >&2
+    exit 1
+  fi
+
+  # Check AI guide contains at least one Stage heading
+  if ! grep -qE '## Stage [0-9]|### Stage [0-9]' "${ai_guide}"; then
+    echo "FAIL: ${example_name}/AI_START_HERE.md missing Stage headings" >&2
+    exit 1
+  fi
+
+  # Check AI guide contains GUI gap:
+  if ! grep -q 'GUI gap:' "${ai_guide}"; then
+    echo "FAIL: ${example_name}/AI_START_HERE.md missing 'GUI gap:'" >&2
+    exit 1
+  fi
+
+  # Check AI guide contains GUI feature ask: (or GUI ask:)
+  if ! grep -qE 'GUI (feature )?ask:' "${ai_guide}"; then
+    echo "FAIL: ${example_name}/AI_START_HERE.md missing 'GUI feature ask:' or 'GUI ask:'" >&2
+    exit 1
+  fi
+
+  echo "    PASS: ${example_name}"
+done
+
 echo "All example checks passed."

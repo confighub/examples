@@ -1,22 +1,50 @@
-# AI Start Here
+# AI Start Here: platform-example
 
-Use this page when you want to drive `platform-example` safely with an AI assistant.
+## CRITICAL: Demo Pacing
 
-## What This Example Is For
+When walking a human through this example, you MUST pause after every stage.
 
-This example is for a realistic mixed cluster:
+After each stage:
+1. Run the command(s) for that stage
+2. Show the output faithfully on screen
+3. Explain what the output means in plain English
+4. STOP and ask "Ready to continue?"
+5. Only proceed when the human says to continue
 
+## Suggested Prompt
+
+```text
+Read incubator/platform-example/AI_START_HERE.md and walk me through the demo.
+Pause after every stage. Show full output.
+Do not continue until I say continue.
+```
+
+## What This Example Teaches
+
+This is a realistic mixed cluster example:
 - Flux-managed platform resources
-- unmanaged orphan resources next to them
-- one representative Flux trace
+- Unmanaged orphan resources next to them
+- Representative Flux trace
 
-It creates a local `kind` cluster, installs Flux, applies a copied podinfo GitRepository and Kustomization, applies copied orphan fixtures, and captures ownership evidence with `cub-scout`.
+After the demo, the human will understand:
+- How managed and unmanaged resources coexist
+- How `cub-scout` distinguishes ownership
+- Trace through Flux ownership chain
 
-It does not mutate ConfigHub.
+This example does NOT mutate ConfigHub.
 
-## Read-Only First
+## Prerequisites
 
-Start here:
+- `kind` for local cluster
+- `kubectl` in PATH
+- `flux` CLI (optional)
+- `cub-scout` in PATH
+
+---
+
+## Stage 1: "Preview The Plan" (read-only)
+
+Run:
 
 ```bash
 cd incubator/platform-example
@@ -24,38 +52,87 @@ cd incubator/platform-example
 ./setup.sh --explain-json | jq
 ```
 
-These commands do not mutate ConfigHub and do not mutate live infrastructure.
+What to explain:
 
-## Recommended Path
+- Creates a local kind cluster
+- Installs Flux
+- Applies podinfo and orphan fixtures
+
+GUI now: No GUI checkpoint for this stage — this is CLI-only preview.
+
+GUI gap: No visual preview of mixed ownership topology.
+
+GUI feature ask: Mixed cluster topology preview. No issue filed yet.
+
+**PAUSE.** Wait for the human.
+
+---
+
+## Stage 2: "Build The Environment" (mutates live infrastructure)
+
+Run:
 
 ```bash
 ./setup.sh
-./verify.sh
 ```
 
-## Important Boundaries
+What to explain:
 
-- `./setup.sh --explain` is read-only
-- `./setup.sh` mutates live infrastructure and writes local sample output
-- `./verify.sh` is read-only with respect to ConfigHub and live infrastructure
-- `./cleanup.sh` deletes the local `kind` cluster, local kubeconfig, and local sample output
-- this example never writes ConfigHub state
+- Creates local kind cluster
+- Installs Flux with GitRepository and Kustomization
+- Applies orphan fixtures alongside managed resources
+- Captures ownership evidence
 
-## What To Verify
+GUI now: No GUI checkpoint — this is local cluster evidence.
+
+GUI gap: No ConfigHub view of mixed ownership.
+
+GUI feature ask: Mixed ownership dashboard in ConfigHub. No issue filed yet.
+
+**PAUSE.** Wait for the human.
+
+---
+
+## Stage 3: "Verify The Results" (read-only)
+
+Run:
 
 ```bash
+export KUBECONFIG=$PWD/var/platform-example.kubeconfig
 cat sample-output/flux-status.txt
 jq '.[] | select(.owner == "Flux") | {namespace, kind, name}' sample-output/map-list.json
 jq '.[] | select(.owner == "Native") | {namespace, kind, name}' sample-output/orphans.json
 jq '{target, summary}' sample-output/trace-podinfo.json
 ```
 
-Use the evidence like this:
+What to explain:
 
-- `flux get all -A` proves the GitOps controllers and source objects are present
-- `map list --json` proves Flux-managed and Native resources coexist in the same cluster
-- `map orphans --json` proves the unmanaged fixtures are still visible as explicit risk
-- `trace` proves a representative GitOps workload can still be traced back to source
+- `flux get all -A` proves GitOps controllers and sources are present
+- `map list --json` proves Flux-managed and Native resources coexist
+- `map orphans --json` proves unmanaged fixtures are visible as explicit risk
+- `trace` proves GitOps workload can be traced back to source
+
+GUI now: No GUI checkpoint — this is local evidence.
+
+GUI gap: No unified managed/unmanaged view.
+
+GUI feature ask: Ownership contrast view in ConfigHub. No issue filed yet.
+
+**PAUSE.** Wait for the human.
+
+---
+
+## Stage 4: "Cleanup"
+
+Run:
+
+```bash
+./cleanup.sh
+```
+
+This deletes the local kind cluster, local kubeconfig, and local sample output.
+
+---
 
 ## Related Files
 

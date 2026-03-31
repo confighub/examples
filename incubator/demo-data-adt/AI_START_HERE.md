@@ -1,16 +1,46 @@
-# AI Start Here
+# AI Start Here: demo-data-adt
 
-Use this page when you want to drive `demo-data-adt` safely with an AI assistant.
+## CRITICAL: Demo Pacing
 
-## What This Example Is For
+When walking a human through this example, you MUST pause after every stage.
 
-This is a scan-first App-Deployment-Target example.
+After each stage:
+1. Run the command(s) for that stage
+2. Show the output faithfully on screen
+3. Explain what the output means in plain English
+4. STOP and ask "Ready to continue?"
+5. Only proceed when the human says to continue
 
-It is useful when the human wants immediate risk findings on labeled workload fixtures without needing a cluster.
+## Suggested Prompt
 
-## Read-Only First
+```text
+Read incubator/demo-data-adt/AI_START_HERE.md and walk me through the demo.
+Pause after every stage. Show full output.
+Do not continue until I say continue.
+```
 
-Start here:
+## What This Example Teaches
+
+This is a scan-first App-Deployment-Target example. No cluster required.
+
+After the demo, the human will understand:
+- Immediate risk findings on labeled workload fixtures
+- ADT (App-Deployment-Target) model
+- Static scanning without live infrastructure
+
+This example does NOT mutate ConfigHub.
+This example does NOT require a live cluster.
+
+## Prerequisites
+
+- `cub-scout` in PATH
+- `jq` for JSON inspection
+
+---
+
+## Stage 1: "Preview The Plan" (read-only)
+
+Run:
 
 ```bash
 cd incubator/demo-data-adt
@@ -18,26 +48,48 @@ cd incubator/demo-data-adt
 ./setup.sh --explain-json | jq
 ```
 
-These commands do not mutate ConfigHub and do not mutate live infrastructure.
+What to explain:
 
-## Recommended Path
+- Scans fixture manifests from local files
+- No cluster needed
+- Outputs to `sample-output/`
+
+GUI now: No GUI checkpoint for this stage — this is CLI-only preview.
+
+GUI gap: No visual preview of scan targets.
+
+GUI feature ask: Scan preview showing target files. No issue filed yet.
+
+**PAUSE.** Wait for the human.
+
+---
+
+## Stage 2: "Run The Scan" (local files only)
+
+Run:
 
 ```bash
 ./setup.sh
-./verify.sh
 ```
 
-## Important Boundaries
+What to explain:
 
-- `./setup.sh --explain` is read-only
-- `./setup.sh` writes local output only
-- `./verify.sh` is read-only with respect to ConfigHub and live infrastructure
-- `./cleanup.sh` removes local sample output only
+- Scans fixtures and writes results to `sample-output/`
+- No cluster or ConfigHub mutation
 
-This example does not require a live cluster.
-It does require `cub-scout`.
+GUI now: No GUI checkpoint — this is file-based scanning.
 
-## What To Verify
+GUI gap: No ConfigHub integration for file-based scans.
+
+GUI feature ask: File-based scan upload to ConfigHub. No issue filed yet.
+
+**PAUSE.** Wait for the human.
+
+---
+
+## Stage 3: "Verify The Results" (read-only)
+
+Run:
 
 ```bash
 jq '.static.findings' sample-output/dev-eshop.scan.json
@@ -45,11 +97,33 @@ jq '.static.findings' sample-output/prod-eshop.scan.json
 jq '.static.findings' sample-output/prod-website.scan.json
 ```
 
-Use the evidence like this:
+What to explain:
 
 - `dev-eshop` proves immediate warnings exist
 - `prod-eshop` proves the clean case
-- `prod-website` proves the same issue can show up in a different app and owner path
+- `prod-website` proves same issue can appear in different app/owner paths
+
+GUI now: No GUI checkpoint — this is local evidence.
+
+GUI gap: No visual findings dashboard for file-based scans.
+
+GUI feature ask: Findings viewer in ConfigHub. No issue filed yet.
+
+**PAUSE.** Wait for the human.
+
+---
+
+## Stage 4: "Cleanup"
+
+Run:
+
+```bash
+./cleanup.sh
+```
+
+This removes local sample output only.
+
+---
 
 ## Related Files
 

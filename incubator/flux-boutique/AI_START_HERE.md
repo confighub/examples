@@ -1,18 +1,47 @@
-# AI Start Here
+# AI Start Here: flux-boutique
 
-Use this page when you want to drive `flux-boutique` safely with an AI assistant.
+## CRITICAL: Demo Pacing
 
-## What This Example Is For
+When walking a human through this example, you MUST pause after every stage.
 
-This example is for a live Flux fan-out pattern: one GitRepository, many Kustomizations, many services.
+After each stage:
+1. Run the command(s) for that stage
+2. Show the output faithfully on screen
+3. Explain what the output means in plain English
+4. STOP and ask "Ready to continue?"
+5. Only proceed when the human says to continue
 
-It creates a local `kind` cluster, installs Flux, applies a copied fixture, and captures ownership evidence with `cub-scout`.
+## Suggested Prompt
 
-It does not mutate ConfigHub.
+```text
+Read incubator/flux-boutique/AI_START_HERE.md and walk me through the demo.
+Pause after every stage. Show full output.
+Do not continue until I say continue.
+```
 
-## Read-Only First
+## What This Example Teaches
 
-Start here:
+This is a live Flux fan-out pattern: one GitRepository, many Kustomizations, many services.
+
+After the demo, the human will understand:
+- Flux ownership attribution for microservices
+- `cub-scout trace` through Flux ownership chain
+- Fan-out pattern with shared Git source
+
+This example does NOT mutate ConfigHub.
+
+## Prerequisites
+
+- `kind` for local cluster
+- `kubectl` in PATH
+- `flux` CLI (optional)
+- `cub-scout` in PATH
+
+---
+
+## Stage 1: "Preview The Plan" (read-only)
+
+Run:
 
 ```bash
 cd incubator/flux-boutique
@@ -20,38 +49,86 @@ cd incubator/flux-boutique
 ./setup.sh --explain-json | jq
 ```
 
-These commands do not mutate ConfigHub and do not mutate live infrastructure.
+What to explain:
 
-## Recommended Path
+- Creates a local kind cluster
+- Installs Flux
+- Applies boutique fixtures
+
+GUI now: No GUI checkpoint for this stage — this is CLI-only preview.
+
+GUI gap: No visual preview of Flux fan-out topology.
+
+GUI feature ask: Flux source fan-out visualizer. No issue filed yet.
+
+**PAUSE.** Wait for the human.
+
+---
+
+## Stage 2: "Build The Environment" (mutates live infrastructure)
+
+Run:
 
 ```bash
 ./setup.sh
-./verify.sh
 ```
 
-## Important Boundaries
+What to explain:
 
-- `./setup.sh --explain` is read-only
-- `./setup.sh` mutates live infrastructure and writes local sample output
-- `./verify.sh` is read-only with respect to ConfigHub and live infrastructure
-- `./cleanup.sh` deletes the local `kind` cluster and local sample output
-- this example never writes ConfigHub state
+- Creates local kind cluster
+- Installs Flux
+- Applies boutique microservices via Kustomization
+- Captures ownership evidence
 
-## What To Verify
+GUI now: No GUI checkpoint — this is local cluster evidence.
+
+GUI gap: No ConfigHub view of Flux topology.
+
+GUI feature ask: Flux topology import in ConfigHub. No issue filed yet.
+
+**PAUSE.** Wait for the human.
+
+---
+
+## Stage 3: "Verify The Results" (read-only)
+
+Run:
 
 ```bash
+export KUBECONFIG=$PWD/var/flux-boutique.kubeconfig
 kubectl get deploy -n boutique
 jq '.[] | select(.namespace == "boutique") | {kind, name, owner}' sample-output/map-list.json
 jq '{target, summary}' sample-output/trace-payment.json
 ```
 
-Use the evidence like this:
+What to explain:
 
-- `kubectl` proves the microservice workloads exist
-- `map list --json` proves the services are seen as Flux-managed
-- `trace` proves a representative service can be traced back through Flux ownership
+- `kubectl` proves microservice workloads exist
+- `map list --json` proves services are seen as Flux-managed
+- `trace` proves representative service traces back through Flux ownership
+- Note: Deployments may briefly be `NotReady` while images pull; ownership attribution is already correct
 
-Do not overclaim workload health from the first capture alone. The boutique Deployments can still be `NotReady` briefly while images are pulling, even when Flux reconciliation and ownership attribution are already correct.
+GUI now: No GUI checkpoint — this is local evidence.
+
+GUI gap: No Flux ownership chain visualization.
+
+GUI feature ask: Flux provenance chain viewer in ConfigHub. No issue filed yet.
+
+**PAUSE.** Wait for the human.
+
+---
+
+## Stage 4: "Cleanup"
+
+Run:
+
+```bash
+./cleanup.sh
+```
+
+This deletes the local kind cluster and local sample output.
+
+---
 
 ## Related Files
 

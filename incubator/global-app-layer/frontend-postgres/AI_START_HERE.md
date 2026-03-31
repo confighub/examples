@@ -1,173 +1,228 @@
-# AI Start Here
+# AI Start Here: frontend-postgres
 
-Use this page when you want to drive `frontend-postgres` safely with an AI assistant.
+## CRITICAL: Demo Pacing
 
-## What This Example Is For
+When walking a human through this example, you MUST pause after every stage.
 
-This example demonstrates a layered small app recipe in ConfigHub with:
-- `frontend`
-- `postgres`
-- one deploy-time `backend-stub`
+After each stage:
+1. Run the command(s) for that stage
+2. Show the output faithfully on screen
+3. Explain what the output means in plain English
+4. If there is a GUI URL, print it
+5. STOP and ask "Ready to continue?"
+6. Only proceed when the human says to continue
 
-It is the clearest two-component example in `global-app-layer`.
+## Suggested Prompt
 
-## WET-First, Not Live-First
-
-This example starts by materializing intended state in ConfigHub.
-
-The normal path is:
-1. preview with `./setup.sh --explain`
-2. materialize with `./setup.sh`
-3. verify with `./verify.sh`
-4. optionally bind a target
-5. optionally apply live
-
-So `setup.sh` is ConfigHub-first, not cluster-first.
-
-## What You Need Installed
-
-- `cub` in `PATH`
-- an authenticated ConfigHub CLI context for any mutating step
-- `jq` for the JSON preview path
-- optional: a live target only if you want to bind and apply
-
-## Capability Check
-
-Check capability before mutating anything:
-
-```bash
-which cub
-cub version
-cub context list --json | jq
-cub target list --space "*" --json | jq
+```text
+Read incubator/global-app-layer/frontend-postgres/AI_START_HERE.md and walk me through the demo.
+Pause after every stage. Show full output. Give GUI links where possible.
+Do not continue until I say continue.
 ```
 
-Use this rule:
-- if `cub` is missing or auth is unavailable, stop at preview mode
-- if auth works but there is no relevant target, use ConfigHub-only mode
-- only use the live path when a real target exists
+## What This Example Teaches
 
-## Safe First Steps
+This is a two-component layered recipe: `frontend` + `postgres` with a `backend-stub`. After the demo, the human will understand:
 
-Start read-only:
+- Multi-component recipes in ConfigHub
+- Deploy-time stubs as ConfigHub units
+- Layered variant chains for small apps
+
+## Prerequisites
+
+- `cub` in PATH
+- `jq` for JSON preview
+- Authenticated ConfigHub CLI context for mutating steps
+- Optional: live target for delivery proof
+
+---
+
+## Stage 1: "Check Capabilities" (read-only)
+
+Run:
 
 ```bash
 cd incubator/global-app-layer/frontend-postgres
+which cub
+cub version
+cub context list --json | jq
+cub target list --space "*" --json | jq '.[] | {space: .Space.Slug, target: .Target.Slug}'
+```
+
+What to explain:
+
+- If `cub` is missing or auth fails, stay in preview mode
+- If auth works but no target exists, use ConfigHub-only mode
+
+GUI now: No GUI checkpoint for this stage — this is CLI-only.
+
+GUI gap: No dashboard showing auth status and targets at a glance.
+
+GUI feature ask: Auth status widget on landing page. No issue filed yet.
+
+**PAUSE.** Wait for the human.
+
+---
+
+## Stage 2: "Preview The Recipe" (read-only)
+
+Run:
+
+```bash
 ./setup.sh --explain
 ./setup.sh --explain-json | jq
 ```
 
-These do not mutate ConfigHub or a cluster.
+What to explain:
 
-After `./setup.sh`, use:
-- the printed clickable GUI URLs
-- `.logs/setup.latest.log`
-- `.logs/set-target.latest.log`
-- `.logs/verify.latest.log`
+- Five spaces will be created (base → region → role → recipe → deploy)
+- Two layered chains (frontend, postgres) plus one deploy-time backend-stub
+- Nothing mutates yet
 
-instead of relying on terminal scrollback alone.
+GUI now: No GUI checkpoint for this stage.
 
-## Ready For A Fresh Run
+GUI gap: No visual recipe preview before materialization.
 
-```bash
-./setup.sh                              # ConfigHub-only
-./setup.sh <prefix> <space/target>     # with live target
-./verify.sh
-```
+GUI feature ask: "Preview Recipe" button that shows planned spaces/units. No issue filed yet.
 
-If you start ConfigHub-only and later want the live path:
+**PAUSE.** Wait for the human.
 
-```bash
-./set-target.sh <space/target>
-```
+---
 
-Then approve and apply the deployment units explicitly.
+## Stage 3: "Materialize In ConfigHub" (mutates ConfigHub)
 
-## Capability Branching
+Ask: "This will create 5 spaces, multiple units, and the recipe manifest. Ready to proceed?"
 
-### A. Docs / preview only
-
-Use the explain modes only. This is also the right stop point if auth is missing.
-
-### B. ConfigHub-only mode
-
-Use:
+Run:
 
 ```bash
 ./setup.sh
-./verify.sh
 ```
 
-This writes spaces, units, links, the recipe manifest, and the deploy-time stub into ConfigHub, but does not deploy anything live.
+What to explain:
 
-### C. Live target mode
+- Spaces and units are now in ConfigHub
+- The printed GUI URLs are clickable
+- Output goes to `.logs/setup.latest.log`
 
-Use:
+GUI now: Open the printed URLs. You should see:
+- Recipe space with `recipe-us-staging-app` unit
+- Deploy space with `frontend-cluster-a`, `postgres-cluster-a`, `backend-stub-cluster-a` units
+
+GUI gap: No visual diff between "before setup" and "after setup".
+
+GUI feature ask: Space creation wizard with before/after comparison. No issue filed yet.
+
+**PAUSE.** Wait for the human.
+
+---
+
+## Stage 4: "Verify The Structure" (read-only)
+
+Run:
 
 ```bash
-./setup.sh <prefix> <space/target>
 ./verify.sh
 ```
 
-Then approve and apply the deployment units explicitly.
+What to explain:
 
-## Verification Modes
+- Verifies all spaces, units, and links exist
+- Verifies the recipe manifest contains correct provenance
+- Output goes to `.logs/verify.latest.log`
 
-- Preview only:
-  - `./setup.sh --explain`
-  - `./setup.sh --explain-json | jq`
-- ConfigHub-only:
-  - `./setup.sh`
-  - `./verify.sh`
-- Live target:
-  - `./setup.sh <prefix> <space/target>`
-  - `./verify.sh`
-  - explicit `cub unit apply ...`
+GUI now: Compare verify output with GUI view of the units.
 
-## GUI Checkpoints
+GUI gap: No automated verification badge on units.
 
-As you go, inspect these in the ConfigHub GUI:
+GUI feature ask: Green checkmark on units passing verification. No issue filed yet.
 
-1. `<prefix>-recipe-us-staging`
-   - inspect `recipe-us-staging-app`
-2. `<prefix>-deploy-cluster-a`
-   - inspect `frontend-cluster-a`
-3. compare the recipe manifest and one deployment unit
-   - confirm the recipe receipt exists
-   - confirm the deployment variant exists
-4. if a target is set
-   - inspect `frontend-cluster-a` again and confirm the target binding is visible
-5. if you apply live
-   - inspect the deployment space after apply and compare intended state vs live result
+**PAUSE.** Wait for the human.
 
-The easiest path is to open the clickable URLs printed by `./setup.sh`.
+---
 
-## CLI Footguns To Avoid
+## Stage 5: "Optional: Bind A Live Target" (mutates ConfigHub)
 
-- use `cub version`, not `cub --version`
-- use `cub context list`, not `cub context current`
-- use the jq anchors in `contracts.md` for machine-readable unit inspection
+Only proceed if the human wants the live path AND a suitable target exists.
+
+Run:
+
+```bash
+cd ..
+./preflight-live.sh <space/target>
+./preflight-live.sh <space/target> --json | jq
+
+cd frontend-postgres
+./set-target.sh <space/target>
+```
+
+What to explain:
+
+- Preflight checks that the worker is ready
+- `set-target.sh` binds deployment units to the target
+
+GUI now: Inspect the unit and confirm target binding is visible.
+
+GUI gap: No preflight status shown on target before binding.
+
+GUI feature ask: Preflight check result on target card. No issue filed yet.
+
+**PAUSE.** Wait for the human.
+
+---
+
+## Stage 6: "Optional: Apply Live" (mutates live infrastructure)
+
+Only proceed if target is bound AND preflight passed.
+
+Run:
+
+```bash
+source .state/state.env
+cub unit approve --space "${PREFIX}-deploy-cluster-a" frontend-cluster-a
+cub unit apply --space "${PREFIX}-deploy-cluster-a" frontend-cluster-a
+```
+
+What to explain:
+
+- Approve makes the unit eligible for apply
+- Apply sends rendered config to the target
+
+GUI now: Inspect the unit after apply.
+
+GUI gap: No live status badge showing apply success/failure.
+
+GUI feature ask: Apply status with timestamp on unit card. No issue filed yet.
+
+**PAUSE.** Wait for the human.
+
+---
+
+## Stage 7: "Cleanup"
+
+Run:
+
+```bash
+./cleanup.sh
+```
+
+This removes all spaces and units created by the demo.
+
+---
 
 ## What Mutates What
 
 | Command | Writes |
-|---|---|
-| `./setup.sh --explain-json` | nothing |
-| `./setup.sh` | ConfigHub spaces, units, links, recipe manifest, local `.state/`, local `.logs/setup.latest.log` |
+|---------|--------|
+| `./setup.sh --explain-json` | Nothing |
+| `./setup.sh` | ConfigHub spaces, units, links, recipe manifest, local `.state/`, local `.logs/` |
 | `./verify.sh` | local `.logs/verify.latest.log` |
-| `./set-target.sh <space/target>` | ConfigHub target bindings, local `.logs/set-target.latest.log` |
-| `cub unit apply ...` | live target state |
+| `./set-target.sh` | ConfigHub target bindings, local `.logs/set-target.latest.log` |
+| `cub unit apply` | Live target state |
 
-## What Success Looks Like
+## Related Files
 
-In ConfigHub-only mode:
-- five new spaces with one shared prefix
-- two layered chains
-- one deploy-stage `backend-stub`
-- one recipe manifest unit
-- `verify.sh` passing
-
-In live mode:
-- deployment units bound to a target
-- successful `cub unit apply`
-- live resources appearing in the chosen target path
+- [README.md](./README.md)
+- [contracts.md](./contracts.md)
+- [prompts.md](./prompts.md)
+- [../whole-journey.md](../whole-journey.md)

@@ -5,6 +5,8 @@ Use this playbook when:
 - improving an existing incubator example
 - reviewing whether an example is understandable to humans and AI
 
+For the file templates, see [ai-example-template.md](./ai-example-template.md).
+
 ## Goal
 
 An important incubator example should be easy to:
@@ -27,85 +29,73 @@ Every important example should answer these directly:
 
 Do not hide the answers inside shell scripts.
 
-## AI-First Adoption Bundle
+## Required File Bundle
 
-Every major incubator example should have:
-
-1. a short human `README.md`
-2. a short AI guide
-3. copyable prompts
-4. expected output or expected state
-5. cleanup steps
-6. stable JSON or text contracts
-
-## Suggested File Bundle
-
-For substantial examples, prefer:
+For runnable examples:
 
 ```text
 README.md
 AI_START_HERE.md
 prompts.md
 contracts.md
+setup.sh      # must support --explain and --explain-json
+verify.sh
+cleanup.sh
 ```
-
-You can compress these for small examples, but the content should still exist somewhere obvious.
 
 ## Demo Pacing Rules
 
-Every `AI_START_HERE.md` should teach the AI how to present the demo, not only which commands to run.
+Every `AI_START_HERE.md` must teach the AI how to present the demo, not only which commands to run.
 
-### Rule 1: Explicit pause-and-show instructions
+### Rule 1: Explicit pacing block at the top
 
-At the top of the AI guide, tell the AI to:
+Every AI guide must start with this exact section header:
 
-1. run one stage at a time
-2. print full output, not only summaries
-3. explain the output in plain English
-4. print GUI links or GUI checkpoints when they exist
-5. say what the GUI shows today
-6. say what the GUI does not show yet
-7. name the GUI feature ask and cite the issue number if one exists; if not, say that explicitly
-8. tell the human to open the GUI and give them time to click through it
-9. stop and ask whether to continue
-10. wait for the human before moving on
+```md
+## CRITICAL: Demo Pacing
+```
 
-### Rule 2: Stage-based structure, not bare command lists
+This block tells the AI to pause after every stage, show full output, and wait for the human.
 
-Prefer:
+### Rule 2: Suggested prompt early
 
-- `Stage 1: Preview what exists (read-only)`
-- `Stage 2: Create the config (mutates ConfigHub only)`
-- `Stage 3: Verify what changed (read-only)`
-- `Stage 4: Cleanup`
+Every AI guide must include:
+
+```md
+## Suggested Prompt
+```
+
+This gives humans a copyable prompt to start the demo correctly.
+
+### Rule 3: Stage-based structure
+
+Use numbered stages with human-readable titles and annotations:
+
+- `## Stage 1: "Preview the plan" (read-only)`
+- `## Stage 2: "Materialize in ConfigHub" (mutates ConfigHub)`
+- `## Stage 3: "Verify the structure" (read-only)`
+- `## Stage N: "Cleanup"`
 
 Do not present the example as an uninterrupted list of shell commands.
 
-### Rule 3: GUI now, GUI gap, and GUI feature ask at every applicable stage
+### Rule 4: GUI now, GUI gap, and GUI feature ask
 
-If the stage creates or inspects something with a GUI equivalent, include the GUI route explicitly.
-
-If there is no GUI checkpoint yet, say so instead of leaving it implied.
-
-For every GUI-relevant stage, prefer this exact structure:
+Every stage must include these three markers (or explicitly state there is no GUI checkpoint):
 
 - `GUI now:` exact URL or click path and what is visible today
 - `GUI gap:` what the GUI cannot show yet
 - `GUI feature ask:` what the GUI should show next, with issue number if known
-- `PAUSE:` tell the human to open the GUI and inspect it before continuing
 
-Do not stop at "here is the link." The AI should connect the stage to the actual browser experience and the missing product affordance.
+If there is no issue number, say: "No issue filed yet."
 
-### Rule 4: Include a suggested human prompt
+If there is no GUI checkpoint for a stage, say: "GUI now: No GUI checkpoint for this stage — this is CLI-only."
 
-Each important AI guide should include a copyable prompt such as:
+### Rule 5: Pause markers
 
-```text
-Read incubator/<example>/AI_START_HERE.md and walk me through the demo.
-Pause after every stage. Show full output.
-For each stage, tell me what the GUI shows today, what it does not show yet, and the feature ask.
-Give me time to click through the GUI before continuing.
-Do not continue until I say continue.
+Every stage must end with:
+
+```md
+**PAUSE.** Wait for the human.
 ```
 
 ## Narrative Arc Rules

@@ -1,205 +1,268 @@
-# AI Start Here
+# AI Start Here: gpu-eks-h100-training
 
-Use this page when you want to drive `gpu-eks-h100-training` safely with an AI assistant.
+## CRITICAL: Demo Pacing
 
-## What This Example Is For
+When walking a human through this example, you MUST pause after every stage.
 
-This example demonstrates an NVIDIA-shaped layered recipe in ConfigHub with:
-- `gpu-operator`
-- `nvidia-device-plugin`
+After each stage:
+1. Run the command(s) for that stage
+2. Show the output faithfully on screen
+3. Explain what the output means in plain English
+4. If there is a GUI URL, print it
+5. STOP and ask "Ready to continue?"
+6. Only proceed when the human says to continue
 
-It is the clearest AICR-shaped example in the package.
+## Suggested Prompt
 
-## WET-First, Then Deployment Variants
-
-This example starts by materializing intended state in ConfigHub.
-
-The normal path is:
-1. preview with `./setup.sh --explain`
-2. materialize with `./setup.sh`
-3. verify with `./verify.sh`
-4. optionally bind one or both deployment variants to targets
-5. optionally apply live
-
-The shared recipe is the app-level intent. The deployment variants sit at the leaf:
-- direct deployment variant
-- Flux deployment variant
-
-## What You Need Installed
-
-- `cub` in `PATH`
-- an authenticated ConfigHub CLI context for any mutating step
-- `jq` for the JSON preview path
-- optional: compatible live targets only if you want to bind and apply
-- optional: GPU-capable nodes and real images only if you want functional NVIDIA proof rather than structural proof
-
-## Capability Check
-
-Check capability before mutating anything:
-
-```bash
-which cub
-cub version
-cub context list --json | jq
-cub target list --space "*" --json | jq
+```text
+Read incubator/global-app-layer/gpu-eks-h100-training/AI_START_HERE.md and walk me through the demo.
+Pause after every stage. Show full output. Give GUI links where possible.
+Do not continue until I say continue.
 ```
 
-Use this rule:
-- if `cub` is missing or auth is unavailable, stop at preview mode
-- if auth works but there is no relevant target, use ConfigHub-only mode
-- if a real target is visible, run `../preflight-live.sh <space/target>` before you offer the live path
-- only use the live path when preflight reports `applyReady: true`
+## What This Example Teaches
 
-For this example, route by provider type:
-- `Kubernetes` -> direct deployment variant
-- `FluxOCI` or `FluxOCIWriter` -> Flux deployment variant
-- `ArgoCDRenderer` and `FluxRenderer` are not deployment targets for this example and should be rejected
+This is an NVIDIA AICR-shaped layered recipe: `gpu-operator` + `nvidia-device-plugin` with three deployment variants. After the demo, the human will understand:
 
-## Important Note
+- NVIDIA's actual layering model: base → platform → accelerator → OS → recipe → deploy
+- Multiple deployment variants at the leaf (direct, Flux, Argo)
+- Structural proof with stub images (swap for real NVIDIA images for functional deployment)
 
-This example is a structural proof:
-- the layer shape is real
-- the images are stubbed by default
-- real NVIDIA deployment requires real images and GPU-capable nodes
+## Prerequisites
 
-## Safe First Steps
+- `cub` in PATH
+- `jq` for JSON preview
+- Authenticated ConfigHub CLI context for mutating steps
+- Optional: live targets (Kubernetes for direct, FluxOCI for Flux, ArgoOCI for Argo)
+- Optional: GPU-capable nodes and real images for functional NVIDIA proof
 
-Start read-only:
+---
+
+## Stage 1: "Check Capabilities" (read-only)
+
+Run:
 
 ```bash
 cd incubator/global-app-layer/gpu-eks-h100-training
+which cub
+cub version
+cub context list --json | jq
+cub target list --space "*" --json | jq '.[] | {space: .Space.Slug, target: .Target.Slug, provider: .Target.ProviderType}'
+```
+
+What to explain:
+
+- If `cub` is missing or auth fails, stay in preview mode
+- Note target provider types for routing to deployment variants:
+  - `Kubernetes` → direct variant
+  - `FluxOCI` or `FluxOCIWriter` → Flux variant
+  - `ArgoOCI` → Argo variant
+- `ArgoCDRenderer` and `FluxRenderer` are NOT deployment targets for this example
+
+GUI now: No GUI checkpoint for this stage — this is CLI-only.
+
+GUI gap: No dashboard showing auth status and targets at a glance.
+
+GUI feature ask: Auth status widget on landing page. No issue filed yet.
+
+**PAUSE.** Wait for the human.
+
+---
+
+## Stage 2: "Preview The Recipe" (read-only)
+
+Run:
+
+```bash
 ./setup.sh --explain
 ./setup.sh --explain-json | jq
 ```
 
-These do not mutate ConfigHub or a cluster.
+What to explain:
 
-After `./setup.sh`, use:
-- the printed clickable GUI URLs
-- `.logs/setup.latest.log`
-- `.logs/set-target.latest.log`
-- `.logs/verify.latest.log`
+- Seven spaces will be created (base → platform → accelerator → OS → recipe → 3 deploy variants)
+- Two component chains (gpu-operator, nvidia-device-plugin)
+- Three deployment variants at the leaf: direct, flux, argo
+- Images are stubbed (`nginx:1.27-alpine`, `busybox:1.37`) for structural proof
 
-instead of relying on terminal scrollback alone.
+GUI now: No GUI checkpoint for this stage.
 
-For the live branch, do not rely on target visibility alone.
-From this directory, run:
+GUI gap: No visual recipe preview before materialization.
 
-```bash
-../preflight-live.sh <space/target>
-../preflight-live.sh <space/target> --json | jq
-```
+GUI feature ask: "Preview Recipe" button that shows planned spaces/units. No issue filed yet.
 
-Only call the live path ready if preflight reports `applyReady: true`.
+**PAUSE.** Wait for the human.
 
-## Ready For A Fresh Run
+---
 
-```bash
-./setup.sh                                            # ConfigHub-only
-./setup.sh <prefix> <kubernetes-target>               # bind direct variant during setup
-./setup.sh <prefix> <kubernetes-target> <fluxoci-target>  # bind direct and Flux variants during setup
-./verify.sh
-```
+## Stage 3: "Materialize In ConfigHub" (mutates ConfigHub)
 
-If you start ConfigHub-only and later want the live path:
+Ask: "This will create 7 spaces, multiple units, and both deployment variants. Ready to proceed?"
 
-```bash
-./set-target.sh <kubernetes-target>
-./set-target.sh <fluxoci-target>
-```
-
-The helper routes targets by provider type and only binds the compatible deployment variant.
-
-## Capability Branching
-
-### A. Docs / preview only
-
-Use the explain modes only. This is also the right stop point if auth is missing.
-
-### B. ConfigHub-only mode
-
-Use:
+Run:
 
 ```bash
 ./setup.sh
-./verify.sh
 ```
 
-This writes the layered GPU recipe and both deployment variants into ConfigHub, but does not deploy anything live.
+What to explain:
 
-### C. Live target mode
+- Spaces and units are now in ConfigHub
+- The printed GUI URLs are clickable
+- Three deployment variants exist at the leaf
+- Output goes to `.logs/setup.latest.log`
 
-Use:
+GUI now: Open the printed URLs. You should see:
+- Recipe space with `recipe-eks-h100-ubuntu-training-stack` unit
+- Three deploy spaces: direct, flux, argo variants
+
+GUI gap: No visual diff between "before setup" and "after setup".
+
+GUI feature ask: Space creation wizard with before/after comparison. No issue filed yet.
+
+**PAUSE.** Wait for the human.
+
+---
+
+## Stage 4: "Verify The Structure" (read-only)
+
+Run:
 
 ```bash
-./setup.sh <prefix> <kubernetes-target>
-./set-target.sh <fluxoci-target>   # optional second branch
 ./verify.sh
 ```
 
-Then approve and apply the deployment units explicitly for the variant you want to prove.
+What to explain:
 
-## Verification Modes
+- Verifies all spaces, units, and links exist
+- Verifies the recipe manifest contains correct provenance
+- Verifies all three deployment variants exist
+- Output goes to `.logs/verify.latest.log`
 
-- Preview only:
-  - `./setup.sh --explain`
-  - `./setup.sh --explain-json | jq`
-- ConfigHub-only:
-  - `./setup.sh`
-  - `./verify.sh`
-- Live target:
-  - `./setup.sh <prefix> <kubernetes-target>`
-  - `./set-target.sh <fluxoci-target>` if you want the Flux branch too
-  - `./verify.sh`
-  - explicit `cub unit apply ...`
+GUI now: Open each deploy space and compare the units.
 
-## GUI Checkpoints
+GUI gap: No unified view showing all deployment variants for one recipe.
 
-As you go, inspect these in the ConfigHub GUI:
+GUI feature ask: Deployment variant matrix view showing direct/flux/argo side by side. No issue filed yet.
 
-1. `<prefix>-recipe-eks-h100-ubuntu-training`
-   - inspect `recipe-eks-h100-ubuntu-training-stack`
-2. `<prefix>-deploy-cluster-a`
-   - inspect `gpu-operator-cluster-a`
-3. `<prefix>-deploy-cluster-a-flux`
-   - inspect `gpu-operator-cluster-a-flux`
-4. compare the recipe manifest and the two deployment variants
-   - confirm the recipe receipt exists
-   - confirm both deployment variants exist
-5. if targets are set
-   - inspect the matching deployment variant again and confirm the target binding is visible
-6. if you apply live
-   - inspect the deployment space after apply and compare intended state vs live result
+**PAUSE.** Wait for the human.
 
-The easiest path is to open the clickable URLs printed by `./setup.sh`.
+---
 
-## CLI Footguns To Avoid
+## Stage 5: "Optional: Preflight Live Readiness" (read-only)
 
-- use `cub version`, not `cub --version`
-- use `cub context list`, not `cub context current`
-- use the jq anchors in `contracts.md` for machine-readable unit inspection
-- do not treat `FluxRenderer` as the deployment target for this example; it is the import-and-render path for existing Flux resources
+Only proceed if the human wants the live path.
+
+Run:
+
+```bash
+cd ..
+./preflight-live.sh <space/target>
+./preflight-live.sh <space/target> --json | jq
+```
+
+What to explain:
+
+- Target visibility is not the same as apply readiness
+- Only proceed if `applyReady: true`
+- The helper routes targets by provider type:
+  - `Kubernetes` → direct deployment variant
+  - `FluxOCI` / `FluxOCIWriter` → Flux deployment variant
+  - `ArgoOCI` → Argo deployment variant
+
+GUI now: No GUI checkpoint for this stage.
+
+GUI gap: No preflight status shown on target card.
+
+GUI feature ask: Preflight check result on target card before binding. No issue filed yet.
+
+**PAUSE.** Wait for the human.
+
+---
+
+## Stage 6: "Optional: Bind Live Targets" (mutates ConfigHub)
+
+Only proceed if preflight passed.
+
+Run:
+
+```bash
+cd gpu-eks-h100-training
+./set-target.sh <kubernetes-target>
+./set-target.sh <fluxoci-target>
+./set-target.sh <argooci-target>
+```
+
+What to explain:
+
+- Each target is routed to the correct deployment variant by provider type
+- You can bind one, two, or all three variants
+
+GUI now: Inspect the matching deployment variant and confirm target binding.
+
+GUI gap: No deployment variant matrix with target binding status.
+
+GUI feature ask: Deployment variant matrix with binding and readiness status. No issue filed yet.
+
+**PAUSE.** Wait for the human.
+
+---
+
+## Stage 7: "Optional: Apply Live" (mutates live infrastructure)
+
+Only proceed if targets are bound.
+
+Run:
+
+```bash
+source .state/state.env
+# For direct variant:
+cub unit approve --space "${PREFIX}-deploy-cluster-a" gpu-operator-cluster-a
+cub unit apply --space "${PREFIX}-deploy-cluster-a" gpu-operator-cluster-a
+```
+
+What to explain:
+
+- Approve makes the unit eligible for apply
+- Apply sends rendered config to the target
+- For Flux OCI: worker publishes to ConfigHub-native OCI origin, Flux reconciles
+- For Argo OCI: worker publishes to ConfigHub-native OCI origin, ArgoCD reconciles
+
+GUI now: Inspect the unit after apply.
+
+GUI gap: No live status badge showing apply success/failure.
+
+GUI feature ask: Apply status with timestamp on unit card. No issue filed yet.
+
+**PAUSE.** Wait for the human.
+
+---
+
+## Stage 8: "Cleanup"
+
+Run:
+
+```bash
+./cleanup.sh
+```
+
+This removes all spaces and units created by the demo.
+
+---
 
 ## What Mutates What
 
 | Command | Writes |
-|---|---|
-| `./setup.sh --explain-json` | nothing |
-| `./setup.sh` | ConfigHub spaces, units, links, recipe manifest, local `.state/`, local `.logs/setup.latest.log` |
+|---------|--------|
+| `./setup.sh --explain-json` | Nothing |
+| `./setup.sh` | ConfigHub spaces, units, links, recipe manifest, local `.state/`, local `.logs/` |
 | `./verify.sh` | local `.logs/verify.latest.log` |
-| `./set-target.sh <target> ...` | ConfigHub target bindings for compatible deployment variants, local `.logs/set-target.latest.log` |
-| `cub unit apply ...` | live target state |
+| `./set-target.sh` | ConfigHub target bindings for compatible variants, local `.logs/set-target.latest.log` |
+| `cub unit apply` | Live target state |
 
-## What Success Looks Like
+## Related Files
 
-In ConfigHub-only mode:
-- seven new spaces with one shared prefix
-- two layered GPU chains
-- two deployment variants at the leaf
-- one stack-level recipe manifest unit
-- `verify.sh` passing
-
-In live mode:
-- direct and or Flux deployment variants bound to compatible targets
-- successful `cub unit apply`
-- live resources or delegated delivery objects visible
+- [README.md](./README.md)
+- [contracts.md](./contracts.md)
+- [prompts.md](./prompts.md)
+- [../whole-journey.md](../whole-journey.md)

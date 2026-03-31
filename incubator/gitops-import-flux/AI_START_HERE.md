@@ -31,7 +31,9 @@ It is the import-and-evidence path, not the layered recipe path.
 
 The standard story here is the healthy `podinfo` path. Do not add `--with-contrast` until after the human has already seen value from that path.
 
-## Stage 1: Preview The Plan (read-only)
+## Stage 1: "Preview The Plan" (read-only)
+
+Run:
 
 ```bash
 cd incubator/gitops-import-flux
@@ -42,17 +44,24 @@ kubectl version --client 2>/dev/null || true
 flux --version 2>/dev/null || true
 ```
 
-These commands do not mutate ConfigHub and do not mutate live infrastructure.
+What to explain:
 
-GUI checkpoint:
+- Shows what the setup will create
+- Checks for required tools
 
-- none yet; this stage is CLI-only preview
+GUI now: No GUI checkpoint for this stage — this is CLI-only preview.
 
-Pause after this stage.
+GUI gap: No visual preview of planned resources.
 
-## Stage 2: Build The Local Flux Environment (mutates live infrastructure)
+GUI feature ask: Setup preview for import examples. No issue filed yet.
 
-Cluster and Flux only:
+**PAUSE.** Wait for the human.
+
+## Stage 2: "Build The Local Flux Environment" (mutates live infrastructure)
+
+Ask: "This will create a local kind cluster and install Flux. Ready to proceed?"
+
+Run:
 
 ```bash
 ./setup.sh
@@ -64,13 +73,23 @@ With optional contrast fixtures:
 ./setup.sh --with-contrast
 ```
 
-GUI checkpoint:
+What to explain:
 
-- none by default; use the Flux CLI and cluster state as the source of truth
+- Creates a local kind cluster
+- Installs Flux
+- Applies podinfo and related resources
 
-Pause after this stage.
+GUI now: No GUI checkpoint — use Flux CLI and cluster state as source of truth.
 
-## Stage 3: Verify Cluster And Flux Evidence (read-only)
+GUI gap: No ConfigHub integration visible yet.
+
+GUI feature ask: Flux discovery status in ConfigHub before import. No issue filed yet.
+
+**PAUSE.** Wait for the human.
+
+## Stage 3: "Verify Cluster And Flux Evidence" (read-only)
+
+Run:
 
 ```bash
 export KUBECONFIG=$PWD/var/gitops-import-flux.kubeconfig
@@ -80,18 +99,25 @@ kubectl get gitrepositories,kustomizations,helmreleases -A
 kubectl get all -A
 ```
 
-Use the evidence like this:
+What to explain:
 
 - `kubectl` and `flux` prove raw cluster facts
-- the contrast path is intentionally mixed and should be shown honestly
+- Contrast path is intentionally mixed — show honestly
+- No ConfigHub import has happened yet
 
-What this does not prove:
+GUI now: No GUI checkpoint — this is Flux CLI and kubectl evidence.
 
-- no ConfigHub import has happened yet
+GUI gap: No ConfigHub view of these resources yet.
 
-Pause after this stage.
+GUI feature ask: Pre-import discovery view in ConfigHub. No issue filed yet.
 
-## Stage 4: Connect Worker And Discover (mutates ConfigHub)
+**PAUSE.** Wait for the human.
+
+## Stage 4: "Connect Worker And Discover" (mutates ConfigHub)
+
+Ask: "This will create a ConfigHub worker and discover resources. Ready to proceed?"
+
+Run:
 
 ```bash
 cub auth login
@@ -101,19 +127,25 @@ cub target list --space "$CUB_SPACE" --json | jq
 cub gitops discover --space "$CUB_SPACE" <kubernetes-target-slug> --json | jq
 ```
 
-If the worker install succeeds, expect three useful targets:
+What to explain:
 
-- one Kubernetes discovery target
-- one `fluxrenderer` target for import and render
-- one `fluxoci` target for Flux-managed deployment of raw Kubernetes manifests
+- Creates a ConfigHub worker
+- Expect three targets: Kubernetes, fluxrenderer, fluxoci
+- Discovers Flux resources and Kubernetes resources
 
-GUI checkpoint:
+GUI now: Open ConfigHub space and inspect targets and discovered units.
 
-- ConfigHub GUI: open space `$CUB_SPACE` and inspect targets plus discovered units
+GUI gap: No unified view connecting Flux CLI to ConfigHub discovery.
 
-Pause after this stage.
+GUI feature ask: Side-by-side Flux and ConfigHub comparison view. No issue filed yet.
 
-## Stage 5: Import And Verify ConfigHub Evidence (mutates ConfigHub)
+**PAUSE.** Wait for the human.
+
+## Stage 5: "Import And Verify ConfigHub Evidence" (mutates ConfigHub)
+
+Ask: "This will import discovered resources into ConfigHub. Ready to proceed?"
+
+Run:
 
 ```bash
 cub gitops import --space "$CUB_SPACE" <kubernetes-target-slug> <flux-renderer-target-slug> --wait
@@ -130,24 +162,30 @@ cub-scout map list
 cub-scout tree ownership
 ```
 
-Use the evidence like this:
+What to explain:
 
 - ConfigHub proves discover and renderer facts
-- `cub-scout` proves live ownership and GitOps context facts
+- `cub-scout` proves live ownership and GitOps context
 
-GUI checkpoint:
+GUI now: Open ConfigHub space and review targets, units, and actions.
 
-- ConfigHub GUI: open space `$CUB_SPACE`, review targets, units, and actions
+GUI gap: No visual diff between Flux state and ConfigHub imported state.
 
-Pause after this stage.
+GUI feature ask: Import diff view showing before/after comparison. No issue filed yet.
 
-## Stage 6: Cleanup
+**PAUSE.** Wait for the human.
+
+## Stage 6: "Cleanup"
+
+Run:
 
 ```bash
 ./cleanup.sh
 ```
 
 This deletes the local kind cluster and local discovery worker state.
+
+---
 
 ## Related Files
 
