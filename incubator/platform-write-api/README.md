@@ -57,6 +57,8 @@ Optional (for the Spring Boot app proof):
 
 No script touches Git or any cluster.
 
+**Sibling dependency**: The field lineage scripts (`./field-routes.sh`, `./compare.sh`, `./refresh-preview.sh`) delegate to fixtures in `../spring-platform/springboot-platform-app/`. The AI guide Stage 3 also uses the generator's `--explain-field` script from that sibling. This example is not fully self-contained.
+
 ## Read-Only Preview
 
 ```bash

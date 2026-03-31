@@ -16,6 +16,7 @@ Stable command outputs for automation and testing.
   - `reads`
   - `behaviors[].name`
   - `behaviors[].default_route`
+- Proves: the example plan before any mutation
 
 ### `./verify.sh`
 

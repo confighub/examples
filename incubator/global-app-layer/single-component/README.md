@@ -19,6 +19,8 @@ The recipe is the ordered chain of variants, not the bundle.
 | **Argo OCI** | Implemented | Explicit Argo deployment variant. Requires ArgoCD v3.1+. See [`07-argo-oci-spec.md`](../07-argo-oci-spec.md). |
 | **ArgoCDRenderer** | Incompatible | Expects Argo `Application` payloads, not raw manifests. |
 
+**Note on proof levels**: "Fully working" means the code path is implemented and has been exercised with real targets. The `verify.sh` script proves ConfigHub-only structure (spaces, units, clone links, mutations). Live controller proof (Flux reconciliation, ArgoCD sync) requires manual verification with actual targets; see the Verification Contract section below.
+
 This example has **all three delivery modes** working:
 
 - Direct deployment variant: `<prefix>-deploy-cluster-a`

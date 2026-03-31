@@ -6,7 +6,7 @@ See exactly how app config + platform policy becomes governed Kubernetes manifes
 ./setup.sh --explain
 ```
 
-This is the fullest implementation: real Kubernetes delivery via Kind, field-by-field lineage tracing, and all three mutation route proofs.
+This is the fullest implementation: real Kubernetes delivery via Kind, field-by-field lineage tracing, and all three mutation routes demonstrated. The apply-here route is fully proven with audited mutation; lift-upstream and block-escalate are documented with bundles and boundaries but not yet server-enforced.
 
 ## Quick Start
 
