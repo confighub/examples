@@ -87,3 +87,4 @@ Experimental ConfigHub examples before promotion to stable.
 - Include verification commands
 - Do not break existing root examples
 - For major examples, follow [`ai-example-playbook.md`](./ai-example-playbook.md)
+- All runnable examples must pass [`ai-guide-standard.md`](./ai-guide-standard.md)

@@ -5,6 +5,7 @@ AI-oriented entry point for the incubator.
 For stricter protocol: [AGENTS.md](./AGENTS.md)
 For concept explanation: [WHY_CONFIGHUB.md](./WHY_CONFIGHUB.md)
 For pacing standard: [standard-ai-demo-pacing.md](./standard-ai-demo-pacing.md)
+For enforced contract: [ai-guide-standard.md](./ai-guide-standard.md)
 
 ## Default Rules
 
