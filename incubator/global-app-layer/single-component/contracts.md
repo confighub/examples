@@ -13,7 +13,7 @@
 - expected anchors:
   - `.example == "global-app-layer-single"`
   - `.mutates == false`
-  - `.spaces | length == 5`
+  - `.spaces | length == 7`
   - `.components | length == 2`
   - `.recipeManifest.unit == "recipe-us-staging"`
 
