@@ -124,6 +124,7 @@ The repo-level `scripts/verify.sh` enforces standards across all examples:
 - Required files (README.md, AI_START_HERE.md, contracts.md)
 - Required markers in AI guides
 - Required flags in setup.sh (--explain, --explain-json)
+- Required markers in contracts.md (`mutates:`, `proves:`)
 
 Run it before committing:
 

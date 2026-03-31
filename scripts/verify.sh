@@ -168,6 +168,18 @@ for example_dir in "${ai_guide_examples[@]}"; do
     exit 1
   fi
 
+  # Check contracts.md contains required markers (unless exempt)
+  if [[ "${is_exempt}" == "false" && -f "${example_dir}/contracts.md" ]]; then
+    if ! grep -qi 'mutates:' "${example_dir}/contracts.md"; then
+      echo "FAIL: ${example_name}/contracts.md missing 'mutates:' markers" >&2
+      exit 1
+    fi
+    if ! grep -qi 'proves:' "${example_dir}/contracts.md"; then
+      echo "FAIL: ${example_name}/contracts.md missing 'proves:' markers" >&2
+      exit 1
+    fi
+  fi
+
   # Check setup.sh supports --explain (unless exempt)
   is_explain_exempt=false
   for exempt in "${exempt_from_explain[@]}"; do

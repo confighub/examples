@@ -32,6 +32,7 @@ Stable command outputs for automation and testing.
   - `mutates_live_infra`
   - `cluster_required`
   - `deployment_map`
+- Proves: the example plan before any mutation
 
 ### `./setup.sh --explain`
 
