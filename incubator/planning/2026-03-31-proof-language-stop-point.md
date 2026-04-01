@@ -91,6 +91,15 @@ Exemptions:
 3. **Controller proof automation**: verify.sh could be extended to check Flux/Argo reconciliation status for single-component
 4. **platform-write-api self-containment**: could inline the delegated scripts from spring-platform
 
+## Gold Standard For The Next Incubator Pass
+
+Once the Spring Boot flagship work is finished, use this as the review rubric for the next incubator pass:
+
+1. **Real by default**: examples should be real, useful, and end-to-end unless the docs name a clear business reason to stop at a subset of delivery.
+2. **README stands alone**: a human should be able to read the example in GitHub and understand the purpose, lesson, safest first step, and proof boundary without hunting for separate docs.
+3. **AI demo works**: an AI assistant should be able to drive the example with the existing AI-first guidance and machine-readable contracts as a paced, trustworthy walkthrough.
+4. **Creates delight quickly**: the example should create value early, answer “why does this matter?” fast, and feel worth using rather than merely technically correct.
+
 ## Obvious Next Step
 
 Add automated controller-proof checks to single-component verify.sh when targets are bound:

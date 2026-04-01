@@ -25,6 +25,15 @@ These rules apply across all examples work:
 4. **Keep incubator work in incubator.** Do not promote examples to root unless explicitly asked.
 5. **Prefer short, honest, example-local docs** over repo-wide taxonomy sprawl.
 
+## Gold Standard For The Next Incubator Pass
+
+After the Spring Boot flagship work, use this as the quality bar for the next incubator cleanup pass:
+
+1. **Examples should be real, useful, and end-to-end by default.** If an example intentionally stops short of full delivery, the docs must name the business reason plainly.
+2. **A human should be able to land on the example in GitHub and understand it without separate docs.** The example README should explain the purpose, the lesson, the safest first step, and the honest proof boundary.
+3. **AI should be able to drive the demo as well as a human.** `AI_START_HERE.md`, `--explain`, `--explain-json`, and `contracts.md` should make the example workable as a one-prompt, stage-based walkthrough.
+4. **The examples should be lovable, not just correct.** They should create value quickly, answer “why does this matter?” early, and leave both users and the team feeling that the example taught something real.
+
 ## Current Milestones
 
 ### Milestone 1: Re-prove the Recent Real Examples
