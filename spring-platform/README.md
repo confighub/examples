@@ -1,4 +1,4 @@
-# Spring Platform: The Release-Day Challenge
+# Spring Platform in ConfigHub
 
 A major product launch is in 24 hours. Three requests land at the same time:
 
