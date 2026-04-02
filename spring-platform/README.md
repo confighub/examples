@@ -133,7 +133,7 @@ Full guide: [`BRING-YOUR-OWN-APP.md`](./BRING-YOUR-OWN-APP.md).
 If you want the real generator path, go to [`cub-gen/examples/springboot-paas`](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas).
 
 ```bash
-cd /Users/alexis/Public/github-repos/cub-gen
+cd /path/to/cub-gen
 go build -o ./cub-gen ./cmd/cub-gen
 ./examples/springboot-paas/demo-local.sh
 
@@ -143,6 +143,8 @@ cub auth login
 ```
 
 Use `spring-platform` to understand the model and mutation routes. Use `springboot-paas` to see the real generator path in the product repo.
+
+Full concept mapping and recommended path: [`FROM-DEMO-TO-PRODUCT.md`](./FROM-DEMO-TO-PRODUCT.md).
 
 ## What Teams Will Ask Next
 
