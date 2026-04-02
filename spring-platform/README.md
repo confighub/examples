@@ -7,6 +7,79 @@ This repo teaches an experimental app-platform model for Spring Boot services an
 - Review the model in this repo if you want to see the ideas
 - Later, for a 'real Boot app', the version at [`cub-gen/examples/springboot-paas`](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas) has a path for your own Spring Boot app. Start there with `cub-gen springboot init`.  Also very experimental.
 
+## What to Expect from Each Example
+
+This repo contains three variants of the same model plus a shared dependency
+directory. They differ in scope, runnability, and intended audience. The table
+below tells you what you can and cannot do with each one.
+
+| Directory | What it is | What you can do | What it does NOT do |
+|-----------|-----------|-----------------|---------------------|
+| [`springboot-platform-app`](./springboot-platform-app/) | Working generator with a Kind cluster pipeline | Deploy to Kind, run `verify-e2e.sh`, see the full artifact chain from Spring config to running pod | Not a minimal starting point -- this is the heaviest example |
+| [`springboot-platform-app-centric`](./springboot-platform-app-centric/) | Teaching fixture (ADT model) -- one app across 3 environments | Run `demo.sh`, explore mutation routes (apply-here / lift-upstream / block), read `--explain` output | No Kubernetes deployment, no compiled Java app |
+| [`springboot-platform-platform-centric`](./springboot-platform-platform-centric/) | Teaching fixture (ADTP model) -- 2 apps across 5 environments | Run `platform.sh --summary`, see multi-app governance and cross-app field ownership | No Kubernetes deployment, noop targets only |
+| [`shared/`](./shared/) | Reusable YAML referenced by ADT and ADTP examples | Nothing standalone -- this is a dependency, not an example | Not runnable on its own |
+
+### Reading order
+
+If you are new to the model, start with **app-centric** -- it is the simplest
+lens and introduces the three mutation routes with a single app. Move to
+**platform-centric** when you want to see how ownership scales across multiple
+apps. Use **vanilla app** when you want to see the full generator pipeline
+deployed to a real cluster.
+
+### Concrete expectations
+
+**springboot-platform-app** has real shell scripts (`setup.sh`, `render.sh`,
+`confighub-setup.sh`, `verify-e2e.sh`) and a `generator/` directory that
+transforms Spring config inputs into Kubernetes manifests. The `upstream/`
+directory contains a `pom.xml` and `application.yaml` -- these are config
+fixtures, not a compilable Java project. You can deploy to a Kind cluster and
+run end-to-end verification.
+
+**springboot-platform-app-centric** is a walkthrough. It has `demo.sh` with
+`--explain` and `--trace` flags, `flows/` with mutation walkthroughs, and YAML
+files describing the ADT (App-Deployment-Target) structure. No Java source, no
+Kubernetes resources -- this is for understanding the model.
+
+**springboot-platform-platform-centric** adds a second app (`catalog-api`) and
+shows how a platform team governs shared infrastructure. It has `platform.sh`
+for discovery (`--apps`, `--summary`, `--explain-field`) and uses noop targets
+for demonstration. Same scope as app-centric but from the platform team's
+perspective.
+
+**shared/** contains ConfigHub unit YAML files and `field-routes.yaml`. Both
+ADT and ADTP examples reference these via `../shared/` paths.
+
+## When You Want a Runnable Example
+
+The examples in this repo teach the conceptual model with fixed inputs and
+explain scripts. If you want to run `cub-gen` against a real Spring Boot
+application with actual Java source code, config governance, and a local demo
+you can execute end-to-end without a cluster:
+
+**[`cub-gen/examples/springboot-paas`](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas)** has:
+
+- A real (minimal) Spring Boot app: `InventoryApplication.java`, a REST
+  controller, a service class, `pom.xml` with Spring Boot 3.3.2 / Java 21
+- Spring config files: `application.yaml`, `application-dev.yaml`,
+  `application-prod.yaml` with profile overrides
+- Platform policies, a FrameworkRegistry, and Flux/Argo transport configs
+- `demo-local.sh` that runs the full discover/import/publish/verify lifecycle
+  with no external dependencies
+
+You can run it right now:
+
+```bash
+cd cub-gen
+go build -o ./cub-gen ./cmd/cub-gen
+./cub-gen gitops discover --space platform --json ./examples/springboot-paas
+./cub-gen gitops import --space platform --json ./examples/springboot-paas ./examples/springboot-paas
+```
+
+If you have studied the model here and want to move to real tooling, that is
+the bridge.
+
 ## What This Repo Is For
 
 **Use this repo to study the model.** App teams keep writing normal Spring Boot apps in Git. Platform tooling maps those app inputs into the operational artifacts needed to run on Kubernetes with GitOps.
@@ -32,7 +105,7 @@ This mapping from app to platform is a deterministic config generator, and it is
 | Ownership boundaries | Fields are app-owned or platform-owned, not ambiguous |
 | Mutation from provenance | How a field can change depends on who owns it |
 
-The point is not "generate all the YAML." The point is to generate only the operational config that the platform must own, while keeping the path back to app inputs clear. 
+The point is not "generate all the YAML." The point is to generate only the operational config that the platform must own, while keeping the path back to app inputs clear.
 
 ## Mutation Routes
 
