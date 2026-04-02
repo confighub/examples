@@ -13,6 +13,9 @@
 #   ./bin/scaffold-app order-api --output ../my-order-api
 #   ./bin/scaffold-app order-api --dry-run
 #
+# Regression check:
+#   ./bin/verify-scaffold
+#
 # Required:
 #   APP_NAME    The new app name (e.g., order-api, payment-service)
 #

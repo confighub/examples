@@ -34,6 +34,8 @@ The scaffold command:
 - Updates field-routes with your app prefix
 - Creates `ADAPTATION-CHECKLIST.md` listing what you still need to review
 
+The scaffold is regression-checked: `./bin/verify-scaffold` proves the rename works for a second app shape.
+
 ## What the Scaffold Does NOT Do
 
 The scaffold handles mechanical renaming. You still need to:

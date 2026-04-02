@@ -1,0 +1,190 @@
+#!/usr/bin/env bash
+# Regression check for the scaffold-app command.
+#
+# Usage:
+#   ./bin/verify-scaffold           # run all checks
+#   ./bin/verify-scaffold --keep    # keep temp output for inspection
+#
+# This script:
+# 1. Scaffolds order-api into a temp directory
+# 2. Verifies expected rewrites happened
+# 3. Checks for unintended leftovers
+# 4. Runs source example verify.sh
+# 5. Cleans up (unless --keep)
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "${SCRIPT_DIR}")"
+KEEP_OUTPUT=false
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --keep)
+      KEEP_OUTPUT=true
+      shift
+      ;;
+    *)
+      echo "error: unknown option: $1" >&2
+      exit 1
+      ;;
+  esac
+done
+
+# Create temp directory
+TEMP_DIR="$(mktemp -d)"
+OUTPUT_DIR="${TEMP_DIR}/order-api"
+
+cleanup() {
+  if [[ "${KEEP_OUTPUT}" == "false" && -d "${TEMP_DIR}" ]]; then
+    rm -rf "${TEMP_DIR}"
+  fi
+}
+trap cleanup EXIT
+
+echo "========================================"
+echo "Scaffold Regression Check"
+echo "========================================"
+echo ""
+echo "Temp dir: ${TEMP_DIR}"
+echo ""
+
+# ============================================
+# Step 1: Run scaffold
+# ============================================
+echo "Step 1: Running scaffold..."
+
+"${SCRIPT_DIR}/scaffold-app" order-api \
+  --package com.example.orderapi \
+  --output "${OUTPUT_DIR}" > /dev/null
+
+if [[ ! -d "${OUTPUT_DIR}" ]]; then
+  echo "FAIL: scaffold did not create output directory" >&2
+  exit 1
+fi
+echo "  ok: scaffold created output"
+
+# ============================================
+# Step 2: Check expected files exist
+# ============================================
+echo "Step 2: Checking expected files..."
+
+EXPECTED_FILES=(
+  "confighub/order-api-dev.yaml"
+  "confighub/order-api-stage.yaml"
+  "confighub/order-api-prod.yaml"
+  "upstream/app/src/main/java/com/example/orderapi/OrderApiApplication.java"
+  "upstream/app/src/main/java/com/example/orderapi/api/OrderApiController.java"
+  "operational/field-routes.yaml"
+  "bin/build-image"
+  "ADAPTATION-CHECKLIST.md"
+)
+
+for file in "${EXPECTED_FILES[@]}"; do
+  if [[ ! -f "${OUTPUT_DIR}/${file}" ]]; then
+    echo "FAIL: expected file missing: ${file}" >&2
+    exit 1
+  fi
+done
+echo "  ok: all expected files exist"
+
+# ============================================
+# Step 3: Check content rewrites
+# ============================================
+echo "Step 3: Checking content rewrites..."
+
+# field-routes.yaml should have feature.orderapi.*
+if ! grep -q "feature\.orderapi\." "${OUTPUT_DIR}/operational/field-routes.yaml"; then
+  echo "FAIL: field-routes.yaml missing feature.orderapi.* pattern" >&2
+  exit 1
+fi
+echo "  ok: field-routes.yaml has order-api prefix"
+
+# bin/build-image should have order-api:local
+if ! grep -q 'IMAGE_NAME="order-api:local"' "${OUTPUT_DIR}/bin/build-image"; then
+  echo "FAIL: bin/build-image missing order-api:local image name" >&2
+  exit 1
+fi
+echo "  ok: bin/build-image has correct image name"
+
+# Java main class should be OrderApiApplication
+if ! grep -q "class OrderApiApplication" "${OUTPUT_DIR}/upstream/app/src/main/java/com/example/orderapi/OrderApiApplication.java"; then
+  echo "FAIL: main class not renamed to OrderApiApplication" >&2
+  exit 1
+fi
+echo "  ok: main class renamed correctly"
+
+# ConfigHub YAML should have order-api name
+if ! grep -q "name: order-api" "${OUTPUT_DIR}/confighub/order-api-dev.yaml"; then
+  echo "FAIL: confighub YAML missing order-api name" >&2
+  exit 1
+fi
+echo "  ok: confighub YAML has correct app name"
+
+# pom.xml should have order-api artifact
+if ! grep -q "<artifactId>order-api</artifactId>" "${OUTPUT_DIR}/upstream/app/pom.xml"; then
+  echo "FAIL: pom.xml missing order-api artifactId" >&2
+  exit 1
+fi
+echo "  ok: pom.xml has correct artifactId"
+
+# ============================================
+# Step 4: Check for unintended leftovers
+# ============================================
+echo "Step 4: Checking for unintended leftovers..."
+
+# Allowlist: files that intentionally contain old names (checklist explains the rename)
+ALLOWLIST_PATTERN="ADAPTATION-CHECKLIST.md"
+
+# Check for inventory-api leftovers
+INVENTORY_LEFTOVERS=$(grep -r -l "inventory-api" "${OUTPUT_DIR}" 2>/dev/null | grep -v "${ALLOWLIST_PATTERN}" || true)
+if [[ -n "${INVENTORY_LEFTOVERS}" ]]; then
+  echo "FAIL: found inventory-api leftovers in:" >&2
+  echo "${INVENTORY_LEFTOVERS}" >&2
+  exit 1
+fi
+echo "  ok: no inventory-api leftovers (except allowlist)"
+
+# Check for InventoryApi class name leftovers
+INVENTORYAPI_LEFTOVERS=$(grep -r -l "InventoryApi" "${OUTPUT_DIR}" 2>/dev/null | grep -v "${ALLOWLIST_PATTERN}" || true)
+if [[ -n "${INVENTORYAPI_LEFTOVERS}" ]]; then
+  echo "FAIL: found InventoryApi leftovers in:" >&2
+  echo "${INVENTORYAPI_LEFTOVERS}" >&2
+  exit 1
+fi
+echo "  ok: no InventoryApi leftovers (except allowlist)"
+
+# Check for com.example.inventory package leftovers
+PACKAGE_LEFTOVERS=$(grep -r -l "com\.example\.inventory" "${OUTPUT_DIR}" 2>/dev/null | grep -v "${ALLOWLIST_PATTERN}" || true)
+if [[ -n "${PACKAGE_LEFTOVERS}" ]]; then
+  echo "FAIL: found com.example.inventory leftovers in:" >&2
+  echo "${PACKAGE_LEFTOVERS}" >&2
+  exit 1
+fi
+echo "  ok: no com.example.inventory leftovers (except allowlist)"
+
+# ============================================
+# Step 5: Run source example verification
+# ============================================
+echo "Step 5: Running source example verification..."
+
+if ! "${PROJECT_DIR}/verify.sh" > /dev/null 2>&1; then
+  echo "FAIL: source example verify.sh failed" >&2
+  exit 1
+fi
+echo "  ok: source example verification passed"
+
+# ============================================
+# Done
+# ============================================
+echo ""
+echo "========================================"
+echo "All checks passed"
+echo "========================================"
+
+if [[ "${KEEP_OUTPUT}" == "true" ]]; then
+  echo ""
+  echo "Output kept at: ${OUTPUT_DIR}"
+  echo "Inspect with: ls -la ${OUTPUT_DIR}"
+fi

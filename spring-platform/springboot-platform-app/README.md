@@ -96,7 +96,7 @@ This handles the mechanical renaming (app name, Java package, ConfigHub slugs, f
 - Review field ownership and ports
 - Run the same proof path
 
-Full details: [`../BRING-YOUR-OWN-APP.md`](../BRING-YOUR-OWN-APP.md)
+The scaffold is regression-checked (`./bin/verify-scaffold`). Full details: [`../BRING-YOUR-OWN-APP.md`](../BRING-YOUR-OWN-APP.md)
 
 ## Key Files
 
