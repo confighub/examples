@@ -111,14 +111,20 @@ What is real today:
 - the real Kind deployment path in Phase 1
 - the mutation model: apply-here, lift-upstream, block/escalate
 
-What you still have to do yourself:
+Use the scaffold command to generate a renamed copy for your app:
 
-- replace the sample app with your own app
-- update app name, image, ports, and health checks
+```bash
+cd springboot-platform-app
+./bin/scaffold-app my-service --output ../my-service
+```
+
+The scaffold handles mechanical renaming. You still need to:
+
+- replace the stub app code with your actual service
 - decide which fields are app-owned versus platform-owned
-- update the unit YAMLs and proof scripts to match your app
+- review ports, health paths, and environment variables
 
-Start with [`BRING-YOUR-OWN-APP.md`](./BRING-YOUR-OWN-APP.md).
+Full guide: [`BRING-YOUR-OWN-APP.md`](./BRING-YOUR-OWN-APP.md).
 
 ## From Demo to Product
 

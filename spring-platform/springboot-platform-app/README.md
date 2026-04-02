@@ -84,17 +84,19 @@ Server-side enforcement is documented but not yet implemented.
 
 ## Can I Use My Own App?
 
-Yes, but today you adapt this example rather than run a generic import command.
+Yes. Use the scaffold command to generate a renamed copy for your app:
 
-Start with [`../BRING-YOUR-OWN-APP.md`](../BRING-YOUR-OWN-APP.md).
+```bash
+./bin/scaffold-app my-service --output ../my-service
+```
 
-In practice that means:
+This handles the mechanical renaming (app name, Java package, ConfigHub slugs, field-routes). You still need to:
 
-- replace `upstream/app/` with your app
-- update the unit YAMLs under `confighub/`
-- update the rendered manifests under `operational/`
-- update field ownership in `operational/field-routes.yaml`
-- keep the same proof path: `./verify.sh`, `./confighub-setup.sh`, and optionally `./confighub-setup.sh --with-targets`
+- Replace the stub app code with your actual service
+- Review field ownership and ports
+- Run the same proof path
+
+Full details: [`../BRING-YOUR-OWN-APP.md`](../BRING-YOUR-OWN-APP.md)
 
 ## Key Files
 

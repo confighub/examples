@@ -6,14 +6,45 @@ This is the page for the first practical question a team will ask:
 
 The short answer is:
 
-- yes, as an adaptation of the example
-- no, not yet as a turnkey import workflow
+- yes, using the scaffold command
+- the scaffold handles mechanical renaming; you still need to replace the actual app code and review field ownership
 
-Today, `spring-platform` is best used as:
+## Quick Start: Scaffold Your App
 
-- a reference implementation
-- a proof path
-- a concrete starting point for deciding which fields app teams can change and which fields stay with the platform
+```bash
+cd spring-platform/springboot-platform-app
+
+# See what would be created
+./bin/scaffold-app my-service --dry-run
+
+# Generate a scaffolded copy
+./bin/scaffold-app my-service --output ../my-service
+
+# With custom Java package
+./bin/scaffold-app my-service --package com.mycompany.myservice --output ../my-service
+```
+
+The scaffold command:
+
+- Copies the example directory
+- Renames `inventory-api` → `my-service` across all files
+- Updates Java package from `com.example.inventory` → your package
+- Renames Java classes: `Inventory*` → `MyService*`
+- Updates ConfigHub YAML slugs, labels, and filenames
+- Updates field-routes with your app prefix
+- Creates `ADAPTATION-CHECKLIST.md` listing what you still need to review
+
+## What the Scaffold Does NOT Do
+
+The scaffold handles mechanical renaming. You still need to:
+
+- **Replace the sample app code** in `upstream/app/` with your actual service
+- **Review ports and health paths** if yours differ from the default
+- **Review field ownership** in `operational/field-routes.yaml`
+- **Update environment variables** for your service's needs
+- **Configure image registry** if not using local Kind loading
+
+The generated `ADAPTATION-CHECKLIST.md` lists these items with checkboxes.
 
 ## What You Can Reuse As-Is
 
@@ -25,41 +56,12 @@ From [`springboot-platform-app`](./springboot-platform-app/):
 - the mutation story: apply-here, lift-upstream, block/escalate
 - the visibility tools: `./generator/render.sh --trace`, `./generator/render.sh --explain-field`, `./confighub-compare.sh`, `./confighub-refresh-preview.sh`
 
-## What You Must Replace
+## Verifying Your Scaffolded App
 
-The sample app is `inventory-api`. If you want to use your own app, you need to replace or adapt:
-
-- `springboot-platform-app/upstream/app/`
-- `springboot-platform-app/confighub/inventory-api-*.yaml`
-- `springboot-platform-app/operational/*.yaml`
-- `springboot-platform-app/operational/field-routes.yaml`
-- `springboot-platform-app/bin/build-image`
-- any scripts that assume:
-  - app name = `inventory-api`
-  - namespace = `inventory-api`
-  - image = `inventory-api:local`
-
-You will also need to revisit:
-
-- ports
-- actuator/health paths
-- env vars
-- Spring profiles
-- image name and registry
-
-## What "Deploy Your Own App" Means Today
-
-Today, this is the supported interpretation:
-
-1. Put your app where the sample app lives.
-2. Update the rendered manifests and ConfigHub unit YAMLs for your app.
-3. Update field ownership rules.
-4. Run the same proof path.
-
-That proof path is:
+After scaffolding and adapting:
 
 ```bash
-cd springboot-platform-app
+cd my-service  # your scaffolded directory
 ./setup.sh --explain
 ./verify.sh
 ./confighub-setup.sh --with-noop-targets
@@ -107,20 +109,22 @@ If you are evaluating this with a real team, do it in this order:
 
 This keeps the evaluation focused on the model, not on porting five things at once.
 
-## What Team-Ready Would Mean
+## What Is Now Supported vs. Still Manual
 
-If you want this to feel turnkey for internal teams, the next layer of work is:
+**Supported by the scaffold:**
 
-- a documented "replace the sample app" path
-- fewer hard-coded `inventory-api` assumptions
-- a generator or import path that updates manifests and ConfigHub YAMLs for a new app
-- a clear ownership contract for field routes
+- ✓ Renaming `inventory-api` to your app name
+- ✓ Updating Java package and class names
+- ✓ Renaming ConfigHub YAML files and updating slugs/labels
+- ✓ Updating field-routes with your app prefix
+- ✓ Generating a checklist of remaining manual steps
 
-That is different from the current state, which is:
+**Still requires your judgment:**
 
-- a strong flagship example
-- a real proof path
-- a good starting point for one team to adapt
+- Replacing the stub app code with your actual service
+- Deciding which fields are app-owned vs platform-owned
+- Configuring ports, health paths, and environment variables
+- Setting up image registry and deployment targets
 
 ## Which Example Should A Team Start With?
 

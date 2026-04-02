@@ -1,0 +1,380 @@
+#!/usr/bin/env bash
+# Scaffold a new Spring Boot app example from inventory-api.
+#
+# This is a scaffold/adaptation tool, not a turnkey importer.
+# It handles the mechanical renaming work. You still need to:
+# - Review ports, health paths, env vars
+# - Decide field ownership rules
+# - Replace the actual app code with your own
+#
+# Usage:
+#   ./bin/scaffold-app order-api
+#   ./bin/scaffold-app order-api --package com.mycompany.orderapi
+#   ./bin/scaffold-app order-api --output ../my-order-api
+#   ./bin/scaffold-app order-api --dry-run
+#
+# Required:
+#   APP_NAME    The new app name (e.g., order-api, payment-service)
+#
+# Optional:
+#   --package PKG     Java package (default: com.example.<appname without dashes>)
+#   --output DIR      Output directory (default: ../<app-name>)
+#   --image NAME      Image name override (default: <app-name>:local)
+#   --namespace NS    Kubernetes namespace (default: apps)
+#   --dry-run         Show what would be created without writing files
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SOURCE_DIR="$(dirname "${SCRIPT_DIR}")"
+
+# Defaults
+APP_NAME=""
+JAVA_PACKAGE=""
+OUTPUT_DIR=""
+IMAGE_NAME=""
+NAMESPACE="apps"
+DRY_RUN=false
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --package)
+      JAVA_PACKAGE="$2"
+      shift 2
+      ;;
+    --output)
+      OUTPUT_DIR="$2"
+      shift 2
+      ;;
+    --image)
+      IMAGE_NAME="$2"
+      shift 2
+      ;;
+    --namespace)
+      NAMESPACE="$2"
+      shift 2
+      ;;
+    --dry-run)
+      DRY_RUN=true
+      shift
+      ;;
+    --help|-h)
+      head -30 "$0" | grep "^#" | sed 's/^# *//'
+      exit 0
+      ;;
+    -*)
+      echo "error: unknown option: $1" >&2
+      exit 1
+      ;;
+    *)
+      if [[ -z "${APP_NAME}" ]]; then
+        APP_NAME="$1"
+      else
+        echo "error: unexpected argument: $1" >&2
+        exit 1
+      fi
+      shift
+      ;;
+  esac
+done
+
+# Validate required args
+if [[ -z "${APP_NAME}" ]]; then
+  echo "error: APP_NAME is required" >&2
+  echo "usage: $0 <app-name> [--package PKG] [--output DIR] [--dry-run]" >&2
+  exit 1
+fi
+
+# Derive defaults
+APP_NAME_LOWER="$(echo "${APP_NAME}" | tr '[:upper:]' '[:lower:]')"  # lowercase
+APP_NAME_NODASH="$(echo "${APP_NAME_LOWER}" | tr -d '-')"  # remove dashes
+# Convert to CamelCase: order-api -> OrderApi
+APP_NAME_CAMEL="$(echo "${APP_NAME}" | awk -F'-' '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1' OFS='')"
+
+if [[ -z "${JAVA_PACKAGE}" ]]; then
+  JAVA_PACKAGE="com.example.${APP_NAME_NODASH}"
+fi
+
+if [[ -z "${OUTPUT_DIR}" ]]; then
+  OUTPUT_DIR="$(dirname "${SOURCE_DIR}")/${APP_NAME}"
+fi
+
+if [[ -z "${IMAGE_NAME}" ]]; then
+  IMAGE_NAME="${APP_NAME_LOWER}:local"
+fi
+
+# Package path conversion
+JAVA_PACKAGE_PATH="$(echo "${JAVA_PACKAGE}" | tr '.' '/')"
+OLD_PACKAGE="com.example.inventory"
+OLD_PACKAGE_PATH="com/example/inventory"
+
+echo "========================================"
+echo "Spring Platform App Scaffold"
+echo "========================================"
+echo ""
+echo "Source:      ${SOURCE_DIR}"
+echo "Output:      ${OUTPUT_DIR}"
+echo ""
+echo "App name:    ${APP_NAME}"
+echo "Java pkg:    ${JAVA_PACKAGE}"
+echo "Image:       ${IMAGE_NAME}"
+echo "Namespace:   ${NAMESPACE}"
+echo ""
+
+if [[ "${DRY_RUN}" == "true" ]]; then
+  echo "[DRY RUN] Would create the following structure:"
+  echo ""
+  echo "  ${OUTPUT_DIR}/"
+  echo "  ├── confighub/"
+  echo "  │   ├── ${APP_NAME}-dev.yaml"
+  echo "  │   ├── ${APP_NAME}-stage.yaml"
+  echo "  │   └── ${APP_NAME}-prod.yaml"
+  echo "  ├── operational/"
+  echo "  │   ├── configmap.yaml"
+  echo "  │   ├── deployment.yaml"
+  echo "  │   ├── service.yaml"
+  echo "  │   └── field-routes.yaml"
+  echo "  ├── upstream/app/src/main/java/${JAVA_PACKAGE_PATH}/"
+  echo "  │   └── ${APP_NAME_CAMEL}Application.java"
+  echo "  └── ..."
+  echo ""
+  echo "Text replacements:"
+  echo "  inventory-api → ${APP_NAME}"
+  echo "  Inventory     → ${APP_NAME_CAMEL}"
+  echo "  ${OLD_PACKAGE} → ${JAVA_PACKAGE}"
+  echo ""
+  exit 0
+fi
+
+# Check output doesn't exist
+if [[ -d "${OUTPUT_DIR}" ]]; then
+  echo "error: output directory already exists: ${OUTPUT_DIR}" >&2
+  exit 1
+fi
+
+echo "Creating scaffold..."
+echo ""
+
+# Copy the source directory
+cp -r "${SOURCE_DIR}" "${OUTPUT_DIR}"
+
+# Remove git-ignored, build artifacts, and the scaffold script itself
+rm -rf "${OUTPUT_DIR}/var" "${OUTPUT_DIR}/upstream/app/target" 2>/dev/null || true
+rm -f "${OUTPUT_DIR}/bin/scaffold-app" 2>/dev/null || true
+
+# ============================================
+# Phase 1: Rename files with inventory-api
+# ============================================
+echo "Phase 1: Renaming files..."
+
+# Rename confighub YAMLs
+for env in dev stage prod; do
+  if [[ -f "${OUTPUT_DIR}/confighub/inventory-api-${env}.yaml" ]]; then
+    mv "${OUTPUT_DIR}/confighub/inventory-api-${env}.yaml" \
+       "${OUTPUT_DIR}/confighub/${APP_NAME}-${env}.yaml"
+  fi
+done
+
+# Rename lift-upstream confighub YAMLs if they exist
+if [[ -d "${OUTPUT_DIR}/lift-upstream/redis-cache/confighub" ]]; then
+  for env in dev stage prod; do
+    if [[ -f "${OUTPUT_DIR}/lift-upstream/redis-cache/confighub/inventory-api-${env}.yaml" ]]; then
+      mv "${OUTPUT_DIR}/lift-upstream/redis-cache/confighub/inventory-api-${env}.yaml" \
+         "${OUTPUT_DIR}/lift-upstream/redis-cache/confighub/${APP_NAME}-${env}.yaml"
+    fi
+  done
+fi
+
+# ============================================
+# Phase 2: Rename Java source files
+# ============================================
+echo "Phase 2: Renaming Java source files..."
+
+# Create new package directory structure
+mkdir -p "${OUTPUT_DIR}/upstream/app/src/main/java/${JAVA_PACKAGE_PATH}/api"
+mkdir -p "${OUTPUT_DIR}/upstream/app/src/test/java/${JAVA_PACKAGE_PATH}/api"
+
+# Move and rename main source files
+OLD_SRC="${OUTPUT_DIR}/upstream/app/src/main/java/${OLD_PACKAGE_PATH}"
+NEW_SRC="${OUTPUT_DIR}/upstream/app/src/main/java/${JAVA_PACKAGE_PATH}"
+
+if [[ -d "${OLD_SRC}" ]]; then
+  # Rename main application class
+  if [[ -f "${OLD_SRC}/InventoryApiApplication.java" ]]; then
+    mv "${OLD_SRC}/InventoryApiApplication.java" "${NEW_SRC}/${APP_NAME_CAMEL}Application.java"
+  fi
+
+  # Move and rename API classes
+  for file in "${OLD_SRC}/api/"*.java; do
+    if [[ -f "${file}" ]]; then
+      basename="${file##*/}"
+      newname="${basename//Inventory/${APP_NAME_CAMEL}}"
+      mv "${file}" "${NEW_SRC}/api/${newname}"
+    fi
+  done
+
+  # Remove old package directories
+  rm -rf "${OUTPUT_DIR}/upstream/app/src/main/java/com/example/inventory"
+fi
+
+# Move and rename test files
+OLD_TEST="${OUTPUT_DIR}/upstream/app/src/test/java/${OLD_PACKAGE_PATH}"
+NEW_TEST="${OUTPUT_DIR}/upstream/app/src/test/java/${JAVA_PACKAGE_PATH}"
+
+if [[ -d "${OLD_TEST}" ]]; then
+  for file in "${OLD_TEST}/api/"*.java; do
+    if [[ -f "${file}" ]]; then
+      basename="${file##*/}"
+      newname="${basename//Inventory/${APP_NAME_CAMEL}}"
+      mv "${file}" "${NEW_TEST}/api/${newname}"
+    fi
+  done
+  rm -rf "${OUTPUT_DIR}/upstream/app/src/test/java/com/example/inventory"
+fi
+
+# Clean up empty directories
+find "${OUTPUT_DIR}/upstream/app/src" -type d -empty -delete 2>/dev/null || true
+
+# ============================================
+# Phase 3: Text replacements
+# ============================================
+echo "Phase 3: Replacing text references..."
+
+# Find all text files to process (include bin/* scripts without extensions)
+find "${OUTPUT_DIR}" -type f \( \
+  -name "*.yaml" -o -name "*.yml" -o -name "*.java" -o -name "*.xml" -o \
+  -name "*.sh" -o -name "*.md" -o -name "*.json" -o -name "*.properties" -o \
+  -name "Dockerfile" -o -path "*/bin/*" \
+  \) | while read -r file; do
+
+  # Skip binary files
+  if file "${file}" | grep -q "text\|JSON"; then
+    # Replace inventory-api with new app name
+    sed -i.bak "s/inventory-api/${APP_NAME}/g" "${file}"
+    # Replace InventoryApi with CamelCase app name (handles InventoryApiApplication -> OrderApiApplication)
+    sed -i.bak "s/InventoryApi/${APP_NAME_CAMEL}/g" "${file}"
+    # Replace remaining Inventory with CamelCase app name (for other classes)
+    sed -i.bak "s/Inventory/${APP_NAME_CAMEL}/g" "${file}"
+    # Replace old package with new package
+    sed -i.bak "s/${OLD_PACKAGE}/${JAVA_PACKAGE}/g" "${file}"
+    # Replace old package path with new package path
+    sed -i.bak "s|${OLD_PACKAGE_PATH}|${JAVA_PACKAGE_PATH}|g" "${file}"
+    # Update image name in build-image script
+    sed -i.bak "s|IMAGE_NAME=\"inventory-api:local\"|IMAGE_NAME=\"${IMAGE_NAME}\"|g" "${file}"
+    # Update namespace if different
+    if [[ "${NAMESPACE}" != "apps" ]]; then
+      sed -i.bak "s/namespace: apps/namespace: ${NAMESPACE}/g" "${file}"
+    fi
+    # Clean up backup files
+    rm -f "${file}.bak"
+  fi
+done
+
+# ============================================
+# Phase 4: Update field-routes.yaml
+# ============================================
+echo "Phase 4: Updating field ownership rules..."
+
+# The field-routes.yaml uses feature.inventory.* which needs updating
+sed -i.bak "s/feature\.inventory\./feature.${APP_NAME_NODASH}./g" \
+    "${OUTPUT_DIR}/operational/field-routes.yaml"
+rm -f "${OUTPUT_DIR}/operational/field-routes.yaml.bak"
+
+# ============================================
+# Phase 5: Create TODO checklist
+# ============================================
+echo "Phase 5: Creating adaptation checklist..."
+
+cat > "${OUTPUT_DIR}/ADAPTATION-CHECKLIST.md" << 'CHECKLIST_EOF'
+# Adaptation Checklist
+
+This scaffold was generated from the `inventory-api` example. The mechanical renaming is done. You still need to review and adapt the following:
+
+## Required: Replace the Sample App
+
+The Java code in `upstream/app/` is still the inventory-api stub. Replace it with your actual application:
+
+- [ ] Replace `src/main/java/.../` with your app's source code
+- [ ] Update `pom.xml` with your dependencies
+- [ ] Update `Dockerfile` if your build process differs
+
+## Required: Review Ports and Health Paths
+
+- [ ] `operational/deployment.yaml` — containerPort (currently 8081 for prod)
+- [ ] `operational/service.yaml` — targetPort
+- [ ] `confighub/*.yaml` — any port references
+- [ ] Health check paths if not `/actuator/health`
+
+## Required: Review Environment Variables
+
+- [ ] `operational/deployment.yaml` — env section
+- [ ] `confighub/*.yaml` — embedded env vars
+- [ ] Add any app-specific env vars your service needs
+
+## Required: Review Field Ownership
+
+- [ ] `operational/field-routes.yaml` — decide which fields are:
+  - `mutable-in-ch` (app team can change in ConfigHub)
+  - `lift-upstream` (requires source change)
+  - `generator-owned` (platform-controlled, blocked)
+
+CHECKLIST_EOF
+
+# Add app-specific content to checklist
+cat >> "${OUTPUT_DIR}/ADAPTATION-CHECKLIST.md" << CHECKLIST_APP_EOF
+
+## Current Field Routes
+
+\`\`\`yaml
+$(cat "${OUTPUT_DIR}/operational/field-routes.yaml")
+\`\`\`
+
+Update the \`feature.${APP_NAME_NODASH}.*\` pattern to match your app's feature flags.
+
+## Optional: Image Registry
+
+- [ ] Update image references in \`confighub/*.yaml\` for your registry
+- [ ] Update \`bin/build-image\` if using a different registry
+
+## Optional: Platform Policy
+
+- [ ] Review \`upstream/platform/runtime-policy.yaml\`
+- [ ] Review \`upstream/platform/slo-policy.yaml\`
+
+## Verification
+
+After adaptation, run:
+
+\`\`\`bash
+cd ${OUTPUT_DIR##*/}
+./verify.sh
+./confighub-setup.sh --with-noop-targets
+./confighub-verify.sh
+\`\`\`
+
+## What Was Renamed
+
+| Original | Renamed to |
+|----------|------------|
+| inventory-api | ${APP_NAME} |
+| Inventory* (Java) | ${APP_NAME_CAMEL}* |
+| com.example.inventory | ${JAVA_PACKAGE} |
+| feature.inventory.* | feature.${APP_NAME_NODASH}.* |
+CHECKLIST_APP_EOF
+
+echo ""
+echo "========================================"
+echo "Scaffold created successfully!"
+echo "========================================"
+echo ""
+echo "Output: ${OUTPUT_DIR}"
+echo ""
+echo "Next steps:"
+echo "  1. Review ${OUTPUT_DIR}/ADAPTATION-CHECKLIST.md"
+echo "  2. Replace the sample app code with your own"
+echo "  3. Run ./verify.sh to check consistency"
+echo ""
+echo "Remaining inventory-api references (should be zero or intentional):"
+rg -c "inventory-api" "${OUTPUT_DIR}" 2>/dev/null | grep -v "ADAPTATION-CHECKLIST.md" || echo "  (none found)"
+echo ""
