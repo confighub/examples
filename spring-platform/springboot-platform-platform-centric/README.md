@@ -2,7 +2,7 @@
 
 One platform, two apps, five deployments. See what's platform-owned vs app-owned.
 
-**Experimental:** The model is sound but tooling is incomplete. Noop targets only.
+**Experimental:** Noop targets only in this example.
 
 ```bash
 ./setup.sh --explain
@@ -80,5 +80,6 @@ cub function do --space catalog-api-prod --unit catalog-api \
 ## Related
 
 See [`../README.md`](../README.md) for how the three examples compare.
+See [`../BRING-YOUR-OWN-APP.md`](../BRING-YOUR-OWN-APP.md) if you want to adapt the example to your own service.
 
 AI guide: [`AI_START_HERE.md`](./AI_START_HERE.md)

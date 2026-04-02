@@ -79,5 +79,6 @@ cat ../shared/field-routes.yaml
 ## Related
 
 See [`../README.md`](../README.md) for how the three examples compare.
+See [`../BRING-YOUR-OWN-APP.md`](../BRING-YOUR-OWN-APP.md) if you want to adapt the example to your own service.
 
 AI guide: [`AI_START_HERE.md`](./AI_START_HERE.md)

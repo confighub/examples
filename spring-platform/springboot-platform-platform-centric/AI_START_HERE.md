@@ -2,7 +2,7 @@
 
 Read [`README.md`](./README.md) first. This page explains how to demo it.
 
-**Experimental:** The model is sound but tooling is incomplete.
+**Experimental:** Noop targets only in this example.
 
 ## Demo Pacing
 

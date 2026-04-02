@@ -1,12 +1,12 @@
 # Spring Boot Generator Example
 
-See exactly how app config + platform policy becomes governed Kubernetes manifests, and why each field routes to apply-here, lift-upstream, or block.
+See how app config + platform policy becomes governed Kubernetes manifests, and why each field routes to apply-here, lift-upstream, or block.
 
 ```bash
 ./setup.sh --explain
 ```
 
-This is the fullest implementation: real Kubernetes delivery via Kind, field-by-field lineage tracing, and all three mutation routes demonstrated. The apply-here route is fully proven with audited mutation; lift-upstream and block-escalate are documented with bundles and boundaries but not yet server-enforced.
+This example has the most complete proof path: real Kubernetes delivery via Kind, field-by-field lineage tracing, and all three mutation routes shown end to end. The apply-here route is proven with audited mutation; lift-upstream and block-escalate are still bundle-and-boundary workflows rather than server-enforced behavior.
 
 ## Quick Start
 
@@ -82,6 +82,20 @@ cub function do --space inventory-api-prod --unit inventory-api \
 
 Server-side enforcement is documented but not yet implemented.
 
+## Can I Use My Own App?
+
+Yes, but today you adapt this example rather than run a generic import command.
+
+Start with [`../BRING-YOUR-OWN-APP.md`](../BRING-YOUR-OWN-APP.md).
+
+In practice that means:
+
+- replace `upstream/app/` with your app
+- update the unit YAMLs under `confighub/`
+- update the rendered manifests under `operational/`
+- update field ownership in `operational/field-routes.yaml`
+- keep the same proof path: `./verify.sh`, `./confighub-setup.sh`, and optionally `./confighub-setup.sh --with-targets`
+
 ## Key Files
 
 | Path | Purpose |
@@ -102,5 +116,6 @@ Server-side enforcement is documented but not yet implemented.
 ## Related
 
 See [`../README.md`](../README.md) for how the three examples compare.
+See [`../BRING-YOUR-OWN-APP.md`](../BRING-YOUR-OWN-APP.md) for adapting the example to your own service.
 
 AI guide: [`AI_START_HERE.md`](./AI_START_HERE.md)

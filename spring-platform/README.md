@@ -100,7 +100,27 @@ cd springboot-platform-platform-centric
 | Lift-upstream automated PR | Bundle only, no PR |
 | Block/escalate enforcement | Documented, not enforced |
 
-## The Honest Next Question
+## Can I Deploy My Own Spring Boot App?
+
+Yes, but today this is a worked example you adapt, not a one-command import flow.
+
+What is real today:
+
+- the Spring Boot app in `springboot-platform-app/upstream/app/`
+- the ConfigHub setup and verification path
+- the real Kind deployment path in Phase 1
+- the mutation model: apply-here, lift-upstream, block/escalate
+
+What you still have to do yourself:
+
+- replace the sample app with your own app
+- update app name, image, ports, and health checks
+- decide which fields are app-owned versus platform-owned
+- update the unit YAMLs and proof scripts to match your app
+
+Start with [`BRING-YOUR-OWN-APP.md`](./BRING-YOUR-OWN-APP.md).
+
+## What Teams Will Ask Next
 
 If this challenge works, the next question a serious platform engineer will ask:
 

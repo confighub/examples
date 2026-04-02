@@ -36,6 +36,7 @@ This material exists to explain why certain ConfigHub tasks need a bounded-proce
 - [vmcluster-bootstrap-profile.md](./vmcluster-bootstrap-profile.md): first draft profile for bootstrapping a real `cub-vmcluster` target
 - [vmcluster-nginx-deploy-profile.md](./vmcluster-nginx-deploy-profile.md): first draft profile for deploying one simple workload to that target
 - [why-cub-proc-example-promotions.md](./why-cub-proc-example-promotions.md): evidence from `promotion-demo-data`
+- [why-cub-proc-che-install.md](./why-cub-proc-che-install.md): notes from the internal CHE install runbook and why it is a strong later `cub-proc` candidate
 
 ## Relationship To Current Examples
 
