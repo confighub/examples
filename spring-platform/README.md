@@ -1,15 +1,15 @@
 # Spring Platform in ConfigHub
 
-This repo teaches the app-platform model for Spring Boot services.
+This repo teaches an experimental app-platform model for Spring Boot services and ConfigHub.  We have several different 'versions' of the idea, for comparison and learning. The example assumes that many users will want some generated config, and looks at a way to enable this with the CH paradigm.
 
 ## Start Here
 
-- Learn the model in this repo.
-- Use [`cub-gen/examples/springboot-paas`](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas) when you want the real product-side path for your own Spring Boot app. Start there with `cub-gen springboot init`.
+- Review the model in this repo if you want to see the ideas
+- Later, for a 'real Boot app', the version at [`cub-gen/examples/springboot-paas`](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas) has a path for your own Spring Boot app. Start there with `cub-gen springboot init`.  Also very experimental.
 
 ## What This Repo Is For
 
-**Use this repo to learn the model.** App teams keep writing normal Spring Boot apps in Git. Platform tooling maps those app inputs into the operational artifacts needed to run on Kubernetes with GitOps.
+**Use this repo to study the model.** App teams keep writing normal Spring Boot apps in Git. Platform tooling maps those app inputs into the operational artifacts needed to run on Kubernetes with GitOps.
 
 That operational layer includes ConfigHub units and spaces, Kubernetes manifests, platform policy, and GitOps-facing state.
 
@@ -23,7 +23,7 @@ Platform tooling then maps those inputs into:
 - Platform policy (security, datasource boundaries)
 - GitOps-facing operational state
 
-This mapping is intentionally constrained:
+This mapping from app to platform is a deterministic config generator, and it is intentionally constrained:
 
 | Property | Why it matters |
 |----------|----------------|
@@ -32,11 +32,11 @@ This mapping is intentionally constrained:
 | Ownership boundaries | Fields are app-owned or platform-owned, not ambiguous |
 | Mutation from provenance | How a field can change depends on who owns it |
 
-The point is not "generate all the YAML." The point is to generate only the operational config that the platform must own, while keeping the path back to app inputs clear.
+The point is not "generate all the YAML." The point is to generate only the operational config that the platform must own, while keeping the path back to app inputs clear. 
 
-## Three Mutation Routes
+## Mutation Routes
 
-Every field in the operational output falls into one of three categories:
+Every operational field change falls into one of three categories:
 
 | Route | Owner | What happens |
 |-------|-------|--------------|
@@ -46,21 +46,21 @@ Every field in the operational output falls into one of three categories:
 
 These routes are derived from field provenance and ownership, not assigned arbitrarily. If you know where a field comes from, you know how it can change.
 
-## Three Teaching Views
+## Three Versions of the app platform
 
 This repo shows the same model through three lenses:
 
 | View | Example | What it helps you see |
 |------|---------|------------------------|
-| Vanilla ConfigHub | [`springboot-platform-app`](./springboot-platform-app/) | How app inputs and platform policy become operational outputs |
-| ADT | [`springboot-platform-app-centric`](./springboot-platform-app-centric/) | How one app becomes deployments and targets |
+| Vanilla ConfigHub | [`springboot-platform-app`](./springboot-platform-app/) | How app inputs and platform policy generate operational outputs |
+| ADT | [`springboot-platform-app-centric`](./springboot-platform-app-centric/) | How the CH app, deployment and target model works |
 | ADTP | [`springboot-platform-platform-centric`](./springboot-platform-platform-centric/) | How platform ownership applies across multiple apps |
 
-These are three lenses on the same model, not three different products.
+These are three 'lenses' on the same example, not three different examples.
 
-## The Release-Day Proof
+## STORY: The Release-Day Proof
 
-A major product launch is in 24 hours. Three requests land at the same time:
+We imagine that "a major product launch is in 24 hours". Three requests land at the same time:
 
 1. **Flip a feature flag in prod** — safe, urgent, do it now
 2. **Add Redis caching** — valuable, but it requires a code change
