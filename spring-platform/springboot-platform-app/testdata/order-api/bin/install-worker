@@ -1,0 +1,133 @@
+#!/usr/bin/env bash
+# Install a ConfigHub worker that provides real Kubernetes targets.
+#
+# Usage:
+#   CUB_SPACE=springboot-infra ./bin/install-worker
+#   CUB_SPACE=springboot-infra ./bin/install-worker my-cluster
+#
+# Requires:
+#   - CUB_SPACE environment variable (ConfigHub space for the worker)
+#   - Kind cluster already running (./bin/create-cluster)
+#   - cub CLI authenticated (cub auth login)
+#
+# Output:
+#   - Worker process running in background
+#   - PID saved to var/worker.pid
+#   - Logs written to var/worker.log
+#   - Kubernetes target registered (exact slug is printed after startup)
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "${SCRIPT_DIR}")"
+CLUSTER_NAME="${1:-springboot-platform}"
+WORKER_SLUG="worker"
+
+KUBECONFIG_PATH="${PROJECT_DIR}/var/${CLUSTER_NAME}.kubeconfig"
+PID_FILE="${PROJECT_DIR}/var/worker.pid"
+LOG_FILE="${PROJECT_DIR}/var/worker.log"
+
+# Check prerequisites
+if [[ -z "${CUB_SPACE:-}" ]]; then
+  echo "error: CUB_SPACE environment variable not set." >&2
+  echo "Usage: CUB_SPACE=springboot-infra ./bin/install-worker" >&2
+  exit 1
+fi
+
+command -v cub >/dev/null 2>&1 || {
+  echo "error: cub CLI not found." >&2
+  exit 1
+}
+
+command -v kubectl >/dev/null 2>&1 || {
+  echo "error: kubectl not found." >&2
+  exit 1
+}
+
+if [[ ! -f "${KUBECONFIG_PATH}" ]]; then
+  echo "error: Kubeconfig not found at ${KUBECONFIG_PATH}" >&2
+  echo "Run ./bin/create-cluster first." >&2
+  exit 1
+fi
+
+export KUBECONFIG="${KUBECONFIG_PATH}"
+
+# Check cluster is reachable
+if ! kubectl cluster-info >/dev/null 2>&1; then
+  echo "error: Cluster not reachable. Is Docker running? Is the Kind cluster up?" >&2
+  exit 1
+fi
+
+# Stop any existing worker
+if [[ -f "${PID_FILE}" ]] && kill -0 "$(cat "${PID_FILE}")" 2>/dev/null; then
+  echo "Stopping existing worker..."
+  kill "$(cat "${PID_FILE}")" 2>/dev/null || true
+  sleep 2
+fi
+rm -f "${PID_FILE}"
+
+# Create or verify ConfigHub space
+echo "Ensuring ConfigHub space '${CUB_SPACE}' exists..."
+if ! cub space get "${CUB_SPACE}" >/dev/null 2>&1; then
+  cub space create "${CUB_SPACE}" --quiet
+  echo "  Created space: ${CUB_SPACE}"
+else
+  echo "  Space exists: ${CUB_SPACE}"
+fi
+
+# Create worker in ConfigHub
+echo "Creating ConfigHub worker '${WORKER_SLUG}' in space '${CUB_SPACE}'..."
+cub worker create "${WORKER_SLUG}" --space "${CUB_SPACE}" --allow-exists --quiet
+
+# Start local worker process
+echo "Starting local Kubernetes worker..."
+nohup env KUBECONFIG="${KUBECONFIG_PATH}" \
+  cub worker run --space "${CUB_SPACE}" -t kubernetes "${WORKER_SLUG}" \
+  > "${LOG_FILE}" 2>&1 &
+echo $! > "${PID_FILE}"
+
+# Wait for target to register
+echo "Waiting for Kubernetes target to register..."
+TARGET_READY=false
+for _ in $(seq 1 60); do
+  TARGET_JSON=$(cub target list --space "${CUB_SPACE}" --json 2>/dev/null || echo '[]')
+  if echo "${TARGET_JSON}" | jq -e '[.[].Target.ProviderType | ascii_downcase] | index("kubernetes") != null' >/dev/null 2>&1; then
+    TARGET_READY=true
+    break
+  fi
+  sleep 2
+done
+
+if ! ${TARGET_READY}; then
+  echo "warning: Kubernetes target not visible yet." >&2
+  echo "Check logs: tail -f ${LOG_FILE}" >&2
+  echo "Verify targets: cub target list --space ${CUB_SPACE}" >&2
+fi
+
+# Get the actual target name
+K8S_TARGET=$(cub target list --space "${CUB_SPACE}" --json 2>/dev/null | \
+  jq -r '[.[] | select(.Target.ProviderType | ascii_downcase == "kubernetes")][0].Target.Slug // empty')
+
+echo ""
+echo "========================================="
+echo "ConfigHub Worker Started!"
+echo "========================================="
+echo "Space:      ${CUB_SPACE}"
+echo "Worker:     ${WORKER_SLUG}"
+echo "Target:     ${K8S_TARGET}"
+echo "PID:        $(cat "${PID_FILE}")"
+echo "Log:        ${LOG_FILE}"
+echo "Kubeconfig: ${KUBECONFIG_PATH}"
+echo ""
+echo "To use in confighub-setup.sh:"
+echo "  export WORKER_SPACE=${CUB_SPACE}"
+if [[ -n "${K8S_TARGET}" ]]; then
+  echo "  export K8S_TARGET=${K8S_TARGET}"
+else
+  echo "  # K8S_TARGET can be omitted if this is the only Kubernetes target in ${CUB_SPACE}"
+fi
+echo "  ./confighub-setup.sh --with-targets"
+echo ""
+echo "To stop the worker:"
+echo "  ./bin/teardown"
+echo "========================================="

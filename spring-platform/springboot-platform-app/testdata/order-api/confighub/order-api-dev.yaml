@@ -1,0 +1,86 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: order-api
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: order-api
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: order-api-config
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: order-api
+data:
+  application.yaml: |
+    spring:
+      application:
+        name: order-api
+      datasource:
+        url: jdbc:postgresql://postgres.platform.svc:5432/inventory
+        username: inventory
+    inventory:
+      environment: dev
+    management:
+      endpoints:
+        web:
+          exposure:
+            include: health,info
+    feature:
+      inventory:
+        reservationMode: optimistic
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-api
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: order-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: order-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: order-api
+    spec:
+      serviceAccountName: order-api
+      containers:
+        - name: order-api
+          image: ghcr.io/example/order-api:1.0.0
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SPRING_CONFIG_ADDITIONAL_LOCATION
+              value: /config/
+            - name: SPRING_PROFILES_ACTIVE
+              value: default
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://postgres.platform.svc:5432/inventory
+            - name: CACHE_BACKEND
+              value: none
+          volumeMounts:
+            - name: app-config
+              mountPath: /config
+      volumes:
+        - name: app-config
+          configMap:
+            name: order-api-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-api
+  namespace: apps
+spec:
+  selector:
+    app.kubernetes.io/name: order-api
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
