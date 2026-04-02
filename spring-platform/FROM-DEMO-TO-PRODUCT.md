@@ -15,6 +15,24 @@ Short answer: In `spring-platform`, it's a teaching tool. In `cub-gen/examples/s
 
 Both implement the same release-day challenge (feature flag, Redis caching, datasource override) with the same three mutation routes. The difference is what's behind the scripts.
 
+## Quick Start for Your Own App
+
+If you already understand the model and want to onboard your own Spring Boot app:
+
+```bash
+# Generate starter cub-gen material
+cub-gen springboot init --dry-run ./path/to/your-spring-app
+cub-gen springboot init --app my-service ./path/to/your-spring-app
+
+# Validate field mutations before they reach ConfigHub
+cub-gen springboot validate-mutation --routes ./operational/field-routes.yaml \
+  feature.myservice.someFlag        # ALLOWED
+cub-gen springboot validate-mutation --routes ./operational/field-routes.yaml \
+  spring.datasource.url             # BLOCKED
+```
+
+This generates platform policy skeletons, field ownership rules, and ConfigHub unit starters. See the [springboot-paas README](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas#onboard-your-own-spring-boot-app) for details.
+
 ## Concept Mapping
 
 | Capability | spring-platform | cub-gen/springboot-paas |
@@ -29,7 +47,9 @@ Both implement the same release-day challenge (feature flag, Redis caching, data
 | ConfigHub setup | `./confighub-setup.sh` | `./confighub-setup.sh` |
 | Cross-env comparison | `./confighub-compare.sh` | `./confighub-compare.sh` |
 | Refresh-survival preview | `./confighub-refresh-preview.sh` | `./confighub-refresh-preview.sh` |
-| Scaffold your own app | `./bin/scaffold-app` | (not applicable) |
+| Scaffold your own app | `./bin/scaffold-app` | (not applicable — use `cub-gen springboot init`) |
+| Onboard your own app | (not applicable) | `cub-gen springboot init` |
+| Enforce field routes | (documented, not enforced) | `cub-gen springboot validate-mutation` |
 
 The command patterns are identical. The difference is implementation depth.
 
@@ -61,8 +81,8 @@ In `cub-gen`:
 ## Recommended Path
 
 1. **Learn with spring-platform** — Run the visibility scripts, understand field ownership, see the three mutation routes
-2. **Try scaffold** — Generate a renamed copy for your app shape using `./bin/scaffold-app`
-3. **Evaluate with cub-gen** — Point the real generator at your app and see computed output
+2. **Onboard with cub-gen** — Run `cub-gen springboot init` on your app to generate starter material
+3. **Validate mutations** — Use `cub-gen springboot validate-mutation` to enforce field routes in CI
 
 ```bash
 # Step 1: Learn the model
@@ -70,18 +90,20 @@ cd examples/spring-platform/springboot-platform-app
 ./setup.sh --explain
 ./generator/render.sh --trace
 
-# Step 2: Scaffold your shape
-./bin/scaffold-app my-service --dry-run
-./bin/scaffold-app my-service --output ../my-service
+# Step 2: Onboard your app
+cub-gen springboot init --app my-service ./path/to/your-spring-app
+cd ./path/to/your-spring-app
+# Review generated files: platform/, operational/, confighub/, .cub-gen/
 
-# Step 3: Run the real generator
-cd /path/to/cub-gen
-go build -o ./cub-gen ./cmd/cub-gen
-./examples/springboot-paas/demo-local.sh
+# Step 3: Validate field routes
+cub-gen springboot validate-mutation --routes ./operational/field-routes.yaml \
+  feature.myservice.reservationMode    # ALLOWED
+cub-gen springboot validate-mutation --routes ./operational/field-routes.yaml \
+  spring.datasource.url                # BLOCKED
 
 # Step 4: Connected path
 cub auth login
-./examples/springboot-paas/demo-connected.sh
+cub unit apply --space my-service-prod ./confighub/my-service-prod.yaml
 ```
 
 ## What Carries Over
@@ -99,11 +121,13 @@ Everything you learn in `spring-platform` applies directly to `cub-gen`:
 |--------------------|------------|
 | Fixed inventory-api example | Your actual app |
 | Hardcoded field explanations | Computed from source |
-| Scaffold for adaptation | Generator for production |
+| Scaffold for adaptation | `cub-gen springboot init` for onboarding |
+| No enforcement | `cub-gen springboot validate-mutation` for CI |
 | Teaching-oriented docs | Product-oriented docs |
 
 ## Links
 
 - [spring-platform README](./README.md) — the teaching examples
-- [BRING-YOUR-OWN-APP.md](./BRING-YOUR-OWN-APP.md) — scaffold workflow
+- [BRING-YOUR-OWN-APP.md](./BRING-YOUR-OWN-APP.md) — scaffold workflow (for adapting the fixed example)
 - [cub-gen/examples/springboot-paas](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas) — the product example
+- [cub-gen springboot init](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas#onboard-your-own-spring-boot-app) — onboard your own app

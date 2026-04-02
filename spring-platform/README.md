@@ -1,5 +1,44 @@
 # Spring Platform in ConfigHub
 
+This example is about an app platform.
+
+App teams keep writing normal Spring Boot apps in Git. Platform tooling then maps those app inputs into the operational artifacts needed to run the service on Kubernetes with GitOps.
+
+That mapping is intentionally constrained. The model shown here uses a safe form of config generation:
+
+- 1:1 and invertible
+- provenance for every operational field
+- explicit ownership boundaries
+- three mutation models derived from provenance:
+  - apply here
+  - lift upstream
+  - block/escalate
+
+The point is not "generate all the YAML." The point is to generate only the operational config that the platform must own, while keeping the path back to app inputs clear.
+
+In this repo, the app is `inventory-api`, a Spring Boot service deployed across `dev`, `stage`, and `prod`. The platform layer maps that app into the things needed to run it:
+- ConfigHub units and spaces
+- Kubernetes manifests
+- platform policy
+- GitOps-facing operational state
+
+This repo shows that same model in three teaching views:
+
+| View | Example | What it helps you see |
+|------|---------|------------------------|
+| Vanilla ConfigHub | [`springboot-platform-app`](./springboot-platform-app/) | How app inputs and platform policy become operational outputs |
+| ADT | [`springboot-platform-app-centric`](./springboot-platform-app-centric/) | How one app becomes deployments and targets |
+| ADTP | [`springboot-platform-platform-centric`](./springboot-platform-platform-centric/) | How platform ownership applies across multiple apps |
+
+These are three lenses on the same app-platform model, not three different products.
+
+## Start Here
+
+- If you want to understand the model, start in this repo.
+- If you want to try the real product-side path on your own Spring Boot app, go to [`cub-gen/examples/springboot-paas`](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas) and use `cub-gen springboot init`.
+
+## The Three Mutation Stories
+
 A major product launch is in 24 hours. Three requests land at the same time:
 
 1. **Flip a feature flag in prod** — safe, urgent, do it now
@@ -10,21 +49,11 @@ These map to the three mutation routes every platform team needs:
 
 | Request | Route | Why |
 |---------|-------|-----|
-| Enable optimistic reservation mode | **Apply here** | App-owned operational tuning — mutate directly in ConfigHub |
-| Add Redis-backed caching | **Lift upstream** | Requires new Maven dependency and Spring config — route back to source |
-| Change the staging datasource | **Block/escalate** | Platform-owned boundary — the managed datasource must not diverge |
+| Enable optimistic reservation mode | **Apply here** | App-owned operational tuning |
+| Add Redis-backed caching | **Lift upstream** | Requires source changes |
+| Change the staging datasource | **Block/escalate** | Crosses a platform-owned boundary |
 
-The app is `inventory-api`, a Spring Boot service deployed across `dev`, `stage`, and `prod`.
-
-## Three Views of the Same Challenge
-
-Each example handles the same three requests from a different angle:
-
-| Phase | Example | Core question |
-|-------|---------|---------------|
-| 1 | [`springboot-platform-app`](./springboot-platform-app/) | Why does this field have this value in production? |
-| 2 | [`springboot-platform-app-centric`](./springboot-platform-app-centric/) | For this app, where should this change actually happen? |
-| 3 | [`springboot-platform-platform-centric`](./springboot-platform-platform-centric/) | What belongs to the platform team versus the app team? |
+The rest of this directory shows how those three stories look in Vanilla ConfigHub, ADT, and ADTP.
 
 ## Phase 1: How Config Gets Generated
 
@@ -102,47 +131,31 @@ cd springboot-platform-platform-centric
 
 ## Can I Deploy My Own Spring Boot App?
 
-Yes, but today this is a worked example you adapt, not a one-command import flow.
+Two paths:
 
-What is real today:
-
-- the Spring Boot app in `springboot-platform-app/upstream/app/`
-- the ConfigHub setup and verification path
-- the real Kind deployment path in Phase 1
-- the mutation model: apply-here, lift-upstream, block/escalate
-
-Use the scaffold command to generate a renamed copy for your app:
+**1. Scaffold from this example** — adapt the fixed example to your app shape:
 
 ```bash
 cd springboot-platform-app
 ./bin/scaffold-app my-service --output ../my-service
 ```
 
-The scaffold handles mechanical renaming. You still need to:
+The scaffold handles mechanical renaming. You still need to replace the app code and review field ownership. Full guide: [`BRING-YOUR-OWN-APP.md`](./BRING-YOUR-OWN-APP.md).
 
-- replace the stub app code with your actual service
-- decide which fields are app-owned versus platform-owned
-- review ports, health paths, and environment variables
+**2. Use the real generator** — run `cub-gen springboot init` on your app:
 
-Full guide: [`BRING-YOUR-OWN-APP.md`](./BRING-YOUR-OWN-APP.md).
+```bash
+cub-gen springboot init --dry-run ./path/to/your-spring-app
+cub-gen springboot init --app my-service ./path/to/your-spring-app
+```
+
+This detects your Spring Boot app and generates starter cub-gen material. See [`cub-gen/examples/springboot-paas`](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas) for the full product-side path.
 
 ## From Demo to Product
 
 `spring-platform` is the easiest place to learn the model: fixed Spring inputs, fixed platform policy, and explain scripts that show why each field is mutable, lifted upstream, or blocked.
 
-If you want the real generator path, go to [`cub-gen/examples/springboot-paas`](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas).
-
-```bash
-cd /path/to/cub-gen
-go build -o ./cub-gen ./cmd/cub-gen
-./examples/springboot-paas/demo-local.sh
-
-# when you want the connected path
-cub auth login
-./examples/springboot-paas/demo-connected.sh
-```
-
-Use `spring-platform` to understand the model and mutation routes. Use `springboot-paas` to see the real generator path in the product repo.
+`cub-gen/examples/springboot-paas` is the product-side path: real generator, real detection, real enforcement.
 
 Full concept mapping and recommended path: [`FROM-DEMO-TO-PRODUCT.md`](./FROM-DEMO-TO-PRODUCT.md).
 
@@ -152,7 +165,7 @@ If this challenge works, the next question a serious platform engineer will ask:
 
 > "Is `render.sh` the real generator, or a demo prop?"
 
-That question should take you straight to the section above. In `spring-platform`, `render.sh` explains the fixed example. In `cub-gen`, `springboot-paas` is the real generator example.
+That question should take you straight to the section above. In `spring-platform`, `render.sh` explains the fixed example. In `cub-gen`, `springboot-paas` is the real generator.
 
 ## AI Guidance
 

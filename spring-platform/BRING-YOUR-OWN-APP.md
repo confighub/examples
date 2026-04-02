@@ -84,19 +84,23 @@ export WORKER_SPACE=springboot-infra
 
 ## From This Example to the Real Tool
 
-If you want to evaluate the real generator path instead of only adapting the fixed example, go to [`cub-gen/examples/springboot-paas`](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas).
+If you want to evaluate the real generator path instead of only adapting the fixed example, use `cub-gen springboot init`:
 
 ```bash
-cd /Users/alexis/Public/github-repos/cub-gen
-go build -o ./cub-gen ./cmd/cub-gen
-./examples/springboot-paas/demo-local.sh
+# Generate starter cub-gen material for your app
+cub-gen springboot init --dry-run ./path/to/your-spring-app
+cub-gen springboot init --app my-service ./path/to/your-spring-app
 
-# connected path
-cub auth login
-./examples/springboot-paas/demo-connected.sh
+# Validate field mutations before they reach ConfigHub
+cub-gen springboot validate-mutation --routes ./operational/field-routes.yaml \
+  feature.myservice.someFlag        # ALLOWED
+cub-gen springboot validate-mutation --routes ./operational/field-routes.yaml \
+  spring.datasource.url             # BLOCKED
 ```
 
-Use `spring-platform` to learn the model and adapt the example. Use `springboot-paas` to see the real generator run in the product repo.
+See [`cub-gen/examples/springboot-paas`](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas) for the full product-side path.
+
+Use `spring-platform` to learn the model. Use `cub-gen springboot init` to onboard your own app.
 
 ## Recommended Team Path
 
