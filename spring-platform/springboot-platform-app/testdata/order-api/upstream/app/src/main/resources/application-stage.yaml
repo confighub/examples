@@ -1,5 +1,0 @@
-inventory:
-  environment: stage
-feature:
-  inventory:
-    reservationMode: strict

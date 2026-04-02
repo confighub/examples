@@ -1,7 +1,0 @@
-apiVersion: platform.confighub.io/v1alpha1
-kind: ServiceLevelPolicy
-metadata:
-  name: order-api-prod
-spec:
-  availabilityTarget: "99.9%"
-  p95LatencyMs: 250

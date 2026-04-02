@@ -1,7 +1,0 @@
-inventory:
-  environment: prod
-server:
-  port: 8081
-feature:
-  inventory:
-    reservationMode: strict
