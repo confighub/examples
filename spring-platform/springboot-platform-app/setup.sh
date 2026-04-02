@@ -12,7 +12,8 @@ case "${1:-}" in
 ================================================================================
 
 This is the core Spring platform example showing how cub-gen transforms
-app inputs + platform inputs into governed operational config.
+app inputs + platform inputs into the Deployment, ConfigMap, and Service
+that ConfigHub manages for this app.
 
 THE MODEL:
   App inputs (upstream/app/)
@@ -23,7 +24,7 @@ THE MODEL:
 
 WHAT THIS SHOWS:
   - How generator produces field lineage and mutation routes
-  - How ConfigHub stores governed operational config
+  - How ConfigHub stores the rendered operational state for each environment
   - How field ownership determines what can be mutated where
   - How changes flow: apply-here, lift-upstream, or block/escalate
 

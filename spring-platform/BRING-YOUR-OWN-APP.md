@@ -13,7 +13,7 @@ Today, `spring-platform` is best used as:
 
 - a reference implementation
 - a proof path
-- a shared vocabulary for app-owned versus platform-owned config
+- a concrete starting point for deciding which fields app teams can change and which fields stay with the platform
 
 ## What You Can Reuse As-Is
 
@@ -77,6 +77,22 @@ export WORKER_SPACE=springboot-infra
 ./confighub-setup.sh --with-targets
 ./verify-e2e.sh
 ```
+
+## From This Example to the Real Tool
+
+If you want to evaluate the real generator path instead of only adapting the fixed example, go to [`cub-gen/examples/springboot-paas`](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas).
+
+```bash
+cd /Users/alexis/Public/github-repos/cub-gen
+go build -o ./cub-gen ./cmd/cub-gen
+./examples/springboot-paas/demo-local.sh
+
+# connected path
+cub auth login
+./examples/springboot-paas/demo-connected.sh
+```
+
+Use `spring-platform` to learn the model and adapt the example. Use `springboot-paas` to see the real generator run in the product repo.
 
 ## Recommended Team Path
 

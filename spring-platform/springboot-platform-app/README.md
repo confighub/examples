@@ -1,6 +1,6 @@
 # Spring Boot Generator Example
 
-See how app config + platform policy becomes governed Kubernetes manifests, and why each field routes to apply-here, lift-upstream, or block.
+See how app config + platform policy becomes the `ConfigMap`, `Deployment`, and `Service` for this app, and why each field routes to apply-here, lift-upstream, or block.
 
 ```bash
 ./setup.sh --explain

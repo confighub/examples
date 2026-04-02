@@ -28,7 +28,7 @@ Each example handles the same three requests from a different angle:
 
 ## Phase 1: How Config Gets Generated
 
-See how `application.yaml` + platform policy becomes governed Kubernetes config — and why some fields are mutable while others are blocked.
+See how `application.yaml` + platform policy becomes the `ConfigMap`, `Deployment`, and `Service` for this app — and why some fields are mutable while others route upstream or stop at the platform boundary.
 
 ```bash
 cd springboot-platform-app
@@ -120,13 +120,31 @@ What you still have to do yourself:
 
 Start with [`BRING-YOUR-OWN-APP.md`](./BRING-YOUR-OWN-APP.md).
 
+## From Demo to Product
+
+`spring-platform` is the easiest place to learn the model: fixed Spring inputs, fixed platform policy, and explain scripts that show why each field is mutable, lifted upstream, or blocked.
+
+If you want the real generator path, go to [`cub-gen/examples/springboot-paas`](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas).
+
+```bash
+cd /Users/alexis/Public/github-repos/cub-gen
+go build -o ./cub-gen ./cmd/cub-gen
+./examples/springboot-paas/demo-local.sh
+
+# when you want the connected path
+cub auth login
+./examples/springboot-paas/demo-connected.sh
+```
+
+Use `spring-platform` to understand the model and mutation routes. Use `springboot-paas` to see the real generator path in the product repo.
+
 ## What Teams Will Ask Next
 
 If this challenge works, the next question a serious platform engineer will ask:
 
 > "Is `render.sh` the real generator, or a demo prop?"
 
-That's the right question. It points toward the real `cub-gen` generator and the work tracked in the [cub-gen repo](https://github.com/confighub/cub-gen).
+That question should take you straight to the section above. In `spring-platform`, `render.sh` explains the fixed example. In `cub-gen`, `springboot-paas` is the real generator example.
 
 ## AI Guidance
 

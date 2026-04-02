@@ -1,15 +1,29 @@
 # AI Start Here: Spring Boot Platform (Experimental ADTP View)
 
-Read [`README.md`](./README.md) first. This page explains how to demo it.
+Read [`README.md`](./README.md) first. This page is for running the example yourself or pairing with an AI assistant.
 
 **Experimental:** Noop targets only in this example.
 
-## Demo Pacing
+## Fast Path
 
-1. Run one stage at a time
-2. Print full output (do not summarize)
-3. Explain what you see
-4. Ask "Ready to continue?" before proceeding
+```bash
+cub context list --json
+cub space list --json
+
+cd spring-platform/springboot-platform-platform-centric
+./setup.sh --explain
+./platform.sh --summary
+./platform.sh --apps
+./platform.sh --explain-field spring.datasource.url
+./platform.sh --explain-field feature.inventory.reservationMode
+```
+
+If `cub space list --json` fails because auth is missing or expired, run `cub auth login` before any mutating stage.
+
+## Pairing Modes
+
+- Solo evaluation: run a full phase, then summarize what mattered.
+- Guided walkthrough: run one stage at a time and pause at the marked checkpoints.
 
 ## Stage 1: What Is This Platform?
 
@@ -20,7 +34,7 @@ cat platform-map.json | jq
 
 You'll see: `springboot-platform` with two apps (inventory-api, catalog-api) and which fields are platform-controlled.
 
-**PAUSE.**
+Pause here if you're doing a guided walkthrough.
 
 ## Stage 2: Platform Capabilities
 
@@ -31,7 +45,7 @@ You'll see: `springboot-platform` with two apps (inventory-api, catalog-api) and
 
 You'll see: managed datasource, runtime hardening, observability — and which apps inherit them.
 
-**PAUSE.**
+Pause here if you're doing a guided walkthrough.
 
 ## Stage 3: Preview Setup
 
@@ -41,7 +55,7 @@ You'll see: managed datasource, runtime hardening, observability — and which a
 
 You'll see: 6 spaces (1 infra + 5 app), all with noop targets.
 
-**PAUSE.**
+Pause here if you're doing a guided walkthrough.
 
 ## Stage 4: Create The Platform
 
@@ -54,7 +68,7 @@ You'll see: all spaces tagged with the same platform label.
 
 GUI checkpoint: ConfigHub → Spaces → filter `Platform=springboot-platform`
 
-**PAUSE.**
+Pause here if you're doing a guided walkthrough.
 
 ## Stage 5: Field Ownership
 
@@ -65,7 +79,7 @@ GUI checkpoint: ConfigHub → Spaces → filter `Platform=springboot-platform`
 
 You'll see: `spring.datasource.url` is platform-owned (blocked), `feature.inventory.reservationMode` is app-owned (mutable).
 
-**PAUSE.**
+Pause here if you're doing a guided walkthrough.
 
 ## Stage 6: Mutate Both Apps
 
@@ -86,7 +100,7 @@ You'll see: both mutations succeed (app-owned fields). Platform-owned fields wou
 
 GUI checkpoint: Open each unit → History
 
-**PAUSE.**
+Pause here if you're doing a guided walkthrough.
 
 ## Stage 7: Cleanup
 

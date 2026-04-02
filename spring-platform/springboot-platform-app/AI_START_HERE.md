@@ -1,24 +1,38 @@
 # AI Start Here: Spring Boot Generator Example
 
-Read [`README.md`](./README.md) first. This page explains how to demo it.
+Read [`README.md`](./README.md) first. This page is for running the example yourself or pairing with an AI assistant.
 
-## CRITICAL: Demo Pacing
+## Fast Path
 
-When walking a human through this example, pause after every stage.
+```bash
+cub context list --json
+cub space list --json
 
-After each stage:
-1. Run the commands for that stage
-2. Show full output (do not summarize)
-3. Explain what the output means
-4. If there is a GUI checkpoint, print it
-5. Ask "Ready to continue?"
-6. Wait for the human before proceeding
+cd spring-platform/springboot-platform-app
+./setup.sh --explain
+./verify.sh
+./generator/render.sh --trace
+./generator/render.sh --explain-field feature.inventory.reservationMode
+./generator/render.sh --explain-field spring.datasource.url
+```
 
-## Suggested Prompt
+If `cub space list --json` fails because auth is missing or expired, run `cub auth login` before any mutating stage.
+
+## Pairing Modes
+
+- Solo evaluation: run a full phase, then summarize what mattered.
+- Guided walkthrough: run one stage at a time and pause at the marked checkpoints.
+
+## Suggested Prompts
 
 ```text
 Read spring-platform/springboot-platform-app/AI_START_HERE.md and walk me through the demo.
 Pause after every stage. Show full output. Do not continue until I say continue.
+```
+
+```text
+Read spring-platform/springboot-platform-app/AI_START_HERE.md and help me evaluate it quickly.
+Use the fast path first, summarize what matters after each phase, and only pause when I ask.
 ```
 
 ## What This Example Teaches
@@ -39,7 +53,7 @@ cd spring-platform/springboot-platform-app
 ./verify.sh
 ```
 
-What to explain:
+You'll see:
 - Shows the generator model structure
 - Lists input/output paths
 - Describes the three mutation routes
@@ -51,7 +65,7 @@ GUI gap: No web-based generator diagram.
 
 GUI feature ask: Generator lineage visualization. No issue filed yet.
 
-**PAUSE.** Wait for the human.
+Pause here if you're doing a guided walkthrough.
 
 ## Stage 2: "Generator Transformation" (read-only)
 
@@ -60,7 +74,7 @@ GUI feature ask: Generator lineage visualization. No issue filed yet.
 ./generator/render.sh --trace
 ```
 
-What to explain:
+You'll see:
 - App inputs + platform policies combine to produce operational config
 - The trace shows field-by-field transformation
 - Each field has a known origin
@@ -72,7 +86,7 @@ Then show field lineage:
 ./generator/render.sh --explain-field feature.inventory.reservationMode
 ```
 
-What to explain:
+You'll see:
 - `spring.datasource.url` is BLOCKED (platform-injected)
 - `feature.inventory.reservationMode` is MUTABLE (app-owned)
 
@@ -82,7 +96,7 @@ GUI gap: No field ownership badges in the GUI.
 
 GUI feature ask: Color-coded field ownership in unit viewer. No issue filed yet.
 
-**PAUSE.** Wait for the human.
+Pause here if you're doing a guided walkthrough.
 
 ## Stage 3: "ConfigHub Setup" (mutates ConfigHub)
 
@@ -92,7 +106,7 @@ GUI feature ask: Color-coded field ownership in unit viewer. No issue filed yet.
 ./confighub-verify.sh
 ```
 
-What to explain:
+You'll see:
 - 3 spaces created (dev, stage, prod)
 - Each has one unit (`inventory-api`)
 - Verify confirms the expected structure
@@ -103,7 +117,7 @@ GUI gap: No visual generator lineage from GUI.
 
 GUI feature ask: Upstream inputs visible from unit view. No issue filed yet.
 
-**PAUSE.** Wait for the human.
+Pause here if you're doing a guided walkthrough.
 
 ## Stage 4: "Apply-Here Mutation" (mutates ConfigHub)
 
@@ -116,7 +130,7 @@ cub mutation list --space inventory-api-prod --json inventory-api | \
   jq '[.[-1] | {mutationNum, description, author: .Author.Email, createdAt: .CreatedAt}]'
 ```
 
-What to explain:
+You'll see:
 - The mutation is stored with full audit trail
 - Apply-here works because the field is app-owned
 
@@ -126,7 +140,7 @@ GUI gap: No indication that this field was apply-here vs another route.
 
 GUI feature ask: Route badge on mutation history entries. No issue filed yet.
 
-**PAUSE.** Wait for the human.
+Pause here if you're doing a guided walkthrough.
 
 ## Stage 5: "Lift-Upstream Bundle" (read-only)
 
@@ -136,7 +150,7 @@ GUI feature ask: Route badge on mutation history entries. No issue filed yet.
 ./lift-upstream.sh --render-diff
 ```
 
-What to explain:
+You'll see:
 - Shows the Redis cache bundle
 - Demonstrates what upstream changes would be needed
 - The diff shows exact input modifications required
@@ -147,7 +161,7 @@ GUI gap: No lift-upstream proposal workflow in GUI.
 
 GUI feature ask: Upstream change proposal wizard. No issue filed yet.
 
-**PAUSE.** Wait for the human.
+Pause here if you're doing a guided walkthrough.
 
 ## Stage 6: "Block/Escalate Boundary" (read-only)
 
@@ -157,7 +171,7 @@ GUI feature ask: Upstream change proposal wizard. No issue filed yet.
 ./block-escalate.sh --render-attempt
 ```
 
-What to explain:
+You'll see:
 - Shows the boundary documentation
 - Platform-owned fields cannot be mutated directly
 - Server-side enforcement is not yet implemented
@@ -168,7 +182,7 @@ GUI gap: No visual indication of blocked fields.
 
 GUI feature ask: Red "blocked" badge on platform-owned fields. No issue filed yet.
 
-**PAUSE.** Wait for the human.
+Pause here if you're doing a guided walkthrough.
 
 ## Stage 7: "Cleanup"
 

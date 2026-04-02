@@ -1,24 +1,36 @@
 # AI Start Here: Spring Boot Platform App (ADT View)
 
-Read [`README.md`](./README.md) first. This page explains how to demo it.
+Read [`README.md`](./README.md) first. This page is for running the example yourself or pairing with an AI assistant.
 
-## CRITICAL: Demo Pacing
+## Fast Path
 
-When walking a human through this example, pause after every stage.
+```bash
+cub context list --json
+cub space list --json
 
-After each stage:
-1. Run the commands for that stage
-2. Show full output (do not summarize)
-3. Explain what the output means
-4. If there is a GUI checkpoint, print it
-5. Ask "Ready to continue?"
-6. Wait for the human before proceeding
+cd spring-platform/springboot-platform-app-centric
+./setup.sh --explain
+./setup.sh --explain-json | jq
+./demo.sh
+```
 
-## Suggested Prompt
+If `cub space list --json` fails because auth is missing or expired, run `cub auth login` before any mutating stage.
+
+## Pairing Modes
+
+- Solo evaluation: run a full phase, then summarize what mattered.
+- Guided walkthrough: run one stage at a time and pause at the marked checkpoints.
+
+## Suggested Prompts
 
 ```text
 Read spring-platform/springboot-platform-app-centric/AI_START_HERE.md and walk me through the demo.
 Pause after every stage. Show full output. Do not continue until I say continue.
+```
+
+```text
+Read spring-platform/springboot-platform-app-centric/AI_START_HERE.md and help me evaluate it quickly.
+Use the fast path first, summarize what matters after each phase, and only pause when I ask.
 ```
 
 ## What This Example Teaches
@@ -38,7 +50,7 @@ cd spring-platform/springboot-platform-app-centric
 cat deployment-map.json | jq
 ```
 
-What to explain:
+You'll see:
 - `inventory-api` is the app
 - Three deployments: dev, stage, prod
 - Each deployment becomes a ConfigHub space
@@ -49,7 +61,7 @@ GUI gap: No visual map of app → deployment → target relationships.
 
 GUI feature ask: App deployment topology view. No issue filed yet.
 
-**PAUSE.** Wait for the human.
+Pause here if you're doing a guided walkthrough.
 
 ## Stage 2: "Preview Setup" (read-only)
 
@@ -58,7 +70,7 @@ GUI feature ask: App deployment topology view. No issue filed yet.
 ./setup.sh --explain-json | jq
 ```
 
-What to explain:
+You'll see:
 - ASCII diagram shows the App → Deployments → Targets structure
 - Three mutation outcomes are listed
 - This is read-only — no ConfigHub changes yet
@@ -69,7 +81,7 @@ GUI gap: No web-based preview of setup plan.
 
 GUI feature ask: Setup preview wizard. No issue filed yet.
 
-**PAUSE.** Wait for the human.
+Pause here if you're doing a guided walkthrough.
 
 ## Stage 3: "Create The Config" (mutates ConfigHub)
 
@@ -78,7 +90,7 @@ GUI feature ask: Setup preview wizard. No issue filed yet.
 cub space list --where "Labels.ExampleName = 'springboot-platform-app-centric'" --json | jq '.[].Space.Slug'
 ```
 
-What to explain:
+You'll see:
 - 4 spaces created (3 env + 1 infra)
 - Each env space has a unit and noop target
 - The noop target accepts applies but doesn't deliver
@@ -89,7 +101,7 @@ GUI gap: No way to see deployment hierarchy at a glance.
 
 GUI feature ask: Space grouping by app. No issue filed yet.
 
-**PAUSE.** Wait for the human.
+Pause here if you're doing a guided walkthrough.
 
 ## Stage 4: "Three Mutation Outcomes" (read-only)
 
@@ -97,7 +109,7 @@ GUI feature ask: Space grouping by app. No issue filed yet.
 ./demo.sh
 ```
 
-What to explain:
+You'll see:
 - **apply-here**: changes apply directly (e.g., feature flags)
 - **lift-upstream**: changes require upstream input modification (e.g., database)
 - **block-escalate**: changes are blocked by platform policy (e.g., secrets)
@@ -108,7 +120,7 @@ GUI gap: No visual mutation route badges on fields.
 
 GUI feature ask: Color-coded field ownership indicators. No issue filed yet.
 
-**PAUSE.** Wait for the human.
+Pause here if you're doing a guided walkthrough.
 
 ## Stage 5: "Try A Mutation" (mutates ConfigHub)
 
@@ -121,7 +133,7 @@ cub mutation list --space inventory-api-prod --json inventory-api | \
   jq '[.[-1] | {mutationNum, description, author: .Author.Email, createdAt: .CreatedAt}]'
 ```
 
-What to explain:
+You'll see:
 - The mutation is stored with full audit trail
 - Author email and timestamp are captured
 - This proves the ConfigHub mutation plane works
@@ -132,7 +144,7 @@ GUI gap: No diff view showing exactly what changed.
 
 GUI feature ask: Inline mutation diff viewer. No issue filed yet.
 
-**PAUSE.** Wait for the human.
+Pause here if you're doing a guided walkthrough.
 
 ## Stage 6: "Apply To Target" (mutates target — noop in this example)
 
@@ -140,7 +152,7 @@ GUI feature ask: Inline mutation diff viewer. No issue filed yet.
 cub unit apply --space inventory-api-prod inventory-api
 ```
 
-What to explain:
+You'll see:
 - Unit is applied to the noop target
 - Noop target accepts but doesn't deliver to a real cluster
 - In a real setup, this would update Kubernetes
@@ -151,7 +163,7 @@ GUI gap: No live cluster feedback in this noop example.
 
 GUI feature ask: Apply status with cluster health indicator. No issue filed yet.
 
-**PAUSE.** Wait for the human.
+Pause here if you're doing a guided walkthrough.
 
 ## Stage 7: "Cleanup"
 

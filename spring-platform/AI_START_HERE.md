@@ -1,6 +1,32 @@
 # AI Start Here: The Release-Day Challenge
 
-Read [`README.md`](./README.md) first. It frames the scenario. This page tells you how to walk a human through it.
+Read [`README.md`](./README.md) first. It frames the scenario. This page is for running the challenge yourself or pairing with an AI assistant.
+
+## Fast Path
+
+If you already know Spring Boot and Kubernetes, run this first:
+
+```bash
+cub context list --json
+cub space list --json
+
+cd spring-platform/springboot-platform-app
+./setup.sh --explain
+./verify.sh
+./generator/render.sh --trace
+./generator/render.sh --explain-field feature.inventory.reservationMode
+./generator/render.sh --explain-field spring.datasource.url
+```
+
+Then jump to the real generator example:
+
+```bash
+cd /Users/alexis/Public/github-repos/cub-gen
+go build -o ./cub-gen ./cmd/cub-gen
+./examples/springboot-paas/demo-local.sh
+```
+
+If `cub space list --json` fails because auth is missing or expired, run `cub auth login` before any mutating stage.
 
 ## The Scenario
 
@@ -12,19 +38,23 @@ A product launch is in 24 hours. The team needs three changes:
 
 You will walk through all three using three views of the same model.
 
-## Demo Pacing
+## Pairing Modes
 
-1. Run one stage at a time
-2. Print full output (do not summarize)
-3. Explain what the output shows
-4. If there's a GUI equivalent, give the URL and say what's visible. If there isn't, say so.
-5. Ask "Ready to continue?" before proceeding
+Use whichever mode fits the person at the keyboard:
 
-## Suggested Prompt
+- Solo evaluation: run a full phase, then stop and summarize what mattered.
+- Guided walkthrough: run one stage at a time, show full output, and pause at the marked checkpoints.
+
+## Suggested Prompts
 
 ```text
 Read spring-platform/AI_START_HERE.md and walk me through the release-day challenge.
 Pause after every stage. Show full output. Do not continue until I say continue.
+```
+
+```text
+Read spring-platform/AI_START_HERE.md and help me evaluate the release-day challenge quickly.
+Use the fast path first, summarize what matters after each phase, and only pause when I ask.
 ```
 
 ## Phase 1: How Config Gets Generated (springboot-platform-app)
@@ -39,7 +69,7 @@ cd spring-platform/springboot-platform-app
 
 You'll see the stack, the three mutation routes, and what would be created in ConfigHub.
 
-**PAUSE.**
+Pause here if you're doing a guided walkthrough.
 
 ### Stage 1.2: Generator Trace (read-only)
 
@@ -51,7 +81,7 @@ You'll see the stack, the three mutation routes, and what would be created in Co
 
 You'll see every field mapped from input to output. The first field is MUTABLE (app-owned). The second is BLOCKED (platform policy injects it).
 
-**PAUSE.**
+Pause here if you're doing a guided walkthrough.
 
 ### Stage 1.3: Create ConfigHub Objects (mutates ConfigHub)
 
@@ -64,7 +94,7 @@ Ask: "This will create 3 spaces and 3 units. OK?"
 
 You'll see three spaces created: `inventory-api-dev`, `-stage`, `-prod`.
 
-**PAUSE.**
+Pause here if you're doing a guided walkthrough.
 
 ### Stage 1.4: Request #1 — Flip the Feature Flag (mutates ConfigHub)
 
@@ -97,7 +127,7 @@ cub mutation list --space inventory-api-prod --json inventory-api | \
 
 You'll see the audit trail: who, when, and why.
 
-**PAUSE.**
+Pause here if you're doing a guided walkthrough.
 
 ### Stage 1.5: Request #2 — Redis Caching (read-only)
 
@@ -111,7 +141,7 @@ You'll see the field routes to `lift-upstream`, and a concrete diff bundle showi
 
 Explain: this change can't just be a ConfigHub mutation — it requires a new Maven dependency and Spring config changes. The bundle shows the exact patch, but automated PR creation is not implemented yet.
 
-**PAUSE.**
+Pause here if you're doing a guided walkthrough.
 
 ### Stage 1.6: Request #3 — Datasource Override (read-only)
 
@@ -125,7 +155,7 @@ You'll see the field is `generator-owned` by `platform-engineering`. The dry-run
 
 Explain: the datasource is provisioned by the platform. Letting app teams override it would bypass managed credentials and failover config. Server-side enforcement is not yet implemented.
 
-**PAUSE.**
+Pause here if you're doing a guided walkthrough.
 
 ### Stage 1.7: Cleanup
 
@@ -145,7 +175,7 @@ cat deployment-map.json | jq
 
 You'll see `inventory-api` mapped to three deployments (dev/stage/prod), each becoming a ConfigHub space. The three mutation outcomes are listed.
 
-**PAUSE.**
+Pause here if you're doing a guided walkthrough.
 
 ### Stage 2.2: Create and Demo (mutates ConfigHub)
 
@@ -158,7 +188,7 @@ Ask: "This will create spaces, units, and noop targets. OK?"
 
 You'll see all three mutation outcomes walked through: apply-here succeeds, lift-upstream produces a bundle, block-escalate shows the boundary.
 
-**PAUSE.**
+Pause here if you're doing a guided walkthrough.
 
 ### Stage 2.3: Cleanup
 
@@ -179,7 +209,7 @@ cd ../springboot-platform-platform-centric
 
 You'll see one platform providing managed-datasource, runtime-hardening, and observability to two apps: `inventory-api` (3 deployments) and `catalog-api` (2 deployments).
 
-**PAUSE.**
+Pause here if you're doing a guided walkthrough.
 
 ### Stage 3.2: Platform-Wide Field Ownership (read-only)
 
@@ -190,7 +220,7 @@ You'll see one platform providing managed-datasource, runtime-hardening, and obs
 
 You'll see the datasource is BLOCKED for all apps on this platform, while the feature flag is MUTABLE because it's app-owned.
 
-**PAUSE.**
+Pause here if you're doing a guided walkthrough.
 
 ### Stage 3.3: Create and Mutate (mutates ConfigHub)
 
@@ -214,7 +244,7 @@ cub function do --space catalog-api-prod --unit catalog-api \
 
 Both succeed — they're app-owned fields. A platform-owned field would be blocked.
 
-**PAUSE.**
+Pause here if you're doing a guided walkthrough.
 
 ### Stage 3.4: Cleanup
 
@@ -226,7 +256,7 @@ Both succeed — they're app-owned fields. A platform-owned field would be block
 
 By the end of this challenge:
 
-- How Spring config + platform policy becomes governed Kubernetes config
+- How Spring config + platform policy become the Deployment, ConfigMap, and Service for the app
 - Why some fields are mutable, some route back to source, some are blocked
 - How the same model is visible as generator, app, or platform
 - What is proven today and what is still incomplete
