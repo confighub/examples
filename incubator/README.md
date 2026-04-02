@@ -1,6 +1,6 @@
 # Examples Incubator
 
-Experimental ConfigHub examples before promotion to stable.
+Library of experimental ConfigHub examples and sample apps.  No promises.  Should work for both human-led and AI-led cases.
 
 ## Quick Start
 
@@ -8,7 +8,7 @@ Experimental ConfigHub examples before promotion to stable.
 |----------------|------------|
 | Import from Argo | [gitops-import-argo](./gitops-import-argo/README.md) |
 | Import from Flux | [gitops-import-flux](./gitops-import-flux/README.md) |
-| See the write API story | [platform-write-api](./platform-write-api/README.md) |
+| Use CH as 'write API' for config | [platform-write-api](./platform-write-api/README.md) |
 | Deploy a real app | [springboot-platform-app-centric](../spring-platform/springboot-platform-app-centric/README.md) |
 | Understand layered recipes | [global-app-layer/single-component](./global-app-layer/single-component/README.md) |
 
@@ -38,7 +38,7 @@ Experimental ConfigHub examples before promotion to stable.
 | [platform-write-api](./platform-write-api/README.md) | ConfigHub as mutation plane |
 | [springboot-platform-app-centric](../spring-platform/springboot-platform-app-centric/README.md) | Real app with three mutation routes |
 
-### Layered Recipes
+### Layered Recipes - NVIDIA AICR Layers and Bundles
 
 | Example | What it proves |
 |---------|----------------|
