@@ -2,11 +2,16 @@
 
 This repo teaches the app-platform model for Spring Boot services.
 
+## Start Here
+
+- Learn the model in this repo.
+- Use [`cub-gen/examples/springboot-paas`](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas) when you want the real product-side path for your own Spring Boot app. Start there with `cub-gen springboot init`.
+
 ## What This Repo Is For
 
-**Use this repo to learn the model.** It shows how app teams keep writing normal Spring Boot apps in Git while platform tooling maps those inputs into operational artifacts for Kubernetes and GitOps.
+**Use this repo to learn the model.** App teams keep writing normal Spring Boot apps in Git. Platform tooling maps those app inputs into the operational artifacts needed to run on Kubernetes with GitOps.
 
-**Use [`cub-gen/examples/springboot-paas`](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas) for real onboarding.** If you have your own Spring Boot app and want to try the product-side path, start there and run `cub-gen springboot init`.
+That operational layer includes ConfigHub units and spaces, Kubernetes manifests, platform policy, and GitOps-facing state.
 
 ## The Model
 
@@ -22,10 +27,10 @@ This mapping is intentionally constrained:
 
 | Property | Why it matters |
 |----------|----------------|
-| 1:1 and invertible | Every operational field traces back to exactly one source field |
-| Provenance for every field | You can explain why any field has its value |
-| Explicit ownership | Fields are app-owned or platform-owned, not ambiguous |
-| Mutation routes from provenance | How a field can change depends on who owns it |
+| Invertible mapping | Every operational field traces back to exactly one source field |
+| Field provenance | You can explain why any field has its value |
+| Ownership boundaries | Fields are app-owned or platform-owned, not ambiguous |
+| Mutation from provenance | How a field can change depends on who owns it |
 
 The point is not "generate all the YAML." The point is to generate only the operational config that the platform must own, while keeping the path back to app inputs clear.
 
