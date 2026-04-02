@@ -1,6 +1,6 @@
 # Spring Platform in ConfigHub
 
-This repo teaches an experimental app-platform model for Spring Boot services and ConfigHub.  We have several different 'versions' of the idea, for comparison and learning. The example assumes that many users will want some generated config, and looks at a way to enable this with the CH paradigm.
+This repo teaches an experimental app-platform model for Spring Boot services and ConfigHub.  We have several different 'versions' of the idea, for comparison and learning. The example assumes that some users will want to generate config data programmatically.  Are there safer ways to do this than Helm? 
 
 ## Start Here
 
@@ -38,15 +38,16 @@ at this unless you're modifying the examples.
 
 None of these contain a compilable Java project. The `upstream/` directories
 have a `pom.xml` and `application.yaml` as config inputs, but no `src/`
-tree. If you want a real Spring Boot app you can build and point `cub-gen`
-at, see the next section.
+tree. If you want a real Spring Boot app see the next section.
 
 ## When You Want a Runnable Example
 
 The examples in this repo teach the conceptual model with fixed inputs and
-explain scripts. If you want to run `cub-gen` against a real Spring Boot
-application with actual Java source code, config governance, and a local demo
-you can execute end-to-end without a cluster:
+explain scripts. We shall use an experimental CLI `cub-gen`.
+
+If you want to run `cub-gen` against a real Spring Boot application with 
+actual Java source code, config governance, and a local demo you can execute 
+end-to-end without a cluster:
 
 **[`cub-gen/examples/springboot-paas`](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas)** has:
 
