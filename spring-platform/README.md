@@ -9,47 +9,37 @@ This repo teaches an experimental app-platform model for Spring Boot services an
 
 ## What to Expect from Each Example
 
-This repo contains three variants of the same model plus a shared dependency
-directory. They differ in scope, runnability, and intended audience. The table
-below tells you what you can and cannot do with each one.
+All three examples use the same app (`inventory-api`) and the same three
+mutation requests (feature flag, Redis caching, datasource override). They
+differ in *perspective* and *what you can run*.
 
-| Directory | What it is | What you can do | What it does NOT do |
-|-----------|-----------|-----------------|---------------------|
-| [`springboot-platform-app`](./springboot-platform-app/) | Working generator with a Kind cluster pipeline | Deploy to Kind, run `verify-e2e.sh`, see the full artifact chain from Spring config to running pod | Not a minimal starting point -- this is the heaviest example |
-| [`springboot-platform-app-centric`](./springboot-platform-app-centric/) | Teaching fixture (ADT model) -- one app across 3 environments | Run `demo.sh`, explore mutation routes (apply-here / lift-upstream / block), read `--explain` output | No Kubernetes deployment, no compiled Java app |
-| [`springboot-platform-platform-centric`](./springboot-platform-platform-centric/) | Teaching fixture (ADTP model) -- 2 apps across 5 environments | Run `platform.sh --summary`, see multi-app governance and cross-app field ownership | No Kubernetes deployment, noop targets only |
-| [`shared/`](./shared/) | Reusable YAML referenced by ADT and ADTP examples | Nothing standalone -- this is a dependency, not an example | Not runnable on its own |
+**[`springboot-platform-app`](./springboot-platform-app/)** — Start here.
+One app, one environment. You run shell scripts that generate Kubernetes
+manifests from Spring config, then explain each field: who owns it, how it
+can change, and why. If you have a Kind cluster, you can deploy and verify
+end-to-end. If not, the scripts still work -- they show the transformation
+and field routing without a cluster.
 
-### Reading order
+**[`springboot-platform-app-centric`](./springboot-platform-app-centric/)** —
+Same app, now across three environments (dev, stage, prod). Each environment
+is a ConfigHub space. You walk through all three mutation routes with
+`demo.sh` and see how the same field has different effective values per
+environment. No cluster needed -- this is a guided walkthrough.
 
-If you are new to the model, start with **app-centric** -- it is the simplest
-lens and introduces the three mutation routes with a single app. Move to
-**platform-centric** when you want to see how ownership scales across multiple
-apps. Use **vanilla app** when you want to see the full generator pipeline
-deployed to a real cluster.
+**[`springboot-platform-platform-centric`](./springboot-platform-platform-centric/)** —
+Two apps (`inventory-api` + `catalog-api`), five environments total. This
+shows the platform team's view: how ownership rules apply across multiple
+apps, and how `platform.sh --explain-field` answers "is this field blocked
+for all apps, or just one?" No cluster needed.
 
-### Concrete expectations
+**[`shared/`](./shared/)** — Not an example. Contains YAML files that the
+app-centric and platform-centric examples reference. You don't need to look
+at this unless you're modifying the examples.
 
-**springboot-platform-app** has real shell scripts (`setup.sh`, `render.sh`,
-`confighub-setup.sh`, `verify-e2e.sh`) and a `generator/` directory that
-transforms Spring config inputs into Kubernetes manifests. The `upstream/`
-directory contains a `pom.xml` and `application.yaml` -- these are config
-fixtures, not a compilable Java project. You can deploy to a Kind cluster and
-run end-to-end verification.
-
-**springboot-platform-app-centric** is a walkthrough. It has `demo.sh` with
-`--explain` and `--trace` flags, `flows/` with mutation walkthroughs, and YAML
-files describing the ADT (App-Deployment-Target) structure. No Java source, no
-Kubernetes resources -- this is for understanding the model.
-
-**springboot-platform-platform-centric** adds a second app (`catalog-api`) and
-shows how a platform team governs shared infrastructure. It has `platform.sh`
-for discovery (`--apps`, `--summary`, `--explain-field`) and uses noop targets
-for demonstration. Same scope as app-centric but from the platform team's
-perspective.
-
-**shared/** contains ConfigHub unit YAML files and `field-routes.yaml`. Both
-ADT and ADTP examples reference these via `../shared/` paths.
+None of these contain a compilable Java project. The `upstream/` directories
+have a `pom.xml` and `application.yaml` as config inputs, but no `src/`
+tree. If you want a real Spring Boot app you can build and point `cub-gen`
+at, see the next section.
 
 ## When You Want a Runnable Example
 
