@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
 # setup.sh — Seed demo campaigns in ConfigHub
 #
-# Creates 10 compliance campaigns backed by Kyverno CEL policies, along with
-# ~47 sample Kubernetes units that the campaigns filter and evaluate.
+# Creates 5 compliance campaigns backed by Kyverno CEL policies, using the
+# same app units as the promotion demo (aichat, website, docs, eshop, portal).
 #
 # Each campaign is a View with Labels (campaign=true, campaign-priority,
 # campaign-status) and Annotations (campaign-description, campaign-deadline,
 # campaign-check-summary, etc.).  The View's underlying Filter selects units
-# by team label.  An optional Trigger runs vet-kyverno against matched units.
+# by App or AppOwner label.  An optional Trigger runs vet-kyverno against
+# matched units.
 #
 # Prerequisites:
 #   - cub CLI installed: https://docs.confighub.com/get-started/setup/#install-the-cli
 #   - Authenticated: cub auth login
 #
 # Usage:
-#   ./setup.sh                                    # defaults: app.confighub.com, space "campaigns-demo"
-#   CONFIGHUB_URL=https://my-server.com ./setup.sh
+#   ./setup.sh
 #   SPACE=my-space ./setup.sh
 #
 # Environment variables:
@@ -30,6 +30,8 @@ set -euo pipefail
 export CONFIGHUB_URL="${CONFIGHUB_URL:-https://app.confighub.com}"
 SPACE="${SPACE:-campaigns-demo}"
 EXAMPLE_NAME="campaigns-demo"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROMO_DIR="${SCRIPT_DIR}/../promotion-demo-data/config-data"
 
 cub="${CUB:-cub}"
 
@@ -42,6 +44,13 @@ fi
 # Verify authentication
 if ! $cub auth get-token &>/dev/null; then
   echo "ERROR: Not authenticated. Run: $cub auth login" >&2
+  exit 1
+fi
+
+# Verify promotion data exists
+if [[ ! -d "$PROMO_DIR" ]]; then
+  echo "ERROR: Promotion demo data not found at $PROMO_DIR" >&2
+  echo "This script uses YAML files from the promotion-demo-data example." >&2
   exit 1
 fi
 
@@ -99,502 +108,67 @@ create_space_if_needed() {
   if $cub space get "$SPACE" --quiet 2>/dev/null; then
     echo "Space '$SPACE' already exists, reusing."
   else
-    printf '{"Labels":{"ExampleName":"%s","Environment":"Demo"},"Annotations":{"Description":"Demo space for compliance campaigns"}}' "$EXAMPLE_NAME" \
+    printf '{"Labels":{"ExampleName":"%s"},"Annotations":{"Description":"Demo space for compliance campaigns"}}' "$EXAMPLE_NAME" \
       | $cub space create --json --from-stdin "$SPACE"
     echo "Created space '$SPACE'."
   fi
 }
 
 create_unit() {
-  local slug="$1" campaign="$2" team="$3" yaml_file="$4"
+  local slug="$1" app="$2" owner="$3" team="$4" yaml_file="$5"
   if $cub unit get --space "$SPACE" "$slug" --quiet 2>/dev/null; then
     echo "  ↳ $slug already exists, skipping."
     return
   fi
   $cub unit create --space "$SPACE" \
     --label "ExampleName=$EXAMPLE_NAME" \
-    --label "campaign=$campaign" \
-    --label "team=$team" \
+    --label "App=$app" \
+    --label "AppOwner=$owner" \
+    --label "Team=$team" \
     --quiet \
     "$slug" "$yaml_file"
   echo "  ↳ created $slug"
   created_units=$((created_units + 1))
 }
 
-# Look up the SpaceID for our space.
 resolve_space_id() {
   $cub space get "$SPACE" --jq ".Space.SpaceID" --quiet 2>/dev/null
 }
 
 # Find a Ready bridge worker that supports vet-kyverno.
+# Some workers expose FunctionWorkerInfo.SupportedFunctions as null, so we
+# normalise to {} before iterating to avoid jq errors on those entries.
 find_kyverno_worker() {
   local workers
   workers=$(api GET "/bridge_worker" 2>/dev/null || echo "[]")
   echo "$workers" | jq -r '
-    [.[] | select(
-      .BridgeWorker.Condition == "Ready" and
-      (.BridgeWorker.ProvidedInfo.FunctionWorkerInfo.SupportedFunctions
-       | to_entries[]?.value | has("vet-kyverno"))
-    ) | .BridgeWorker.BridgeWorkerID][0] // empty'
+    [ .[]
+      | select(.BridgeWorker.Condition == "Ready")
+      | select(
+          ((.BridgeWorker.ProvidedInfo.FunctionWorkerInfo.SupportedFunctions // {})
+             | to_entries
+             | map(.value | has("vet-kyverno"))
+             | any)
+        )
+      | .BridgeWorker.BridgeWorkerID
+    ][0] // empty'
 }
 
-# ── Temporary YAML templates ─────────────────────────────────────────────────
+# ── Non-compliant variant ────────────────────────────────────────────────────
+# Create a copy of website/cms.yaml with resource limits stripped, so the
+# "Resource Limits Enforcement" campaign has a failing unit.
 
 WORKDIR=$(mktemp -d)
 trap 'rm -rf "$WORKDIR"' EXIT
 
-# Fully compliant deployment (probes, limits, nonroot, approved registry)
-cat > "$WORKDIR/deployment-good.yaml" << 'YAML'
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: confighubplaceholder
-  namespace: confighubplaceholder
-  labels:
-    app.kubernetes.io/name: confighubplaceholder
-    app.kubernetes.io/version: "1.0.0"
-    app.kubernetes.io/managed-by: confighub
-    confighub.com/network-policy: "allow-internal"
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: confighubplaceholder
-  template:
-    metadata:
-      labels:
-        app: confighubplaceholder
-    spec:
-      containers:
-      - name: app
-        image: ghcr.io/confighubai/app:latest
-        ports:
-        - containerPort: 8080
-        resources:
-          requests:
-            memory: "128Mi"
-            cpu: "100m"
-          limits:
-            memory: "256Mi"
-            cpu: "500m"
-        livenessProbe:
-          httpGet:
-            path: /healthz
-            port: 8080
-          initialDelaySeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /ready
-            port: 8080
-          initialDelaySeconds: 5
-        securityContext:
-          runAsNonRoot: true
-          allowPrivilegeEscalation: false
-YAML
+awk '
+  /^        resources:$/ { skip=1; next }
+  skip && /^          / { next }
+  skip { skip=0 }
+  { print }
+' "$PROMO_DIR/website/cms.yaml" > "$WORKDIR/cms-no-limits.yaml"
 
-# Missing liveness and readiness probes
-cat > "$WORKDIR/deployment-no-probes.yaml" << 'YAML'
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: confighubplaceholder
-  namespace: confighubplaceholder
-  labels:
-    app.kubernetes.io/name: confighubplaceholder
-    app.kubernetes.io/version: "1.0.0"
-    app.kubernetes.io/managed-by: confighub
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: confighubplaceholder
-  template:
-    metadata:
-      labels:
-        app: confighubplaceholder
-    spec:
-      containers:
-      - name: app
-        image: ghcr.io/confighubai/app:latest
-        ports:
-        - containerPort: 8080
-        resources:
-          requests:
-            memory: "128Mi"
-            cpu: "100m"
-          limits:
-            memory: "256Mi"
-            cpu: "500m"
-        securityContext:
-          runAsNonRoot: true
-          allowPrivilegeEscalation: false
-YAML
-
-# Image from Docker Hub (non-approved registry)
-cat > "$WORKDIR/deployment-dockerhub.yaml" << 'YAML'
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: confighubplaceholder
-  namespace: confighubplaceholder
-  labels:
-    app.kubernetes.io/name: confighubplaceholder
-    app.kubernetes.io/version: "2.1.0"
-    app.kubernetes.io/managed-by: confighub
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: confighubplaceholder
-  template:
-    metadata:
-      labels:
-        app: confighubplaceholder
-    spec:
-      containers:
-      - name: app
-        image: docker.io/library/python:3.11-slim
-        ports:
-        - containerPort: 5000
-        resources:
-          requests:
-            memory: "256Mi"
-            cpu: "200m"
-          limits:
-            memory: "512Mi"
-            cpu: "1"
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 5000
-          initialDelaySeconds: 15
-        readinessProbe:
-          httpGet:
-            path: /ready
-            port: 5000
-          initialDelaySeconds: 10
-        securityContext:
-          runAsNonRoot: true
-          allowPrivilegeEscalation: false
-YAML
-
-# Missing runAsNonRoot (runs as root by default)
-cat > "$WORKDIR/deployment-root.yaml" << 'YAML'
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: confighubplaceholder
-  namespace: confighubplaceholder
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: confighubplaceholder
-  template:
-    metadata:
-      labels:
-        app: confighubplaceholder
-    spec:
-      containers:
-      - name: app
-        image: ghcr.io/confighubai/app:latest
-        ports:
-        - containerPort: 8080
-        resources:
-          requests:
-            memory: "128Mi"
-            cpu: "100m"
-          limits:
-            memory: "256Mi"
-            cpu: "500m"
-YAML
-
-# Missing resource limits entirely
-cat > "$WORKDIR/deployment-no-limits.yaml" << 'YAML'
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: confighubplaceholder
-  namespace: confighubplaceholder
-  labels:
-    app.kubernetes.io/name: confighubplaceholder
-    app.kubernetes.io/version: "0.5.0"
-    app.kubernetes.io/managed-by: confighub
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: confighubplaceholder
-  template:
-    metadata:
-      labels:
-        app: confighubplaceholder
-    spec:
-      containers:
-      - name: app
-        image: ghcr.io/confighubai/app:latest
-        ports:
-        - containerPort: 8080
-YAML
-
-# StatefulSet with large memory footprint
-cat > "$WORKDIR/statefulset-highmem.yaml" << 'YAML'
-apiVersion: apps/v1
-kind: StatefulSet
-metadata:
-  name: confighubplaceholder
-  namespace: confighubplaceholder
-  labels:
-    app.kubernetes.io/name: confighubplaceholder
-    app.kubernetes.io/version: "1.0.0"
-    app.kubernetes.io/managed-by: confighub
-spec:
-  serviceName: confighubplaceholder
-  replicas: 1
-  selector:
-    matchLabels:
-      app: confighubplaceholder
-  template:
-    metadata:
-      labels:
-        app: confighubplaceholder
-    spec:
-      containers:
-      - name: db
-        image: ghcr.io/confighubai/db:latest
-        ports:
-        - containerPort: 5432
-        resources:
-          requests:
-            memory: "8Gi"
-            cpu: "2"
-          limits:
-            memory: "16Gi"
-            cpu: "4"
-        livenessProbe:
-          tcpSocket:
-            port: 5432
-          initialDelaySeconds: 30
-        readinessProbe:
-          tcpSocket:
-            port: 5432
-          initialDelaySeconds: 15
-        securityContext:
-          runAsNonRoot: true
-          allowPrivilegeEscalation: false
-YAML
-
-# CronJob
-cat > "$WORKDIR/cronjob.yaml" << 'YAML'
-apiVersion: batch/v1
-kind: CronJob
-metadata:
-  name: confighubplaceholder
-  namespace: confighubplaceholder
-  labels:
-    app.kubernetes.io/name: confighubplaceholder
-    app.kubernetes.io/version: "1.0.0"
-    app.kubernetes.io/managed-by: confighub
-spec:
-  schedule: "0 2 * * *"
-  jobTemplate:
-    spec:
-      template:
-        spec:
-          containers:
-          - name: job
-            image: ghcr.io/confighubai/batch:latest
-            resources:
-              requests:
-                memory: "256Mi"
-                cpu: "100m"
-              limits:
-                memory: "512Mi"
-                cpu: "500m"
-            securityContext:
-              runAsNonRoot: true
-              allowPrivilegeEscalation: false
-          restartPolicy: OnFailure
-YAML
-
-# TLS Secret
-cat > "$WORKDIR/tls-secret.yaml" << 'YAML'
-apiVersion: v1
-kind: Secret
-metadata:
-  name: confighubplaceholder
-  namespace: confighubplaceholder
-type: kubernetes.io/tls
-data:
-  tls.crt: LS0tLS1CRUdJTi...
-  tls.key: LS0tLS1CRUdJTi...
-YAML
-
-# Node.js 18 (non-compliant for node22 upgrade campaign)
-cat > "$WORKDIR/deployment-node18.yaml" << 'YAML'
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: confighubplaceholder
-  namespace: confighubplaceholder
-  labels:
-    app.kubernetes.io/name: confighubplaceholder
-    app.kubernetes.io/version: "1.0.0"
-    app.kubernetes.io/managed-by: confighub
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: confighubplaceholder
-  template:
-    metadata:
-      labels:
-        app: confighubplaceholder
-    spec:
-      containers:
-      - name: app
-        image: node:18-alpine
-        ports:
-        - containerPort: 3000
-        resources:
-          requests:
-            memory: "128Mi"
-            cpu: "100m"
-          limits:
-            memory: "256Mi"
-            cpu: "500m"
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 3000
-          initialDelaySeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /ready
-            port: 3000
-          initialDelaySeconds: 5
-        securityContext:
-          runAsNonRoot: true
-          allowPrivilegeEscalation: false
-YAML
-
-# Missing standard Kubernetes labels
-cat > "$WORKDIR/deployment-no-labels.yaml" << 'YAML'
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: confighubplaceholder
-  namespace: confighubplaceholder
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: confighubplaceholder
-  template:
-    metadata:
-      labels:
-        app: confighubplaceholder
-    spec:
-      containers:
-      - name: app
-        image: ghcr.io/confighubai/app:latest
-        ports:
-        - containerPort: 8080
-        resources:
-          requests:
-            memory: "128Mi"
-            cpu: "100m"
-          limits:
-            memory: "256Mi"
-            cpu: "500m"
-        livenessProbe:
-          httpGet:
-            path: /healthz
-            port: 8080
-          initialDelaySeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /ready
-            port: 8080
-          initialDelaySeconds: 5
-        securityContext:
-          runAsNonRoot: true
-          allowPrivilegeEscalation: false
-YAML
-
-# ── Kyverno policy definitions ────────────────────────────────────────────────
-# Two formats:
-#   ValidatingPolicy (policies.kyverno.io/v1)               — Kyverno CEL
-#   ValidatingAdmissionPolicy (admissionregistration.k8s.io) — native K8s CEL
-
-policy_require_labels() {
-cat << 'POLICY'
-apiVersion: policies.kyverno.io/v1
-kind: ValidatingPolicy
-metadata:
-  name: require-labels
-spec:
-  validationActions: [Deny]
-  matchConstraints:
-    resourceRules:
-      - apiGroups: ["apps"]
-        apiVersions: [v1]
-        operations: [CREATE, UPDATE]
-        resources: [deployments]
-  validations:
-    - expression: >
-        has(object.metadata.labels) &&
-        'app' in object.metadata.labels &&
-        object.metadata.labels['app'] != ''
-      message: "The label 'app' is required."
-POLICY
-}
-
-policy_require_resource_limits() {
-cat << 'POLICY'
-apiVersion: policies.kyverno.io/v1
-kind: ValidatingPolicy
-metadata:
-  name: require-resource-limits
-spec:
-  validationActions: [Deny]
-  matchConstraints:
-    resourceRules:
-      - apiGroups: ["apps"]
-        apiVersions: [v1]
-        operations: [CREATE, UPDATE]
-        resources: [deployments, statefulsets, daemonsets]
-  validations:
-    - expression: >
-        object.spec.template.spec.containers.all(c,
-          has(c.resources) &&
-          has(c.resources.limits) &&
-          has(c.resources.limits.cpu) &&
-          has(c.resources.limits.memory)
-        )
-      message: "All containers must specify CPU and memory limits."
-POLICY
-}
-
-policy_require_min_replicas() {
-cat << 'POLICY'
-apiVersion: policies.kyverno.io/v1
-kind: ValidatingPolicy
-metadata:
-  name: require-minimum-replicas
-spec:
-  validationActions: [Deny]
-  matchConstraints:
-    resourceRules:
-      - apiGroups: ["apps"]
-        apiVersions: [v1]
-        operations: [CREATE, UPDATE]
-        resources: [deployments, statefulsets]
-  validations:
-    - expression: "has(object.spec.replicas) && object.spec.replicas >= 2"
-      message: "Production workloads must have at least 2 replicas for availability."
-POLICY
-}
+# ── Kyverno policy definitions ───────────────────────────────────────────────
 
 policy_require_probes() {
 cat << 'POLICY'
@@ -617,6 +191,28 @@ spec:
     - expression: >
         object.spec.template.spec.containers.all(c, has(c.readinessProbe))
       message: "All containers must define a readinessProbe."
+POLICY
+}
+
+policy_restrict_image_registries() {
+cat << 'POLICY'
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: restrict-image-registries
+spec:
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["apps"]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE]
+        resources: [deployments, statefulsets, daemonsets]
+  validations:
+    - expression: >
+        object.spec.template.spec.containers.all(c,
+          c.image.startsWith('ghcr.io/acme/')
+        )
+      message: "Images must come from ghcr.io/acme/."
 POLICY
 }
 
@@ -650,35 +246,14 @@ spec:
 POLICY
 }
 
-policy_disallow_latest_tag() {
+policy_require_resource_limits() {
 cat << 'POLICY'
-apiVersion: admissionregistration.k8s.io/v1
-kind: ValidatingAdmissionPolicy
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
 metadata:
-  name: disallow-latest-tag
+  name: require-resource-limits
 spec:
-  matchConstraints:
-    resourceRules:
-      - apiGroups: ["apps"]
-        apiVersions: [v1]
-        operations: [CREATE, UPDATE]
-        resources: [deployments]
-  validations:
-    - expression: >
-        object.spec.template.spec.containers.all(c,
-          !c.image.endsWith(':latest')
-        )
-      message: "Using 'latest' tag is not allowed."
-POLICY
-}
-
-policy_disallow_privileged() {
-cat << 'POLICY'
-apiVersion: admissionregistration.k8s.io/v1
-kind: ValidatingAdmissionPolicy
-metadata:
-  name: disallow-privileged
-spec:
+  validationActions: [Deny]
   matchConstraints:
     resourceRules:
       - apiGroups: ["apps"]
@@ -688,66 +263,12 @@ spec:
   validations:
     - expression: >
         object.spec.template.spec.containers.all(c,
-          !has(c.securityContext) ||
-          !has(c.securityContext.privileged) ||
-          c.securityContext.privileged == false
+          has(c.resources) &&
+          has(c.resources.limits) &&
+          has(c.resources.limits.cpu) &&
+          has(c.resources.limits.memory)
         )
-      message: "Privileged containers are not allowed."
-    - expression: >
-        !has(object.spec.template.spec.initContainers) ||
-        object.spec.template.spec.initContainers.all(c,
-          !has(c.securityContext) ||
-          !has(c.securityContext.privileged) ||
-          c.securityContext.privileged == false
-        )
-      message: "Privileged init containers are not allowed."
-POLICY
-}
-
-policy_require_readonly_rootfs() {
-cat << 'POLICY'
-apiVersion: admissionregistration.k8s.io/v1
-kind: ValidatingAdmissionPolicy
-metadata:
-  name: require-readonly-rootfs
-spec:
-  matchConstraints:
-    resourceRules:
-      - apiGroups: ["apps"]
-        apiVersions: [v1]
-        operations: [CREATE, UPDATE]
-        resources: [deployments, statefulsets]
-  validations:
-    - expression: >
-        object.spec.template.spec.containers.all(c,
-          has(c.securityContext) &&
-          has(c.securityContext.readOnlyRootFilesystem) &&
-          c.securityContext.readOnlyRootFilesystem == true
-        )
-      message: "All containers must set readOnlyRootFilesystem to true."
-POLICY
-}
-
-policy_restrict_image_registries() {
-cat << 'POLICY'
-apiVersion: admissionregistration.k8s.io/v1
-kind: ValidatingAdmissionPolicy
-metadata:
-  name: restrict-image-registries
-spec:
-  matchConstraints:
-    resourceRules:
-      - apiGroups: ["apps"]
-        apiVersions: [v1]
-        operations: [CREATE, UPDATE]
-        resources: [deployments, statefulsets, daemonsets]
-  validations:
-    - expression: >
-        object.spec.template.spec.containers.all(c,
-          c.image.startsWith('ghcr.io/confighubai/') ||
-          c.image.startsWith('gcr.io/confighub-prod/')
-        )
-      message: "Images must come from ghcr.io/confighubai or gcr.io/confighub-prod."
+      message: "All containers must specify CPU and memory limits."
 POLICY
 }
 
@@ -847,7 +368,10 @@ create_campaign() {
     return 1
   fi
 
-  # 3. Create Trigger with inline Kyverno policy (if worker available)
+  # 3. Create Trigger with inline Kyverno policy (if worker available).
+  #    Disabled: false  → runs on every Mutation event against matching units.
+  #    Warn: true       → failures populate ApplyWarnings (non-blocking) instead
+  #                        of ApplyGates, so they don't prevent Applies.
   local trigger_id=""
   if [[ -n "$worker_id" ]]; then
     local policy_yaml
@@ -864,7 +388,8 @@ create_campaign() {
           FunctionName: "vet-kyverno",
           BridgeWorkerID: $workerId,
           Arguments: [{ParameterName: "policy", Value: $policy}],
-          Disabled: true
+          Disabled: false,
+          Warn: true
         }'
       )" 2>/dev/null | jq -r '.TriggerID // empty' 2>/dev/null) || true
   fi
@@ -912,213 +437,135 @@ else
 fi
 echo ""
 
-# ── Step 3: Units ─────────────────────────────────────────────────────────────
+# ── Step 3: Create units from promotion demo YAML files ─────────────────────
+#
+# Units are labeled with App and AppOwner to match the promotion demo model.
+# Campaign filters use these labels to select units for each campaign.
+#
+#   Campaign 1 (Probes)          → AppOwner = 'Support'  (aichat + portal)
+#   Campaign 2 (Registry)        → AppOwner = 'Product'  (eshop + docs)
+#   Campaign 3 (Run-As-NonRoot)  → App = 'aichat'
+#   Campaign 4 (Resource Limits) → App = 'website'
+#   Campaign 5 (Host Ports)      → App = 'docs'
 
-echo "--- Creating demo units ---"
+echo "--- Creating units from promotion demo data ---"
 echo ""
 
-echo "Campaign: Require App Label"
-create_unit "auth-proxy"             "std-labels"   "Platform" "$WORKDIR/deployment-good.yaml"
-create_unit "config-reloader"        "std-labels"   "Platform" "$WORKDIR/deployment-good.yaml"
-create_unit "cert-manager-webhook"   "std-labels"   "Platform" "$WORKDIR/deployment-no-labels.yaml"
-create_unit "event-bus"              "std-labels"   "Platform" "$WORKDIR/statefulset-highmem.yaml"
-create_unit "secret-rotator"         "std-labels"   "Platform" "$WORKDIR/deployment-good.yaml"
-create_unit "cron-cleanup"           "std-labels"   "Platform" "$WORKDIR/cronjob.yaml"
+echo "App: aichat (Owner: Support, Team: AI)"
+create_unit "aichat-api"      "aichat" "Support" "AI" "$PROMO_DIR/aichat/api.yaml"
+create_unit "aichat-frontend" "aichat" "Support" "AI" "$PROMO_DIR/aichat/frontend.yaml"
+create_unit "aichat-postgres" "aichat" "Support" "AI" "$PROMO_DIR/aichat/postgres.yaml"
+create_unit "aichat-redis"    "aichat" "Support" "AI" "$PROMO_DIR/aichat/redis.yaml"
+create_unit "aichat-worker"   "aichat" "Support" "AI" "$PROMO_DIR/aichat/worker.yaml"
 
 echo ""
-echo "Campaign: Resource Limits Enforcement"
-create_unit "search-indexer"     "resource-limits" "Platform" "$WORKDIR/deployment-good.yaml"
-create_unit "image-processor"    "resource-limits" "Platform" "$WORKDIR/deployment-no-limits.yaml"
-create_unit "cache-warmer"       "resource-limits" "Platform" "$WORKDIR/deployment-no-limits.yaml"
-create_unit "log-aggregator"     "resource-limits" "Platform" "$WORKDIR/deployment-good.yaml"
-create_unit "metrics-collector"  "resource-limits" "Platform" "$WORKDIR/deployment-no-limits.yaml"
-create_unit "batch-scheduler"    "resource-limits" "Platform" "$WORKDIR/deployment-good.yaml"
-create_unit "audit-logger"       "resource-limits" "Platform" "$WORKDIR/deployment-good.yaml"
+echo "App: portal (Owner: Support, Team: Portal)"
+create_unit "portal-api"      "portal" "Support" "Portal" "$PROMO_DIR/portal/api.yaml"
+create_unit "portal-frontend" "portal" "Support" "Portal" "$PROMO_DIR/portal/frontend.yaml"
+create_unit "portal-postgres" "portal" "Support" "Portal" "$PROMO_DIR/portal/postgres.yaml"
 
 echo ""
-echo "Campaign: High Availability — Minimum Replicas"
-create_unit "api-gateway"        "ha-replicas" "Backend" "$WORKDIR/deployment-good.yaml"
-create_unit "order-service"      "ha-replicas" "Backend" "$WORKDIR/deployment-good.yaml"
-create_unit "inventory-api"      "ha-replicas" "Backend" "$WORKDIR/deployment-no-probes.yaml"
-create_unit "shipping-tracker"   "ha-replicas" "Backend" "$WORKDIR/deployment-root.yaml"
+echo "App: eshop (Owner: Product, Team: Commerce)"
+create_unit "eshop-api"      "eshop" "Product" "Commerce" "$PROMO_DIR/eshop/api.yaml"
+create_unit "eshop-frontend" "eshop" "Product" "Commerce" "$PROMO_DIR/eshop/frontend.yaml"
+create_unit "eshop-postgres" "eshop" "Product" "Commerce" "$PROMO_DIR/eshop/postgres.yaml"
+create_unit "eshop-redis"    "eshop" "Product" "Commerce" "$PROMO_DIR/eshop/redis.yaml"
+create_unit "eshop-worker"   "eshop" "Product" "Commerce" "$PROMO_DIR/eshop/worker.yaml"
 
 echo ""
-echo "Campaign: Liveness and Readiness Probes"
-create_unit "checkout-flow"           "probe-compliance" "Backend" "$WORKDIR/deployment-good.yaml"
-create_unit "user-profile-svc"        "probe-compliance" "Backend" "$WORKDIR/deployment-good.yaml"
-create_unit "recommendation-engine"   "probe-compliance" "Backend" "$WORKDIR/deployment-no-probes.yaml"
-create_unit "notification-dispatcher" "probe-compliance" "Backend" "$WORKDIR/statefulset-highmem.yaml"
-create_unit "price-calculator"        "probe-compliance" "Backend" "$WORKDIR/deployment-good.yaml"
+echo "App: docs (Owner: Product, Team: DevEx)"
+create_unit "docs-server" "docs" "Product" "DevEx" "$PROMO_DIR/docs/server.yaml"
+create_unit "docs-search" "docs" "Product" "DevEx" "$PROMO_DIR/docs/search.yaml"
 
 echo ""
-echo "Campaign: Run-As-NonRoot Enforcement"
-create_unit "debug-tools"        "pss-restricted" "Security" "$WORKDIR/deployment-root.yaml"
-create_unit "legacy-cron-runner" "pss-restricted" "Security" "$WORKDIR/cronjob.yaml"
-create_unit "data-pipeline"      "pss-restricted" "Security" "$WORKDIR/deployment-dockerhub.yaml"
+echo "App: website (Owner: Marketing, Team: Web)"
+create_unit "website-web"      "website" "Marketing" "Web" "$PROMO_DIR/website/web.yaml"
+create_unit "website-cms"      "website" "Marketing" "Web" "$WORKDIR/cms-no-limits.yaml"
+create_unit "website-postgres" "website" "Marketing" "Web" "$PROMO_DIR/website/postgres.yaml"
 
 echo ""
-echo "Campaign: Disallow Latest Image Tag"
-create_unit "web-dashboard"     "no-latest-tag" "Frontend" "$WORKDIR/deployment-good.yaml"
-create_unit "admin-portal"      "no-latest-tag" "Frontend" "$WORKDIR/deployment-good.yaml"
-create_unit "docs-renderer"     "no-latest-tag" "Frontend" "$WORKDIR/deployment-node18.yaml"
-create_unit "webhook-processor" "no-latest-tag" "Frontend" "$WORKDIR/deployment-node18.yaml"
-create_unit "email-templater"   "no-latest-tag" "Frontend" "$WORKDIR/deployment-node18.yaml"
-create_unit "report-generator"  "no-latest-tag" "Frontend" "$WORKDIR/cronjob.yaml"
 
-echo ""
-echo "Campaign: Disallow Privileged Containers"
-create_unit "graphql-gateway"  "no-privileged" "Security" "$WORKDIR/deployment-good.yaml"
-create_unit "billing-service"  "no-privileged" "Security" "$WORKDIR/deployment-no-labels.yaml"
-create_unit "session-manager"  "no-privileged" "Security" "$WORKDIR/deployment-good.yaml"
-create_unit "feature-flag-svc" "no-privileged" "Security" "$WORKDIR/deployment-good.yaml"
+# ── Step 4: Create campaigns ─────────────────────────────────────────────────
 
-echo ""
-echo "Campaign: Read-Only Root Filesystem"
-create_unit "ml-training-job"   "readonly-rootfs" "Data Science" "$WORKDIR/statefulset-highmem.yaml"
-create_unit "etl-transform"     "readonly-rootfs" "Data Science" "$WORKDIR/deployment-good.yaml"
-create_unit "vector-db"         "readonly-rootfs" "Data Science" "$WORKDIR/statefulset-highmem.yaml"
-create_unit "embedding-service" "readonly-rootfs" "Data Science" "$WORKDIR/deployment-good.yaml"
-
-echo ""
-echo "Campaign: Image Registry Restriction"
-create_unit "payment-service"       "registry-restrict" "Security" "$WORKDIR/deployment-good.yaml"
-create_unit "fraud-detector"        "registry-restrict" "Security" "$WORKDIR/deployment-good.yaml"
-create_unit "cdn-origin"            "registry-restrict" "Security" "$WORKDIR/deployment-dockerhub.yaml"
-create_unit "analytics-ingest"      "registry-restrict" "Security" "$WORKDIR/statefulset-highmem.yaml"
-
-echo ""
-echo "Campaign: Disallow Host Ports"
-create_unit "redis-cluster"    "no-host-ports" "Infrastructure" "$WORKDIR/statefulset-highmem.yaml"
-create_unit "kafka-broker"     "no-host-ports" "Infrastructure" "$WORKDIR/statefulset-highmem.yaml"
-create_unit "prometheus-stack" "no-host-ports" "Infrastructure" "$WORKDIR/deployment-good.yaml"
-
-echo ""
 echo "--- Creating campaigns ---"
 echo ""
 
-# ── Step 4: Campaigns ─────────────────────────────────────────────────────────
-
-# 1. Require App Label
+# 1. Liveness and Readiness Probes (4 passing / 4 failing)
+#    Pass: aichat-api, aichat-frontend, portal-api, portal-frontend
+#    Fail: aichat-postgres, aichat-redis, aichat-worker, portal-postgres
 create_campaign \
-  "Require App Label" \
-  "All Deployments must have an 'app' label. Enables service discovery, monitoring dashboards, and CMDB synchronisation." \
+  "Liveness and Readiness Probes" \
+  "All Deployments and StatefulSets must define livenessProbe and readinessProbe on every container. Required for graceful rollouts and service mesh integration." \
   "HIGH" "in_progress" \
-  "$(days_from_now 7)" "$(days_ago_iso 8)" "" \
-  "Labels.team = 'Platform'" \
-  policy_require_labels \
-  "{\"passing\":3,\"failing\":3,\"total\":6,\"checkedAt\":\"$(days_ago_iso 0)\"}" \
+  "$(days_from_now 7)" "$(days_ago_iso 6)" "" \
+  "Labels.AppOwner = 'Support'" \
+  policy_require_probes \
+  "{\"passing\":4,\"failing\":4,\"total\":8,\"checkedAt\":\"$(days_ago_iso 0)\"}" \
   "$WORKER_ID"
 
-# 2. Resource Limits Enforcement
+# 2. Image Registry Restriction (4 passing / 3 failing)
+#    Pass: eshop-api, eshop-frontend, eshop-worker, docs-server
+#    Fail: eshop-postgres (postgres:16-alpine), eshop-redis (redis:7-alpine), docs-search (meilisearch)
 create_campaign \
-  "Resource Limits Enforcement" \
-  "All workloads must define CPU and memory limits. Required by platform policy POL-2024-11 to prevent resource starvation." \
+  "Image Registry Restriction" \
+  "All container images must be pulled from the approved registry (ghcr.io/acme). Public registries like Docker Hub are not permitted in production." \
   "HIGH" "in_progress" \
-  "$(days_from_now 10)" "$(days_ago_iso 5)" "" \
-  "Labels.team = 'Platform'" \
-  policy_require_resource_limits \
+  "$(days_from_now 10)" "$(days_ago_iso 14)" "" \
+  "Labels.AppOwner = 'Product'" \
+  policy_restrict_image_registries \
   "{\"passing\":4,\"failing\":3,\"total\":7,\"checkedAt\":\"$(days_ago_iso 0)\"}" \
   "$WORKER_ID"
 
-# 3. High Availability — Minimum Replicas
-create_campaign \
-  "High Availability - Minimum Replicas" \
-  "All production Deployments and StatefulSets must run at least 2 replicas to avoid single points of failure." \
-  "MEDIUM" "draft" \
-  "$(days_from_now 30)" "$(days_ago_iso 2)" "" \
-  "Labels.team = 'Backend'" \
-  policy_require_min_replicas \
-  "{\"passing\":2,\"failing\":2,\"total\":4,\"checkedAt\":\"$(days_ago_iso 1)\"}" \
-  "$WORKER_ID"
-
-# 4. Liveness and Readiness Probe Compliance
-create_campaign \
-  "Liveness and Readiness Probe Compliance" \
-  "All Deployments and StatefulSets must define livenessProbe and readinessProbe on every container." \
-  "HIGH" "in_progress" \
-  "$(days_from_now 7)" "$(days_ago_iso 6)" "" \
-  "Labels.team = 'Backend'" \
-  policy_require_probes \
-  "{\"passing\":3,\"failing\":2,\"total\":5,\"checkedAt\":\"$(days_ago_iso 0)\"}" \
-  "$WORKER_ID"
-
-# 5. Run-As-NonRoot Enforcement
+# 3. Run-As-NonRoot Enforcement (2 passing / 3 failing)
+#    Pass: aichat-api, aichat-frontend (have securityContext.runAsNonRoot)
+#    Fail: aichat-postgres, aichat-redis, aichat-worker
 create_campaign \
   "Run-As-NonRoot Enforcement" \
   "All pods must set runAsNonRoot at the pod or container level to ensure no container runs as UID 0." \
-  "MEDIUM" "draft" \
-  "$(days_from_now 21)" "$(days_ago_iso 1)" "" \
-  "Labels.team = 'Security'" \
+  "MEDIUM" "in_progress" \
+  "$(days_from_now 21)" "$(days_ago_iso 3)" "" \
+  "Labels.App = 'aichat'" \
   policy_require_run_as_nonroot \
-  "{\"passing\":2,\"failing\":1,\"total\":3,\"checkedAt\":\"$(days_ago_iso 0)\"}" \
+  "{\"passing\":2,\"failing\":3,\"total\":5,\"checkedAt\":\"$(days_ago_iso 0)\"}" \
   "$WORKER_ID"
 
-# 6. Disallow Latest Image Tag
+# 4. Resource Limits Enforcement (2 passing / 1 failing)
+#    Pass: website-web, website-postgres
+#    Fail: website-cms (runtime variant with limits stripped)
 create_campaign \
-  "Disallow Latest Image Tag" \
-  "No container may use ':latest' as its image tag. All images must pin an explicit version to ensure reproducible deployments." \
-  "HIGH" "in_progress" \
-  "$(days_from_now 7)" "$(days_ago_iso 8)" "" \
-  "Labels.team = 'Frontend'" \
-  policy_disallow_latest_tag \
-  "{\"passing\":3,\"failing\":3,\"total\":6,\"checkedAt\":\"$(days_ago_iso 0)\"}" \
-  "$WORKER_ID"
-
-# 7. Disallow Privileged Containers
-create_campaign \
-  "Disallow Privileged Containers" \
-  "No container may run in privileged mode. Enforces Pod Security Standards restricted profile per CIS Benchmark 5.2.2." \
-  "HIGH" "in_progress" \
-  "$(days_from_now 5)" "$(days_ago_iso 12)" "" \
-  "Labels.team = 'Security'" \
-  policy_disallow_privileged \
-  "{\"passing\":3,\"failing\":1,\"total\":4,\"checkedAt\":\"$(days_ago_iso 0)\"}" \
-  "$WORKER_ID"
-
-# 8. Read-Only Root Filesystem
-create_campaign \
-  "Read-Only Root Filesystem" \
-  "All containers must mount their root filesystem as read-only per CIS Benchmark 5.2.4 and the restricted PSS profile." \
+  "Resource Limits Enforcement" \
+  "All workloads must define CPU and memory limits to prevent resource starvation." \
   "MEDIUM" "draft" \
-  "$(days_from_now 28)" "$(days_ago_iso 3)" "" \
-  "Labels.team = 'Data Science'" \
-  policy_require_readonly_rootfs \
-  "{\"passing\":2,\"failing\":2,\"total\":4,\"checkedAt\":\"$(days_ago_iso 0)\"}" \
+  "$(days_from_now 14)" "$(days_ago_iso 2)" "" \
+  "Labels.App = 'website'" \
+  policy_require_resource_limits \
+  "{\"passing\":2,\"failing\":1,\"total\":3,\"checkedAt\":\"$(days_ago_iso 1)\"}" \
   "$WORKER_ID"
 
-# 9. Image Registry Restriction
-create_campaign \
-  "Image Registry Restriction" \
-  "All container images must be pulled from approved registries. Docker Hub and other public registries are not permitted." \
-  "HIGH" "in_progress" \
-  "$(days_from_now 3)" "$(days_ago_iso 14)" "" \
-  "Labels.team = 'Security'" \
-  policy_restrict_image_registries \
-  "{\"passing\":3,\"failing\":1,\"total\":4,\"checkedAt\":\"$(days_ago_iso 0)\"}" \
-  "$WORKER_ID"
-
-# 10. Disallow Host Ports (completed)
+# 5. Disallow Host Ports — completed (2 passing / 0 failing)
+#    Pass: docs-server, docs-search
 create_campaign \
   "Disallow Host Ports" \
   "Containers must not bind to host ports. Completed — all workloads now route through ClusterIP Services and Ingress." \
   "LOW" "completed" \
   "$(days_from_now -5)" "$(days_ago_iso 30)" "$(days_ago_iso 3)" \
-  "Labels.team = 'Infrastructure'" \
+  "Labels.App = 'docs'" \
   policy_disallow_host_ports \
-  "{\"passing\":3,\"failing\":0,\"total\":3,\"checkedAt\":\"$(days_ago_iso 3)\"}" \
+  "{\"passing\":2,\"failing\":0,\"total\":2,\"checkedAt\":\"$(days_ago_iso 3)\"}" \
   "$WORKER_ID"
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 
 echo ""
 echo "=== Done ==="
-echo "  Space created:     $SPACE"
-echo "  Units created:     $created_units"
-echo "  Campaigns created: $created_campaigns"
+echo "  Space:     $SPACE"
+echo "  Units:     $created_units"
+echo "  Campaigns: $created_campaigns"
 echo ""
 echo "Open the ConfigHub UI and navigate to Campaigns to see them."
 if [[ -n "$WORKER_ID" ]]; then
-  echo "Triggers were created (disabled). Enable them in campaign settings to run checks."
+  echo "Triggers were created (enabled, Warn=true). They fire on every Mutation and"
+  echo "record failures in ApplyWarnings (non-blocking) rather than ApplyGates."
 else
   echo "Re-run after connecting a vet-kyverno worker to add policy check triggers."
 fi

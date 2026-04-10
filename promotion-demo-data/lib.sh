@@ -8,6 +8,10 @@ EXAMPLE_NAME="demo-data"
 CUB="${CUB:-cub}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Base URL used by api() for entities that aren't yet exposed via `cub` verbs
+# (Filters/Views/Triggers are created via the HTTP API in campaigns.sh).
+export CONFIGHUB_URL="${CONFIGHUB_URL:-https://app.confighub.com}"
+
 # Apps and their metadata
 APPS=(aichat website docs eshop portal platform)
 
@@ -81,6 +85,17 @@ app_dept() {
   esac
 }
 
+app_team() {
+  case "$1" in
+    aichat)   echo "AI" ;;
+    website)  echo "Web" ;;
+    docs)     echo "DevEx" ;;
+    eshop)    echo "Commerce" ;;
+    portal)   echo "Portal" ;;
+    platform) echo "Platform" ;;
+  esac
+}
+
 WORKER_SPACE="demo-infra"
 
 # Create the shared worker space
@@ -90,7 +105,9 @@ create_worker_space() {
     --label "AppOwner=Platform" \
     --quiet
 
-  $CUB worker create worker --space "$WORKER_SPACE" --quiet --is-server-worker
+  $CUB worker create worker --space "$WORKER_SPACE" \
+    --label "ExampleName=${EXAMPLE_NAME}" \
+    --quiet --is-server-worker
 
   echo "  Created worker space: $WORKER_SPACE"
 }
@@ -132,9 +149,39 @@ create_app_space() {
     --label "ExampleName=${EXAMPLE_NAME}" \
     --label "App=${app}" \
     --label "AppOwner=$(app_dept "$app")" \
+    --label "Team=$(app_team "$app")" \
     --label "TargetRole=$(target_role "$env")" \
     --label "TargetRegion=$(region_label "$region")" \
     --quiet
 
   echo "  Created app space: $space"
+}
+
+# ── ConfigHub HTTP API helper ────────────────────────────────────────────────
+# Used by campaigns.sh for entities that don't yet have first-class `cub`
+# verbs (filters, views, triggers are scriptable via cub CLI but triggers
+# need Warn=true which isn't exposed as a flag).  Lazily fetches the API
+# token on first call so cleanup.sh doesn't pay the cost when unused.
+
+_CUB_API_TOKEN=""
+
+api() {
+  local method="$1" path="$2"
+  shift 2
+  if [[ -z "$_CUB_API_TOKEN" ]]; then
+    _CUB_API_TOKEN=$("$CUB" auth get-token 2>/dev/null) || {
+      echo "ERROR: unable to fetch API token — run '$CUB auth login'" >&2
+      return 1
+    }
+  fi
+  local content_type="application/json"
+  if [[ "$method" == "PATCH" ]]; then
+    content_type="application/merge-patch+json"
+  fi
+  curl -sf \
+    -X "$method" \
+    -H "Authorization: Bearer ${_CUB_API_TOKEN}" \
+    -H "Content-Type: ${content_type}" \
+    "$@" \
+    "${CONFIGHUB_URL}/api${path}"
 }

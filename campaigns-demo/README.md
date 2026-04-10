@@ -1,6 +1,6 @@
 # Campaigns Demo
 
-Scripts to populate a ConfigHub space with 10 compliance campaigns, each backed by a Kyverno CEL policy, plus ~47 sample Kubernetes units for the campaigns to evaluate.
+Scripts to populate a ConfigHub space with 5 compliance campaigns, each backed by a Kyverno CEL policy. Uses the same app units as the [promotion demo](../promotion-demo-data/) — aichat, website, docs, eshop, and portal — so both demos share a consistent data model.
 
 Use this to explore the Campaigns feature in ConfigHub: filtering units, tracking remediation progress, setting priorities and deadlines, and (optionally) running automated policy checks via vet-kyverno.
 
@@ -9,6 +9,7 @@ Use this to explore the Campaigns feature in ConfigHub: filtering units, trackin
 - [`cub` CLI](https://docs.confighub.com/get-started/setup/#install-the-cli) installed and on PATH.
 - Run `cub upgrade` to ensure you have the latest build.
 - Authenticated to ConfigHub: `cub auth login`
+- The `promotion-demo-data/` directory must be present alongside this one (it ships with this repo).
 
 ## Quick Start
 
@@ -29,39 +30,29 @@ CONFIGHUB_URL=https://my-server.com SPACE=my-space ./setup.sh
 
 One space: `campaigns-demo`
 
-### Units (~47)
+### Units (18)
 
-Sample Kubernetes manifests with intentionally varied compliance characteristics, grouped by team label so the campaign filters can select them. Unit types include:
+Kubernetes manifests sourced from `promotion-demo-data/config-data/`, labeled with `App` and `AppOwner` to match the promotion demo model. The units have naturally varied compliance characteristics — APIs and frontends are well-configured, while databases, caches, and workers have gaps that campaigns can detect.
 
-| Kind | Description |
-|------|-------------|
-| Deployment (compliant) | Fully configured — probes, limits, nonroot, approved registry |
-| Deployment (no probes) | Missing liveness and readiness probes |
-| Deployment (no limits) | Missing CPU and memory limits |
-| Deployment (root) | No `runAsNonRoot` — runs as UID 0 by default |
-| Deployment (Docker Hub) | Image from unapproved public registry |
-| Deployment (Node 18) | Legacy Node.js 18 base image |
-| Deployment (no labels) | Missing standard `app.kubernetes.io/*` labels |
-| StatefulSet | Large-memory database workload |
-| CronJob | Batch/scheduled job |
-| TLS Secret | Certificate for rotation campaign |
+| App | Owner | Units |
+|-----|-------|-------|
+| aichat | Support | api, frontend, postgres, redis, worker |
+| portal | Support | api, frontend, postgres |
+| eshop | Product | api, frontend, postgres, redis, worker |
+| docs | Product | server, search |
+| website | Marketing | web, cms, postgres |
 
-### Campaigns (10)
+### Campaigns (5)
 
-Each campaign is a **View** with a **Filter** (selects units by team label) and campaign metadata stored in Labels and Annotations. An optional **Trigger** runs `vet-kyverno` against matched units when a Ready worker is connected.
+Each campaign is a **View** with a **Filter** (selects units by App or AppOwner label) and campaign metadata stored in Labels and Annotations. An optional **Trigger** runs `vet-kyverno` against matched units when a Ready worker is connected.
 
-| Campaign | Priority | Status | Policy |
-|----------|----------|--------|--------|
-| Require App Label | HIGH | in_progress | ValidatingPolicy |
-| Resource Limits Enforcement | HIGH | in_progress | ValidatingPolicy |
-| High Availability — Minimum Replicas | MEDIUM | draft | ValidatingPolicy |
-| Liveness and Readiness Probe Compliance | HIGH | in_progress | ValidatingPolicy |
-| Run-As-NonRoot Enforcement | MEDIUM | draft | ValidatingPolicy |
-| Disallow Latest Image Tag | HIGH | in_progress | ValidatingAdmissionPolicy |
-| Disallow Privileged Containers | HIGH | in_progress | ValidatingAdmissionPolicy |
-| Read-Only Root Filesystem | MEDIUM | draft | ValidatingAdmissionPolicy |
-| Image Registry Restriction | HIGH | in_progress | ValidatingAdmissionPolicy |
-| Disallow Host Ports | LOW | **completed** | ValidatingAdmissionPolicy |
+| Campaign | Priority | Status | Filter | Pass/Fail |
+|----------|----------|--------|--------|-----------|
+| Liveness and Readiness Probes | HIGH | in_progress | AppOwner = Support | 4 / 4 |
+| Image Registry Restriction | HIGH | in_progress | AppOwner = Product | 4 / 3 |
+| Run-As-NonRoot Enforcement | MEDIUM | in_progress | App = aichat | 2 / 3 |
+| Resource Limits Enforcement | MEDIUM | draft | App = website | 2 / 1 |
+| Disallow Host Ports | LOW | **completed** | App = docs | 2 / 0 |
 
 ## Campaign Metadata
 
@@ -111,8 +102,11 @@ To set up a worker:
 # List all units in the demo space
 cub unit list --space campaigns-demo
 
-# Filter by team
-cub unit list --space campaigns-demo --where "Labels.team = 'Security'"
+# Filter by app
+cub unit list --space campaigns-demo --where "Labels.App = 'aichat'"
+
+# Filter by owner
+cub unit list --space campaigns-demo --where "Labels.AppOwner = 'Support'"
 
 # List all campaign views
 cub view list --space campaigns-demo --where "Labels.campaign = 'true'"
