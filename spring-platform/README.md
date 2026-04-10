@@ -1,11 +1,75 @@
 # Spring Platform in ConfigHub
 
-This repo teaches an experimental app-platform model for Spring Boot services and ConfigHub.  We have several different 'versions' of the idea, for comparison and learning. The example assumes that many users will want some generated config, and looks at a way to enable this with the CH paradigm.
+This repo teaches an experimental app-platform model for Spring Boot services and ConfigHub.  We have several different 'versions' of the idea, for comparison and learning. The example assumes that some users will want to generate config data programmatically.  Are there safer ways to do this than Helm? 
 
 ## Start Here
 
 - Review the model in this repo if you want to see the ideas
 - Later, for a 'real Boot app', the version at [`cub-gen/examples/springboot-paas`](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas) has a path for your own Spring Boot app. Start there with `cub-gen springboot init`.  Also very experimental.
+
+## What to Expect from Each Example
+
+All three examples use the same app (`inventory-api`) and the same three
+mutation requests (feature flag, Redis caching, datasource override). They
+differ in *perspective* and *what you can run*.
+
+**[`springboot-platform-app`](./springboot-platform-app/)** — Start here.
+One app, one environment. You run shell scripts that generate Kubernetes
+manifests from Spring config, then explain each field: who owns it, how it
+can change, and why. If you have a Kind cluster, you can deploy and verify
+end-to-end. If not, the scripts still work -- they show the transformation
+and field routing without a cluster.
+
+**[`springboot-platform-app-centric`](./springboot-platform-app-centric/)** —
+Same app, now across three environments (dev, stage, prod). Each environment
+is a ConfigHub space. You walk through all three mutation routes with
+`demo.sh` and see how the same field has different effective values per
+environment. No cluster needed -- this is a guided walkthrough.
+
+**[`springboot-platform-platform-centric`](./springboot-platform-platform-centric/)** —
+Two apps (`inventory-api` + `catalog-api`), five environments total. This
+shows the platform team's view: how ownership rules apply across multiple
+apps, and how `platform.sh --explain-field` answers "is this field blocked
+for all apps, or just one?" No cluster needed.
+
+**[`shared/`](./shared/)** — Not an example. Contains YAML files that the
+app-centric and platform-centric examples reference. You don't need to look
+at this unless you're modifying the examples.
+
+None of these contain a compilable Java project. The `upstream/` directories
+have a `pom.xml` and `application.yaml` as config inputs, but no `src/`
+tree. If you want a real Spring Boot app see the next section.
+
+## When You Want a Runnable Example
+
+The examples in this repo teach the conceptual model with fixed inputs and
+explain scripts. We shall use an experimental CLI `cub-gen`.
+
+If you want to run `cub-gen` against a real Spring Boot application with 
+actual Java source code, config governance, and a local demo you can execute 
+end-to-end without a cluster:
+
+**[`cub-gen/examples/springboot-paas`](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas)** has:
+
+- A real (minimal) Spring Boot app: `InventoryApplication.java`, a REST
+  controller, a service class, `pom.xml` with Spring Boot 3.3.2 / Java 21
+- Spring config files: `application.yaml`, `application-dev.yaml`,
+  `application-prod.yaml` with profile overrides
+- Platform policies, a FrameworkRegistry, and Flux/Argo transport configs
+- `demo-local.sh` that runs the full discover/import/publish/verify lifecycle
+  with no external dependencies
+
+You can run it right now:
+
+```bash
+cd cub-gen
+go build -o ./cub-gen ./cmd/cub-gen
+./cub-gen gitops discover --space platform --json ./examples/springboot-paas
+./cub-gen gitops import --space platform --json ./examples/springboot-paas ./examples/springboot-paas
+```
+
+If you have studied the model here and want to move to real tooling, that is
+the bridge.
 
 ## What This Repo Is For
 
@@ -32,7 +96,7 @@ This mapping from app to platform is a deterministic config generator, and it is
 | Ownership boundaries | Fields are app-owned or platform-owned, not ambiguous |
 | Mutation from provenance | How a field can change depends on who owns it |
 
-The point is not "generate all the YAML." The point is to generate only the operational config that the platform must own, while keeping the path back to app inputs clear. 
+The point is not "generate all the YAML." The point is to generate only the operational config that the platform must own, while keeping the path back to app inputs clear.
 
 ## Mutation Routes
 
