@@ -212,6 +212,7 @@ cd incubator/global-app-layer/gpu-eks-h100-training
 ./setup.sh <prefix> <kubernetes-target> <fluxoci-target>  # bind direct and Flux variants during setup
 ./setup.sh <prefix> <kubernetes-target> <fluxoci-target> <argocdoci-target>  # bind all three variants
 ./verify.sh
+./verify.sh --json
 ```
 
 After `./setup.sh`, prefer the printed clickable GUI URLs and `.logs/*.latest.log` files over terminal scrollback alone.

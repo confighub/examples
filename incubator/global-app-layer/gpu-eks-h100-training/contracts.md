@@ -18,6 +18,23 @@
   - `.components | length == 2`
   - `.recipeManifest.unit == "recipe-eks-h100-ubuntu-training-stack"`
 
+### `./verify.sh --json`
+
+- mutates: no
+- output shape: JSON object with `ok`, `example`, and either verification detail fields or an `error`
+- proves:
+  - whether the example's ConfigHub state currently passes verification
+  - which spaces and units were checked on success
+  - that failures are surfaced as structured JSON instead of shell-only stderr
+- expected anchors on success:
+  - `.ok == true`
+  - `.example == "global-app-layer-gpu-eks-h100-training"`
+  - `.spacesChecked | length == 8`
+  - `.unitsChecked | length == 17`
+- expected anchors on failure:
+  - `.ok == false`
+  - `.error | length > 0`
+
 ## ConfigHub State Contracts
 
 ### `cub space get <prefix>-recipe-eks-h100-ubuntu-training --json`
