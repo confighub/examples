@@ -4,6 +4,8 @@ This is the fuller AI onboarding guide for the `incubator/` area.
 
 If you only need the shortest protocol, start with [AGENTS.md](./AGENTS.md).
 
+For the shared read-only evaluation flow, see [ai-machine-seams-first.md](./ai-machine-seams-first.md).
+
 ## 1. What This Is
 
 The incubator contains experimental ConfigHub examples before promotion to stable examples.
@@ -125,5 +127,7 @@ When you review or improve an incubator example, make sure the docs answer:
 
 For reusable incubator best practices, read:
 
+- [ai-machine-seams-first.md](./ai-machine-seams-first.md)
+- [ai-cold-eval-prompt-pack.md](./ai-cold-eval-prompt-pack.md)
 - [ai-example-playbook.md](./ai-example-playbook.md)
 - [ai-example-template.md](./ai-example-template.md)

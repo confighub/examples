@@ -16,6 +16,7 @@ Library of experimental ConfigHub examples and sample apps.  No promises.  Shoul
 
 - For humans: [`../START_HERE.md`](../START_HERE.md)
 - For AI assistants: [`AI_START_HERE.md`](./AI_START_HERE.md)
+- For shared AI-safe evaluation flow: [`ai-machine-seams-first.md`](./ai-machine-seams-first.md)
 - Why ConfigHub: [`WHY_CONFIGHUB.md`](./WHY_CONFIGHUB.md)
 
 ## Example Catalog
