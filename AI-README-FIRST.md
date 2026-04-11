@@ -174,6 +174,7 @@ If the user is asking about incubator-only work:
 
 1. [`incubator/README.md`](./incubator/README.md)
 2. [`incubator/AI_START_HERE.md`](./incubator/AI_START_HERE.md)
+3. [`incubator/ai-machine-seams-first.md`](./incubator/ai-machine-seams-first.md)
 
 ## 9. Repo Layout You Will Actually Need
 
@@ -183,6 +184,8 @@ Most assistants only need these locations:
 - human entry path: [START_HERE.md](./START_HERE.md)
 - AI entry path: [AI_START_HERE.md](./AI_START_HERE.md)
 - incubator landing: [`incubator/README.md`](./incubator/README.md)
+- incubator machine seams: [`incubator/ai-machine-seams-first.md`](./incubator/ai-machine-seams-first.md)
+- incubator eval prompts: [`incubator/ai-cold-eval-prompt-pack.md`](./incubator/ai-cold-eval-prompt-pack.md)
 - layered recipes package: [`incubator/global-app-layer/README.md`](./incubator/global-app-layer/README.md)
 - package mechanics: [`incubator/global-app-layer/how-it-works.md`](./incubator/global-app-layer/how-it-works.md)
 - package value-add story: [`incubator/global-app-layer/confighub-aicr-value-add.md`](./incubator/global-app-layer/confighub-aicr-value-add.md)

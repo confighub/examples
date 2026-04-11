@@ -126,6 +126,8 @@ See [how-it-works.md](./how-it-works.md) for the full explanation.
 ## AI-Safe Path
 
 - [AI_START_HERE.md](./AI_START_HERE.md)
+- [../ai-machine-seams-first.md](../ai-machine-seams-first.md)
+- [../ai-cold-eval-prompt-pack.md](../ai-cold-eval-prompt-pack.md)
 - [prompts.md](./prompts.md)
 - [contracts.md](./contracts.md)
 - [whole-journey.md](./whole-journey.md)
