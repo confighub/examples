@@ -49,6 +49,32 @@ require_jq() {
   fi
 }
 
+setup_usage() {
+  cat <<'EOF_USAGE'
+Usage:
+  ./setup.sh [prefix] [space/target]
+  ./setup.sh --explain [prefix] [space/target]
+  ./setup.sh --explain-json [prefix] [space/target]
+
+Modes:
+  default         Create the full chain in ConfigHub (mutating)
+  --explain       Show a read-only plan of what setup would create
+  --explain-json  Emit the same plan as machine-readable JSON
+EOF_USAGE
+}
+
+verify_usage() {
+  cat <<'EOF_USAGE'
+Usage:
+  ./verify.sh
+  ./verify.sh --json
+
+Modes:
+  default   Run verification and print human-readable progress
+  --json    Emit machine-readable verification output
+EOF_USAGE
+}
+
 ensure_state_dir() {
   mkdir -p "${STATE_DIR}"
 }
@@ -783,4 +809,169 @@ Next steps:
 3. ./set-target.sh <space/target>  # optional, enables apply + target bundle story
 EOF_SUMMARY
   fi
+}
+
+all_spaces() {
+  printf '%s\n' \
+    "$(base_space)" \
+    "$(region_space)" \
+    "$(role_space)" \
+    "$(recipe_space)" \
+    "$(deploy_space)"
+}
+
+all_unit_refs() {
+  local component stage
+  for component in "${COMPONENTS[@]}"; do
+    for stage in base region role recipe deployment; do
+      printf '%s/%s\n' "$(space_for_stage "${stage}")" "$(unit_name "${component}" "${stage}")"
+    done
+  done
+  printf '%s/%s\n' "$(deploy_space)" "${DEPLOY_STUB_UNIT}"
+  printf '%s/%s\n' "$(recipe_space)" "${RECIPE_MANIFEST_UNIT}"
+}
+
+setup_steps_text() {
+  printf '%s\n' \
+    "Create spaces: $(base_space), $(region_space), $(role_space), $(recipe_space), $(deploy_space)" \
+    "Create base units from source YAML for frontend and postgres" \
+    "Create region, role, recipe, and deployment clones for each component" \
+    "Create backend stub dependency in $(deploy_space)/${DEPLOY_STUB_UNIT}" \
+    "Apply layer mutations for region, role, recipe, and deployment stages"
+  if [[ -n "${TARGET_REF:-}" ]]; then
+    printf '%s\n' "Set target ${TARGET_REF} on deployment units"
+  fi
+  printf '%s\n' "Render explicit app-level recipe manifest in $(recipe_space)/${RECIPE_MANIFEST_UNIT}"
+}
+
+print_setup_explain() {
+  local prefix_source="$1"
+  cat <<EOF_EXPLAIN
+Read-only setup preview for ${EXAMPLE_NAME}
+
+This mode does not create spaces or units.
+
+Inputs:
+- prefix: ${PREFIX} (${prefix_source})
+- targetRef: ${TARGET_REF:-<none>}
+- mutates: false
+
+Spaces that setup would create:
+$(all_spaces | sed 's/^/- /')
+
+Units that setup would create:
+$(all_unit_refs | sed 's/^/- /')
+
+Clone chains that setup would create:
+- frontend: $(base_space)/$(unit_name frontend base) -> $(region_space)/$(unit_name frontend region) -> $(role_space)/$(unit_name frontend role) -> $(recipe_space)/$(unit_name frontend recipe) -> $(deploy_space)/$(unit_name frontend deployment)
+- postgres: $(base_space)/$(unit_name postgres base) -> $(region_space)/$(unit_name postgres region) -> $(role_space)/$(unit_name postgres role) -> $(recipe_space)/$(unit_name postgres recipe) -> $(deploy_space)/$(unit_name postgres deployment)
+
+Recipe manifest:
+- $(recipe_space)/${RECIPE_MANIFEST_UNIT}
+- bundle hint: $(bundle_hint_from_target_ref "${TARGET_REF:-}")
+
+Planned steps:
+$(setup_steps_text | sed 's/^/- /')
+
+To perform the actual setup:
+- ./setup.sh ${PREFIX:+${PREFIX}}${TARGET_REF:+ ${TARGET_REF}}
+- ./verify.sh
+EOF_EXPLAIN
+}
+
+print_setup_explain_json() {
+  local prefix_source="$1"
+  local spaces_json units_json clone_chain_json steps_json
+
+  spaces_json="$(all_spaces | jq -Rsc 'split("\n")[:-1]')"
+
+  units_json="$(
+    {
+      local component stage
+      for component in "${COMPONENTS[@]}"; do
+        for stage in base region role recipe deployment; do
+          printf '%s\t%s\t%s\t%s\n' \
+            "${component}" \
+            "${stage}" \
+            "$(space_for_stage "${stage}")" \
+            "$(unit_name "${component}" "${stage}")"
+        done
+      done
+      printf 'backend-stub\tdeployment-stub\t%s\t%s\n' "$(deploy_space)" "${DEPLOY_STUB_UNIT}"
+      printf 'app\trecipe-manifest\t%s\t%s\n' "$(recipe_space)" "${RECIPE_MANIFEST_UNIT}"
+    } | jq -Rsc '
+      split("\n")[:-1]
+      | map(split("\t"))
+      | map({
+          component: .[0],
+          stage: .[1],
+          space: .[2],
+          unit: .[3]
+        })
+    '
+  )"
+
+  clone_chain_json="$(
+    {
+      local component
+      for component in "${COMPONENTS[@]}"; do
+        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+          "${component}" \
+          "$(base_space)" "$(unit_name "${component}" base)" \
+          "$(region_space)" "$(unit_name "${component}" region)" \
+          "$(role_space)" "$(unit_name "${component}" role)" \
+          "$(recipe_space)" "$(unit_name "${component}" recipe)" \
+          "$(deploy_space)" "$(unit_name "${component}" deployment)"
+      done
+    } | jq -Rsc '
+      split("\n")[:-1]
+      | map(split("\t"))
+      | map({
+          component: .[0],
+          chain: [
+            {stage: "base", space: .[1], unit: .[2]},
+            {stage: "region", space: .[3], unit: .[4]},
+            {stage: "role", space: .[5], unit: .[6]},
+            {stage: "recipe", space: .[7], unit: .[8]},
+            {stage: "deployment", space: .[9], unit: .[10]}
+          ]
+        })
+    '
+  )"
+
+  steps_json="$(setup_steps_text | jq -Rsc 'split("\n")[:-1]')"
+
+  jq -n \
+    --arg example "${EXAMPLE_NAME}" \
+    --arg app "${APP_NAME}" \
+    --arg mode "explain" \
+    --arg prefix "${PREFIX}" \
+    --arg prefixSource "${prefix_source}" \
+    --arg targetRef "${TARGET_REF:-}" \
+    --arg bundleHint "$(bundle_hint_from_target_ref "${TARGET_REF:-}")" \
+    --argjson mutates false \
+    --argjson spaces "${spaces_json}" \
+    --argjson units "${units_json}" \
+    --argjson cloneChain "${clone_chain_json}" \
+    --argjson steps "${steps_json}" \
+    '{
+      example: $example,
+      app: $app,
+      mode: $mode,
+      mutates: $mutates,
+      inputs: {
+        prefix: $prefix,
+        prefixSource: $prefixSource,
+        targetRef: (if $targetRef == "" then null else $targetRef end)
+      },
+      spaces: $spaces,
+      units: $units,
+      cloneChain: $cloneChain,
+      recipeManifest: {
+        space: ($units | map(select(.stage == "recipe-manifest")) | .[0].space),
+        unit: ($units | map(select(.stage == "recipe-manifest")) | .[0].unit),
+        bundleHint: $bundleHint
+      },
+      steps: $steps
+    }'
 }

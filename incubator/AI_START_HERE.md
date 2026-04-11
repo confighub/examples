@@ -90,6 +90,15 @@ cd realistic-app
 ./setup.sh --explain-json | jq
 ```
 
+Middle-sized layered app preview:
+
+```bash
+cd incubator/global-app-layer/frontend-postgres
+./setup.sh --explain
+./setup.sh --explain-json | jq
+./verify.sh --json
+```
+
 After a real `./setup.sh`, prefer:
 
 ```bash
