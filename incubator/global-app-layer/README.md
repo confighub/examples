@@ -16,6 +16,7 @@ cd incubator/global-app-layer/single-component
 # Materialize in ConfigHub
 ./setup.sh
 ./verify.sh
+./verify.sh --json
 
 # Cleanup
 ./cleanup.sh
@@ -37,6 +38,7 @@ All examples use the same script interface:
 - `./setup.sh --explain-json` — machine-readable plan
 - `./setup.sh` — materialize in ConfigHub
 - `./verify.sh` — check the structure
+- `./verify.sh --json` — machine-readable verification output
 - `./cleanup.sh` — remove everything
 
 ## Delivery Matrix
@@ -67,6 +69,13 @@ To discover active runs without knowing the prefix:
 ```bash
 ./find-runs.sh
 ./find-runs.sh realistic-app --json | jq
+```
+
+For AI-safe or CI-safe dry inspection, use the read-only setup preview first:
+
+```bash
+./setup.sh --explain
+./setup.sh --explain-json | jq .
 ```
 
 To check live readiness before binding:

@@ -60,6 +60,32 @@ require_jq() {
   fi
 }
 
+setup_usage() {
+  cat <<'EOF_USAGE'
+Usage:
+  ./setup.sh [prefix] [space/target]
+  ./setup.sh --explain [prefix] [space/target]
+  ./setup.sh --explain-json [prefix] [space/target]
+
+Modes:
+  default         Create the full chain in ConfigHub (mutating)
+  --explain       Show a read-only plan of what setup would create
+  --explain-json  Emit the same plan as machine-readable JSON
+EOF_USAGE
+}
+
+verify_usage() {
+  cat <<'EOF_USAGE'
+Usage:
+  ./verify.sh
+  ./verify.sh --json
+
+Modes:
+  default   Run verification and print human-readable progress
+  --json    Emit machine-readable verification output
+EOF_USAGE
+}
+
 ensure_state_dir() {
   mkdir -p "${STATE_DIR}"
 }
@@ -775,4 +801,139 @@ Next steps:
 8. cub unit approve --space $(argo_deploy_space) ${DEPLOY_ARGO_UNIT} && cub unit apply --space $(argo_deploy_space) ${DEPLOY_ARGO_UNIT}
 9. Review recipe manifest: cub unit get --space $(recipe_space) --data-only ${RECIPE_MANIFEST_UNIT}
 EOF_SUMMARY
+}
+
+all_spaces() {
+  printf '%s\n' \
+    "$(base_space)" \
+    "$(region_space)" \
+    "$(role_space)" \
+    "$(recipe_space)" \
+    "$(deploy_space)"
+}
+
+all_unit_refs() {
+  printf '%s\n' \
+    "$(base_space)/${BASE_UNIT}" \
+    "$(region_space)/${REGION_UNIT}" \
+    "$(role_space)/${ROLE_UNIT}" \
+    "$(recipe_space)/${RECIPE_UNIT}" \
+    "$(recipe_space)/${RECIPE_MANIFEST_UNIT}" \
+    "$(deploy_space)/${DEPLOY_UNIT}" \
+    "$(deploy_space)/${DEPLOY_STUB_UNIT}"
+}
+
+setup_steps_text() {
+  printf '%s\n' \
+    "Create spaces: $(base_space), $(region_space), $(role_space), $(recipe_space), $(deploy_space)" \
+    "Create base unit from ${SOURCE_BACKEND_YAML}" \
+    "Create region, role, recipe, and deployment clones for ${COMPONENT}" \
+    "Create postgres stub dependency in $(deploy_space)/${DEPLOY_STUB_UNIT}" \
+    "Apply layer mutations for region, role, recipe, and deployment stages"
+  if [[ -n "${TARGET_REF:-}" ]]; then
+    printf '%s\n' "Set target ${TARGET_REF} on deployment units"
+  fi
+  printf '%s\n' "Render explicit recipe manifest in $(recipe_space)/${RECIPE_MANIFEST_UNIT}"
+}
+
+print_setup_explain() {
+  local prefix_source="$1"
+  cat <<EOF_EXPLAIN
+Read-only setup preview for ${EXAMPLE_NAME}
+
+This mode does not create spaces or units.
+
+Inputs:
+- prefix: ${PREFIX} (${prefix_source})
+- targetRef: ${TARGET_REF:-<none>}
+- mutates: false
+
+Spaces that setup would create:
+$(all_spaces | sed 's/^/- /')
+
+Units that setup would create:
+$(all_unit_refs | sed 's/^/- /')
+
+Clone chain that setup would create:
+- ${BASE_UNIT} -> ${REGION_UNIT} -> ${ROLE_UNIT} -> ${RECIPE_UNIT} -> ${DEPLOY_UNIT}
+
+Recipe manifest:
+- $(recipe_space)/${RECIPE_MANIFEST_UNIT}
+- bundle hint: $(bundle_hint_from_target_ref "${TARGET_REF:-}")
+
+Planned steps:
+$(setup_steps_text | sed 's/^/- /')
+
+To perform the actual setup:
+- ./setup.sh ${PREFIX:+${PREFIX}}${TARGET_REF:+ ${TARGET_REF}}
+- ./verify.sh
+EOF_EXPLAIN
+}
+
+print_setup_explain_json() {
+  local prefix_source="$1"
+  local spaces_json units_json steps_json
+
+  spaces_json="$(all_spaces | jq -Rsc 'split("\n")[:-1]')"
+  units_json="$(
+    {
+      printf 'base\t%s\t%s\n' "$(base_space)" "${BASE_UNIT}"
+      printf 'region\t%s\t%s\n' "$(region_space)" "${REGION_UNIT}"
+      printf 'role\t%s\t%s\n' "$(role_space)" "${ROLE_UNIT}"
+      printf 'recipe\t%s\t%s\n' "$(recipe_space)" "${RECIPE_UNIT}"
+      printf 'recipe-manifest\t%s\t%s\n' "$(recipe_space)" "${RECIPE_MANIFEST_UNIT}"
+      printf 'deployment\t%s\t%s\n' "$(deploy_space)" "${DEPLOY_UNIT}"
+      printf 'deployment-stub\t%s\t%s\n' "$(deploy_space)" "${DEPLOY_STUB_UNIT}"
+    } | jq -Rsc '
+      split("\n")[:-1]
+      | map(split("\t"))
+      | map({
+          stage: .[0],
+          space: .[1],
+          unit: .[2]
+        })
+    '
+  )"
+  steps_json="$(setup_steps_text | jq -Rsc 'split("\n")[:-1]')"
+
+  jq -n \
+    --arg example "${EXAMPLE_NAME}" \
+    --arg component "${COMPONENT}" \
+    --arg mode "explain" \
+    --arg prefix "${PREFIX}" \
+    --arg prefixSource "${prefix_source}" \
+    --arg targetRef "${TARGET_REF:-}" \
+    --arg bundleHint "$(bundle_hint_from_target_ref "${TARGET_REF:-}")" \
+    --arg sourceManifest "${SOURCE_BACKEND_YAML}" \
+    --argjson mutates false \
+    --argjson spaces "${spaces_json}" \
+    --argjson units "${units_json}" \
+    --argjson steps "${steps_json}" \
+    '{
+      example: $example,
+      component: $component,
+      mode: $mode,
+      mutates: $mutates,
+      inputs: {
+        prefix: $prefix,
+        prefixSource: $prefixSource,
+        targetRef: (if $targetRef == "" then null else $targetRef end)
+      },
+      spaces: $spaces,
+      units: $units,
+      cloneChain: [
+        {stage: "base", space: $units[0].space, unit: $units[0].unit},
+        {stage: "region", space: $units[1].space, unit: $units[1].unit},
+        {stage: "role", space: $units[2].space, unit: $units[2].unit},
+        {stage: "recipe", space: $units[3].space, unit: $units[3].unit},
+        {stage: "deployment", space: $units[5].space, unit: $units[5].unit}
+      ],
+      sourceManifest: $sourceManifest,
+      recipeManifest: {
+        space: $units[4].space,
+        unit: $units[4].unit,
+        bundleHint: $bundleHint
+      },
+      steps: $steps
+    }'
 }

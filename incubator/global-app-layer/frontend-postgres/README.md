@@ -150,13 +150,18 @@ cd incubator/global-app-layer/frontend-postgres
 ./setup.sh --explain
 
 # Machine-readable plan for AI or tooling
-./setup.sh --explain-json | jq
+./setup.sh --explain-json | jq .
 
 # Ready for a fresh run
 ./setup.sh                              # ConfigHub-only
 ./setup.sh <prefix> <space/target>     # with live target
 ./verify.sh
+./verify.sh --json
 ```
+
+`--explain` and `--explain-json` are read-only. They describe the spaces,
+clone chains, dependency stub, recipe manifest, and target behavior that
+`setup.sh` would create, but they do not mutate ConfigHub.
 
 After `./setup.sh`, prefer the printed clickable GUI URLs and `.logs/*.latest.log` files over terminal scrollback alone.
 
