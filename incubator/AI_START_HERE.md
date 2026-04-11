@@ -78,6 +78,25 @@ GUI feature ask: Auth status widget on landing page. No issue filed yet.
 | `cub unit get --space <space> --json <unit>` | No |
 | `./find-runs.sh --json` | No |
 
+## Fast Preview For `global-app-layer`
+
+For the shortest AI-safe preview path in the incubator:
+
+```bash
+cd incubator/global-app-layer
+./find-runs.sh --json | jq
+cd realistic-app
+./setup.sh --explain
+./setup.sh --explain-json | jq
+```
+
+After a real `./setup.sh`, prefer:
+
+```bash
+./verify.sh
+./verify.sh --json
+```
+
 ## Delivery Matrix
 
 | Mode | Status |

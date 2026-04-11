@@ -5,30 +5,69 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=./lib.sh
 source "${SCRIPT_DIR}/lib.sh"
 
-mode="run"
-case "${1:-}" in
-  --explain)
-    mode="explain"
-    shift
-    ;;
-  --explain-json)
-    mode="explain-json"
-    shift
-    ;;
-esac
+mode="apply"
+positionals=()
 
-prefix="${1:-}"
-target_ref="${2:-}"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --explain)
+      mode="explain"
+      shift
+      ;;
+    --explain-json)
+      mode="explain-json"
+      shift
+      ;;
+    -h|--help)
+      setup_usage
+      exit 0
+      ;;
+    --)
+      shift
+      while [[ $# -gt 0 ]]; do
+        positionals+=("$1")
+        shift
+      done
+      ;;
+    -*)
+      echo "Unknown flag: $1" >&2
+      setup_usage >&2
+      exit 1
+      ;;
+    *)
+      positionals+=("$1")
+      shift
+      ;;
+  esac
+done
 
-if [[ "${mode}" != "run" ]]; then
-  PREFIX="${prefix:-<generated-prefix>}"
-  TARGET_REF="${target_ref}"
-  if [[ "${mode}" == "explain-json" ]]; then
-    require_jq
-    show_setup_plan_json "${TARGET_REF}"
-  else
-    show_setup_plan "${TARGET_REF}"
+if (( ${#positionals[@]} > 2 )); then
+  echo "Too many positional arguments. Expected [prefix] [space/target]." >&2
+  setup_usage >&2
+  exit 1
+fi
+
+prefix="${positionals[0]:-}"
+target_ref="${positionals[1]:-}"
+
+if [[ "${mode}" != "apply" ]]; then
+  prefix_source="provided"
+  if [[ -z "${prefix}" ]]; then
+    prefix="<generated-prefix>"
+    prefix_source="generated-at-run-time"
   fi
+  PREFIX="${prefix}"
+  TARGET_REF="${target_ref}"
+
+  case "${mode}" in
+    explain)
+      print_setup_explain "${prefix_source}"
+      ;;
+    explain-json)
+      require_jq
+      print_setup_explain_json "${prefix_source}"
+      ;;
+  esac
   exit 0
 fi
 
