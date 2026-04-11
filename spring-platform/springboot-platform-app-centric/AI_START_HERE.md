@@ -80,6 +80,10 @@ Read spring-platform/springboot-platform-app-centric/AI_START_HERE.md and help m
 Use the fast preview first, then continue into the fast operational evaluation unless I explicitly ask for read-only mode. Summarize what matters after each phase, and only pause when I ask.
 ```
 
+For a repeat-until-boring pass, use:
+
+- [`AI_REPEAT_RUN_PROMPT.md`](./AI_REPEAT_RUN_PROMPT.md)
+
 ## What This Example Teaches
 
 After this demo, the human will understand:
