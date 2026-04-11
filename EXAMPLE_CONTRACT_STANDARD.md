@@ -66,6 +66,27 @@ Recommended stable fields:
 }
 ```
 
+When an example supports both a preview path and a minimal real proof path, prefer adding explicit evaluation fields such as:
+
+```json
+{
+  "evaluation_modes": {
+    "fast_preview": {
+      "mutates": false,
+      "commands": ["./setup.sh --explain", "./setup.sh --explain-json | jq"]
+    },
+    "fast_operational_evaluation": {
+      "mutates_confighub": true,
+      "mutates_live_infra": false,
+      "commands": ["./setup.sh", "./verify.sh"],
+      "stop_before_cleanup": true
+    }
+  }
+}
+```
+
+These fields help AI assistants distinguish "quick orientation" from "smallest real proof."
+
 The exact schema varies by example, but the intent is always:
 - Identify what will be created
 - State what will be mutated
@@ -113,6 +134,16 @@ For each contract, state:
 - mutates: no
 - output shape: plain text
 - stable success text: `All checks passed.`
+```
+
+### Example: Representative proof action
+
+```markdown
+### `cub function do ...`
+
+- mutates: yes (ConfigHub)
+- output shape: plain text success + persisted mutation history
+- proves: at least one real path through the example works beyond setup alone
 ```
 
 ## What `verify.sh` Is For

@@ -252,6 +252,41 @@ show_explain_json() {
   "creates_targets": ${creates_targets},
   "applies_units": ${applies_units},
   "deployment_map": "./deployment-map.json",
+  "evaluation_modes": {
+    "fast_preview": {
+      "mutates": false,
+      "commands": [
+        "./setup.sh --explain",
+        "./setup.sh --explain-json | jq",
+        "./demo.sh"
+      ],
+      "proves": [
+        "the ADT model",
+        "the configured mutation outcomes",
+        "the planned object layout"
+      ]
+    },
+    "fast_operational_evaluation": {
+      "mutates_confighub": true,
+      "mutates_live_infra": ${mutates_live},
+      "commands": [
+        "./setup.sh",
+        "cub space list --where \"Labels.ExampleName = 'springboot-platform-app-centric'\" --json | jq '.[].Space.Slug'",
+        "./verify.sh",
+        "cub function do --space inventory-api-prod --unit inventory-api --change-desc \"demo: reservation mode strict -> optimistic\" set-env inventory-api FEATURE_INVENTORY_RESERVATIONMODE=optimistic",
+        "cub mutation list --space inventory-api-prod --json inventory-api | jq '.[] | {mutationNum: .Mutation.MutationNum, source: .Mutation.Source, description: .Revision.Description, createdAt: .Mutation.CreatedAt, author: .Author.Email}'",
+        "cub unit apply --space inventory-api-prod inventory-api"
+      ],
+      "stop_before_cleanup": true,
+      "proves": [
+        "setup succeeds",
+        "objects can be isolated by ExampleName",
+        "one representative apply-here mutation works",
+        "mutation history is captured",
+        "noop-target apply completes"
+      ]
+    }
+  },
   "next_steps": [
     "./setup.sh",
     "./verify.sh",

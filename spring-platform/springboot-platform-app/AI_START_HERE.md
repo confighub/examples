@@ -2,6 +2,18 @@
 
 Read [`README.md`](./README.md) first. This page is for running the example yourself or pairing with an AI assistant.
 
+## CRITICAL: Demo Pacing
+
+When walking a human through this example, pause after every stage.
+
+After each stage:
+1. run the commands for that stage
+2. show the important output
+3. explain what the output means
+4. say what the output proves
+5. if there is a GUI checkpoint, print it
+6. stop and wait for the human before continuing
+
 ## Fast Path
 
 ```bash
@@ -65,7 +77,7 @@ GUI gap: No web-based generator diagram.
 
 GUI feature ask: Generator lineage visualization. No issue filed yet.
 
-Pause here if you're doing a guided walkthrough.
+**PAUSE.** Wait for the human.
 
 ## Stage 2: "Generator Transformation" (read-only)
 
@@ -96,7 +108,7 @@ GUI gap: No field ownership badges in the GUI.
 
 GUI feature ask: Color-coded field ownership in unit viewer. No issue filed yet.
 
-Pause here if you're doing a guided walkthrough.
+**PAUSE.** Wait for the human.
 
 ## Stage 3: "ConfigHub Setup" (mutates ConfigHub)
 
@@ -117,7 +129,7 @@ GUI gap: No visual generator lineage from GUI.
 
 GUI feature ask: Upstream inputs visible from unit view. No issue filed yet.
 
-Pause here if you're doing a guided walkthrough.
+**PAUSE.** Wait for the human.
 
 ## Stage 4: "Apply-Here Mutation" (mutates ConfigHub)
 
@@ -140,7 +152,7 @@ GUI gap: No indication that this field was apply-here vs another route.
 
 GUI feature ask: Route badge on mutation history entries. No issue filed yet.
 
-Pause here if you're doing a guided walkthrough.
+**PAUSE.** Wait for the human.
 
 ## Stage 5: "Lift-Upstream Bundle" (read-only)
 
@@ -161,7 +173,7 @@ GUI gap: No lift-upstream proposal workflow in GUI.
 
 GUI feature ask: Upstream change proposal wizard. No issue filed yet.
 
-Pause here if you're doing a guided walkthrough.
+**PAUSE.** Wait for the human.
 
 ## Stage 6: "Block/Escalate Boundary" (read-only)
 
@@ -182,7 +194,7 @@ GUI gap: No visual indication of blocked fields.
 
 GUI feature ask: Red "blocked" badge on platform-owned fields. No issue filed yet.
 
-Pause here if you're doing a guided walkthrough.
+**PAUSE.** Wait for the human.
 
 ## Stage 7: "Cleanup"
 

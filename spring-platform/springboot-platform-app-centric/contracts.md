@@ -32,6 +32,8 @@ Stable command outputs for automation and testing.
   - `mutates_live_infra`
   - `cluster_required`
   - `deployment_map`
+  - `evaluation_modes.fast_preview`
+  - `evaluation_modes.fast_operational_evaluation`
 - Proves: the example plan before any mutation
 
 ### `./setup.sh --explain`
@@ -61,6 +63,7 @@ Stable command outputs for automation and testing.
   - 3 units
   - 3 noop targets
   - Applies all units
+- Proves: the deployment map can be materialized into real ConfigHub objects
 
 ### `./setup.sh --confighub-only`
 
@@ -83,4 +86,39 @@ Stable command outputs for automation and testing.
 
 - Mutates: no
 - Output: plain text
-- Stable success text: `ok: springboot-platform-app-centric is consistent`
+- Stable success text: `ok: springboot-platform-app-centric fixtures are consistent`
+- Proves: fixture integrity and `--explain-json` contract validity
+- Does **not** prove: live post-setup ConfigHub state
+
+### `cub space list --where "Labels.ExampleName = 'springboot-platform-app-centric'" --json`
+
+- Mutates: no
+- Output: JSON array of spaces
+- Stable fields:
+  - `.[].Space.Slug`
+  - `.[].Space.Labels.ExampleName`
+- Proves: the example's created objects can be isolated by label
+
+### `cub function do --space inventory-api-prod --unit inventory-api ... set-env ...`
+
+- Mutates: yes (ConfigHub)
+- Output: plain text success message including `Config data changed`
+- Proves: the representative `apply-here` path works for this example
+
+### `cub mutation list --space inventory-api-prod --json inventory-api`
+
+- Mutates: no
+- Output: JSON array
+- Stable fields:
+  - `.[].Mutation.MutationNum`
+  - `.[].Mutation.Source`
+  - `.[].Mutation.CreatedAt`
+  - `.[].Revision.Description`
+  - `.[].Author.Email`
+- Proves: mutation history captures source, description, timestamp, and author
+
+### `cub unit apply --space inventory-api-prod inventory-api`
+
+- Mutates: yes (target apply)
+- Output: plain text success message including `Action Apply`
+- Proves: noop-target apply completes through the ConfigHub apply path
