@@ -59,9 +59,10 @@ Then stop before `./cleanup.sh` unless the human asks for cleanup.
 This proves:
 - setup succeeds
 - spaces are isolated by `ExampleName`
+- the three mutation outcomes are still explained with stable CLI output
 - one real `apply-here` mutation works
 - mutation history is captured
-- noop-target apply completes
+- noop-target apply can be initiated through ConfigHub
 
 ## Pairing Modes
 
@@ -186,7 +187,8 @@ cub mutation list --space inventory-api-prod --json inventory-api | \
 
 You'll see:
 - The mutation is stored with full audit trail
-- Author email and timestamp are captured
+- Description and mutation order are captured
+- Timestamp and actor fields may vary by surface, so report the live output honestly
 - This proves the ConfigHub mutation plane works
 
 GUI now: Open unit → History tab → see the mutation with author and description.
@@ -204,11 +206,11 @@ cub unit apply --space inventory-api-prod inventory-api
 ```
 
 You'll see:
-- Unit is applied to the noop target
+- ConfigHub accepts the apply request for the noop target
 - Noop target accepts but doesn't deliver to a real cluster
-- In a real setup, this would update Kubernetes
+- In a real setup, this would begin a real delivery path, but this example does not prove cluster rollout completion
 
-GUI now: Unit → Apply status shows "applied" state.
+GUI now: Unit → Apply status should show that an apply request was recorded.
 
 GUI gap: No live cluster feedback in this noop example.
 

@@ -112,13 +112,17 @@ Stable command outputs for automation and testing.
 - Stable fields:
   - `.[].Mutation.MutationNum`
   - `.[].Mutation.Source`
-  - `.[].Mutation.CreatedAt`
   - `.[].Revision.Description`
+  - `.[].Revision.CreatedAt`
+- Optional or environment-dependent fields:
+  - `.[].Mutation.CreatedAt`
   - `.[].Author.Email`
-- Proves: mutation history captures source, description, timestamp, and author
+- Proves: mutation history captures mutation order and revision description, and usually exposes a usable timestamp through `Revision.CreatedAt`
+- Does **not** prove: every surface will populate actor email or `Mutation.CreatedAt`
 
 ### `cub unit apply --space inventory-api-prod inventory-api`
 
 - Mutates: yes (target apply)
-- Output: plain text success message including `Action Apply`
-- Proves: noop-target apply completes through the ConfigHub apply path
+- Output: plain text acceptance message including `Action Apply on unit inventory-api started`
+- Proves: ConfigHub accepted the apply request and started the noop-target apply path
+- Does **not** prove: completed delivery, completed reconciliation, or real cluster rollout

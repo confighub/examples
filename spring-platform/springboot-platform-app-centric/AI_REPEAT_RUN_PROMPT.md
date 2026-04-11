@@ -34,6 +34,7 @@ Use:
 - `spring-platform/springboot-platform-app-centric/contracts.md`
 
 Start with the fast preview, then continue into the fast operational evaluation unless I explicitly ask you to stay read-only.
+In the operational evaluation, include `./demo.sh` even if you already ran it during preview.
 
 # For each phase, report:
 
@@ -50,6 +51,10 @@ Start with the fast preview, then continue into the fast operational evaluation 
 - Do not stop after preview and call the example "working."
 - Do not run cleanup unless I explicitly ask for it.
 - If a command or contract is stale, say so clearly and recover using the live CLI/help surface.
+- Treat `cub unit apply` output that says `Action Apply ... started` as proof that ConfigHub accepted the apply request, not as proof of completed delivery.
+- If the prompt does not provide an official current pattern status, assume the current status is `repeatable-with-steering`.
+- Do not recommend moving straight to `boring` from a single successful run.
+- At most, recommend a one-step status change from the assumed or stated current status.
 
 # Closeout requirements
 
@@ -76,6 +81,7 @@ At the end, produce:
   - boring
 - whether this run should move the status
 - why
+- If you recommend a move, explain why it is only a one-step move.
 
 ## E. Time
 - approximate wall-clock time
@@ -92,6 +98,7 @@ Begin.
 - `./setup.sh` succeeds
 - label isolation is shown
 - `./verify.sh` is described honestly as fixture/contract verification
+- `./demo.sh` is included in the operational evaluation, not just preview
 - one representative `apply-here` mutation succeeds
 - mutation history is shown cleanly
 - noop-target apply is explained honestly
@@ -103,5 +110,7 @@ Begin.
 
 - stopping after preview and declaring success
 - claiming `./verify.sh` proves live post-setup ConfigHub state
+- skipping `./demo.sh` during the operational path
 - unclear mutation audit reporting
+- treating `Action Apply ... started` as completed delivery
 - overstating what noop target mode proves

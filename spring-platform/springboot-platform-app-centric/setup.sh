@@ -273,6 +273,7 @@ show_explain_json() {
         "./setup.sh",
         "cub space list --where \"Labels.ExampleName = 'springboot-platform-app-centric'\" --json | jq '.[].Space.Slug'",
         "./verify.sh",
+        "./demo.sh",
         "cub function do --space inventory-api-prod --unit inventory-api --change-desc \"demo: reservation mode strict -> optimistic\" set-env inventory-api FEATURE_INVENTORY_RESERVATIONMODE=optimistic",
         "cub mutation list --space inventory-api-prod --json inventory-api | jq '.[] | {mutationNum: .Mutation.MutationNum, source: .Mutation.Source, description: .Revision.Description, createdAt: .Mutation.CreatedAt, author: .Author.Email}'",
         "cub unit apply --space inventory-api-prod inventory-api"
@@ -281,9 +282,10 @@ show_explain_json() {
       "proves": [
         "setup succeeds",
         "objects can be isolated by ExampleName",
+        "the three mutation outcomes are explained with stable CLI output",
         "one representative apply-here mutation works",
         "mutation history is captured",
-        "noop-target apply completes"
+        "noop-target apply can be initiated through the ConfigHub apply path"
       ]
     }
   },
