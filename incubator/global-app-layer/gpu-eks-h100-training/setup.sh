@@ -15,6 +15,15 @@ case "${1:-}" in
     mode="explain-json"
     shift
     ;;
+  -h|--help)
+    setup_usage
+    exit 0
+    ;;
+  -*)
+    echo "Unknown flag: ${1}" >&2
+    setup_usage >&2
+    exit 1
+    ;;
 esac
 
 prefix="${1:-}"
