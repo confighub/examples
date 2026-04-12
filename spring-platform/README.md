@@ -1,11 +1,14 @@
 # Spring Platform in ConfigHub
 
-This repo teaches an experimental app-platform model for Spring Boot services and ConfigHub.  We have several different 'versions' of the idea, for comparison and learning. The example assumes that some users will want to generate config data programmatically.  Are there safer ways to do this than Helm? 
+This repo teaches an app-platform model for Spring Boot services and ConfigHub.
+We have several different "versions" of the idea, for comparison and learning.
+The example assumes that some users will want to generate config data
+programmatically. Are there safer ways to do this than Helm?
 
 ## Start Here
 
 - Review the model in this repo if you want to see the ideas
-- Later, for a 'real Boot app', the version at [`cub-gen/examples/springboot-paas`](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas) has a path for your own Spring Boot app. Start there with `cub-gen springboot init`.  Also very experimental.
+- Later, for a runnable product path, use [`cub-gen/examples/springboot-paas`](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas). Start there with `demo-local.sh`, then the governed route and embedded-config wrappers, and use `cub-gen springboot init` when you want to onboard your own app.
 
 ## What to Expect from Each Example
 
@@ -36,14 +39,18 @@ for all apps, or just one?" No cluster needed.
 app-centric and platform-centric examples reference. You don't need to look
 at this unless you're modifying the examples.
 
-None of these contain a compilable Java project. The `upstream/` directories
-have a `pom.xml` and `application.yaml` as config inputs, but no `src/`
-tree. If you want a real Spring Boot app see the next section.
+These examples are still model-first, but they no longer stop at pure fixture
+docs. In particular, `springboot-platform-app/upstream/app` now contains a
+minimal Java source tree alongside the Spring config and platform inputs. If
+you want the maintained product path for a real Spring Boot app, see the next
+section.
 
 ## When You Want a Runnable Example
 
 The examples in this repo teach the conceptual model with fixed inputs and
-explain scripts. We shall use an experimental CLI `cub-gen`.
+explain scripts. `cub-gen` is the current runnable product path that turns the
+same Spring ownership model into repo-side provenance, governed route checks,
+and connected ConfigHub flows.
 
 If you want to run `cub-gen` against a real Spring Boot application with 
 actual Java source code, config governance, and a local demo you can execute 
@@ -56,16 +63,27 @@ end-to-end without a cluster:
 - Spring config files: `application.yaml`, `application-dev.yaml`,
   `application-prod.yaml` with profile overrides
 - Platform policies, a FrameworkRegistry, and Flux/Argo transport configs
-- `demo-local.sh` that runs the full discover/import/publish/verify lifecycle
-  with no external dependencies
+- `demo-local.sh` for the repo-first local lifecycle
+- `demo-governed-routes.sh` for the app-owned `ALLOW` versus platform-owned
+  `BLOCKED` route proof
+- `demo-embedded-config-mutation.sh` for direct embedded `application.yaml`
+  mutation inside the ConfigHub payload
+- `demo-connected.sh` for the deeper connected ConfigHub walkthrough
+- standalone live-cluster proof with `verify-e2e.sh`
 
 You can run it right now:
 
 ```bash
+git clone https://github.com/confighub/cub-gen.git
 cd cub-gen
 go build -o ./cub-gen ./cmd/cub-gen
-./cub-gen gitops discover --space platform --json ./examples/springboot-paas
-./cub-gen gitops import --space platform --json ./examples/springboot-paas ./examples/springboot-paas
+./examples/springboot-paas/demo-local.sh
+./examples/springboot-paas/demo-governed-routes.sh
+./examples/springboot-paas/demo-embedded-config-mutation.sh
+
+# Connected path when you want ConfigHub-backed evidence
+cub auth login
+./examples/springboot-paas/demo-connected.sh
 ```
 
 If you have studied the model here and want to move to real tooling, that is
@@ -177,11 +195,21 @@ Handle the datasource request (must be refused):
 
 ## Quick Start: Onboard Your Own App
 
-If you already understand the model, use `cub-gen springboot init`:
+If you already understand the model, use `cub-gen springboot init` and the
+current Spring ownership helpers:
 
 ```bash
 cub-gen springboot init --dry-run ./path/to/your-spring-app
 cub-gen springboot init --app my-service ./path/to/your-spring-app
+
+cub-gen springboot validate-mutation --routes ./operational/field-routes.yaml \
+  feature.myservice.someFlag
+
+cub-gen springboot set-embedded-config \
+  --routes ./operational/field-routes.yaml \
+  --file ./confighub/my-service-prod.yaml \
+  --configmap my-service-config \
+  feature.myservice.someFlag optimistic
 ```
 
 This generates platform policy skeletons, field ownership rules, and ConfigHub unit starters. See [`cub-gen/examples/springboot-paas`](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas) for the full product-side path.
@@ -223,14 +251,19 @@ cd springboot-platform-platform-centric
 
 `spring-platform` teaches the model with fixed inputs and explain scripts. It shows why each field is mutable, lifted upstream, or blocked.
 
-`cub-gen/examples/springboot-paas` is the product-side path with real detection, real generation, and real enforcement.
+`cub-gen/examples/springboot-paas` is the product-side path with real
+detection, real generation, route validation, direct embedded payload mutation,
+and connected evidence flow.
 
 | Here | There |
 |------|-------|
 | Fixed inventory-api example | Your actual app |
 | Hardcoded field explanations | Computed from source |
 | Scaffold for adaptation | `cub-gen springboot init` for onboarding |
-| Documented boundaries | `cub-gen springboot validate-mutation` for CI |
+| Documented boundaries | `cub-gen springboot validate-mutation` for local/CI route checks |
+| Apply-here as `cub function do set-env` | `cub-gen springboot set-embedded-config` for direct payload mutation |
+| Conceptual connected story | `./examples/springboot-paas/demo-connected.sh` |
+| Model-only runtime story | `./examples/springboot-paas/verify-e2e.sh` |
 
 Full concept mapping: [`FROM-DEMO-TO-PRODUCT.md`](./FROM-DEMO-TO-PRODUCT.md).
 

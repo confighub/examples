@@ -21,12 +21,19 @@ cd spring-platform/springboot-platform-app
 Then jump to the real generator example:
 
 ```bash
-cd /Users/alexis/Public/github-repos/cub-gen
+git clone https://github.com/confighub/cub-gen.git
+cd cub-gen
 go build -o ./cub-gen ./cmd/cub-gen
 ./examples/springboot-paas/demo-local.sh
+./examples/springboot-paas/demo-governed-routes.sh
+./examples/springboot-paas/demo-embedded-config-mutation.sh
+
+# When you want the connected ConfigHub path
+cub auth login
+./examples/springboot-paas/demo-connected.sh
 ```
 
-If `cub space list --json` fails because auth is missing or expired, run `cub auth login` before any mutating stage.
+If `cub space list --json` fails because auth is missing or expired, run `cub auth login` before any mutating stage. For the `cub-gen` bridge, `demo-local.sh` does not need auth; `demo-connected.sh` does.
 
 ## The Scenario
 
