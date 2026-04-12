@@ -29,6 +29,13 @@ cub-gen springboot validate-mutation --routes ./operational/field-routes.yaml \
   feature.myservice.someFlag        # ALLOWED
 cub-gen springboot validate-mutation --routes ./operational/field-routes.yaml \
   spring.datasource.url             # BLOCKED
+
+# Mutate app-owned embedded application.yaml directly
+cub-gen springboot set-embedded-config \
+  --routes ./operational/field-routes.yaml \
+  --file ./confighub/my-service-prod.yaml \
+  --configmap my-service-config \
+  feature.myservice.someFlag optimistic
 ```
 
 This generates platform policy skeletons, field ownership rules, and ConfigHub unit starters. See the [springboot-paas README](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas#onboard-your-own-spring-boot-app) for details.
@@ -41,8 +48,10 @@ This generates platform policy skeletons, field ownership rules, and ConfigHub u
 | Field-by-field lineage | `./generator/render.sh --trace` | `./generator/render.sh --trace` |
 | Explain single field | `./generator/render.sh --explain-field X` | `./generator/render.sh --explain-field X` |
 | Apply-here mutation | `cub function do set-env ...` | `cub function do set-env ...` |
+| Direct embedded payload mutation | Documented concept only | `./demo-embedded-config-mutation.sh` / `cub-gen springboot set-embedded-config` |
 | Lift-upstream bundle | `./lift-upstream.sh --render-diff` | `./lift-upstream.sh --render-diff` |
 | Block/escalate boundary | `./block-escalate.sh --render-attempt` | `./block-escalate.sh --render-attempt` |
+| Governed route proof | Model explanation | `./demo-governed-routes.sh` / `cub-gen springboot validate-mutation` |
 | Real Kubernetes path | `./bin/create-cluster`, `./bin/build-image` | `./bin/create-cluster`, `./bin/build-image` |
 | ConfigHub setup | `./confighub-setup.sh` | `./confighub-setup.sh` |
 | Cross-env comparison | `./confighub-compare.sh` | `./confighub-compare.sh` |
@@ -66,6 +75,7 @@ In `cub-gen`:
 - `cub-gen springboot` is a Go binary that detects Spring Boot projects
 - The transformation is computed from `pom.xml`, `application.yaml`, and platform policies
 - Field lineage is traced through actual code paths
+- The current Spring path includes direct embedded-config mutation and route validation helpers
 
 ### Source-Chain Integration
 
@@ -75,6 +85,8 @@ In `spring-platform`:
 
 In `cub-gen`:
 - `demo-local.sh` runs the source-side verification chain
+- `demo-governed-routes.sh` proves `ALLOW` and `BLOCKED` route outcomes
+- `demo-embedded-config-mutation.sh` proves direct embedded `application.yaml` mutation
 - `demo-connected.sh` runs the full ConfigHub integration
 - Real generator profiles detect and transform Spring Boot inputs
 
@@ -82,7 +94,9 @@ In `cub-gen`:
 
 1. **Learn with spring-platform** — Run the visibility scripts, understand field ownership, see the three mutation routes
 2. **Onboard with cub-gen** — Run `cub-gen springboot init` on your app to generate starter material
-3. **Validate mutations** — Use `cub-gen springboot validate-mutation` to enforce field routes in CI
+3. **Validate mutations** — Use `cub-gen springboot validate-mutation` to enforce field routes in CI or locally
+4. **Prove apply-here directly** — Use `cub-gen springboot set-embedded-config` or the example wrapper for embedded payload mutation
+5. **Connect when needed** — Use `demo-connected.sh` for the deeper ConfigHub-backed evidence path
 
 ```bash
 # Step 1: Learn the model
@@ -101,9 +115,16 @@ cub-gen springboot validate-mutation --routes ./operational/field-routes.yaml \
 cub-gen springboot validate-mutation --routes ./operational/field-routes.yaml \
   spring.datasource.url                # BLOCKED
 
-# Step 4: Connected path
+# Step 4: Direct embedded apply-here path
+cub-gen springboot set-embedded-config \
+  --routes ./operational/field-routes.yaml \
+  --file ./confighub/my-service-prod.yaml \
+  --configmap my-service-config \
+  feature.myservice.reservationMode optimistic
+
+# Step 5: Connected path
 cub auth login
-cub unit apply --space my-service-prod ./confighub/my-service-prod.yaml
+./examples/springboot-paas/demo-connected.sh
 ```
 
 ## What Carries Over
@@ -122,7 +143,8 @@ Everything you learn in `spring-platform` applies directly to `cub-gen`:
 | Fixed inventory-api example | Your actual app |
 | Hardcoded field explanations | Computed from source |
 | Scaffold for adaptation | `cub-gen springboot init` for onboarding |
-| No enforcement | `cub-gen springboot validate-mutation` for CI |
+| No direct apply-here helper | `cub-gen springboot set-embedded-config` for embedded payload mutation |
+| No enforcement helper | `cub-gen springboot validate-mutation` for local/CI route checks |
 | Teaching-oriented docs | Product-oriented docs |
 
 ## Links
