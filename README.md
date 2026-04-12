@@ -40,6 +40,15 @@ If you are not logged in yet, run `cub auth login` before the `cub` commands.
 - If you want worker extensibility, start with [`custom-workers`](./custom-workers/).
 - If you want a classic multi-service example, use [`global-app`](./global-app/README.md).
 
+## Runnable Generator Product Paths
+
+This repo is mostly ConfigHub-first examples. If you want repo-side generator
+provenance, governed edits, and runnable product examples, use `cub-gen`:
+
+- Helm: [`cub-gen/examples/helm-paas`](https://github.com/confighub/cub-gen/tree/main/examples/helm-paas) for values ownership, governed ALLOW/BLOCK proof, layered overlay tracing, and connected/live Helm proof
+- Score: [`cub-gen/examples/scoredev-paas`](https://github.com/confighub/cub-gen/tree/main/examples/scoredev-paas) for `score.yaml` provenance, workload contract proof, connected evidence, and standalone runtime proof
+- Spring Boot: [`cub-gen/examples/springboot-paas`](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas) for the Spring ownership and embedded-config product path
+
 ## Companion Material
 
 `cub-scout` remains useful as companion material and as a source of comparison fixtures:

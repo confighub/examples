@@ -90,6 +90,24 @@ Use `apptique-argo-applicationset` when the user wants:
 - generated Argo Applications per environment
 - the clearest incubator Argo app-style layout in the repo
 
+If the user wants repo-side generator provenance and governed edit routing
+rather than ConfigHub-first examples, use `cub-gen`:
+
+- Helm: [`cub-gen/examples/helm-paas`](https://github.com/confighub/cub-gen/tree/main/examples/helm-paas)
+- Score: [`cub-gen/examples/scoredev-paas`](https://github.com/confighub/cub-gen/tree/main/examples/scoredev-paas)
+- Spring Boot: [`cub-gen/examples/springboot-paas`](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas)
+
+Use those when the user asks questions like:
+
+- "Which values file or chart layer controls this Helm field?"
+- "Which `score.yaml` field produced this runtime value?"
+- "Which source file should I edit instead of patching rendered YAML?"
+- "Can we prove ALLOW / ESCALATE / BLOCK before deploy?"
+
+Use `cub-scout` as companion material when the user is starting from cluster
+or controller reality first and only then wants to come back to repo-side
+provenance.
+
 If the user is asking about worker extensibility, validation, policy checks, or custom execution paths, use the official worker examples in this repo:
 
 - [`custom-workers/hello-world-bridge`](./custom-workers/hello-world-bridge/README.md)
