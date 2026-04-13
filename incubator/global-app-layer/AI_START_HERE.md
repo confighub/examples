@@ -26,6 +26,7 @@ This package demonstrates layered recipes as real ConfigHub objects. After the d
 
 - How ConfigHub models variant chains (base → region → role → recipe → deploy)
 - How recipe manifests record provenance
+- How deployment variants and bundles differ
 - How deployment variants work (direct, Flux OCI, Argo OCI)
 - The difference between ConfigHub-only materialization and live delivery
 
@@ -144,7 +145,7 @@ From here, switch to the example's own `AI_START_HERE.md`:
 |------|--------|
 | **Direct Kubernetes** | Fully working |
 | **Flux OCI** | Current standard |
-| **Argo OCI** | Implemented |
+| **Argo OCI** | Implemented in selected examples |
 | **ArgoCDRenderer** | Renderer path only |
 
 ## Preflight Before Live

@@ -49,6 +49,23 @@ The **recipe manifest** unit is separate metadata in the recipe space. It is not
 
 When you change the base, the change propagates down through clone links. When you mutate a leaf, only that leaf changes. The database holds the complete history.
 
+### Terms that matter later
+
+Before getting to live delivery, keep these terms separate:
+
+- `recipe` = the layered app intent plus the provenance record that explains the
+  assembled app
+- `deployment variant` = the final executable unit that can be bound to a
+  target
+- `bundle` = a deployable artifact produced for a controller-oriented path,
+  usually an OCI artifact
+- `bundle evidence` = receipts around that artifact such as digests, checksums,
+  SBOMs, attestations, or GUI views
+
+This package proves the recipe and deployment-variant story directly. The bundle
+and bundle-evidence story is real too, but only on the example paths that
+explicitly show controller-side proof.
+
 ## 2. How NVIDIA AICR Layers Map to ConfigHub
 
 NVIDIA AICR talks about layers.
@@ -109,6 +126,15 @@ When you `cub unit set-target` + `cub unit apply`:
 1. ConfigHub renders the unit's current data (the accumulated base + all clone mutations)
 2. Sends it to the worker via the target reference
 3. The worker applies the rendered YAML to the cluster
+
+That final step looks slightly different by delivery mode:
+
+- direct Kubernetes: the deployment variant is applied directly, with no
+  separate exported bundle to inspect
+- Flux OCI: the worker publishes an OCI artifact, then Flux consumes it
+- Argo OCI: the worker publishes an OCI artifact, then Argo consumes it
+- ArgoCDRenderer: Argo renders `Application` objects, but this is not workload
+  delivery by itself
 
 Important:
 

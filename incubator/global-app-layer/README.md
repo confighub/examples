@@ -41,13 +41,30 @@ All examples use the same script interface:
 - `./verify.sh --json` — machine-readable verification output
 - `./cleanup.sh` — remove everything
 
+## Key Terms
+
+This package uses a few words very deliberately:
+
+- `recipe` = the layered app intent plus the provenance record that explains how
+  the app was assembled
+- `deployment variant` = the final ConfigHub unit you can bind to a target and
+  deploy
+- `bundle` = a deployable artifact produced for a controller-oriented delivery
+  path, usually an OCI artifact
+- `bundle evidence` = receipts about that artifact such as digests, checksums,
+  SBOMs, attestations, or GUI views
+
+Not every example publishes a bundle. Some examples stop at ConfigHub
+materialization or use direct Kubernetes delivery, where the live proof is the
+applied cluster state rather than a separate exported artifact.
+
 ## Delivery Matrix
 
 | Mode | Status | Use case |
 |------|--------|----------|
 | **Direct Kubernetes** | Fully working | Simplest real proof |
-| **Flux OCI** | Current standard | Controller-oriented delivery |
-| **Argo OCI** | Implemented | Use with controller + live evidence |
+| **Flux OCI** | Current standard | Controller-oriented delivery with OCI proof |
+| **Argo OCI** | Implemented in selected examples | Use only when controller + live evidence are both shown |
 | **ArgoCDRenderer** | Working | Renderer path only, not OCI delivery |
 
 ## WET-First, Not Live-First
@@ -97,14 +114,21 @@ For AICR details:
 - [confighub-aicr-value-add.md](./confighub-aicr-value-add.md)
 - [01-nvidia-aicr-fit.md](./01-nvidia-aicr-fit.md)
 
+For an NVIDIA-oriented reading path, start with:
+
+- [01-nvidia-aicr-fit.md](./01-nvidia-aicr-fit.md)
+- [how-it-works.md](./how-it-works.md)
+- [realistic-app/README.md](./realistic-app/README.md)
+
 ## Bundle Status
 
-The bundle publication side is explained but not fully proven:
+The bundle story is real, but it is split into separate layers of proof:
 - Recipe and layering: real and working
-- Bundle evidence: fixture-backed sample available
-- Flux OCI: working controller path
-- Argo OCI: implemented in selected examples
-- Full in-product bundle inspection: not yet proven
+- Deployment variants: real and working
+- OCI bundle publication: real on the controller-oriented paths that say so
+- Bundle evidence and GUI shape: sample/spec present, not fully proven end to end
+- Supply-chain evidence such as SBOMs and attestations: design and fixture work,
+  not yet full live proof in this package
 
 See [05-bundle-publication-walkthrough.md](./05-bundle-publication-walkthrough.md) and [bundle-evidence-sample/](./bundle-evidence-sample/).
 
