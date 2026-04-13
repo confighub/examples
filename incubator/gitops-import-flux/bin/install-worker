@@ -18,6 +18,12 @@ if [ -z "${CUB_SPACE:-}" ]; then
     exit 1
 fi
 
+if ! cub info >/dev/null 2>&1; then
+    echo "Error: ConfigHub auth is missing or expired. Run 'cub auth login' and rerun only ./bin/install-worker." >&2
+    echo "Do not rerun the full setup just because worker install is blocked on auth." >&2
+    exit 1
+fi
+
 DISCOVERY_WORKER_SLUG=${DISCOVERY_WORKER_SLUG:-discovery-worker}
 RENDERER_WORKER_SLUG=${RENDERER_WORKER_SLUG:-flux-renderer-worker}
 PID_FILE="$PROJECT_DIR/var/discovery-worker.pid"

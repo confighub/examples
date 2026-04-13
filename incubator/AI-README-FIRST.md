@@ -95,7 +95,29 @@ Safe actions:
 - apply units
 - verify live state
 
-## 5. How To Walk A User Through An Incubator Example
+## 5. Auth Gate For ConfigHub Mutation
+
+Treat ConfigHub auth as a hard gate before any ConfigHub-mutating step.
+
+Run a read-only auth check first:
+
+```bash
+cub info
+```
+
+If auth is missing or expired:
+
+- stop before worker install, discover, import, apply, or other ConfigHub mutation
+- tell the human to run `cub auth login`
+- rerun only the blocked step after auth is fixed
+
+Do not:
+
+- keep retrying the same failing step in the background
+- rerun the full example from the beginning unless another step actually needs to be repeated
+- confuse an auth block with a cluster or controller failure
+
+## 6. How To Walk A User Through An Incubator Example
 
 For each stage:
 
@@ -112,7 +134,7 @@ Good phrasing:
 - “This creates spaces and units in ConfigHub, but it does not apply to a cluster yet.”
 - “This step binds the deployment units to a real target, so from here on we are touching live delivery.”
 
-## 6. Important Review Questions
+## 7. Important Review Questions
 
 When you review or improve an incubator example, make sure the docs answer:
 
@@ -123,7 +145,7 @@ When you review or improve an incubator example, make sure the docs answer:
 5. what should I expect to see?
 6. how would an AI assistant run this safely?
 
-## 7. Reusable Standard
+## 8. Reusable Standard
 
 For reusable incubator best practices, read:
 

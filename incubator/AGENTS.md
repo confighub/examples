@@ -111,6 +111,36 @@ If there is:
 
 then continue with the highest-fidelity database-only or explain-only path and say clearly what was not exercised.
 
+## Auth Gate For ConfigHub-Mutating Steps
+
+Treat ConfigHub auth as a hard gate, not a recoverable warning.
+
+Before any step that creates workers, targets, units, discover state, or imports:
+
+1. run a read-only auth check first
+2. if auth is missing or expired, stop before any further mutation
+3. rerun only the blocked step after auth is fixed
+
+Good read-only gate:
+
+```bash
+cub info
+```
+
+If `cub info` or a later ConfigHub-mutating step reports auth problems:
+
+- say plainly that the run is blocked on ConfigHub auth
+- tell the human to run `cub auth login`
+- do not keep retrying in the background
+- do not rerun the full example from the beginning unless another step actually needs to be redone
+
+This rule exists to prevent a common bad loop:
+
+- cluster setup succeeded
+- Flux or Argo setup succeeded
+- worker/bootstrap failed only because auth expired
+- the AI kept acting as if the whole run was still progressing
+
 ## CLI Footguns To Avoid
 
 - use `cub version`, not `cub --version`
