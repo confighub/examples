@@ -15,11 +15,11 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib.sh"
-source "${SCRIPT_DIR}/campaigns.sh"
+source "${SCRIPT_DIR}/initiatives.sh"
 
 echo "=== ConfigHub Demo Setup ==="
 echo ""
-echo "This will create 51 spaces (~172 units) plus 5 compliance campaigns in your org."
+echo "This will create 51 spaces (~172 units) plus 5 compliance initiatives in your org."
 echo "All entities are labeled ExampleName=${EXAMPLE_NAME} for easy cleanup."
 echo ""
 
@@ -241,13 +241,13 @@ echo "  Set eshop api+worker to :4.2.0 in us-dev-1 (vs :4.2.1 elsewhere)"
 echo ""
 
 ##################################
-# Phase 9: Compliance campaigns
+# Phase 9: Compliance initiatives
 ##################################
-# Creates the demo-campaigns space with 18 units and 5 Filter+View+Trigger
-# campaigns backed by Kyverno CEL policies. All entities carry
+# Creates the demo-initiatives space with 18 units and 5 Filter+View+Trigger
+# initiatives backed by Kyverno CEL policies. All entities carry
 # ExampleName=${EXAMPLE_NAME} so cleanup.sh picks them up.
-echo "Phase 9: Setting up compliance campaigns..."
-setup_campaigns
+echo "Phase 9: Setting up compliance initiatives..."
+setup_initiatives
 echo "  Done."
 echo ""
 
@@ -256,7 +256,7 @@ echo ""
 echo "Summary:"
 echo "  Infrastructure spaces: ${#TARGETS[@]}"
 echo "  App deployment spaces: ${count}"
-echo "  Campaigns space:       1 ($CAMPAIGNS_SPACE)"
+echo "  Initiatives space:       1 ($INITIATIVES_SPACE)"
 echo "  Total spaces:          $(( ${#TARGETS[@]} + count + 1 ))"
 echo ""
 echo "Explore with:"

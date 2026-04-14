@@ -14,7 +14,7 @@ Stop point after the documentation and standards phase.
    - Enforced `mutates:` and `proves:` markers in all contracts.md files
 
 3. **Verifier coverage expanded to 30 examples**
-   - 4 stable examples: spring-platform (2), campaigns-demo, promotion-demo-data
+   - 4 stable examples: spring-platform (2), initiatives-demo, promotion-demo-data
    - 26 incubator examples across global-app-layer, gitops-import, apptique, and others
 
 4. **Proof language tightened for 3 primary examples**
@@ -46,7 +46,7 @@ feb441a — docs: add machine-readable example contract standard
 - contracts.md mutates: and proves: markers (case-insensitive)
 
 Exemptions:
-- `campaigns-demo` and `promotion-demo-data`: exempt from contracts.md and --explain
+- `initiatives-demo` and `promotion-demo-data`: exempt from contracts.md and --explain
 - `incubator/watch-webhook`: exempt from contracts.md
 
 ## Three Examples Reviewed

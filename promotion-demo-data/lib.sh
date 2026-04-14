@@ -9,7 +9,7 @@ CUB="${CUB:-cub}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Base URL used by api() for entities that aren't yet exposed via `cub` verbs
-# (Filters/Views/Triggers are created via the HTTP API in campaigns.sh).
+# (Filters/Views/Triggers are created via the HTTP API in initiatives.sh).
 export CONFIGHUB_URL="${CONFIGHUB_URL:-https://app.confighub.com}"
 
 # Apps and their metadata
@@ -158,7 +158,7 @@ create_app_space() {
 }
 
 # ── ConfigHub HTTP API helper ────────────────────────────────────────────────
-# Used by campaigns.sh for entities that don't yet have first-class `cub`
+# Used by initiatives.sh for entities that don't yet have first-class `cub`
 # verbs (filters, views, triggers are scriptable via cub CLI but triggers
 # need Warn=true which isn't exposed as a flag).  Lazily fetches the API
 # token on first call so cleanup.sh doesn't pay the cost when unused.

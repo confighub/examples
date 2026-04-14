@@ -90,7 +90,7 @@ ai_guide_examples=(
   # stable examples
   "${repo_root}/spring-platform/springboot-platform-app-centric"
   "${repo_root}/spring-platform/springboot-platform-app"
-  "${repo_root}/campaigns-demo"
+  "${repo_root}/initiatives-demo"
   "${repo_root}/promotion-demo-data"
   # global-app-layer examples
   "${repo_root}/incubator/global-app-layer/single-component"
@@ -128,13 +128,13 @@ ai_guide_examples=(
 # Examples intentionally exempt from contracts.md requirement
 exempt_from_contracts=(
   "${repo_root}/incubator/watch-webhook"  # lightweight event example
-  "${repo_root}/campaigns-demo"           # stable demo data
+  "${repo_root}/initiatives-demo"           # stable demo data
   "${repo_root}/promotion-demo-data"      # stable demo data
 )
 
 # Examples exempt from setup.sh --explain requirement
 exempt_from_explain=(
-  "${repo_root}/campaigns-demo"           # stable demo data
+  "${repo_root}/initiatives-demo"           # stable demo data
   "${repo_root}/promotion-demo-data"      # stable demo data
 )
 

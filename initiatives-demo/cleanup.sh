@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# cleanup.sh — Tear down the campaigns-demo space in a single pass.
+# cleanup.sh — Tear down the initiatives-demo space in a single pass.
 #
 # Handles the dependency ordering needed to fully delete the space:
 #   1. Find bridge workers that live in this space.
 #   2. Delete any Trigger — in ANY space — that references those workers.
 #      (ConfigHub blocks worker deletes while a Trigger references them,
-#       and earlier runs of the Campaigns UI can leave orphans in other
+#       and earlier runs of the Initiatives UI can leave orphans in other
 #       spaces pointing at this space's worker.)
 #   3. `cub space delete --recursive-force` to nuke units, views, filters,
 #      workers, etc. in one shot.
@@ -15,11 +15,11 @@
 #
 # Usage:
 #   ./cleanup.sh
-#   SPACE=campaigns-demo ./cleanup.sh
+#   SPACE=initiatives-demo ./cleanup.sh
 
 set -euo pipefail
 
-SPACE="${SPACE:-campaigns-demo}"
+SPACE="${SPACE:-initiatives-demo}"
 cub="${CUB:-cub}"
 
 if ! command -v "$cub" &>/dev/null; then
@@ -44,7 +44,7 @@ echo "Cleaning up space '$SPACE'..."
 # ── Clear cross-space trigger references on our workers ─────────────────────
 #
 # Workers in this space may be referenced by Triggers in OTHER spaces (e.g.
-# leftovers from earlier Campaigns-UI test runs). Those references block the
+# leftovers from earlier Initiatives-UI test runs). Those references block the
 # recursive space delete. For each worker in this space, bulk-delete any
 # trigger that references it, regardless of which space the trigger lives in.
 #

@@ -26,7 +26,7 @@ The verifier (`scripts/verify.sh`) currently covers **30 examples**:
 
 | Category | Count | Examples |
 |----------|-------|----------|
-| Stable | 4 | spring-platform (2), campaigns-demo, promotion-demo-data |
+| Stable | 4 | spring-platform (2), initiatives-demo, promotion-demo-data |
 | Incubator | 26 | global-app-layer (5), gitops-import (2), apptique (3), and 16 others |
 
 ## What `./setup.sh --explain` Must Do
@@ -184,7 +184,7 @@ Some lighter stable examples are exempt from the stronger requirements.
 
 | Example | Exempt from | Reason |
 |---------|-------------|--------|
-| `campaigns-demo` | `contracts.md`, `--explain` | Stable demo data |
+| `initiatives-demo` | `contracts.md`, `--explain` | Stable demo data |
 | `promotion-demo-data` | `contracts.md`, `--explain` | Stable demo data |
 | `incubator/watch-webhook` | `contracts.md` | Lightweight event example |
 

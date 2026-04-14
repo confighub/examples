@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# setup.sh — Seed demo campaigns in ConfigHub
+# setup.sh — Seed demo initiatives in ConfigHub
 #
-# Creates 5 compliance campaigns backed by Kyverno CEL policies, using the
+# Creates 5 compliance initiatives backed by Kyverno CEL policies, using the
 # same app units as the promotion demo (aichat, website, docs, eshop, portal).
 #
-# Each campaign is a View with Labels (campaign=true, campaign-priority,
-# campaign-status) and Annotations (campaign-description, campaign-deadline,
-# campaign-check-summary, etc.).  The View's underlying Filter selects units
+# Each initiative is a View with Labels (initiative=true, initiative-priority,
+# initiative-status) and Annotations (initiative-description, initiative-deadline,
+# initiative-check-summary, etc.).  The View's underlying Filter selects units
 # by App or AppOwner label.  An optional Trigger runs vet-kyverno against
 # matched units.
 #
@@ -20,15 +20,15 @@
 #
 # Environment variables:
 #   CONFIGHUB_URL   ConfigHub server URL  (default: derived from current cub context)
-#   SPACE           Target space slug     (default: campaigns-demo)
+#   SPACE           Target space slug     (default: initiatives-demo)
 #   CUB             Path to cub binary    (default: cub on PATH)
 
 set -euo pipefail
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
-SPACE="${SPACE:-campaigns-demo}"
-EXAMPLE_NAME="campaigns-demo"
+SPACE="${SPACE:-initiatives-demo}"
+EXAMPLE_NAME="initiatives-demo"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROMO_DIR="${SCRIPT_DIR}/../promotion-demo-data/config-data"
 
@@ -70,7 +70,7 @@ API_TOKEN=$($cub auth get-token)
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-created_campaigns=0
+created_initiatives=0
 created_units=0
 
 # Cross-platform date arithmetic (macOS + Linux)
@@ -120,7 +120,7 @@ create_space_if_needed() {
   if $cub space get "$SPACE" --quiet 2>/dev/null; then
     echo "Space '$SPACE' already exists, reusing."
   else
-    printf '{"Labels":{"ExampleName":"%s"},"Annotations":{"Description":"Demo space for compliance campaigns"}}' "$EXAMPLE_NAME" \
+    printf '{"Labels":{"ExampleName":"%s"},"Annotations":{"Description":"Demo space for compliance initiatives"}}' "$EXAMPLE_NAME" \
       | $cub space create --json --from-stdin "$SPACE"
     echo "Created space '$SPACE'."
   fi
@@ -168,7 +168,7 @@ find_kyverno_worker() {
 
 # ── Non-compliant variant ────────────────────────────────────────────────────
 # Create a copy of website/cms.yaml with resource limits stripped, so the
-# "Resource Limits Enforcement" campaign has a failing unit.
+# "Resource Limits Enforcement" initiative has a failing unit.
 
 WORKDIR=$(mktemp -d)
 trap 'rm -rf "$WORKDIR"' EXIT
@@ -307,11 +307,11 @@ spec:
 POLICY
 }
 
-# ── Campaign creation ─────────────────────────────────────────────────────────
+# ── Initiative creation ─────────────────────────────────────────────────────────
 #
-# Each campaign: Filter (selects units) + View (stores metadata) + Trigger (vet-kyverno).
+# Each initiative: Filter (selects units) + View (stores metadata) + Trigger (vet-kyverno).
 
-create_campaign() {
+create_initiative() {
   local name="$1"
   local description="$2"
   local priority="$3"    # HIGH, MEDIUM, LOW
@@ -343,7 +343,7 @@ create_campaign() {
     return 1
   fi
 
-  # 2. Create View with campaign labels and annotations
+  # 2. Create View with initiative labels and annotations
   local view_id
   view_id=$(api POST "/space/${SPACE_ID}/view?allow_exists=true" \
     -d "$(jq -n \
@@ -361,16 +361,16 @@ create_campaign() {
         Slug: $slug,
         DisplayName: $name,
         Labels: {
-          campaign: "true",
-          "campaign-priority": $priority,
-          "campaign-status": $status
+          initiative: "true",
+          "initiative-priority": $priority,
+          "initiative-status": $status
         },
         Annotations: {
-          "campaign-description": $description,
-          "campaign-deadline": $deadline,
-          "campaign-completed-at": $completedAt,
-          "campaign-trigger-id": "",
-          "campaign-check-summary": $checkSummary
+          "initiative-description": $description,
+          "initiative-deadline": $deadline,
+          "initiative-completed-at": $completedAt,
+          "initiative-trigger-id": "",
+          "initiative-check-summary": $checkSummary
         }
       }'
     )" | jq -r '.ViewID // empty')
@@ -409,19 +409,19 @@ create_campaign() {
   # 4. Patch View with trigger ID
   if [[ -n "$trigger_id" ]]; then
     api PATCH "/space/${SPACE_ID}/view/${view_id}" \
-      -d "$(jq -n --arg tid "$trigger_id" '{Annotations: {"campaign-trigger-id": $tid}}')" \
+      -d "$(jq -n --arg tid "$trigger_id" '{Annotations: {"initiative-trigger-id": $tid}}')" \
       >/dev/null 2>&1 || true
   fi
 
   echo "  ✓ $name (priority=$priority, status=$status)"
-  created_campaigns=$((created_campaigns + 1))
+  created_initiatives=$((created_initiatives + 1))
 }
 
 # ══════════════════════════════════════════════════════════════════════════════
 # MAIN
 # ══════════════════════════════════════════════════════════════════════════════
 
-echo "=== ConfigHub Campaigns Demo ==="
+echo "=== ConfigHub Initiatives Demo ==="
 echo "Server:  $CONFIGHUB_URL"
 echo "Space:   $SPACE"
 echo ""
@@ -444,7 +444,7 @@ WORKER_ID=$(find_kyverno_worker) || true
 if [[ -n "$WORKER_ID" ]]; then
   echo "Kyverno worker: $WORKER_ID"
 else
-  echo "No Ready vet-kyverno worker found — campaigns will be created without triggers."
+  echo "No Ready vet-kyverno worker found — initiatives will be created without triggers."
   echo "See README.md for how to set up a worker."
 fi
 echo ""
@@ -452,13 +452,13 @@ echo ""
 # ── Step 3: Create units from promotion demo YAML files ─────────────────────
 #
 # Units are labeled with App and AppOwner to match the promotion demo model.
-# Campaign filters use these labels to select units for each campaign.
+# Initiative filters use these labels to select units for each initiative.
 #
-#   Campaign 1 (Probes)          → AppOwner = 'Support'  (aichat + portal)
-#   Campaign 2 (Registry)        → AppOwner = 'Product'  (eshop + docs)
-#   Campaign 3 (Run-As-NonRoot)  → App = 'aichat'
-#   Campaign 4 (Resource Limits) → App = 'website'
-#   Campaign 5 (Host Ports)      → App = 'docs'
+#   Initiative 1 (Probes)          → AppOwner = 'Support'  (aichat + portal)
+#   Initiative 2 (Registry)        → AppOwner = 'Product'  (eshop + docs)
+#   Initiative 3 (Run-As-NonRoot)  → App = 'aichat'
+#   Initiative 4 (Resource Limits) → App = 'website'
+#   Initiative 5 (Host Ports)      → App = 'docs'
 
 echo "--- Creating units from promotion demo data ---"
 echo ""
@@ -497,15 +497,15 @@ create_unit "website-postgres" "website" "Marketing" "Web" "$PROMO_DIR/website/p
 
 echo ""
 
-# ── Step 4: Create campaigns ─────────────────────────────────────────────────
+# ── Step 4: Create initiatives ─────────────────────────────────────────────────
 
-echo "--- Creating campaigns ---"
+echo "--- Creating initiatives ---"
 echo ""
 
 # 1. Liveness and Readiness Probes (4 passing / 4 failing)
 #    Pass: aichat-api, aichat-frontend, portal-api, portal-frontend
 #    Fail: aichat-postgres, aichat-redis, aichat-worker, portal-postgres
-create_campaign \
+create_initiative \
   "Liveness and Readiness Probes" \
   "All Deployments and StatefulSets must define livenessProbe and readinessProbe on every container. Required for graceful rollouts and service mesh integration." \
   "HIGH" "in_progress" \
@@ -518,7 +518,7 @@ create_campaign \
 # 2. Image Registry Restriction (4 passing / 3 failing)
 #    Pass: eshop-api, eshop-frontend, eshop-worker, docs-server
 #    Fail: eshop-postgres (postgres:16-alpine), eshop-redis (redis:7-alpine), docs-search (meilisearch)
-create_campaign \
+create_initiative \
   "Image Registry Restriction" \
   "All container images must be pulled from the approved registry (ghcr.io/acme). Public registries like Docker Hub are not permitted in production." \
   "HIGH" "in_progress" \
@@ -531,7 +531,7 @@ create_campaign \
 # 3. Run-As-NonRoot Enforcement (2 passing / 3 failing)
 #    Pass: aichat-api, aichat-frontend (have securityContext.runAsNonRoot)
 #    Fail: aichat-postgres, aichat-redis, aichat-worker
-create_campaign \
+create_initiative \
   "Run-As-NonRoot Enforcement" \
   "All pods must set runAsNonRoot at the pod or container level to ensure no container runs as UID 0." \
   "MEDIUM" "in_progress" \
@@ -544,7 +544,7 @@ create_campaign \
 # 4. Resource Limits Enforcement (2 passing / 1 failing)
 #    Pass: website-web, website-postgres
 #    Fail: website-cms (runtime variant with limits stripped)
-create_campaign \
+create_initiative \
   "Resource Limits Enforcement" \
   "All workloads must define CPU and memory limits to prevent resource starvation." \
   "MEDIUM" "draft" \
@@ -556,7 +556,7 @@ create_campaign \
 
 # 5. Disallow Host Ports — completed (2 passing / 0 failing)
 #    Pass: docs-server, docs-search
-create_campaign \
+create_initiative \
   "Disallow Host Ports" \
   "Containers must not bind to host ports. Completed — all workloads now route through ClusterIP Services and Ingress." \
   "LOW" "completed" \
@@ -572,9 +572,9 @@ echo ""
 echo "=== Done ==="
 echo "  Space:     $SPACE"
 echo "  Units:     $created_units"
-echo "  Campaigns: $created_campaigns"
+echo "  Initiatives: $created_initiatives"
 echo ""
-echo "Open the ConfigHub UI and navigate to Campaigns to see them."
+echo "Open the ConfigHub UI and navigate to Initiatives to see them."
 if [[ -n "$WORKER_ID" ]]; then
   echo "Triggers were created (enabled, Warn=true). They fire on every Mutation and"
   echo "record failures in ApplyWarnings (non-blocking) rather than ApplyGates."
