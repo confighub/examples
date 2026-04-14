@@ -21,7 +21,7 @@ The point is not to recreate all of NVIDIA AICR. The point is to show how Config
 | Delivery Mode | Status | Notes |
 |---------------|--------|-------|
 | **Direct Kubernetes** | Fully working | Worker applies YAML via `kubectl apply`. |
-| **Flux OCI** | Fully working | Explicit Flux deployment variant. Current standard controller path. |
+| **Flux OCI** | Fully working | Explicit Flux deployment variant. Use `./demo-flux-oci.sh` for the proven local lane and safe short prefix handling. |
 | **Argo OCI** | Implemented | Explicit Argo deployment variant. Requires ArgoCD v3.1+. See [`07-argo-oci-spec.md`](../07-argo-oci-spec.md). |
 | **ArgoCDRenderer** | Incompatible | Expects Argo `Application` payloads, not raw manifests. |
 
@@ -83,7 +83,9 @@ In ConfigHub-only mode:
 In live mode:
 - deployment variants bound to compatible targets
 - successful `cub unit apply`
-- live resources or delegated delivery objects visible
+- Flux `OCIRepository` objects visible
+- Flux `Kustomization` objects reaching `Ready=True`
+- live workload resources visible in the cluster
 
 ## AI-Safe Path
 
@@ -216,6 +218,31 @@ cd incubator/global-app-layer/gpu-eks-h100-training
 ```
 
 After `./setup.sh`, prefer the printed clickable GUI URLs and `.logs/*.latest.log` files over terminal scrollback alone.
+
+## Fastest Proven Flux OCI Demo
+
+For the known-good local lane on the dedicated `demo-flux` kind cluster:
+
+```bash
+./demo-flux-oci.sh --cleanup-first --target demo-flux/flux-renderer-worker-fluxoci-kubernetes-yaml-cluster
+```
+
+This helper:
+
+- preflights the live target first
+- auto-picks a safe short prefix for the Flux/Kubernetes label budget
+- cleans old local Flux bridge objects on repeat runs
+- materializes and verifies the layered chain
+- approves and applies the Flux deployment units
+- waits for Flux `Kustomization Ready=True`
+- prints ConfigHub GUI URLs plus Flux and cluster proof surfaces
+
+Current local truth for this lane:
+
+- this is structural and delivery proof, not real NVIDIA functional GPU proof
+- repeated local runs should use `--cleanup-first`
+- the proven local Flux lane currently applies the demo workloads into `default`
+- the helper keeps the 63-character Flux label limit visible by choosing a short prefix automatically
 
 ## Upgrade Flow
 

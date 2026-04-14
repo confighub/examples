@@ -30,6 +30,8 @@ INTENT_VALUE="training"
 DEPLOY_NAMESPACE="${DEPLOY_NAMESPACE:-cluster-a}"
 DEFAULT_GPU_OPERATOR_TAG="24.6.1"
 DEFAULT_DEVICE_PLUGIN_TAG="v0.16.3"
+K8S_LABEL_VALUE_MAX_LEN=63
+SAFE_FLUX_PREFIX_EXAMPLE="nfx05"
 
 _mapfile() {
   local _var="$1"
@@ -51,6 +53,56 @@ require_jq() {
     echo "Missing required command: jq" >&2
     exit 1
   fi
+}
+
+flux_tracking_suffix_length() {
+  local longest_suffix=0
+  local component current_suffix
+
+  for component in "${COMPONENTS[@]}"; do
+    current_suffix="-${DEPLOY_FLUX_SPACE_SUFFIX}-$(deployment_unit_name "${component}" flux)"
+    if (( ${#current_suffix} > longest_suffix )); then
+      longest_suffix=${#current_suffix}
+    fi
+  done
+
+  echo "${longest_suffix}"
+}
+
+max_flux_prefix_length() {
+  echo $(( K8S_LABEL_VALUE_MAX_LEN - $(flux_tracking_suffix_length) ))
+}
+
+generate_safe_flux_demo_prefix() {
+  printf 'nfx%02x\n' $((RANDOM % 256))
+}
+
+assert_flux_prefix_budget() {
+  local prefix="$1"
+  local max_prefix_len
+  max_prefix_len="$(max_flux_prefix_length)"
+
+  if (( ${#prefix} <= max_prefix_len )); then
+    return 0
+  fi
+
+  cat >&2 <<EOF_BUDGET
+Prefix '${prefix}' is too long for the Flux OCI live path in ${EXAMPLE_NAME}.
+
+Why:
+- Flux copies the Kustomization name into the kustomize.toolkit.fluxcd.io/name label
+- Kubernetes label values are limited to ${K8S_LABEL_VALUE_MAX_LEN} characters
+- the longest leaf here is $(deployment_unit_name nvidia-device-plugin flux)
+
+Current safe budget:
+- prefix length must be <= ${max_prefix_len}
+- known-good example: ${SAFE_FLUX_PREFIX_EXAMPLE}
+
+Use either:
+- ./demo-flux-oci.sh                      # picks a safe short prefix automatically
+- ./setup.sh ${SAFE_FLUX_PREFIX_EXAMPLE} <fluxoci-target>
+EOF_BUDGET
+  exit 1
 }
 
 setup_usage() {
@@ -532,6 +584,12 @@ Layer mutations:
 - recipe: set training intent and validation/plugin profile
 - deployment variants: all leaves set namespace=${DEPLOY_NAMESPACE} and CLUSTER=${DEPLOY_NAMESPACE}
 
+Flux live constraint:
+- Flux copies the Kustomization name into the kustomize.toolkit.fluxcd.io/name label
+- Kubernetes label values are limited to ${K8S_LABEL_VALUE_MAX_LEN} characters
+- with the current component names, keep the prefix length <= $(max_flux_prefix_length) for the Flux live lane
+- use ./demo-flux-oci.sh to auto-pick a safe Flux demo prefix
+
 Recipe manifest:
 - $(recipe_space)/${RECIPE_MANIFEST_UNIT}
 - source template: ${RECIPE_BASE_TEMPLATE}
@@ -588,6 +646,9 @@ show_setup_plan_json() {
     --arg manifestUnit "${RECIPE_MANIFEST_UNIT}" \
     --arg manifestTemplate "${RECIPE_BASE_TEMPLATE}" \
     --arg manifestRendered "${STATE_DIR}/recipe-eks-h100-ubuntu-training-stack.rendered.yaml" \
+    --argjson fluxPrefixMaxLength "$(max_flux_prefix_length)" \
+    --arg fluxPrefixReason "Flux copies the Kustomization name into the kustomize.toolkit.fluxcd.io/name label, and Kubernetes label values are limited to 63 characters." \
+    --arg fluxPrefixExample "${SAFE_FLUX_PREFIX_EXAMPLE}" \
     '{
       example: $example,
       mode: "setup-plan",
@@ -658,6 +719,11 @@ show_setup_plan_json() {
         unit: $manifestUnit,
         template: $manifestTemplate,
         renderedOutput: $manifestRendered
+      },
+      liveConstraints: {
+        fluxPrefixMaxLength: $fluxPrefixMaxLength,
+        fluxReason: $fluxPrefixReason,
+        knownGoodPrefixExample: $fluxPrefixExample
       },
       commands: [
         "cub space create",
@@ -852,6 +918,9 @@ set_target_for_compatible_units() {
   variant="$(deployment_variant_for_provider_type "${provider_type}")"
   case "${variant}" in
     direct|flux|argo)
+      if [[ "${variant}" == "flux" ]]; then
+        assert_flux_prefix_budget "$(state_prefix)"
+      fi
       set_target_for_deploy_variant "${variant}" "${target_ref}"
       remember_target_ref_for_variant "${target_ref}"
       ;;
@@ -948,6 +1017,7 @@ Next steps:
 10. cub unit approve --space $(argo_deploy_space) $(deployment_unit_name gpu-operator argo) && cub unit approve --space $(argo_deploy_space) $(deployment_unit_name nvidia-device-plugin argo)
 11. cub unit apply --space $(argo_deploy_space) $(deployment_unit_name gpu-operator argo) && cub unit apply --space $(argo_deploy_space) $(deployment_unit_name nvidia-device-plugin argo)
 12. Review recipe manifest: cub unit get --space $(recipe_space) --data-only ${RECIPE_MANIFEST_UNIT}
+13. Fastest local Flux proof: ./demo-flux-oci.sh --cleanup-first --target demo-flux/flux-renderer-worker-fluxoci-kubernetes-yaml-cluster
 EOF_SUMMARY
 }
 

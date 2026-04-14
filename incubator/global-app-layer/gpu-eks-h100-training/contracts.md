@@ -17,6 +17,8 @@
   - `.spaces | length == 8`
   - `.components | length == 2`
   - `.recipeManifest.unit == "recipe-eks-h100-ubuntu-training-stack"`
+  - `.liveConstraints.fluxPrefixMaxLength == 5`
+  - `.liveConstraints.knownGoodPrefixExample == "nfx05"`
 
 ### `./verify.sh --json`
 
@@ -36,6 +38,35 @@
   - `.error | length > 0`
 
 ## ConfigHub State Contracts
+
+## Live Delivery Contract
+
+### `./demo-flux-oci.sh --cleanup-first --target demo-flux/flux-renderer-worker-fluxoci-kubernetes-yaml-cluster`
+
+- mutates: yes
+- output shape: human-readable live-run transcript with ConfigHub, Flux, and cluster proof blocks
+- proves:
+  - the target passed read-only preflight before apply
+  - the helper chose or enforced a Flux-safe prefix
+  - the layered recipe was materialized and verified
+  - the Flux deployment units were approved and applied
+  - ConfigHub GUI URLs were surfaced for review
+  - Flux `OCIRepository` objects were fetched and Flux `Kustomization` objects reached `Ready=True`
+  - the demo workloads became visible in the local cluster
+- expected anchors:
+  - `Mode: live delivery`
+  - `==> Waiting for Flux Kustomization Ready=True`
+  - `Flux Kustomizations are Ready=True.`
+  - `==> ConfigHub unit status`
+  - `==> Flux controller proof`
+  - `==> Cluster workload proof`
+  - `Completed live Flux OCI demo for prefix `
+
+Known current local truth:
+
+- the proven local Flux lane currently applies the demo workloads into namespace `default`
+- `--cleanup-first` is the repeat-run safe path for the dedicated local `demo-flux` cluster
+- this proves layered recipe plus Flux OCI delivery, not functional NVIDIA GPU runtime
 
 ### `cub space get <prefix>-recipe-eks-h100-ubuntu-training --json`
 

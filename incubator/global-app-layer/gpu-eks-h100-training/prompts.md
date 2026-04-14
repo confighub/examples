@@ -45,6 +45,25 @@ After running `gpu-eks-h100-training`, verify:
 - live apply state if used
 - summarize what definitely happened, what did not happen, and what still depends on missing infrastructure
 
+## Prove NVIDIA AICR With Flux OCI
+
+Use the proven local AICR Flux lane in `gpu-eks-h100-training`.
+
+Run:
+
+```bash
+./demo-flux-oci.sh --cleanup-first --target demo-flux/flux-renderer-worker-fluxoci-kubernetes-yaml-cluster
+```
+
+While doing it:
+
+- surface the ConfigHub GUI URLs early
+- show the ConfigHub unit status block after apply
+- show Flux `OCIRepository` and `Kustomization` output, not just narration
+- show the cluster workload objects after apply
+- keep structural proof distinct from functional GPU proof
+- harvest any product or docs gaps you notice at the end
+
 ## Whole Lifecycle Walkthrough
 
 Guide me through the full `gpu-eks-h100-training` lifecycle.

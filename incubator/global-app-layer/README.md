@@ -110,6 +110,15 @@ This package can express NVIDIA's [AICR](https://developer.nvidia.com/blog/valid
 
 The GPU example (`gpu-eks-h100-training`) is a **structural proof** using stub images. Swap in real NVIDIA images for functional GPU deployment.
 
+For the fastest proven local Flux OCI lane on the dedicated `demo-flux` kind cluster, use:
+
+```bash
+cd gpu-eks-h100-training
+./demo-flux-oci.sh --cleanup-first --target demo-flux/flux-renderer-worker-fluxoci-kubernetes-yaml-cluster
+```
+
+That helper keeps the short-prefix budget, repeat-run cleanup, GUI URLs, Flux proof, and cluster proof in one place.
+
 For AICR details:
 - [confighub-aicr-value-add.md](./confighub-aicr-value-add.md)
 - [01-nvidia-aicr-fit.md](./01-nvidia-aicr-fit.md)

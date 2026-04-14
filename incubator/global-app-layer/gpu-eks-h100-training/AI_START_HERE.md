@@ -20,6 +20,22 @@ Pause after every stage. Show full output. Give GUI links where possible.
 Do not continue until I say continue.
 ```
 
+## Fastest Proven Live Lane
+
+If the human explicitly wants the known-good local Flux OCI proof path, prefer:
+
+```bash
+./demo-flux-oci.sh --cleanup-first --target demo-flux/flux-renderer-worker-fluxoci-kubernetes-yaml-cluster
+```
+
+What to explain before running it:
+
+- this mutates ConfigHub and the dedicated `demo-flux` kind cluster
+- it auto-picks a safe short prefix because the Flux live path has a Kubernetes label budget
+- it cleans old local Flux bridge objects on repeat runs
+- it waits for Flux `Kustomization Ready=True` before closeout
+- it is still structural proof with stub images, not functional GPU proof
+
 ## What This Example Teaches
 
 This is an NVIDIA AICR-shaped layered recipe: `gpu-operator` + `nvidia-device-plugin` with three deployment variants. After the demo, the human will understand:
