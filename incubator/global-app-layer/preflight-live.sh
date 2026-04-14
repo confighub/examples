@@ -30,9 +30,9 @@ Usage:
   ./preflight-live.sh <space/target> --json
 
 Examples:
-  ./preflight-live.sh gitops-import-test/worker-kubernetes-yaml-cluster
-  ./preflight-live.sh gitops-import-test/worker-fluxoci-kubernetes-yaml-cluster
-  ./preflight-live.sh gitops-import-test/worker-argocdrenderer-kubernetes-yaml-cluster --json
+  ./preflight-live.sh my-space/worker-kubernetes-yaml-cluster
+  ./preflight-live.sh my-space/worker-fluxoci-kubernetes-yaml-cluster
+  ./preflight-live.sh my-space/worker-argocdrenderer-kubernetes-yaml-cluster --json
 EOF_USAGE
 }
 

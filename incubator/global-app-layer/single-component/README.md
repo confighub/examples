@@ -143,18 +143,22 @@ The setup scripts render the concrete recipe instance from the placeholder-based
 ```bash
 cd incubator/global-app-layer/single-component
 
-# Inspect the full plan without mutating ConfigHub
+# Preview the plan without writing anything
 ./setup.sh --explain
-
-# Machine-readable plan for AI or tooling
-./setup.sh --explain-json | jq
+./setup.sh --explain-json | jq .
 
 # Ready for a fresh run
-./setup.sh                                              # ConfigHub-only
-./setup.sh <prefix> <kubernetes-target>                 # with direct target
-./setup.sh <prefix> <kubernetes-target> <fluxoci-target>  # with both variants
+./setup.sh                                                     # ConfigHub-only
+./setup.sh <prefix> <kubernetes-target>                        # with direct target
+./setup.sh <prefix> <kubernetes-target> <fluxoci-target>       # with multiple compatible targets
+./setup.sh <prefix> <kubernetes-target> <fluxoci-target> <argocdoci-target>
 ./verify.sh
+./verify.sh --json
 ```
+
+`--explain` and `--explain-json` are read-only. They describe the spaces,
+clone chain, dependency stubs, recipe manifest, and target behavior that
+`setup.sh` would create, but they do not mutate ConfigHub.
 
 After `./setup.sh`, prefer the printed clickable GUI URLs and `.logs/*.latest.log` files over terminal scrollback alone.
 
@@ -258,21 +262,3 @@ A working Flux OCI proof must show the complete chain:
 1. Flux deployment unit exists with correct upstream (recipe unit)
 2. Flux deployment unit is bound to a `FluxOCI` or `FluxOCIWriter` target
 3. `cub unit apply` publishes to ConfigHub-native OCI origin with recorded **ref and digest**
-4. Flux `OCIRepository` points at that exact OCI ref/digest
-5. Flux `Kustomization` reports reconciliation success
-6. Live cluster resources match the expected state
-
-Evidence chain: `ConfigHub revision -> OCI ref/digest -> controller source -> live workload`
-
-A working Argo OCI proof must show the complete chain:
-
-1. Argo deployment unit exists with correct upstream (recipe unit)
-2. Argo deployment unit is bound to an `ArgoCDOCI` target
-3. `cub unit apply` publishes to ConfigHub-native OCI origin with recorded **ref and digest**
-4. ArgoCD `Application` resource points at that exact OCI source and digest
-5. ArgoCD reports Synced and Healthy status
-6. Live cluster resources match the expected state
-
-Evidence chain: `ConfigHub revision -> OCI ref/digest -> controller source -> live workload`
-
-For full Argo OCI specification, see [`07-argo-oci-spec.md`](../07-argo-oci-spec.md).

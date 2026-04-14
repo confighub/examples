@@ -96,11 +96,18 @@ cub-gen springboot validate-mutation --routes ./operational/field-routes.yaml \
   feature.myservice.someFlag        # ALLOWED
 cub-gen springboot validate-mutation --routes ./operational/field-routes.yaml \
   spring.datasource.url             # BLOCKED
+
+# Apply an app-owned embedded config change directly
+cub-gen springboot set-embedded-config \
+  --routes ./operational/field-routes.yaml \
+  --file ./confighub/my-service-prod.yaml \
+  --configmap my-service-config \
+  feature.myservice.someFlag optimistic
 ```
 
 See [`cub-gen/examples/springboot-paas`](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas) for the full product-side path.
 
-Use `spring-platform` to learn the model. Use `cub-gen springboot init` to onboard your own app.
+Use `spring-platform` to learn the model. Use `cub-gen springboot init` to onboard your own app, `validate-mutation` to prove route ownership, and `set-embedded-config` when you want the direct embedded apply-here path that `springboot-paas` now demonstrates.
 
 ## Recommended Team Path
 

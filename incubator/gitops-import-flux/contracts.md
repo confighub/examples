@@ -4,6 +4,15 @@ This file documents the safest stable inspection paths for `gitops-import-flux`.
 
 ## Read-Only Contracts
 
+### `cub info`
+
+- mutates: no
+- output shape: plain text
+- proves:
+  - the current `cub` session can talk to ConfigHub
+  - auth is valid enough to proceed to worker install, discover, or import
+- note: use this as the auth gate before any ConfigHub-mutating step in this example
+
 ### `./setup.sh --explain-json`
 
 - mutates: no
@@ -69,6 +78,18 @@ This file documents the safest stable inspection paths for `gitops-import-flux`.
 
 ## ConfigHub Contracts
 
+### `./bin/install-worker`
+
+- mutates: yes, ConfigHub and live infrastructure
+- output shape: plain text
+- proves:
+  - the local discovery worker was configured
+  - the in-cluster Flux worker was installed
+  - the example can expose `kubernetes`, `fluxrenderer`, and `fluxoci` targets when bootstrap succeeds
+- stop rule:
+  - if auth is missing or expired, stop here and rerun only this step after `cub auth login`
+  - do not rerun the full cluster setup path just because auth failed here
+
 ### `cub gitops discover --space <space> <kubernetes-target-slug> --json`
 
 - mutates: yes, ConfigHub only
@@ -113,6 +134,8 @@ This example can prove three different kinds of evidence:
 Import and renderer evidence do not, by themselves, prove live workload reconciliation.
 
 If runtime behavior matters, compare all three surfaces instead of relying on only one.
+
+Auth failures are not cluster failures and they are not controller failures. Treat them as session-preflight failures.
 
 ## Expected Contrast Outcome
 

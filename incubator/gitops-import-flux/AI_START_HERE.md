@@ -113,25 +113,53 @@ GUI feature ask: Pre-import discovery view in ConfigHub. No issue filed yet.
 
 **PAUSE.** Wait for the human.
 
-## Stage 4: "Connect Worker And Discover" (mutates ConfigHub)
+## Stage 4: "Confirm ConfigHub Auth" (read-only gate)
+
+Run:
+
+```bash
+cub info
+```
+
+What to explain:
+
+- This is a read-only auth gate before any ConfigHub mutation
+- If auth is expired, stop here
+- The next stage should not start until auth is valid
+
+If auth is expired:
+
+- tell the human to run `cub auth login`
+- do not keep retrying in the background
+- rerun only the blocked stage after auth is fixed
+
+GUI now: No GUI checkpoint — this is a preflight gate.
+
+GUI gap: No simple session status view for AI/operator auth readiness.
+
+GUI feature ask: lightweight "ready to mutate" preflight page. No issue filed yet.
+
+**PAUSE.** Wait for the human.
+
+## Stage 5: "Install Worker And Discover" (mutates ConfigHub)
 
 Ask: "This will create a ConfigHub worker and discover resources. Ready to proceed?"
 
 Run:
 
 ```bash
-cub auth login
 export CUB_SPACE=<space>
-./setup.sh --with-worker
+./bin/install-worker
 cub target list --space "$CUB_SPACE" --json | jq
 cub gitops discover --space "$CUB_SPACE" <kubernetes-target-slug> --json | jq
 ```
 
 What to explain:
 
-- Creates a ConfigHub worker
+- Creates ConfigHub workers
 - Expect three targets: Kubernetes, fluxrenderer, fluxoci
 - Discovers Flux resources and Kubernetes resources
+- If worker install fails due to auth, do not rerun cluster setup; rerun only this stage after auth is fixed
 
 GUI now: Open ConfigHub space and inspect targets and discovered units.
 
@@ -141,7 +169,7 @@ GUI feature ask: Side-by-side Flux and ConfigHub comparison view. No issue filed
 
 **PAUSE.** Wait for the human.
 
-## Stage 5: "Import And Verify ConfigHub Evidence" (mutates ConfigHub)
+## Stage 6: "Import And Verify ConfigHub Evidence" (mutates ConfigHub)
 
 Ask: "This will import discovered resources into ConfigHub. Ready to proceed?"
 
@@ -175,7 +203,7 @@ GUI feature ask: Import diff view showing before/after comparison. No issue file
 
 **PAUSE.** Wait for the human.
 
-## Stage 6: "Cleanup"
+## Stage 7: "Cleanup"
 
 Run:
 

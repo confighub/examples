@@ -71,6 +71,18 @@ TEXT
     exit 0
 fi
 
+if $WITH_WORKER; then
+    if [ -z "${CUB_SPACE:-}" ]; then
+        echo "Error: --with-worker requires CUB_SPACE to be set" >&2
+        exit 1
+    fi
+    if ! cub info >/dev/null 2>&1; then
+        echo "Error: --with-worker requires valid ConfigHub auth. Run 'cub auth login' and retry." >&2
+        echo "Stop here. Do not rerun the full example in the background just because auth failed." >&2
+        exit 1
+    fi
+fi
+
 "$SCRIPT_DIR/bin/create-cluster" "$CLUSTER_NAME"
 "$SCRIPT_DIR/bin/install-flux" "$CLUSTER_NAME"
 "$SCRIPT_DIR/bin/setup-apps" "$CLUSTER_NAME"
@@ -80,10 +92,6 @@ if $WITH_CONTRAST; then
 fi
 
 if $WITH_WORKER; then
-    if [ -z "${CUB_SPACE:-}" ]; then
-        echo "Error: --with-worker requires CUB_SPACE to be set" >&2
-        exit 1
-    fi
     "$SCRIPT_DIR/bin/install-worker" "$CLUSTER_NAME"
 fi
 

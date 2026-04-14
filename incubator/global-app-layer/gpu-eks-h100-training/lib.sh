@@ -53,6 +53,32 @@ require_jq() {
   fi
 }
 
+setup_usage() {
+  cat <<'EOF_USAGE'
+Usage:
+  ./setup.sh [prefix] [target-ref ...]
+  ./setup.sh --explain [prefix] [target-ref ...]
+  ./setup.sh --explain-json [prefix] [target-ref ...]
+
+Modes:
+  default         Create the full chain in ConfigHub (mutating)
+  --explain       Show a read-only plan of what setup would create
+  --explain-json  Emit the same plan as machine-readable JSON
+EOF_USAGE
+}
+
+verify_usage() {
+  cat <<'EOF_USAGE'
+Usage:
+  ./verify.sh
+  ./verify.sh --json
+
+Modes:
+  default   Run verification and print human-readable progress
+  --json    Emit machine-readable verification output
+EOF_USAGE
+}
+
 ensure_state_dir() {
   mkdir -p "${STATE_DIR}"
 }
@@ -923,4 +949,29 @@ Next steps:
 11. cub unit apply --space $(argo_deploy_space) $(deployment_unit_name gpu-operator argo) && cub unit apply --space $(argo_deploy_space) $(deployment_unit_name nvidia-device-plugin argo)
 12. Review recipe manifest: cub unit get --space $(recipe_space) --data-only ${RECIPE_MANIFEST_UNIT}
 EOF_SUMMARY
+}
+
+all_spaces() {
+  printf '%s\n' \
+    "$(base_space)" \
+    "$(platform_space)" \
+    "$(accelerator_space)" \
+    "$(os_space)" \
+    "$(recipe_space)" \
+    "$(deploy_space)" \
+    "$(flux_deploy_space)" \
+    "$(argo_deploy_space)"
+}
+
+all_unit_refs() {
+  local component stage variant
+  for component in "${COMPONENTS[@]}"; do
+    for stage in "${CHAIN_STAGES[@]}"; do
+      printf '%s/%s\n' "$(space_for_stage "${stage}")" "$(unit_name "${component}" "${stage}")"
+    done
+    for variant in "${DEPLOY_VARIANTS[@]}"; do
+      printf '%s/%s\n' "$(deploy_space_for_variant "${variant}")" "$(deployment_unit_name "${component}" "${variant}")"
+    done
+  done
+  printf '%s/%s\n' "$(recipe_space)" "${RECIPE_MANIFEST_UNIT}"
 }

@@ -125,6 +125,34 @@ Mutating:
 
 Before mutating, say what will change.
 
+## 7a. Evaluation modes
+
+When a user asks to "evaluate" an example, do not guess what level of proof they want.
+
+Use these shared meanings:
+
+- **preview** = read-only orientation only
+- **fast preview** = the example's read-only path (`--explain`, `--explain-json`, read-only demo/report scripts)
+- **operational evaluation** = run the smallest real setup/proof path that shows the example actually works
+- **guided walkthrough** = pause-heavy presenter mode following the stage structure in `AI_START_HERE.md`
+
+If the user says "evaluate it quickly" or "use the fast path" and does **not** explicitly say "read-only":
+
+1. start with the fast preview
+2. then continue into the smallest real operational proof if the example has:
+   - `./setup.sh`
+   - `./verify.sh`
+   - a representative proof action documented in `contracts.md` or `AI_START_HERE.md`
+3. stop before cleanup unless the user asks for cleanup
+
+Only stay fully read-only when the user explicitly asks for:
+
+- preview only
+- read-only only
+- explanation only
+
+The goal is to avoid the failure mode where the AI reviews the docs, runs only preview commands, and then claims the example is "ready" without proving that setup and one representative action actually work.
+
 ## 8. Prefer exact, machine-readable output
 
 For AI work, prefer:

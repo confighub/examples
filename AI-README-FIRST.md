@@ -69,6 +69,30 @@ Recommended order:
 3. inspect live ConfigHub state in JSON
 4. only then run mutating example flows if the human wants that
 
+## 4a. Shared meanings for "evaluate quickly"
+
+Use these meanings consistently across examples:
+
+- **preview** = read-only orientation
+- **fast preview** = read-only example-specific path such as `./setup.sh --explain`, `./setup.sh --explain-json`, and any non-mutating demo/report script
+- **fast operational evaluation** = preview plus the smallest real setup/proof sequence that demonstrates the example actually works
+
+If a user says "help me evaluate it quickly" and does not explicitly ask for read-only mode, the default should be:
+
+1. run the fast preview
+2. run the smallest real operational proof path for that example
+3. stop before cleanup unless asked
+
+For a runnable example, that usually means:
+
+- `./setup.sh`
+- one isolation/verification command
+- `./verify.sh`
+- one representative proof action
+- stop before cleanup
+
+Do not conclude that an example is "ready" based only on preview output if the example provides a real setup path and a representative proof action.
+
 ## 5. Safe First Commands
 
 These commands do not mutate ConfigHub or any cluster:
@@ -150,6 +174,7 @@ If the user is asking about incubator-only work:
 
 1. [`incubator/README.md`](./incubator/README.md)
 2. [`incubator/AI_START_HERE.md`](./incubator/AI_START_HERE.md)
+3. [`incubator/ai-machine-seams-first.md`](./incubator/ai-machine-seams-first.md)
 
 ## 9. Repo Layout You Will Actually Need
 
@@ -159,6 +184,8 @@ Most assistants only need these locations:
 - human entry path: [START_HERE.md](./START_HERE.md)
 - AI entry path: [AI_START_HERE.md](./AI_START_HERE.md)
 - incubator landing: [`incubator/README.md`](./incubator/README.md)
+- incubator machine seams: [`incubator/ai-machine-seams-first.md`](./incubator/ai-machine-seams-first.md)
+- incubator eval prompts: [`incubator/ai-cold-eval-prompt-pack.md`](./incubator/ai-cold-eval-prompt-pack.md)
 - layered recipes package: [`incubator/global-app-layer/README.md`](./incubator/global-app-layer/README.md)
 - package mechanics: [`incubator/global-app-layer/how-it-works.md`](./incubator/global-app-layer/how-it-works.md)
 - package value-add story: [`incubator/global-app-layer/confighub-aicr-value-add.md`](./incubator/global-app-layer/confighub-aicr-value-add.md)

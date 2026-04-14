@@ -10,9 +10,14 @@ It keeps the same recipe model:
 
 - `variant` = a unit specialized from an earlier unit
 - `clone link` = the ConfigHub mechanism that keeps it connected upstream
-- `bundle` = publish the resolved deployment output from a target
+- `deployment variant` = the final unit you can bind to a target and deploy
+- `bundle` = a deployable artifact produced for a controller-oriented target
+- `bundle evidence` = receipts about that artifact, such as digests, SBOMs,
+  attestations, or GUI views
 
-The recipe is still the ordered chain of variants, not the bundle. What changes here is that the layer model now governs a recognisable small app, not just a pair of components.
+The recipe is still the ordered chain of variants plus the app-level provenance
+record, not the bundle. What changes here is that the layer model now governs a
+recognisable small app, not just a pair of components.
 
 ## What This Example Is For
 
@@ -166,15 +171,18 @@ cd incubator/global-app-layer/realistic-app
 ./setup.sh --explain
 
 # Machine-readable plan for AI or tooling
-./setup.sh --explain-json | jq
+./setup.sh --explain-json | jq .
 
 # Ready for a fresh run
 ./setup.sh                              # ConfigHub-only
 ./setup.sh <prefix> <space/target>     # with live target
 ./verify.sh
+./verify.sh --json
 ```
 
-The explain modes do not require a live target and do not write anything to ConfigHub.
+`--explain` and `--explain-json` are read-only. They describe the spaces,
+clone chains, recipe manifest, and target behavior that `setup.sh` would create,
+but they do not mutate ConfigHub.
 
 After `./setup.sh`, prefer the printed clickable GUI URLs and `.logs/*.latest.log` files over terminal scrollback alone.
 
@@ -214,7 +222,16 @@ Important:
 - the deployment units here are raw Kubernetes manifests, not Argo CD `Application` resources
 - so `ArgoCDRenderer` is not a drop-in target swap for `realistic-app` today; the helper scripts now stop early and tell you that instead of failing later with `failed to parse Application`
 
-The bundle belongs to the target. The explicit recipe manifest records the layered provenance for the whole app and includes a bundle hint once a target is set.
+The bundle belongs to the target path, not to the recipe itself:
+
+- for the direct Kubernetes path, the honest proof is the applied live state and
+  the deployment receipts
+- for Flux OCI or Argo OCI paths, the bundle would be the controller-consumed
+  OCI artifact
+
+The explicit recipe manifest records the layered provenance for the whole app
+and can carry bundle hints once a target is set, but it is not the deployable
+artifact by itself.
 
 ## Inspecting the Result
 

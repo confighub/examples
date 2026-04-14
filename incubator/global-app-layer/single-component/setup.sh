@@ -6,26 +6,43 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib.sh"
 
 mode="run"
-case "${1:-}" in
-  --explain)
-    mode="explain"
-    shift
-    ;;
-  --explain-json)
-    mode="explain-json"
-    shift
-    ;;
-esac
+positionals=()
 
-prefix="${1:-}"
-shift_count=0
-if [[ -n "${prefix}" ]]; then
-  shift_count=1
-fi
-if [[ "${shift_count}" -gt 0 ]]; then
-  shift
-fi
-target_refs=("$@")
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --explain)
+      mode="explain"
+      shift
+      ;;
+    --explain-json)
+      mode="explain-json"
+      shift
+      ;;
+    -h|--help)
+      setup_usage
+      exit 0
+      ;;
+    --)
+      shift
+      while [[ $# -gt 0 ]]; do
+        positionals+=("$1")
+        shift
+      done
+      ;;
+    -*)
+      echo "Unknown flag: $1" >&2
+      setup_usage >&2
+      exit 1
+      ;;
+    *)
+      positionals+=("$1")
+      shift
+      ;;
+  esac
+done
+
+prefix="${positionals[0]:-}"
+target_refs=("${positionals[@]:1}")
 
 if [[ "${mode}" != "run" ]]; then
   PREFIX="${prefix:-<generated-prefix>}"
@@ -62,7 +79,6 @@ if [[ -z "${prefix}" ]]; then
   prefix="$(cub space new-prefix)"
 fi
 
-# Validate any provided targets before starting
 DIRECT_TARGET_REF=""
 FLUX_TARGET_REF=""
 ARGO_TARGET_REF=""
@@ -148,7 +164,6 @@ echo "==> Creating postgres stub (argo variant)"
 create_unit_from_file "$(argo_deploy_space)" "postgres-stub-argo" "${POSTGRES_STUB_YAML}" "${argo_deploy_unit_labels[@]}"
 cub function do set-namespace "${DEPLOY_NAMESPACE}" --space "$(argo_deploy_space)" --unit "postgres-stub-argo"
 
-# Set targets based on provider type
 for target_ref in "${target_refs[@]}"; do
   if [[ -n "${target_ref}" ]]; then
     echo "==> Setting target ${target_ref}"

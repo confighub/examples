@@ -21,7 +21,7 @@ This example shows `inventory-api` deployed across dev, stage, and prod. Each de
 
 | Flag | Effect |
 |------|--------|
-| (default) | Noop targets — apply works, no cluster needed |
+| (default) | Noop targets — apply path can be exercised, no cluster needed |
 | `--confighub-only` | Spaces and units only |
 | `--with-targets` | Real Kubernetes delivery (requires cluster) |
 

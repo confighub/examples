@@ -80,7 +80,7 @@ Run:
 
 What to explain:
 
-- Seven spaces will be created (base → platform → accelerator → OS → recipe → 3 deploy variants)
+- Eight spaces will be created (base → platform → accelerator → OS → recipe → direct deploy → Flux deploy → Argo deploy)
 - Two component chains (gpu-operator, nvidia-device-plugin)
 - Three deployment variants at the leaf: direct, flux, argo
 - Images are stubbed (`nginx:1.27-alpine`, `busybox:1.37`) for structural proof
@@ -97,7 +97,7 @@ GUI feature ask: "Preview Recipe" button that shows planned spaces/units. No iss
 
 ## Stage 3: "Materialize In ConfigHub" (mutates ConfigHub)
 
-Ask: "This will create 7 spaces, multiple units, and both deployment variants. Ready to proceed?"
+Ask: "This will create 8 spaces, multiple units, and three deployment variants. Ready to proceed?"
 
 Run:
 
@@ -130,6 +130,7 @@ Run:
 
 ```bash
 ./verify.sh
+./verify.sh --json | jq
 ```
 
 What to explain:
@@ -137,6 +138,7 @@ What to explain:
 - Verifies all spaces, units, and links exist
 - Verifies the recipe manifest contains correct provenance
 - Verifies all three deployment variants exist
+- `./verify.sh --json` is the machine-readable verification seam
 - Output goes to `.logs/verify.latest.log`
 
 GUI now: Open each deploy space and compare the units.
