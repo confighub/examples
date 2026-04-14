@@ -19,7 +19,7 @@
 #   SPACE=my-space ./setup.sh
 #
 # Environment variables:
-#   CONFIGHUB_URL   ConfigHub server URL  (default: https://app.confighub.com)
+#   CONFIGHUB_URL   ConfigHub server URL  (default: derived from current cub context)
 #   SPACE           Target space slug     (default: campaigns-demo)
 #   CUB             Path to cub binary    (default: cub on PATH)
 
@@ -27,7 +27,6 @@ set -euo pipefail
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
-export CONFIGHUB_URL="${CONFIGHUB_URL:-https://app.confighub.com}"
 SPACE="${SPACE:-campaigns-demo}"
 EXAMPLE_NAME="campaigns-demo"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -53,6 +52,19 @@ if [[ ! -d "$PROMO_DIR" ]]; then
   echo "This script uses YAML files from the promotion-demo-data example." >&2
   exit 1
 fi
+
+# Derive the API endpoint from the current cub context so raw curl calls hit
+# the same server cub itself is talking to. Honour an explicit CONFIGHUB_URL
+# override if the caller set one.
+if [[ -z "${CONFIGHUB_URL:-}" ]]; then
+  CONFIGHUB_URL=$($cub context get --jq '.coordinate.serverURL' 2>/dev/null || true)
+fi
+if [[ -z "${CONFIGHUB_URL:-}" ]]; then
+  echo "ERROR: Could not determine ConfigHub server URL from cub context." >&2
+  echo "       Set CONFIGHUB_URL explicitly or run 'cub context use <name>'." >&2
+  exit 1
+fi
+export CONFIGHUB_URL
 
 API_TOKEN=$($cub auth get-token)
 

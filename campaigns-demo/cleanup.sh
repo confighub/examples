@@ -10,13 +10,15 @@
 #   3. `cub space delete --recursive-force` to nuke units, views, filters,
 #      workers, etc. in one shot.
 #
+# Everything talks to ConfigHub via the `cub` CLI so the script automatically
+# uses whichever server the current cub context points at.
+#
 # Usage:
 #   ./cleanup.sh
-#   CONFIGHUB_URL=http://localhost:9090 SPACE=campaigns-demo ./cleanup.sh
+#   SPACE=campaigns-demo ./cleanup.sh
 
 set -euo pipefail
 
-export CONFIGHUB_URL="${CONFIGHUB_URL:-https://app.confighub.com}"
 SPACE="${SPACE:-campaigns-demo}"
 cub="${CUB:-cub}"
 
@@ -30,56 +32,33 @@ if ! $cub auth get-token &>/dev/null; then
   exit 1
 fi
 
-API_TOKEN=$($cub auth get-token)
-
-api() {
-  local method="$1" path="$2"
-  shift 2
-  curl -sf -X "$method" \
-    -H "Authorization: Bearer ${API_TOKEN}" \
-    -H "Content-Type: application/json" \
-    "$@" "${CONFIGHUB_URL}/api${path}"
-}
-
 # ── Resolve space ─────────────────────────────────────────────────────────────
 
-SPACE_ID=$($cub space get "$SPACE" --jq ".Space.SpaceID" --quiet 2>/dev/null || true)
-if [[ -z "$SPACE_ID" ]]; then
+if ! $cub space get "$SPACE" --quiet &>/dev/null; then
   echo "Space '$SPACE' not found — nothing to clean up."
   exit 0
 fi
 
-echo "Cleaning up space '$SPACE' ($SPACE_ID)..."
+echo "Cleaning up space '$SPACE'..."
 
 # ── Clear cross-space trigger references on our workers ─────────────────────
 #
 # Workers in this space may be referenced by Triggers in OTHER spaces (e.g.
 # leftovers from earlier Campaigns-UI test runs). Those references block the
-# recursive space delete. Walk each worker, find referencing triggers, and
-# delete them so the worker (and therefore the space) can be removed.
+# recursive space delete. For each worker in this space, bulk-delete any
+# trigger that references it, regardless of which space the trigger lives in.
+#
+# Best-effort: failures here must not block the main space delete.
 
-worker_ids=$(api GET "/space/${SPACE_ID}/bridge_worker" 2>/dev/null \
-  | jq -r '.[].BridgeWorker.BridgeWorkerID // empty')
+worker_ids=$($cub worker list --space "$SPACE" \
+  --jq '.[].BridgeWorker.BridgeWorkerID' --quiet 2>/dev/null || true)
 
 if [[ -n "$worker_ids" ]]; then
-  total_orphans=0
   while IFS= read -r wid; do
     [[ -z "$wid" ]] && continue
-    # URL-encode "BridgeWorkerID = '<uuid>'"
-    where_encoded="BridgeWorkerID+%3D+%27${wid}%27"
-    orphans=$(api GET "/trigger?where=${where_encoded}" 2>/dev/null \
-      | jq -r '.[] | "\(.Trigger.SpaceID)|\(.Trigger.TriggerID)"' 2>/dev/null || true)
-    [[ -z "$orphans" ]] && continue
-    while IFS='|' read -r sid tid; do
-      [[ -z "$sid" || -z "$tid" ]] && continue
-      if api DELETE "/space/${sid}/trigger/${tid}" >/dev/null 2>&1; then
-        total_orphans=$((total_orphans + 1))
-      fi
-    done <<< "$orphans"
+    $cub trigger delete --space "*" \
+      --where "BridgeWorkerID = '$wid'" --quiet >/dev/null 2>&1 || true
   done <<< "$worker_ids"
-  if (( total_orphans > 0 )); then
-    echo "  - Cleared $total_orphans cross-space trigger reference(s) on this space's workers."
-  fi
 fi
 
 # ── Recursively delete the space ─────────────────────────────────────────────
