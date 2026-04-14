@@ -61,7 +61,7 @@ ARGOCD_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -re '.token') || {
 echo "Installing worker into cluster..."
 cub worker install "$WORKER_SLUG" \
   --space $CUB_SPACE \
-  -t kubernetes,argocdrenderer \
+  -t kubernetes,argocdrenderer,argocdoci \
   -e "ARGOCD_SERVER=argocd-server.argocd.svc.cluster.local" \
   -e "ARGOCD_AUTH_TOKEN=$ARGOCD_TOKEN" \
   -e "ARGOCD_INSECURE=true" \
