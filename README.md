@@ -2,10 +2,12 @@
 
 This repo contains runnable examples for ConfigHub.
 
-## Start Here
+## Where To Start
 
-- AI assistants: [`AGENTS.md`](./AGENTS.md)
-- AI assistants with more context: [`AI-README-FIRST.md`](./AI-README-FIRST.md)
+- Quickest no-cluster path: [`promotion-demo-data`](./promotion-demo-data/README.md)
+- GitOps import, compare, and experimental paths: [`incubator/README.md`](./incubator/README.md)
+- App mutation and platform flow: [`spring-platform/springboot-platform-app-centric`](./spring-platform/springboot-platform-app-centric/README.md)
+- Worker extensibility: [`custom-workers`](./custom-workers/)
 - Example contract standard: [`EXAMPLE_CONTRACT_STANDARD.md`](./EXAMPLE_CONTRACT_STANDARD.md)
 
 ## Safe First Checks
@@ -33,9 +35,9 @@ If you are not logged in yet, run `cub auth login` before the `cub` commands.
 
 ## Recommended Starting Points
 
-- If you want to explore Campaigns and compliance workflows, start with [`campaigns-demo`](./campaigns-demo/README.md). ([AI guide](./campaigns-demo/AI_START_HERE.md))
-- If you want the quickest no-cluster path, start with [`promotion-demo-data`](./promotion-demo-data/README.md). ([AI guide](./promotion-demo-data/AI_START_HERE.md))
-- If you want the platform/generator model, start with [`spring-platform`](./spring-platform/). ([AI guide](./spring-platform/springboot-platform-app-centric/AI_START_HERE.md))
+- If you want to explore Campaigns and compliance workflows, start with [`campaigns-demo`](./campaigns-demo/README.md).
+- If you want the quickest no-cluster path, start with [`promotion-demo-data`](./promotion-demo-data/README.md).
+- If you want the platform/generator model, start with [`spring-platform`](./spring-platform/).
 - If you want GitOps import, start with [`gitops-import`](./gitops-import/README.md) and the [Official GitOps Import docs](https://docs.confighub.com/get-started/examples/gitops-import/).
 - If you want worker extensibility, start with [`custom-workers`](./custom-workers/).
 - If you want a classic multi-service example, use [`global-app`](./global-app/README.md).

@@ -16,7 +16,7 @@ still be runnable for both human-led and AI-led evaluation.
 
 ## Entry Paths
 
-- For humans: [`../START_HERE.md`](../START_HERE.md)
+- For humans: [`../README.md`](../README.md)
 - For AI assistants: [`AI_START_HERE.md`](./AI_START_HERE.md)
 - For shared AI-safe evaluation flow: [`ai-machine-seams-first.md`](./ai-machine-seams-first.md)
 - Why ConfigHub: [`WHY_CONFIGHUB.md`](./WHY_CONFIGHUB.md)
