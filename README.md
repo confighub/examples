@@ -38,9 +38,9 @@ Note on contract standard: [`EXAMPLE_CONTRACT_STANDARD.md`](./EXAMPLE_CONTRACT_S
 
 ## Companion Material
 
-Some other examples 
+Some other examples
 
-- GitOps import, compare, and experimental paths: [`incubator/README.md`](./incubator/README.md)
+- Incubator and experimental paths: [`incubator/README.md`](./incubator/README.md)
 - App mutation and platform flow: [`spring-platform/springboot-platform-app-centric`](./spring-platform/springboot-platform-app-centric/README.md)
 
 `cub-scout` remains useful as companion material and as a source of comparison fixtures:
