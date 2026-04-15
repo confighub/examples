@@ -134,7 +134,7 @@ Use these shared meanings:
 - **preview** = read-only orientation only
 - **fast preview** = the example's read-only path (`--explain`, `--explain-json`, read-only demo/report scripts)
 - **operational evaluation** = run the smallest real setup/proof path that shows the example actually works
-- **guided walkthrough** = pause-heavy presenter mode following the stage structure in `AI_START_HERE.md`
+- **guided walkthrough** = pause-heavy presenter mode following the stage structure in the selected example's `AI_START_HERE.md`
 
 If the user says "evaluate it quickly" or "use the fast path" and does **not** explicitly say "read-only":
 
@@ -142,7 +142,7 @@ If the user says "evaluate it quickly" or "use the fast path" and does **not** e
 2. then continue into the smallest real operational proof if the example has:
    - `./setup.sh`
    - `./verify.sh`
-   - a representative proof action documented in `contracts.md` or `AI_START_HERE.md`
+   - a representative proof action documented in `contracts.md` or the example's `AI_START_HERE.md`
 3. stop before cleanup unless the user asks for cleanup
 
 Only stay fully read-only when the user explicitly asks for:
@@ -166,7 +166,7 @@ Do not parse human table output if JSON is available.
 
 ## 9. Most useful files
 
-- human entry path: [START_HERE.md](./START_HERE.md)
+- human entry path: [README.md](./README.md)
 - AI context: [AI-README-FIRST.md](./AI-README-FIRST.md)
 - incubator AI path: [incubator/AI_START_HERE.md](./incubator/AI_START_HERE.md)
 - layered examples: [incubator/global-app-layer/README.md](./incubator/global-app-layer/README.md)

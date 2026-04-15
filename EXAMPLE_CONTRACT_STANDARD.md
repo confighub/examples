@@ -11,7 +11,9 @@ Runnable examples need two entry points:
 | Human-readable | Humans, AI assistants | Understand the example before running |
 | Machine-readable | Scripts, CI, AI assistants | Inspect the plan programmatically |
 
-The human-readable entry point is `README.md` + `AI_START_HERE.md`.
+The human-readable entry point is `README.md`.
+
+The paced AI walkthrough entry point is `AI_START_HERE.md`.
 
 The machine-readable entry point is `setup.sh --explain-json` + `contracts.md`.
 
