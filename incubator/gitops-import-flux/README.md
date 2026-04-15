@@ -87,6 +87,7 @@ export CUB_SPACE=<space>
 ./verify.sh
 cub target list --space "$CUB_SPACE" --json | jq
 cub gitops discover --space "$CUB_SPACE" <kubernetes-target-slug> --json | jq
+cub target update --space "$CUB_SPACE" --patch --option IsAuthoritative=true <flux-renderer-target-slug>
 cub gitops import --space "$CUB_SPACE" <kubernetes-target-slug> <flux-renderer-target-slug> --wait
 ```
 
@@ -134,8 +135,14 @@ Use those for the import path:
 ```bash
 cub target list --space "$CUB_SPACE" --json | jq
 cub gitops discover --space "$CUB_SPACE" <kubernetes-target-slug> --json | jq
+cub target update --space "$CUB_SPACE" --patch --option IsAuthoritative=true <flux-renderer-target-slug>
 cub gitops import --space "$CUB_SPACE" <kubernetes-target-slug> <flux-renderer-target-slug> --wait
 ```
+
+This authoritative step matters now. If the source Flux `Kustomization` or
+`HelmRelease` is still actively syncing and the renderer target is unset or
+non-authoritative, import should now fail visibly. Treat that as a correct
+protection, not a flaky warning.
 
 The worker installer preloads the Flux controller images and the ConfigHub Flux worker image into the kind cluster before waiting on rollout. That avoids long or flaky first-time image pulls from becoming the main story of the example.
 

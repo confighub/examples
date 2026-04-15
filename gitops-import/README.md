@@ -35,9 +35,20 @@ After setup, the worker registers two targets:
 # Discover ArgoCD Applications
 cub gitops discover --space <space> worker-kubernetes-yaml-cluster
 
-# Import into ConfigHub
-cub gitops import --space <space> worker-kubernetes-yaml-cluster worker-argocdrenderer-kubernetes-yaml-cluster
+# Preferred current import path
+cub gitops import --space <space> worker-kubernetes-yaml-cluster
+
+# If your build still requires an explicit renderer target, make the renderer
+# authoritative first:
+cub target update --space <space> --patch --option IsAuthoritative=true \
+  worker-argocdrenderer-kubernetes-yaml-cluster
+cub gitops import --space <space> worker-kubernetes-yaml-cluster \
+  worker-argocdrenderer-kubernetes-yaml-cluster
 ```
+
+If the source Argo `Application` is actively syncing and the renderer target is
+unset or non-authoritative, import should now fail visibly. That failure is
+correct, not flaky.
 
 ## Applying ConfigHub units to this cluster
 

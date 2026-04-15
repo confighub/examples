@@ -98,6 +98,15 @@ This file documents the safest stable inspection paths for `gitops-import-flux`.
   - discover ran against the Kubernetes target
   - Flux deployers were found and serialized into ConfigHub discover state
 
+### `cub target update --space <space> --patch --option IsAuthoritative=true <flux-renderer-target-slug>`
+
+- mutates: yes, ConfigHub only
+- output shape: text
+- proves:
+  - the Flux renderer target is configured to manage source objects
+    authoritatively
+  - the import path will not rely on the old non-authoritative warning behavior
+
 ### `cub gitops import --space <space> <kubernetes-target-slug> <flux-renderer-target-slug> --wait`
 
 - mutates: yes, ConfigHub only
@@ -106,6 +115,7 @@ This file documents the safest stable inspection paths for `gitops-import-flux`.
   - renderer and wet units were created
   - the renderer stage completed or failed visibly
   - the healthy `podinfo` path can render successfully even when contrast paths fail for real source reasons
+  - a surfaced source-sync conflict is treated as a real block, not as ignorable
 
 ### `cub unit list --space <space> --json`
 

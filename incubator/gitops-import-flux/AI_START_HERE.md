@@ -113,17 +113,20 @@ GUI feature ask: Pre-import discovery view in ConfigHub. No issue filed yet.
 
 **PAUSE.** Wait for the human.
 
-## Stage 4: "Confirm ConfigHub Auth" (read-only gate)
+## Stage 4: "Confirm ConfigHub Access" (read-only gate)
 
 Run:
 
 ```bash
 cub info
+cub space list --names
 ```
 
 What to explain:
 
-- This is a read-only auth gate before any ConfigHub mutation
+- `cub info` proves server details, not authenticated access by itself
+- `cub space list --names` is the read-only authenticated access gate before any
+  ConfigHub mutation
 - If auth is expired, stop here
 - The next stage should not start until auth is valid
 
@@ -176,6 +179,7 @@ Ask: "This will import discovered resources into ConfigHub. Ready to proceed?"
 Run:
 
 ```bash
+cub target update --space "$CUB_SPACE" --patch --option IsAuthoritative=true <flux-renderer-target-slug>
 cub gitops import --space "$CUB_SPACE" <kubernetes-target-slug> <flux-renderer-target-slug> --wait
 cub target list --space "$CUB_SPACE" --json | jq
 cub unit list --space "$CUB_SPACE" --json | jq
@@ -194,6 +198,9 @@ What to explain:
 
 - ConfigHub proves discover and renderer facts
 - `cub-scout` proves live ownership and GitOps context
+- The authoritative renderer patch is deliberate
+- If the source Flux object were still actively syncing and the renderer target
+  stayed non-authoritative, import should now fail visibly
 
 GUI now: Open ConfigHub space and review targets, units, and actions.
 

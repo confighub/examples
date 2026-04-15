@@ -90,6 +90,8 @@ export CUB_SPACE=<space>
 ./verify.sh
 cub target list --space "$CUB_SPACE" --json | jq
 cub gitops discover --space "$CUB_SPACE" worker-kubernetes-yaml-cluster --json | jq
+cub target update --space "$CUB_SPACE" --patch --option IsAuthoritative=true \
+  worker-argocdrenderer-kubernetes-yaml-cluster
 cub gitops import --space "$CUB_SPACE" worker-kubernetes-yaml-cluster worker-argocdrenderer-kubernetes-yaml-cluster --wait
 ```
 
@@ -139,8 +141,15 @@ Use those for the import path:
 ```bash
 cub target list --space "$CUB_SPACE" --json | jq
 cub gitops discover --space "$CUB_SPACE" worker-kubernetes-yaml-cluster --json | jq
+cub target update --space "$CUB_SPACE" --patch --option IsAuthoritative=true \
+  worker-argocdrenderer-kubernetes-yaml-cluster
 cub gitops import --space "$CUB_SPACE" worker-kubernetes-yaml-cluster worker-argocdrenderer-kubernetes-yaml-cluster --wait
 ```
+
+This authoritative step matters now. If the source Argo `Application` is still
+actively syncing and the renderer target is unset or non-authoritative, import
+should now fail visibly. Treat that as a correct protection, not a flaky
+warning.
 
 The worker runs locally and records its pid and log in `var/worker.pid` and `var/worker.log`. The helper also keeps a local ArgoCD API port-forward for the renderer worker in `var/argocd-port-forward.pid` and `var/argocd-port-forward.log`.
 
@@ -233,6 +242,11 @@ It can prove that:
 - the worker processed the `Application` correctly
 - the renderer target accepted it
 - ArgoCD refreshed or reconciled its view of that application
+
+For current renderer behavior, that statement assumes the renderer target is
+authoritative or the source `Application` is no longer actively syncing. A
+non-authoritative renderer pointed at an actively syncing source should now
+fail instead of only warning.
 
 It does not by itself prove that the specific ConfigHub action created new workloads. If the workloads already existed and ArgoCD was already managing them, the strongest honest conclusion is usually that ConfigHub successfully triggered or refreshed Argo-side reconciliation, not that ConfigHub created the workloads through Argo.
 

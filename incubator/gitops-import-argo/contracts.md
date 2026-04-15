@@ -73,6 +73,15 @@ This file documents the safest stable inspection paths for `gitops-import-argo`.
   - discover ran against the Kubernetes target
   - GitOps resources were found and serialized into ConfigHub discover state
 
+### `cub target update --space <space> --patch --option IsAuthoritative=true worker-argocdrenderer-kubernetes-yaml-cluster`
+
+- mutates: yes, ConfigHub only
+- output shape: text
+- proves:
+  - the renderer target is configured to manage Argo `Application` resources
+    authoritatively
+  - the import path will not rely on the old non-authoritative warning behavior
+
 ### `cub gitops import --space <space> worker-kubernetes-yaml-cluster worker-argocdrenderer-kubernetes-yaml-cluster --wait`
 
 - mutates: yes, ConfigHub only
@@ -80,6 +89,7 @@ This file documents the safest stable inspection paths for `gitops-import-argo`.
 - proves:
   - renderer and wet units were created
   - the renderer stage completed or failed visibly
+  - a surfaced autosync conflict is treated as a real block, not as ignorable
 
 ### `cub unit list --space <space> --json`
 

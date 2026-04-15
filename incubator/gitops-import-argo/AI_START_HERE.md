@@ -148,6 +148,7 @@ Ask: "This will import discovered resources into ConfigHub. Ready to proceed?"
 Run:
 
 ```bash
+cub target update --space "$CUB_SPACE" --patch --option IsAuthoritative=true worker-argocdrenderer-kubernetes-yaml-cluster
 cub gitops import --space "$CUB_SPACE" worker-kubernetes-yaml-cluster worker-argocdrenderer-kubernetes-yaml-cluster --wait
 cub unit list --space "$CUB_SPACE" --json | jq
 cub unit-action list --space "$CUB_SPACE" <unit-slug>
@@ -165,6 +166,9 @@ What to explain:
 - ConfigHub proves import and renderer facts
 - `cub-scout` proves live ownership and GitOps context
 - Contrast path is intentionally mixed — healthy and unhealthy apps reported separately
+- The authoritative renderer patch is deliberate
+- If the source `Application` were still actively syncing and the renderer
+  target stayed non-authoritative, import should now fail visibly
 
 GUI now: Open ConfigHub space and review units, links, and recent actions.
 
