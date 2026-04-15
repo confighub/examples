@@ -166,8 +166,9 @@ Do not parse human table output if JSON is available.
 
 ## 9. Most useful files
 
-- human entry path: [START_HERE.md](./START_HERE.md)
+- human entry path: [README.md](./README.md)
 - AI context: [AI-README-FIRST.md](./AI-README-FIRST.md)
+- guided walkthrough path: the selected example's `AI_START_HERE.md`
 - incubator AI path: [incubator/AI_START_HERE.md](./incubator/AI_START_HERE.md)
 - layered examples: [incubator/global-app-layer/README.md](./incubator/global-app-layer/README.md)
 - layered run discovery: [incubator/global-app-layer/find-runs.sh](./incubator/global-app-layer/find-runs.sh)
