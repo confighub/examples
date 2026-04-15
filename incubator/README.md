@@ -1,6 +1,8 @@
 # Examples Incubator
 
-Library of experimental ConfigHub examples and sample apps.  No promises.  Should work for both human-led and AI-led cases.
+Library of experimental ConfigHub examples and sample apps. These are earlier,
+faster-moving example paths than the main repo front door, but they should
+still be runnable for both human-led and AI-led evaluation.
 
 ## Quick Start
 
