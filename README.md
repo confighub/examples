@@ -19,7 +19,7 @@ If you are not logged in yet, run `cub auth login` before the `cub` commands.
 
 - [`promotion-demo-data`](./promotion-demo-data/README.md): quickest no-cluster demo data for learning ConfigHub's App-Deployment-Target model and promotion flow.
 - [`gitops-import`](./gitops-import/README.md): canonical Argo CD GitOps import example and docs companion.
-- [`campaigns-demo`](./campaigns-demo/README.md): 10 compliance campaigns backed by Kyverno CEL policies, with sample Kubernetes units to evaluate.
+- [`initiatives-demo`](./initiatives-demo/README.md): 5 compliance initiatives backed by Kyverno CEL policies, with sample Kubernetes units to evaluate.
 - [`custom-workers`](./custom-workers/): worker extension examples, including bridge, function, and policy workers.
 - [`global-app`](./global-app/README.md): classic multi-service app example.
 - [`helm-platform-components`](./helm-platform-components/README.md): platform component example for Helm-managed infrastructure.
@@ -27,7 +27,7 @@ If you are not logged in yet, run `cub auth login` before the `cub` commands.
 
 ## Recommended Starting Points
 
-- If you want to explore Campaigns and compliance workflows, start with [`campaigns-demo`](./campaigns-demo/README.md).
+- If you want to explore Initiatives and compliance workflows, start with [`initiatives-demo`](./initiatives-demo/README.md).
 - If you want the quickest no-cluster path, start with [`promotion-demo-data`](./promotion-demo-data/README.md).
 - If you want the platform/generator model, start with [`spring-platform`](./spring-platform/).
 - If you want GitOps import, start with [`gitops-import`](./gitops-import/README.md) and the [Official GitOps Import docs](https://docs.confighub.com/get-started/examples/gitops-import/).

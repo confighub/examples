@@ -104,7 +104,7 @@ Pick the family that matches the user's goal:
 
 - Stable no-cluster intro:
   [`promotion-demo-data`](./promotion-demo-data/README.md) and
-  [`campaigns-demo`](./campaigns-demo/README.md)
+  [`initiatives-demo`](./initiatives-demo/README.md)
 - GitOps import or brownfield discovery:
   [`gitops-import`](./gitops-import/README.md),
   [`incubator/import-from-live`](./incubator/import-from-live/README.md),
