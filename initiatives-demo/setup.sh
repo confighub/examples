@@ -323,6 +323,7 @@ create_initiative() {
   local policy_func="$9"
   local check_summary="${10}"
   local worker_id="${11:-}"
+  local enforce="${12:-false}"  # true → Warn: false (hard gate); false → Warn: true (advisory)
 
   local slug
   slug=$(make_slug "$name")
@@ -382,8 +383,10 @@ create_initiative() {
 
   # 3. Create Trigger with inline Kyverno policy (if worker available).
   #    Disabled: false  → runs on every Mutation event against matching units.
-  #    Warn: true       → failures populate ApplyWarnings (non-blocking) instead
-  #                        of ApplyGates, so they don't prevent Applies.
+  #    Warn: true       → failures populate ApplyWarnings (non-blocking/advisory).
+  #    Warn: false      → failures populate ApplyGates (enforced, blocks Applies).
+  local warn_value="true"
+  [[ "$enforce" == "true" ]] && warn_value="false"
   local trigger_id=""
   if [[ -n "$worker_id" ]]; then
     local policy_yaml
@@ -393,6 +396,7 @@ create_initiative() {
         --arg slug "${slug}-check" \
         --arg workerId "$worker_id" \
         --arg policy "$policy_yaml" \
+        --argjson warn "$warn_value" \
         '{
           Slug: $slug,
           Event: "Mutation",
@@ -401,7 +405,7 @@ create_initiative() {
           BridgeWorkerID: $workerId,
           Arguments: [{ParameterName: "policy", Value: $policy}],
           Disabled: false,
-          Warn: true
+          Warn: $warn
         }'
       )" 2>/dev/null | jq -r '.TriggerID // empty' 2>/dev/null) || true
   fi
@@ -454,11 +458,11 @@ echo ""
 # Units are labeled with App and AppOwner to match the promotion demo model.
 # Initiative filters use these labels to select units for each initiative.
 #
-#   Initiative 1 (Probes)          → AppOwner = 'Support'  (aichat + portal)
-#   Initiative 2 (Registry)        → AppOwner = 'Product'  (eshop + docs)
-#   Initiative 3 (Run-As-NonRoot)  → App = 'aichat'
-#   Initiative 4 (Resource Limits) → App = 'website'
-#   Initiative 5 (Host Ports)      → App = 'docs'
+#   Initiative 1 (Probes)            → AppOwner = 'Support'  (aichat + portal)
+#   Initiative 2 (Registry)          → AppOwner = 'Product'  (eshop + docs)
+#   Initiative 3 (Run-As-NonRoot)    → App = 'aichat'
+#   Initiative 4 (Resource Limits)   → App = 'website'
+#   Initiative 5 (Host Ports)        → App = 'docs'
 
 echo "--- Creating units from promotion demo data ---"
 echo ""
@@ -554,8 +558,9 @@ create_initiative \
   "{\"passing\":2,\"failing\":1,\"total\":3,\"checkedAt\":\"$(days_ago_iso 1)\"}" \
   "$WORKER_ID"
 
-# 5. Disallow Host Ports — completed (2 passing / 0 failing)
+# 5. Disallow Host Ports — completed + enforced (2 passing / 0 failing)
 #    Pass: docs-server, docs-search
+#    Enforce: true → trigger runs as a hard gate (Warn: false / ApplyGates)
 create_initiative \
   "Disallow Host Ports" \
   "Containers must not bind to host ports. Completed — all workloads now route through ClusterIP Services and Ingress." \
@@ -564,7 +569,8 @@ create_initiative \
   "Labels.App = 'docs'" \
   policy_disallow_host_ports \
   "{\"passing\":2,\"failing\":0,\"total\":2,\"checkedAt\":\"$(days_ago_iso 3)\"}" \
-  "$WORKER_ID"
+  "$WORKER_ID" \
+  "true"
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 
