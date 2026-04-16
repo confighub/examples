@@ -1,22 +1,28 @@
 # AI README FIRST
 
-If you are an AI assistant, read this file before exploring the rest of the repo.
+This is the canonical repo-level guide for AI assistants working in
+`confighub/examples`.
 
-This repo is meant to be understandable and usable by both humans and AI assistants, but you will avoid a lot of confusion if you start here.
+If you want the shortest strict protocol first, read [AGENTS.md](./AGENTS.md)
+before this file.
 
-If you want the shortest strict protocol first, read [AGENTS.md](./AGENTS.md) before this file.
+## 1. What This File Is For
 
-## 1. What This Repo Is
+Use this file for:
 
-This is the public `confighub/examples` repo.
+- repo-level AI operating rules
+- CLI and mutation safety guidance
+- choosing the right example family
 
-It contains:
+Do not treat this file as the walkthrough script. When the user wants
+pause-heavy demo mode, use the selected example's `AI_START_HERE.md`, or
+[`incubator/AI_START_HERE.md`](./incubator/AI_START_HERE.md) for
+incubator-wide walkthrough conventions.
 
-- stable examples such as `promotion-demo-data`, `global-app`, `helm-platform-components`, and `vm-fleet`
-- incubator work in [`incubator/`](./incubator/README.md), especially the layered-recipe package in [`incubator/global-app-layer/`](./incubator/global-app-layer/README.md)
-- verifier scripts in `./scripts/`
+## 2. Resolve The Repo Root First
 
-Do not hardcode the checkout path. This repo may be checked out as `examples`, `confighub-examples`, or another folder name.
+Do not hardcode the checkout path. This repo may be checked out as `examples`,
+`confighub-examples`, or another folder name.
 
 Resolve the repo root first:
 
@@ -24,11 +30,13 @@ Resolve the repo root first:
 git rev-parse --show-toplevel
 ```
 
-## 2. How To Access Live ConfigHub
+## 3. Access Live ConfigHub Through `cub`
 
 If you need live ConfigHub state, use the `cub` CLI.
 
-Do **not** assume that fetching `https://hub.confighub.com` directly will give you meaningful data. It is a browser application. For machine use, `cub` is the right interface.
+Do not assume that fetching `https://hub.confighub.com` directly will give you
+meaningful data. It is a browser application. For machine use, `cub` is the
+right interface.
 
 Use:
 
@@ -39,15 +47,17 @@ cub space list --json
 cub target list --space "*" --json
 ```
 
-## 3. Important CLI Gotchas
+## 4. Important CLI Gotchas
 
 Avoid these common mistakes:
 
 - use `cub version`, not `cub --version`
 - use `cub context list`, not `cub auth status`
 - use `--json` and `--jq` when you want machine-readable output
-- use `--where "Labels.Key = 'value'"` for label filtering on `cub space list`, not `--label`
-- use `--dry-run` before `cub function do` or `cub unit apply` if you want a non-mutating preview
+- use `--where "Labels.Key = 'value'"` for label filtering on list commands,
+  not guessed `--label` filters
+- use `--dry-run` before `cub function do` or `cub unit apply` if you want a
+  non-mutating preview
 
 Good discovery commands:
 
@@ -58,7 +68,7 @@ cub info
 cub context list --json
 ```
 
-## 4. Default Operating Mode
+## 5. Default Operating Mode
 
 Start in read-only mode.
 
@@ -69,31 +79,7 @@ Recommended order:
 3. inspect live ConfigHub state in JSON
 4. only then run mutating example flows if the human wants that
 
-## 4a. Shared meanings for "evaluate quickly"
-
-Use these meanings consistently across examples:
-
-- **preview** = read-only orientation
-- **fast preview** = read-only example-specific path such as `./setup.sh --explain`, `./setup.sh --explain-json`, and any non-mutating demo/report script
-- **fast operational evaluation** = preview plus the smallest real setup/proof sequence that demonstrates the example actually works
-
-If a user says "help me evaluate it quickly" and does not explicitly ask for read-only mode, the default should be:
-
-1. run the fast preview
-2. run the smallest real operational proof path for that example
-3. stop before cleanup unless asked
-
-For a runnable example, that usually means:
-
-- `./setup.sh`
-- one isolation/verification command
-- `./verify.sh`
-- one representative proof action
-- stop before cleanup
-
-Do not conclude that an example is "ready" based only on preview output if the example provides a real setup path and a representative proof action.
-
-## 5. Safe First Commands
+## 6. Safe First Commands
 
 These commands do not mutate ConfigHub or any cluster:
 
@@ -112,36 +98,53 @@ If you already know a specific unit:
 cub unit get --space <space> --json <unit>
 ```
 
-What these commands do **not** mutate:
+## 7. Choose The Right Example Family
 
-- spaces
-- units
-- workers
-- targets
-- clusters
-- Git history
+Pick the family that matches the user's goal:
 
-## 6. Mutating Commands: Use Care
+- Stable no-cluster intro:
+  [`promotion-demo-data`](./promotion-demo-data/README.md) and
+  [`campaigns-demo`](./campaigns-demo/README.md)
+- GitOps import or brownfield discovery:
+  [`gitops-import`](./gitops-import/README.md),
+  [`incubator/import-from-live`](./incubator/import-from-live/README.md),
+  [`incubator/gitops-import-argo`](./incubator/gitops-import-argo/README.md),
+  [`incubator/gitops-import-flux`](./incubator/gitops-import-flux/README.md)
+- App mutation and platform flow:
+  [`springboot-platform-app-centric`](./spring-platform/springboot-platform-app-centric/README.md)
+- Worker extensibility: [`custom-workers`](./custom-workers/)
+- Layered and advanced model:
+  [`incubator/global-app-layer`](./incubator/global-app-layer/README.md)
+- Full experimental catalog: [`incubator/README.md`](./incubator/README.md)
 
-Examples often use:
+If the user wants a human-oriented overview of the repo,
+[README.md](./README.md) is the public front door, but it is not the primary AI
+entry point.
 
-- `./setup.sh`
-- `./set-target.sh`
-- `cub unit apply`
-- `cub function do`
+## 8. Shared Meanings For “Evaluate Quickly”
 
-Those **do** create or mutate ConfigHub objects, and in some cases can affect a live cluster.
+Use these meanings consistently across examples:
 
-Before you run them, say clearly:
+- **preview** = read-only orientation
+- **fast preview** = read-only example-specific path such as
+  `./setup.sh --explain`, `./setup.sh --explain-json`, or other non-mutating
+  preview/report commands
+- **fast operational evaluation** = preview plus the smallest real setup and
+  proof sequence that demonstrates the example actually works
 
-- what space(s) will be created or changed
-- what unit(s) will be created or changed
-- whether any target or cluster will be touched
-- what read-only or dry-run command could be used first
+If a user says "help me evaluate it quickly" and does not explicitly ask for
+read-only mode, the default should be:
 
-## 7. Machine-Readable Contracts
+1. run the fast preview
+2. run the smallest real operational proof path for that example
+3. stop before cleanup unless asked
 
-Use these as your default contracts:
+Do not conclude that an example is ready based only on preview output if the
+example provides a real setup path and proof path.
+
+## 9. Machine-Readable Contracts
+
+Treat these as stable repo-wide contracts:
 
 | Command | Output contract | Mutates anything? |
 |---|---|---|
@@ -153,93 +156,39 @@ Use these as your default contracts:
 | `cub function do --dry-run --json ...` | JSON invocation response | no config write |
 | `cub unit apply --dry-run --json ...` | JSON apply preview | no live apply |
 
-## 8. Best First Reading Order
+Example-specific seams vary. Do not assume `./verify.sh --json`,
+`./setup.sh --explain-json`, `./find-runs.sh --json`, or similar flags exist
+unless the example README, AI guide, script help, or source confirms them.
 
-If the user is asking about ConfigHub generally:
+## 10. Mutating Commands: Use Care
 
-1. [START_HERE.md](./START_HERE.md)
-2. [`promotion-demo-data/README.md`](./promotion-demo-data/README.md)
-3. [`incubator/global-app-layer/00-config-hub-hello-world.md`](./incubator/global-app-layer/00-config-hub-hello-world.md)
+Examples often use:
 
-If the user is asking about NVIDIA AICR, recipes, or layered variants:
+- `./setup.sh`
+- `./set-target.sh`
+- `cub unit apply`
+- `cub function do`
 
-1. [`incubator/global-app-layer/README.md`](./incubator/global-app-layer/README.md)
-2. [`incubator/global-app-layer/confighub-aicr-value-add.md`](./incubator/global-app-layer/confighub-aicr-value-add.md)
-3. [`incubator/global-app-layer/how-it-works.md`](./incubator/global-app-layer/how-it-works.md)
-4. one worked example under `incubator/global-app-layer/`
-5. run `./setup.sh --explain-json | jq` inside that example before reading shell code or mutating anything
-6. use `./find-runs.sh --json` in `incubator/global-app-layer/` to discover active live runs
+Those do create or mutate ConfigHub objects, and in some cases can affect a
+live cluster.
 
-If the user is asking about incubator-only work:
+Before you run them, say clearly:
 
-1. [`incubator/README.md`](./incubator/README.md)
-2. [`incubator/AI_START_HERE.md`](./incubator/AI_START_HERE.md)
-3. [`incubator/ai-machine-seams-first.md`](./incubator/ai-machine-seams-first.md)
+- what space(s) will be created or changed
+- what unit(s) will be created or changed
+- whether any target or cluster will be touched
+- what read-only or dry-run command could be used first
 
-## 9. Repo Layout You Will Actually Need
+## 11. Walkthrough Mode
 
-Most assistants only need these locations:
+Use the selected example's `AI_START_HERE.md` when the user wants a guided demo
+with pauses after each stage.
 
-- stable repo landing: [README.md](./README.md)
-- human entry path: [START_HERE.md](./START_HERE.md)
-- AI entry path: [AI_START_HERE.md](./AI_START_HERE.md)
-- incubator landing: [`incubator/README.md`](./incubator/README.md)
-- incubator machine seams: [`incubator/ai-machine-seams-first.md`](./incubator/ai-machine-seams-first.md)
-- incubator eval prompts: [`incubator/ai-cold-eval-prompt-pack.md`](./incubator/ai-cold-eval-prompt-pack.md)
-- layered recipes package: [`incubator/global-app-layer/README.md`](./incubator/global-app-layer/README.md)
-- package mechanics: [`incubator/global-app-layer/how-it-works.md`](./incubator/global-app-layer/how-it-works.md)
-- package value-add story: [`incubator/global-app-layer/confighub-aicr-value-add.md`](./incubator/global-app-layer/confighub-aicr-value-add.md)
+Use [`incubator/AI_START_HERE.md`](./incubator/AI_START_HERE.md) when the work
+is specifically in the incubator and you need incubator-specific walkthrough
+conventions.
 
-## 10. Placeholder Conventions
-
-When you see placeholders like:
-
-- `<space>`
-- `<unit>`
-- `<space/target>`
-- `<target-ref>`
-
-they mean:
-
-- these commands are real
-- but the specific connected object name depends on the user’s environment
-
-To discover the actual value, prefer:
-
-```bash
-cub space list --json
-cub target list --space "*" --json
-```
-
-## 11. What To Do If A User Says “Can You Access ConfigHub?”
-
-Do not answer by trying to fetch the web app.
-
-Instead:
-
-1. say that live ConfigHub access is through `cub`
-2. run a read-only CLI check such as:
-
-```bash
-cub context list --json
-cub space list --json
-```
-
-3. report what you found
-4. only then ask whether they want you to inspect or mutate a specific example
-
-## 12. Skills / Special Instructions
-
-There are no repo-local “skills” files in this repo that you need to load first.
-
-Your main tools here are:
-
-- the example READMEs
-- the shell scripts in each example
-- the `cub` CLI
-- JSON output from `cub`
-
-## 13. Next Step
+## 12. Next Step
 
 If you are starting fresh, the best single next step is:
 
@@ -248,16 +197,7 @@ cd <your-examples-checkout>
 ./scripts/verify.sh
 ```
 
-Then choose one path:
-
-- human-friendly overview: [START_HERE.md](./START_HERE.md)
-- incubator AI path: [incubator/AI_START_HERE.md](./incubator/AI_START_HERE.md)
-- layered recipes and AICR mapping: [incubator/global-app-layer/README.md](./incubator/global-app-layer/README.md)
-
-If you land in a layered example and want to know what it does, use:
-
-```bash
-cd incubator/global-app-layer/realistic-app
+Then choose the example family that matches the user's goal.
 ./setup.sh --explain
 ./setup.sh --explain-json | jq
 ```
