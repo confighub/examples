@@ -117,3 +117,24 @@ cub view list --space initiatives-demo --where "Labels.initiative-priority = 'HI
 # Filter by status
 cub view list --space initiatives-demo --where "Labels.initiative-status = 'in_progress'"
 ```
+
+## Using with AI (the AI ↔ GUI bridge)
+
+This demo works with the `confighub-ai-demo` repo's skills and slash commands. The AI and the GUI operate on the same initiative Views — an initiative created by the AI appears on the GUI kanban, and an initiative created in the GUI can be picked up by the AI.
+
+**Full guide:** [`AI_GUI_BRIDGE_GUIDE.md`](./AI_GUI_BRIDGE_GUIDE.md) — Direction 1 (AI → GUI) and Direction 2 (GUI → AI) explained step by step with example commands and output.
+
+**Quick start:**
+
+```bash
+# 1. Set up the demo
+./setup.sh
+
+# 2. Open Claude in the confighub-ai-demo repo
+cd ../confighub-ai-demo && claude
+
+# 3. Try it
+"Show me the initiatives in the initiatives-demo space"
+"Run the image registry restriction initiative"
+"Create a new initiative to pin all :latest image tags"
+```
