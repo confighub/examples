@@ -49,7 +49,7 @@ cub function do --space inventory-api-prod --unit inventory-api \
   set-env inventory-api FEATURE_INVENTORY_RESERVATIONMODE=optimistic
 
 cub mutation list --space inventory-api-prod --json inventory-api | \
-  jq '.[] | {mutationNum: .Mutation.MutationNum, source: .Mutation.Source, description: .Revision.Description, createdAt: .Mutation.CreatedAt, author: .Author.Email}'
+  jq '.[] | {mutationNum: .Mutation.MutationNum, source: .Revision.Source, description: .Revision.Description, createdAt: .Mutation.CreatedAt, author: .Author.Email}'
 
 cub unit apply --space inventory-api-prod inventory-api
 ```
@@ -182,7 +182,7 @@ cub function do --space inventory-api-prod --unit inventory-api \
   set-env inventory-api FEATURE_INVENTORY_RESERVATIONMODE=optimistic
 
 cub mutation list --space inventory-api-prod --json inventory-api | \
-  jq '.[] | {mutationNum: .Mutation.MutationNum, source: .Mutation.Source, description: .Revision.Description, createdAt: .Mutation.CreatedAt, author: .Author.Email}'
+  jq '.[] | {mutationNum: .Mutation.MutationNum, source: .Revision.Source, description: .Revision.Description, createdAt: .Mutation.CreatedAt, author: .Author.Email}'
 ```
 
 You'll see:

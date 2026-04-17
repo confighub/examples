@@ -111,7 +111,7 @@ Stable command outputs for automation and testing.
 - Output: JSON array
 - Stable fields:
   - `.[].Mutation.MutationNum`
-  - `.[].Mutation.Source`
+  - `.[].Revision.Source`
   - `.[].Revision.Description`
   - `.[].Revision.CreatedAt`
 - Optional or environment-dependent fields:
