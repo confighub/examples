@@ -36,10 +36,8 @@ Operating rules:
 - Use cub-scout with the exact kubeconfig/context used for kubectl.
 - One-shot the run if possible, but do not break approval scope. Stop for Y/N
   before ConfigHub writes, live cluster writes, or any CRD apply-mode bypass.
-- Do not mutate other public examples. Only create or edit files under this
-  case directory if fixture authoring is necessary; stop before live mutation
-  and report the diff.
-- This case ships deterministic fixtures under
+- Do not mutate other public examples. Only create or edit files under this case directory if fixture authoring is necessary; stop before live mutation and report the diff.
+- The repo already ships deterministic Case 02 fixtures under
   incubator/mini-kubara/case-02-large-crds/fixtures. Do not regenerate or
   overwrite them mid-run. If a fixture appears missing, stop and report the
   blocker; do not invent a replacement.
@@ -71,6 +69,11 @@ CRD preflight:
 - Identify any CRD likely to exceed the Kubernetes 262144 byte annotation
   limit if client-side last-applied-configuration is stamped (the helper
   reports this too).
+- Confirm the hardened Argo path is present before Gate A:
+  Application `ServerSideApply=true`, Application
+  `ClientSideApplyMigration=false`, and per-resource
+  `argocd.argoproj.io/sync-options: ServerSideApply=true` on the oversized
+  CRD. If any are missing, stop and classify the fixture as not hardened.
 - State whether the intended delivery path is client-side apply, server-side
   apply, an Argo/ConfigHub sync option with ServerSideApply=true, or a
   separately approved dev setup live-write.
@@ -105,6 +108,9 @@ Ask Y/N before any mutation. The approval must name the selected apply mode.
 If approved:
 - perform only the selected CRD/provider delivery path (server-side apply
   through the ApplicationSet unit is the default safe path);
+- after the ApplicationSet creates the Application, remember that this fixture
+  deliberately omits `syncPolicy.automated`; ask before triggering the
+  one-shot Argo sync that actually applies the CRDs;
 - prove both CRDs exist;
 - prove no annotation-size rejection occurred;
 - prove ConfigHub action/event status if ConfigHub was used;

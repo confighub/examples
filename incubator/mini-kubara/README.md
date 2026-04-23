@@ -69,6 +69,15 @@ incubator/mini-kubara/case-02-large-crds/preflight.sh
 The helper does not create clusters, install Argo CD, or apply CRDs. Gate A
 still requires explicit operator approval.
 
+The 2026-04-23 Case 02 live pass proved the preflight mattered: the oversized
+CRD failed with the exact annotation-size error when the fixture relied only on
+Application-level `ServerSideApply=true`. The hardened fixture now keeps that
+risk visible while adding the Argo hardening that a fresh rerun should verify:
+Application-level `ServerSideApply=true`, Application-level
+`ClientSideApplyMigration=false`, and a per-resource
+`argocd.argoproj.io/sync-options: ServerSideApply=true` annotation on the
+oversized CRD.
+
 ## Shared Shape
 
 Each case should have:

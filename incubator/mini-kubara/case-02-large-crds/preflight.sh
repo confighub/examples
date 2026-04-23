@@ -28,6 +28,10 @@ What this helper does:
   - measures each CRD's serialized body size;
   - flags any CRD whose body already exceeds the ${ANNOTATION_LIMIT}-byte
     annotation limit, which makes kubectl client-side apply unsafe;
+  - checks the Case 02 Argo hardening knobs:
+    template.spec.syncPolicy is present, ServerSideApply=true,
+    ClientSideApplyMigration=false, and the per-resource Argo sync-options
+    annotation on the oversized CRD;
   - states the intended apply mode before any mutation;
   - recommends the explicit delivery path for the future live run.
 
@@ -67,12 +71,28 @@ happens the API server rejects the CRD with:
     metadata.annotations: Too long: may not be more than 262144 bytes
 
 The correct response is not a retry. It is a delivery-mode decision.
-The two safe paths are:
+The safe paths are:
 
   - server-side apply: kubectl apply --server-side=true --force-conflicts,
     which does not stamp last-applied-configuration at all;
   - an Argo/Flux/ConfigHub sync option that forwards ServerSideApply=true
-    to the controller (the ApplicationSet fixture already does this).
+    to the controller;
+  - for Argo, a per-resource
+    argocd.argoproj.io/sync-options: ServerSideApply=true annotation on the
+    oversized CRD itself.
+
+Case 02's 2026-04-23 live pass proved the preflight was useful: the large CRD
+failed with metadata.annotations: Too long when only the Application-level
+ServerSideApply=true path was present. Argo's current sync-options docs say
+SSA can be configured both at Application level and per resource, and
+client-side apply migration is enabled by default unless
+ClientSideApplyMigration=false is set. The hardened fixture therefore uses all
+three explicit signals before rerun:
+
+  - Application syncOptions: ServerSideApply=true
+  - Application syncOptions: ClientSideApplyMigration=false
+  - CRD annotation: argocd.argoproj.io/sync-options: ServerSideApply=true
+  - ApplicationSet structure: syncPolicy is under template.spec, not source
 
 What the helper measures
 ------------------------
@@ -170,16 +190,42 @@ echo "Largest CRD body:         ${widest_name} (${widest} bytes)"
 echo ""
 
 appset_server_side="unknown"
+appset_csa_migration_disabled="unknown"
+appset_syncpolicy_location="unknown"
 if [[ -f "${APPSET_FILE}" ]]; then
+  if grep -q '^      syncPolicy:' "${APPSET_FILE}"; then
+    appset_syncpolicy_location="template.spec"
+  elif grep -q 'syncPolicy:' "${APPSET_FILE}"; then
+    appset_syncpolicy_location="misnested"
+  else
+    appset_syncpolicy_location="missing"
+  fi
   if grep -q 'ServerSideApply=true' "${APPSET_FILE}"; then
     appset_server_side="yes"
   else
     appset_server_side="no"
   fi
+  if grep -q 'ClientSideApplyMigration=false' "${APPSET_FILE}"; then
+    appset_csa_migration_disabled="yes"
+  else
+    appset_csa_migration_disabled="no"
+  fi
+fi
+
+largest_crd_resource_ssa="unknown"
+if [[ -n "${widest_name}" && -f "${CRDS_DIR}/${widest_name}" ]]; then
+  if grep -q 'argocd.argoproj.io/sync-options:.*ServerSideApply=true' "${CRDS_DIR}/${widest_name}"; then
+    largest_crd_resource_ssa="yes"
+  else
+    largest_crd_resource_ssa="no"
+  fi
 fi
 
 echo "ApplicationSet:           ${APPSET_FILE#${FIXTURES_DIR}/}"
+echo "Application syncPolicy:   ${appset_syncpolicy_location}"
 echo "Argo ServerSideApply:     ${appset_server_side}"
+echo "Argo CSA migration off:   ${appset_csa_migration_disabled}"
+echo "Largest CRD resource SSA: ${largest_crd_resource_ssa}"
 echo "Controller fixture:       ${CONTROLLER_FILE#${FIXTURES_DIR}/}"
 echo "Dependent custom resource: ${WIDGET_FILE#${FIXTURES_DIR}/} (held back for Gate B)"
 echo ""
@@ -194,7 +240,10 @@ Wrong move: retrying client-side apply after a 262144-byte rejection; or
 
 Selected apply mode:
   - CRDs: server-side apply (kubectl apply --server-side=true --force-conflicts)
+  - ApplicationSet syncPolicy location: ${appset_syncpolicy_location}
   - ApplicationSet syncOptions: ServerSideApply=true (already set: ${appset_server_side})
+  - ApplicationSet syncOptions: ClientSideApplyMigration=false (set: ${appset_csa_migration_disabled})
+  - oversized CRD per-resource sync-options annotation present: ${largest_crd_resource_ssa}
   - never stamp kubectl.kubernetes.io/last-applied-configuration on
     ${widest_name}
 
@@ -208,7 +257,11 @@ Why client-side apply is unsafe for ${widest_name}:
 
 Recommended delivery path for the future live run:
   - ApplicationSet sync path: Argo reconciles the workloads with
-    ServerSideApply=true, which the fixture already encodes;
+    ServerSideApply=true and ClientSideApplyMigration=false, which the fixture
+    encodes;
+  - the oversized CRD also carries the resource-level Argo
+    ServerSideApply=true annotation, because the 2026-04-23 live pass showed
+    Application-level SSA alone was not enough for this fixture;
   - if ConfigHub applies the CRD directly as setup, use a server-side
     apply worker or a bounded SETUP lane; label the action setup, not
     governed workload proof;

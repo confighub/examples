@@ -12,6 +12,19 @@ behind it:
 This case should make the CRD decision visible instead of discovering a 256 KiB
 annotation failure halfway through a sync.
 
+2026-04-23 live-run harvest: preflight correctly predicted the large-CRD risk,
+but Argo CD v3.3.8 still rejected the 306980-byte CRD when the fixture relied
+only on Application-level `ServerSideApply=true`. Argo's documented safe
+surface includes Application-level sync options and per-resource sync-option
+annotations, and client-side apply migration is enabled by default unless
+disabled. The hardened Case 02 fixture therefore uses all three signals before
+the next run:
+
+- `ServerSideApply=true` on the generated Application;
+- `ClientSideApplyMigration=false` on the generated Application;
+- `argocd.argoproj.io/sync-options: ServerSideApply=true` on
+  `stores-large.yaml` itself.
+
 Fresh-Claude handoff prompt: [`PROMPT.md`](./PROMPT.md).
 
 ## Scenario
@@ -95,6 +108,10 @@ The helper:
 - counts fixture CRDs;
 - measures each CRD's serialized body size;
 - flags any CRD that exceeds the Kubernetes 262144-byte annotation limit;
+- checks that the large-CRD hardening is present:
+  Application-level `ServerSideApply=true`, Application-level
+  `ClientSideApplyMigration=false`, and the per-resource Argo sync-options
+  annotation on the oversized CRD;
 - states the intended apply mode before any mutation;
 - explains why client-side apply is unsafe for the large fixture;
 - recommends the explicit delivery path for the future live run.
@@ -129,14 +146,28 @@ path: incubator/mini-kubara/case-02-large-crds/fixtures/workloads
 ```
 
 The Application reconciles `fixtures/workloads/` recursively with
-`syncOptions: [CreateNamespace=true, ServerSideApply=true]`. The dependent
-`Widget/example` is not under `workloads/` so Gate B controls when the custom
-resource is created — only after both CRDs exist.
+`syncOptions: [CreateNamespace=true, ServerSideApply=true,
+ClientSideApplyMigration=false]`. The oversized `stores-large.yaml` CRD also
+carries `argocd.argoproj.io/sync-options: ServerSideApply=true` directly on the
+resource. The dependent `Widget/example` is not under `workloads/` so Gate B
+controls when the custom resource is created — only after both CRDs exist.
 
-The public source is mandatory, not cosmetic. A fresh Argo install in kind
-must be able to fetch this workload without private GitHub credentials. The
-generated `stores-large.yaml` is committed because Argo cannot run the
-generator.
+The generated Application deliberately has no `syncPolicy.automated` block.
+That keeps the approval boundary sharp, but it also means a fresh run must
+trigger a one-shot Argo sync after Gate A applies the ApplicationSet. Do not
+poll for auto-sync; prove the Application exists, then ask for the one-shot sync
+approval if it is in scope.
+
+Worker setup gotcha from the 2026-04-23 live pass: `cub worker install --export`
+emits the non-secret manifest and redacts Secret material. Use the current
+`cub worker install --help` surface, export the Secret explicitly when required
+(for example with `--export-secret-only` if present), and never redirect mixed
+stderr/stdout logs into a Kubernetes YAML file.
+
+The public source is mandatory, not cosmetic. A fresh Argo install in kind will
+not have credentials for the private authoring repo. The generated
+`stores-large.yaml` must be committed on the public side too because Argo
+cannot run the generator.
 
 Public graduation targets:
 
@@ -160,9 +191,12 @@ Do not create a cluster, install Argo, or apply CRDs on the strength of the
 preflight alone.
 
 If the preflight reports any CRD over the 262144-byte annotation limit, stop
-and propose the explicit delivery mode: server-side apply, an
-ApplicationSet/Argo sync option with ServerSideApply=true, or a labeled dev
-setup live-write. Do not retry blindly.
+and propose the explicit delivery mode. For the default governed path, the
+hardened fixture should show Application `ServerSideApply=true`,
+`ClientSideApplyMigration=false`, and a per-resource
+`argocd.argoproj.io/sync-options: ServerSideApply=true` annotation on the
+oversized CRD. If any of those are missing, stop before Gate A and classify the
+fixture as not hardened. Do not retry blindly.
 
 After explicit Y/N approval, apply the provider path, prove both CRDs exist,
 prove the controller is Running/Ready, then sync or apply the dependent
