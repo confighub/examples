@@ -78,6 +78,13 @@ If local fixtures are missing:
 - Stop before live mutation and report the fixture diff if you cannot prove the
   setup path.
 
+If cluster, Argo, worker, or target setup is missing:
+- Inspect `incubator/mini-kubara/case-01-clean-handoff/setup.sh --explain`.
+- If the setup path matches the requested scope, ask before running the helper.
+- The helper may create/reuse the kind cluster, install Argo CD with
+  server-side apply, create/reuse the ConfigHub space/worker/target, and then
+  stop before Gate A. Do not let setup approval count as Gate A approval.
+
 Route card before any approval:
 Use `./scripts/confighub-banner route --force-color` if available; otherwise
 render a visible `CONFIGHUB SAYS: ROUTE` block. Include:

@@ -48,6 +48,16 @@ operator muscles.
 | [`case-03-policy-admission/`](./case-03-policy-admission/GUIDE.md) | [`PROMPT.md`](./case-03-policy-admission/PROMPT.md) | Admission WATCH -> BLOCK discipline | Kyverno/OPA/admission risk is visible, fail-closed rejection stops mutation, recovery is explicit | Policy-heavy clusters and regulated customer demos |
 | [`case-04-dev-prod-variants/`](./case-04-dev-prod-variants/GUIDE.md) | [`PROMPT.md`](./case-04-dev-prod-variants/PROMPT.md) | Dev/prod variants and promotion | ConfigHub represents dev/prod value differences explicitly; promotion does not leak dev-only config into prod | ConfigHub Promotions plus customer platform variants |
 
+Case 01 also includes a setup helper:
+
+```bash
+incubator/mini-kubara/case-01-clean-handoff/setup.sh --explain
+incubator/mini-kubara/case-01-clean-handoff/setup.sh
+```
+
+It prepares the dedicated kind cluster, Argo CD, ConfigHub worker, and target,
+then stops before the first ApplicationSet unit write.
+
 ## Shared Shape
 
 Each case should have:

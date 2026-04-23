@@ -77,6 +77,21 @@ Tell the user what the page should prove at that moment: worker Ready, target
 bound, and unit panel empty. After Gate A lands, run the helper again with
 `--unit mini-clean-appset` and point the user at the governed unit/revisions.
 
+## Setup Helper
+
+Use the repo-local setup helper before Gate A when the cluster, Argo CD,
+worker, or target are missing:
+
+```bash
+incubator/mini-kubara/case-01-clean-handoff/setup.sh --explain
+incubator/mini-kubara/case-01-clean-handoff/setup.sh
+```
+
+The helper stops before creating the `mini-clean-appset` unit. It intentionally
+uses server-side apply for Argo CD because the ApplicationSet CRD can exceed the
+client-side last-applied annotation limit, and it installs the ConfigHub worker
+by exporting the worker manifest and applying it to the kind cluster.
+
 ## Proposed Fixture
 
 Public fixture in this repo:

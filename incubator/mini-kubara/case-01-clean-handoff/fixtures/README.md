@@ -18,8 +18,8 @@ Case 01 needs a live path to render/apply the ApplicationSet through
 ConfigHub. The concrete wiring decision belongs to the operator:
 
 - **Local kind cluster.** A dedicated small kind cluster keeps scope clean.
-  If no setup helper exists in the current checkout, stop and report that
-  setup is missing before asking for Gate A approval.
+  Use `../setup.sh --explain` and then `../setup.sh` when live setup is
+  approved.
 - **ArgoCD install.** The ApplicationSet controller must exist in `argocd`.
 - **ConfigHub target/worker.** A worker with a Kubernetes provider must be
   `Ready` and bound to a target that reaches the case cluster.
