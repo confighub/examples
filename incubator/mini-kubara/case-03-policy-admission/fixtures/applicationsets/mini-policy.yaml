@@ -1,0 +1,40 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: mini-policy
+  namespace: argocd
+  labels:
+    mini-kubara: case-03
+spec:
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+    - list:
+        elements:
+          - name: controlplane-mini-policy
+            namespace: mini-policy
+            # Default include is the intentionally bad workload. Recovery at
+            # Gate B changes this to deployment-fixed.yaml through the
+            # governed ConfigHub path, which is the whole point of Case 03.
+            include: deployment-bad.yaml
+  template:
+    metadata:
+      name: '{{.name}}'
+      labels:
+        mini-kubara: case-03
+    spec:
+      project: default
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{.namespace}}'
+      source:
+        repoURL: https://github.com/confighub/examples
+        targetRevision: main
+        path: incubator/mini-kubara/case-03-policy-admission/fixtures/workloads
+        directory:
+          recurse: false
+          include: '{{.include}}'
+      syncPolicy:
+        syncOptions:
+          - CreateNamespace=true

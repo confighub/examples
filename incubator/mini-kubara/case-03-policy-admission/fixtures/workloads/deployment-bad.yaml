@@ -1,0 +1,39 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mini-policy
+  labels:
+    mini-kubara: case-03
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mini-policy-api
+  namespace: mini-policy
+  labels:
+    app: mini-policy-api
+    mini-kubara: case-03
+    mini-kubara.confighub.example.com/variant: bad
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mini-policy-api
+  template:
+    metadata:
+      labels:
+        app: mini-policy-api
+        mini-kubara: case-03
+        mini-kubara.confighub.example.com/variant: bad
+    spec:
+      containers:
+        - name: api
+          image: registry.k8s.io/pause:3.9
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi

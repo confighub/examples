@@ -1,0 +1,58 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-safe-container
+  labels:
+    mini-kubara: case-03
+  annotations:
+    policies.kyverno.io/title: Require safe container securityContext
+    policies.kyverno.io/category: Mini-Kubara Case 03
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Every container in the mini-policy namespace must set
+      securityContext.runAsNonRoot=true and
+      securityContext.allowPrivilegeEscalation=false. This is the fail-closed
+      admission policy under test for Mini-Kubara Case 03.
+spec:
+  validationFailureAction: Enforce
+  background: false
+  failurePolicy: Fail
+  rules:
+    - name: run-as-non-root
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - mini-policy
+      validate:
+        message: >-
+          Every container must set securityContext.runAsNonRoot=true.
+          This namespace is governed by the mini-kubara case-03 policy.
+        pattern:
+          spec:
+            containers:
+              - name: "*"
+                securityContext:
+                  runAsNonRoot: true
+    - name: no-privilege-escalation
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - mini-policy
+      validate:
+        message: >-
+          Every container must set
+          securityContext.allowPrivilegeEscalation=false. This namespace is
+          governed by the mini-kubara case-03 policy.
+        pattern:
+          spec:
+            containers:
+              - name: "*"
+                securityContext:
+                  allowPrivilegeEscalation: false
