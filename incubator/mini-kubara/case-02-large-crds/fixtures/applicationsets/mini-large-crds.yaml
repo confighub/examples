@@ -1,0 +1,36 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: mini-large-crds
+  namespace: argocd
+  labels:
+    mini-kubara: case-02
+spec:
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+    - list:
+        elements:
+          - name: controlplane-mini-large-crds
+            namespace: mini-large-crds
+  template:
+    metadata:
+      name: '{{.name}}'
+      labels:
+        mini-kubara: case-02
+    spec:
+      project: default
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{.namespace}}'
+      source:
+        repoURL: https://github.com/confighub/examples
+        targetRevision: main
+        path: incubator/mini-kubara/case-02-large-crds/fixtures/workloads
+        directory:
+          recurse: true
+      syncPolicy:
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true

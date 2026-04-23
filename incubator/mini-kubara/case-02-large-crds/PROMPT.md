@@ -17,6 +17,7 @@ Read first:
 - AGENTS.md
 - incubator/mini-kubara/README.md
 - incubator/mini-kubara/case-02-large-crds/GUIDE.md
+- incubator/mini-kubara/case-02-large-crds/fixtures/README.md
 - incubator/AI_START_HERE.md
 - incubator/ai-guide-standard.md
 - incubator/standard-ai-demo-pacing.md
@@ -38,69 +39,88 @@ Operating rules:
 - Do not mutate other public examples. Only create or edit files under this
   case directory if fixture authoring is necessary; stop before live mutation
   and report the diff.
-- If fixture manifests or setup/verify scripts are missing, create the missing
-  repo-local files under this case directory first. Do not invent that a live
-  cluster already has them.
+- This case ships deterministic fixtures under
+  incubator/mini-kubara/case-02-large-crds/fixtures. Do not regenerate or
+  overwrite them mid-run. If a fixture appears missing, stop and report the
+  blocker; do not invent a replacement.
 
 Initial preflight, read-only:
 1. Print repo path and git status.
-2. Read the case guide and list expected fixture/setup files.
-3. Check cub auth/API reachability with cub space list or another
+2. Read the case guide and the fixtures README and list the expected fixture
+   and helper files.
+3. Run the repo-local preflight helper FIRST, in --explain mode, then in the
+   default read-only form:
+     incubator/mini-kubara/case-02-large-crds/preflight.sh --explain
+     incubator/mini-kubara/case-02-large-crds/preflight.sh
+   The helper is read-only: it counts fixture CRDs, measures annotation-size
+   risk, and states the intended apply mode. Do not treat a successful
+   preflight as Gate A approval.
+4. Check cub auth/API reachability with cub space list or another
    authenticated read. Stop for cub auth login if needed.
-4. Check kubectl current context and cluster reachability. If no reachable
-   cluster exists, inspect local setup options and stop with a blocker or setup
-   proposal.
-5. Check cub-scout help and run cub-scout doctor with the exact kubeconfig or
-   context if cluster access exists.
-6. Read current CRDs and admission webhook state. This is read-only.
+5. Check kubectl current context and cluster reachability. If no reachable
+   cluster exists, inspect local setup options and stop with a blocker or
+   setup proposal; do not create a kind cluster silently.
+6. Check cub-scout help and run cub-scout doctor with the exact kubeconfig or
+   context if cluster access exists. Only use flags the current help output
+   confirms.
+7. Read current CRDs and admission webhook state on the target cluster. This
+   is read-only.
 
 CRD preflight:
-- Count CRDs in the fixture.
+- Count CRDs in the fixture (the helper does this).
 - Identify any CRD likely to exceed the Kubernetes 262144 byte annotation
-  limit if client-side last-applied configuration is stamped.
+  limit if client-side last-applied-configuration is stamped (the helper
+  reports this too).
 - State whether the intended delivery path is client-side apply, server-side
-  apply, ConfigHub/Argo sync option, or a separately approved dev setup
-  live-write.
+  apply, an Argo/ConfigHub sync option with ServerSideApply=true, or a
+  separately approved dev setup live-write.
 - If the apply mode cannot be determined from current command surfaces, stop
   before mutation and report exactly what is unknown.
-
-If local fixtures are missing:
-- Create a tiny local fixture under this case directory with:
-  - one ordinary CRD;
-  - one intentionally large CRD risk fixture;
-  - one harmless dependent custom resource;
-  - one small controller-style Deployment or placeholder workload.
-- Keep the fixture deterministic and local. Do not pull live upstream CRDs
-  unless explicitly approved.
-- Stop before live mutation if the setup path is not bounded.
 
 Route card before any approval:
 Use CONFIGHUB SAYS: ROUTE or ./scripts/confighub-banner route if available.
 Include:
 - Lane: CH-WRITE for governed ApplicationSet/controller delivery; RECOVERY or
   SETUP for any special CRD apply mode.
-- Scope: exactly the mini-large-crds provider and dependent resource.
+- Scope: exactly the mini-large-crds provider and the held-back widget-example
+  custom resource.
 - Wrong move: retrying a known annotation-size failure without changing apply
   mode; calling a direct CRD workaround governed workload proof.
 - WATCH tripwires: admission denial, CRD annotation-size failure, missing CRD
   after apply, dependent resource attempted before CRD exists.
 
+Setup complete stop before Gate A:
+- Render a colored setup/preflight proof table with ./scripts/confighub-proof-rows
+  --force-color --color-by both --title "CASE 02 PREFLIGHT READY" and rows for:
+  fixture CRD count, largest CRD bytes, annotation-limit outcome, ApplicationSet
+  ServerSideApply setting, controller fixture present, dependent CR held back.
+- Immediately after those rows, render a dedicated GUI block
+  VIEW IN CONFIGHUB — OPEN NOW using ./scripts/confighub-gui-urls --space
+  mini-large-crds if available. Say what the user should see in the GUI:
+  worker Ready, target bound, and empty unit panel before Gate A.
+- Then render the Gate A route banner and ask for Y/N.
+
 Gate A: Large-CRD delivery decision
 Ask Y/N before any mutation. The approval must name the selected apply mode.
 If approved:
-- perform only the selected CRD/provider delivery path;
+- perform only the selected CRD/provider delivery path (server-side apply
+  through the ApplicationSet unit is the default safe path);
 - prove both CRDs exist;
 - prove no annotation-size rejection occurred;
 - prove ConfigHub action/event status if ConfigHub was used;
 - classify clearly whether any direct live CRD action was setup, not governed
-  workload proof.
+  workload proof;
+- re-surface GUI with ./scripts/confighub-gui-urls --space mini-large-crds
+  --unit mini-large-crds-appset so the user can inspect the governed unit and
+  revisions.
 
 Gate B: Dependent resource/controller proof
 Ask a separate Y/N if a live sync or apply is needed after CRDs exist.
 If approved:
-- create/sync only the dependent custom resource and controller fixture;
+- create/sync only the dependent custom resource (fixtures/resources/
+  widget-example.yaml) and ensure the controller fixture is Running/Ready;
 - prove the API accepts the custom resource;
-- prove controller pod Running/Ready if the fixture includes a controller;
+- prove controller pod Running/Ready;
 - run cub-scout doctor with the exact kubeconfig/context.
 
 Closeout:

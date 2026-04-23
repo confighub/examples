@@ -58,6 +58,17 @@ incubator/mini-kubara/case-01-clean-handoff/setup.sh
 It prepares the dedicated kind cluster, Argo CD, ConfigHub worker, and target,
 then stops before the first ApplicationSet unit write.
 
+Case 02 ships deterministic large-CRD fixtures and a read-only preflight
+helper that forces the apply-mode decision before any mutation:
+
+```bash
+incubator/mini-kubara/case-02-large-crds/preflight.sh --explain
+incubator/mini-kubara/case-02-large-crds/preflight.sh
+```
+
+The helper does not create clusters, install Argo CD, or apply CRDs. Gate A
+still requires explicit operator approval.
+
 ## Shared Shape
 
 Each case should have:

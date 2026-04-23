@@ -1,0 +1,11 @@
+---
+apiVersion: platform.example.com/v1
+kind: Widget
+metadata:
+  name: example
+  namespace: mini-large-crds
+  labels:
+    mini-kubara: case-02
+spec:
+  color: blue
+  size: small

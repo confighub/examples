@@ -18,7 +18,7 @@ Fresh-Claude handoff prompt: [`PROMPT.md`](./PROMPT.md).
 
 One kind cluster. One CRD provider. One dependent resource.
 
-The fixture should include:
+The fixture includes:
 
 - a small controller-style app with two CRDs;
 - one ordinary CRD that applies normally;
@@ -26,7 +26,7 @@ The fixture should include:
   `last-applied-configuration` annotation is stamped;
 - one dependent custom resource that proves the CRD exists and is usable.
 
-The names can be fake and harmless:
+The names are fake and harmless:
 
 ```text
 ApplicationSet/mini-large-crds
@@ -34,7 +34,7 @@ ApplicationSet/mini-large-crds
      -> CustomResourceDefinition/widgets.platform.example.com
      -> CustomResourceDefinition/stores.platform.example.com
      -> Deployment/mini-crd-controller
-     -> Widget/example
+     -> Widget/example   (held back for Gate B)
 ```
 
 ## What This Trains
@@ -55,17 +55,88 @@ Scope: CRD provider app only
 Wrong move: retrying a known annotation-size failure without changing apply mode
 ```
 
-## Proposed Fixture
+When the helper scripts are available, render the route with
+`./scripts/confighub-banner route --force-color` and render preflight/gate proof
+with `./scripts/confighub-proof-rows --force-color --color-by both`. Color is
+part of the trust surface. If the terminal flattens ANSI color, say that
+plainly instead of silently falling back to uncolored bullets.
 
-Local fixture in this repo:
+## GUI Moment
+
+The ConfigHub GUI must appear before Gate A approval, not only at closeout.
+After the preflight runs and before asking for the first ConfigHub write, run:
+
+```bash
+./scripts/confighub-gui-urls --space mini-large-crds
+```
+
+Label the output:
+
+```text
+VIEW IN CONFIGHUB — OPEN NOW
+```
+
+Tell the user what the page should prove at that moment: worker Ready, target
+bound, and unit panel empty. After Gate A lands, run the helper again with
+`--unit mini-large-crds-appset` and point the user at the governed unit/revisions.
+
+## Preflight Helper
+
+Use the repo-local preflight helper before Gate A. It is read-only and does not
+create clusters, install Argo, or apply CRDs.
+
+```bash
+incubator/mini-kubara/case-02-large-crds/preflight.sh --explain
+incubator/mini-kubara/case-02-large-crds/preflight.sh
+```
+
+The helper:
+
+- counts fixture CRDs;
+- measures each CRD's serialized body size;
+- flags any CRD that exceeds the Kubernetes 262144-byte annotation limit;
+- states the intended apply mode before any mutation;
+- explains why client-side apply is unsafe for the large fixture;
+- recommends the explicit delivery path for the future live run.
+
+A fresh Claude session must run `--explain` and then the default form before
+proposing Gate A. It must not create a kind cluster, install Argo CD, stand up
+a worker/target, or `kubectl apply` any CRD on the strength of this helper.
+
+## Fixture Layout
+
+Public fixture in this repo:
 
 ```text
 incubator/mini-kubara/case-02-large-crds/fixtures/
+  README.md
+  generate-stores-large.sh
   applicationsets/mini-large-crds.yaml
-  crds/widgets.yaml
-  crds/stores-large.yaml
-  resources/widget-example.yaml
+  workloads/
+    controller.yaml
+    crds/
+      widgets.yaml
+      stores-large.yaml     (intentionally > 262144 bytes)
+  resources/
+    widget-example.yaml     (held back for Gate B)
 ```
+
+Runtime source for Argo:
+
+```text
+https://github.com/confighub/examples
+path: incubator/mini-kubara/case-02-large-crds/fixtures/workloads
+```
+
+The Application reconciles `fixtures/workloads/` recursively with
+`syncOptions: [CreateNamespace=true, ServerSideApply=true]`. The dependent
+`Widget/example` is not under `workloads/` so Gate B controls when the custom
+resource is created — only after both CRDs exist.
+
+The public source is mandatory, not cosmetic. A fresh Argo install in kind
+must be able to fetch this workload without private GitHub credentials. The
+generated `stores-large.yaml` is committed because Argo cannot run the
+generator.
 
 Public graduation targets:
 
@@ -73,25 +144,30 @@ Public graduation targets:
 - cert-manager-style CRDs;
 - any CRD-heavy platform app from a public example repo.
 
-Do not start with the real public CRDs. First make a local large-CRD fixture so
-the failure mode is predictable.
+Do not start with the real public CRDs. The local large-CRD fixture keeps the
+failure mode predictable.
 
 ## Prompt To Run
 
 ```text
 Run Mini-Kubara Case 02: Large CRDs.
 
-Start with read-only CRD preflight. Count CRDs, inspect annotation-size risk,
-and state the apply mode before any mutation.
+Start with the read-only preflight.
+  incubator/mini-kubara/case-02-large-crds/preflight.sh --explain
+  incubator/mini-kubara/case-02-large-crds/preflight.sh
 
-If the large CRD would exceed the Kubernetes annotation limit under
-client-side apply, stop and propose the explicit delivery mode: server-side
-apply, CRD-specific sync option, or labeled dev setup live-write. Do not retry
-blindly.
+Do not create a cluster, install Argo, or apply CRDs on the strength of the
+preflight alone.
 
-After approval, apply the provider path, prove both CRDs exist, prove the
-controller is Running/Ready, then create or sync the dependent custom resource.
-Close with cub-scout, ConfigHub receipts, Argo status, and exact CRD proof.
+If the preflight reports any CRD over the 262144-byte annotation limit, stop
+and propose the explicit delivery mode: server-side apply, an
+ApplicationSet/Argo sync option with ServerSideApply=true, or a labeled dev
+setup live-write. Do not retry blindly.
+
+After explicit Y/N approval, apply the provider path, prove both CRDs exist,
+prove the controller is Running/Ready, then sync or apply the dependent
+custom resource as a separate Gate B. Close with cub-scout, ConfigHub
+receipts, Argo status, and exact CRD proof.
 ```
 
 ## Expected Proof
@@ -101,7 +177,7 @@ Close with cub-scout, ConfigHub receipts, Argo status, and exact CRD proof.
 - Both CRDs exist after the mutation.
 - No `metadata.annotations: Too long` error appears.
 - Controller pod is Running/Ready.
-- Dependent custom resource is accepted by the API.
+- Dependent custom resource is accepted by the API server.
 - The final report says whether the large-CRD path was ConfigHub-governed or a
   separately approved dev setup write.
 
