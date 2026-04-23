@@ -30,6 +30,7 @@ For runnable examples, prefer the shared machine seams first:
 | **Mutate** | [platform-write-api](./platform-write-api/AI_START_HERE.md) |
 | **Apply** | [global-app-layer/single-component](./global-app-layer/single-component/AI_START_HERE.md) |
 | **Model** | [global-app-layer](./global-app-layer/AI_START_HERE.md) |
+| **Train handoff discipline** | [mini-kubara](./mini-kubara/AI_START_HERE.md) |
 
 ## CRITICAL: Demo Pacing
 

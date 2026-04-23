@@ -12,6 +12,7 @@ still be runnable for both human-led and AI-led evaluation.
 | Import from Flux | [gitops-import-flux](./gitops-import-flux/README.md) |
 | Use CH as 'write API' for config | [platform-write-api](./platform-write-api/README.md) |
 | Deploy a real app | [springboot-platform-app-centric](../spring-platform/springboot-platform-app-centric/README.md) |
+| Practice ConfigHub + Argo handoff drills | [mini-kubara](./mini-kubara/README.md) |
 | Understand layered recipes | [global-app-layer/single-component](./global-app-layer/single-component/README.md) |
 
 ## Entry Paths
@@ -22,6 +23,12 @@ still be runnable for both human-led and AI-led evaluation.
 - Why ConfigHub: [`WHY_CONFIGHUB.md`](./WHY_CONFIGHUB.md)
 
 ## Example Catalog
+
+### Training and Evaluation
+
+| Example | What it proves |
+|---------|----------------|
+| [mini-kubara](./mini-kubara/README.md) | Four small ConfigHub + Argo drills for clean handoff, large CRDs, admission BLOCK discipline, and dev/prod variants |
 
 ### Import and Evidence
 

@@ -1,0 +1,55 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mini-clean
+  labels:
+    mini-kubara: case-01
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mini-clean
+  namespace: mini-clean
+  labels:
+    app: mini-clean
+    mini-kubara: case-01
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mini-clean
+  template:
+    metadata:
+      labels:
+        app: mini-clean
+    spec:
+      containers:
+        - name: app
+          image: ghcr.io/traefik/whoami:v1.10.2
+          ports:
+            - containerPort: 80
+              name: http
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mini-clean
+  namespace: mini-clean
+  labels:
+    app: mini-clean
+    mini-kubara: case-01
+spec:
+  selector:
+    app: mini-clean
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

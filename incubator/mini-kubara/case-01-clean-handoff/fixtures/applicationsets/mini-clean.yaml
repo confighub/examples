@@ -1,0 +1,34 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: mini-clean
+  namespace: argocd
+  labels:
+    mini-kubara: case-01
+spec:
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+    - list:
+        elements:
+          - name: controlplane-mini-clean
+            namespace: mini-clean
+  template:
+    metadata:
+      name: '{{.name}}'
+      labels:
+        mini-kubara: case-01
+    spec:
+      project: default
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{.namespace}}'
+      source:
+        repoURL: https://github.com/confighub/examples
+        targetRevision: main
+        path: incubator/mini-kubara/case-01-clean-handoff/fixtures/workloads
+      syncPolicy:
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
