@@ -1,0 +1,89 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mini-variant-prod
+  labels:
+    mini-kubara: case-04
+    mini-kubara-variant: prod
+    env: prod
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mini-variant
+  namespace: mini-variant-prod
+  labels:
+    app: mini-variant
+    mini-kubara: case-04
+    mini-kubara-variant: prod
+data:
+  environment: prod
+  log_level: info
+  acme_issuer: letsencrypt-prod
+  # NO acme_email (real prod email is sourced from a managed secret).
+  # NO secret_store_ref (prod uses the cluster-default external secret store).
+  # NO dev_only_debug_endpoint.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mini-variant
+  namespace: mini-variant-prod
+  labels:
+    app: mini-variant
+    mini-kubara: case-04
+    mini-kubara-variant: prod
+  annotations:
+    mini-kubara.confighub.example/acme-issuer: letsencrypt-prod
+    # NO mini-kubara.confighub.example/acme-email
+    # NO mini-kubara.confighub.example/secret-store-ref
+    # NO mini-kubara.confighub.example/dev-only-debug-endpoint
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: mini-variant
+  template:
+    metadata:
+      labels:
+        app: mini-variant
+        mini-kubara: case-04
+        mini-kubara-variant: prod
+    spec:
+      containers:
+        - name: app
+          image: ghcr.io/traefik/whoami:v1.10.2
+          envFrom:
+            - configMapRef:
+                name: mini-variant
+          env:
+            - name: ENV_LABEL
+              value: prod
+          ports:
+            - containerPort: 80
+              name: http
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mini-variant
+  namespace: mini-variant-prod
+  labels:
+    app: mini-variant
+    mini-kubara: case-04
+    mini-kubara-variant: prod
+spec:
+  selector:
+    app: mini-variant
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

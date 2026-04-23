@@ -1,0 +1,95 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mini-variant-dev
+  labels:
+    mini-kubara: case-04
+    mini-kubara-variant: dev
+    env: dev
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mini-variant
+  namespace: mini-variant-dev
+  labels:
+    app: mini-variant
+    mini-kubara: case-04
+    mini-kubara-variant: dev
+data:
+  environment: dev
+  log_level: debug
+  acme_issuer: letsencrypt-staging
+  # DEV-ONLY (forbidden_in_prod). The preflight helper proves these keys are
+  # absent from the prod ConfigMap so a wholesale promotion would be blocked
+  # by construction.
+  acme_email: dev-team@example.invalid
+  secret_store_ref: vault-dev-local
+  dev_only_debug_endpoint: enabled
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mini-variant
+  namespace: mini-variant-dev
+  labels:
+    app: mini-variant
+    mini-kubara: case-04
+    mini-kubara-variant: dev
+  annotations:
+    mini-kubara.confighub.example/acme-issuer: letsencrypt-staging
+    # DEV-ONLY (forbidden_in_prod):
+    mini-kubara.confighub.example/acme-email: dev-team@example.invalid
+    mini-kubara.confighub.example/secret-store-ref: vault-dev-local
+    mini-kubara.confighub.example/dev-only-debug-endpoint: enabled
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mini-variant
+  template:
+    metadata:
+      labels:
+        app: mini-variant
+        mini-kubara: case-04
+        mini-kubara-variant: dev
+    spec:
+      containers:
+        - name: app
+          image: ghcr.io/traefik/whoami:v1.10.0
+          args:
+            - "--verbose"
+          envFrom:
+            - configMapRef:
+                name: mini-variant
+          env:
+            - name: ENV_LABEL
+              value: dev
+          ports:
+            - containerPort: 80
+              name: http
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mini-variant
+  namespace: mini-variant-dev
+  labels:
+    app: mini-variant
+    mini-kubara: case-04
+    mini-kubara-variant: dev
+spec:
+  selector:
+    app: mini-variant
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
