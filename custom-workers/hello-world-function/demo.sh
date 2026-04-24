@@ -74,7 +74,7 @@ for attempt in 1 2 3 4 5; do
     --space "$SPACE" \
     --worker "$WORKER" \
     --where "Slug = '$UNIT'" \
-    --output-only \
+    --show data \
     hello-world "$GREETING" >"$OUTPUT_FILE"; then
     success=1
     break

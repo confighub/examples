@@ -27,7 +27,7 @@ func main() {
 	downloadKubepugDatabase()
 
 	exec := executor.NewEmptyExecutor()
-	exec.RegisterToolchain(k8skit.NewK8sResourceProvider())
+	exec.RegisterToolchain(k8skit.NewK8sResourceProvider(), true)
 	exec.RegisterFunction(workerapi.ToolchainKubernetesYAML, handler.FunctionRegistration{
 		FunctionSignature: GetVetKubepugSignature(),
 		Function:          VetKubepugFunction,

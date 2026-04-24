@@ -184,6 +184,7 @@ cub worker install --space "$SPACE" \
   -e "GATEKEEPER_SKIP_TLS_VERIFY=true" \
   "$GATEKEEPER_WORKER"
 
+# Don't wait because the deployment won't be ready until the secret is applied below
 cub unit apply --space "$SPACE" gatekeeper-worker-unit
 
 # Grant the worker permission to discover Gatekeeper webhook configurations

@@ -28,8 +28,8 @@ github.com/cockroachdb/logtags v0.0.0-20230118201751-21c54148d20b h1:r6VH0faHjZe
 github.com/cockroachdb/logtags v0.0.0-20230118201751-21c54148d20b/go.mod h1:Vz9DsVWQQhf3vs21MhPMZpMGSht7O/2vFW2xusFUVOs=
 github.com/cockroachdb/redact v1.1.5 h1:u1PMllDkdFfPWaNGMyLD1+so+aq3uUItthCFqzwPJ30=
 github.com/cockroachdb/redact v1.1.5/go.mod h1:BVNblN9mBWFyMyqK1k3AAiSxhvhfK2oOZZ2lK+dpvRg=
-github.com/confighub/sdk/core v0.1.24 h1:+GAPcrZ15oDGZaXeW92NASMLYy3BnBSDm+m6FD5DuMg=
-github.com/confighub/sdk/core v0.1.24/go.mod h1:mR4IcImoYYrDtEXfs1xIihV8rJamJWSziZK9dokZU+g=
+github.com/confighub/sdk/core v0.1.31 h1:pATy9cy8/wNeAkR13oTlZ6gWHmnMR3BW7+j3NTO8Zmg=
+github.com/confighub/sdk/core v0.1.31/go.mod h1:nil6HZ+D8JXe26ACVXgv1LWmMi9NeCuYiJ32EUAF7R8=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
