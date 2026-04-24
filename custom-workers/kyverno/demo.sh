@@ -108,6 +108,7 @@ cub worker install --space "$SPACE" \
   --image-pull-policy Never \
   "$KYVERNO_WORKER"
 
+# Don't wait because the deployment won't be ready until the secret is applied below
 cub unit apply --space "$SPACE" kyverno-cli-worker-unit
 
 kubectl -n "$KYVERNO_WORKER_NAMESPACE" wait --for=create deployment/"$KYVERNO_WORKER" --timeout=120s

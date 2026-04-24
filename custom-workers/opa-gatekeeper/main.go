@@ -20,7 +20,7 @@ import (
 
 func main() {
 	exec := executor.NewEmptyExecutor()
-	exec.RegisterToolchain(k8skit.NewK8sResourceProvider())
+	exec.RegisterToolchain(k8skit.NewK8sResourceProvider(), true)
 	if err := exec.RegisterFunction(workerapi.ToolchainKubernetesYAML, handler.FunctionRegistration{
 		FunctionSignature: opagatekeeper.GetVetOPAGatekeeperSignature(),
 		Function:          opagatekeeper.VetOPAGatekeeperFunction,

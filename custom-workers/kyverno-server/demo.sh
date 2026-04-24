@@ -97,7 +97,7 @@ echo ""
 
 echo "--- Installing Kyverno via cub unit create + apply ---"
 cub unit create --space "$SPACE" kyverno-install \
-  https://github.com/kyverno/kyverno/releases/latest/download/install.yaml \
+  https://github.com/kyverno/kyverno/releases/download/v1.17.2/install.yaml \
   --toolchain Kubernetes/YAML \
   --target "$K8S_TARGET"
 cub unit apply --space "$SPACE" kyverno-install --wait
@@ -189,6 +189,7 @@ cub worker install --space "$SPACE" \
   "$KYVERNO_WORKER"
 
 # Apply the worker unit to the cluster (creates namespace, deployment)
+# Don't wait because the deployment won't be ready until the secret is applied below
 cub unit apply --space "$SPACE" kyverno-worker-unit
 
 # Grant the worker permission to discover Kyverno webhook configurations
