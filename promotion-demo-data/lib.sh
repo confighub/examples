@@ -12,7 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # (Filters/Views/Triggers are created via the HTTP API in initiatives.sh).
 export CONFIGHUB_URL="${CONFIGHUB_URL:-https://app.confighub.com}"
 
-# Apps and their metadata
+# Components and their metadata
 APPS=(aichat website docs eshop portal platform)
 
 # Targets (deployment destinations)
@@ -102,7 +102,7 @@ WORKER_SPACE="demo-infra"
 create_worker_space() {
   $CUB space create "$WORKER_SPACE" \
     --label "ExampleName=${EXAMPLE_NAME}" \
-    --label "AppOwner=Platform" \
+    --label "Owner=Platform" \
     --quiet
 
   $CUB worker create worker --space "$WORKER_SPACE" \
@@ -122,7 +122,7 @@ create_infra_space() {
 
   $CUB space create "$target" \
     --label "ExampleName=${EXAMPLE_NAME}" \
-    --label "AppOwner=Platform" \
+    --label "Owner=Platform" \
     --label "TargetRole=$(target_role "$env")" \
     --label "TargetRegion=$(region_label "$region")" \
     --quiet
@@ -136,7 +136,7 @@ create_infra_space() {
   echo "  Created infra space: $target (target)"
 }
 
-# Create an app deployment space with labels
+# Create a component deployment space with labels
 create_app_space() {
   local target="$1"
   local app="$2"
@@ -147,14 +147,14 @@ create_app_space() {
   region=$(target_region "$target")
   $CUB space create "$space" \
     --label "ExampleName=${EXAMPLE_NAME}" \
-    --label "App=${app}" \
-    --label "AppOwner=$(app_dept "$app")" \
+    --label "Component=${app}" \
+    --label "Owner=$(app_dept "$app")" \
     --label "Team=$(app_team "$app")" \
     --label "TargetRole=$(target_role "$env")" \
     --label "TargetRegion=$(region_label "$region")" \
     --quiet
 
-  echo "  Created app space: $space"
+  echo "  Created component space: $space"
 }
 
 # ── ConfigHub HTTP API helper ────────────────────────────────────────────────

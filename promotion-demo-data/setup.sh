@@ -1,8 +1,8 @@
 #!/bin/bash
 # ConfigHub Demo Setup
 #
-# Populates an empty org with a realistic (but fake) multi-app, multi-environment dataset.
-# Uses the App-Deployment-Target model with labels on top of ConfigHub's space/unit model.
+# Populates an empty org with a realistic (but fake) multi-component, multi-environment dataset.
+# Uses the Component-Deployment-Target model with labels on top of ConfigHub's space/unit model.
 #
 # Prerequisites:
 #   - Latest cub CLI authenticated (cub auth login --server <url>)
@@ -38,9 +38,9 @@ echo "  Done. Created 1 worker space + ${#TARGETS[@]} infrastructure spaces."
 echo ""
 
 ##################################
-# Phase 2: App deployment spaces
+# Phase 2: Component deployment spaces
 ##################################
-echo "Phase 2: Creating app deployment spaces..."
+echo "Phase 2: Creating component deployment spaces..."
 
 count=0
 for target in "${TARGETS[@]}"; do
@@ -50,7 +50,7 @@ for target in "${TARGETS[@]}"; do
   done
 done
 
-echo "  Done. Created ${count} app spaces."
+echo "  Done. Created ${count} component spaces."
 echo ""
 
 ##################################
@@ -116,8 +116,8 @@ for target in "${TARGETS[@]}"; do
     space="${target}-${app}"
     $CUB unit update --space "$space" --where "Slug LIKE '%'" --patch --quiet \
       --label "ExampleName=${EXAMPLE_NAME}" \
-      --label "App=${app}" \
-      --label "AppOwner=$(app_dept "$app")" \
+      --label "Component=${app}" \
+      --label "Owner=$(app_dept "$app")" \
       --label "Team=$(app_team "$app")" \
       --label "TargetRole=$(target_role "$env")" \
       --label "TargetRegion=$(region_label "$region")"
@@ -255,15 +255,15 @@ echo "=== Demo setup complete ==="
 echo ""
 echo "Summary:"
 echo "  Infrastructure spaces: ${#TARGETS[@]}"
-echo "  App deployment spaces: ${count}"
+echo "  Component deployment spaces: ${count}"
 echo "  Initiatives space:       1 ($INITIATIVES_SPACE)"
 echo "  Total spaces:          $(( ${#TARGETS[@]} + count + 1 ))"
 echo ""
 echo "Explore with:"
 echo "  $CUB space list --where \"Labels.ExampleName = '${EXAMPLE_NAME}'\""
-echo "  $CUB space list --where \"Labels.App = 'aichat'\""
+echo "  $CUB space list --where \"Labels.Component = 'aichat'\""
 echo "  $CUB space list --where \"Labels.TargetRole = 'Prod'\""
-echo "  $CUB space list --where \"Labels.AppOwner = 'Product'\""
+echo "  $CUB space list --where \"Labels.Owner = 'Product'\""
 echo ""
 echo "Clean up with:"
 echo "  ./cleanup.sh"
