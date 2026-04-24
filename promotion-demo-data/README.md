@@ -1,6 +1,6 @@
 # ConfigHub Demo Data
 
-Scripts and data files to populate a ConfigHub org with a representative multi-app, multi-environment dataset. The data set is specifically designed to experience the promotion UI in ConfigHub. 
+Scripts and data files to populate a ConfigHub org with a representative multi-component, multi-environment dataset. The data set is specifically designed to experience the promotion UI in ConfigHub. 
 
 ## Prerequisites
 
@@ -27,15 +27,15 @@ Multiple spaces are created with the `eu` and `us` prefix. If this conflicts wit
 
 ## Conceptual Model
 
-This demo aligns to an **App-Deployment-Target** model on top of ConfigHub. The core idea is a many-to-many relationship between Apps and Targets, with Deployment as the junction object:
+This demo aligns to a **Component-Deployment-Target** model on top of ConfigHub. The core idea is a many-to-many relationship between Components and Targets, with Deployment as the junction object:
 
 ```mermaid
 erDiagram
-    App ||--o{ Deployment : "deployed as"
+    Component ||--o{ Deployment : "deployed as"
     Target ||--o{ Deployment : "hosts"
-    App {
+    Component {
         string Name
-        string AppOwner
+        string Owner
     }
     Target {
         string Name
@@ -48,31 +48,31 @@ erDiagram
     }
 ```
 
-**App** represents a software product (e.g. `aichat`, `eshop`). Each app belongs to a department. Additionally it can also represent a set of platform components.
-**Target** represents a deployment destination — a specific Kubernetes cluster. Targets are numbered (e.g. `us-dev-1`, `us-dev-2`) because a given region/role combination can have multiple clusters. **Deployment** is the junction: one app deployed to one target, containing the specific configuration (units) for that combination.
+**Component** represents a software product (e.g. `aichat`, `eshop`). Each component belongs to a department. Additionally it can also represent a set of platform services.
+**Target** represents a deployment destination — a specific Kubernetes cluster. Targets are numbered (e.g. `us-dev-1`, `us-dev-2`) because a given region/role combination can have multiple clusters. **Deployment** is the junction: one component deployed to one target, containing the specific configuration (units) for that combination.
 
-For example, the `eshop` app deployed to the `us-prod-1` target produces the deployment `us-prod-1-eshop`, which contains units like `api`, `frontend`, `postgres`, `redis`, and `worker` — each customized for the prod/US environment.
+For example, the `eshop` component deployed to the `us-prod-1` target produces the deployment `us-prod-1-eshop`, which contains units like `api`, `frontend`, `postgres`, `redis`, and `worker` — each customized for the prod/US environment.
 
 ### Mapping to ConfigHub
 
-ConfigHub doesn't have first-class App or Deployment types with these relationships. Instead, we map the model using **spaces, units, and labels**:
+ConfigHub doesn't have first-class Component or Deployment types with these relationships. Instead, we map the model using **spaces, units, and labels**:
 
 | Concept | ConfigHub Primitive | Example |
 |---------|-------------------|---------|
-| App | Label on space + units | `App=eshop` |
+| Component | Label on space + units | `Component=eshop` |
 | Target | Target object in an infra space | `us-prod-1` in space `us-prod-1` |
 | Deployment | Space containing units | Space `us-prod-1-eshop` |
 
-Each **deployment space** carries the combined labels from both its App and its Target, making it queryable from either dimension. For example, `us-prod-1-eshop` has `App=eshop`, `AppOwner=Product`, `TargetRole=Prod`, `TargetRegion=US`, etc.
+Each **deployment space** carries the combined labels from both its Component and its Target, making it queryable from either dimension. For example, `us-prod-1-eshop` has `Component=eshop`, `Owner=Product`, `TargetRole=Prod`, `TargetRegion=US`, etc.
 
 Units within each space also carry the full set of labels. This is a workaround for a current product limitation — ideally, units would inherit labels from their parent space, but today they must be set explicitly.
 
 ## What Gets Created
 
-### Apps (6)
+### Components (6)
 
-| App | Description | AppOwner | Units |
-|-----|-------------|----------|-------|
+| Component | Description | Owner | Units |
+|-----------|-------------|-------|-------|
 | **aichat** | AI chat application | Support | api, frontend, postgres, redis, worker |
 | **website** | Marketing website | Marketing | web, cms, postgres |
 | **docs** | Documentation site | Product | server, search |
@@ -97,7 +97,7 @@ Note that `us-dev-1` and `us-dev-2` both have TargetRole=Dev and TargetRegion=US
 ### Total: 49 spaces, ~154 units
 
 - 7 infrastructure spaces (one per target, each with a worker + target)
-- 42 app deployment spaces (`{target}-{app}`, e.g. `us-prod-1-aichat`)
+- 42 component deployment spaces (`{target}-{component}`, e.g. `us-prod-1-aichat`)
 
 ## Label Reference
 
@@ -116,8 +116,8 @@ Labels are set on targets, spaces, and units. Spaces and units carry the full co
 | Label | Values | Source |
 |-------|--------|-------|
 | `ExampleName` | `demo-data` | — |
-| `App` | `aichat`, `website`, `docs`, `eshop`, `portal`, `platform` | App |
-| `AppOwner` | `Marketing`, `Product`, `Support`, `Platform` | App |
+| `Component` | `aichat`, `website`, `docs`, `eshop`, `portal`, `platform` | Component |
+| `Owner` | `Marketing`, `Product`, `Support`, `Platform` | Component |
 | `TargetRole` | `Dev`, `QA`, `Staging`, `Prod` | Target |
 | `TargetRegion` | `US`, `EU` | Target |
 
@@ -127,8 +127,8 @@ Labels are set on targets, spaces, and units. Spaces and units carry the full co
 # List all demo spaces
 cub space list --where "Labels.ExampleName = 'demo-data'"
 
-# Filter by app
-cub space list --where "Labels.App = 'aichat'"
+# Filter by component
+cub space list --where "Labels.Component = 'aichat'"
 
 # Filter by target role
 cub space list --where "Labels.TargetRole = 'Prod'"
@@ -137,7 +137,7 @@ cub space list --where "Labels.TargetRole = 'Prod'"
 cub space list --where "Labels.TargetRegion = 'US'"
 
 # Filter by owner
-cub space list --where "Labels.AppOwner = 'Product'"
+cub space list --where "Labels.Owner = 'Product'"
 
 # Cross-dimensional: all prod spaces in US
 cub space list --where "Labels.TargetRole = 'Prod' AND Labels.TargetRegion = 'US'"
@@ -172,7 +172,7 @@ demo-data/
   lib.sh            Shared variables and helpers
   worker.json       Worker template for placeholder workers
   config-data/      Base Kubernetes YAML templates
-    aichat/         AI chat app (5 units)
+    aichat/         AI chat component (5 units)
     website/        Marketing website (3 units)
     docs/           Documentation site (2 units)
     eshop/          E-commerce store (5 units)
