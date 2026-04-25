@@ -118,6 +118,7 @@ for target in "${TARGETS[@]}"; do
       --label "Component=${app}" \
       --label "Owner=$(app_dept "$app")" \
       --label "Team=$(app_team "$app")" \
+      --label "Environment=${target}" \
       --label "TargetRole=$(target_role "$env")" \
       --label "TargetRegion=$(region_label "$region")"
     echo "  Labeled units in: $space"
