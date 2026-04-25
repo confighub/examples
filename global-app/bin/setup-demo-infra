@@ -1,0 +1,9 @@
+#!/bin/bash
+
+cub space create demo-infra --label ExampleName="global-app" --label Layer="infra"
+
+cat cluster/worker.json | cub worker create worker --space demo-infra --from-stdin
+
+cub target create demo-infra '{}' worker --space demo-infra
+
+cub unit create ingress-nginx https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.12.0/deploy/static/provider/kind/deploy.yaml --space demo-infra --target demo-infra/demo-infra

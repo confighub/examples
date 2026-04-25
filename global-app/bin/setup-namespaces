@@ -1,0 +1,21 @@
+#!/bin/bash
+
+create_namespace() {
+  local space=$1
+  cub unit create namespace <(cat <<EOF
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: $space
+EOF
+) --space "$space" || true
+  cub link create --space "$space" --dest-space "$space" --where-from "Slug IN ('backend', 'frontend', 'postgres')" --where-to "Slug = 'namespace'"
+}
+
+create_namespace qa-cubbychat
+create_namespace us-cubbychat-staging
+create_namespace us-cubbychat-prod
+create_namespace eu-cubbychat-staging
+create_namespace eu-cubbychat-prod
+create_namespace asia-cubbychat-staging
+create_namespace asia-cubbychat-prod

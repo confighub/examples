@@ -1,0 +1,70 @@
+#!/bin/bash
+
+echo "global-app" > .example-name
+
+cub space create qa --label ExampleName="global-app" --label Layer="infra" --label Environment="qa"
+cub space create qa-cubbychat --label ExampleName="global-app" --label Layer="app" --label Environment="qa"
+
+cub space create us --label ExampleName="global-app" --label Layer="infra" --label Environment="prod" --label Region="US"
+cub space create us-cubbychat-preprod --label ExampleName="global-app" --label Layer="app" --label Environment="preprod" --label Region="US"
+cub space create us-cubbychat-prod --label ExampleName="global-app" --label Layer="app" --label Environment="prod" --label Region="US"
+
+cub space create eu --label ExampleName="global-app" --label Layer="infra" --label Environment="prod" --label Region="EU"
+cub space create eu-cubbychat-preprod --label ExampleName="global-app" --label Layer="app" --label Environment="preprod" --label Region="EU"
+cub space create eu-cubbychat-prod --label ExampleName="global-app" --label Layer="app" --label Environment="prod" --label Region="EU"
+
+cub space create asia --label ExampleName="global-app" --label Layer="infra" --label Environment="prod" --label Region="Asia"
+cub space create asia-cubbychat-preprod --label ExampleName="global-app" --label Layer="app" --label Environment="preprod" --label Region="Asia"
+cub space create asia-cubbychat-prod --label ExampleName="global-app" --label Layer="app" --label Environment="prod" --label Region="Asia"
+
+cat cluster/worker.json | cub worker create worker --space qa --from-stdin
+cat cluster/worker.json | cub worker create worker --space us --from-stdin
+cat cluster/worker.json | cub worker create worker --space eu --from-stdin
+cat cluster/worker.json | cub worker create worker --space asia --from-stdin
+
+cub target create qa '{}' worker --space qa
+cub target create us '{}' worker --space us
+cub target create eu '{}' worker --space eu
+cub target create asia '{}' worker --space asia
+
+cub unit create --space qa-cubbychat backend  https://raw.githubusercontent.com/confighub/cubbychat/refs/heads/main/backend/backend-no-ai.yaml --target qa/qa
+cub unit create --space qa-cubbychat frontend  https://raw.githubusercontent.com/confighub/cubbychat/refs/heads/main/frontend/frontend.yaml --target qa/qa
+cub unit create --space qa-cubbychat postgres  https://raw.githubusercontent.com/confighub/cubbychat/refs/heads/main/database/postgres.yaml --target qa/qa
+
+create_namespace() {
+  local space=$1
+  local target=$2
+  cub unit create namespace <(cat <<EOF
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: $space
+EOF
+) --space "$space" --target "$target" || true
+}
+
+create_namespace qa-cubbychat qa/qa
+
+cub function do set-namespace qa-cubbychat --space qa-cubbychat
+cub function do set-hostname qa-cubbychat.local.cubby.bz --space qa-cubbychat
+
+update_units() {
+  local space=$1
+  cub function do set-string-path v1/Namespace metadata.name "$space" --space "$space"
+  cub function do set-namespace "$space" --space "$space"
+  cub function do set-hostname "$space.local.cubby.bz" --space "$space"
+}
+
+cub unit create --dest-space us-cubbychat-preprod --space qa-cubbychat --target us/us
+update_units us-cubbychat-preprod
+cub unit create --dest-space us-cubbychat-prod --space us-cubbychat-preprod --target us/us
+update_units us-cubbychat-prod
+cub unit create --dest-space eu-cubbychat-preprod --space qa-cubbychat --target eu/eu
+update_units eu-cubbychat-preprod
+cub unit create --dest-space eu-cubbychat-prod --space eu-cubbychat-preprod --target eu/eu
+update_units eu-cubbychat-prod
+
+cub unit create --dest-space asia-cubbychat-preprod --space qa-cubbychat --target asia/asia
+update_units asia-cubbychat-preprod
+cub unit create --dest-space asia-cubbychat-prod --space asia-cubbychat-preprod --target asia/asia
+update_units asia-cubbychat-prod
