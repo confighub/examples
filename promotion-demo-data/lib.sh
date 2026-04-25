@@ -8,10 +8,6 @@ EXAMPLE_NAME="demo-data"
 CUB="${CUB:-cub}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Base URL used by api() for entities that aren't yet exposed via `cub` verbs
-# (Filters/Views/Triggers are created via the HTTP API in initiatives.sh).
-export CONFIGHUB_URL="${CONFIGHUB_URL:-https://app.confighub.com}"
-
 # Components and their metadata
 APPS=(aichat website docs eshop portal platform)
 
@@ -155,33 +151,4 @@ create_app_space() {
     --quiet
 
   echo "  Created component space: $space"
-}
-
-# ── ConfigHub HTTP API helper ────────────────────────────────────────────────
-# Used by initiatives.sh for entities that don't yet have first-class `cub`
-# verbs (filters, views, triggers are scriptable via cub CLI but triggers
-# need Warn=true which isn't exposed as a flag).  Lazily fetches the API
-# token on first call so cleanup.sh doesn't pay the cost when unused.
-
-_CUB_API_TOKEN=""
-
-api() {
-  local method="$1" path="$2"
-  shift 2
-  if [[ -z "$_CUB_API_TOKEN" ]]; then
-    _CUB_API_TOKEN=$("$CUB" auth get-token 2>/dev/null) || {
-      echo "ERROR: unable to fetch API token — run '$CUB auth login'" >&2
-      return 1
-    }
-  fi
-  local content_type="application/json"
-  if [[ "$method" == "PATCH" ]]; then
-    content_type="application/merge-patch+json"
-  fi
-  curl -sf \
-    -X "$method" \
-    -H "Authorization: Bearer ${_CUB_API_TOKEN}" \
-    -H "Content-Type: ${content_type}" \
-    "$@" \
-    "${CONFIGHUB_URL}/api${path}"
 }
