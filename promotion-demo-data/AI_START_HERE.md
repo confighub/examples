@@ -24,9 +24,9 @@ Pause after every stage. Show full output. Do not continue until I say continue.
 ## What This Example Teaches
 
 After this demo, the human will understand:
-- The App-Deployment-Target model (many-to-many relationships)
+- The Component-Deployment-Target model (many-to-many relationships)
 - How ConfigHub spaces represent deployments
-- Multi-dimensional filtering by app, role, region, and owner
+- Multi-dimensional filtering by component, role, region, and owner
 - Version skew detection across environments
 
 No cluster required. Uses server-hosted noop workers.
@@ -39,8 +39,8 @@ cat README.md | head -60
 ```
 
 What to explain:
-- App → Deployment → Target is a many-to-many model
-- Apps: aichat, website, docs, eshop, portal, platform
+- Component → Deployment → Target is a many-to-many model
+- Components: aichat, website, docs, eshop, portal, platform
 - Targets: 7 clusters across dev/qa/staging/prod in US/EU
 - Deployments: spaces like `us-prod-1-eshop`
 
@@ -48,7 +48,7 @@ GUI now: No GUI checkpoint for this stage — model orientation is CLI-only.
 
 GUI gap: No ER diagram in the GUI.
 
-GUI feature ask: Visual topology diagram showing app-deployment-target relationships. No issue filed yet.
+GUI feature ask: Visual topology diagram showing component-deployment-target relationships. No issue filed yet.
 
 **PAUSE.** Wait for the human.
 
@@ -61,7 +61,7 @@ GUI feature ask: Visual topology diagram showing app-deployment-target relations
 What to explain:
 - Creates 49 spaces total
 - 7 infrastructure spaces (one per target)
-- 42 app deployment spaces
+- 42 component deployment spaces
 - ~154 units across all spaces
 - Uses noop workers (no real cluster needed)
 
@@ -73,29 +73,29 @@ GUI feature ask: Space aggregation dashboard by label. No issue filed yet.
 
 **PAUSE.** Wait for the human.
 
-## Stage 3: "Explore By App" (read-only)
+## Stage 3: "Explore By Component" (read-only)
 
 ```bash
 # List all demo spaces
 cub space list --where "Labels.ExampleName = 'demo-data'" --json | jq '.[].Space.Slug' | head -20
 
-# Filter by app
-cub space list --where "Labels.App = 'eshop'" --json | jq '.[].Space.Slug'
+# Filter by component
+cub space list --where "Labels.Component = 'eshop'" --json | jq '.[].Space.Slug'
 
 # List units in a specific deployment
 cub unit list --space us-prod-1-eshop --json | jq '.[].Unit.Slug'
 ```
 
 What to explain:
-- Each space carries combined labels from App and Target
-- Filter by App to see all deployments of that app
-- Units show the components of each deployment
+- Each space carries combined labels from Component and Target
+- Filter by Component to see all deployments of that component
+- Units show the resources that make up each deployment
 
-GUI now: ConfigHub → Spaces → filter by `App=eshop` → see 7 spaces.
+GUI now: ConfigHub → Spaces → filter by `Component=eshop` → see 7 spaces.
 
-GUI gap: No app-centric grouping view.
+GUI gap: No component-centric grouping view.
 
-GUI feature ask: App landing page showing all deployments. No issue filed yet.
+GUI feature ask: Component landing page showing all deployments. No issue filed yet.
 
 **PAUSE.** Wait for the human.
 
