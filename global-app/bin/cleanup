@@ -1,18 +1,20 @@
 #!/bin/bash
 
-if [ ! -e ".cub-space-prefix" ]; then
-  echo "No space prefix found. Can't clean up."
+if [ ! -e ".example-name" ]; then
+  echo "No .example-name file found. Can't clean up."
   exit 1
 fi
 
-prefix=$(cat .cub-space-prefix)
+name=$(cat .example-name)
 
-cub space delete --where "Labels.prefix = '$prefix'" --recursive
+cub space delete --where "Labels.ExampleName = '$name'" --recursive
 
-kind delete cluster --name $prefix-infra
+if [ -e var/$name.kubeconfig ]; then
+  echo "Deleting Kind cluster $name"
+  kind delete cluster --name $name-infra
+fi
 
-rm var/$prefix-infra.kubeconfig
+rm -f var/$name.kubeconfig
+rm -f .example-name
 
-rm .cub-space-prefix
-
-echo "Cleanup of $prefix-* spaces complete!"
+echo "Cleanup of $name-* spaces complete!"
