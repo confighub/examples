@@ -119,7 +119,7 @@ create_infra_space() {
   $CUB space create "$target" \
     --label "ExampleName=${EXAMPLE_NAME}" \
     --label "Owner=Platform" \
-    --label "Environment=${target}" \
+    --label "Variant=${target}" \
     --label "TargetRole=$(target_role "$env")" \
     --label "TargetRegion=$(region_label "$region")" \
     --quiet
@@ -148,7 +148,7 @@ create_app_space() {
     --label "Component=${app}" \
     --label "Owner=$(app_dept "$app")" \
     --label "Team=$(app_team "$app")" \
-    --label "Environment=${target}" \
+    --label "Variant=${target}" \
     --label "TargetRole=$(target_role "$env")" \
     --label "TargetRegion=$(region_label "$region")" \
     --quiet
