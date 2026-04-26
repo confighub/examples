@@ -118,7 +118,6 @@ for target in "${TARGETS[@]}"; do
       --label "Component=${app}" \
       --label "Owner=$(app_dept "$app")" \
       --label "Team=$(app_team "$app")" \
-      --label "Environment=${target}" \
       --label "TargetRole=$(target_role "$env")" \
       --label "TargetRegion=$(region_label "$region")"
     echo "  Labeled units in: $space"
@@ -252,6 +251,7 @@ echo "  $CUB space list --where \"Labels.ExampleName = '${EXAMPLE_NAME}'\""
 echo "  $CUB space list --where \"Labels.Component = 'aichat'\""
 echo "  $CUB space list --where \"Labels.TargetRole = 'Prod'\""
 echo "  $CUB space list --where \"Labels.Owner = 'Product'\""
+echo "  $CUB space list --where \"Labels.Variant = 'us-prod-1'\""
 echo ""
 echo "Clean up with:"
 echo "  ./cleanup.sh"
