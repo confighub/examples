@@ -1,0 +1,248 @@
+apiVersion: confighub.com/v1alpha1
+kind: Recipe
+metadata:
+  name: confighubplaceholder-chain-name
+  labels:
+    example: confighubplaceholder-example-name
+    chain: confighubplaceholder-chain-prefix
+spec:
+  app: confighubplaceholder-app-name
+  pattern: ordered-clone-chain
+  description: Four-component enterprise RAG Blueprint showing platform, accelerator, model profile, and use-case as shared ConfigHub layers.
+  dimensions:
+    platform: kgpu
+    accelerator: h100
+    profile: medium
+    recipe: enterprise-rag
+  stack: confighubplaceholder-stack
+  constraints:
+    kubernetes: ">=1.29"
+    runtimeClass: nvidia
+    storageClass: gp3
+  components:
+    - name: rag-server
+      role: orchestration
+      gpuUser: false
+      layers:
+        - name: base
+          space: confighubplaceholder-rag-server-base-space
+          unit: confighubplaceholder-rag-server-base-unit
+          revision: confighubplaceholder-rag-server-base-revision
+          dataHash: confighubplaceholder-rag-server-base-hash
+          mutationDelta: original rag-server manifest with stub defaults
+        - name: platform
+          space: confighubplaceholder-rag-server-platform-space
+          unit: confighubplaceholder-rag-server-platform-unit
+          revision: confighubplaceholder-rag-server-platform-revision
+          dataHash: confighubplaceholder-rag-server-platform-hash
+          mutationDelta: set STORAGE_CLASS and INGRESS_CLASS for kgpu platform
+        - name: accelerator
+          space: confighubplaceholder-rag-server-accelerator-space
+          unit: confighubplaceholder-rag-server-accelerator-unit
+          revision: confighubplaceholder-rag-server-accelerator-revision
+          dataHash: confighubplaceholder-rag-server-accelerator-hash
+          mutationDelta: label ACCELERATOR=h100 (rag-server is CPU-only)
+        - name: profile
+          space: confighubplaceholder-rag-server-profile-space
+          unit: confighubplaceholder-rag-server-profile-unit
+          revision: confighubplaceholder-rag-server-profile-revision
+          dataHash: confighubplaceholder-rag-server-profile-hash
+          mutationDelta: set MODEL_PROFILE, MODEL_NAME, EMBED_MODEL_NAME, EMBED_DIM for the chosen STACK
+        - name: recipe
+          space: confighubplaceholder-rag-server-recipe-space
+          unit: confighubplaceholder-rag-server-recipe-unit
+          revision: confighubplaceholder-rag-server-recipe-revision
+          dataHash: confighubplaceholder-rag-server-recipe-hash
+          mutationDelta: wire LLM_HOST, EMBEDDING_HOST, VECTOR_DB_HOST, RAG_TOP_K, PROMPT_TEMPLATE, GUARDRAIL_POLICY for enterprise-rag
+      deploymentVariants:
+        - name: direct
+          space: confighubplaceholder-rag-server-deployment-direct-space
+          unit: confighubplaceholder-rag-server-deployment-direct-unit
+          revision: confighubplaceholder-rag-server-deployment-direct-revision
+          dataHash: confighubplaceholder-rag-server-deployment-direct-hash
+          mutationDelta: set namespace, TENANT, REGION, CLUSTER for direct worker delivery (STACK-aware LLM_HOST)
+        - name: flux
+          space: confighubplaceholder-rag-server-deployment-flux-space
+          unit: confighubplaceholder-rag-server-deployment-flux-unit
+          revision: confighubplaceholder-rag-server-deployment-flux-revision
+          dataHash: confighubplaceholder-rag-server-deployment-flux-hash
+          mutationDelta: set namespace, TENANT, REGION, CLUSTER for Flux OCI delivery
+        - name: argo
+          space: confighubplaceholder-rag-server-deployment-argo-space
+          unit: confighubplaceholder-rag-server-deployment-argo-unit
+          revision: confighubplaceholder-rag-server-deployment-argo-revision
+          dataHash: confighubplaceholder-rag-server-deployment-argo-hash
+          mutationDelta: set namespace, TENANT, REGION, CLUSTER for Argo OCI delivery
+    - name: nim-llm
+      role: answer-llm
+      gpuUser: true
+      layers:
+        - name: base
+          space: confighubplaceholder-nim-llm-base-space
+          unit: confighubplaceholder-nim-llm-base-unit
+          revision: confighubplaceholder-nim-llm-base-revision
+          dataHash: confighubplaceholder-nim-llm-base-hash
+          mutationDelta: original nim-llm manifest with stub image
+        - name: platform
+          space: confighubplaceholder-nim-llm-platform-space
+          unit: confighubplaceholder-nim-llm-platform-unit
+          revision: confighubplaceholder-nim-llm-platform-revision
+          dataHash: confighubplaceholder-nim-llm-platform-hash
+          mutationDelta: set STORAGE_CLASS for model cache PVC
+        - name: accelerator
+          space: confighubplaceholder-nim-llm-accelerator-space
+          unit: confighubplaceholder-nim-llm-accelerator-unit
+          revision: confighubplaceholder-nim-llm-accelerator-revision
+          dataHash: confighubplaceholder-nim-llm-accelerator-hash
+          mutationDelta: set ACCELERATOR, NODE_SELECTOR, GPU_MEMORY for h100
+        - name: profile
+          space: confighubplaceholder-nim-llm-profile-space
+          unit: confighubplaceholder-nim-llm-profile-unit
+          revision: confighubplaceholder-nim-llm-profile-revision
+          dataHash: confighubplaceholder-nim-llm-profile-hash
+          mutationDelta: set MODEL_NAME, MODEL_TAG, MAX_BATCH_SIZE; STACK-aware image
+        - name: recipe
+          space: confighubplaceholder-nim-llm-recipe-space
+          unit: confighubplaceholder-nim-llm-recipe-unit
+          revision: confighubplaceholder-nim-llm-recipe-revision
+          dataHash: confighubplaceholder-nim-llm-recipe-hash
+          mutationDelta: set RAG_USE_CASE=enterprise-rag
+      deploymentVariants:
+        - name: direct
+          space: confighubplaceholder-nim-llm-deployment-direct-space
+          unit: confighubplaceholder-nim-llm-deployment-direct-unit
+          revision: confighubplaceholder-nim-llm-deployment-direct-revision
+          dataHash: confighubplaceholder-nim-llm-deployment-direct-hash
+          mutationDelta: set namespace, TENANT, CLUSTER for direct worker delivery
+        - name: flux
+          space: confighubplaceholder-nim-llm-deployment-flux-space
+          unit: confighubplaceholder-nim-llm-deployment-flux-unit
+          revision: confighubplaceholder-nim-llm-deployment-flux-revision
+          dataHash: confighubplaceholder-nim-llm-deployment-flux-hash
+          mutationDelta: set namespace, TENANT, CLUSTER for Flux OCI delivery
+        - name: argo
+          space: confighubplaceholder-nim-llm-deployment-argo-space
+          unit: confighubplaceholder-nim-llm-deployment-argo-unit
+          revision: confighubplaceholder-nim-llm-deployment-argo-revision
+          dataHash: confighubplaceholder-nim-llm-deployment-argo-hash
+          mutationDelta: set namespace, TENANT, CLUSTER for Argo OCI delivery
+    - name: nim-embedding
+      role: embedder
+      gpuUser: true
+      layers:
+        - name: base
+          space: confighubplaceholder-nim-embedding-base-space
+          unit: confighubplaceholder-nim-embedding-base-unit
+          revision: confighubplaceholder-nim-embedding-base-revision
+          dataHash: confighubplaceholder-nim-embedding-base-hash
+          mutationDelta: original nim-embedding manifest with stub image
+        - name: platform
+          space: confighubplaceholder-nim-embedding-platform-space
+          unit: confighubplaceholder-nim-embedding-platform-unit
+          revision: confighubplaceholder-nim-embedding-platform-revision
+          dataHash: confighubplaceholder-nim-embedding-platform-hash
+          mutationDelta: set STORAGE_CLASS for model cache
+        - name: accelerator
+          space: confighubplaceholder-nim-embedding-accelerator-space
+          unit: confighubplaceholder-nim-embedding-accelerator-unit
+          revision: confighubplaceholder-nim-embedding-accelerator-revision
+          dataHash: confighubplaceholder-nim-embedding-accelerator-hash
+          mutationDelta: set ACCELERATOR, NODE_SELECTOR, GPU_MEMORY for h100
+        - name: profile
+          space: confighubplaceholder-nim-embedding-profile-space
+          unit: confighubplaceholder-nim-embedding-profile-unit
+          revision: confighubplaceholder-nim-embedding-profile-revision
+          dataHash: confighubplaceholder-nim-embedding-profile-hash
+          mutationDelta: set EMBED_MODEL_NAME, EMBED_DIM; STACK-aware image
+        - name: recipe
+          space: confighubplaceholder-nim-embedding-recipe-space
+          unit: confighubplaceholder-nim-embedding-recipe-unit
+          revision: confighubplaceholder-nim-embedding-recipe-revision
+          dataHash: confighubplaceholder-nim-embedding-recipe-hash
+          mutationDelta: set RAG_USE_CASE=enterprise-rag
+      deploymentVariants:
+        - name: direct
+          space: confighubplaceholder-nim-embedding-deployment-direct-space
+          unit: confighubplaceholder-nim-embedding-deployment-direct-unit
+          revision: confighubplaceholder-nim-embedding-deployment-direct-revision
+          dataHash: confighubplaceholder-nim-embedding-deployment-direct-hash
+          mutationDelta: set namespace, TENANT, CLUSTER for direct worker delivery
+        - name: flux
+          space: confighubplaceholder-nim-embedding-deployment-flux-space
+          unit: confighubplaceholder-nim-embedding-deployment-flux-unit
+          revision: confighubplaceholder-nim-embedding-deployment-flux-revision
+          dataHash: confighubplaceholder-nim-embedding-deployment-flux-hash
+          mutationDelta: set namespace, TENANT, CLUSTER for Flux OCI delivery
+        - name: argo
+          space: confighubplaceholder-nim-embedding-deployment-argo-space
+          unit: confighubplaceholder-nim-embedding-deployment-argo-unit
+          revision: confighubplaceholder-nim-embedding-deployment-argo-revision
+          dataHash: confighubplaceholder-nim-embedding-deployment-argo-hash
+          mutationDelta: set namespace, TENANT, CLUSTER for Argo OCI delivery
+    - name: vector-db
+      role: vector-store
+      gpuUser: false
+      layers:
+        - name: base
+          space: confighubplaceholder-vector-db-base-space
+          unit: confighubplaceholder-vector-db-base-unit
+          revision: confighubplaceholder-vector-db-base-revision
+          dataHash: confighubplaceholder-vector-db-base-hash
+          mutationDelta: original vector-db manifest with stub image
+        - name: platform
+          space: confighubplaceholder-vector-db-platform-space
+          unit: confighubplaceholder-vector-db-platform-unit
+          revision: confighubplaceholder-vector-db-platform-revision
+          dataHash: confighubplaceholder-vector-db-platform-hash
+          mutationDelta: set STORAGE_CLASS, STORAGE_SIZE for kgpu platform
+        - name: accelerator
+          space: confighubplaceholder-vector-db-accelerator-space
+          unit: confighubplaceholder-vector-db-accelerator-unit
+          revision: confighubplaceholder-vector-db-accelerator-revision
+          dataHash: confighubplaceholder-vector-db-accelerator-hash
+          mutationDelta: label ACCELERATOR=h100 (vector-db is CPU-only)
+        - name: profile
+          space: confighubplaceholder-vector-db-profile-space
+          unit: confighubplaceholder-vector-db-profile-unit
+          revision: confighubplaceholder-vector-db-profile-revision
+          dataHash: confighubplaceholder-vector-db-profile-hash
+          mutationDelta: set EMBED_DIM (must match nim-embedding), INDEX_TYPE, METRIC; STACK-aware image
+        - name: recipe
+          space: confighubplaceholder-vector-db-recipe-space
+          unit: confighubplaceholder-vector-db-recipe-unit
+          revision: confighubplaceholder-vector-db-recipe-revision
+          dataHash: confighubplaceholder-vector-db-recipe-hash
+          mutationDelta: set COLLECTION_PREFIX=enterprise-rag
+      deploymentVariants:
+        - name: direct
+          space: confighubplaceholder-vector-db-deployment-direct-space
+          unit: confighubplaceholder-vector-db-deployment-direct-unit
+          revision: confighubplaceholder-vector-db-deployment-direct-revision
+          dataHash: confighubplaceholder-vector-db-deployment-direct-hash
+          mutationDelta: set namespace, TENANT, CLUSTER for direct worker delivery
+        - name: flux
+          space: confighubplaceholder-vector-db-deployment-flux-space
+          unit: confighubplaceholder-vector-db-deployment-flux-unit
+          revision: confighubplaceholder-vector-db-deployment-flux-revision
+          dataHash: confighubplaceholder-vector-db-deployment-flux-hash
+          mutationDelta: set namespace, TENANT, CLUSTER for Flux OCI delivery
+        - name: argo
+          space: confighubplaceholder-vector-db-deployment-argo-space
+          unit: confighubplaceholder-vector-db-deployment-argo-unit
+          revision: confighubplaceholder-vector-db-deployment-argo-revision
+          dataHash: confighubplaceholder-vector-db-deployment-argo-hash
+          mutationDelta: set namespace, TENANT, CLUSTER for Argo OCI delivery
+  publish:
+    variants:
+      - name: direct
+        targetRef: confighubplaceholder-direct-target-ref
+        bundleHint: confighubplaceholder-direct-bundle-hint
+        note: The bundle is the deployable output of the direct deployment units' target, not the source of truth for the layer chain.
+      - name: flux
+        targetRef: confighubplaceholder-flux-target-ref
+        bundleHint: confighubplaceholder-flux-bundle-hint
+        note: The bundle is the deployable output of the Flux deployment units' target, not the source of truth for the layer chain.
+      - name: argo
+        targetRef: confighubplaceholder-argo-target-ref
+        bundleHint: confighubplaceholder-argo-bundle-hint
+        note: The bundle is the deployable output of the Argo deployment units' target, not the source of truth for the layer chain.

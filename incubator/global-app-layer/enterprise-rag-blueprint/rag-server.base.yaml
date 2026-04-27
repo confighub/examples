@@ -1,0 +1,160 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rag-server-script
+  namespace: confighubplaceholder
+data:
+  server.py: |
+    #!/usr/bin/env python3
+    import os, json, urllib.request
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    LLM_HOST = os.environ.get("LLM_HOST", "host.docker.internal:11434")
+    EMBEDDING_HOST = os.environ.get("EMBEDDING_HOST", LLM_HOST)
+    VECTOR_DB_HOST = os.environ.get("VECTOR_DB_HOST", "vector-db:6333")
+    RAG_TOP_K = int(os.environ.get("RAG_TOP_K", "5"))
+    PROMPT_TEMPLATE = os.environ.get("PROMPT_TEMPLATE", "enterprise-default")
+    GUARDRAIL_POLICY = os.environ.get("GUARDRAIL_POLICY", "off")
+    TENANT = os.environ.get("TENANT", "unknown")
+    MODEL_NAME = os.environ.get("MODEL_NAME", "llama3.2:3b")
+    EMBED_MODEL_NAME = os.environ.get("EMBED_MODEL_NAME", "nomic-embed-text")
+    STACK = os.environ.get("STACK", "stub")
+
+    def _ollama_generate(host, model, prompt):
+        req = urllib.request.Request(
+            f"http://{host}/api/generate",
+            data=json.dumps({"model": model, "prompt": prompt, "stream": False}).encode(),
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=120) as r:
+            return json.loads(r.read()).get("response", "")
+
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self, *a, **k):
+            pass
+
+        def do_GET(self):
+            if self.path == "/health":
+                return self._json(200, {
+                    "ok": True, "stack": STACK, "tenant": TENANT, "model": MODEL_NAME,
+                    "llm_host": LLM_HOST, "embed_model": EMBED_MODEL_NAME,
+                    "embed_host": EMBEDDING_HOST, "vector_db_host": VECTOR_DB_HOST,
+                    "top_k": RAG_TOP_K, "prompt_template": PROMPT_TEMPLATE,
+                    "guardrail_policy": GUARDRAIL_POLICY,
+                })
+            return self._json(404, {"error": "not found"})
+
+        def do_POST(self):
+            if self.path == "/answer":
+                n = int(self.headers.get("Content-Length", 0))
+                body = json.loads(self.rfile.read(n) or b"{}")
+                q = body.get("query", "")
+                if STACK == "stub":
+                    answer = f"(stub mode) would have asked {MODEL_NAME} via {LLM_HOST}: {q}"
+                else:
+                    try:
+                        answer = _ollama_generate(LLM_HOST, MODEL_NAME, q)
+                    except Exception as e:
+                        answer = f"(LLM call to {LLM_HOST} failed: {e})"
+                return self._json(200, {
+                    "query": q, "answer": answer,
+                    "tenant": TENANT, "model": MODEL_NAME, "stack": STACK,
+                })
+            return self._json(404, {"error": "not found"})
+
+        def _json(self, code, obj):
+            data = json.dumps(obj).encode()
+            self.send_response(code)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+
+    HTTPServer(("0.0.0.0", 8080), Handler).serve_forever()
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rag-server
+  namespace: confighubplaceholder
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rag-server
+  template:
+    metadata:
+      labels:
+        app: rag-server
+    spec:
+      containers:
+      - name: rag-server
+        image: python:3.12-slim
+        command: ["python", "/app/server.py"]
+        ports:
+        - containerPort: 8080
+        env:
+        - name: STACK
+          value: stub
+        - name: STORAGE_CLASS
+          value: standard
+        - name: INGRESS_CLASS
+          value: generic
+        - name: ACCELERATOR
+          value: generic
+        - name: MODEL_PROFILE
+          value: generic
+        - name: MODEL_NAME
+          value: stub-model
+        - name: EMBED_MODEL_NAME
+          value: stub-embed
+        - name: EMBED_DIM
+          value: "0"
+        - name: LLM_HOST
+          value: nim-llm:8000
+        - name: EMBEDDING_HOST
+          value: nim-embedding:8001
+        - name: VECTOR_DB_HOST
+          value: vector-db:6333
+        - name: RAG_TOP_K
+          value: "5"
+        - name: PROMPT_TEMPLATE
+          value: baseline
+        - name: GUARDRAIL_POLICY
+          value: "off"
+        - name: RAG_USE_CASE
+          value: general
+        - name: TENANT
+          value: unset
+        - name: REGION
+          value: unset
+        - name: CLUSTER
+          value: unset
+        volumeMounts:
+        - name: script
+          mountPath: /app
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
+      volumes:
+      - name: script
+        configMap:
+          name: rag-server-script
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rag-server
+  namespace: confighubplaceholder
+spec:
+  selector:
+    app: rag-server
+  ports:
+  - protocol: TCP
+    port: 8080
+    targetPort: 8080
+  type: ClusterIP

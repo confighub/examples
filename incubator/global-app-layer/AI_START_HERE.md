@@ -95,7 +95,8 @@ GUI feature ask: Filter by `Labels.ExampleName` in space list. No issue filed ye
 | [single-component](./single-component/AI_START_HERE.md) | Smallest proof, start here |
 | [frontend-postgres](./frontend-postgres/AI_START_HERE.md) | Two components |
 | [realistic-app](./realistic-app/AI_START_HERE.md) | Three-component app |
-| [gpu-eks-h100-training](./gpu-eks-h100-training/AI_START_HERE.md) | NVIDIA AICR-shaped stack |
+| [gpu-eks-h100-training](./gpu-eks-h100-training/AI_START_HERE.md) | NVIDIA AICR-shaped substrate stack |
+| [enterprise-rag-blueprint](./enterprise-rag-blueprint/AI_START_HERE.md) | NVIDIA Blueprint-shaped app stack with initiatives + real Ollama runtime |
 
 Recommend `single-component` unless the human asks for something specific.
 
@@ -136,6 +137,7 @@ From here, switch to the example's own `AI_START_HERE.md`:
 - [frontend-postgres/AI_START_HERE.md](./frontend-postgres/AI_START_HERE.md)
 - [realistic-app/AI_START_HERE.md](./realistic-app/AI_START_HERE.md)
 - [gpu-eks-h100-training/AI_START_HERE.md](./gpu-eks-h100-training/AI_START_HERE.md)
+- [enterprise-rag-blueprint/AI_START_HERE.md](./enterprise-rag-blueprint/AI_START_HERE.md)
 
 ---
 
