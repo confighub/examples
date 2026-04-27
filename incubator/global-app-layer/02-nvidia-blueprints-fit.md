@@ -1,4 +1,4 @@
-# NVIDIA Blueprints and ConfigHub Fit
+# NVIDIA NIM Blueprints and ConfigHub Fit
 
 ## Purpose
 
@@ -6,11 +6,11 @@ This note answers a narrow question: can current ConfigHub model the kind of wor
 
 Short answer: yes, and more naturally than AICR. The recipe-chain model fits, the variant-fleet story is sharper at the app layer than at the cluster layer, and pairing it with ConfigHub initiatives turns the example into a real combined story rather than a parallel demo.
 
-## What NVIDIA Blueprints Are
+## What NVIDIA NIM Blueprints Are
 
-NVIDIA Blueprints are **application-level** reference packages, sister to AICR but at a different rung of the stack:
+NVIDIA NIM Blueprints are **application-level** reference packages, sister to AICR but at a different rung of the stack:
 
-| | AICR | Blueprints |
+| | AICR | NIM Blueprints |
 |---|---|---|
 | Layer | GPU cluster substrate | AI application running on top |
 | Inputs | platform · accelerator · OS · intent | use-case · publisher · components (NIMs/NeMo/partner) |
@@ -19,16 +19,16 @@ NVIDIA Blueprints are **application-level** reference packages, sister to AICR b
 
 Same packaging philosophy at both layers — layered, version-locked, validated, reproducible, with deployable bundles.
 
-The catalog has roughly 36 Blueprints. NVIDIA publishes most; partners (Weights & Biases, Iguazio, Cyborg, H2O.ai, LangChain, CrewAI, Pipecat, Viavi) publish nine. The catalog already accepts third-party recipes — there is a precedent slot for ConfigHub-flavoured publications if positioning ever calls for it.
+The catalog has roughly 36 NIM Blueprints. NVIDIA publishes most; partners (Weights & Biases, Iguazio, Cyborg, H2O.ai, LangChain, CrewAI, Pipecat, Viavi) publish nine. The catalog already accepts third-party recipes — there is a precedent slot for ConfigHub-flavoured publications if positioning ever calls for it.
 
 Relevant source material:
 
-- NVIDIA Blueprints catalog: https://build.nvidia.com/blueprints
-- Build an Enterprise RAG Pipeline (the chosen example): one of the most central Blueprints, listed as the upstream `relatedBlueprint` for AI-Q and Biomedical AI-Q Research Agent — i.e. NVIDIA already publishes Enterprise RAG as a base with vertical variants on top, which is structurally our variant-chain pattern.
+- NVIDIA NIM Blueprints catalog: https://build.nvidia.com/blueprints
+- Build an Enterprise RAG Pipeline (the chosen example): one of the most central NIM Blueprints, listed as the upstream `relatedBlueprint` for AI-Q and Biomedical AI-Q Research Agent — i.e. NVIDIA already publishes Enterprise RAG as a base with vertical variants on top, which is structurally our variant-chain pattern.
 
 ## Why This Fits ConfigHub
 
-ConfigHub already has the primitives needed to model a Blueprint as a recipe chain:
+ConfigHub already has the primitives needed to model a NIM Blueprint as a recipe chain:
 
 - units hold component manifests
 - clones and upstream links model layered specialization
@@ -36,15 +36,15 @@ ConfigHub already has the primitives needed to model a Blueprint as a recipe cha
 - functions mutate at each layer (model versions, GPU resources, retrieval params, tenant overrides)
 - revisions and hashes give provenance and reproducibility
 
-A Blueprint is a recipe chain at the app rung. The same pattern that `gpu-eks-h100-training/` proves at the substrate rung extends one layer up.
+A NIM Blueprint is a recipe chain at the app rung. The same pattern that `gpu-eks-h100-training/` proves at the substrate rung extends one layer up.
 
 ## The Crossover With Initiatives
 
-This is the part that AICR fit does not cover and Blueprints do.
+This is the part that AICR fit does not cover and NIM Blueprints do.
 
 ConfigHub initiatives (see [`../../initiatives-demo/`](../../initiatives-demo/)) are Views with a filter, initiative metadata (priority / status / deadline), and an optional `vet-kyverno` Trigger that runs a Kyverno CEL policy against matched units. They are the governance layer over a set of related units.
 
-AI Blueprints have natural compliance concerns that map almost one-to-one onto initiatives:
+NIM Blueprints have natural compliance concerns that map almost one-to-one onto initiatives:
 
 | Initiative | Priority | Filter | What it checks |
 |---|---|---|---|
@@ -66,7 +66,7 @@ The example supports three runtime paths so it is honest about what actually exe
 |---|---|---|---|---|---|
 | Stub | `STACK=stub` | k3d / kind / any | nginx/busybox stubs | stub | No inference. Structural proof only. Same approach as `gpu-eks-h100-training/`. |
 | Ollama | `STACK=ollama` (default on macOS) | k3d on Docker Desktop | Ollama running natively on host (Metal GPU); rag-server reaches it via `host.docker.internal` | Qdrant or Milvus in-cluster (CPU is fine) | Real runtime on Apple Silicon. Real query/response. Metal GPU acceleration. |
-| NIM | `STACK=nim` | x86_64 + NVIDIA GPU + NGC creds | real NIM containers in-cluster | Milvus in-cluster | Faithful Blueprint deploy. Requires the right hardware. |
+| NIM | `STACK=nim` | x86_64 + NVIDIA GPU + NGC creds | real NIM containers in-cluster | Milvus in-cluster | Faithful NIM Blueprint deploy. Requires the right hardware. |
 
 The Ollama path is the one that makes this example useful on the M5 Max. The LLM endpoint becomes a **deployment-layer config value** (`LLM_HOST=host.docker.internal:11434` for Ollama; `LLM_HOST=nim-llm.<ns>.svc.cluster.local:8000` for NIM), which is exactly the kind of tenant- or environment-local override the variant chain is supposed to prove.
 
@@ -130,7 +130,7 @@ The gaps called out in [`01-nvidia-aicr-fit.md`](./01-nvidia-aicr-fit.md) apply 
 3. First-class phased validation
 4. Bundle, integrity, SBOM, attestation evidence (see [`04-bundles-attestation-and-todo.md`](./04-bundles-attestation-and-todo.md))
 
-Adding a Blueprint-shaped example does not widen any of these. It does sharpen the case for them, because the app-layer recipe is where users will most want a recipe-browser UX and a phased validation lifecycle.
+Adding a NIM-Blueprint-shaped example does not widen any of these. It does sharpen the case for them, because the app-layer recipe is where users will most want a recipe-browser UX and a phased validation lifecycle.
 
 ## Recommended Position
 
@@ -144,11 +144,11 @@ Same as AICR: do not copy the catalog, adopt the useful pattern.
 
 ## Bottom Line
 
-Blueprints are useful for ConfigHub because they validate four ideas the package already pushes:
+NIM Blueprints are useful for ConfigHub because they validate four ideas the package already pushes:
 
 - layered recipes are the right shape at the app rung as well as the cluster rung
 - compliance over a recipe chain is a first-class concern, not an afterthought
 - variant fleets at the deployment leaf are how real customers run AI apps
 - runtime honesty matters: the same recipe should support stubs, laptop hardware, and production GPUs without changing the chain
 
-`enterprise-rag-blueprint/` is the worked example that exercises all four. It pairs naturally with `gpu-eks-h100-training/` (the substrate rung) and with `initiatives-demo/` (the governance primitive), and it is the first example where the AICR-shape, the Blueprint-shape, and the initiatives-shape cohabit.
+`enterprise-rag-blueprint/` is the worked example that exercises all four. It pairs naturally with `gpu-eks-h100-training/` (the substrate rung) and with `initiatives-demo/` (the governance primitive), and it is the first example where the AICR-shape, the NIM-Blueprint-shape, and the initiatives-shape cohabit.
