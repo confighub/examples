@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# cleanup.sh — Tear down the initiatives-demo space in a single pass.
+# cleanup.sh — Tear down the initiatives-demo space and its kind cluster.
 #
 # Handles the dependency ordering needed to fully delete the space:
 #   1. Find bridge workers that live in this space.
@@ -9,6 +9,8 @@
 #       spaces pointing at this space's worker.)
 #   3. `cub space delete --recursive-force` to nuke units, views, filters,
 #      workers, etc. in one shot.
+#   4. Delete the local kind cluster created by setup.sh (best effort — if
+#      the cluster name was customized, set CLUSTER_NAME to match).
 #
 # Everything talks to ConfigHub via the `cub` CLI so the script automatically
 # uses whichever server the current cub context points at.
@@ -20,6 +22,7 @@
 set -euo pipefail
 
 SPACE="${SPACE:-initiatives-demo}"
+CLUSTER_NAME="${CLUSTER_NAME:-$SPACE}"
 cub="${CUB:-cub}"
 
 if ! command -v "$cub" &>/dev/null; then
@@ -64,8 +67,17 @@ fi
 # ── Recursively delete the space ─────────────────────────────────────────────
 
 if $cub space delete "$SPACE" --recursive-force; then
-  echo "Done."
+  echo "Space '$SPACE' deleted."
 else
   echo "ERROR: Could not delete space '$SPACE'. Investigate remaining references." >&2
   exit 1
 fi
+
+# ── Delete the local kind cluster ────────────────────────────────────────────
+
+if command -v kind &>/dev/null && kind get clusters 2>/dev/null | grep -qx "$CLUSTER_NAME"; then
+  echo "Deleting kind cluster '$CLUSTER_NAME'..."
+  kind delete cluster --name "$CLUSTER_NAME"
+fi
+
+echo "Done."

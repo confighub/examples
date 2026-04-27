@@ -13,15 +13,18 @@
 # Prerequisites:
 #   - cub CLI installed: https://docs.confighub.com/get-started/setup/#install-the-cli
 #   - Authenticated: cub auth login
+#   - kind, kubectl, docker, jq on PATH (used to stand up the local kyverno worker)
 #
 # Usage:
 #   ./setup.sh
 #   SPACE=my-space ./setup.sh
 #
 # Environment variables:
-#   CONFIGHUB_URL   ConfigHub server URL  (default: derived from current cub context)
-#   SPACE           Target space slug     (default: initiatives-demo)
-#   CUB             Path to cub binary    (default: cub on PATH)
+#   CONFIGHUB_URL          ConfigHub server URL  (default: derived from current cub context)
+#   SPACE                  Target space slug     (default: initiatives-demo)
+#   CLUSTER_NAME           kind cluster name     (default: $SPACE)
+#   TRIGGER_ENABLE_DELAY   Seconds between enabling each trigger (default: 15)
+#   CUB                    Path to cub binary    (default: cub on PATH)
 
 set -euo pipefail
 
@@ -46,10 +49,25 @@ if ! $cub auth get-token &>/dev/null; then
   exit 1
 fi
 
+# Verify the tools we need to stand up the local kind cluster + kyverno worker.
+for tool in kind kubectl docker jq; do
+  if ! command -v "$tool" &>/dev/null; then
+    echo "ERROR: $tool is required but not found in PATH" >&2
+    exit 1
+  fi
+done
+
 # Verify promotion data exists
 if [[ ! -d "$PROMO_DIR" ]]; then
   echo "ERROR: Promotion demo data not found at $PROMO_DIR" >&2
   echo "This script uses YAML files from the promotion-demo-data example." >&2
+  exit 1
+fi
+
+# Verify the kyverno worker source ships alongside this demo.
+KYVERNO_DIR="${SCRIPT_DIR}/../custom-workers/kyverno"
+if [[ ! -d "$KYVERNO_DIR" ]]; then
+  echo "ERROR: Kyverno worker source not found at $KYVERNO_DIR" >&2
   exit 1
 fi
 
@@ -72,6 +90,11 @@ API_TOKEN=$($cub auth get-token)
 
 created_initiatives=0
 created_units=0
+TRIGGER_IDS=()
+# Seconds to wait between enabling each trigger. Enabling a trigger fires it
+# against every unit matched by its filter, so back-to-back enables compound
+# the per-trigger fan-outs. A small delay keeps the work paced.
+TRIGGER_ENABLE_DELAY="${TRIGGER_ENABLE_DELAY:-15}"
 
 # Cross-platform date arithmetic (macOS + Linux)
 days_from_now() {
@@ -147,14 +170,19 @@ resolve_space_id() {
   $cub space get "$SPACE" --jq ".Space.SpaceID" --quiet 2>/dev/null
 }
 
-# Find a Ready bridge worker that supports vet-kyverno.
+# Find a Ready bridge worker that supports vet-kyverno *within this demo's
+# own space*. We deliberately do not search globally — sharing a worker
+# across demos couples their lifecycles, so each demo brings its own.
 # Some workers expose FunctionWorkerInfo.SupportedFunctions as null, so we
 # normalise to {} before iterating to avoid jq errors on those entries.
 find_kyverno_worker() {
   local workers
-  workers=$(api GET "/bridge_worker" 2>/dev/null || echo "[]")
-  echo "$workers" | jq -r '
+  workers=$(api GET "/space/${SPACE_ID}/bridge_worker" 2>/dev/null || echo "[]")
+  # Defensive: if the per-space endpoint ever surfaces visible-but-not-resident
+  # workers, the SpaceID check still keeps us pinned to our own space.
+  echo "$workers" | jq -r --arg sid "$SPACE_ID" '
     [ .[]
+      | select(.BridgeWorker.SpaceID == $sid)
       | select(.BridgeWorker.Condition == "Ready")
       | select(
           ((.BridgeWorker.ProvidedInfo.FunctionWorkerInfo.SupportedFunctions // {})
@@ -382,7 +410,10 @@ create_initiative() {
   fi
 
   # 3. Create Trigger with inline Kyverno policy (if worker available).
-  #    Disabled: false  → runs on every Mutation event against matching units.
+  #    Disabled: true   → trigger is created in a paused state. Step 6 below
+  #                       enables them one at a time so the per-trigger
+  #                       fan-outs don't all land at once. Enable manually
+  #                       in the UI later if you want to fire on demand.
   #    Warn: true       → failures populate ApplyWarnings (non-blocking/advisory).
   #    Warn: false      → failures populate ApplyGates (enforced, blocks Applies).
   local warn_value="true"
@@ -404,7 +435,7 @@ create_initiative() {
           FunctionName: "vet-kyverno",
           BridgeWorkerID: $workerId,
           Arguments: [{ParameterName: "policy", Value: $policy}],
-          Disabled: false,
+          Disabled: true,
           Warn: $warn
         }'
       )" 2>/dev/null | jq -r '.TriggerID // empty' 2>/dev/null) || true
@@ -415,6 +446,7 @@ create_initiative() {
     api PATCH "/space/${SPACE_ID}/view/${view_id}" \
       -d "$(jq -n --arg tid "$trigger_id" '{Annotations: {"initiative-trigger-id": $tid}}')" \
       >/dev/null 2>&1 || true
+    TRIGGER_IDS+=("$trigger_id")
   fi
 
   echo "  ✓ $name (priority=$priority, status=$status)"
@@ -442,18 +474,84 @@ fi
 echo "SpaceID: $SPACE_ID"
 echo ""
 
-# ── Step 2: Detect kyverno worker ────────────────────────────────────────────
+# ── Step 2: Local kind cluster + kyverno worker ──────────────────────────────
+#
+# The demo brings its own kind cluster, k8s-worker, and vet-kyverno worker so
+# initiative triggers have somewhere to run. Everything is namespaced under
+# CLUSTER_NAME (defaults to the space slug) so cleanup.sh can find it.
+
+CLUSTER_NAME="${CLUSTER_NAME:-$SPACE}"
+KCTX="kind-$CLUSTER_NAME"
+K8S_WORKER="k8s-worker"
+K8S_TARGET="k8s-worker-kubernetes-yaml-cluster"
+KYVERNO_WORKER="kyverno-cli-worker"
+KYVERNO_WORKER_NAMESPACE="kyverno-cli-worker"
+KYVERNO_IMAGE="kyverno-cli-worker:initiatives-demo"
+
+echo "--- Setting up kind cluster '$CLUSTER_NAME' ---"
+if kind get clusters 2>/dev/null | grep -qx "$CLUSTER_NAME"; then
+  echo "Cluster '$CLUSTER_NAME' already exists, reusing."
+else
+  kind create cluster --name "$CLUSTER_NAME"
+fi
+kubectl cluster-info --context "$KCTX" >/dev/null
+echo ""
+
+echo "--- Building and loading kyverno worker image ---"
+docker build -t "$KYVERNO_IMAGE" "$KYVERNO_DIR"
+kind load docker-image "$KYVERNO_IMAGE" --name "$CLUSTER_NAME"
+echo ""
+
+echo "--- Installing standard Kubernetes worker ---"
+if $cub worker get --space "$SPACE" "$K8S_WORKER" --quiet 2>/dev/null; then
+  echo "Worker '$K8S_WORKER' already exists, reusing."
+else
+  $cub worker install --space "$SPACE" \
+    --export --include-secret \
+    -t Kubernetes \
+    "$K8S_WORKER" 2>/dev/null | kubectl --context "$KCTX" apply -f -
+fi
+kubectl --context "$KCTX" -n confighub rollout status deployment/"$K8S_WORKER" --timeout=120s
+$cub target get --space "$SPACE" --wait --timeout 120s "$K8S_TARGET" >/dev/null
+echo "Target $K8S_TARGET is ready."
+echo ""
+
+echo "--- Installing kyverno CLI worker ---"
+if $cub worker get --space "$SPACE" "$KYVERNO_WORKER" --quiet 2>/dev/null; then
+  echo "Worker '$KYVERNO_WORKER' already exists, reusing."
+else
+  $cub worker install --space "$SPACE" \
+    --unit kyverno-cli-worker-unit \
+    --target "$K8S_TARGET" \
+    -n "$KYVERNO_WORKER_NAMESPACE" \
+    --image "$KYVERNO_IMAGE" \
+    --image-pull-policy Never \
+    "$KYVERNO_WORKER"
+  # Don't wait — the deployment won't be Ready until the secret below is applied.
+  $cub unit apply --space "$SPACE" kyverno-cli-worker-unit
+  kubectl --context "$KCTX" -n "$KYVERNO_WORKER_NAMESPACE" \
+    wait --for=create deployment/"$KYVERNO_WORKER" --timeout=120s
+  $cub worker install --space "$SPACE" \
+    --export-secret-only \
+    -n "$KYVERNO_WORKER_NAMESPACE" \
+    "$KYVERNO_WORKER" 2>/dev/null | kubectl --context "$KCTX" apply -f -
+fi
+kubectl --context "$KCTX" -n "$KYVERNO_WORKER_NAMESPACE" \
+  rollout status deployment/"$KYVERNO_WORKER" --timeout=120s
+echo "Kyverno CLI worker is ready."
+echo ""
+
+# ── Step 3: Detect kyverno worker ────────────────────────────────────────────
 
 WORKER_ID=$(find_kyverno_worker) || true
 if [[ -n "$WORKER_ID" ]]; then
   echo "Kyverno worker: $WORKER_ID"
 else
-  echo "No Ready vet-kyverno worker found — initiatives will be created without triggers."
-  echo "See README.md for how to set up a worker."
+  echo "WARNING: vet-kyverno worker did not register with ConfigHub — initiatives will be created without triggers."
 fi
 echo ""
 
-# ── Step 3: Create units from promotion demo YAML files ─────────────────────
+# ── Step 4: Create units from promotion demo YAML files ─────────────────────
 #
 # Units are labeled with App and AppOwner to match the promotion demo model.
 # Initiative filters use these labels to select units for each initiative.
@@ -501,7 +599,7 @@ create_unit "website-postgres" "website" "Marketing" "Web" "$PROMO_DIR/website/p
 
 echo ""
 
-# ── Step 4: Create initiatives ─────────────────────────────────────────────────
+# ── Step 5: Create initiatives ─────────────────────────────────────────────────
 
 echo "--- Creating initiatives ---"
 echo ""
@@ -572,20 +670,46 @@ create_initiative \
   "$WORKER_ID" \
   "true"
 
+# ── Step 6: Enable triggers (staggered) ──────────────────────────────────────
+#
+# Enabling a trigger fires it against every unit currently matched by its
+# filter. Across all 5 initiatives that's ~25 fan-out events; doing the
+# enables back-to-back stacks those bursts on top of each other. Stagger
+# by TRIGGER_ENABLE_DELAY seconds (default 15) to keep the work paced.
+
+if (( ${#TRIGGER_IDS[@]} > 0 )); then
+  echo ""
+  echo "--- Enabling triggers (one every ${TRIGGER_ENABLE_DELAY}s) ---"
+  first=1
+  for tid in "${TRIGGER_IDS[@]}"; do
+    if (( first )); then
+      first=0
+    else
+      sleep "$TRIGGER_ENABLE_DELAY"
+    fi
+    api PATCH "/space/${SPACE_ID}/trigger/${tid}" \
+      -d '{"Disabled": false}' >/dev/null \
+      && echo "  ✓ enabled $tid" \
+      || echo "  ✗ failed to enable $tid"
+  done
+fi
+
 # ── Summary ───────────────────────────────────────────────────────────────────
 
 echo ""
 echo "=== Done ==="
-echo "  Space:     $SPACE"
-echo "  Units:     $created_units"
+echo "  Space:       $SPACE"
+echo "  Cluster:     $CLUSTER_NAME"
+echo "  Units:       $created_units"
 echo "  Initiatives: $created_initiatives"
 echo ""
 echo "Open the ConfigHub UI and navigate to Initiatives to see them."
 if [[ -n "$WORKER_ID" ]]; then
-  echo "Triggers were created (enabled, Warn=true). They fire on every Mutation and"
-  echo "record failures in ApplyWarnings (non-blocking) rather than ApplyGates."
+  echo "Triggers were enabled one at a time (${TRIGGER_ENABLE_DELAY}s apart) so the"
+  echo "per-initiative fan-outs land in sequence rather than all at once."
+  echo "Override the pacing with TRIGGER_ENABLE_DELAY=N (seconds)."
 else
-  echo "Re-run after connecting a vet-kyverno worker to add policy check triggers."
+  echo "Worker did not register — re-run after fixing to attach policy check triggers."
 fi
 echo ""
-echo "To clean up, run: ./cleanup.sh"
+echo "To clean up (space + kind cluster), run: ./cleanup.sh"
