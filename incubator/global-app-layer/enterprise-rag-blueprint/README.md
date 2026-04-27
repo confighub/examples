@@ -1,6 +1,6 @@
 # `enterprise-rag-blueprint`
 
-A working ConfigHub example that fuses three things — NVIDIA AICR, NVIDIA Blueprints, and ConfigHub — into one demo on a single Apple Silicon laptop.
+A working ConfigHub example that fuses three things — NVIDIA AICR, NVIDIA NIM Blueprints, and ConfigHub — into one demo on a single Apple Silicon laptop.
 
 ## What this is and why
 
@@ -9,22 +9,22 @@ NVIDIA publishes two distinct, complementary packaging models:
 ### NVIDIA AICR — the cluster-substrate recipe
 [AICR](https://developer.nvidia.com/blog/validate-kubernetes-for-gpu-infrastructure-with-layered-reproducible-recipes/) (AI Cluster Runtime) packages **validated GPU Kubernetes substrates** as layered, version-locked recipes. The layers are infrastructure-shaped: `base → platform (eks/gke/aks) → accelerator (h100/a100) → OS (ubuntu/rocky) → workload intent (training/inference) → deploy`. A recipe is a tested combination of cloud, GPU, OS, drivers, and operators — known-good for a given workload. The output is a deployable bundle of operators (gpu-operator, device-plugin) plus the manifests they need. **AICR's job is making the GPU cluster correct.**
 
-### NVIDIA Blueprints — the AI-application reference
-[Blueprints](https://build.nvidia.com/blueprints) (~36 today) are the **application-rung counterpart**. Each is a deployable reference for a specific use case — Enterprise RAG, voice agent, agentic commerce, multi-agent warehouse, biomedical research agent — built from NIM microservices, NeMo, and partner components. Blueprints assume a working GPU cluster *underneath* (the AICR layer or equivalent) and focus on app composition: which NIMs to wire together, what model versions, what retrieval params, what guardrails. **Blueprints' job is making the AI app correct.**
+### NVIDIA NIM Blueprints — the AI-application reference
+[NIM Blueprints](https://build.nvidia.com/blueprints) (~36 today) are the **application-rung counterpart**. Each is a deployable reference for a specific use case — Enterprise RAG, voice agent, agentic commerce, multi-agent warehouse, biomedical research agent — built from NIM microservices, NeMo, and partner components. NIM Blueprints assume a working GPU cluster *underneath* (the AICR layer or equivalent) and focus on app composition: which NIMs to wire together, what model versions, what retrieval params, what guardrails. **NIM Blueprints' job is making the AI app correct.**
 
-The two compose: AICR validates the substrate, Blueprints validate the workload that runs on top. NVIDIA already publishes them with the same layered packaging philosophy at different rungs of the stack.
+The two compose: AICR validates the substrate, NIM Blueprints validate the workload that runs on top. NVIDIA already publishes them with the same layered packaging philosophy at different rungs of the stack.
 
 ### ConfigHub + AI — the operational layer NVIDIA doesn't ship
 NVIDIA stops at "here is a validated recipe." Real customers then need three things NVIDIA's catalog doesn't address:
 
 1. **Safe upgrades over time.** Recipes age. Model versions move. Guardrails tighten. Customers want shared base updates to flow through their fleet without flattening per-tenant overrides (vector-store endpoints, regional configs, custom prompt templates). NVIDIA gives you the recipe; ConfigHub keeps it current.
 2. **Governance and compliance over the recipe.** Recipes ship with policy gaps — pinned-model-version drift, embed/index dimension mismatches, missing GPU resource limits, off-by-default guardrails. ConfigHub initiatives turn those into kanban work that's tracked, owned, and (with `vet-kyverno`) automatically enforced.
-3. **Variant fleets.** One Blueprint becomes many real deployments — per-tenant, per-region, per-customer. Each shares the recipe but has local overrides that must survive upstream upgrades. The catalog itself validates this shape: NVIDIA already publishes Enterprise RAG as the upstream `relatedBlueprint` of AI-Q and Biomedical AI-Q (vertical agent variants on top of the same base).
+3. **Variant fleets.** One NIM Blueprint becomes many real deployments — per-tenant, per-region, per-customer. Each shares the recipe but has local overrides that must survive upstream upgrades. The catalog itself validates this shape: NVIDIA already publishes Enterprise RAG as the upstream `relatedBlueprint` of AI-Q and Biomedical AI-Q (vertical agent variants on top of the same base).
 
 **ConfigHub's role:** turn a static NVIDIA recipe (substrate or app) into a managed, governed, fleet-aware deployment with provenance you can audit and updates you can trust. AI agents drive the workflow through the same CLI surface humans use.
 
 ### What this example does
-This example materializes NVIDIA's **Build an Enterprise RAG Pipeline** Blueprint — the catalog's canonical RAG reference and upstream parent of AI-Q and Biomedical AI-Q — as a layered ConfigHub recipe. It exercises all three of ConfigHub's value-adds against it (upgrades, governance, fleet variants), and it backs the structural proof with a *real* runtime path that returns a Metal-accelerated answer on an Apple Silicon laptop with no NVIDIA hardware required.
+This example materializes NVIDIA's **Build an Enterprise RAG Pipeline** NIM Blueprint — the catalog's canonical RAG reference and upstream parent of AI-Q and Biomedical AI-Q — as a layered ConfigHub recipe. It exercises all three of ConfigHub's value-adds against it (upgrades, governance, fleet variants), and it backs the structural proof with a *real* runtime path that returns a Metal-accelerated answer on an Apple Silicon laptop with no NVIDIA hardware required.
 
 This is the **app rung** of the [`global-app-layer`](../) package. The substrate-rung counterpart is [`gpu-eks-h100-training`](../gpu-eks-h100-training/) (which expresses AICR). Together they cover both layers of the NVIDIA stack.
 
@@ -41,13 +41,13 @@ Each moves through a 5-stage variant chain — `base → platform=kgpu → accel
 
 ## Why this matters — five user-visible benefits
 
-These are the ConfigHub crossover points the example exercises against the NVIDIA Blueprint shape.
+These are the ConfigHub crossover points the example exercises against the NVIDIA NIM Blueprint shape.
 
 ### 1. Safe upgrades without flattening ✓✓
 Run `./upgrade-chain.sh llama3.2:1b nomic-embed-text-v2`. The bump propagates from the profile layer down through the recipe and into all three deployment variants. Tenant-local values (namespace, region, LLM_HOST override pointing at host Ollama, RAG_TOP_K) survive the propagation. This is the cleanest demo of the upgrade story we have anywhere in the package — RAG specifically is the right surface because model versions, prompt templates, and guardrail policies churn weekly while infrastructure churns yearly.
 
 ### 2. GitOps import wedge ✓✓
-RAG Helm charts in the wild ship with policy issues on first import — resource limits unset, TLS to the vector DB missing, demo-grade secrets, broad egress. The five initiatives layered over this example (`./seed-initiatives.sh`) are exactly the policy gaps you'd find on import. Run scan, find one concrete issue, decide. The classic "Import → scan → one finding" wedge from `confighub-aicr-value-add.md` lands hard on AI Blueprints because the issues are real.
+RAG Helm charts in the wild ship with policy issues on first import — resource limits unset, TLS to the vector DB missing, demo-grade secrets, broad egress. The five initiatives layered over this example (`./seed-initiatives.sh`) are exactly the policy gaps you'd find on import. Run scan, find one concrete issue, decide. The classic "Import → scan → one finding" wedge from `confighub-aicr-value-add.md` lands hard on NIM Blueprints because the issues are real.
 
 ### 3. Fleet variants ✓✓
 The natural variant axes for an AI app are **tenant, region, default LLM, vector-store endpoint, guardrail policy**. The catalog itself validates this is the real shape — NVIDIA already publishes Enterprise RAG as the upstream `relatedBlueprint` of AI-Q and Biomedical AI-Q (vertical agent variants on top of the same base). That is literally the variant-chain pattern, validated by NVIDIA's own catalog. The README's "Adding a second tenant" section walks through it concretely.
@@ -218,7 +218,7 @@ The recipe chain is identical across stacks; only profile-layer image refs and d
 |---|---|---|---|---|
 | `stub` (default) | any | nginx/busybox stubs | busybox | structural proof, no inference |
 | `ollama` | kind on Docker Desktop | host Ollama (Metal GPU) via `host.docker.internal` | qdrant in-cluster | real runtime on Apple Silicon |
-| `nim` | x86_64 + NVIDIA + NGC creds | real NIM containers in-cluster | milvus in-cluster | faithful Blueprint deploy |
+| `nim` | x86_64 + NVIDIA + NGC creds | real NIM containers in-cluster | milvus in-cluster | faithful NIM Blueprint deploy |
 
 ### Why these models on the Ollama path
 
@@ -226,7 +226,7 @@ The recipe chain is identical across stacks; only profile-layer image refs and d
 
 For the Ollama path this example uses:
 
-- **`llama3.2:3b`** as the answer LLM. Llama 3.2 is Meta's open-weight family — same lineage as the `llama-3.1-70b-instruct` NIM that the canonical NVIDIA Enterprise RAG Blueprint specifies, just at 3 billion parameters instead of 70 billion. That keeps the model under 2 GB on disk, loads in seconds, and runs at conversational latency on M-series Metal. It's a faithful stand-in: same model family, same Llama instruction-tuning, smaller hardware footprint. The full 70B variant is what STACK=nim points to.
+- **`llama3.2:3b`** as the answer LLM. Llama 3.2 is Meta's open-weight family — same lineage as the `llama-3.1-70b-instruct` NIM that the canonical NVIDIA Enterprise RAG NIM Blueprint specifies, just at 3 billion parameters instead of 70 billion. That keeps the model under 2 GB on disk, loads in seconds, and runs at conversational latency on M-series Metal. It's a faithful stand-in: same model family, same Llama instruction-tuning, smaller hardware footprint. The full 70B variant is what STACK=nim points to.
 - **`nomic-embed-text`** as the embedding model. 768-dimensional, 274 MB, fast on Metal. Stand-in for `nv-embedqa-e5-v5` (which is what the production NIM blueprint uses). The `EMBED_DIM` env var ConfigHub sets at the profile layer is what keeps the embedder and the vector store consistent — swap `nomic-embed-text` for any 768-dim embedder and the recipe still works; swap to a 1024-dim embedder and the **Embedding/Index Dim Match** initiative starts flagging.
 
 You can swap the model with one line at the profile layer:

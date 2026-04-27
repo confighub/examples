@@ -107,14 +107,14 @@ To check live readiness before binding:
 
 ## NVIDIA Context
 
-This package expresses both NVIDIA layering models — AICR (cluster substrate) and Blueprints (apps).
+This package expresses both NVIDIA layering models — AICR (cluster substrate) and NIM Blueprints (apps).
 
 | Rung | NVIDIA artifact | Layering | Worked example |
 |---|---|---|---|
 | Substrate | [AICR](https://developer.nvidia.com/blog/validate-kubernetes-for-gpu-infrastructure-with-layered-reproducible-recipes/) | base → platform → accelerator → OS → recipe → deploy | `gpu-eks-h100-training/` |
 | App | [Blueprints](https://build.nvidia.com/blueprints) | base → platform → accelerator → profile → recipe → deploy | `enterprise-rag-blueprint/` |
 
-Both examples use stub-friendly images by default (structural proof). The Blueprint example also ships a `STACK=ollama` runtime path that gets a real Metal-accelerated answer on Apple Silicon, with no NVIDIA hardware required.
+Both examples use stub-friendly images by default (structural proof). The NIM Blueprint example also ships a `STACK=ollama` runtime path that gets a real Metal-accelerated answer on Apple Silicon, with no NVIDIA hardware required.
 
 For NVIDIA fit details:
 - [01-nvidia-aicr-fit.md](./01-nvidia-aicr-fit.md) — substrate-rung fit analysis
