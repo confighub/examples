@@ -9,19 +9,20 @@ Use this to explore the Initiatives feature in ConfigHub: filtering units, track
 - [`cub` CLI](https://docs.confighub.com/get-started/setup/#install-the-cli) installed and on PATH.
 - Run `cub upgrade` to ensure you have the latest build.
 - Authenticated to ConfigHub: `cub auth login`
-- The `promotion-demo-data/` directory must be present alongside this one (it ships with this repo).
+- `kind`, `kubectl`, `docker`, `jq` on PATH — `setup.sh` stands up a local kind cluster and installs a vet-kyverno worker into it so initiative triggers have somewhere to run.
+- The `promotion-demo-data/` and `custom-workers/kyverno/` directories must be present alongside this one (they ship with this repo).
 
 ## Quick Start
 
 ```bash
-./setup.sh      # Create the demo space, units, and initiatives
-./cleanup.sh    # Delete everything when you're done
+./setup.sh      # Create kind cluster, workers, demo space, units, and initiatives
+./cleanup.sh    # Delete everything (space + kind cluster) when you're done
 ```
 
-By default the scripts target `https://app.confighub.com` and create a space named `initiatives-demo`. Override with environment variables:
+By default the scripts target the server from your current `cub` context, create a space named `initiatives-demo`, and a kind cluster of the same name. Override with environment variables:
 
 ```bash
-CONFIGHUB_URL=https://my-server.com SPACE=my-space ./setup.sh
+CONFIGHUB_URL=https://my-server.com SPACE=my-space CLUSTER_NAME=my-kind ./setup.sh
 ```
 
 ## What Gets Created
@@ -78,23 +79,11 @@ Initiatives use ConfigHub Labels and Annotations on Views to store their state:
 
 ## Using vet-kyverno Triggers
 
-If a Ready bridge worker with `vet-kyverno` support is detected when `setup.sh` runs, a Trigger is created (disabled by default) for each initiative. The Trigger runs the embedded Kyverno CEL policy against every unit matched by the initiative filter.
+`setup.sh` installs a `vet-kyverno` worker into the `initiatives-demo` space (running in the local kind cluster), so a Trigger is created for each initiative. The Trigger runs the embedded Kyverno CEL policy against every unit matched by the initiative filter.
 
-To set up a worker:
+The worker search is intentionally scoped to this demo's own space — no other demo's worker can be silently picked up, and tearing down this demo never touches another demo's state.
 
-1. Create a worker in your space:
-   ```bash
-   cub worker create --space initiatives-demo kyverno-worker
-   ```
-
-2. Start `cub-worker` with the worker credentials:
-   ```bash
-   cub-worker
-   ```
-
-3. Once the worker is Ready, re-run `./setup.sh` to attach triggers to all initiatives.
-
-4. Enable a trigger in the ConfigHub UI (initiative settings → Trigger → Enable) and mutate a unit to fire it.
+To exercise a trigger, mutate one of the units in the ConfigHub UI (or via `cub unit update`) — failures land in `ApplyWarnings` (advisory) for in-progress initiatives, or `ApplyGates` (blocking) for the completed "Disallow Host Ports" initiative.
 
 ## Exploring the Data
 
