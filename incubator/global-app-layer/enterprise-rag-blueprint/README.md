@@ -1,64 +1,48 @@
 # `enterprise-rag-blueprint`
 
-A working ConfigHub example that fuses three things — NVIDIA AICR, NVIDIA NIM Blueprints, and ConfigHub — into one demo on a single Apple Silicon laptop.
+## What this is
 
-## What this is and why
+A working end-to-end demo of one of NVIDIA's standard AI applications — *Build an Enterprise RAG Pipeline* — running under ConfigHub.
 
-NVIDIA publishes two distinct, complementary packaging models:
+RAG ("retrieval-augmented generation") is the standard pattern for an enterprise chatbot: when you ask a question, the application first looks things up in your private data, and then asks a large language model to write the answer using what it found.
 
-### NVIDIA AICR — the cluster-substrate recipe
-[AICR](https://developer.nvidia.com/blog/validate-kubernetes-for-gpu-infrastructure-with-layered-reproducible-recipes/) (AI Cluster Runtime) packages **validated GPU Kubernetes substrates** as layered, version-locked recipes. The layers are infrastructure-shaped: `base → platform (eks/gke/aks) → accelerator (h100/a100) → OS (ubuntu/rocky) → workload intent (training/inference) → deploy`. A recipe is a tested combination of cloud, GPU, OS, drivers, and operators — known-good for a given workload. The output is a deployable bundle of operators (gpu-operator, device-plugin) plus the manifests they need. **AICR's job is making the GPU cluster correct.**
+The demo runs in two places:
 
-### NVIDIA NIM Blueprints — the AI-application reference
-[NIM Blueprints](https://build.nvidia.com/blueprints) (~36 today) are the **application-rung counterpart**. Each is a deployable reference for a specific use case — Enterprise RAG, voice agent, agentic commerce, multi-agent warehouse, biomedical research agent — built from NIM microservices, NeMo, and partner components. NIM Blueprints assume a working GPU cluster *underneath* (the AICR layer or equivalent) and focus on app composition: which NIMs to wire together, what model versions, what retrieval params, what guardrails. **NIM Blueprints' job is making the AI app correct.**
+- on a Mac, using a small local language model through [Ollama](https://ollama.com)
+- on a real GPU cluster, using NVIDIA's official NIM containers
 
-The two compose: AICR validates the substrate, NIM Blueprints validate the workload that runs on top. NVIDIA already publishes them with the same layered packaging philosophy at different rungs of the stack.
+It's the same recipe in both cases. Only the image references and one endpoint change between them.
 
-### ConfigHub + AI — the operational layer NVIDIA doesn't ship
-NVIDIA stops at "here is a validated recipe." Real customers then need three things NVIDIA's catalog doesn't address:
+## What it does
 
-1. **Safe upgrades over time.** Recipes age. Model versions move. Guardrails tighten. Customers want shared base updates to flow through their fleet without flattening per-tenant overrides (vector-store endpoints, regional configs, custom prompt templates). NVIDIA gives you the recipe; ConfigHub keeps it current.
-2. **Governance and compliance over the recipe.** Recipes ship with policy gaps — pinned-model-version drift, embed/index dimension mismatches, missing GPU resource limits, off-by-default guardrails. ConfigHub initiatives turn those into kanban work that's tracked, owned, and (with `vet-kyverno`) automatically enforced.
-3. **Variant fleets.** One NIM Blueprint becomes many real deployments — per-tenant, per-region, per-customer. Each shares the recipe but has local overrides that must survive upstream upgrades. The catalog itself validates this shape: NVIDIA already publishes Enterprise RAG as the upstream `relatedBlueprint` of AI-Q and Biomedical AI-Q (vertical agent variants on top of the same base).
+NVIDIA publishes the Enterprise RAG application as a [**NIM Blueprint**](https://build.nvidia.com/blueprints) — a public, versioned recipe that says which AI models to use, how to wire them together, and what default settings to apply. NIM ("NVIDIA Inference Microservices") is NVIDIA's container format for serving models behind a uniform API. There are about 36 NIM Blueprints in the catalog today; Enterprise RAG is one of the most central, and is the published parent of several others (AI-Q and Biomedical AI-Q both list it as their `relatedBlueprint`).
 
-**ConfigHub's role:** turn a static NVIDIA recipe (substrate or app) into a managed, governed, fleet-aware deployment with provenance you can audit and updates you can trust. AI agents drive the workflow through the same CLI surface humans use.
+This example takes that Blueprint and breaks it into its layers — base, platform, accelerator, model profile, use case, deployment — and stores each layer as a versioned ConfigHub object. Once it's in ConfigHub, three things become possible that aren't possible with the static published recipe:
 
-### What this example does
-This example materializes NVIDIA's **Build an Enterprise RAG Pipeline** NIM Blueprint — the catalog's canonical RAG reference and upstream parent of AI-Q and Biomedical AI-Q — as a layered ConfigHub recipe. It exercises all three of ConfigHub's value-adds against it (upgrades, governance, fleet variants), and it backs the structural proof with a *real* runtime path that returns a Metal-accelerated answer on an Apple Silicon laptop with no NVIDIA hardware required.
+1. **Model and policy upgrades flow safely through the chain.** When you change a model version (or a prompt template, or a guardrail policy) at one layer, the change reaches every tenant's deployment without overwriting their per-tenant settings — different vector-store endpoint, different region, custom retrieval count, and so on.
+2. **Five compliance Views sit over the recipe.** They flag the kinds of things RAG deployments commonly ship with unset: pinned model versions, embedder/index dimension mismatch, GPU resource limits, guardrail policy on rag-server, resource limits at the deployment layer. Each shows up on the ConfigHub Initiatives page with priority, status, and the matching units.
+3. **Multiple tenants run from one recipe.** A worked example in this README adds a second tenant (`tenant-globex`) with its own region and retrieval settings. Run an upstream upgrade after, and both tenants pick it up — but each keeps the local settings that should stay local.
 
-This is the **app rung** of the [`global-app-layer`](../) package. The substrate-rung counterpart is [`gpu-eks-h100-training`](../gpu-eks-h100-training/) (which expresses AICR). Together they cover both layers of the NVIDIA stack.
+A query through the deployed pipeline returns a real answer from a real model. On a Mac that's `llama3.2:3b` running on the Metal GPU on the host, called from the in-cluster `rag-server` pod through `host.docker.internal`. On a CUDA cluster it's `llama-3.1-70b-instruct` served from a real NIM container.
 
-## The four components
+## Why this exists
 
-```
-rag-server      orchestration pod (Python service, ConfigMap-mounted)   no GPU
-nim-llm         answer model    (placeholder for NIM container)         GPU
-nim-embedding   embedding model (placeholder for NIM container)         GPU
-vector-db       Qdrant or Milvus stand-in                               no GPU
-```
+NVIDIA's catalog publishes well-tested recipes, but a recipe is a snapshot. Real teams need to operate it over time. They need to upgrade a model version next quarter without breaking customer-specific overrides; they need to know which of their deployments meet which compliance requirements; they need one recipe to serve many tenants and regions.
 
-Each moves through a 5-stage variant chain — `base → platform=kgpu → accelerator=h100 → profile=medium → recipe=enterprise-rag` — then forks into three deployment variants (`direct` / `flux` / `argo`). 4 components × 5 chain stages + 4 components × 3 deploy variants + 1 recipe-manifest unit = **33 units in 8 spaces**.
+ConfigHub adds that operational layer. This example shows it concretely on a recipe people will recognize.
 
-## Why this matters — five user-visible benefits
+This package contains a companion example, [`gpu-eks-h100-training`](../gpu-eks-h100-training/), that does the equivalent thing one rung lower in NVIDIA's stack: it expresses an **AICR** ("AI Cluster Runtime") recipe — NVIDIA's recipe format for the GPU Kubernetes substrate (operators, drivers, OS, accelerator profile). AICR makes the cluster correct; a NIM Blueprint makes the application correct on top. ConfigHub manages both, with the same primitives, in the same package.
 
-These are the ConfigHub crossover points the example exercises against the NVIDIA NIM Blueprint shape.
+## Components
 
-### 1. Safe upgrades without flattening ✓✓
-Run `./upgrade-chain.sh llama3.2:1b nomic-embed-text-v2`. The bump propagates from the profile layer down through the recipe and into all three deployment variants. Tenant-local values (namespace, region, LLM_HOST override pointing at host Ollama, RAG_TOP_K) survive the propagation. This is the cleanest demo of the upgrade story we have anywhere in the package — RAG specifically is the right surface because model versions, prompt templates, and guardrail policies churn weekly while infrastructure churns yearly.
+| Component | Role | Uses GPU? |
+|---|---|---|
+| `rag-server` | orchestration pod that calls the LLM and embedder | no |
+| `nim-llm` | answer model — a NIM container in production, a stub in the demo | yes |
+| `nim-embedding` | embedding model, same shape | yes |
+| `vector-db` | Qdrant or Milvus stand-in | no |
 
-### 2. GitOps import wedge ✓✓
-RAG Helm charts in the wild ship with policy issues on first import — resource limits unset, TLS to the vector DB missing, demo-grade secrets, broad egress. The five initiatives layered over this example (`./seed-initiatives.sh`) are exactly the policy gaps you'd find on import. Run scan, find one concrete issue, decide. The classic "Import → scan → one finding" wedge from `confighub-aicr-value-add.md` lands hard on NIM Blueprints because the issues are real.
-
-### 3. Fleet variants ✓✓
-The natural variant axes for an AI app are **tenant, region, default LLM, vector-store endpoint, guardrail policy**. The catalog itself validates this is the real shape — NVIDIA already publishes Enterprise RAG as the upstream `relatedBlueprint` of AI-Q and Biomedical AI-Q (vertical agent variants on top of the same base). That is literally the variant-chain pattern, validated by NVIDIA's own catalog. The README's "Adding a second tenant" section walks through it concretely.
-
-### 4. Bundle / attestation ✓
-NIM containers are signed; NVIDIA pushes attestation hard; the recipe-manifest unit records every component × every layer × every variant with revision number, dataHash, and `bundleHint`. The supply-chain machinery in [`../04-bundles-attestation-and-todo.md`](../04-bundles-attestation-and-todo.md) applies directly.
-
-### 5. Initiatives over the recipe chain ✓✓
-Five Views with Filters cover blueprint-specific compliance (Pin Model Versions, Embed/Index Dim Match, GPU Resource Limits, Guardrail Policy Required, Resource Limits Enforcement). Filters span all 8 spaces of the run, so each initiative covers direct + Flux + Argo variants of every relevant component. This is the first example in the package where the [`initiatives-demo`](../../../initiatives-demo/) primitive cohabits with a layered recipe chain.
-
-(Crossover miss: partner-publisher precedent — Enterprise RAG is NVIDIA-published, not partner. Acceptable; that crossover is a distribution-channel point, not an example-shape one.)
+Each component moves through a five-stage chain — `base → platform=kgpu → accelerator=h100 → profile=medium → recipe=enterprise-rag` — and then forks into three delivery variants (`direct`, `flux`, `argo`). That works out to 4 × 5 chain units + 4 × 3 deployment units + 1 recipe-manifest unit = **33 units across 8 ConfigHub spaces**.
 
 ## Quick start (Ollama path on Apple Silicon)
 
@@ -120,33 +104,31 @@ Expected `query.sh` output:
 
 That answer was generated by `llama3.2:3b` on the host's Metal GPU, called from the in-cluster `rag-server` pod via `host.docker.internal:11434`. Every value in the response (model name, tenant, stack) traces back through the recipe chain to a layer mutation in ConfigHub.
 
-## What to look for once it's running
+## What to look at once it's running
 
-Use this checklist after `setup.sh + seed-initiatives.sh + apply` to verify each part of the demo in both GUI and CLI. Replace `<prefix>` with the value in `.state/state.env`'s `PREFIX`.
+After `setup.sh`, `seed-initiatives.sh`, and the apply step, here's what's worth checking and where to find it. Replace `<prefix>` below with the value in `.state/state.env`'s `PREFIX`.
 
-### Point of interest 1: the variant chain (substrate of the demo)
+### The variant chain
 
-**See it in CLI:**
 ```bash
 cub unit tree --edge clone --space "*" \
   --where "Labels.ExampleChain = '$(source .state/state.env && echo $PREFIX)'"
 ```
-Shows each of the 4 components walking from `base → kgpu → h100 → medium → enterprise-rag` and forking into 3 deploy variants. The `direct` leaf for `tenant-acme` shows `Ready`; Flux and Argo show `NotLive` (no target bound).
+Each of the four components shows up walking from `base → kgpu → h100 → medium → enterprise-rag` and forking into the three deploy variants. The `direct` leaf for `tenant-acme` is `Ready`; Flux and Argo are `NotLive` (no target bound).
 
-**See it in GUI:** open the Recipe space — table view shows all 4 chain leaves side by side with their revisions and labels.
+In the GUI, open the recipe space — the table shows all four chain leaves side by side with revisions and labels.
 
-### Point of interest 2: the recipe-manifest unit (the receipt)
+### The recipe-manifest unit
 
-**CLI:**
 ```bash
 cub unit data --space "$(source .state/state.env && echo ${PREFIX}-recipe-enterprise-rag)" \
   recipe-enterprise-rag-stack | head -50
 ```
-Shows the rendered Recipe YAML with every component × every chain stage × every deployment variant captured with revision number, dataHash, and bundleHint. This is the full provenance receipt for the chain.
+The rendered manifest captures every component × every chain stage × every deployment variant with revision number, dataHash, and bundleHint per delivery variant.
 
-**GUI:** the recipe-space link printed by `setup.sh` (and `set-target.sh` after binding) takes you to the unit page where you can see the rendered manifest, its labels, and its history.
+In the GUI, the recipe-space link `setup.sh` prints (and `set-target.sh` re-prints after binding) takes you to the unit page with the rendered YAML and its history.
 
-### Point of interest 3: the five initiatives (governance)
+### The five initiatives
 
 `seed-initiatives.sh` prints these. Each link opens the View Explorer with the units that match.
 
@@ -169,32 +151,33 @@ for slug in pin-model-versions embed-index-dim-match gpu-resource-limits guardra
 done
 ```
 
-### Point of interest 4: the live cluster (real runtime)
+### The live cluster
 
-**Cluster overview** (cub-scout):
+`cub-scout` reads the cluster and shows what owns what:
+
 ```bash
 cub-scout doctor
 cub-scout map list --namespace tenant-acme
 cub-scout tree ownership --namespace tenant-acme
 ```
-Confirms 9 of 10 resources in `tenant-acme` are owned by ConfigHub (only `kube-root-ca.crt` is Native), and each running deployment traces back to a ConfigHub unit by name.
+Of the 10 resources in `tenant-acme`, nine are owned by ConfigHub; `kube-root-ca.crt` is the only Native one (Kubernetes auto-creates it). Each running deployment traces back to a ConfigHub unit by name.
 
-**Deep trace of one running pod:**
+To trace one specific pod:
 ```bash
 cub-scout explain deployment/rag-server --namespace tenant-acme
 kubectl --context kind-rag -n tenant-acme get pods -o wide
 kubectl --context kind-rag -n tenant-acme logs deploy/rag-server | tail -20
 ```
 
-### Point of interest 5: the runtime path (config-driven)
+### The runtime path
 
 ```bash
 ./query.sh                                    # default question
 ./query.sh "Summarise the Hawaiian language."
 ```
-Health endpoint dumps the env vars (`MODEL_NAME`, `LLM_HOST`, `EMBED_MODEL_NAME`, `RAG_TOP_K`, `PROMPT_TEMPLATE`, `GUARDRAIL_POLICY`) — every one set by a layer mutation in ConfigHub, then propagated to the deployment unit, then mounted as pod env. Answer endpoint calls host Ollama and returns a real Metal-accelerated answer.
+The script port-forwards to `rag-server` and hits two endpoints. `/health` returns the env vars it's running with — `MODEL_NAME`, `LLM_HOST`, `EMBED_MODEL_NAME`, `RAG_TOP_K`, `PROMPT_TEMPLATE`, `GUARDRAIL_POLICY` — and every one of them was set by a layer mutation in ConfigHub. `/answer` calls host Ollama and returns the result.
 
-### Point of interest 6: upgrade propagation (Story 1 in motion)
+### Upgrade propagation
 
 ```bash
 ./upgrade-chain.sh llama3.2:1b nomic-embed-text
@@ -202,17 +185,17 @@ Health endpoint dumps the env vars (`MODEL_NAME`, `LLM_HOST`, `EMBED_MODEL_NAME`
 cub unit data --space "$(source .state/state.env && echo ${PREFIX}-deploy-tenant-acme)" \
   rag-server-tenant-acme | grep -E "MODEL_NAME|LLM_HOST|TENANT|REGION"
 ```
-You should see `MODEL_NAME` updated to `llama3.2:1b` (propagated) but `LLM_HOST=host.docker.internal:11434`, `TENANT=tenant-acme`, `REGION=us-east` unchanged (preserved local values).
+`MODEL_NAME` is now `llama3.2:1b` (propagated through the chain). `LLM_HOST=host.docker.internal:11434`, `TENANT=tenant-acme`, and `REGION=us-east` are unchanged — those are the deployment-layer overrides that should survive an upstream bump.
 
-Re-apply to push the change to the running pod:
+To push the new value to the running pod:
 ```bash
 cub unit apply --space "$(source .state/state.env && echo ${PREFIX}-deploy-tenant-acme)" rag-server-tenant-acme
-./query.sh; # /health now shows the new model
+./query.sh    # /health now shows the new model
 ```
 
-## STACK selector (the runtime story)
+## STACK selector
 
-The recipe chain is identical across stacks; only profile-layer image refs and deployment-layer endpoint overrides differ.
+The recipe chain is identical across the three stacks; only the profile-layer image refs and deployment-layer endpoint overrides differ.
 
 | `STACK` | Cluster | LLM/embedding | Vector DB | Use when |
 |---|---|---|---|---|
