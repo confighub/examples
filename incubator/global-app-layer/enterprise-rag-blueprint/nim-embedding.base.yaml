@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nim-embedding
+  namespace: confighubplaceholder
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nim-embedding
+  template:
+    metadata:
+      labels:
+        app: nim-embedding
+    spec:
+      containers:
+      - name: nim-embedding
+        # Stub image for local/kind testing.
+        # STACK=ollama: rag-server bypasses this pod and embeds via host Ollama.
+        # STACK=nim: replace with nvcr.io/nim/nvidia/<embed-model>:<tag> on real GPU clusters.
+        image: nginx:1.27-alpine
+        ports:
+        - containerPort: 8001
+        env:
+        - name: STACK
+          value: stub
+        - name: STORAGE_CLASS
+          value: standard
+        - name: ACCELERATOR
+          value: generic
+        - name: NODE_SELECTOR
+          value: generic
+        - name: GPU_MEMORY
+          value: "0"
+        - name: MODEL_PROFILE
+          value: generic
+        - name: EMBED_MODEL_NAME
+          value: stub-embed
+        - name: EMBED_DIM
+          value: "0"
+        - name: RAG_USE_CASE
+          value: general
+        - name: TENANT
+          value: unset
+        - name: CLUSTER
+          value: unset
+        resources:
+          requests:
+            memory: "64Mi"
+          limits:
+            memory: "128Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nim-embedding
+  namespace: confighubplaceholder
+spec:
+  selector:
+    app: nim-embedding
+  ports:
+  - protocol: TCP
+    port: 8001
+    targetPort: 8001
+  type: ClusterIP

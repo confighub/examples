@@ -24,14 +24,15 @@ cd incubator/global-app-layer/single-component
 
 For AI-driven walkthroughs: [single-component/AI_START_HERE.md](./single-component/AI_START_HERE.md)
 
-## The Four Examples
+## The Five Examples
 
 | Example | Components | What it proves |
 |---------|------------|----------------|
 | [single-component](./single-component/) | backend + postgres stub | Smallest layered recipe |
 | [frontend-postgres](./frontend-postgres/) | frontend + postgres + backend stub | Two-component recipe |
 | [realistic-app](./realistic-app/) | backend + frontend + postgres | Three-component app, no stubs |
-| [gpu-eks-h100-training](./gpu-eks-h100-training/) | gpu-operator + nvidia-device-plugin | NVIDIA AICR-shaped stack |
+| [gpu-eks-h100-training](./gpu-eks-h100-training/) | gpu-operator + nvidia-device-plugin | NVIDIA AICR-shaped substrate stack |
+| [enterprise-rag-blueprint](./enterprise-rag-blueprint/) | rag-server + nim-llm + nim-embedding + vector-db | NVIDIA Blueprint-shaped app stack with initiatives + Ollama runtime path on Apple Silicon |
 
 All examples use the same script interface:
 - `./setup.sh --explain` — preview the plan
@@ -104,21 +105,29 @@ To check live readiness before binding:
 
 ---
 
-## NVIDIA AICR Context
+## NVIDIA Context
 
-This package can express NVIDIA's [AICR](https://developer.nvidia.com/blog/validate-kubernetes-for-gpu-infrastructure-with-layered-reproducible-recipes/) layering model: base → platform → accelerator → OS → recipe → deploy.
+This package expresses both NVIDIA layering models — AICR (cluster substrate) and Blueprints (apps).
 
-The GPU example (`gpu-eks-h100-training`) is a **structural proof** using stub images. Swap in real NVIDIA images for functional GPU deployment.
+| Rung | NVIDIA artifact | Layering | Worked example |
+|---|---|---|---|
+| Substrate | [AICR](https://developer.nvidia.com/blog/validate-kubernetes-for-gpu-infrastructure-with-layered-reproducible-recipes/) | base → platform → accelerator → OS → recipe → deploy | `gpu-eks-h100-training/` |
+| App | [Blueprints](https://build.nvidia.com/blueprints) | base → platform → accelerator → profile → recipe → deploy | `enterprise-rag-blueprint/` |
 
-For AICR details:
-- [confighub-aicr-value-add.md](./confighub-aicr-value-add.md)
-- [01-nvidia-aicr-fit.md](./01-nvidia-aicr-fit.md)
+Both examples use stub-friendly images by default (structural proof). The Blueprint example also ships a `STACK=ollama` runtime path that gets a real Metal-accelerated answer on Apple Silicon, with no NVIDIA hardware required.
+
+For NVIDIA fit details:
+- [01-nvidia-aicr-fit.md](./01-nvidia-aicr-fit.md) — substrate-rung fit analysis
+- [02-nvidia-blueprints-fit.md](./02-nvidia-blueprints-fit.md) — app-rung fit analysis (the spec for `enterprise-rag-blueprint/`)
+- [confighub-aicr-value-add.md](./confighub-aicr-value-add.md) — the three stories (safe upgrades, GitOps wedge, fleet variants) common to both rungs
 
 For an NVIDIA-oriented reading path, start with:
 
+- [02-nvidia-blueprints-fit.md](./02-nvidia-blueprints-fit.md)
+- [enterprise-rag-blueprint/README.md](./enterprise-rag-blueprint/README.md)
 - [01-nvidia-aicr-fit.md](./01-nvidia-aicr-fit.md)
+- [gpu-eks-h100-training/README.md](./gpu-eks-h100-training/README.md)
 - [how-it-works.md](./how-it-works.md)
-- [realistic-app/README.md](./realistic-app/README.md)
 
 ## Bundle Status
 

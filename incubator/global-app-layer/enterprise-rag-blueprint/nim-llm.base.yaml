@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nim-llm
+  namespace: confighubplaceholder
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nim-llm
+  template:
+    metadata:
+      labels:
+        app: nim-llm
+    spec:
+      containers:
+      - name: nim-llm
+        # Stub image for local/kind testing.
+        # STACK=ollama: the rag-server bypasses this pod and reaches host Ollama via host.docker.internal.
+        # STACK=nim: replace with nvcr.io/nim/<vendor>/<model>:<tag> on real GPU clusters.
+        image: nginx:1.27-alpine
+        ports:
+        - containerPort: 8000
+        env:
+        - name: STACK
+          value: stub
+        - name: STORAGE_CLASS
+          value: standard
+        - name: ACCELERATOR
+          value: generic
+        - name: NODE_SELECTOR
+          value: generic
+        - name: GPU_MEMORY
+          value: "0"
+        - name: MODEL_PROFILE
+          value: generic
+        - name: MODEL_NAME
+          value: stub-model
+        - name: MODEL_TAG
+          value: "0.0"
+        - name: MAX_BATCH_SIZE
+          value: "1"
+        - name: RAG_USE_CASE
+          value: general
+        - name: TENANT
+          value: unset
+        - name: CLUSTER
+          value: unset
+        resources:
+          requests:
+            memory: "64Mi"
+          limits:
+            memory: "128Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nim-llm
+  namespace: confighubplaceholder
+spec:
+  selector:
+    app: nim-llm
+  ports:
+  - protocol: TCP
+    port: 8000
+    targetPort: 8000
+  type: ClusterIP
