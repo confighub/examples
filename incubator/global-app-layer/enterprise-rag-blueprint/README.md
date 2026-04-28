@@ -2,7 +2,7 @@
 
 ## What this is
 
-A working end-to-end demo of one of NVIDIA's standard AI applications — *Build an Enterprise RAG Pipeline* — running under ConfigHub.
+A working end-to-end demo of one of NVIDIA's standard NIM Blueprints for AI applications — *Build an Enterprise RAG Pipeline* — running under ConfigHub.
 
 RAG ("retrieval-augmented generation") is the standard pattern for an enterprise chatbot: when you ask a question, the application first looks things up in your private data, and then asks a large language model to write the answer using what it found.
 
@@ -13,25 +13,31 @@ The demo runs in two places:
 
 It's the same recipe in both cases. Only the image references and one endpoint change between them.
 
-## What it does
+A companion example in this same package, [`gpu-eks-h100-training`](../gpu-eks-h100-training/), does the equivalent thing one rung lower in NVIDIA's stack: it expresses an **AICR** ("AI Cluster Runtime") recipe — NVIDIA's recipe format for the GPU Kubernetes substrate (operators, drivers, OS, accelerator profile). AICR makes the cluster correct; a NIM Blueprint makes the application correct on top. ConfigHub manages both, with the same primitives.
 
-NVIDIA publishes the Enterprise RAG application as a [**NIM Blueprint**](https://build.nvidia.com/blueprints) — a public, versioned recipe that says which AI models to use, how to wire them together, and what default settings to apply. NIM ("NVIDIA Inference Microservices") is NVIDIA's container format for serving models behind a uniform API. There are about 36 NIM Blueprints in the catalog today; Enterprise RAG is one of the most central, and is the published parent of several others (AI-Q and Biomedical AI-Q both list it as their `relatedBlueprint`).
+## Why to use ConfigHub for your AI stacks
 
-This example takes that Blueprint and breaks it into its layers — base, platform, accelerator, model profile, use case, deployment — and stores each layer as a versioned ConfigHub object. Once it's in ConfigHub, three things become possible that aren't possible with the static published recipe:
+1. **Easy to create and manage many custom configs in fleet deployments.** Real customers run a copy per tenant, region, or team, each with small differences. NVIDIA's catalog already shows this (AI-Q is a variant of Enterprise RAG for research agents); ConfigHub handles it directly instead of forking Helm charts.
 
-1. **Model and policy upgrades flow safely through the chain.** When you change a model version (or a prompt template, or a guardrail policy) at one layer, the change reaches every tenant's deployment without overwriting their per-tenant settings — different vector-store endpoint, different region, custom retrieval count, and so on.
-2. **Five compliance Views sit over the recipe.** They flag the kinds of things RAG deployments commonly ship with unset: pinned model versions, embedder/index dimension mismatch, GPU resource limits, guardrail policy on rag-server, resource limits at the deployment layer. Each shows up on the ConfigHub Initiatives page with priority, status, and the matching units.
-3. **Multiple tenants run from one recipe.** A worked example in this README adds a second tenant (`tenant-globex`) with its own region and retrieval settings. Run an upstream upgrade after, and both tenants pick it up — but each keeps the local settings that should stay local.
+2. **Updates from NVIDIA don't wipe your customers' settings.** When NVIDIA ships a new NIM version, the customer's per-tenant settings (vector-store URL, region, prompt template, retrieval count) stay put. No re-merging changes every release.
+
+3. **Standard compliance settings.** Five compliance checks come pre-built: model versions are pinned, the embedder and vector store agree on dimensions, GPU limits are set, the rag-server has a guardrail policy, every component has resource limits.
+
+4. **A receipt of what's actually deployed.** ConfigHub records the applied revision and content hash of every component, plus the target it's bound to. Useful for audits and regulated-industry reviews.
+
+5. **Developer and demo friendly footprint.** Everything works on a MacBook through Ollama: setup, compliance checks, even a live RAG query that returns a real answer. The same recipe targets real NIM containers when you have a GPU cluster.
+
+6. **Direct deploy or use CNCF GitOps tools.** The same recipe produces outputs for direct apply, Flux, or Argo. NVIDIA doesn't have to recommend one tool over another, and customers keep their existing pipeline.
+
+**When not to recommend it.** One Blueprint, one tenant, no governance to worry about, the published Helm chart works fine — ConfigHub is overkill.
+
+## How this works
+
+NVIDIA publishes Enterprise RAG as a [**NIM Blueprint**](https://build.nvidia.com/blueprints) — a public, versioned recipe that says which AI models to use, how to wire them together, and what default settings to apply. NIM ("NVIDIA Inference Microservices") is NVIDIA's container format for serving models behind a uniform API. There are about 36 NIM Blueprints in the catalog today; Enterprise RAG is one of the most central, and is the published parent of several others (AI-Q and Biomedical AI-Q both list it as their `relatedBlueprint`).
+
+This example takes the Blueprint and breaks it into its layers — base, platform, accelerator, model profile, use case, deployment — and stores each layer as a versioned ConfigHub object. Each of the four components walks through the same chain of layers; three delivery variants (direct, Flux OCI, Argo OCI) come off the recipe layer.
 
 A query through the deployed pipeline returns a real answer from a real model. On a Mac that's `llama3.2:3b` running on the Metal GPU on the host, called from the in-cluster `rag-server` pod through `host.docker.internal`. On a CUDA cluster it's `llama-3.1-70b-instruct` served from a real NIM container.
-
-## Why this exists
-
-NVIDIA's catalog publishes well-tested recipes, but a recipe is a snapshot. Real teams need to operate it over time. They need to upgrade a model version next quarter without breaking customer-specific overrides; they need to know which of their deployments meet which compliance requirements; they need one recipe to serve many tenants and regions.
-
-ConfigHub adds that operational layer. This example shows it concretely on a recipe people will recognize.
-
-This package contains a companion example, [`gpu-eks-h100-training`](../gpu-eks-h100-training/), that does the equivalent thing one rung lower in NVIDIA's stack: it expresses an **AICR** ("AI Cluster Runtime") recipe — NVIDIA's recipe format for the GPU Kubernetes substrate (operators, drivers, OS, accelerator profile). AICR makes the cluster correct; a NIM Blueprint makes the application correct on top. ConfigHub manages both, with the same primitives, in the same package.
 
 ## Components
 
