@@ -35,11 +35,13 @@ A companion example in this same package, [`gpu-eks-h100-training`](../gpu-eks-h
 
 NVIDIA publishes Enterprise RAG as a [**NIM Blueprint**](https://build.nvidia.com/blueprints) — a public, versioned recipe that says which AI models to use, how to wire them together, and what default settings to apply. NIM ("NVIDIA Inference Microservices") is NVIDIA's container format for serving models behind a uniform API. There are about 36 NIM Blueprints in the catalog today; Enterprise RAG is one of the most central, and is the published parent of several others (AI-Q and Biomedical AI-Q both list it as their `relatedBlueprint`).
 
-This example takes the Blueprint and breaks it into its layers — base, platform, accelerator, model profile, use case, deployment — and stores each layer as a versioned ConfigHub object. Each of the four components walks through the same chain of layers; three delivery variants (direct, Flux OCI, Argo OCI) come off the recipe layer.
+CONFIGHUB is a system of record for managing your configs and organising them into application models. Locating ConfigHub in between source code (in Git) and live production (eg K8s, GitOps) lets a user see live operational truth, verify it, and operate on it directly. This example takes the Blueprint and breaks it into its layers — base, platform, accelerator, model profile, use case, deployment — and stores each layer as a versioned ConfigHub config object. Each of the four components walks through the same chain of layers; three delivery variants (direct, Flux OCI, Argo OCI) come off the recipe layer.
 
-A query through the deployed pipeline returns a real answer from a real model. On a Mac that's `llama3.2:3b` running on the Metal GPU on the host, called from the in-cluster `rag-server` pod through `host.docker.internal`. On a CUDA cluster it's `llama-3.1-70b-instruct` served from a real NIM container.
+This works out of the box with real models. In this example: A query through the deployed pipeline returns a real answer from your model. On a Mac that could be eg. `llama3.2:3b` running on the Metal GPU on the host, called from the in-cluster `rag-server` pod through `host.docker.internal`. On a CUDA cluster it's `llama-3.1-70b-instruct` served from a real NIM container.
 
 ## Components
+
+ConfigHub manages dependencies and layers for you, so that any Blueprint component may be customised and varied independently. Each component moves through a five-stage chain — `base → platform=kgpu → accelerator=h100 → profile=medium → recipe=enterprise-rag` — and then forks into three delivery variants (`direct`, `flux`, `argo`). That works out to 4 × 5 chain units + 4 × 3 deployment units + 1 recipe-manifest unit = **33 units across 8 ConfigHub spaces**.
 
 | Component | Role | Uses GPU? |
 |---|---|---|
@@ -48,9 +50,9 @@ A query through the deployed pipeline returns a real answer from a real model. O
 | `nim-embedding` | embedding model, same shape | yes |
 | `vector-db` | Qdrant or Milvus stand-in | no |
 
-Each component moves through a five-stage chain — `base → platform=kgpu → accelerator=h100 → profile=medium → recipe=enterprise-rag` — and then forks into three delivery variants (`direct`, `flux`, `argo`). That works out to 4 × 5 chain units + 4 × 3 deployment units + 1 recipe-manifest unit = **33 units across 8 ConfigHub spaces**.
-
 ## Quick start (Ollama path on Apple Silicon)
+
+First, log in to ConfigHub by running `cub auth login` at your command line. Then follow the steps below — and keep [hub.confighub.com](https://hub.confighub.com) open in a browser tab so you can watch the spaces and units appear as each step runs.
 
 ```bash
 # Prerequisites
