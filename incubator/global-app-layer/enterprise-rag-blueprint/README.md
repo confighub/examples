@@ -52,6 +52,8 @@ ConfigHub manages dependencies and layers for you, so that any Blueprint compone
 
 ## Quick start (Ollama path on Apple Silicon)
 
+First, log in to ConfigHub by running `cub auth login` at your command line. Then follow the steps below — and keep [hub.confighub.com](https://hub.confighub.com) open in a browser tab so you can watch the spaces and units appear as each step runs.
+
 ```bash
 # Prerequisites
 brew install ollama jq kind kubectl
