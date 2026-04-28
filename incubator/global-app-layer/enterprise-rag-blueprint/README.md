@@ -41,14 +41,14 @@ This works out of the box with real models. In this example: A query through the
 
 ## Components
 
+ConfigHub manages dependencies and layers for you, so that any Blueprint component may be customised and varied independently. Each component moves through a five-stage chain — `base → platform=kgpu → accelerator=h100 → profile=medium → recipe=enterprise-rag` — and then forks into three delivery variants (`direct`, `flux`, `argo`). That works out to 4 × 5 chain units + 4 × 3 deployment units + 1 recipe-manifest unit = **33 units across 8 ConfigHub spaces**.
+
 | Component | Role | Uses GPU? |
 |---|---|---|
 | `rag-server` | orchestration pod that calls the LLM and embedder | no |
 | `nim-llm` | answer model — a NIM container in production, a stub in the demo | yes |
 | `nim-embedding` | embedding model, same shape | yes |
 | `vector-db` | Qdrant or Milvus stand-in | no |
-
-ConfigHub manages dependencies and layers for you, so that any Blueprint component may be customised and varied independently. Each component moves through a five-stage chain — `base → platform=kgpu → accelerator=h100 → profile=medium → recipe=enterprise-rag` — and then forks into three delivery variants (`direct`, `flux`, `argo`). That works out to 4 × 5 chain units + 4 × 3 deployment units + 1 recipe-manifest unit = **33 units across 8 ConfigHub spaces**.
 
 ## Quick start (Ollama path on Apple Silicon)
 
