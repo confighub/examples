@@ -123,118 +123,31 @@ kubectl -n "$KYVERNO_WORKER_NAMESPACE" rollout status deployment/"$KYVERNO_WORKE
 echo "Kyverno CLI worker is ready."
 echo ""
 
-# --- Define policies ----------------------------------------------------------
+# --- Load policies and resources from demo-data/ -----------------------------
 
-REQUIRE_LABELS_POLICY='apiVersion: policies.kyverno.io/v1
-kind: ValidatingPolicy
-metadata:
-  name: require-labels
-spec:
-  validationActions: [Deny]
-  matchConstraints:
-    resourceRules:
-      - apiGroups: ["apps"]
-        apiVersions: [v1]
-        operations: [CREATE, UPDATE]
-        resources: [deployments]
-  validations:
-    - expression: >
-        has(object.metadata.labels) &&
-        '"'"'app'"'"' in object.metadata.labels &&
-        object.metadata.labels['"'"'app'"'"'] != '"'"''"'"'
-      message: "The label '"'"'app'"'"' is required."'
+DATA_DIR="$(dirname "$0")/demo-data"
 
-DISALLOW_LATEST_TAG_VAP='apiVersion: admissionregistration.k8s.io/v1
-kind: ValidatingAdmissionPolicy
-metadata:
-  name: disallow-latest-tag
-spec:
-  matchConstraints:
-    resourceRules:
-      - apiGroups: ["apps"]
-        apiVersions: [v1]
-        operations: [CREATE, UPDATE]
-        resources: [deployments]
-  validations:
-    - expression: >
-        object.spec.template.spec.containers.all(c,
-          !c.image.endsWith('"'"':latest'"'"')
-        )
-      message: "Using '"'"'latest'"'"' tag is not allowed."'
+REQUIRE_LABELS_POLICY=$(<"$DATA_DIR/require-labels-policy.yaml")
+DISALLOW_LATEST_TAG_VAP=$(<"$DATA_DIR/disallow-latest-tag-vap.yaml")
+MIXED_POLICIES="${REQUIRE_LABELS_POLICY}
+---
+${DISALLOW_LATEST_TAG_VAP}"
 
 # --- Create test units -------------------------------------------------------
 
 echo "--- Creating test unit: deploy-with-labels (should pass require-labels) ---"
-cub unit create --space "$SPACE" deploy-with-labels - --toolchain Kubernetes/YAML <<'UNIT'
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: good-deploy
-  namespace: default
-  labels:
-    app: example
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: example
-  template:
-    metadata:
-      labels:
-        app: example
-    spec:
-      containers:
-        - name: nginx
-          image: nginx:1.21
-UNIT
+cub unit create --space "$SPACE" deploy-with-labels - --toolchain Kubernetes/YAML \
+  < "$DATA_DIR/deploy-with-labels.yaml"
 echo ""
 
 echo "--- Creating test unit: deploy-without-labels (should fail require-labels) ---"
-cub unit create --space "$SPACE" deploy-without-labels - --toolchain Kubernetes/YAML <<'UNIT'
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: bad-deploy
-  namespace: default
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: test
-  template:
-    metadata:
-      labels:
-        app: test
-    spec:
-      containers:
-        - name: nginx
-          image: nginx:1.21
-UNIT
+cub unit create --space "$SPACE" deploy-without-labels - --toolchain Kubernetes/YAML \
+  < "$DATA_DIR/deploy-without-labels.yaml"
 echo ""
 
 echo "--- Creating test unit: deploy-latest-tag (should fail disallow-latest-tag VAP) ---"
-cub unit create --space "$SPACE" deploy-latest-tag - --toolchain Kubernetes/YAML <<'UNIT'
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: latest-deploy
-  namespace: default
-  labels:
-    app: test
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: test
-  template:
-    metadata:
-      labels:
-        app: test
-    spec:
-      containers:
-        - name: nginx
-          image: nginx:latest
-UNIT
+cub unit create --space "$SPACE" deploy-latest-tag - --toolchain Kubernetes/YAML \
+  < "$DATA_DIR/deploy-latest-tag.yaml"
 echo ""
 
 # --- Run validation with Kyverno ValidatingPolicy ----------------------------
@@ -271,10 +184,6 @@ echo ""
 
 echo "=== Testing with mixed ValidatingPolicy + ValidatingAdmissionPolicy ==="
 echo ""
-
-MIXED_POLICIES="${REQUIRE_LABELS_POLICY}
----
-${DISALLOW_LATEST_TAG_VAP}"
 
 echo "--- Running vet-kyverno on deploy-latest-tag (should fail both) ---"
 cub function do vet-kyverno "$MIXED_POLICIES" \
