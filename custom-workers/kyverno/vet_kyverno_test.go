@@ -208,6 +208,65 @@ func TestVetKyverno_PassingValidation(t *testing.T) {
 	assert.True(t, vr.Passed, "expected validation to pass")
 }
 
+func TestVetKyverno_NoMatchingResources(t *testing.T) {
+	// A Deployment-only policy applied to a ConfigMap should produce a pass:
+	// kyverno emits no output and no errors when nothing matches, and there's
+	// nothing to validate.
+	requireKyvernoCLI(t)
+
+	configMap := `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-config
+  namespace: default
+data:
+  key: value
+`
+
+	parsedData, err := gaby.ParseAll([]byte(configMap))
+	require.NoError(t, err)
+
+	args := []api.FunctionArgument{
+		{Value: requireLabelsPolicy},
+	}
+
+	rp := k8skit.NewK8sResourceProvider()
+	_, output, err := vetKyverno(rp, parsedData, args)
+	require.NoError(t, err)
+
+	vr, ok := output.(api.ValidationResult)
+	require.True(t, ok, "expected ValidationResult, got %T", output)
+	assert.True(t, vr.Passed, "expected pass when policy matches no resources")
+}
+
+func TestVetKyverno_MalformedPolicy(t *testing.T) {
+	// A policy that fails YAML parsing (kyverno's "non-fatal parsing error")
+	// must surface stderr in the error message — at default verbosity kyverno
+	// is silent and the failure looks identical to "no rules matched", which
+	// is exactly the bug we hit in the field.
+	requireKyvernoCLI(t)
+
+	// Bash-quote-escaped YAML that won't parse — same trap that bit us.
+	malformed := `apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: broken
+spec:
+  validations:
+    - expression: '"'"'app'"'"' in object.metadata.labels
+      message: oops
+`
+
+	parsedData, err := gaby.ParseAll([]byte(testDeployment))
+	require.NoError(t, err)
+
+	args := []api.FunctionArgument{{Value: malformed}}
+	rp := k8skit.NewK8sResourceProvider()
+	_, _, err = vetKyverno(rp, parsedData, args)
+	require.Error(t, err, "expected error on malformed policy")
+	assert.Contains(t, err.Error(), "stderr=", "expected stderr to be surfaced in error")
+}
+
 func TestVetKyverno_FailingValidation(t *testing.T) {
 	requireKyvernoCLI(t)
 

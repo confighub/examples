@@ -1,0 +1,17 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: disallow-latest-tag
+spec:
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["apps"]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE]
+        resources: [deployments]
+  validations:
+    - expression: >
+        object.spec.template.spec.containers.all(c,
+          !c.image.endsWith(':latest')
+        )
+      message: "Using 'latest' tag is not allowed."

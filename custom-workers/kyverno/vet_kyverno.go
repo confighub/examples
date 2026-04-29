@@ -4,6 +4,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -83,13 +84,24 @@ func vetKyverno(rp *k8skit.K8sResourceProviderType, parsedData gaby.Container, a
 	resourceFile.WriteString("\n")
 	resourceFile.Close()
 
-	// Run kyverno apply with JSON policy report output.
+	// Run kyverno apply with JSON policy report output. Capture stdout and
+	// stderr separately so we can parse the report from stdout while still
+	// surfacing diagnostics from stderr. -v=2 makes kyverno emit "non-fatal"
+	// policy parse errors to stderr — at default verbosity those are silent
+	// and a malformed policy looks indistinguishable from "no rules apply",
+	// which makes failures very hard to debug.
 	cmd := exec.Command(kyvernoBinary, "apply", policyFile.Name(),
 		"--resource", resourceFile.Name(),
 		"--policy-report",
 		"--output-format=json",
+		"-v=2",
 	)
-	output, err := cmd.CombinedOutput()
+	var stdoutBuf, stderrBuf bytes.Buffer
+	cmd.Stdout = &stdoutBuf
+	cmd.Stderr = &stderrBuf
+	err = cmd.Run()
+	stdout := stdoutBuf.Bytes()
+	stderr := stderrBuf.Bytes()
 
 	// Check if it's an execution error (binary not found, etc.)
 	// vs a validation failure (non-zero exit with parseable output).
@@ -100,10 +112,28 @@ func vetKyverno(rp *k8skit.K8sResourceProviderType, parsedData gaby.Container, a
 		}
 	}
 
-	// Parse the JSON policy report.
-	report, parseErr := parsePolicyReport(output)
+	// Empty stdout: kyverno chose not to emit a report at all. Two sub-cases:
+	//   - empty stderr → no rule in the policy matched any of the resources
+	//     (e.g., a Deployment-only policy applied to a ConfigMap). Nothing to
+	//     validate, so return a pass.
+	//   - non-empty stderr → kyverno hit a problem before generating output
+	//     (most commonly a YAML parse error in the policy at -v=2). Surface
+	//     stderr so the cause is visible.
+	if len(bytes.TrimSpace(stdout)) == 0 {
+		if len(bytes.TrimSpace(stderr)) == 0 {
+			return parsedData, api.ValidationResultTrue, nil
+		}
+		return parsedData, nil, errors.Errorf(
+			"kyverno produced no policy report (stderr=%q) — likely a malformed policy",
+			stripANSI(stderr))
+	}
+
+	// Parse the JSON policy report from stdout.
+	report, parseErr := parsePolicyReport(stdout)
 	if parseErr != nil {
-		return parsedData, nil, errors.Wrapf(parseErr, "failed to parse kyverno output: %s", string(output))
+		return parsedData, nil, errors.Wrapf(parseErr,
+			"failed to parse kyverno output (stdout=%q, stderr=%q)",
+			stripANSI(stdout), stripANSI(stderr))
 	}
 
 	// If all passed, return early.
@@ -192,6 +222,15 @@ type policyReportResource struct {
 	Namespace  string `json:"namespace"`
 	Name       string `json:"name"`
 	APIVersion string `json:"apiVersion"`
+}
+
+// ansiEscape matches ANSI color/control sequences emitted by kyverno's logger
+// at -v=2. Stripping them keeps error messages readable in plain log output.
+var ansiEscape = regexp.MustCompile(`\x1b\[[0-9;]*[A-Za-z]`)
+
+// stripANSI removes ANSI color/control sequences from b and returns a string.
+func stripANSI(b []byte) string {
+	return ansiEscape.ReplaceAllString(string(b), "")
 }
 
 // parsePolicyReport parses the JSON policy report from kyverno CLI output.
