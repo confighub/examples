@@ -80,6 +80,46 @@ for bundle_root in "${bundle_roots[@]}"; do
   done < <(find "${bundle_root}" -mindepth 1 -maxdepth 1 -type d | sort)
 done
 
+# ==================== spring-platform product-path doc checks ====================
+#
+# spring-platform is the teaching repo. These checks keep it aligned with the
+# maintained cub-gen Spring product path without implying that this repo has
+# automated PR creation or server-side block/escalate enforcement.
+
+require_doc_pattern() {
+  local file="$1"
+  local pattern="$2"
+  local message="$3"
+  if ! grep -Eiq -- "${pattern}" "${file}"; then
+    echo "FAIL: ${message}: ${file}" >&2
+    exit 1
+  fi
+}
+
+spring_platform_docs=(
+  "${repo_root}/spring-platform/README.md"
+  "${repo_root}/spring-platform/FROM-DEMO-TO-PRODUCT.md"
+  "${repo_root}/spring-platform/AI_START_HERE.md"
+)
+
+for doc in "${spring_platform_docs[@]}"; do
+  echo "==> Checking spring-platform product-path wording: ${doc#${repo_root}/}"
+  require_doc_pattern "${doc}" 'cub-gen springboot set-embedded-config' "missing productized embedded-config apply-here helper"
+  require_doc_pattern "${doc}" 'set-env.*teaching|teaching.*set-env|teaching-era.*set-env' "missing teaching-era set-env distinction"
+done
+
+spring_platform_sub_readmes=(
+  "${repo_root}/spring-platform/springboot-platform-app/README.md"
+  "${repo_root}/spring-platform/springboot-platform-app-centric/README.md"
+  "${repo_root}/spring-platform/springboot-platform-platform-centric/README.md"
+)
+
+for doc in "${spring_platform_sub_readmes[@]}"; do
+  echo "==> Checking spring-platform sub-example claims: ${doc#${repo_root}/}"
+  require_doc_pattern "${doc}" 'cub-gen springboot set-embedded-config' "missing productized embedded-config apply-here helper"
+  require_doc_pattern "${doc}" 'server-side enforcement.*not.*implemented|not server-enforced|backend enforcement is still future work' "missing block/escalate enforcement caveat"
+done
+
 # ==================== AI Guide Standard Checks ====================
 #
 # These checks verify that important examples follow the AI-first demo

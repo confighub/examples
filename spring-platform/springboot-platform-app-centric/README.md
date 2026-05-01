@@ -42,13 +42,17 @@ Each space contains one unit (`inventory-api`) that can be mutated and applied i
 ./demo.sh   # see all three routes in action
 ```
 
-| Route | Field example | What happens |
-|-------|---------------|--------------|
-| Apply here | `feature.inventory.*` | Mutate in ConfigHub, apply to target |
-| Lift upstream | `spring.cache.*` | Bundle produced, needs source change |
-| Block/escalate | `spring.datasource.*` | Platform-owned, blocked |
+| Route | Field example | What happens here | Current product path |
+|-------|---------------|-------------------|----------------------|
+| Apply here | `feature.inventory.*` | Teaching shortcut: mutate with ConfigHub `set-env`, then apply to target | `cub-gen springboot set-embedded-config` mutates embedded `application.yaml` |
+| Lift upstream | `spring.cache.*` | Bundle produced, needs source change | `cub-gen springboot validate-mutation` routes it back to source; automated PR creation is not implemented |
+| Block/escalate | `spring.datasource.*` | Boundary is documented, not server-enforced here | `cub-gen springboot validate-mutation` returns `BLOCKED`; backend enforcement is still future work |
 
 ### Try a Mutation
+
+This is the teaching-era ConfigHub mutation path. Use
+`cub-gen springboot set-embedded-config` in the maintained `cub-gen`
+Spring example when you want the productized embedded-config apply-here path.
 
 ```bash
 cub function do --space inventory-api-prod --unit inventory-api \

@@ -46,13 +46,19 @@ Platform: springboot-platform
 
 ## Mutation Routes
 
-| Route | Field example | Owner |
-|-------|---------------|-------|
-| Apply here | `feature.inventory.*` | App team |
-| Lift upstream | `spring.cache.*` | App team |
-| Block/escalate | `spring.datasource.*` | Platform team |
+| Route | Field example | Owner | Enforcement status |
+|-------|---------------|-------|--------------------|
+| Apply here | `feature.inventory.*` | App team | Teaching path uses ConfigHub `set-env`; current `cub-gen` product path uses `cub-gen springboot set-embedded-config` |
+| Lift upstream | `spring.cache.*` | App team | Bundle/model proof only here; automated PR creation is not implemented |
+| Block/escalate | `spring.datasource.*` | Platform team | Boundary is documented; server-side enforcement is not implemented here |
 
 ### Try a Mutation
+
+These commands demonstrate the teaching-era ConfigHub mutation path for
+app-owned fields. In `cub-gen/examples/springboot-paas`, use
+`cub-gen springboot set-embedded-config` for the productized apply-here helper
+and `cub-gen springboot validate-mutation` to show platform-owned fields as
+`BLOCKED`.
 
 ```bash
 # On inventory-api
