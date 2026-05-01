@@ -1,19 +1,37 @@
 # From Demo to Product
 
-This is the page for the question a platform engineer asks after running the examples:
+This is the page for the question a platform engineer asks after reading the
+Spring example:
 
 > "Is `render.sh` the real generator, or a demo prop?"
 
-Short answer: In `spring-platform`, it's a teaching tool. In `cub-gen/examples/springboot-paas`, it's the real generator path.
+Short answer: in `spring-platform`, `render.sh` is a teaching tool. It shows
+the Generator shape with fixed inputs. In `cub-gen/examples/springboot-paas`,
+the Generator path is computed from a real Spring Boot repo.
+
+If this example makes you think "I want Generators for my apps," then `cub-gen`
+is the next step.
+
+A Generator is a function on config data:
+
+```text
+Spring app + platform policy
+  -> Generator
+  -> deployable Kubernetes config
+  -> field ownership and edit routes
+  -> ConfigHub proof
+```
 
 ## Two Repos, One Model
 
 | Repo | Purpose | When to use |
 |------|---------|-------------|
-| `examples/spring-platform` | Learn the model | Understanding generator transformation, mutation routes, field ownership |
-| `cub-gen/examples/springboot-paas` | Run the real generator | Evaluating the product path for your own services |
+| `examples/spring-platform` | Learn the Generator model | Understand transformation, mutation routes, and field ownership |
+| `cub-gen/examples/springboot-paas` | Run the product Generator path | Evaluate computed provenance and route checks for real services |
 
-Both implement the same release-day challenge (feature flag, Redis caching, datasource override) with the same three mutation routes. The difference is what's behind the scripts.
+Both implement the same release-day challenge: feature flag, Redis caching, and
+datasource override. Both use the same three mutation routes: apply here, lift
+upstream, and block/escalate. The difference is what is behind the scripts.
 
 ## Quick Start for Your Own App
 
@@ -38,7 +56,9 @@ cub-gen springboot set-embedded-config \
   feature.myservice.someFlag optimistic
 ```
 
-This generates platform policy skeletons, field ownership rules, and ConfigHub unit starters. See the [springboot-paas README](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas#onboard-your-own-spring-boot-app) for details.
+This generates platform policy skeletons, field ownership rules, and ConfigHub
+unit starters. See the [springboot-paas README](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas#onboard-your-own-spring-boot-app)
+for details.
 
 ## Concept Mapping
 
@@ -60,7 +80,8 @@ This generates platform policy skeletons, field ownership rules, and ConfigHub u
 | Onboard your own app | (not applicable) | `cub-gen springboot init` |
 | Enforce field routes | (documented, not enforced) | `cub-gen springboot validate-mutation` |
 
-The command patterns are identical. The difference is implementation depth.
+The command patterns are intentionally similar. The difference is implementation
+depth.
 
 ## What's Different
 
@@ -77,6 +98,9 @@ In `cub-gen`:
 - Field lineage is traced through actual code paths
 - The current Spring path includes direct embedded-config mutation and route validation helpers
 
+That is the main product jump: from a visible teaching Generator to a real
+Generator that ConfigHub can use as data.
+
 ### Source-Chain Integration
 
 In `spring-platform`:
@@ -92,11 +116,11 @@ In `cub-gen`:
 
 ## Recommended Path
 
-1. **Learn with spring-platform** — Run the visibility scripts, understand field ownership, see the three mutation routes
-2. **Onboard with cub-gen** — Run `cub-gen springboot init` on your app to generate starter material
-3. **Validate mutations** — Use `cub-gen springboot validate-mutation` to enforce field routes in CI or locally
-4. **Prove apply-here directly** — Use `cub-gen springboot set-embedded-config` or the example wrapper for embedded payload mutation
-5. **Connect when needed** — Use `demo-connected.sh` for the deeper ConfigHub-backed evidence path
+1. **Learn with spring-platform** — Run the visibility scripts, understand field ownership, and see the three mutation routes.
+2. **Onboard with cub-gen** — Run `cub-gen springboot init` on your app to generate starter material.
+3. **Validate mutations** — Use `cub-gen springboot validate-mutation` to enforce field routes in CI or locally.
+4. **Prove apply-here directly** — Use `cub-gen springboot set-embedded-config` or the example wrapper for embedded payload mutation.
+5. **Connect when needed** — Use `demo-connected.sh` for the deeper ConfigHub-backed evidence path.
 
 ```bash
 # Step 1: Learn the model
