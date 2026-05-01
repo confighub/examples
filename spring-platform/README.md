@@ -1,14 +1,35 @@
 # Spring Platform in ConfigHub
 
-This repo teaches an app-platform model for Spring Boot services and ConfigHub.
-We have several different "versions" of the idea, for comparison and learning.
-The example assumes that some users will want to generate config data
-programmatically. Are there safer ways to do this than Helm?
+This repo teaches why platform teams want **Generators**.
+
+A Generator is a function on config data. It reads files teams already keep in
+Git, such as Spring Boot code, `application.yaml`, profile overrides, platform
+policy, and environment settings. It returns deployable Kubernetes config plus
+proof: where each field came from, who owns it, and whether a change should be
+applied here, lifted back to source, or blocked.
+
+This example is the teaching version. It uses fixed Spring inputs and explain
+scripts so you can see the model without installing a full platform. The
+product version is [`cub-gen/examples/springboot-paas`](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas).
+
+The desired reaction after reading this is simple: "I want this Generator model
+for my own apps, not a pile of one-off templates."
+
+```text
+Spring app + platform policy
+  -> Generator
+  -> deployable Kubernetes config
+  -> ConfigHub proof
+```
 
 ## Start Here
 
-- Review the model in this repo if you want to see the ideas
-- Later, for a runnable product path, use [`cub-gen/examples/springboot-paas`](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas). Start there with `demo-local.sh`, then the governed route and embedded-config wrappers, and use `cub-gen springboot init` when you want to onboard your own app.
+- Review the model in this repo if you want to understand Generators before
+  running product tooling.
+- Then use [`cub-gen/examples/springboot-paas`](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas)
+  for the runnable product path. Start there with `demo-local.sh`, then the
+  governed route and embedded-config wrappers, and use `cub-gen springboot init`
+  when you want to onboard your own app.
 
 Important distinction: this repo uses `cub function do set-env` as the
 teaching-era apply-here mutation path. The current product path in `cub-gen`
@@ -97,21 +118,27 @@ the bridge.
 
 ## What This Repo Is For
 
-**Use this repo to study the model.** App teams keep writing normal Spring Boot apps in Git. Platform tooling maps those app inputs into the operational artifacts needed to run on Kubernetes with GitOps.
+**Use this repo to study the Generator model.** App teams keep writing normal
+Spring Boot apps in Git. Platform tooling maps those app inputs into the
+operational artifacts needed to run on Kubernetes with GitOps.
 
-That operational layer includes ConfigHub units and spaces, Kubernetes manifests, platform policy, and GitOps-facing state.
+That operational layer includes ConfigHub units and spaces, Kubernetes
+manifests, platform policy, and GitOps-facing state.
 
 ## The Model
 
-App teams write Spring Boot applications. They use `application.yaml`, profiles, and the normal Spring config surface. That stays the authoring experience.
+App teams write Spring Boot applications. They use `application.yaml`, profiles,
+and the normal Spring config surface. That stays the authoring experience.
 
 Platform tooling then maps those inputs into:
+
 - ConfigHub units and spaces
 - Kubernetes manifests (ConfigMap, Deployment, Service)
 - Platform policy (security, datasource boundaries)
 - GitOps-facing operational state
 
-This mapping from app to platform is a deterministic config generator, and it is intentionally constrained:
+This mapping from app to platform is a deterministic Generator. It is
+intentionally constrained:
 
 | Property | Why it matters |
 |----------|----------------|
@@ -120,7 +147,9 @@ This mapping from app to platform is a deterministic config generator, and it is
 | Ownership boundaries | Fields are app-owned or platform-owned, not ambiguous |
 | Mutation from provenance | How a field can change depends on who owns it |
 
-The point is not "generate all the YAML." The point is to generate only the operational config that the platform must own, while keeping the path back to app inputs clear.
+The point is not "generate all the YAML." The point is to generate only the
+operational config that the platform must own, while keeping the path back to
+app inputs clear.
 
 ## Mutation Routes
 
@@ -133,6 +162,9 @@ Every operational field change falls into one of three categories:
 | **Block/escalate** | Platform | Boundary is documented; server-side block/escalate enforcement is not implemented here |
 
 These routes are derived from field provenance and ownership, not assigned arbitrarily. If you know where a field comes from, you know how it can change.
+
+That is the Config as Data lesson: make the Generator explicit, then treat its
+inputs, outputs, field origins, owners, and edit routes as data.
 
 ## Three Versions of the app platform
 

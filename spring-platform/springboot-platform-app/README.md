@@ -1,12 +1,22 @@
 # Spring Boot Generator Example
 
-See how app config + platform policy becomes the `ConfigMap`, `Deployment`, and `Service` for this app, and why each field routes to apply-here, lift-upstream, or block.
+This is the smallest Spring example for the Generator idea.
+
+A Generator is a function on config data. Here it reads a Spring Boot app,
+`application.yaml`, profile config, and platform policy. It returns the
+`ConfigMap`, `Deployment`, and `Service` for this app, plus proof for each
+field: where it came from, who owns it, and whether a change routes to
+apply-here, lift-upstream, or block/escalate.
 
 ```bash
 ./setup.sh --explain
 ```
 
-This example has the most complete proof path: real Kubernetes delivery via Kind, field-by-field lineage tracing, and all three mutation routes shown end to end. The apply-here route is proven with audited mutation; lift-upstream and block-escalate are still bundle-and-boundary workflows rather than server-enforced behavior.
+This example has the most complete teaching proof path: real Kubernetes delivery
+via Kind, field-by-field lineage tracing, and all three mutation routes shown
+end to end. The apply-here route is proven with audited mutation; lift-upstream
+and block-escalate are still bundle-and-boundary workflows rather than
+server-enforced behavior.
 
 ## Quick Start
 
@@ -41,7 +51,9 @@ upstream/app/           + upstream/platform/     → operational/
 (Spring app inputs)       (Platform policies)      (Kubernetes manifests)
 ```
 
-The generator reads app inputs (`pom.xml`, `application.yaml`) and platform policies (`runtime-policy.yaml`), then produces ConfigMap, Deployment, and Service manifests with field-level provenance.
+The Generator reads app inputs (`pom.xml`, `application.yaml`) and platform
+policies (`runtime-policy.yaml`), then produces ConfigMap, Deployment, and
+Service manifests with field-level provenance.
 
 ```bash
 ./generator/render.sh --trace   # field-by-field mapping
@@ -131,5 +143,7 @@ The scaffold is regression-checked (`./bin/verify-scaffold`). Full details: [`..
 
 See [`../README.md`](../README.md) for how the three examples compare.
 See [`../BRING-YOUR-OWN-APP.md`](../BRING-YOUR-OWN-APP.md) for adapting the example to your own service.
+See [`../FROM-DEMO-TO-PRODUCT.md`](../FROM-DEMO-TO-PRODUCT.md) for the path from
+this teaching Generator to `cub-gen/examples/springboot-paas`.
 
 AI guide: [`AI_START_HERE.md`](./AI_START_HERE.md)

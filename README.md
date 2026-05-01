@@ -29,7 +29,10 @@ If you are not logged in yet, run `cub auth login` before the `cub` commands.
 
 - If you want to explore Initiatives and compliance workflows, start with [`initiatives-demo`](./initiatives-demo/README.md).
 - If you want the quickest no-cluster path, start with [`promotion-demo-data`](./promotion-demo-data/README.md).
-- If you want the platform/generator model, start with [`spring-platform`](./spring-platform/).
+- If you want to understand Generators as functions on config data, start with
+  [`spring-platform`](./spring-platform/), then move to
+  [`cub-gen/examples/springboot-paas`](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas)
+  for the product path.
 - If you want GitOps import, start with [`gitops-import`](./gitops-import/README.md) and the [Official GitOps Import docs](https://docs.confighub.com/get-started/examples/gitops-import/).
 - If you want worker extensibility, start with [`custom-workers`](./custom-workers/).
 - If you want a classic multi-service example, use [`global-app`](./global-app/README.md).
