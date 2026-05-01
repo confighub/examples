@@ -107,6 +107,12 @@ Pause here if you're doing a guided walkthrough.
 
 Ask: "This will change reservationMode in prod from strict to optimistic. OK?"
 
+This stage uses the teaching-era ConfigHub `set-env` mutation command so you
+can see the audit trail in ConfigHub. In the maintained `cub-gen` product path,
+use `cub-gen springboot set-embedded-config` or
+`./examples/springboot-paas/demo-embedded-config-mutation.sh` for the direct
+embedded `application.yaml` apply-here proof.
+
 ```bash
 cub function do --space inventory-api-prod --unit inventory-api \
   --change-desc "release-day: reservation mode strict → optimistic" \
@@ -249,7 +255,9 @@ cub function do --space catalog-api-prod --unit catalog-api \
   set-env catalog-api FEATURE_CATALOG_RECOMMENDATIONSENABLED=true
 ```
 
-Both succeed — they're app-owned fields. A platform-owned field would be blocked.
+Both succeed — they're app-owned fields. In this teaching repo, a
+platform-owned field is documented and previewed as a block/escalate boundary;
+full server-side block/escalate enforcement is not implemented here.
 
 Pause here if you're doing a guided walkthrough.
 

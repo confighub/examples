@@ -47,7 +47,7 @@ This generates platform policy skeletons, field ownership rules, and ConfigHub u
 | Generator explanation | `./setup.sh --explain` | `./generator/render.sh --explain` |
 | Field-by-field lineage | `./generator/render.sh --trace` | `./generator/render.sh --trace` |
 | Explain single field | `./generator/render.sh --explain-field X` | `./generator/render.sh --explain-field X` |
-| Apply-here mutation | `cub function do set-env ...` | `cub function do set-env ...` |
+| Apply-here mutation | Teaching shortcut: `cub function do set-env ...` | Product helper: `./demo-embedded-config-mutation.sh` / `cub-gen springboot set-embedded-config` |
 | Direct embedded payload mutation | Documented concept only | `./demo-embedded-config-mutation.sh` / `cub-gen springboot set-embedded-config` |
 | Lift-upstream bundle | `./lift-upstream.sh --render-diff` | `./lift-upstream.sh --render-diff` |
 | Block/escalate boundary | `./block-escalate.sh --render-attempt` | `./block-escalate.sh --render-attempt` |
@@ -129,11 +129,13 @@ cub auth login
 
 ## What Carries Over
 
-Everything you learn in `spring-platform` applies directly to `cub-gen`:
+The model you learn in `spring-platform` applies directly to `cub-gen`, but the
+best product command for apply-here is now the embedded-config helper, not the
+teaching-era `set-env` shortcut:
 
 - **Field ownership model** — `feature.*` is app-owned, `spring.datasource.*` is platform-owned
 - **Mutation routes** — apply-here, lift-upstream, block/escalate work the same way
-- **ConfigHub commands** — `cub function do set-env`, `cub unit apply`, `cub mutation list`
+- **ConfigHub evidence commands** — `cub unit apply`, `cub mutation list`, and connected demos remain useful; app-owned embedded config mutation is handled by `cub-gen springboot set-embedded-config`
 - **Verification pattern** — `verify.sh` proves structural consistency in both repos
 
 ## What Changes

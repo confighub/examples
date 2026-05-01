@@ -61,9 +61,21 @@ Every field has a route based on its source:
 
 ### Apply Here
 
+Teaching path in this repo:
+
 ```bash
 cub function do --space inventory-api-prod --unit inventory-api \
   set-env inventory-api "FEATURE_INVENTORY_RESERVATIONMODE=optimistic"
+```
+
+Current `cub-gen` product path:
+
+```bash
+cub-gen springboot set-embedded-config \
+  --routes ./operational/field-routes.yaml \
+  --file ./confighub/inventory-api-prod.yaml \
+  --configmap inventory-api-config \
+  feature.inventory.reservationMode optimistic
 ```
 
 ### Lift Upstream
@@ -80,7 +92,7 @@ cub function do --space inventory-api-prod --unit inventory-api \
 ./block-escalate.sh --render-attempt  # see blocked attempt
 ```
 
-Server-side enforcement is documented but not yet implemented.
+Server-side enforcement is documented but not yet implemented in this teaching repo.
 
 ## Can I Use My Own App?
 

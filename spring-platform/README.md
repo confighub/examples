@@ -10,6 +10,12 @@ programmatically. Are there safer ways to do this than Helm?
 - Review the model in this repo if you want to see the ideas
 - Later, for a runnable product path, use [`cub-gen/examples/springboot-paas`](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas). Start there with `demo-local.sh`, then the governed route and embedded-config wrappers, and use `cub-gen springboot init` when you want to onboard your own app.
 
+Important distinction: this repo uses `cub function do set-env` as the
+teaching-era apply-here mutation path. The current product path in `cub-gen`
+uses `cub-gen springboot set-embedded-config` to mutate the embedded
+`application.yaml` payload directly, and `cub-gen springboot validate-mutation`
+to check routes before the mutation is accepted.
+
 ## What to Expect from Each Example
 
 All three examples use the same app (`inventory-api`) and the same three
@@ -122,9 +128,9 @@ Every operational field change falls into one of three categories:
 
 | Route | Owner | What happens |
 |-------|-------|--------------|
-| **Apply here** | App team | Mutate directly in ConfigHub |
-| **Lift upstream** | App team | Requires source change, route back to Git |
-| **Block/escalate** | Platform | Cannot be changed without platform approval |
+| **Apply here** | App team | Teaching path here: mutate with ConfigHub `set-env`; product path: `cub-gen springboot set-embedded-config` |
+| **Lift upstream** | App team | Requires source change, route back to Git; bundle exists, automated PR creation is not implemented here |
+| **Block/escalate** | Platform | Boundary is documented; server-side block/escalate enforcement is not implemented here |
 
 These routes are derived from field provenance and ownership, not assigned arbitrarily. If you know where a field comes from, you know how it can change.
 
@@ -177,6 +183,18 @@ cub function do --space inventory-api-prod --unit inventory-api \
   set-env inventory-api "FEATURE_INVENTORY_RESERVATIONMODE=optimistic"
 ./confighub-compare.sh                                        # see the * on prod
 ./confighub-refresh-preview.sh prod                           # PRESERVE: your change survives
+```
+
+That `set-env` command is the teaching shortcut in this repo. In the maintained
+`cub-gen` Spring path, the equivalent apply-here proof is the direct embedded
+payload mutation:
+
+```bash
+cub-gen springboot set-embedded-config \
+  --routes ./operational/field-routes.yaml \
+  --file ./confighub/inventory-api-prod.yaml \
+  --configmap inventory-api-config \
+  feature.inventory.reservationMode optimistic
 ```
 
 Handle the Redis request (needs to go back to source):
@@ -244,6 +262,7 @@ cd springboot-platform-platform-centric
 | Real Kubernetes delivery (Kind) | Real (Phase 1 only) |
 | Noop target simulation | Real |
 | Refresh-survival preview | Simulated (client-side) |
+| Direct embedded apply-here helper | Productized in `cub-gen`, not this repo |
 | Lift-upstream automated PR | Bundle only, no PR |
 | Block/escalate enforcement | Documented, not enforced |
 
