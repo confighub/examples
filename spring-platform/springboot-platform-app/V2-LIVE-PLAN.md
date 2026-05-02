@@ -101,7 +101,8 @@ as a platform-owned field.
 
 ## Variant Model
 
-v2 should make `dev`, `stage`, and `prod` first-class.
+v2 should make `dev`, `stage`, and `prod` first-class Deployment Variants of
+the `inventory-api` Component.
 
 Minimum variant differences:
 
@@ -121,6 +122,11 @@ rendered operational shape for some variants uses `CACHE_BACKEND=redis`.
 The app itself should expose the active values through
 `GET /api/inventory/summary` so the variant is visible from one curl.
 
+This plan does not need a Base Variant for the first live proof. If we later
+add a reusable non-deployed Spring/platform starting point, that should be
+named as a Base Variant and kept separate from the deployable dev/stage/prod
+Deployment Variants.
+
 ## ConfigHub Shape
 
 Reuse existing repo patterns instead of inventing a new object model.
@@ -133,7 +139,7 @@ Follow:
 The v2 setup should create:
 
 - one app identity for `inventory-api`
-- one deployment/variant identity each for `dev`, `stage`, and `prod`
+- one Deployment Variant identity each for `dev`, `stage`, and `prod`
 - operational config objects in ConfigHub for each variant
 - a visible activity trail for routed changes
 

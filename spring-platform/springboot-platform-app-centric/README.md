@@ -6,7 +6,11 @@ One app, three environments, three kinds of config change. No cluster required.
 ./setup.sh --explain
 ```
 
-This example shows `inventory-api` deployed across dev, stage, and prod. Each deployment is a ConfigHub space with its own unit and target. You can mutate fields, apply to targets, and see what routes where.
+This example shows `inventory-api` deployed across dev, stage, and prod. In
+current ConfigHub language, `inventory-api` is the Component and dev/stage/prod
+are Deployment Variants. Each Deployment Variant is represented as a ConfigHub
+space with its own unit and target. You can mutate fields, apply to targets,
+and see what routes where.
 
 ## Quick Start
 
@@ -28,10 +32,10 @@ This example shows `inventory-api` deployed across dev, stage, and prod. Each de
 ## What You'll Work With
 
 ```
-App: inventory-api
-├── dev   → inventory-api-dev   → noop target
-├── stage → inventory-api-stage → noop target
-└── prod  → inventory-api-prod  → noop target
+Component: inventory-api
+├── Deployment Variant: dev   → inventory-api-dev   → noop target
+├── Deployment Variant: stage → inventory-api-stage → noop target
+└── Deployment Variant: prod  → inventory-api-prod  → noop target
 ```
 
 Each space contains one unit (`inventory-api`) that can be mutated and applied independently.
