@@ -17,10 +17,16 @@ A Generator is a function on config data:
 ```text
 Spring app + platform policy
   -> Generator
+  -> Component
+  -> Deployment Variant
   -> deployable Kubernetes config
   -> field ownership and edit routes
   -> ConfigHub proof
 ```
+
+In current ConfigHub language, the reusable service family is a Component. Each
+dev/stage/prod deployment is a Deployment Variant. A reusable non-deployed
+starting point would be a Base Variant.
 
 ## Two Repos, One Model
 

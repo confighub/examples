@@ -151,6 +151,21 @@ The point is not "generate all the YAML." The point is to generate only the
 operational config that the platform must own, while keeping the path back to
 app inputs clear.
 
+In current ConfigHub language, this example maps to:
+
+```text
+Component
+  -> Variant
+      -> Base Variant        # reusable config, no live target
+      -> Deployment Variant  # dev/stage/prod, connected to a target
+```
+
+For this Spring example, `inventory-api` is the Component. The `dev`, `stage`,
+and `prod` entries are Deployment Variants because each one has a concrete
+runtime context and target. A shared Spring/platform starting point would be a
+Base Variant: still a real Variant of the Component, but not directly
+deployable.
+
 ## Mutation Routes
 
 Every operational field change falls into one of three categories:
@@ -173,7 +188,7 @@ This repo shows the same model through three lenses:
 | View | Example | What it helps you see |
 |------|---------|------------------------|
 | Vanilla ConfigHub | [`springboot-platform-app`](./springboot-platform-app/) | How app inputs and platform policy generate operational outputs |
-| ADT | [`springboot-platform-app-centric`](./springboot-platform-app-centric/) | How the CH app, deployment and target model works |
+| Component/Variant/Target | [`springboot-platform-app-centric`](./springboot-platform-app-centric/) | How one Component has Deployment Variants that map to Targets |
 | ADTP | [`springboot-platform-platform-centric`](./springboot-platform-platform-centric/) | How platform ownership applies across multiple apps |
 
 These are three 'lenses' on the same example, not three different examples.
@@ -266,9 +281,12 @@ This generates platform policy skeletons, field ownership rules, and ConfigHub u
 
 ## ADT View: One App Across Environments
 
+This is the older teaching name for the same current idea:
+Component -> Deployment Variants -> Targets.
+
 ```bash
 cd springboot-platform-app-centric
-./setup.sh --explain          # the ADT view: app → deployments → targets
+./setup.sh --explain          # Component -> Deployment Variants -> Targets
 ./setup.sh                    # create spaces, units, noop targets
 ./demo.sh                     # walk through all three mutation outcomes
 ```
