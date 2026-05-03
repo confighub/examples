@@ -78,6 +78,7 @@ for details.
 | Lift-upstream bundle | `./lift-upstream.sh --render-diff` | `./lift-upstream.sh --render-diff` |
 | Block/escalate boundary | `./block-escalate.sh --render-attempt` | `./block-escalate.sh --render-attempt` |
 | Governed route proof | Model explanation | `./demo-governed-routes.sh` / `cub-gen springboot validate-mutation` |
+| Initiative GUI proof | Model explanation | `./demo-initiative-gui.sh` writes the compact gate card |
 | Real Kubernetes path | `./bin/create-cluster`, `./bin/build-image` | `./bin/create-cluster`, `./bin/build-image` |
 | ConfigHub setup | `./confighub-setup.sh` | `./confighub-setup.sh` |
 | Cross-env comparison | `./confighub-compare.sh` | `./confighub-compare.sh` |
@@ -115,7 +116,9 @@ In `spring-platform`:
 
 In `cub-gen`:
 - `demo-local.sh` runs the source-side verification chain
-- `demo-governed-routes.sh` proves `ALLOW` and `BLOCKED` route outcomes
+- `demo-governed-routes.sh` proves `ALLOW`, `ESCALATE`, and `BLOCK` decisions
+- `demo-initiative-gui.sh` emits the card a ConfigHub Initiative should show:
+  changed field, Generator proof, mutation apply gate, next action, and digest
 - `demo-embedded-config-mutation.sh` proves direct embedded `application.yaml` mutation
 - `demo-connected.sh` runs the full ConfigHub integration
 - Real generator profiles detect and transform Spring Boot inputs
@@ -126,7 +129,8 @@ In `cub-gen`:
 2. **Onboard with cub-gen** — Run `cub-gen springboot init` on your app to generate starter material.
 3. **Validate mutations** — Use `cub-gen springboot validate-mutation` to enforce field routes in CI or locally.
 4. **Prove apply-here directly** — Use `cub-gen springboot set-embedded-config` or the example wrapper for embedded payload mutation.
-5. **Connect when needed** — Use `demo-connected.sh` for the deeper ConfigHub-backed evidence path.
+5. **Show the Initiative path** — Use `demo-initiative-gui.sh` to see the gate card ConfigHub can display.
+6. **Connect when needed** — Use `demo-connected.sh` for the deeper ConfigHub-backed evidence path.
 
 ```bash
 # Step 1: Learn the model
@@ -152,7 +156,12 @@ cub-gen springboot set-embedded-config \
   --configmap my-service-config \
   feature.myservice.reservationMode optimistic
 
-# Step 5: Connected path
+# Step 5: Initiative GUI proof
+./examples/springboot-paas/demo-initiative-gui.sh
+jq '.scenarios[] | {title, changed_field, route, decision, source_file, next_actions}' \
+  .tmp/springboot-initiative-gui/initiative-card.json
+
+# Step 6: Connected path
 cub auth login
 ./examples/springboot-paas/demo-connected.sh
 ```

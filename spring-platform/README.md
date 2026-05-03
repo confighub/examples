@@ -28,8 +28,8 @@ Spring app + platform policy
   running product tooling.
 - Then use [`cub-gen/examples/springboot-paas`](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas)
   for the runnable product path. Start there with `demo-local.sh`, then the
-  governed route and embedded-config wrappers, and use `cub-gen springboot init`
-  when you want to onboard your own app.
+  governed route, Initiative GUI, and embedded-config wrappers, and use
+  `cub-gen springboot init` when you want to onboard your own app.
 
 Important distinction: this repo uses `cub function do set-env` as the
 teaching-era apply-here mutation path. The current product path in `cub-gen`
@@ -93,6 +93,8 @@ end-to-end without a cluster:
 - `demo-local.sh` for the repo-first local lifecycle
 - `demo-governed-routes.sh` for the app-owned `ALLOW` versus platform-owned
   `BLOCKED` route proof
+- `demo-initiative-gui.sh` for the ConfigHub Initiative card: changed field,
+  Generator proof, mutation apply gate, next action, and digest
 - `demo-embedded-config-mutation.sh` for direct embedded `application.yaml`
   mutation inside the ConfigHub payload
 - `demo-connected.sh` for the deeper connected ConfigHub walkthrough
@@ -106,12 +108,26 @@ cd cub-gen
 go build -o ./cub-gen ./cmd/cub-gen
 ./examples/springboot-paas/demo-local.sh
 ./examples/springboot-paas/demo-governed-routes.sh
+./examples/springboot-paas/demo-initiative-gui.sh
 ./examples/springboot-paas/demo-embedded-config-mutation.sh
 
 # Connected path when you want ConfigHub-backed evidence
 cub auth login
 ./examples/springboot-paas/demo-connected.sh
 ```
+
+For an AI smoke test of the Initiative proof, ask it to run the script above
+and inspect the compact card:
+
+```bash
+jq '.scenarios[] | {title, changed_field, route, decision, source_file, next_actions}' \
+  .tmp/springboot-initiative-gui/initiative-card.json
+```
+
+The expected decisions are `ALLOW` for the feature flag, `ESCALATE` for Redis
+caching, and `BLOCK` for the datasource override. The Redis case should name
+`pom.xml` and `src/main/resources/application.yaml` as the source files to
+change or link through a PR.
 
 If you have studied the model here and want to move to real tooling, that is
 the bridge.
@@ -313,6 +329,7 @@ cd springboot-platform-platform-centric
 | Noop target simulation | Real |
 | Refresh-survival preview | Simulated (client-side) |
 | Direct embedded apply-here helper | Productized in `cub-gen`, not this repo |
+| ConfigHub Initiative GUI card | Productized in `cub-gen`, not this repo |
 | Lift-upstream automated PR | Bundle only, no PR |
 | Block/escalate enforcement | Documented, not enforced |
 
@@ -331,6 +348,7 @@ and connected evidence flow.
 | Scaffold for adaptation | `cub-gen springboot init` for onboarding |
 | Documented boundaries | `cub-gen springboot validate-mutation` for local/CI route checks |
 | Apply-here as `cub function do set-env` | `cub-gen springboot set-embedded-config` for direct payload mutation |
+| Initiative review as model story | `./examples/springboot-paas/demo-initiative-gui.sh` |
 | Conceptual connected story | `./examples/springboot-paas/demo-connected.sh` |
 | Model-only runtime story | `./examples/springboot-paas/verify-e2e.sh` |
 
