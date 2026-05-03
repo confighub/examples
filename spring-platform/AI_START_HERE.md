@@ -26,6 +26,7 @@ cd cub-gen
 go build -o ./cub-gen ./cmd/cub-gen
 ./examples/springboot-paas/demo-local.sh
 ./examples/springboot-paas/demo-governed-routes.sh
+./examples/springboot-paas/demo-initiative-gui.sh
 ./examples/springboot-paas/demo-embedded-config-mutation.sh
 
 # When you want the connected ConfigHub path
@@ -34,6 +35,33 @@ cub auth login
 ```
 
 If `cub space list --json` fails because auth is missing or expired, run `cub auth login` before any mutating stage. For the `cub-gen` bridge, `demo-local.sh` does not need auth; `demo-connected.sh` does.
+
+## AI Smoke Test: Initiative GUI Proof
+
+This is the fastest way to check whether the Spring Generator story is visible
+in the current ConfigHub Initiative shape.
+
+```bash
+# In a fresh scratch directory, or use an existing cub-gen checkout.
+git clone https://github.com/confighub/cub-gen.git
+cd cub-gen
+./examples/springboot-paas/demo-initiative-gui.sh
+jq '.scenarios[] | {title, changed_field, route, decision, source_file, next_actions}' \
+  .tmp/springboot-initiative-gui/initiative-card.json
+```
+
+Report whether the card contains these three outcomes:
+
+| Field | Expected route | Expected decision |
+|-------|----------------|-------------------|
+| `feature.inventory.reservationMode` | `apply-here` | `ALLOW` |
+| `spring.cache.type` | `lift-upstream` | `ESCALATE` |
+| `spring.datasource.url` | `block/escalate` | `BLOCK` |
+
+For the Redis case, verify that `next_actions` names both `pom.xml` and
+`src/main/resources/application.yaml`. That is the useful product behavior:
+the user sees where the durable source change belongs instead of guessing from
+rendered YAML.
 
 ## The Scenario
 
