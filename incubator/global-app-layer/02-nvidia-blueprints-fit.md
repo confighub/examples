@@ -24,7 +24,7 @@ The catalog has roughly 36 NIM Blueprints. NVIDIA publishes most; partners (Weig
 Relevant source material:
 
 - NVIDIA NIM Blueprints catalog: https://build.nvidia.com/blueprints
-- Build an Enterprise RAG Pipeline (the chosen example): one of the most central NIM Blueprints, listed as the upstream `relatedBlueprint` for AI-Q and Biomedical AI-Q Research Agent — i.e. NVIDIA already publishes Enterprise RAG as a base with vertical variants on top, which is structurally our variant-chain pattern.
+- Build an Enterprise RAG Pipeline (the chosen example): one of the foundational NIM Blueprints for ingestion, retrieval, reasoning, and generation. NVIDIA describes Enterprise RAG as foundational to the AI Agent for Enterprise Research; AI-Q uses RAG capabilities for deep research; Biomedical AI-Q Research Agent specializes the AI-Q pattern for biomedical workflows. That is the app-layer family of related variants this example models, without claiming AI-Q is itself a direct Enterprise RAG variant.
 
 ## Why This Fits ConfigHub
 
@@ -107,7 +107,7 @@ Crossover hits:
 
 1. **Safe upgrades without flattening (Story 1)** — base bump = embedding model `nv-embedqa-e5-v5` to `v6`; tenant `top_k` and vector-store endpoint stay local.
 2. **GitOps import wedge (Story 2)** — RAG Helm charts ship with policy issues. Import → scan → initiative finds it.
-3. **Fleet variants (Story 3)** — `tenant-acme` and `tenant-globex` share the recipe; differ at the deployment leaf. Catalog already validates this shape (Enterprise RAG → AI-Q → Biomedical AI-Q).
+3. **Fleet variants (Story 3)** — `tenant-acme` and `tenant-globex` share the recipe; differ at the deployment leaf. NVIDIA's RAG and AI-Q family validates this shape: Enterprise RAG supplies RAG capabilities, AI-Q uses them for deep research, Biomedical AI-Q specializes AI-Q, and the RAG repo maintains multiple chart variants per config that need to be managed and benchmarked.
 4. **Bundle/attestation** — applies identically to NIM and Ollama image refs.
 5. **Initiatives** — five Views with filters and triggers covering the deployment-layer units.
 
