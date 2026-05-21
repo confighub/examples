@@ -488,6 +488,22 @@ KYVERNO_WORKER="kyverno-cli-worker"
 KYVERNO_WORKER_NAMESPACE="kyverno-cli-worker"
 KYVERNO_IMAGE="kyverno-cli-worker:initiatives-demo"
 
+# If the cub context points at a local ConfigHub server (localhost / 127.0.0.1),
+# kind pods can't reach it via "localhost" — that's the pod's own loopback.
+# Rewrite to host.docker.internal so the workers reach the host. Mac and
+# Windows Docker Desktop expose host.docker.internal automatically; on Linux
+# kind, add `extraPortMappings` or `--add-host=host.docker.internal:host-gateway`
+# at cluster create time.
+LOCAL_SERVER=0
+WORKER_URL="$CONFIGHUB_URL"
+if [[ "$CONFIGHUB_URL" == *"localhost"* || "$CONFIGHUB_URL" == *"127.0.0.1"* ]]; then
+  LOCAL_SERVER=1
+  WORKER_URL="${CONFIGHUB_URL//localhost/host.docker.internal}"
+  WORKER_URL="${WORKER_URL//127.0.0.1/host.docker.internal}"
+  echo "Local server detected ($CONFIGHUB_URL); workers will reach it as $WORKER_URL."
+  echo ""
+fi
+
 echo "--- Setting up kind cluster '$CLUSTER_NAME' ---"
 if kind get clusters 2>/dev/null | grep -qx "$CLUSTER_NAME"; then
   echo "Cluster '$CLUSTER_NAME' already exists, reusing."
@@ -510,6 +526,10 @@ else
     --export --include-secret \
     -t Kubernetes \
     "$K8S_WORKER" 2>/dev/null | kubectl --context "$KCTX" apply -f -
+fi
+if (( LOCAL_SERVER )); then
+  kubectl --context "$KCTX" -n confighub set env \
+    deployment/"$K8S_WORKER" CONFIGHUB_URL="$WORKER_URL" >/dev/null
 fi
 kubectl --context "$KCTX" -n confighub rollout status deployment/"$K8S_WORKER" --timeout=120s
 $cub target get --space "$SPACE" --wait --timeout 120s "$K8S_TARGET" >/dev/null
@@ -535,6 +555,10 @@ else
     --export-secret-only \
     -n "$KYVERNO_WORKER_NAMESPACE" \
     "$KYVERNO_WORKER" 2>/dev/null | kubectl --context "$KCTX" apply -f -
+fi
+if (( LOCAL_SERVER )); then
+  kubectl --context "$KCTX" -n "$KYVERNO_WORKER_NAMESPACE" set env \
+    deployment/"$KYVERNO_WORKER" CONFIGHUB_URL="$WORKER_URL" >/dev/null
 fi
 kubectl --context "$KCTX" -n "$KYVERNO_WORKER_NAMESPACE" \
   rollout status deployment/"$KYVERNO_WORKER" --timeout=120s
