@@ -1,0 +1,49 @@
+# Persona: ci — deployment automation. A ServiceAccount (not a human group)
+# bound to a namespaced Role: CI can roll out workloads in the apps namespace
+# and nothing else. Includes the ServiceAccount so the persona Unit is
+# self-contained.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ci-deployer
+  namespace: apps
+  labels:
+    rbac-manager.confighub.com/persona: ci
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: rbac-manager-ci
+  namespace: apps
+  labels:
+    rbac-manager.confighub.com/persona: ci
+rules:
+  - apiGroups: ["", "apps", "batch"]
+    resources:
+      - deployments
+      - replicasets
+      - statefulsets
+      - jobs
+      - cronjobs
+      - configmaps
+      - services
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments/scale"]
+    verbs: ["update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: rbac-manager-ci
+  namespace: apps
+  labels:
+    rbac-manager.confighub.com/persona: ci
+subjects:
+  - kind: ServiceAccount
+    name: ci-deployer
+    namespace: apps
+roleRef:
+  kind: Role
+  name: rbac-manager-ci
+  apiGroup: rbac.authorization.k8s.io

@@ -1,0 +1,38 @@
+# Persona: viewer — read-only access for auditors and stakeholders.
+# No secrets, no exec, no writes.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: rbac-manager-viewer
+  labels:
+    rbac-manager.confighub.com/persona: viewer
+rules:
+  - apiGroups: ["", "apps", "batch", "networking.k8s.io"]
+    resources:
+      - pods
+      - deployments
+      - replicasets
+      - statefulsets
+      - daemonsets
+      - jobs
+      - cronjobs
+      - configmaps
+      - services
+      - ingresses
+      - events
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: rbac-manager-viewer
+  labels:
+    rbac-manager.confighub.com/persona: viewer
+subjects:
+  - kind: Group
+    name: oidc:viewers
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: rbac-manager-viewer
+  apiGroup: rbac.authorization.k8s.io
