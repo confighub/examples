@@ -1,0 +1,93 @@
+name: Deploy rbac-manager demo
+
+# Deploys the rbac-manager example app to https://rbac-manager.test.confighub.net
+# on every push to main that touches it. The deployment itself is a ConfigHub
+# unit (dogfooding): this workflow builds the image, then updates the
+# `rbac-manager` unit in the prod-use2-ui-preview space; Argo CD syncs the
+# live resources from the space's OCI bundle.
+#
+# One-time setup is documented in rbac-manager/deploy/README.md.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'rbac-manager/app/**'
+      - 'rbac-manager/deploy/**'
+      - '.github/workflows/deploy-rbac-manager.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    # arm64 to match the prod-use2 nodes (same as ConfigHub's own UI previews)
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        run: |
+          docker build \
+            --label org.opencontainers.image.source=https://github.com/${{ github.repository }} \
+            -t ghcr.io/confighub/rbac-manager:${{ github.sha }} \
+            -f rbac-manager/deploy/Dockerfile rbac-manager/
+          docker push ghcr.io/confighub/rbac-manager:${{ github.sha }}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: rbac-manager-demo
+      url: https://rbac-manager.test.confighub.net
+    env:
+      CONFIGHUB_WORKER_ID: ${{ secrets.RBAC_MANAGER_DEPLOY_WORKER_ID }}
+      CONFIGHUB_WORKER_SECRET: ${{ secrets.RBAC_MANAGER_DEPLOY_WORKER_SECRET }}
+      SPACE: prod-use2-ui-preview
+      UNIT: rbac-manager
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install cub CLI
+        run: |
+          curl -fsSL https://hub.confighub.com/cub/install.sh | bash
+          echo "$HOME/.confighub/bin" >> $GITHUB_PATH
+
+      - name: Authenticate to ConfigHub
+        run: |
+          $HOME/.confighub/bin/cub auth login --as-worker
+
+      - name: Create or update unit
+        run: |
+          if cub unit get "$UNIT" --space "$SPACE" --quiet 2>/dev/null; then
+            echo "Unit $UNIT exists, updating image tag..."
+          else
+            echo "Creating unit $UNIT from rbac-manager/deploy/k8s.yaml..."
+            # The 'critical' delete gate guards the long-lived demo against
+            # accidental deletion (Argo prunes live resources on unit delete).
+            cub unit create "$UNIT" rbac-manager/deploy/k8s.yaml \
+              --space "$SPACE" \
+              --target prod-use2/prod-use2-oci \
+              --delete-gate critical \
+              --change-desc "rbac-manager example demo deployment"
+          fi
+
+          cub function do --space "$SPACE" --unit "$UNIT" \
+            set-image-reference rbac-manager ":${{ github.sha }}" \
+            --change-desc "Deploy ${{ github.sha }}"
+
+          echo "Applying unit $UNIT (no-op under OCI; Argo selfHeals it)..."
+          cub unit apply "$UNIT" --space "$SPACE"
