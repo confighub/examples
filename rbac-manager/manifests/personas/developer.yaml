@@ -1,0 +1,42 @@
+# Persona: developer — day-to-day application development access.
+# Workload read/write, logs and port-forward, but no delete and no
+# access to secrets, RBAC, or cluster-scoped infrastructure.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: rbac-manager-developer
+  labels:
+    rbac-manager.confighub.com/persona: developer
+rules:
+  - apiGroups: ["", "apps", "batch"]
+    resources:
+      - pods
+      - deployments
+      - replicasets
+      - statefulsets
+      - jobs
+      - cronjobs
+      - configmaps
+      - services
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["pods/log", "pods/portforward"]
+    verbs: ["get", "list", "create"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: rbac-manager-developer
+  labels:
+    rbac-manager.confighub.com/persona: developer
+subjects:
+  - kind: Group
+    name: oidc:developers
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: rbac-manager-developer
+  apiGroup: rbac.authorization.k8s.io
