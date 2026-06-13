@@ -3,14 +3,41 @@
 Stable, machine-checkable behavior for this example. See
 [EXAMPLE_CONTRACT_STANDARD.md](../EXAMPLE_CONTRACT_STANDARD.md) for the format.
 
-### `./setup.sh --explain`
+### `./setup.sh` (real use)
+
+- mutates: yes (ConfigHub only)
+- creates: 3 Warn=true guardrail Triggers (label `Pack=rbac-guardrails`) plus a
+  `Trigger` Filter selecting them, ONCE in a policy Space (default
+  `policy-guardrails`, override with `--policy-space SLUG`)
+- wires: points each in-scope Space's `TriggerFilterID` at that Filter —
+  Spaces with Kubernetes/YAML Units, optionally narrowed with `--where-space EXPR`
+- skips: Spaces with a custom `WhereTrigger`, a different `TriggerFilterID`, or
+  Triggers of their own (reported, not modified); already-wired Spaces and
+  existing objects (idempotent)
+- supports: `--policy-space SLUG`, `--where-space EXPR`, `--explain` /
+  `--explain-json` (the latter two mutate nothing)
+- proves: guardrail validation can be installed on a real organization, defined
+  once and enforced fleet-wide, without blocking anyone (ApplyWarnings, not
+  ApplyGates)
+
+### `./verify.sh` (real use)
+
+- mutates: no
+- supports: `--policy-space SLUG`, `--where-space EXPR`
+- output shape: plain text, one `ok`/`FAIL` line per check
+- stable success text: `All checks passed.`
+- proves: the policy Space holds the three guardrail Triggers (warn or promoted
+  to blocking) and the Filter, and every in-scope Space points its
+  `TriggerFilterID` at that Filter
+
+### `./demo-setup.sh --explain`
 
 - mutates: no
 - output shape: plain text plan with ASCII diagram
 - stable text anchors: `rbac-manager setup plan`, `Mutates: ConfigHub only.`
 - proves: the example plan before any mutation
 
-### `./setup.sh --explain-json`
+### `./demo-setup.sh --explain-json`
 
 - mutates: no
 - output shape: JSON object
@@ -20,7 +47,7 @@ Stable, machine-checkable behavior for this example. See
 - proves: the example plan, including which planted violations must end up
   gated, in machine-readable form
 
-### `./setup.sh`
+### `./demo-setup.sh`
 
 - mutates: yes (ConfigHub only; no Targets, Workers, or live infrastructure)
 - creates: 5 spaces, 5 triggers, 2 filters, 4 base units, 12 cloned units,
@@ -29,7 +56,7 @@ Stable, machine-checkable behavior for this example. See
 - cleanup: none by design (demo data persists); manual teardown documented in
   AI_START_HERE.md
 
-### `./verify.sh`
+### `./demo-verify.sh`
 
 - mutates: no
 - output shape: plain text, one `ok`/`FAIL` line per check

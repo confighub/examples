@@ -18,12 +18,12 @@ may want to inspect the GUI between stages.
 ## Stage 1: Seed and verify the fleet
 
 ```bash
-./setup.sh --explain        # preview first — mutates nothing
-./setup.sh                  # then seed (ConfigHub only, no live infra)
-./verify.sh                 # 42 checks: layout + gate matrix
+./demo-setup.sh --explain        # preview first — mutates nothing
+./demo-setup.sh                  # then seed (ConfigHub only, no live infra)
+./demo-verify.sh                 # 42 checks: layout + gate matrix
 ```
 
-Expected: `All checks passed. (42 checks)`. Re-running setup.sh is safe; it
+Expected: `All checks passed. (42 checks)`. Re-running demo-setup.sh is safe; it
 skips existing entities.
 
 GUI gap: there is no single fleet-level view of "which Spaces are RBAC
@@ -109,7 +109,7 @@ cub unit update developer --space rbac-demo-staging --patch \
   --restore Before:HeadRevisionNum \
   --change-desc "Roll back the staging fleet-edit demo"
 
-./verify.sh    # the fleet is back to its seeded state — all 42 checks pass
+./demo-verify.sh    # the fleet is back to its seeded state — all 42 checks pass
 ```
 
 The rollback is itself a described, attributable revision — nothing is lost.

@@ -51,13 +51,38 @@ gate stories visible immediately:
 
 ## Usage
 
+**Real use** — install the guardrails on your own Spaces:
+
 ```bash
-./setup.sh --explain        # preview the plan (no mutation)
-./setup.sh                  # seed the fleet (idempotent; ConfigHub only)
-./verify.sh                 # assert the layout and the gate matrix
+./setup.sh --explain                          # preview (no mutation)
+./setup.sh                                    # all Spaces with Kubernetes/YAML units
+./setup.sh --where-space "Slug LIKE 'prod-%'" # narrow with a filter expression
+./setup.sh --policy-space my-policies         # choose where the guardrails live
+./verify.sh                                   # confirm the guardrails are installed
 ```
 
-Use `PREFIX=my-prefix ./setup.sh` to change the `rbac-demo-` Space prefix.
+The three guardrail Triggers are defined **once** in a policy Space
+(`policy-guardrails` by default) and enforced fleet-wide via a shared Trigger
+Filter — each in-scope Space's `TriggerFilterID` is pointed at that Filter,
+not given its own copy. They're created with `Warn=true`: violations surface
+as advisory **ApplyWarnings**, never blocking anyone. Promote a guardrail to a
+blocking ApplyGate once the warnings are clean —
+`cub trigger update <slug> --space policy-guardrails --unwarn` — and that one
+change enforces it everywhere. Spaces that already select their Triggers
+another way (a custom `WhereTrigger`, a different `TriggerFilterID`, or
+Triggers of their own) are reported rather than modified. The app analyzes
+everything you can view by default; narrow it from the **Scope** button
+(filter expressions over Targets and Spaces).
+
+**Demo** — a self-contained fleet with planted violations and blocking gates:
+
+```bash
+./demo-setup.sh --explain   # preview the plan (no mutation)
+./demo-setup.sh             # seed the demo fleet (idempotent; ConfigHub only)
+./demo-verify.sh            # assert the layout and the gate matrix
+```
+
+Use `PREFIX=my-prefix ./demo-setup.sh` to change the `rbac-demo-` Space prefix.
 
 ## Try it
 
