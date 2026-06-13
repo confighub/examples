@@ -172,6 +172,7 @@ export function UnitPage() {
   }
 
   const gates = Object.keys(unit.ApplyGates ?? {});
+  const warnings = Object.keys(unit.ApplyWarnings ?? {});
 
   const save = async (changeDescription: string) => {
     setActionError(null);
@@ -310,6 +311,9 @@ export function UnitPage() {
         <Chip size='small' label={`head rev ${unit.HeadRevisionNum ?? '?'}`} />
         {gates.map((g) => (
           <Chip key={g} size='small' color='error' label={g} />
+        ))}
+        {warnings.map((w) => (
+          <Chip key={w} size='small' color='warning' variant='outlined' label={w} />
         ))}
         <Box sx={{ flexGrow: 1 }} />
         {gates.some((g) => g.endsWith('/vet-approvedby')) && (

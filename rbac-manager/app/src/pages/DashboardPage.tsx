@@ -10,79 +10,125 @@ import {
   Stack,
   Typography,
 } from '@mui/material';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { NewPersonaDialog } from '../components/NewPersonaDialog';
-import { ExtendedSpaceRead, useListSpacesQuery } from '../sdk/confighubapi.gen';
+import { useSnapshot } from '../fleet/SnapshotContext';
+import { ExtendedUnitRead } from '../sdk/confighubapi.gen';
 
-/** Spaces managed by this app carry the app=rbac-manager label. */
-const FLEET_WHERE = "Labels.app = 'rbac-manager'";
-
-interface SpaceCardProps {
-  extended: ExtendedSpaceRead;
+interface GroupSummary {
+  key: string;
+  /** Target slug for clusters; Space slug for untargeted base groups. */
+  label: string;
+  unitCount: number;
+  gatedCount: number;
+  warnedCount: number;
+  resourceCount: number;
+  spaces: Set<string>;
 }
 
-function SpaceCard({ extended }: SpaceCardProps) {
-  const space = extended.Space;
-  if (!space) return null;
-  const labels = space.Labels ?? {};
-  const gated = extended.GatedUnitCount ?? 0;
-  const units = extended.TotalUnitCount ?? 0;
-  const unapplied = extended.UnappliedUnitCount ?? 0;
-  const triggers = Object.values(extended.TriggerCountByEventType ?? {}).reduce(
-    (a, b) => a + b,
-    0,
-  );
+function summarize(
+  units: Iterable<ExtendedUnitRead>,
+  resourceCountByCluster: Map<string, number>,
+): { clusters: GroupSummary[]; bases: GroupSummary[] } {
+  const groups = new Map<string, GroupSummary & { targeted: boolean }>();
+  for (const eu of units) {
+    const unit = eu.Unit;
+    if (!unit) continue;
+    const targeted = eu.Target?.Slug !== undefined;
+    const label = eu.Target?.Slug ?? eu.Space?.Slug ?? 'unknown';
+    const key = `${targeted ? 't' : 's'}:${label}`;
+    let g = groups.get(key);
+    if (!g) {
+      g = {
+        key,
+        label,
+        unitCount: 0,
+        gatedCount: 0,
+        warnedCount: 0,
+        resourceCount: resourceCountByCluster.get(label) ?? 0,
+        spaces: new Set(),
+        targeted,
+      };
+      groups.set(key, g);
+    }
+    g.unitCount += 1;
+    if (Object.keys(unit.ApplyGates ?? {}).length > 0) g.gatedCount += 1;
+    if (Object.keys(unit.ApplyWarnings ?? {}).length > 0) g.warnedCount += 1;
+    if (eu.Space?.Slug !== undefined) g.spaces.add(eu.Space.Slug);
+  }
+  const all = [...groups.values()].sort((a, b) => a.label.localeCompare(b.label));
+  return {
+    clusters: all.filter((g) => g.targeted),
+    bases: all.filter((g) => !g.targeted),
+  };
+}
 
+function GroupCard({ group, kind }: { group: GroupSummary; kind: 'cluster' | 'space' }) {
   return (
-    <Card variant='outlined' sx={{ minWidth: 260 }}>
+    <Card variant='outlined' sx={{ minWidth: 270 }}>
       <CardContent>
         <Stack direction='row' spacing={1} alignItems='center' sx={{ mb: 1 }}>
-          <Typography variant='h6'>{space.Slug}</Typography>
-          {labels.env !== undefined && <Chip size='small' label={labels.env} />}
-          {labels.region !== undefined && (
-            <Chip size='small' variant='outlined' label={labels.region} />
-          )}
-          {labels.role !== undefined && (
-            <Chip size='small' color='secondary' label={labels.role} />
-          )}
+          <Typography variant='h6'>{group.label}</Typography>
+          <Chip size='small' variant='outlined' label={kind === 'cluster' ? 'target' : 'space'} />
         </Stack>
-        <Stack direction='row' spacing={2}>
-          <Typography variant='body2'>{units} units</Typography>
+        <Stack direction='row' spacing={2} useFlexGap flexWrap='wrap'>
+          <Typography variant='body2'>{group.unitCount} units</Typography>
+          <Typography variant='body2'>{group.resourceCount} RBAC resources</Typography>
           <Typography
             variant='body2'
-            color={gated > 0 ? 'error' : 'text.secondary'}
-            fontWeight={gated > 0 ? 600 : 400}
+            color={group.gatedCount > 0 ? 'error' : 'text.secondary'}
+            fontWeight={group.gatedCount > 0 ? 600 : 400}
           >
-            {gated} gated
+            {group.gatedCount} gated
           </Typography>
-          <Typography variant='body2' color='text.secondary'>
-            {unapplied} unapplied
+          <Typography
+            variant='body2'
+            color={group.warnedCount > 0 ? 'warning.main' : 'text.secondary'}
+            fontWeight={group.warnedCount > 0 ? 600 : 400}
+          >
+            {group.warnedCount} warned
           </Typography>
-          {triggers > 0 && (
-            <Typography variant='body2' color='text.secondary'>
-              {triggers} triggers
-            </Typography>
-          )}
         </Stack>
+        {kind === 'cluster' && group.spaces.size > 1 && (
+          <Typography variant='caption' color='text.secondary'>
+            units from {group.spaces.size} spaces
+          </Typography>
+        )}
       </CardContent>
     </Card>
   );
 }
 
 /**
- * Fleet dashboard: every Space labeled app=rbac-manager, with unit/gate
- * summaries straight off the extended Space read.
+ * Fleet dashboard: clusters (Targets) and base Spaces in scope, with unit,
+ * gate, and warning summaries computed from the snapshot.
  */
 export function DashboardPage() {
-  // summary=true populates the Total/Gated/Unapplied unit counts.
-  const { data, isLoading, isError, refetch } = useListSpacesQuery({
-    where: FLEET_WHERE,
-    summary: true,
-  });
+  const { snapshot, isLoading, error, refresh } = useSnapshot();
   const [personaOpen, setPersonaOpen] = useState(false);
 
-  if (isLoading) {
+  const resourceCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const r of snapshot?.resources ?? []) {
+      counts.set(r.origin.cluster, (counts.get(r.origin.cluster) ?? 0) + 1);
+    }
+    return counts;
+  }, [snapshot]);
+
+  const { clusters, bases } = useMemo(
+    () => summarize(snapshot?.units.values() ?? [], resourceCounts),
+    [snapshot, resourceCounts],
+  );
+
+  if (error !== null) {
+    return (
+      <Container sx={{ mt: 4 }}>
+        <Alert severity='error'>{error}</Alert>
+      </Container>
+    );
+  }
+  if (isLoading || !snapshot) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 12 }}>
         <CircularProgress />
@@ -90,25 +136,28 @@ export function DashboardPage() {
     );
   }
 
-  if (isError) {
-    return (
-      <Container sx={{ mt: 4 }}>
-        <Alert severity='error'>Failed to load the fleet. Check your connection and token.</Alert>
-      </Container>
-    );
-  }
-
-  const spaces = data ?? [];
-  const clusters = spaces.filter((s) => s.Space?.Labels?.env !== undefined);
-  const platform = spaces.filter((s) => s.Space?.Labels?.env === undefined);
-  const baseSpace = spaces.find((s) => s.Space?.Labels?.role === 'base');
+  const scoped = snapshot.scope.targetWhere !== '' || snapshot.scope.spaceWhere !== '';
 
   return (
     <Container sx={{ mt: 4 }}>
-      {spaces.length === 0 && (
+      <Stack direction='row' spacing={2} alignItems='center' sx={{ mb: 3 }}>
+        <Typography variant='body2' color='text.secondary'>
+          {snapshot.units.size} Kubernetes/YAML unit(s) in scope ·{' '}
+          {snapshot.resources.length} RBAC resource(s)
+          {scoped ? ' · custom scope active' : ''}
+        </Typography>
+        <Button size='small' onClick={() => void refresh()}>
+          Refresh
+        </Button>
+        <Button size='small' variant='outlined' onClick={() => setPersonaOpen(true)}>
+          New persona…
+        </Button>
+      </Stack>
+
+      {snapshot.units.size === 0 && (
         <Alert severity='info'>
-          No Spaces labeled app=rbac-manager found in this organization. Run the
-          example&apos;s setup.sh to seed the demo fleet.
+          No Kubernetes/YAML units in scope. Widen the scope (Scope button, top right), or seed
+          the demo fleet with the example&apos;s demo-setup.sh.
         </Alert>
       )}
 
@@ -118,41 +167,33 @@ export function DashboardPage() {
             Clusters
           </Typography>
           <Stack direction='row' spacing={2} useFlexGap flexWrap='wrap' sx={{ mb: 4 }}>
-            {clusters.map((s) => (
-              <SpaceCard key={s.Space?.SpaceID} extended={s} />
+            {clusters.map((g) => (
+              <GroupCard key={g.key} group={g} kind='cluster' />
             ))}
           </Stack>
         </>
       )}
 
-      {platform.length > 0 && (
+      {bases.length > 0 && (
         <>
-          <Stack direction='row' spacing={2} alignItems='center' sx={{ mb: 2 }}>
-            <Typography variant='h5'>Base &amp; policy</Typography>
-            {baseSpace?.Space?.SpaceID !== undefined && (
-              <Button size='small' variant='outlined' onClick={() => setPersonaOpen(true)}>
-                New persona…
-              </Button>
-            )}
-          </Stack>
+          <Typography variant='h5' sx={{ mb: 2 }}>
+            Spaces (units without a Target)
+          </Typography>
           <Stack direction='row' spacing={2} useFlexGap flexWrap='wrap'>
-            {platform.map((s) => (
-              <SpaceCard key={s.Space?.SpaceID} extended={s} />
+            {bases.map((g) => (
+              <GroupCard key={g.key} group={g} kind='space' />
             ))}
           </Stack>
         </>
       )}
 
-      {baseSpace?.Space?.SpaceID !== undefined && (
-        <NewPersonaDialog
-          open={personaOpen}
-          baseSpaceId={baseSpace.Space.SpaceID}
-          onClose={(created) => {
-            setPersonaOpen(false);
-            if (created) void refetch();
-          }}
-        />
-      )}
+      <NewPersonaDialog
+        open={personaOpen}
+        onClose={(created) => {
+          setPersonaOpen(false);
+          if (created) void refresh();
+        }}
+      />
     </Container>
   );
 }

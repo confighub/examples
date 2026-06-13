@@ -17,7 +17,6 @@ import {
   DialogTitle,
   Divider,
   FormControl,
-  FormControlLabel,
   InputLabel,
   MenuItem,
   Select,
@@ -37,7 +36,11 @@ import {
   useInvokeFunctionsOnOrgMutation,
 } from '../sdk/confighubapi.gen';
 
-const ENVS = ['dev', 'staging', 'prod'];
+// ConfigHub's recommended Space labels (see `cub variant create --help`).
+// Fleets are selected by these, not by app-specific labels — a Space's
+// Environment/Region/Component etc. identify which clusters a change lands on.
+const STANDARD_LABELS = ['Component', 'Environment', 'Region', 'Owner', 'Layer', 'Variant'] as const;
+type StdLabel = (typeof STANDARD_LABELS)[number];
 const VERBS = ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete', 'deletecollection'];
 
 interface UnitDiff {
@@ -73,10 +76,31 @@ function MultiDiff({ diffs }: { diffs: UnitDiff[] }) {
   );
 }
 
-/** env multi-select + persona select → a server-side where clause. */
-function buildWhere(persona: string, envs: string[]): string {
-  const envList = envs.map((e) => `'${e}'`).join(', ');
-  return `Labels.app = 'rbac-manager' AND Labels.persona = '${persona}' AND Labels.env IN (${envList})`;
+type LabelSelection = Record<StdLabel, string[]>;
+const EMPTY_SELECTION: LabelSelection = {
+  Component: [],
+  Environment: [],
+  Region: [],
+  Owner: [],
+  Layer: [],
+  Variant: [],
+};
+
+/** Standard-label selection → a server-side `where` over Space labels.
+ * Units inherit their cluster's Space labels, so the fleet is selected by
+ * `Space.Labels.<L> IN (...)`, ANDed across the chosen dimensions. */
+function buildWhere(selection: LabelSelection): string {
+  const clauses = STANDARD_LABELS.filter((l) => selection[l].length > 0).map(
+    (l) => `Space.Labels.${l} IN (${selection[l].map((v) => `'${v}'`).join(', ')})`,
+  );
+  return ["ToolchainType = 'Kubernetes/YAML'", ...clauses].join(' AND ');
+}
+
+/** True when the Space's labels satisfy every chosen dimension (mirror of buildWhere). */
+function matchesSelection(labels: Record<string, string> | undefined, selection: LabelSelection): boolean {
+  return STANDARD_LABELS.every(
+    (l) => selection[l].length === 0 || selection[l].includes(labels?.[l] ?? ''),
+  );
 }
 
 export function FleetPage() {
@@ -84,20 +108,29 @@ export function FleetPage() {
   const [invokeOrg, invokeState] = useInvokeFunctionsOnOrgMutation();
   const [bulkPatch, bulkPatchState] = useBulkPatchUnitsMutation();
 
-  const personas = useMemo(() => {
-    const set = new Set<string>();
+  // Discover the standard label values actually present on in-scope Spaces, so
+  // the selector only offers dimensions/values that exist in this org.
+  const labelValues = useMemo(() => {
+    const m = new Map<StdLabel, Set<string>>(STANDARD_LABELS.map((l) => [l, new Set<string>()]));
     for (const eu of snapshot?.units.values() ?? []) {
-      const p = eu.Unit?.Labels?.persona;
-      if (p !== undefined) set.add(p);
+      const labels = eu.Space?.Labels ?? {};
+      for (const l of STANDARD_LABELS) {
+        const v = labels[l];
+        if (v !== undefined && v !== '') m.get(l)!.add(v);
+      }
     }
-    return [...set].sort();
+    return m;
   }, [snapshot]);
+  const activeLabels = useMemo(
+    () => STANDARD_LABELS.filter((l) => (labelValues.get(l)?.size ?? 0) > 0),
+    [labelValues],
+  );
 
-  const [persona, setPersona] = useState('developer');
-  const [envs, setEnvs] = useState<string[]>(['dev', 'staging']);
+  const [selection, setSelection] = useState<LabelSelection>(EMPTY_SELECTION);
+  const [customWhere, setCustomWhere] = useState('');
   const [op, setOp] = useState<'add-verb' | 'remove-verb'>('add-verb');
   const [roleKind, setRoleKind] = useState('ClusterRole');
-  const [roleName, setRoleName] = useState('rbac-manager-developer');
+  const [roleName, setRoleName] = useState('');
   const [ruleIdx, setRuleIdx] = useState(0);
   const [verb, setVerb] = useState('deletecollection');
 
@@ -122,12 +155,16 @@ export function FleetPage() {
     );
   }
 
-  const where = buildWhere(persona, envs);
-  const matched = [...snapshot.units.values()].filter(
-    (eu) =>
-      eu.Unit?.Labels?.persona === persona &&
-      envs.includes(eu.Unit?.Labels?.env ?? '') ,
-  );
+  // The standard-label selector covers the common case; the custom expression
+  // is the escape hatch for anything it can't express.
+  const usingCustom = customWhere.trim() !== '';
+  const anyLabelSelected = STANDARD_LABELS.some((l) => selection[l].length > 0);
+  const where = usingCustom
+    ? `ToolchainType = 'Kubernetes/YAML' AND (${customWhere.trim()})`
+    : buildWhere(selection);
+  const matched = usingCustom
+    ? [...snapshot.units.values()]
+    : [...snapshot.units.values()].filter((eu) => matchesSelection(eu.Space?.Labels, selection));
 
   const previewBulkEdit = async () => {
     setMessage(null);
@@ -198,25 +235,25 @@ export function FleetPage() {
 
   const previewUpgrade = () => {
     setMessage(null);
-    // "Behind upstream" comes from the snapshot: the clone's
-    // UpstreamRevisionNum vs the base persona's current head. (A bulk
-    // dry-run returns every matched unit whether or not it would change.)
-    const baseHead = [...snapshot.units.values()].find(
-      (eu) =>
-        eu.Unit?.Labels?.persona === persona && eu.Space?.Labels?.role === 'base',
-    )?.Unit?.HeadRevisionNum;
-    const behind = matched.filter(
-      (eu) =>
-        baseHead !== undefined && (eu.Unit?.UpstreamRevisionNum ?? baseHead) < baseHead,
-    );
+    // "Behind upstream" comes from the snapshot: a clone is behind when its
+    // UpstreamRevisionNum trails the current head of the unit it was cloned
+    // from (looked up by UpstreamUnitID). Units whose upstream is out of scope
+    // can't be assessed and are left out of the preview.
+    const behind = matched.filter((eu) => {
+      const upstreamId = eu.Unit?.UpstreamUnitID;
+      if (upstreamId === undefined || upstreamId === null) return false;
+      const upstream = snapshot.units.get(upstreamId)?.Unit;
+      if (upstream?.HeadRevisionNum === undefined) return false;
+      return (eu.Unit?.UpstreamRevisionNum ?? 0) < upstream.HeadRevisionNum;
+    });
     if (behind.length === 0) {
       setMessage({
         kind: 'info',
-        text: 'All matched units are already based on the latest base revision. (A unit can also show no changes when a local override covers the upstream change.)',
+        text: 'No matched units are behind their upstream. (A clone can also show no changes when a local override covers the upstream change, or when its upstream is out of scope.)',
       });
       return;
     }
-    setChangeDesc(`Propagate base ${persona} changes to ${envs.join(', ')}`);
+    setChangeDesc(`Propagate upstream changes to ${behind.length} unit(s)`);
     setUpgradePreview({
       where,
       slugs: behind.map((eu) => `${eu.Space?.Slug}/${eu.Unit?.Slug}`),
@@ -249,39 +286,50 @@ export function FleetPage() {
       </Typography>
 
       <Stack direction='row' spacing={2} useFlexGap flexWrap='wrap' alignItems='center' sx={{ mb: 1 }}>
-        <FormControl size='small' sx={{ minWidth: 160 }}>
-          <InputLabel>Persona</InputLabel>
-          <Select
-            label='Persona'
-            value={persona}
-            onChange={(e) => {
-              setPersona(e.target.value);
-              setRoleName(`rbac-manager-${e.target.value}`);
-            }}
-          >
-            {personas.map((p) => (
-              <MenuItem key={p} value={p}>
-                {p}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        {ENVS.map((e) => (
-          <FormControlLabel
-            key={e}
-            control={
-              <Checkbox
-                checked={envs.includes(e)}
-                onChange={(ev) =>
-                  setEnvs(ev.target.checked ? [...envs, e] : envs.filter((x) => x !== e))
+        {activeLabels.length === 0 && (
+          <Typography variant='body2' color='text.secondary'>
+            No standard Space labels (Component, Environment, Region, Owner, Layer, Variant) found in
+            scope — use the custom selector below.
+          </Typography>
+        )}
+        {activeLabels.map((l) => {
+          const values = [...(labelValues.get(l) ?? [])].sort();
+          return (
+            <FormControl key={l} size='small' sx={{ minWidth: 170 }} disabled={usingCustom}>
+              <InputLabel>{l}</InputLabel>
+              <Select
+                multiple
+                label={l}
+                value={selection[l]}
+                onChange={(e) =>
+                  setSelection({
+                    ...selection,
+                    [l]: typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value,
+                  })
                 }
-              />
-            }
-            label={e}
-          />
-        ))}
-        <Chip label={`${matched.length} unit(s) match`} variant='outlined' />
+                renderValue={(sel) => (sel as string[]).join(', ')}
+              >
+                {values.map((v) => (
+                  <MenuItem key={v} value={v}>
+                    <Checkbox checked={selection[l].includes(v)} size='small' sx={{ py: 0 }} />
+                    {v}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          );
+        })}
+        {!usingCustom && <Chip label={`${matched.length} unit(s) match`} variant='outlined' />}
       </Stack>
+      <TextField
+        fullWidth
+        size='small'
+        label='Custom unit selector (where expression — overrides the label selector)'
+        placeholder="e.g. Labels.Team = 'payments' AND Slug LIKE '%-rbac'"
+        value={customWhere}
+        onChange={(e) => setCustomWhere(e.target.value)}
+        sx={{ mb: 1 }}
+      />
       <Box component='code' sx={{ display: 'block', fontSize: 12, color: 'text.secondary', mb: 3 }}>
         {where}
       </Box>
@@ -317,6 +365,7 @@ export function FleetPage() {
         <TextField
           size='small'
           label='Role name'
+          placeholder='e.g. cluster-admin'
           value={roleName}
           onChange={(e) => setRoleName(e.target.value)}
         />
@@ -340,7 +389,12 @@ export function FleetPage() {
         </FormControl>
         <Button
           variant='contained'
-          disabled={envs.length === 0 || roleName === '' || invokeState.isLoading}
+          disabled={
+            (!usingCustom && !anyLabelSelected) ||
+            matched.length === 0 ||
+            roleName === '' ||
+            invokeState.isLoading
+          }
           onClick={() => void previewBulkEdit()}
         >
           {invokeState.isLoading ? 'Previewing…' : 'Preview across fleet'}
@@ -358,7 +412,7 @@ export function FleetPage() {
       </Typography>
       <Button
         variant='outlined'
-        disabled={envs.length === 0 || bulkPatchState.isLoading}
+        disabled={(!usingCustom && !anyLabelSelected) || matched.length === 0 || bulkPatchState.isLoading}
         onClick={() => void previewUpgrade()}
       >
         {bulkPatchState.isLoading ? 'Checking…' : 'Preview upgrade'}

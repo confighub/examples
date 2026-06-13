@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 import { ReactNode, useState, useSyncExternalStore } from 'react';
 
+import { ScopeSettings } from '../components/ScopeSettings';
 import { useGetMeQuery } from '../sdk/confighubapi.gen';
 import {
   AUTH_EXPIRED_EVENT,
@@ -94,6 +95,7 @@ interface AuthGateProps {
 export function AuthGate({ children }: AuthGateProps) {
   useAuthVersion();
   const { data: me, isLoading, isError, refetch } = useGetMeQuery();
+  const [scopeOpen, setScopeOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -121,6 +123,9 @@ export function AuthGate({ children }: AuthGateProps) {
           <Typography variant='h6' sx={{ flexGrow: 1 }}>
             RBAC Manager
           </Typography>
+          <Button color='inherit' size='small' onClick={() => setScopeOpen(true)} sx={{ mr: 2 }}>
+            Scope
+          </Button>
           <Chip
             label={me.DisplayName ?? me.ExternalID ?? 'connected'}
             color='secondary'
@@ -141,6 +146,15 @@ export function AuthGate({ children }: AuthGateProps) {
           )}
         </Toolbar>
       </AppBar>
+      <ScopeSettings
+        open={scopeOpen}
+        onClose={(changed) => {
+          setScopeOpen(false);
+          // The snapshot provider reads scope at load time; a reload is the
+          // simplest way to rebuild everything against the new scope.
+          if (changed) window.location.reload();
+        }}
+      />
       {children}
     </>
   );
