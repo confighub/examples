@@ -23,6 +23,7 @@ If you are not logged in yet, run `cub auth login` before the `cub` commands.
 - [`custom-workers`](./custom-workers/): worker extension examples, including bridge, function, and policy workers.
 - [`global-app`](./global-app/README.md): classic multi-service app example.
 - [`helm-platform-components`](./helm-platform-components/README.md): platform component example for Helm-managed infrastructure.
+- [`ctrlplane`](./ctrlplane/README.md): read-only mapper from a [Ctrlplane](https://ctrlplane.dev) System bundle to a ConfigHub governed-app plan (spaces, units, targets, delivery strategy, gates).
 - [`vm-fleet`](./vm-fleet/README.md): VM fleet operations example.
 
 ## Recommended Starting Points
