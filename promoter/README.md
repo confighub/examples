@@ -35,6 +35,7 @@ only in the workflow document.
 ```yaml
 apiVersion: promoter.confighub.com/v1
 name: web-release
+statusLabel: Status          # Space-label key to read each variant's live status from
 stages:
   - name: dev
     components:
@@ -42,9 +43,9 @@ stages:
   - name: staging
     components:
       - { component: eshop, variant: us-staging-1 }
-status:
-  staging/eshop: { state: succeeded, promotedRevision: 7, at: "...", by: "..." }
 ```
+
+The document holds only the pipeline shape — it does **not** store status.
 
 ## Promotion is a real upgrade — or it's disabled
 
@@ -54,15 +55,29 @@ downstream clone of the previous stage's variant. The Promote button inspects
 the link topology first and is **disabled with a reason** when the links don't
 line up — it never silently copies data you didn't ask for.
 
-## Stage status
+## Stage status — owned by ConfigHub, not the workflow
 
-ConfigHub's built-in apply/live status fields are being phased out, and the
-long-term plan is for agents to report stage health from Argo and other sources
-into ConfigHub. Until then, status is **manual**: recorded per (stage,
-component) in the workflow document, set automatically on a successful promotion
-and editable from the status chip. The status source is a pluggable
-`StatusProvider` (`app/src/model/status.ts`) — an `AgentReportedStatusProvider`
-stub documents the future shape, swappable without UI changes.
+Status belongs to ConfigHub: it manages the live resources behind each variant
+Space, so it knows their health. The app **reads** each variant's status from a
+**label on its Space** (key from `statusLabel`, default `Status`) and **never
+writes it** — the workflow tool doesn't independently manage status. The
+pipeline view polls every 5s, so changes appear live; each stage shows a status
+rolled up from its components, and the Promote gate for a stage only opens once
+its upstream stage is `succeeded`.
+
+Today an operator sets the label (or a CLI command, simulating a future agent);
+eventually agents watching Argo/etc. write it. Either way the UI reads the same
+label. Simulate a change:
+
+```bash
+cub space update --patch <variant-space> --label "Status=Progressing"
+cub space update --patch <variant-space> --label "Status=Ready"
+```
+
+Label values map leniently: `Ready`/`Healthy`/`Synced` → ready, `Progressing`/
+`Deploying`/`Pending` → in progress, `Degraded`/`Failed` → failed, missing →
+no status. The read side is a pluggable `StatusProvider`
+(`app/src/model/status.ts`); swapping the source needs no UI changes.
 
 ## Develop
 

@@ -1,7 +1,8 @@
 // Reads the org's component/variant catalog from ConfigHub Spaces. A variant
 // is a Space carrying `Component` and `Variant` labels; "variant X of
-// component Y" is the Space where Component=Y and Variant=X. The workflow
-// editor offers these as choices; nothing here is written back.
+// component Y" is the Space where Component=Y and Variant=X. The Space's full
+// label set is carried through so the status provider can read the live-status
+// label. Nothing here is written back.
 
 import { useMemo } from 'react';
 
@@ -16,6 +17,8 @@ export interface VariantRef {
   variant: string;
   spaceId: string;
   spaceSlug: string;
+  /** All labels on the Space — includes the live-status label. */
+  labels: Record<string, string>;
 }
 
 export interface ComponentInfo {
@@ -29,21 +32,29 @@ export interface Catalog {
   resolve: (component: string, variant: string) => VariantRef | undefined;
   isLoading: boolean;
   error: string | null;
+  /** Force an immediate re-read of Spaces (labels). */
+  refetch: () => void;
 }
 
 function variantOf(space: SpaceRead): VariantRef | null {
-  const component = space.Labels?.[COMPONENT_LABEL];
+  const labels = space.Labels ?? {};
+  const component = labels[COMPONENT_LABEL];
   if (!component || !space.SpaceID) return null;
   // A Space tagged with a Component but no explicit Variant is still a usable
   // variant; fall back to its slug so it's selectable and uniquely keyed.
-  const variant = space.Labels?.[VARIANT_LABEL] ?? space.Slug ?? space.SpaceID;
-  return { component, variant, spaceId: space.SpaceID, spaceSlug: space.Slug ?? '' };
+  const variant = labels[VARIANT_LABEL] ?? space.Slug ?? space.SpaceID;
+  return { component, variant, spaceId: space.SpaceID, spaceSlug: space.Slug ?? '', labels };
 }
 
-export function useCatalog(): Catalog {
-  // List every Space once; group client-side. Selecting only what we need
-  // keeps the payload small even for orgs with many Spaces.
-  const { data, isLoading, error } = useListSpacesQuery({ select: 'SpaceID,Slug,Labels' });
+/**
+ * @param pollingIntervalMs when > 0, re-reads Spaces on that interval so live
+ *   status-label changes appear without a manual refresh.
+ */
+export function useCatalog(pollingIntervalMs = 0): Catalog {
+  const { data, isLoading, error, refetch } = useListSpacesQuery(
+    { select: 'SpaceID,Slug,Labels' },
+    pollingIntervalMs > 0 ? { pollingInterval: pollingIntervalMs } : undefined,
+  );
 
   return useMemo<Catalog>(() => {
     const byComponent = new Map<string, VariantRef[]>();
@@ -70,6 +81,7 @@ export function useCatalog(): Catalog {
       resolve,
       isLoading,
       error: error ? 'Failed to load component catalog' : null,
+      refetch: () => void refetch(),
     };
-  }, [data, isLoading, error]);
+  }, [data, isLoading, error, refetch]);
 }

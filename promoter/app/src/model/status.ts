@@ -1,85 +1,69 @@
-// Pluggable promotion-status abstraction.
+// Promotion status, sourced from ConfigHub — not from the workflow.
 //
-// ConfigHub's built-in status fields (LiveRevisionNum, apply state) are being
-// phased out, and the long-term plan is for agents to report stage health from
-// Argo and other sources into ConfigHub. Until those agents exist, the app
-// records status manually. The UI only ever talks to the StatusProvider
-// interface, so swapping in an agent-reported provider later needs no page
-// changes.
+// ConfigHub manages the live resources behind each variant Space, so the
+// status of a variant belongs there, as a Space label. The app only reads it.
+// Today an operator (or a CLI command, simulating a future agent) sets the
+// label; eventually agents watching Argo/etc. will write it. Either way the UI
+// reads the same label, so nothing here changes when that happens.
+//
+// Simulate a status change from the CLI:
+//   cub space update --patch <variant-space> --label "Status=Progressing"
+//   cub space update --patch <variant-space> --label "Status=Ready"
 
-import {
-  PromotionState,
-  PromotionStatus,
-  statusKey,
-  Workflow,
-} from './workflow';
+import { PromotionState } from './workflow';
+
+/** Map a raw Space-label value to a state. Lenient and case-insensitive. */
+export function mapStatus(raw: string | undefined): PromotionState {
+  const v = (raw ?? '').trim().toLowerCase();
+  if (v === '') return 'unknown';
+  if (['succeeded', 'success', 'ready', 'healthy', 'deployed', 'synced', 'done'].includes(v)) {
+    return 'succeeded';
+  }
+  if (['failed', 'failure', 'error', 'degraded', 'unhealthy', 'crashloopbackoff'].includes(v)) {
+    return 'failed';
+  }
+  if (['in_progress', 'inprogress', 'progressing', 'deploying', 'running', 'pending'].includes(v)) {
+    return 'in_progress';
+  }
+  if (['notdeployed', 'not_deployed', 'none', 'idle'].includes(v)) return 'pending';
+  return 'unknown';
+}
 
 export interface StatusProvider {
-  /** Whether users can set status through this provider (manual=true). */
-  readonly canEdit: boolean;
-  /** Current status for a (stage, component) cell. */
-  get(wf: Workflow, stage: string, component: string): PromotionStatus;
-  /**
-   * Record a new state. Returns the updated Workflow (callers persist it).
-   * Undefined when the provider is read-only.
-   */
-  set?(
-    wf: Workflow,
-    stage: string,
-    component: string,
-    state: PromotionState,
-    extra?: Pick<PromotionStatus, 'promotedRevision' | 'by'>,
-  ): Workflow;
-}
-
-const UNKNOWN: PromotionStatus = { state: 'unknown' };
-
-/**
- * Default provider: status is whatever a user records, persisted inside the
- * workflow document's `status` map. `set` returns a new Workflow; the caller
- * saves it back to the unit.
- */
-export class ManualStatusProvider implements StatusProvider {
-  readonly canEdit = true;
-
-  /** `now` is injected so callers (and tests) control the timestamp. */
-  constructor(private readonly now: () => string = () => new Date().toISOString()) {}
-
-  get(wf: Workflow, stage: string, component: string): PromotionStatus {
-    return wf.status[statusKey(stage, component)] ?? UNKNOWN;
-  }
-
-  set(
-    wf: Workflow,
-    stage: string,
-    component: string,
-    state: PromotionState,
-    extra?: Pick<PromotionStatus, 'promotedRevision' | 'by'>,
-  ): Workflow {
-    const next: PromotionStatus = { state, at: this.now() };
-    if (extra?.promotedRevision !== undefined) next.promotedRevision = extra.promotedRevision;
-    if (extra?.by !== undefined) next.by = extra.by;
-    return {
-      ...wf,
-      status: { ...wf.status, [statusKey(stage, component)]: next },
-    };
-  }
+  /** Human-readable description of where status comes from. */
+  readonly source: string;
+  /** The raw label value for a variant, or undefined if unset. */
+  raw(spaceLabels: Record<string, string> | undefined, labelKey: string): string | undefined;
+  /** The mapped state for a variant. */
+  get(spaceLabels: Record<string, string> | undefined, labelKey: string): PromotionState;
 }
 
 /**
- * Stub for the future model: stage health reported into ConfigHub by agents
- * watching Argo/Flux/etc. Read-only and currently always `unknown` — wired in
- * here so the shape is documented and the swap is a one-line provider change.
- * When such agents exist, `get` would read their signal (e.g. a status unit or
- * annotation) instead of returning unknown.
+ * Reads status from a label on the variant's Space. This is the realized
+ * "ConfigHub/agent-reported" model: whoever manages the live resources writes
+ * the label, the app reads it. The app never writes status itself.
  */
-export class AgentReportedStatusProvider implements StatusProvider {
-  readonly canEdit = false;
+export class LabelStatusProvider implements StatusProvider {
+  readonly source = 'ConfigHub Space label';
 
-  get(): PromotionStatus {
-    return UNKNOWN;
+  raw(spaceLabels: Record<string, string> | undefined, labelKey: string): string | undefined {
+    return spaceLabels?.[labelKey];
+  }
+
+  get(spaceLabels: Record<string, string> | undefined, labelKey: string): PromotionState {
+    return mapStatus(this.raw(spaceLabels, labelKey));
   }
 }
 
 /** The provider the app currently uses. */
-export const statusProvider: StatusProvider = new ManualStatusProvider();
+export const statusProvider: StatusProvider = new LabelStatusProvider();
+
+/** Roll several component states up into one stage state. */
+export function rollupStatus(states: PromotionState[]): PromotionState {
+  if (states.length === 0) return 'unknown';
+  if (states.some((s) => s === 'failed')) return 'failed';
+  if (states.some((s) => s === 'in_progress')) return 'in_progress';
+  if (states.every((s) => s === 'succeeded')) return 'succeeded';
+  if (states.some((s) => s === 'succeeded')) return 'in_progress'; // partially promoted
+  return 'pending';
+}

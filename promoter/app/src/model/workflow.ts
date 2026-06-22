@@ -1,24 +1,19 @@
 // The promotion-workflow document. One Workflow is stored as the YAML body
-// (Unit.Data) of a single AppConfig/YAML unit in the `promoter` space. All
-// durable workflow state — stage order, per-component variant choices, and
-// promotion status — lives here, never on Space metadata (a variant Space may
-// participate in many workflows).
+// (Unit.Data) of a single AppConfig/YAML unit in the `promoter` space. The
+// document holds the pipeline shape — stage order and per-component variant
+// choices. It deliberately does NOT store promotion status: status belongs to
+// ConfigHub (which manages the live resources) and is read from a label on
+// each variant Space (see model/status.ts). The document only names which
+// label key to read.
 
 import { parse, stringify } from 'yaml';
 
 export const WORKFLOW_API_VERSION = 'promoter.confighub.com/v1';
 
-export type PromotionState = 'pending' | 'succeeded' | 'failed' | 'unknown';
+/** Default Space-label key whose value carries a variant's live status. */
+export const DEFAULT_STATUS_LABEL = 'Status';
 
-export interface PromotionStatus {
-  state: PromotionState;
-  /** Head revision the target units were upgraded to when this was recorded. */
-  promotedRevision?: number;
-  /** ISO-8601 timestamp the status was recorded. */
-  at?: string;
-  /** DisplayName of the user who recorded it (manual provider). */
-  by?: string;
-}
+export type PromotionState = 'pending' | 'in_progress' | 'succeeded' | 'failed' | 'unknown';
 
 /** A component's chosen variant within a stage. */
 export interface ComponentChoice {
@@ -37,17 +32,18 @@ export interface Workflow {
   apiVersion: string;
   /** Human-readable name (the unit slug is the durable identity). */
   name: string;
+  /** Space-label key to read each variant's live status from. */
+  statusLabel: string;
   stages: Stage[];
-  /** Keyed by statusKey(stage, component). */
-  status: Record<string, PromotionStatus>;
-}
-
-export function statusKey(stage: string, component: string): string {
-  return `${stage}/${component}`;
 }
 
 export function emptyWorkflow(name: string): Workflow {
-  return { apiVersion: WORKFLOW_API_VERSION, name, stages: [], status: {} };
+  return {
+    apiVersion: WORKFLOW_API_VERSION,
+    name,
+    statusLabel: DEFAULT_STATUS_LABEL,
+    stages: [],
+  };
 }
 
 /** Serialize a Workflow to the YAML stored in Unit.Data. */
@@ -55,15 +51,15 @@ export function serializeWorkflow(wf: Workflow): string {
   return stringify({
     apiVersion: wf.apiVersion || WORKFLOW_API_VERSION,
     name: wf.name,
+    statusLabel: wf.statusLabel || DEFAULT_STATUS_LABEL,
     stages: wf.stages,
-    status: wf.status,
   });
 }
 
 /**
- * Parse a Workflow from Unit.Data YAML. Tolerant of partially-formed
- * documents (missing stages/status) so a hand-edited or older unit still
- * loads. `fallbackName` is used when the document omits `name`.
+ * Parse a Workflow from Unit.Data YAML. Tolerant of partially-formed or older
+ * documents (missing stages, or a legacy `status` map which is ignored).
+ * `fallbackName` is used when the document omits `name`.
  */
 export function parseWorkflow(yaml: string, fallbackName: string): Workflow {
   let doc: unknown;
@@ -84,18 +80,13 @@ export function parseWorkflow(yaml: string, fallbackName: string): Workflow {
           : [],
       }))
     : [];
-  const status: Record<string, PromotionStatus> =
-    obj.status && typeof obj.status === 'object' ? (obj.status as Workflow['status']) : {};
   return {
     apiVersion: typeof obj.apiVersion === 'string' ? obj.apiVersion : WORKFLOW_API_VERSION,
     name: typeof obj.name === 'string' && obj.name !== '' ? obj.name : fallbackName,
+    statusLabel:
+      typeof obj.statusLabel === 'string' && obj.statusLabel !== ''
+        ? obj.statusLabel
+        : DEFAULT_STATUS_LABEL,
     stages,
-    status,
   };
-}
-
-/** Index of the stage immediately upstream of `stageName`, or -1 if first/missing. */
-export function upstreamStageIndex(wf: Workflow, stageName: string): number {
-  const i = wf.stages.findIndex((s) => s.name === stageName);
-  return i > 0 ? i - 1 : -1;
 }
