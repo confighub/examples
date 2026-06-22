@@ -1,0 +1,146 @@
+# Long-lived demo deployment of the promoter example, served at
+# https://promoter.test.confighub.net against the production ConfigHub API.
+# Lives as the `promoter` unit in the prod-use2-ui-preview space, which
+# already provides the namespace, wildcard TLS cert, and Argo CD sync.
+# The image tag is managed by .github/workflows/deploy-promoter.yml.
+apiVersion: v1
+kind: Service
+metadata:
+  name: promoter
+  namespace: ui-preview
+  labels:
+    app: promoter
+  annotations:
+    confighub.com/ResourceMergeID: 4d84dae5-0612-46e8-ae02-9edf4a2665b5
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+  selector:
+    app: promoter
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: promoter
+  namespace: ui-preview
+  labels:
+    app: promoter
+  annotations:
+    confighub.com/ResourceMergeID: c6d6f445-5e72-4570-a184-823c15d0ea42
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: promoter
+  template:
+    metadata:
+      labels:
+        app: promoter
+        app.kubernetes.io/name: promoter
+    spec:
+      containers:
+      - name: promoter
+        # Public package — no imagePullSecrets needed.
+        image: ghcr.io/confighub/promoter:latest
+        imagePullPolicy: Always
+        env:
+        - name: API_BACKEND_URL
+          value: "http://confighub-api.confighub.svc.cluster.local:9090"
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 3
+          periodSeconds: 10
+        resources:
+          requests:
+            memory: 64Mi
+            cpu: 50m
+          limits:
+            memory: 128Mi
+            cpu: 200m
+        securityContext:
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          privileged: false
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: promoter
+  namespace: ui-preview
+  labels:
+    app: promoter
+  annotations:
+    confighub.com/ResourceMergeID: a407208f-ad2d-492c-ad59-9f3b8f20c1f3
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: promoter-http
+  namespace: ui-preview
+  labels:
+    app: promoter
+  annotations:
+    confighub.com/ResourceMergeID: de097894-dfe7-4ee4-98a1-a756ed49c2ec
+spec:
+  entryPoints:
+  - web
+  routes:
+  - match: Host(`promoter.test.confighub.net`)
+    kind: Rule
+    middlewares:
+    - name: promoter
+    services:
+    - name: promoter
+      port: 80
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: promoter-https
+  namespace: ui-preview
+  labels:
+    app: promoter
+  annotations:
+    confighub.com/ResourceMergeID: 26756a21-5447-4444-af06-2f723e77d5b7
+spec:
+  entryPoints:
+  - websecure
+  routes:
+  - match: Host(`promoter.test.confighub.net`)
+    kind: Rule
+    middlewares:
+    - name: promoter
+    services:
+    - name: promoter
+      port: 80
+  tls:
+    secretName: wildcard-test-confighub-net-tls
