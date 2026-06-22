@@ -1,0 +1,40 @@
+{
+  "skill_name": "rbac-findings",
+  "evals": [
+    {
+      "id": 1,
+      "name": "audit-hygiene-overview",
+      "prompt": "Audit our RBAC hygiene across the fleet — what are the risks?",
+      "expected_output": "Runs `cub-rbac preflight`, then `cub-rbac findings` and summarizes by severity and analyzer (e.g. via jq grouping), leading with high-severity issues. Reports findings with their cluster and Unit. Does not mutate.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "wildcard-roles",
+      "prompt": "Do we have any roles with wildcard permissions?",
+      "expected_output": "Runs `cub-rbac findings --analyzer wildcard-rules` (or filters the full findings JSON for analyzer == wildcard-rules) and reports the offending roles with cluster/Unit. Does not mutate.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "who-has-cluster-admin",
+      "prompt": "Who has cluster-admin or equivalent superuser access?",
+      "expected_output": "Runs `cub-rbac findings --analyzer cluster-admin-bindings`, reporting the bindings (including custom roles whose effective rules are */*/*) with their subjects and cluster. May pivot to rbac-whocan for confirmation. Does not mutate.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "orphaned-bindings",
+      "prompt": "Any role bindings pointing at roles that don't exist?",
+      "expected_output": "Runs `cub-rbac findings --analyzer orphaned-bindings` and reports the orphans, noting that Kubernetes builtins are excluded. Does not mutate.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "name": "fix-request-routes-to-write-path",
+      "prompt": "Find our wildcard cluster roles and remove the wildcards.",
+      "expected_output": "Uses `cub-rbac findings --analyzer wildcard-rules` to identify the roles (read-only), then explains that remediation is a mutation handled by the write path (cub / a write skill) and does not attempt to edit from this read-only skill.",
+      "files": []
+    }
+  ]
+}

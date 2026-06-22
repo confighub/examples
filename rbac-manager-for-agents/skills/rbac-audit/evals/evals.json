@@ -1,0 +1,33 @@
+{
+  "skill_name": "rbac-audit",
+  "evals": [
+    {
+      "id": 1,
+      "name": "fleet-inventory",
+      "prompt": "What RBAC do we have across the fleet? Give me a per-cluster breakdown.",
+      "expected_output": "Runs `cub-rbac preflight` first, then `cub-rbac snapshot` (JSON, or -o table) and reports the per-cluster counts of roles/cluster-roles/role-bindings/cluster-role-bindings/service-accounts plus totals. Does not mutate, does not fall back to kubectl.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "list-clusterrolebindings-one-cluster",
+      "prompt": "List every ClusterRoleBinding on the prod-use2-oci cluster.",
+      "expected_output": "Runs `cub-rbac list --kind ClusterRoleBinding --cluster prod-use2-oci` (optionally -o table or piped through jq for names) and reports the bindings. Uses the --kind and --cluster filters rather than post-filtering, does not mutate.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "service-accounts-by-cluster",
+      "prompt": "How many service accounts does each cluster have?",
+      "expected_output": "Uses `cub-rbac snapshot` and reads the serviceAccounts count per cluster (e.g. via jq on the JSON), reporting the per-cluster numbers. Does not enumerate via kubectl.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "routes-effective-access-elsewhere",
+      "prompt": "Who can read secrets in our prod clusters?",
+      "expected_output": "Recognizes this is an effective-access question, not inventory, and routes to the rbac-whocan skill / `cub-rbac who-can get secrets` rather than answering with `cub-rbac list`.",
+      "files": []
+    }
+  ]
+}

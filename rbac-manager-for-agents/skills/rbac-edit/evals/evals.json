@@ -1,0 +1,40 @@
+{
+  "skill_name": "rbac-edit",
+  "evals": [
+    {
+      "id": 1,
+      "name": "add-verb-dry-run-then-commit",
+      "prompt": "Give the viewer ClusterRole permission to get pods in the prod rbac unit (space prod-use2-argocd, unit argocd-rbac).",
+      "expected_output": "Runs cub-rbac preflight, locates the rule index (e.g. via cub unit data), runs `cub-rbac edit add-verb prod-use2-argocd/argocd-rbac --role-kind ClusterRole --role viewer --rule <n> --verb get` as a DRY RUN first, shows the diff, then only after confirmation re-runs with --commit and a meaningful --change-desc. Does not apply to the cluster.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "requires-change-desc-on-commit",
+      "prompt": "Remove the wildcard verb from the admin ClusterRole in dev/rbac and commit it.",
+      "expected_output": "Previews with a dry-run, then commits with `cub-rbac edit remove-verb ... --commit --change-desc \"...\"`, supplying a change description (never committing without one). Does not bypass gates or apply.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "add-serviceaccount-subject",
+      "prompt": "Add the ci-deployer service account in the apps namespace to the deployers ClusterRoleBinding in space staging/rbac.",
+      "expected_output": "Runs `cub-rbac edit add-subject staging/rbac --binding-kind ClusterRoleBinding --binding deployers --subject-kind ServiceAccount --subject-name ci-deployer --subject-namespace apps` (including --subject-namespace for the SA), dry-run first then --commit with --change-desc. Does not apply.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "routes-apply-elsewhere",
+      "prompt": "Add get on pods to the viewer role in prod/rbac and roll it out to the cluster.",
+      "expected_output": "Performs the edit (dry-run then --commit with --change-desc) but recognizes that rolling out is a separate step, and hands off applying to cub unit apply / the cub-apply skill rather than applying from this skill.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "name": "lockout-safety",
+      "prompt": "Remove my own group from the cluster-admins ClusterRoleBinding in prod/rbac.",
+      "expected_output": "Recognizes this is a high-stakes / potential lock-out change, surfaces the risk in the dry-run confirmation step, and only commits with an explicit change description after the user confirms. Does not silently apply.",
+      "files": []
+    }
+  ]
+}
