@@ -33,25 +33,28 @@ deployment uses the same-origin session cookie automatically).
    cub unit list --space promoter --where "Labels.app = 'promoter'"
    cub unit get <workflow-slug> --space promoter -o data    # the YAML document
    ```
-3. **Promote.** On a non-first stage, click **Promote** on a component. The
-   dialog inspects upstream links and lists each unit's readiness. If the chosen
-   variant is a downstream clone of the previous stage's variant, promote
-   upgrades it (optionally applies). Verify:
+3. **Watch live status.** The pipeline view polls every 5s and shows each
+   stage's status, read from a `Status` label on each variant Space. Simulate
+   ConfigHub/agent-reported status from the CLI and watch the chips move:
+   ```bash
+   cub space update --patch <variant-space> --label "Status=Progressing"
+   cub space update --patch <variant-space> --label "Status=Ready"
+   ```
+4. **Promote (the gate).** A stage's **Promote** button opens only once its
+   upstream stage is `Ready`. Clicking it inspects upstream links, then upgrades
+   the variant-Space units (optionally applies). Verify:
    ```bash
    cub revision list <unit> --space <variant-space>
    ```
-4. **See the gate.** Pick a variant that is *not* a downstream clone of the
-   previous stage's variant — the Promote button reports exactly why it can't
-   upgrade rather than copying data.
-5. **Status.** A successful promotion records `succeeded` with the new
-   revision. The status chip is also manually settable; it persists into the
-   workflow YAML (reload to confirm).
+5. **See the gate refuse.** Pick a variant that is *not* a downstream clone of
+   the previous stage's variant — Promote reports exactly why it can't upgrade
+   rather than copying data.
 
 ## Key files
 
 - `app/src/model/workflow.ts` — the stored document shape + (de)serialize.
-- `app/src/model/status.ts` — the pluggable status provider (manual default,
-  agent-reported stub).
+- `app/src/model/status.ts` — the pluggable status provider that reads a
+  variant Space's `Status` label (the ConfigHub/agent-reported model).
 - `app/src/data/catalog.ts` — reads Spaces grouped by `Component`/`Variant`.
 - `app/src/data/storage.ts` — the `promoter`-Space workflow CRUD.
 - `app/src/data/promote.ts` — upstream-link inspection + `patchUnit` upgrade.

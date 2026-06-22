@@ -18,22 +18,27 @@ import { useState } from 'react';
 
 import { VariantRef } from '../data/catalog';
 import { PromotabilityReport, usePromotion } from '../data/promote';
-import { PromotionState } from '../model/workflow';
 
 /**
- * Promote a single component into a stage by upgrading its variant-Space units
- * from the upstream stage's variant. The button is disabled (with a reason)
- * whenever the upstream linkage required for a real upgrade isn't present —
- * we never silently copy data instead.
+ * The manual promotion gate. Promotes a component into a stage by upgrading
+ * its variant-Space units from the upstream stage's variant. It is disabled
+ * (with a reason) when the upstream stage isn't ready yet, when the chosen
+ * variants aren't actually linked upstream, or when a target is missing — we
+ * never silently copy data. The app changes desired state here; ConfigHub then
+ * reports the resulting live status back via the Space label.
  */
 export function PromoteButton({
   target,
   upstream,
+  blockedReason,
   onPromoted,
 }: {
   target: VariantRef | undefined;
   upstream: VariantRef | undefined;
-  onPromoted: (state: PromotionState, revision?: number) => Promise<void>;
+  /** When set, the gate is closed for this reason (e.g. upstream not ready). */
+  blockedReason?: string;
+  /** Called after a successful upgrade so the parent can re-read status. */
+  onPromoted: () => void;
 }) {
   const { inspect, promote } = usePromotion();
   const [open, setOpen] = useState(false);
@@ -43,13 +48,13 @@ export function PromoteButton({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Reasons we can't even attempt a promotion, independent of link topology.
   const staticReason =
-    !upstream
+    blockedReason ??
+    (!upstream
       ? 'No upstream stage promotes this component.'
       : !target
         ? 'This stage’s variant no longer exists.'
-        : null;
+        : null);
 
   const openDialog = async () => {
     if (!target || !upstream) return;
@@ -66,19 +71,13 @@ export function PromoteButton({
     setBusy(true);
     setError(null);
     try {
-      const result = await promote(
-        target,
-        report,
-        `Promote ${target.component} to ${target.variant}`,
-        apply,
-      );
+      await promote(target, report, `Promote ${target.component} to ${target.variant}`, apply);
       setOpen(false);
       setBusy(false);
-      await onPromoted('succeeded', result.revision);
+      onPromoted();
     } catch {
       setBusy(false);
-      setError('Promotion failed. Recording stage as failed.');
-      await onPromoted('failed');
+      setError('Promotion failed.');
     }
   };
 

@@ -1,70 +1,42 @@
-import {
-  Box,
-  Card,
-  CardContent,
-  Chip,
-  Divider,
-  Menu,
-  MenuItem,
-  Stack,
-  Tooltip,
-  Typography,
-} from '@mui/material';
-import { useState } from 'react';
+import { Box, Card, CardContent, Chip, Divider, Stack, Tooltip, Typography } from '@mui/material';
 
 import { PromoteButton } from './PromoteButton';
 import { Catalog, VariantRef } from '../data/catalog';
-import { statusProvider } from '../model/status';
-import { PromotionState, Stage, Workflow } from '../model/workflow';
+import { rollupStatus, statusProvider } from '../model/status';
+import { PromotionState, Stage } from '../model/workflow';
 
-const STATE_COLOR: Record<PromotionState, 'default' | 'success' | 'error' | 'warning'> = {
+const STATE_COLOR: Record<PromotionState, 'default' | 'success' | 'error' | 'warning' | 'info'> = {
   unknown: 'default',
-  pending: 'warning',
+  pending: 'default',
+  in_progress: 'info',
   succeeded: 'success',
   failed: 'error',
 };
 
-const SETTABLE: PromotionState[] = ['pending', 'succeeded', 'failed', 'unknown'];
+const STATE_LABEL: Record<PromotionState, string> = {
+  unknown: 'no status',
+  pending: 'pending',
+  in_progress: 'in progress',
+  succeeded: 'ready',
+  failed: 'failed',
+};
 
-/** A clickable status chip; the manual provider lets the user set state. */
-function StatusChip({
-  state,
-  canEdit,
-  onSet,
-}: {
-  state: PromotionState;
-  canEdit: boolean;
-  onSet: (s: PromotionState) => void;
-}) {
-  const [anchor, setAnchor] = useState<null | HTMLElement>(null);
-  const chip = (
-    <Chip
-      size='small'
-      label={state}
-      color={STATE_COLOR[state]}
-      variant={state === 'unknown' ? 'outlined' : 'filled'}
-      onClick={canEdit ? (e) => setAnchor(e.currentTarget) : undefined}
-    />
-  );
-  if (!canEdit) return chip;
-  return (
-    <>
-      {chip}
-      <Menu anchorEl={anchor} open={Boolean(anchor)} onClose={() => setAnchor(null)}>
-        {SETTABLE.map((s) => (
-          <MenuItem
-            key={s}
-            selected={s === state}
-            onClick={() => {
-              setAnchor(null);
-              onSet(s);
-            }}
-          >
-            Mark {s}
-          </MenuItem>
-        ))}
-      </Menu>
-    </>
+/** State of one component in a stage, from its variant Space's status label. */
+function componentState(
+  catalog: Catalog,
+  statusLabel: string,
+  component: string,
+  variant: string,
+): { ref: VariantRef | undefined; state: PromotionState; raw: string | undefined } {
+  const ref = catalog.resolve(component, variant);
+  const raw = statusProvider.raw(ref?.labels, statusLabel);
+  return { ref, state: statusProvider.get(ref?.labels, statusLabel), raw };
+}
+
+/** Roll a whole stage up to one state (used for the header and gating). */
+export function stageState(stage: Stage, catalog: Catalog, statusLabel: string): PromotionState {
+  return rollupStatus(
+    stage.components.map((c) => componentState(catalog, statusLabel, c.component, c.variant).state),
   );
 }
 
@@ -72,29 +44,36 @@ export function StageColumn({
   stage,
   stageIndex,
   prevStage,
-  workflow,
+  statusLabel,
   catalog,
   onPromoted,
-  onSetStatus,
 }: {
   stage: Stage;
   stageIndex: number;
   prevStage: Stage | undefined;
-  workflow: Workflow;
+  statusLabel: string;
   catalog: Catalog;
-  onPromoted: (
-    component: string,
-    state: PromotionState,
-    revision?: number,
-  ) => Promise<void>;
-  onSetStatus: (component: string, state: PromotionState) => Promise<void>;
+  onPromoted: () => void;
 }) {
+  const rollup = stageState(stage, catalog, statusLabel);
+  // The promotion gate opens only once the upstream stage is fully ready.
+  const upstreamState = prevStage ? stageState(prevStage, catalog, statusLabel) : undefined;
+  const upstreamReady = upstreamState === 'succeeded';
+
   return (
     <Card variant='outlined' sx={{ minWidth: 280, flexShrink: 0 }}>
       <CardContent>
-        <Typography variant='overline' color='text.secondary'>
-          Stage {stageIndex + 1}
-        </Typography>
+        <Stack direction='row' alignItems='center' spacing={1}>
+          <Typography variant='overline' color='text.secondary' sx={{ flexGrow: 1 }}>
+            Stage {stageIndex + 1}
+          </Typography>
+          <Chip
+            size='small'
+            label={STATE_LABEL[rollup]}
+            color={STATE_COLOR[rollup]}
+            variant={rollup === 'unknown' || rollup === 'pending' ? 'outlined' : 'filled'}
+          />
+        </Stack>
         <Typography variant='h6' gutterBottom>
           {stage.name}
         </Typography>
@@ -108,14 +87,18 @@ export function StageColumn({
 
         <Stack spacing={2}>
           {stage.components.map((choice, i) => {
-            const target: VariantRef | undefined = catalog.resolve(choice.component, choice.variant);
+            const { ref, state, raw } = componentState(
+              catalog,
+              statusLabel,
+              choice.component,
+              choice.variant,
+            );
             const upstreamChoice = prevStage?.components.find(
               (c) => c.component === choice.component,
             );
             const upstream = upstreamChoice
               ? catalog.resolve(upstreamChoice.component, upstreamChoice.variant)
               : undefined;
-            const status = statusProvider.get(workflow, stage.name, choice.component);
 
             return (
               <Box key={i}>
@@ -123,31 +106,41 @@ export function StageColumn({
                   <Typography variant='subtitle2' sx={{ flexGrow: 1 }}>
                     {choice.component}
                   </Typography>
-                  <StatusChip
-                    state={status.state}
-                    canEdit={statusProvider.canEdit}
-                    onSet={(s) => onSetStatus(choice.component, s)}
-                  />
+                  <Tooltip
+                    title={
+                      raw !== undefined
+                        ? `${statusLabel}=${raw}`
+                        : `no ${statusLabel} label on ${ref?.spaceSlug ?? 'variant'}`
+                    }
+                  >
+                    <Chip
+                      size='small'
+                      label={STATE_LABEL[state]}
+                      color={STATE_COLOR[state]}
+                      variant={state === 'unknown' || state === 'pending' ? 'outlined' : 'filled'}
+                    />
+                  </Tooltip>
                 </Stack>
                 <Stack direction='row' alignItems='center' spacing={1} sx={{ mt: 0.5 }}>
-                  <Tooltip title={target ? target.spaceSlug : 'variant not found in catalog'}>
+                  <Tooltip title={ref ? ref.spaceSlug : 'variant not found in catalog'}>
                     <Chip size='small' variant='outlined' label={choice.variant || '—'} />
                   </Tooltip>
                   <Box sx={{ flexGrow: 1 }} />
                   {stageIndex > 0 && (
                     <PromoteButton
-                      target={target}
+                      target={ref}
                       upstream={upstream}
-                      onPromoted={(state, revision) => onPromoted(choice.component, state, revision)}
+                      blockedReason={
+                        upstreamReady
+                          ? undefined
+                          : `Upstream stage “${prevStage?.name}” is not ready (${
+                              upstreamState ? STATE_LABEL[upstreamState] : 'unknown'
+                            }).`
+                      }
+                      onPromoted={onPromoted}
                     />
                   )}
                 </Stack>
-                {status.promotedRevision !== undefined && (
-                  <Typography variant='caption' color='text.secondary'>
-                    rev {status.promotedRevision}
-                    {status.by ? ` · ${status.by}` : ''}
-                  </Typography>
-                )}
               </Box>
             );
           })}
