@@ -53,8 +53,11 @@ jobs:
       name: promoter-demo
       url: https://promoter.test.confighub.net
     env:
-      CONFIGHUB_WORKER_ID: ${{ secrets.PROMOTER_DEPLOY_WORKER_ID }}
-      CONFIGHUB_WORKER_SECRET: ${{ secrets.PROMOTER_DEPLOY_WORKER_SECRET }}
+      # Reuses the rbac-manager deploy worker — it lives in the same
+      # prod-use2-ui-preview space, and worker auth is scoped per space, so it
+      # can manage the promoter unit too.
+      CONFIGHUB_WORKER_ID: ${{ secrets.RBAC_MANAGER_DEPLOY_WORKER_ID }}
+      CONFIGHUB_WORKER_SECRET: ${{ secrets.RBAC_MANAGER_DEPLOY_WORKER_SECRET }}
       SPACE: prod-use2-ui-preview
       UNIT: promoter
     steps:

@@ -41,8 +41,12 @@ IdP changes are needed.
 
 ## One-time setup
 
-1. Create a deploy worker in the target space and store its credentials as
-   repo secrets:
+1. Deploy credentials: this workflow **reuses the rbac-manager deploy worker**
+   (`RBAC_MANAGER_DEPLOY_WORKER_ID` / `RBAC_MANAGER_DEPLOY_WORKER_SECRET` repo
+   secrets). That worker lives in `prod-use2-ui-preview`, the same space the
+   promoter unit deploys to, and worker auth is scoped per space — so no new
+   worker is needed. To use a dedicated worker instead, create one and point
+   the `CONFIGHUB_WORKER_*` env in `deploy-promoter.yml` at its secrets:
 
    ```sh
    cub worker create promoter-deploy --space prod-use2-ui-preview
