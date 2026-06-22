@@ -88,7 +88,7 @@ export function StageEditPage() {
       await storage.saveWorkflow(entry, draft, `Edit workflow ${draft.name}`);
       navigate(`/workflow/${slug}`);
     } catch {
-      setSaveError('Save failed. The workflow may have changed elsewhere — reload and retry.');
+      setSaveError('Save failed. Check your ConfigHub connection and retry.');
       setSaving(false);
     }
   };

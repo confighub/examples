@@ -17,7 +17,7 @@ import {
   useDeleteUnitMutation,
   useLazyListAllUnitsQuery,
   useLazyListSpacesQuery,
-  useUpdateUnitMutation,
+  usePatchUnitMutation,
 } from '../sdk/confighubapi.gen';
 
 /** Slug of the Space that holds this app's workflow units. */
@@ -56,7 +56,7 @@ export function useStorage(): Storage {
   const [createSpace] = useCreateSpaceMutation();
   const [listUnits] = useLazyListAllUnitsQuery();
   const [createUnit] = useCreateUnitMutation();
-  const [updateUnit] = useUpdateUnitMutation();
+  const [patchUnit] = usePatchUnitMutation();
   const [deleteUnit] = useDeleteUnitMutation();
 
   const ensureSpace = useCallback(async (): Promise<string> => {
@@ -155,24 +155,23 @@ export function useStorage(): Storage {
 
   const saveWorkflow = useCallback(
     async (entry: WorkflowEntry, wf: Workflow, changeDesc: string): Promise<void> => {
+      // Merge-patch (not PUT): PUT-updating Data runs an optimistic check on a
+      // revision UUID and 409s ("Config data changed") when not supplied; the
+      // merge-patch path applies the data change to head directly.
       unwrap(
-        await updateUnit({
+        await patchUnit({
           spaceId: entry.spaceId,
           unitId: entry.unitId,
-          unit: {
-            Slug: entry.slug,
+          body: {
             DisplayName: wf.name,
-            ToolchainType: 'AppConfig/YAML',
-            Labels: { app: APP_LABEL },
             Data: b64encodeUtf8(serializeWorkflow(wf)),
             LastChangeDescription: changeDesc,
-            Version: entry.version,
           },
         }),
-        'update workflow unit',
+        'patch workflow unit',
       );
     },
-    [updateUnit],
+    [patchUnit],
   );
 
   const deleteWorkflow = useCallback(
