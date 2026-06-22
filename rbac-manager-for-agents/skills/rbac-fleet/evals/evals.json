@@ -1,0 +1,40 @@
+{
+  "skill_name": "rbac-fleet",
+  "evals": [
+    {
+      "id": 1,
+      "name": "fleet-add-verb-dev",
+      "prompt": "Add the deletecollection verb to rule 0 of the developer ClusterRole in every dev cluster.",
+      "expected_output": "Runs cub-rbac preflight, then `cub-rbac fleet-edit add-verb --where \"Space.Labels.Environment = 'dev'\" --role-kind ClusterRole --role developer --rule 0 --verb deletecollection` as a DRY RUN, reviews the list of Units it would change, then commits with --commit and a --change-desc. Does not apply to clusters.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "fleet-remove-wildcard",
+      "prompt": "Remove the wildcard verb from rule 0 of the platform-admin ClusterRole everywhere it exists.",
+      "expected_output": "Uses `cub-rbac fleet-edit remove-verb --where ... --role-kind ClusterRole --role platform-admin --rule 0 --verb '*'`, dry-run first to see the blast radius, then --commit with --change-desc. Scopes with --where rather than editing unscoped.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "promote-staging",
+      "prompt": "Propagate the latest base RBAC changes to all our staging clones.",
+      "expected_output": "Runs `cub-rbac promote --where \"Space.Labels.Environment = 'staging'\"` as a dry-run (listing downstream Units behind upstream), then commits with --commit and --change-desc. Notes overrides are preserved and that applying is a separate step (cub-apply).",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "which-are-behind",
+      "prompt": "Which downstream RBAC units in prod are behind their base?",
+      "expected_output": "Runs `cub-rbac promote --where \"Space.Labels.Environment = 'prod'\"` as a DRY RUN and reports the listed Units (those that would upgrade) without committing.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "name": "single-unit-routes-to-edit",
+      "prompt": "Add get on pods to the viewer role in just the prod-use2-argocd/argocd-rbac unit.",
+      "expected_output": "Recognizes this targets a single Unit and routes to the rbac-edit skill (`cub-rbac edit add-verb prod-use2-argocd/argocd-rbac ...`) rather than a fleet-wide operation.",
+      "files": []
+    }
+  ]
+}

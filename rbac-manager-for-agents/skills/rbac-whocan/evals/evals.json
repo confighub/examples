@@ -1,0 +1,40 @@
+{
+  "skill_name": "rbac-whocan",
+  "evals": [
+    {
+      "id": 1,
+      "name": "who-can-delete-secrets-prod",
+      "prompt": "Who can delete secrets in our prod clusters?",
+      "expected_output": "Runs `cub-rbac preflight`, then `cub-rbac who-can delete secrets` scoped to prod with --target-where (e.g. \"Slug LIKE 'prod-%'\"). Reports the subjects with their cluster, binding/role, and namespace scope. Does not mutate; does not use kubectl auth can-i.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "who-can-exec-pods",
+      "prompt": "Which subjects can exec into pods?",
+      "expected_output": "Runs `cub-rbac who-can create pods/exec` (recognizing exec is the pods/exec subresource with the create verb), reports the matching subjects with provenance. Does not mutate.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "subject-access-serviceaccount",
+      "prompt": "What can the ci-deployer service account in the apps namespace do?",
+      "expected_output": "Runs `cub-rbac access ServiceAccount:apps/ci-deployer` and reports every role the SA holds across the fleet with cluster and scope. Uses the ServiceAccount:namespace/name subject format. Does not mutate.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "named-group-resource",
+      "prompt": "Who can update deployments?",
+      "expected_output": "Runs `cub-rbac who-can update deployments --api-group apps`, correctly supplying the apps API group rather than querying the core group. Reports the subjects.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "name": "does-not-invent-builtin-access",
+      "prompt": "Does the binding to the view ClusterRole let anyone read secrets?",
+      "expected_output": "Explains that cub-rbac only credits cluster-admin among Kubernetes builtins, so a who-can query will not show secrets access via the view role, and that bindings to view/admin/edit are surfaced by rbac-findings instead. Does not fabricate a grant.",
+      "files": []
+    }
+  ]
+}

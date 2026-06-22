@@ -1,0 +1,40 @@
+{
+  "skill_name": "rbac-guardrails",
+  "evals": [
+    {
+      "id": 1,
+      "name": "install-plan-then-commit",
+      "prompt": "Set up RBAC guardrails across our fleet.",
+      "expected_output": "Runs cub-rbac preflight, then `cub-rbac guardrails install` as a DRY RUN first (showing the policy space, filter, spaces to wire, already-wired, and skipped-with-reason), reviews it, then applies with `cub-rbac guardrails install --commit`. Notes the triggers are Warn=true (advisory). Does not promote to blocking on its own.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "scoped-install-prod",
+      "prompt": "Install the guardrails only on our prod spaces.",
+      "expected_output": "Uses `cub-rbac guardrails install --where-space \"Labels.Environment = 'prod'\"` for the dry-run and the --commit, scoping with --where-space rather than wiring the whole fleet.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "status-check",
+      "prompt": "Which units currently have RBAC warnings?",
+      "expected_output": "Runs `cub-rbac guardrails status` and reports the Units with ApplyWarnings (and any ApplyGates) by space/unit. Read-only; does not mutate.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "promote-to-blocking-routes-to-cub",
+      "prompt": "Make the no-wildcards guardrail actually block deploys, not just warn.",
+      "expected_output": "Explains that promoting a guardrail to blocking is `cub trigger update no-rbac-wildcards --space <policy-space> --unwarn` and that it is a deliberate cub action, rather than attempting it through cub-rbac. May confirm current state with guardrails status first.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "name": "one-off-validation-routes-to-findings",
+      "prompt": "Do we have any wildcard roles right now? I don't want to install anything yet.",
+      "expected_output": "Recognizes this is one-off analysis, not installation, and routes to rbac-findings (`cub-rbac findings --analyzer wildcard-rules`) instead of `guardrails install`.",
+      "files": []
+    }
+  ]
+}
