@@ -4,3 +4,4 @@
 **/.logs/
 var/
 **/target/
+**/.memsearch/

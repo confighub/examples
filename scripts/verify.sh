@@ -133,6 +133,7 @@ ai_guide_examples=(
   "${repo_root}/initiatives-demo"
   "${repo_root}/promotion-demo-data"
   "${repo_root}/rbac-manager"
+  "${repo_root}/sec-scanner"
   # global-app-layer examples
   "${repo_root}/incubator/global-app-layer/single-component"
   "${repo_root}/incubator/global-app-layer/frontend-postgres"

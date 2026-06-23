@@ -1,0 +1,30 @@
+# Workload: cache — in-memory cache tier. Pinned to a current redis-alpine.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cache
+  labels:
+    sec-scanner.confighub.com/workload: cache
+    app.kubernetes.io/component: cache
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cache
+  template:
+    metadata:
+      labels:
+        app: cache
+    spec:
+      containers:
+        - name: redis
+          image: redis:7.2-alpine
+          ports:
+            - containerPort: 6379
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi

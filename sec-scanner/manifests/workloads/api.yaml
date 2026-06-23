@@ -1,0 +1,31 @@
+# Workload: api — application API tier. Pinned to a current python-alpine.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  labels:
+    sec-scanner.confighub.com/workload: api
+    app.kubernetes.io/component: api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      containers:
+        - name: api
+          image: python:3.12-alpine
+          command: ["python", "-m", "http.server", "8080"]
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi

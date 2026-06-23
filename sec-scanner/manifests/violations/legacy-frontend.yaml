@@ -1,0 +1,26 @@
+# Planted violation: a frontend stuck on a years-old nginx-alpine image.
+# The image carries known CRITICAL CVEs (e.g. in libcurl/openssl). After the
+# scanner writes its findings back as data, the no-critical-cves guardrail
+# blocks this Unit from ever being applied.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: legacy-frontend
+  labels:
+    sec-scanner.confighub.com/workload: frontend
+    app.kubernetes.io/component: web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: legacy-frontend
+  template:
+    metadata:
+      labels:
+        app: legacy-frontend
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.16-alpine
+          ports:
+            - containerPort: 80

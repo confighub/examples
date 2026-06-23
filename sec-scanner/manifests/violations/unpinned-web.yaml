@@ -1,0 +1,25 @@
+# Planted violation: an image pinned to the floating :latest tag. This is gated
+# by no-latest-tag statically (a CEL check on the image string) — no scan
+# needed: an unpinned image cannot be scanned reproducibly in the first place.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: unpinned-web
+  labels:
+    sec-scanner.confighub.com/workload: frontend
+    app.kubernetes.io/component: web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: unpinned-web
+  template:
+    metadata:
+      labels:
+        app: unpinned-web
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:latest
+          ports:
+            - containerPort: 80
