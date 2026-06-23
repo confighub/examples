@@ -1,0 +1,25 @@
+# Planted violation: an API tier pinned to an end-of-life python-alpine image
+# with known CRITICAL CVEs. Gated by no-critical-cves once scanned.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: legacy-api
+  labels:
+    sec-scanner.confighub.com/workload: api
+    app.kubernetes.io/component: api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: legacy-api
+  template:
+    metadata:
+      labels:
+        app: legacy-api
+    spec:
+      containers:
+        - name: api
+          image: python:3.7-alpine3.10
+          command: ["python", "-m", "http.server", "8080"]
+          ports:
+            - containerPort: 8080
