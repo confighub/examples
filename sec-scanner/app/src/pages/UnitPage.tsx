@@ -541,7 +541,9 @@ export function UnitPage() {
           </TableRow>
         </TableHead>
         <TableBody>
-          {(revisions.data ?? []).map((er) => {
+          {[...(revisions.data ?? [])]
+            .sort((a, b) => (b.Revision?.RevisionNum ?? 0) - (a.Revision?.RevisionNum ?? 0))
+            .map((er) => {
             const rev = er.Revision;
             if (!rev) return null;
             const num = rev.RevisionNum ?? 0;
