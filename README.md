@@ -43,6 +43,10 @@ Note on contract standard: [`EXAMPLE_CONTRACT_STANDARD.md`](./EXAMPLE_CONTRACT_S
 
 Some other examples
 
+- Agentic RBAC companion patterns:
+  [`rbac-manager-for-agents`](./rbac-manager-for-agents/README.md),
+  [`rbac-manager-over-redis`](./rbac-manager-over-redis/README.md), and
+  [`redis-platform-with-rbac-guardrails`](./redis-platform-with-rbac-guardrails/README.md)
 - Incubator and experimental paths: [`incubator/README.md`](./incubator/README.md)
 - App mutation and platform flow: [`spring-platform/springboot-platform-app-centric`](./spring-platform/springboot-platform-app-centric/README.md)
 

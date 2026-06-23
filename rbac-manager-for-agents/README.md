@@ -68,6 +68,18 @@ and how to use these commands:
 - **rbac-fleet** — bulk edits + variant propagation (`fleet-edit`, `promote`). *(write)*
 - **rbac-guardrails** — policy pack install/status (`guardrails`). *(write)*
 
+## Sister examples
+
+These companion examples show how the same agentic RBAC tool can sit beside
+Helm-sourced ConfigHub data:
+
+- [RBAC Manager Over A Redis Helm Chart](../rbac-manager-over-redis/README.md)
+  shows the one-chart pattern: Redis is loaded into ConfigHub, and `cub-rbac`
+  inspects or proposes guarded edits to the RBAC Units produced by that chart.
+- [Redis Platform With RBAC Guardrails](../redis-platform-with-rbac-guardrails/README.md)
+  shows the larger-product pattern: Redis is one part of an app or platform, and
+  RBAC guardrails are managed across multiple components and variants.
+
 ## Status
 
 Implemented (M0–M4):
