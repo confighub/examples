@@ -1,0 +1,90 @@
+# Sample Ctrlplane "System" bundle (representative, hand-authored).
+#
+# Ctrlplane (https://ctrlplane.dev) is a release-ORCHESTRATION layer: it decides
+# WHEN/WHERE a release should go and WHAT gates it must pass, then dispatches a
+# Job to a Job Agent (ArgoCD, Kubernetes, GitHub Actions, Terraform Cloud).
+#
+# This file is the declarative "app" definition a Ctrlplane user already has.
+# The mapper in this example reads it READ-ONLY and proposes the equivalent
+# ConfigHub governed app (spaces, units, targets, delivery strategy, gates).
+---
+type: System
+name: Ecommerce Platform
+description: Storefront checkout service across staging and production.
+metadata:
+  team: payments
+---
+type: Deployment
+name: checkout-api
+system: Ecommerce Platform
+description: The checkout API service.
+config:
+  image: ghcr.io/acme/checkout-api
+  port: 8080
+---
+# Staging environment: any resource tagged environment=staging.
+type: Environment
+name: Staging
+description: Pre-production validation.
+resourceSelector: resource.metadata["environment"] == "staging"
+---
+# Production environment: requires approval before any release.
+type: Environment
+name: Production
+description: Live production environment.
+metadata:
+  requires-approval: "true"
+resourceSelector: resource.metadata["environment"] == "production"
+---
+type: Resource
+identifier: ecommerce-staging-use1
+kind: KubernetesCluster
+name: staging-cluster-use1
+metadata:
+  environment: staging
+  region: us-east-1
+---
+type: Resource
+identifier: ecommerce-prod-use1
+kind: KubernetesCluster
+name: production-cluster-use1
+metadata:
+  environment: production
+  region: us-east-1
+---
+type: Resource
+identifier: ecommerce-prod-euw1
+kind: KubernetesCluster
+name: production-cluster-euw1
+metadata:
+  environment: production
+  region: eu-west-1
+---
+# Ctrlplane dispatches the deploy through ArgoCD. ConfigHub's native parallel is
+# the ConfigHub -> OCI -> Argo delivery strategy.
+type: JobAgent
+name: argo-job-agent
+agent:
+  type: argocd
+  config:
+    server: argocd.acme.internal
+---
+type: Policy
+name: production-approval-policy
+description: Production requires one approval before release.
+selectors:
+  - environments: environment.metadata['requires-approval'] == 'true'
+rules:
+  - approval:
+      required: 1
+---
+type: Policy
+name: production-verification-policy
+description: Verify error rate in Datadog after each production rollout.
+selectors:
+  - environments: environment.metadata['requires-approval'] == 'true'
+rules:
+  - verification:
+      provider: datadog
+      query: "sum:errors{service:checkout-api}.as_rate()"
+      successCondition: result.value < 0.01
