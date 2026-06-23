@@ -1,0 +1,237 @@
+{
+  "component": "payments-platform",
+  "description": "A payments app made from Redis, a payments API, ingress, External Secrets, monitoring, and RBAC guardrails.",
+  "variants": [
+    {
+      "name": "base",
+      "purpose": "shared starting point"
+    },
+    {
+      "name": "dev",
+      "purpose": "developer environment"
+    },
+    {
+      "name": "staging",
+      "purpose": "pre-production rehearsal"
+    },
+    {
+      "name": "prod-us",
+      "purpose": "US production target"
+    },
+    {
+      "name": "prod-eu",
+      "purpose": "EU production target"
+    }
+  ],
+  "pieces": [
+    {
+      "name": "redis",
+      "source": "public Helm chart loaded through a ConfigHub recipe",
+      "units": [
+        "redis-serviceaccount",
+        "redis-secret-reader-role",
+        "redis-secret-reader-binding"
+      ]
+    },
+    {
+      "name": "payments-api",
+      "source": "custom app Units",
+      "units": [
+        "payments-api-serviceaccount",
+        "payments-api-runtime-reader-role",
+        "payments-api-runtime-reader-binding"
+      ]
+    },
+    {
+      "name": "rbac-guardrails",
+      "source": "ConfigHub guardrail Units and RBAC-manager dry-runs",
+      "units": [
+        "rbac-prod-secret-reader-policy"
+      ]
+    }
+  ],
+  "units": [
+    {
+      "unit": "redis-serviceaccount",
+      "variant": "prod-us",
+      "piece": "redis",
+      "kind": "ServiceAccount",
+      "namespace": "payments-prod",
+      "name": "redis",
+      "labels": {
+        "Component": "payments-platform",
+        "Variant": "prod-us",
+        "Piece": "redis",
+        "Source": "helm-recipe"
+      }
+    },
+    {
+      "unit": "redis-secret-reader-role",
+      "variant": "prod-us",
+      "piece": "redis",
+      "kind": "Role",
+      "namespace": "payments-prod",
+      "name": "redis-secret-reader",
+      "rules": [
+        {
+          "apiGroups": [
+            ""
+          ],
+          "resources": [
+            "secrets"
+          ],
+          "verbs": [
+            "get"
+          ],
+          "resourceNames": [
+            "redis-existing-secret"
+          ]
+        }
+      ]
+    },
+    {
+      "unit": "redis-secret-reader-binding",
+      "variant": "prod-us",
+      "piece": "redis",
+      "kind": "RoleBinding",
+      "namespace": "payments-prod",
+      "name": "redis-secret-reader",
+      "subjects": [
+        {
+          "kind": "ServiceAccount",
+          "namespace": "payments-prod",
+          "name": "redis"
+        }
+      ],
+      "roleRef": {
+        "kind": "Role",
+        "name": "redis-secret-reader"
+      }
+    },
+    {
+      "unit": "payments-api-serviceaccount",
+      "variant": "prod-us",
+      "piece": "payments-api",
+      "kind": "ServiceAccount",
+      "namespace": "payments-prod",
+      "name": "payments-api",
+      "labels": {
+        "Component": "payments-platform",
+        "Variant": "prod-us",
+        "Piece": "payments-api",
+        "Source": "custom-app"
+      }
+    },
+    {
+      "unit": "payments-api-runtime-reader-role",
+      "variant": "prod-us",
+      "piece": "payments-api",
+      "kind": "Role",
+      "namespace": "payments-prod",
+      "name": "payments-api-runtime-reader",
+      "rules": [
+        {
+          "apiGroups": [
+            ""
+          ],
+          "resources": [
+            "secrets"
+          ],
+          "verbs": [
+            "get",
+            "list"
+          ]
+        }
+      ]
+    },
+    {
+      "unit": "payments-api-runtime-reader-binding",
+      "variant": "prod-us",
+      "piece": "payments-api",
+      "kind": "RoleBinding",
+      "namespace": "payments-prod",
+      "name": "payments-api-runtime-reader",
+      "subjects": [
+        {
+          "kind": "ServiceAccount",
+          "namespace": "payments-prod",
+          "name": "payments-api"
+        }
+      ],
+      "roleRef": {
+        "kind": "Role",
+        "name": "payments-api-runtime-reader"
+      }
+    },
+    {
+      "unit": "rbac-prod-secret-reader-policy",
+      "variant": "prod-us",
+      "piece": "rbac-guardrails",
+      "kind": "ConfigHubPolicy",
+      "namespace": "",
+      "name": "payments-prod-secret-reader-policy",
+      "intent": "Secret access in prod should be named and reviewable."
+    }
+  ],
+  "queries": [
+    {
+      "name": "who-can-get-secrets-prod-us",
+      "verb": "get",
+      "resource": "secrets",
+      "namespace": "payments-prod",
+      "grants": [
+        {
+          "subject": "ServiceAccount/payments-prod/redis",
+          "via": "Role/payments-prod/redis-secret-reader",
+          "sourcePiece": "redis",
+          "scope": "resourceName:redis-existing-secret"
+        },
+        {
+          "subject": "ServiceAccount/payments-prod/payments-api",
+          "via": "Role/payments-prod/payments-api-runtime-reader",
+          "sourcePiece": "payments-api",
+          "scope": "all secrets in namespace"
+        }
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "id": "payments-api-secret-list-prod-us",
+      "severity": "medium",
+      "variant": "prod-us",
+      "piece": "payments-api",
+      "reason": "payments-api can list every Secret in payments-prod.",
+      "recommendation": "Narrow the Role to get only the named runtime Secret before promoting to prod-eu.",
+      "betterPlace": "derived prod-us variant unless every production variant needs the same rule"
+    }
+  ],
+  "proposedEdits": [
+    {
+      "id": "narrow-payments-api-secret-access",
+      "mode": "dry-run",
+      "targetUnit": "payments-api-runtime-reader-role",
+      "variant": "prod-us",
+      "diff": [
+        {
+          "path": "rules[0].verbs",
+          "from": [
+            "get",
+            "list"
+          ],
+          "to": [
+            "get"
+          ]
+        },
+        {
+          "path": "rules[0].resourceNames",
+          "from": null,
+          "to": [
+            "payments-api-runtime"
+          ]
+        }
+      ],
+      "humanReview": "required"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # Redis Platform With RBAC Guardrails
 
-Status: companion design example.
+Status: runnable offline companion example.
 
 This example explains the larger-product pattern for
 [`rbac-manager-for-agents`](../rbac-manager-for-agents/README.md): Redis is one
@@ -89,6 +89,48 @@ Use the source of the change to decide where it belongs:
 - It does not claim Redis needs custom RBAC in every install.
 - It does not run a live promotion.
 - It does not replace human review for security-sensitive changes.
+
+## Run it
+
+Preview the example without writing anything:
+
+```bash
+cd redis-platform-with-rbac-guardrails
+./setup.sh --explain
+./setup.sh --explain-json | jq
+```
+
+Generate the local RBAC outputs and verify them:
+
+```bash
+./setup.sh
+./verify.sh
+```
+
+This writes only local files under `sample-output/`. It does not mutate
+ConfigHub and it does not touch a Kubernetes cluster.
+
+## What the concrete `payments` example contains
+
+The fixture models one component, `payments-platform`, with `base`, `dev`,
+`staging`, `prod-us`, and `prod-eu` variants.
+
+The `prod-us` shape contains:
+
+- Redis from a public Helm chart recipe.
+- A custom `payments-api` service.
+- A Redis Secret supplied by the target.
+- RBAC guardrail Units.
+- One deliberately visible finding: the API Role can list all Secrets in the
+  namespace and should be narrowed before promotion.
+
+The generated outputs show:
+
+- the component map;
+- an RBAC snapshot;
+- who can get Secrets in `payments-prod`;
+- the current finding;
+- the dry-run hardening edit.
 
 It shows the product shape: multiple Helm and custom app pieces can be treated
 as one ConfigHub-managed product, and a domain-specific agent tool can operate

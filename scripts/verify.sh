@@ -10,6 +10,8 @@ script_checks=(
   "${repo_root}/spring-platform/springboot-platform-app-centric/verify.sh"
   "${repo_root}/spring-platform/springboot-platform-app-centric/cleanup.sh"
   "${repo_root}/spring-platform/springboot-platform-app-centric/demo.sh"
+  "${repo_root}/redis-platform-with-rbac-guardrails/setup.sh"
+  "${repo_root}/redis-platform-with-rbac-guardrails/verify.sh"
   "${repo_root}/incubator/global-app-layer/single-component/lib.sh"
   "${repo_root}/incubator/global-app-layer/single-component/setup.sh"
   "${repo_root}/incubator/global-app-layer/single-component/set-target.sh"
@@ -134,6 +136,7 @@ ai_guide_examples=(
   "${repo_root}/promotion-demo-data"
   "${repo_root}/rbac-manager"
   "${repo_root}/sec-scanner"
+  "${repo_root}/redis-platform-with-rbac-guardrails"
   # global-app-layer examples
   "${repo_root}/incubator/global-app-layer/single-component"
   "${repo_root}/incubator/global-app-layer/frontend-postgres"
