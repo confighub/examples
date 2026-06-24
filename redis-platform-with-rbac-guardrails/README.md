@@ -1,14 +1,16 @@
 # Redis Platform With RBAC Guardrails
 
-Status: runnable offline companion example.
+Status: runnable offline companion app.
 
-This example explains the larger-product pattern for
+This example implements the larger-product pattern for
 [`rbac-manager-for-agents`](../rbac-manager-for-agents/README.md): Redis is one
 part of a platform or app stack, and RBAC guardrails are managed across the whole
 product.
 
 In this shape, the RBAC manager is not "added to Redis." It is a specialist
-operations tool for the full ConfigHub-managed product.
+operations tool for the full ConfigHub-managed product. The app code lives under
+`cmd/payments-rbac` and `internal/platform`; the JSON fixture is its local data
+source.
 
 ## Shape
 
@@ -90,7 +92,7 @@ Use the source of the change to decide where it belongs:
 - It does not run a live promotion.
 - It does not replace human review for security-sensitive changes.
 
-## Run it
+## Run the app
 
 Preview the example without writing anything:
 
@@ -109,6 +111,17 @@ Generate the local RBAC outputs and verify them:
 
 This writes only local files under `sample-output/`. It does not mutate
 ConfigHub and it does not touch a Kubernetes cluster.
+
+You can also call the app directly:
+
+```bash
+go run ./cmd/payments-rbac explain
+go run ./cmd/payments-rbac snapshot
+go run ./cmd/payments-rbac who-can
+go run ./cmd/payments-rbac findings
+go run ./cmd/payments-rbac plan
+go run ./cmd/payments-rbac verify
+```
 
 ## What the concrete `payments` example contains
 
@@ -133,5 +146,5 @@ The generated outputs show:
 - the dry-run hardening edit.
 
 It shows the product shape: multiple Helm and custom app pieces can be treated
-as one ConfigHub-managed product, and a domain-specific agent tool can operate
+as one ConfigHub-managed product, and a domain-specific agent app can operate
 over that product without reducing the work to raw YAML edits.

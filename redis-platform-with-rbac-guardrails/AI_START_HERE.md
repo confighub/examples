@@ -23,7 +23,7 @@ continue.
 ## What This Example Teaches
 
 This example shows how Redis can be one piece of a larger `payments-platform`
-product, while RBAC is managed across the whole product.
+product, while a small Go app manages RBAC across the whole product.
 
 It answers the earlier design question:
 
@@ -32,8 +32,8 @@ It answers the earlier design question:
 - We are modeling a larger payments product that includes Redis, a custom API,
   and RBAC guardrails.
 
-This example is offline. It does not mutate ConfigHub and it does not require a
-Kubernetes cluster.
+This example is offline. It runs `cmd/payments-rbac` over a local fixture. It
+does not mutate ConfigHub and it does not require a Kubernetes cluster.
 
 ## Stage 1: Preview The Plan
 
@@ -64,6 +64,7 @@ This writes local files under `sample-output/`.
 
 What to explain:
 
+- `cmd/payments-rbac` and `internal/platform` are the app code.
 - `component-map.json` shows `payments-platform` variants and pieces.
 - `snapshot.json` shows Redis, `payments-api`, and RBAC guardrail Units.
 - `who-can-get-secrets-prod-us.json` answers the cross-piece RBAC question.

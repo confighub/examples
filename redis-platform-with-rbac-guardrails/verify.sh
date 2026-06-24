@@ -8,6 +8,13 @@ command -v jq >/dev/null 2>&1 || {
   echo "Missing required command: jq" >&2
   exit 1
 }
+command -v go >/dev/null 2>&1 || {
+  echo "Missing required command: go" >&2
+  exit 1
+}
+
+(cd "$SCRIPT_DIR" && go test ./... >/dev/null)
+(cd "$SCRIPT_DIR" && go run ./cmd/payments-rbac verify >/dev/null)
 
 if [[ ! -f "$OUTPUT_DIR/component-map.json" ]]; then
   "$SCRIPT_DIR/setup.sh" >/dev/null
