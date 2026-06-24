@@ -25,12 +25,16 @@ Pause after every stage. Show full output. Do not continue until I say continue.
 
 After this demo, the human will understand:
 - What ConfigHub initiatives are (compliance tracking views)
-- How initiatives filter units by App and AppOwner labels
+- ConfigHub's **component model**: one Space per component, with the well-known
+  component labels (Component, Variant, Owner, Team, Layer) on the Space
+- How initiatives filter units **across spaces** by Space labels
+  (`Space.Labels.Component`, `Space.Labels.Owner`)
 - Initiative metadata: priority, status, deadlines
 - How Kyverno CEL policies can validate units
 - How the same app model (aichat, eshop, etc.) works across demos
 
-No cluster required. Optional vet-kyverno trigger requires a worker.
+No cluster required to explore. The optional vet-kyverno triggers require the
+worker that `setup.sh` installs into a local kind cluster.
 
 ## Stage 1: "Understand Initiatives" (read-only)
 
@@ -42,8 +46,9 @@ cat README.md | head -70
 What to explain:
 - 5 compliance initiatives, each backed by a Kyverno CEL policy
 - 18 units sourced from the promotion demo's app model (aichat, website, docs, eshop, portal)
+- Each component gets its own Space; the platform Space `initiatives-demo` holds
+  the shared Views, Filters, and Triggers but no application units
 - Initiatives are Views with filters and metadata in Labels/Annotations
-- Units are labeled with App and AppOwner — same labels used in the promotion demo
 - Use case: track remediation progress, set priorities, run automated checks
 
 GUI now: No GUI checkpoint for this stage — model orientation is CLI-only.
@@ -61,12 +66,16 @@ GUI feature ask: Initiative template gallery. No issue filed yet.
 ```
 
 What to explain:
-- Creates space `initiatives-demo`
-- Creates 18 units from the promotion demo YAML files
-- Creates 5 initiative views with filters and metadata
-- If a worker is detected, triggers are attached (disabled by default)
+- Creates the platform Space `initiatives-demo` (workers, filters, views, triggers)
+- Creates one Space per component (aichat, portal, eshop, docs, website), each
+  stamped with the component labels and `Purpose=initiatives-demo`
+- Creates 18 units from the promotion demo YAML files, in their component Space
+- Creates 5 initiative views whose filters select units across the component spaces
+- If a worker is detected, triggers are attached (disabled by default, then
+  enabled one at a time)
 
-GUI now: ConfigHub → Spaces → `initiatives-demo` → see units and views.
+GUI now: ConfigHub → Spaces → filter by `Purpose=initiatives-demo` → see the
+component spaces and their units, plus the `initiatives-demo` platform space.
 
 GUI gap: No initiative dashboard with progress indicators.
 
@@ -77,23 +86,25 @@ GUI feature ask: Initiative overview page with status badges and progress bars. 
 ## Stage 3: "Explore Units" (read-only)
 
 ```bash
-# List all units in the demo space
-cub unit list --space initiatives-demo --json | jq '.[].Unit.Slug' | head -20
+# List the demo's spaces
+cub space list --where "Labels.Purpose = 'initiatives-demo'"
 
-# Filter by app
-cub unit list --space initiatives-demo --where "Labels.App = 'aichat'" --json | jq '.[].Unit.Slug'
-cub unit list --space initiatives-demo --where "Labels.App = 'eshop'" --json | jq '.[].Unit.Slug'
+# List units in one component space
+cub unit list --space aichat --json | jq '.[].Unit.Slug'
 
-# Filter by owner
-cub unit list --space initiatives-demo --where "Labels.AppOwner = 'Support'" --json | jq '.[].Unit.Slug'
+# List units across all component spaces by Space label
+cub unit list --space "*" --where "Space.Labels.Component = 'eshop'" --json | jq '.[].Unit.Slug'
+cub unit list --space "*" --where "Space.Labels.Owner = 'Support'" --json | jq '.[].Unit.Slug'
 ```
 
 What to explain:
-- Units are labeled by App (aichat, eshop, etc.) and AppOwner (Support, Product, Marketing)
-- Same labels as the promotion demo — consistent data model across examples
-- Each initiative filters units by these labels
+- Each component has its own Space, labeled with `Component` (aichat, eshop, …)
+  and `Owner` (Support, Product, Marketing) — the labels live on the Space
+- `--space "*"` searches across spaces; the `Space.Labels.*` predicates select
+  units by their Space's labels
+- Each initiative filters units by these Space labels
 
-GUI now: ConfigHub → Units → filter by `App=aichat`
+GUI now: ConfigHub → Spaces → `aichat` → Units
 
 GUI gap: No unit compliance summary at a glance.
 
@@ -104,7 +115,7 @@ GUI feature ask: Compliance badge on unit list. No issue filed yet.
 ## Stage 4: "Explore Initiatives" (read-only)
 
 ```bash
-# List all initiative views
+# List all initiative views (they live in the platform space)
 cub view list --space initiatives-demo --where "Labels.initiative = 'true'" --json | jq '.[].View.Slug'
 
 # Filter by priority
@@ -128,7 +139,7 @@ GUI feature ask: Initiative management dashboard. No issue filed yet.
 
 **PAUSE.** Wait for the human.
 
-## Stage 5: "Inspect A Initiative" (read-only)
+## Stage 5: "Inspect An Initiative" (read-only)
 
 ```bash
 # Get details of a specific initiative
@@ -142,7 +153,8 @@ What to explain:
 - `initiative-description`: Human-readable goal
 - `initiative-deadline`: Target completion date
 - `initiative-trigger-id`: Associated vet-kyverno trigger (if worker available)
-- The View filter selects which units this initiative evaluates (AppOwner = Support)
+- The View's filter selects which units this initiative evaluates, across spaces
+  (this one: `Space.Labels.Owner = 'Support'`)
 
 GUI now: ConfigHub → Views → `liveness-and-readiness-probes` → see filter and annotations.
 
@@ -158,34 +170,32 @@ GUI feature ask: Initiative detail page with embedded policy viewer. No issue fi
 ./cleanup.sh
 ```
 
-This removes the `initiatives-demo` space and all its contents.
+This removes the component spaces and the `initiatives-demo` platform space
+(and the local kind cluster).
 
 ## Optional: vet-kyverno Triggers
 
-If you have a worker with vet-kyverno support:
+`setup.sh` already installs a vet-kyverno worker into a local kind cluster and
+attaches a trigger per initiative. To exercise one, mutate a unit and watch the
+result land in `ApplyWarnings` (advisory) or `ApplyGates` (the enforced
+"Disallow Host Ports" initiative):
 
 ```bash
-# Create a worker
-cub worker create --space initiatives-demo kyverno-worker
-
-# Start cub-worker (in another terminal)
-cub-worker
-
-# Re-run setup to attach triggers
-./setup.sh
-
-# Enable a trigger in the GUI and mutate a unit to fire it
+# Mutate a unit, then inspect the failure messages behind any gate/warning
+cub unit get aichat-redis --space aichat -o "jq=.Unit.ApplyWarnings"
+cub unit get aichat-redis --space aichat -o "jq=.Unit.ValidationResults"
 ```
 
 ## What Mutates What
 
 | Command | Writes |
 |---------|--------|
-| `./setup.sh` | 1 space, 18 units, 5 views, optional triggers |
+| `./setup.sh` | 6 spaces (1 platform + 5 component), 18 units, 5 views/filters/triggers, workers |
+| `cub space list` | Nothing |
 | `cub unit list` | Nothing |
 | `cub view list` | Nothing |
 | `cub view get` | Nothing |
-| `./cleanup.sh` | Deletes the demo space |
+| `./cleanup.sh` | Deletes all the demo's spaces + kind cluster |
 
 ## Related Files
 
