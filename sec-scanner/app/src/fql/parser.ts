@@ -214,8 +214,22 @@ class Parser {
     return { kind: 'agg', fn: fnTok.value as AggFn, arg, pos: span(fnTok.pos, close.pos) };
   }
 
+  /** Consume a column-name head: an ident, or a keyword reused as a column
+   *  (ConfigHub has fields like `From`/`Source` that collide with keywords).
+   *  Safe because this is only called where a column is structurally required. */
+  private expectColumnHead(): Token {
+    const t = this.peek();
+    if (t.type === 'ident') return this.next();
+    if (t.type === 'keyword') {
+      this.next();
+      // Re-cast as an ident token carrying the original (cased) source text.
+      return { type: 'ident', value: t.raw ?? t.value, pos: t.pos };
+    }
+    this.fail(`expected a column name but found ${describe(t)}`, t.pos);
+  }
+
   private parseColumn(): ColumnExpr {
-    const head = this.expect('ident', 'a column name');
+    const head = this.expectColumnHead();
     // A column is a head ident followed by zero or more subscripts/continuations:
     //   metadata.annotations['sec-scanner.confighub.com/max-severity']
     //   spec.template.spec.containers[0].image
@@ -380,10 +394,15 @@ class Parser {
       return mkCompare(t.value as CompareOp, column, lit);
     }
 
-    // Comparison / regex operator
+    // Comparison / regex operator. RHS is a literal, or another column for
+    // column-to-column comparison (e.g. HeadRevisionNum > LiveRevisionNum).
+    // TRUE/FALSE are value literals, not columns, so exclude them here.
     if (t.type === 'op' && CMP_OPS.has(t.value)) {
       this.next();
-      const rhs = this.parseValue();
+      const r = this.peek();
+      const rhsIsColumn =
+        r.type === 'ident' || (r.type === 'keyword' && r.value !== 'TRUE' && r.value !== 'FALSE');
+      const rhs = rhsIsColumn ? this.parseColumn() : this.parseValue();
       return mkCompare(t.value as CompareOp, column, rhs);
     }
 
@@ -433,7 +452,11 @@ class Parser {
   }
 }
 
-function mkCompare(op: CompareOp, left: ColumnExpr, right: LiteralExpr | ListExpr): CompareExpr {
+function mkCompare(
+  op: CompareOp,
+  left: ColumnExpr,
+  right: LiteralExpr | ListExpr | ColumnExpr,
+): CompareExpr {
   return { kind: 'compare', op, left, right, pos: span(left.pos, right.pos) };
 }
 

@@ -173,6 +173,18 @@ function evalCompare(e: CompareExpr, row: Row, ctx: EvalCtx): boolean {
     );
     return e.op === 'IN' ? anyIn : !anyIn;
   }
+  // Column-to-column comparison (e.g. HeadRevisionNum > LiveRevisionNum):
+  // resolve the RHS column's value and compare as a synthesized literal whose
+  // type follows the RHS value (numeric vs string).
+  if (e.right.kind === 'column') {
+    const rv = getValue(row, e.right, ctx);
+    const rlit: LiteralExpr =
+      typeof rv === 'number'
+        ? { kind: 'literal', value: rv, type: 'number', pos: e.right.pos }
+        : { kind: 'literal', value: asStr(rv), type: 'string', pos: e.right.pos };
+    return values.some((left) => compare(e.op, left, rlit));
+  }
+
   if (e.right.kind !== 'literal') return false;
   const lit = e.right;
   return values.some((left) => compare(e.op, left, lit));

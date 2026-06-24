@@ -60,6 +60,21 @@ const UNITS: TableDef = {
     toolchain: { type: 'string', pushdown: { target: 'where', expr: 'ToolchainType' } },
     target: { type: 'string', pushdown: { target: 'where', expr: 'Target.Slug' } },
     headRev: { type: 'number', pushdown: { target: 'where', expr: 'HeadRevisionNum' } },
+    // ConfigHub field names accepted verbatim so revision/drift idioms work:
+    // `HeadRevisionNum > LiveRevisionNum` (unapplied changes), `LiveRevisionNum
+    // = 0` (never applied), `UpstreamRevisionNum > 0` (clones). All push to where.
+    HeadRevisionNum: { type: 'number', pushdown: { target: 'where', expr: 'HeadRevisionNum' } },
+    LiveRevisionNum: { type: 'number', pushdown: { target: 'where', expr: 'LiveRevisionNum' } },
+    LastAppliedRevisionNum: {
+      type: 'number',
+      pushdown: { target: 'where', expr: 'LastAppliedRevisionNum' },
+    },
+    UpstreamRevisionNum: {
+      type: 'number',
+      pushdown: { target: 'where', expr: 'UpstreamRevisionNum' },
+    },
+    UpstreamUnitID: { type: 'string', pushdown: { target: 'where', expr: 'UpstreamUnitID' } },
+    ProviderType: { type: 'string', pushdown: { target: 'where', expr: 'ProviderType' } },
     // Derived/aggregate-ish columns evaluated client-side from the fetched Unit.
     gates: { type: 'number' }, // count of ApplyGates keys
     warnings: { type: 'number' }, // count of ApplyWarnings keys
@@ -67,6 +82,9 @@ const UNITS: TableDef = {
   mapPrefixes: {
     labels: { type: 'string', pushdown: { target: 'where', field: 'Labels' } },
     annotations: { type: 'string', pushdown: { target: 'where', field: 'Annotations' } },
+    // Policy/gate audit: ApplyGates['<space>/<trigger>/<function>'] = true.
+    ApplyGates: { type: 'boolean', pushdown: { target: 'where', field: 'ApplyGates' } },
+    ApplyWarnings: { type: 'boolean', pushdown: { target: 'where', field: 'ApplyWarnings' } },
   },
 };
 

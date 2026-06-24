@@ -80,6 +80,22 @@ describe('parser — statement shape', () => {
     expect(cmp.left.path).toEqual(['spec', 'containers', '0', 'image']);
   });
 
+  it('accepts a keyword as a column name (From, Source)', () => {
+    // ConfigHub has fields named `From` (Filter) / `Source` (Revision) that
+    // collide with SQL keywords; they must be usable as columns.
+    const a = parse("SELECT slug FROM filters WHERE From = 'Unit'");
+    expect((a.where as CompareExpr).left.name).toBe('From');
+    const b = parse("SELECT Source FROM revisions WHERE Source = 'Trigger'");
+    expect((b.projections[0].expr as { name: string }).name).toBe('Source');
+  });
+
+  it('parses a column-to-column comparison', () => {
+    const s = parse('SELECT slug FROM units WHERE HeadRevisionNum > LiveRevisionNum');
+    const cmp = s.where as CompareExpr;
+    expect(cmp.right.kind).toBe('column');
+    expect((cmp.right as { name: string }).name).toBe('LiveRevisionNum');
+  });
+
   it('parses a bracket key in a projection with AS', () => {
     const s = parse(
       "SELECT metadata.annotations['example.com/team'] AS team FROM resources",

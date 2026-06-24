@@ -165,6 +165,13 @@ function groupToFetch(table: TableDef, atoms: Expr[], alias: string | null): Fet
     if (atom.kind === 'compare') {
       const col = bind(table, atom.left, alias);
       checkOperator(atom.op, col.type, atom);
+      // Column-to-column comparisons (RHS is a column) can't be expressed in
+      // ConfigHub's `path op literal` filter — evaluate them client-side. Also
+      // validate the RHS column exists.
+      if (atom.right.kind === 'column') {
+        bind(table, atom.right, alias);
+        continue;
+      }
       if (!col.pushdown) continue; // client-side only
       const frag = compileCompare(atom, col);
       bucket(col.pushdown.target, frag, whereParts, dataParts, resourceParts);

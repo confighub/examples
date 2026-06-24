@@ -23,6 +23,9 @@ export interface Token {
   type: TokenType;
   /** Raw text. For keywords this is upper-cased; for strings it's the decoded value. */
   value: string;
+  /** Original source text for keyword tokens (preserves casing), so a keyword
+   *  reused as a column name (e.g. ConfigHub's `From` field) keeps its case. */
+  raw?: string;
   /** True for backtick-quoted idents — a verbatim path that bypasses keyword
    *  matching and may contain `*`, `/`, `-`, etc. (e.g. a YAML data path). */
   quoted?: boolean;
@@ -170,7 +173,7 @@ export function lex(src: string): Token[] {
       const text = src.slice(start, i);
       const upper = text.toUpperCase();
       if (KEYWORDS.has(upper) && !text.includes('.')) {
-        tokens.push({ type: 'keyword', value: upper, pos: posAt(start, i) });
+        tokens.push({ type: 'keyword', value: upper, raw: text, pos: posAt(start, i) });
       } else {
         tokens.push({ type: 'ident', value: text, pos: posAt(start, i) });
       }

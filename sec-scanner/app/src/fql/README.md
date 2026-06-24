@@ -72,11 +72,42 @@ A **table alias** (`FROM resources r`) qualifies columns as `r.col` — purely
 ergonomic in v1 (no JOINs yet). Curated columns like `image` are just sugar over
 common raw paths; drop to a backtick path for anything not curated.
 
+**Column-to-column comparison.** The right-hand side of a comparison can be
+another column, which is how you express ConfigHub's drift idioms:
+
+```sql
+SELECT slug FROM units WHERE HeadRevisionNum > LiveRevisionNum   -- unapplied changes
+SELECT slug FROM units WHERE LiveRevisionNum = 0                  -- never applied
+SELECT slug FROM units WHERE UpstreamRevisionNum > 0             -- clones
+```
+
+**Keyword field names.** ConfigHub has fields that collide with SQL keywords
+(`From` on filters, `Source` on revisions). These are accepted as column names
+wherever a column is expected.
+
+### Drift / gate / audit examples
+
+```sql
+-- units with unapplied changes, per space
+SELECT space, COUNT(*) AS n FROM units WHERE HeadRevisionNum > LiveRevisionNum GROUP BY space
+
+-- what's blocked, and by which gate (StringBool map, pushed down)
+SELECT slug FROM units WHERE ApplyGates['sec-demo-policy/no-critical-cves/vet-celexpr'] = true
+
+-- ownership rollup
+SELECT space, COUNT(*) AS n FROM units WHERE labels.team = 'payments' GROUP BY space
+```
+
+> Planned tables (parse today, not yet in the catalog): `revisions` (audit
+> trail), `events` (apply results / "did it deploy"), `triggers`, `filters`,
+> `links` (dependency graph). The parser already accepts queries over them; only
+> the planner/transport wiring remains.
+
 ## Virtual tables
 
 | Table | Source | Notable columns |
 |---|---|---|
-| `units` | `GET /unit` | `slug`, `space`, `toolchain`, `target`, `headRev`, `gates`, `warnings`, `labels.*`, `annotations.*` |
+| `units` | `GET /unit` | `slug`, `space`, `toolchain`, `target`, `headRev`/`HeadRevisionNum`, `LiveRevisionNum`, `LastAppliedRevisionNum`, `UpstreamRevisionNum`, `UpstreamUnitID`, `ProviderType`, `gates`, `warnings`, `labels.*`, `annotations.*`, `ApplyGates['<space>/<trigger>/<fn>']`, `ApplyWarnings[...]` |
 | `resources` | `POST /function/invoke` + `get-resources` | `unit`, `space`, `kind`, `name`, `image`, `replicas`, `resourceType`, `severity`, `cveCount`, `scannedAt`, `cvedbVersion` |
 | `spaces` | `GET /space` | `slug`, `displayName`, `labels.*`, `annotations.*` |
 | `targets` | `GET /target` | `slug`, `displayName`, `labels.*` |

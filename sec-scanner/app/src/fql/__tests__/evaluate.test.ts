@@ -45,6 +45,19 @@ describe('evaluate — filter', () => {
     expect(evalPredicate(stmt.where!, ROWS[0])).toBe(true);
     expect(evalPredicate(stmt.where!, ROWS[2])).toBe(false);
   });
+
+  it('evaluates column-to-column comparison (drift idiom)', () => {
+    // head > live means "has unapplied changes" — true for both a partially
+    // applied unit and a never-applied one (live=0); equal means synced.
+    const rows: Row[] = [
+      { slug: 'drifted', HeadRevisionNum: 8, LiveRevisionNum: 5 },
+      { slug: 'synced', HeadRevisionNum: 5, LiveRevisionNum: 5 },
+      { slug: 'never', HeadRevisionNum: 3, LiveRevisionNum: 0 },
+    ];
+    const q = 'SELECT slug FROM units WHERE HeadRevisionNum > LiveRevisionNum';
+    const r = evaluate(parse(q), rows, ['slug']);
+    expect(r.rows.map((x) => x.slug).sort()).toEqual(['drifted', 'never']);
+  });
 });
 
 describe('evaluate — raw YAML paths over __doc (array wildcard, existential)', () => {
