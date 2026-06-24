@@ -3,13 +3,12 @@
 // raw.ts). This is the ONLY file that couples the portable fql/ engine to the
 // app — it knows ConfigHub's result shapes and flattens them into FQL rows.
 //
-// Resource rows reuse the same decode + verdict logic the fleet snapshot uses
-// (imagesOf / scanVerdict from sec/model.ts), so FQL sees identical data to the
-// rest of the console.
+// Resource rows carry generic identity + the raw resource doc (__doc); FQL
+// evaluates arbitrary YAML data paths (images, scanner annotations, etc.)
+// against __doc client-side, so there are no domain-specific curated columns.
 
 import type { ListParams, ResourceParams, Row, Transport } from '../fql';
 import { b64decodeUtf8 } from './encoding';
-import { ANNO_CVE_COUNT, ANNO_CVEDB_VERSION, ANNO_MAX_SEVERITY, ANNO_SCANNED_AT, imagesOf } from '../sec/model';
 import { getStoredToken } from '../sdk/confighubapi';
 
 // ─── HTTP helpers (mirror raw.ts auth) ──────────────────────────────────────
@@ -185,37 +184,28 @@ export const fqlTransport: Transport = {
   },
 };
 
-function annos(doc: Record<string, unknown>): Record<string, string> {
-  const md = doc['metadata'] as { annotations?: Record<string, string> } | undefined;
-  return md?.annotations ?? {};
-}
-
 function resourceRow(
   resp: InvokeResponse,
   resourceType: string | undefined,
   doc: Record<string, unknown>,
 ): Row {
   const md = doc['metadata'] as { name?: string; namespace?: string } | undefined;
-  const a = annos(doc);
-  const images = imagesOf(doc);
   const spec = doc['spec'] as { replicas?: number } | undefined;
-  const cve = Number.parseInt(a[ANNO_CVE_COUNT] ?? '', 10);
   return {
+    // Generic identity + single-valued K8s shorthands only. Domain fields like
+    // image / severity / cveCount are NOT curated columns — query them as the
+    // real paths they are (containers.*.image,
+    // metadata.annotations['sec-scanner.confighub.com/max-severity']), evaluated
+    // client-side against __doc.
     unit: resp.UnitSlug,
     space: resp.SpaceSlug,
     kind: doc['kind'],
     name: md?.name,
     namespace: md?.namespace ?? null,
-    resourceType,
-    image: images.join(','), // curated sugar; raw paths read containers.*.image from __doc
     replicas: spec?.replicas ?? null,
-    severity: a[ANNO_MAX_SEVERITY] ?? 'UNKNOWN',
-    cveCount: Number.isFinite(cve) ? cve : 0,
-    scannedAt: a[ANNO_SCANNED_AT] ?? '',
-    cvedbVersion: a[ANNO_CVEDB_VERSION] ?? '',
+    resourceType,
     // The raw resource doc, so FQL can evaluate arbitrary YAML data paths
-    // (e.g. `spec.template.spec.containers.*.image`) client-side. Reserved key
-    // (leading __) so it's excluded from SELECT * column discovery.
+    // client-side. Reserved key (leading __) — excluded from SELECT * columns.
     __doc: doc,
   };
 }

@@ -9,7 +9,8 @@ deps) — the app wires it up via a `Transport` adapter.
 ```ts
 import { runQuery } from './fql';
 const res = await runQuery(
-  "SELECT unit, image FROM resources WHERE severity = 'CRITICAL'",
+  "SELECT unit FROM resources WHERE kind = 'Deployment' " +
+    "AND `spec.template.spec.containers.*.image` LIKE '%:latest'",
   transport,
 );
 ```
@@ -41,8 +42,12 @@ comment. Keywords are case-insensitive; identifiers are not.
 
 **Columns** come in three flavors:
 
-- **Curated** (`severity`, `image`, `kind`, `slug`, …) — friendly names, some
-  pushed to `where`, some to `where_data` (see table below).
+- **Curated** — a small set of generic, single-valued shorthands (`slug`,
+  `space`, `kind`, `name`, `namespace`, `replicas`, …), some pushed to `where`,
+  some to `where_data` (see table below). These are NOT domain fields: there is
+  no `image` or `severity` column — `image` was a lossy join over a container
+  array and severity is a sec-scanner annotation. Query those as the real paths
+  they are (see Raw YAML data paths below).
 - **Map keys** — `labels.env`, `annotations.<key>` read entity maps.
 - **Raw YAML data paths** (`resources` only) — any other dotted path is treated
   as a path into the resource document. Use one of two forms for exotic
@@ -108,13 +113,16 @@ SELECT space, COUNT(*) AS n FROM units WHERE labels.team = 'payments' GROUP BY s
 | Table | Source | Notable columns |
 |---|---|---|
 | `units` | `GET /unit` | `slug`, `space`, `toolchain`, `target`, `headRev`/`HeadRevisionNum`, `LiveRevisionNum`, `LastAppliedRevisionNum`, `UpstreamRevisionNum`, `UpstreamUnitID`, `ProviderType`, `gates`, `warnings`, `labels.*`, `annotations.*`, `ApplyGates['<space>/<trigger>/<fn>']`, `ApplyWarnings[...]` |
-| `resources` | `POST /function/invoke` + `get-resources` | `unit`, `space`, `kind`, `name`, `image`, `replicas`, `resourceType`, `severity`, `cveCount`, `scannedAt`, `cvedbVersion` |
+| `resources` | `POST /function/invoke` + `get-resources` | `unit`, `space`, `kind`, `name`, `namespace`, `replicas`, `resourceType`, `labels.*`, + any raw data path |
 | `spaces` | `GET /space` | `slug`, `displayName`, `labels.*`, `annotations.*` |
 | `targets` | `GET /target` | `slug`, `displayName`, `labels.*` |
 
-`severity`/`cveCount`/etc. on `resources` are read from the scanner's
-annotations and evaluated client-side (no server index), so a query on them
-fetches broadly and filters in the browser.
+`resources` has no domain columns: an image is the array path
+`` `spec.template.spec.containers.*.image` `` and the scanner verdict is an
+annotation, `metadata.annotations['sec-scanner.confighub.com/max-severity']`.
+Both are read from the resource document and evaluated client-side (no server
+index for the annotation key), so a query on them fetches broadly and filters in
+the browser.
 
 ## How it executes (the pushdown model)
 

@@ -14,29 +14,42 @@ describe('planner — pushdown', () => {
   });
 
   it('splits a top-level OR into two fetches (DNF)', () => {
+    // A bracket-keyed annotation can't push (dots/slash) → client-side group;
+    // the container-image LIKE pushes down soundly.
     const p = planOf(
-      "SELECT unit FROM resources WHERE severity = 'CRITICAL' OR image ~ ':latest'",
+      "SELECT unit FROM resources WHERE metadata.annotations['sec-scanner.confighub.com/max-severity'] = 'CRITICAL' OR `spec.template.spec.containers.*.image` LIKE '%:latest'",
     );
     expect(p.fetches).toHaveLength(2);
-    // severity is client-side only → that group has no pushdown.
+    // the annotation group has no pushdown.
     expect(p.fetches[0]).toEqual({});
-    // image pushes to where_data.
+    // image LIKE pushes to where_data.
     expect(p.fetches[1]).toEqual({
-      whereData: "spec.template.spec.containers.*.image ~ ':latest'",
+      whereData: "spec.template.spec.containers.*.image LIKE '%:latest'",
     });
   });
 
   it('distributes AND over OR correctly', () => {
-    // kind='Deployment' AND (replicas>1 OR image~':latest')
-    //   => [kind, replicas], [kind, image]
+    // kind='Deployment' AND (replicas>1 OR image LIKE '%:latest')
     const p = planOf(
-      "SELECT unit FROM resources WHERE kind = 'Deployment' AND (replicas > 1 OR image ~ ':latest')",
+      "SELECT unit FROM resources WHERE kind = 'Deployment' AND (replicas > 1 OR `spec.template.spec.containers.*.image` LIKE '%:latest')",
     );
     expect(p.fetches).toHaveLength(2);
     expect(p.fetches[0]).toEqual({ whereData: "kind = 'Deployment' AND spec.replicas > 1" });
     expect(p.fetches[1]).toEqual({
-      whereData: "kind = 'Deployment' AND spec.template.spec.containers.*.image ~ ':latest'",
+      whereData: "kind = 'Deployment' AND spec.template.spec.containers.*.image LIKE '%:latest'",
     });
+  });
+
+  it('does NOT push regex down (POSIX/RE2 ≠ JS) — client-side only', () => {
+    const p = planOf("SELECT unit FROM resources WHERE `spec.template.spec.containers.*.image` ~ ':latest'");
+    // Sound: regex stays client-side so JS RegExp is authoritative.
+    expect(p.fetches).toEqual([{}]);
+    expect(p.residual).not.toBeNull();
+  });
+
+  it('does NOT push negation over a data path (missing-field/array semantics)', () => {
+    const p = planOf("SELECT unit FROM resources WHERE `spec.template.spec.containers.*.image` != 'nginx:1.27-alpine'");
+    expect(p.fetches).toEqual([{}]);
   });
 
   it('separates where / where_data / whereResource buckets', () => {
@@ -53,9 +66,11 @@ describe('planner — pushdown', () => {
   });
 
   it('always keeps the full WHERE as residual', () => {
-    const p = planOf("SELECT unit FROM resources WHERE severity = 'CRITICAL'");
+    // A bracket-keyed annotation can't push down → residual carries it.
+    const p = planOf(
+      "SELECT unit FROM resources WHERE metadata.annotations['sec-scanner.confighub.com/max-severity'] = 'CRITICAL'",
+    );
     expect(p.residual).not.toBeNull();
-    // severity is not pushable → fetch is unconstrained, residual carries it.
     expect(p.fetches).toEqual([{}]);
   });
 
@@ -80,12 +95,12 @@ describe('planner — pushdown', () => {
     expect(p.fetches).toEqual([{ whereData: "spec.strategy.type = 'RollingUpdate'" }]);
   });
 
-  it('pushes a backtick-quoted wildcard path', () => {
+  it('pushes a backtick-quoted wildcard path (sound op)', () => {
     const p = planOf(
-      "SELECT unit FROM resources WHERE `spec.template.spec.containers.*.image` ~ ':latest'",
+      "SELECT unit FROM resources WHERE `spec.template.spec.containers.*.image` LIKE '%:latest'",
     );
     expect(p.fetches).toEqual([
-      { whereData: "spec.template.spec.containers.*.image ~ ':latest'" },
+      { whereData: "spec.template.spec.containers.*.image LIKE '%:latest'" },
     ]);
   });
 
@@ -107,11 +122,16 @@ describe('planner — pushdown', () => {
     expect(p.residual).not.toBeNull();
   });
 
-  it('pushes down a clean bracket-indexed path', () => {
-    const p = planOf("SELECT unit FROM resources WHERE spec.containers[0].image ~ ':latest'");
+  it('pushes down a clean bracket-indexed path (sound op)', () => {
+    const p = planOf("SELECT unit FROM resources WHERE spec.containers[0].image LIKE 'nginx%'");
     expect(p.fetches).toEqual([
-      { whereData: "spec.containers.0.image ~ ':latest'" },
+      { whereData: "spec.containers.0.image LIKE 'nginx%'" },
     ]);
+  });
+
+  it('pushes a sound column-to-column comparison on entity fields', () => {
+    const p = planOf('SELECT slug FROM units WHERE HeadRevisionNum > LiveRevisionNum');
+    expect(p.fetches).toEqual([{ where: 'HeadRevisionNum > LiveRevisionNum' }]);
   });
 
   it('queries any kind (all-kinds resources table)', () => {

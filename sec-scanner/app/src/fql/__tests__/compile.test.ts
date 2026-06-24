@@ -23,10 +23,14 @@ describe('compile — clause fragments', () => {
     );
   });
 
-  it('maps image to the container array wildcard path (where_data)', () => {
-    expect(compileWhere("SELECT unit FROM resources WHERE image ~ ':latest'", 'resources')).toBe(
-      "spec.template.spec.containers.*.image ~ ':latest'",
-    );
+  it('compiles a raw container-image path (where_data)', () => {
+    // `image` is not a curated column; query the real array-wildcard path.
+    expect(
+      compileWhere(
+        "SELECT unit FROM resources WHERE `spec.template.spec.containers.*.image` LIKE '%:latest'",
+        'resources',
+      ),
+    ).toBe("spec.template.spec.containers.*.image LIKE '%:latest'");
   });
 
   it('compiles a number comparison without quotes', () => {

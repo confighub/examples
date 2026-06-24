@@ -61,6 +61,47 @@ const STRING_ONLY: ReadonlySet<CompareOp> = new Set([
   '!~*',
 ]);
 
+// ─── Pushdown soundness policy ────────────────────────────────────────────────
+//
+// Invariant: a pushed-down clause must be a SUPERSET of the true predicate (the
+// always-on client-side residual then narrows to the exact answer). A clause is
+// only pushed when its server semantics provably match (or over-match) ours.
+// Verified against ConfigHub source (libra internal/views + core/function/api):
+//
+//  - Regex (~ ~* !~ !~*): server uses Go RE2 / Postgres POSIX, NOT JS RegExp —
+//    DIVERGENT. Never push; evaluate client-side so JS regex is authoritative.
+//  - where_data NEGATION (!=, NOT IN, NOT LIKE): a missing path makes `!=`
+//    return TRUE server-side, and `*` is existential — negation over array/
+//    optional data paths can DROP rows our residual would keep. Never push.
+//  - LIKE/ILIKE/~~/!~~ and =,<,>,<=,>=,IN on scalars: IDENTICAL. Safe to push.
+//  - Column-to-column: supported by the entity `where` SQL generator (quotes the
+//    RHS column); NOT by where_data (literal-only). Push only for `where`.
+
+const REGEX_OPS: ReadonlySet<CompareOp> = new Set(['~', '~*', '!~', '!~*']);
+const NEGATING_OPS: ReadonlySet<CompareOp> = new Set(['!=', 'NOT IN', 'NOT LIKE', '!~', '!~*']);
+
+/** Is pushing this comparison down to ConfigHub provably sound (server ⊇ client)?
+ *  `col` is the resolved LHS; `rhsIsColumn` flags a column-to-column RHS. */
+function isSoundToPush(op: CompareOp, col: ResolvedColumn, rhsIsColumn: boolean): boolean {
+  if (!col.pushdown) return false;
+
+  // Regex dialects diverge — JS regex must be authoritative (client-side only).
+  if (REGEX_OPS.has(op)) return false;
+
+  const target = col.pushdown.target;
+
+  // Column-to-column: only the entity `where` generator handles a column RHS;
+  // where_data / whereResource are literal-only.
+  if (rhsIsColumn) return target === 'where';
+
+  // Negation over a resource data path (where_data) is unsafe: missing-field and
+  // array-existential semantics differ. Entity `where` fields are flat scalars,
+  // so negation there is sound.
+  if (target === 'where_data' && NEGATING_OPS.has(op)) return false;
+
+  return true;
+}
+
 function checkOperator(op: CompareOp, type: ColumnType, where: CompareExpr): void {
   if (STRING_ONLY.has(op) && type !== 'string') {
     throw new FqlError(
@@ -165,16 +206,22 @@ function groupToFetch(table: TableDef, atoms: Expr[], alias: string | null): Fet
     if (atom.kind === 'compare') {
       const col = bind(table, atom.left, alias);
       checkOperator(atom.op, col.type, atom);
-      // Column-to-column comparisons (RHS is a column) can't be expressed in
-      // ConfigHub's `path op literal` filter — evaluate them client-side. Also
-      // validate the RHS column exists.
-      if (atom.right.kind === 'column') {
-        bind(table, atom.right, alias);
+      const rhsIsColumn = atom.right.kind === 'column';
+      // Always bind (validate) an RHS column even if we won't push it.
+      const rhsCol = rhsIsColumn ? bind(table, atom.right as ColumnExpr, alias) : null;
+
+      if (!isSoundToPush(atom.op, col, rhsIsColumn)) continue; // client-side residual
+
+      if (rhsIsColumn) {
+        // Column-to-column on an entity `where` field: emit `<lhs> op <rhs>`
+        // with both server-side column expressions (no literal).
+        if (rhsCol!.pushdown?.target === 'where') {
+          whereParts.push(`${col.pushdown!.expr} ${atom.op} ${rhsCol!.pushdown.expr}`);
+        }
         continue;
       }
-      if (!col.pushdown) continue; // client-side only
       const frag = compileCompare(atom, col);
-      bucket(col.pushdown.target, frag, whereParts, dataParts, resourceParts);
+      bucket(col.pushdown!.target, frag, whereParts, dataParts, resourceParts);
     } else if (atom.kind === 'isnull') {
       const col = bind(table, atom.column, alias);
       // Only push NULL checks onto entity (`where`) fields; data-path NULL

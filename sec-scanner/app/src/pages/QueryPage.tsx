@@ -29,16 +29,20 @@ const EXAMPLES: { label: string; query: string }[] = [
   {
     label: 'Critical or floating-tag images',
     query:
-      "SELECT unit, image, severity\nFROM resources r\nWHERE r.kind = 'Deployment'\n  AND (r.severity = 'CRITICAL' OR `spec.template.spec.containers.*.image` ~ ':latest')\nORDER BY severity LIMIT 20",
+      "SELECT unit,\n  metadata.annotations['sec-scanner.confighub.com/max-severity'] AS severity\nFROM resources r\nWHERE r.kind = 'Deployment'\n  AND (metadata.annotations['sec-scanner.confighub.com/max-severity'] = 'CRITICAL'\n       OR `spec.template.spec.containers.*.image` LIKE '%:latest')\nLIMIT 20",
   },
   {
     label: 'Raw YAML path: replicas > 1',
-    query:
-      "SELECT unit, replicas\nFROM resources\nWHERE kind = 'Deployment' AND `spec.replicas` > 1",
+    query: "SELECT unit, replicas\nFROM resources\nWHERE kind = 'Deployment' AND `spec.replicas` > 1",
   },
   {
     label: 'Critical count per space',
-    query: "SELECT space, COUNT(*) AS n\nFROM resources\nWHERE severity = 'CRITICAL'\nGROUP BY space ORDER BY n DESC",
+    query:
+      "SELECT space, COUNT(*) AS n\nFROM resources\nWHERE metadata.annotations['sec-scanner.confighub.com/max-severity'] = 'CRITICAL'\nGROUP BY space ORDER BY n DESC",
+  },
+  {
+    label: 'Unapplied changes (drift)',
+    query: 'SELECT slug, space FROM units WHERE HeadRevisionNum > LiveRevisionNum',
   },
   { label: 'Prod spaces', query: "SELECT slug FROM spaces WHERE labels.env = 'prod'" },
 ];

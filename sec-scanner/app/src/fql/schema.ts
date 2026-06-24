@@ -94,32 +94,31 @@ const RESOURCES: TableDef = {
     // Identity (from the owning Unit / response metadata) — pushed to `where`.
     unit: { type: 'string', pushdown: { target: 'where', expr: 'Slug' } },
     space: { type: 'string', pushdown: { target: 'where', expr: 'Space.Slug' } },
-    // Resource data fields — pushed to `where_data`.
+    // Generic, single-valued Kubernetes shorthands — unambiguous sugar over a
+    // real path, pushed to `where_data`. (NOT domain fictions: every K8s
+    // resource has exactly one kind/name/namespace; replicas is a scalar.)
     kind: { type: 'string', pushdown: { target: 'where_data', expr: 'kind' } },
     name: { type: 'string', pushdown: { target: 'where_data', expr: 'metadata.name' } },
     namespace: { type: 'string', pushdown: { target: 'where_data', expr: 'metadata.namespace' } },
-    image: {
-      type: 'string',
-      pushdown: { target: 'where_data', expr: 'spec.template.spec.containers.*.image' },
-    },
     replicas: { type: 'number', pushdown: { target: 'where_data', expr: 'spec.replicas' } },
     // Resource-type metadata — pushed to whereResource.
     resourceType: {
       type: 'string',
       pushdown: { target: 'whereResource', expr: 'ConfigHub.ResourceType' },
     },
-    // Scanner verdict (annotations on the Deployment) — client-side only, since
-    // they read from the resource body the scanner wrote, not an indexed field.
-    severity: { type: 'string' },
-    cveCount: { type: 'number' },
-    scannedAt: { type: 'string' },
-    cvedbVersion: { type: 'string' },
+    // NOTE: there is deliberately no `image`, `severity`, `cveCount`, etc.
+    // `image` was a lossy comma-join of an array; the scanner verdict fields are
+    // sec-scanner annotations, not generic resource columns. Query them as the
+    // real paths they are:
+    //   `spec.template.spec.containers.*.image` LIKE '%:latest'
+    //   metadata.annotations['sec-scanner.confighub.com/max-severity'] = 'CRITICAL'
   },
   mapPrefixes: {
     labels: { type: 'string', pushdown: { target: 'where', field: 'Labels' } },
   },
   // Any column that isn't curated/`labels.` is a raw resource-data path
-  // (e.g. spec.strategy.type). Curated columns above are sugar over common ones.
+  // (e.g. spec.strategy.type, metadata.annotations['...']). The shorthands above
+  // are just sugar over the most common single-valued paths.
   rawDataPaths: true,
 };
 

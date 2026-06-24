@@ -29,10 +29,10 @@ function mockTransport(): Transport & { calls: ResourceParams[] } {
     },
     async resources(params: ResourceParams) {
       calls.push(params);
-      // Simulate the server applying whereData image-regex pushdown.
+      // Simulate the server applying a sound whereData LIKE pushdown.
       let rows = RESOURCES;
-      if (params.whereData?.includes('containers.*.image ~')) {
-        rows = rows.filter((r) => /:latest/.test(r.image as string));
+      if (params.whereData?.includes("containers.*.image LIKE '%:latest'")) {
+        rows = rows.filter((r) => (r.image as string).endsWith(':latest'));
       }
       return rows.map((r) => ({ ...r }));
     },
@@ -50,13 +50,13 @@ describe('executor — end to end via mock transport', () => {
   it('splits an OR into two fetches and unions the results', async () => {
     const t = mockTransport();
     const res = await runQuery(
-      "SELECT unit, severity FROM resources WHERE severity = 'CRITICAL' OR image ~ ':latest'",
+      "SELECT unit, severity FROM resources WHERE severity = 'CRITICAL' OR image LIKE '%:latest'",
       t,
     );
     // Two DNF groups → two fetches.
     expect(t.calls).toHaveLength(2);
-    // One fetch is unconstrained (severity client-side), one pushes image regex.
-    expect(t.calls.some((c) => c.whereData?.includes('image ~'))).toBe(true);
+    // One fetch is unconstrained (severity client-side), one pushes image LIKE.
+    expect(t.calls.some((c) => c.whereData?.includes('image LIKE'))).toBe(true);
     // Final result: 2 criticals + 1 :latest, deduped, exact via client filter.
     expect(res.rows.map((r) => r.unit).sort()).toEqual([
       'legacy-api',
