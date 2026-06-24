@@ -60,6 +60,34 @@ describe('parser — statement shape', () => {
     const cmp = s.where as CompareExpr;
     expect(cmp.left.path).toEqual(['r', 'kind']);
   });
+
+  it('parses a bracket-subscript key as one atomic segment', () => {
+    const s = parse(
+      "SELECT unit FROM resources WHERE metadata.annotations['sec-scanner.confighub.com/max-severity'] != 'CRITICAL'",
+    );
+    const cmp = s.where as CompareExpr;
+    // The bracket key keeps its dots/slash verbatim — NOT split.
+    expect(cmp.left.path).toEqual([
+      'metadata',
+      'annotations',
+      'sec-scanner.confighub.com/max-severity',
+    ]);
+  });
+
+  it('parses array index subscript with a dotted continuation', () => {
+    const s = parse("SELECT unit FROM resources WHERE spec.containers[0].image ~ ':latest'");
+    const cmp = s.where as CompareExpr;
+    expect(cmp.left.path).toEqual(['spec', 'containers', '0', 'image']);
+  });
+
+  it('parses a bracket key in a projection with AS', () => {
+    const s = parse(
+      "SELECT metadata.annotations['example.com/team'] AS team FROM resources",
+    );
+    expect(s.projections[0].alias).toBe('team');
+    const col = s.projections[0].expr as { path: string[] };
+    expect(col.path).toEqual(['metadata', 'annotations', 'example.com/team']);
+  });
 });
 
 describe('parser — expression precedence', () => {

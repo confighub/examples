@@ -90,6 +90,42 @@ describe('evaluate — raw YAML paths over __doc (array wildcard, existential)',
     const r = run("SELECT unit FROM resources d WHERE d.kind = 'Deployment'");
     expect(r.rows.map((x) => x.unit).sort()).toEqual(['multi', 'single']);
   });
+
+  it('reads a bracket-keyed annotation (dots/slash key) via traversal', () => {
+    const annoRows: Row[] = [
+      {
+        unit: 'crit',
+        __doc: {
+          kind: 'Deployment',
+          metadata: { annotations: { 'sec-scanner.confighub.com/max-severity': 'CRITICAL' } },
+        },
+      },
+      {
+        unit: 'clean',
+        __doc: {
+          kind: 'Deployment',
+          metadata: { annotations: { 'sec-scanner.confighub.com/max-severity': 'NONE' } },
+        },
+      },
+    ];
+    const q =
+      "SELECT unit FROM resources WHERE metadata.annotations['sec-scanner.confighub.com/max-severity'] = 'CRITICAL'";
+    const r = evaluate(parse(q), annoRows, ['unit']);
+    expect(r.rows.map((x) => x.unit)).toEqual(['crit']);
+  });
+
+  it('projects a bracket-keyed annotation with an alias', () => {
+    const annoRows: Row[] = [
+      {
+        unit: 'a',
+        __doc: { metadata: { annotations: { 'example.com/team': 'payments' } } },
+      },
+    ];
+    const q = "SELECT unit, metadata.annotations['example.com/team'] AS team FROM resources";
+    const r = evaluate(parse(q), annoRows, ['unit']);
+    expect(r.columns).toEqual(['unit', 'team']);
+    expect(r.rows[0]).toEqual({ unit: 'a', team: 'payments' });
+  });
 });
 
 describe('evaluate — projection / order / limit', () => {

@@ -13,6 +13,9 @@ export type TokenType =
   | 'comma'
   | 'lparen'
   | 'rparen'
+  | 'lbracket' // [ — column subscript, e.g. annotations['key']
+  | 'rbracket' // ]
+  | 'dot' // . — joins a subscript back into a path: containers[0].image
   | 'star'
   | 'eof';
 
@@ -186,6 +189,20 @@ export function lex(src: string): Token[] {
         continue;
       case ')':
         tokens.push({ type: 'rparen', value: ')', pos: posAt(start, i + 1) });
+        i++;
+        continue;
+      case '[':
+        tokens.push({ type: 'lbracket', value: '[', pos: posAt(start, i + 1) });
+        i++;
+        continue;
+      case ']':
+        tokens.push({ type: 'rbracket', value: ']', pos: posAt(start, i + 1) });
+        i++;
+        continue;
+      case '.':
+        // A standalone dot only occurs after a `]` subscript (bare dotted idents
+        // are lexed whole), continuing a path: containers[0].image
+        tokens.push({ type: 'dot', value: '.', pos: posAt(start, i + 1) });
         i++;
         continue;
       case '*':

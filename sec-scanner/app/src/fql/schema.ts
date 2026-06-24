@@ -152,6 +152,18 @@ export interface ResolvedColumn {
  * backtick-quoted column) — arbitrary YAML data paths pushed to `where_data`.
  * Returns null if the column is unknown and the table has no raw-path fallback.
  */
+/** Readable name for a raw path: bracket-quote any segment that isn't a plain
+ *  path token (so a dotted/slashed annotation key renders unambiguously). */
+function rawName(path: string[]): string {
+  let out = '';
+  for (const seg of path) {
+    const simple = /^[A-Za-z0-9_*-]+$/.test(seg);
+    if (out === '') out += simple ? seg : `['${seg}']`;
+    else out += simple ? `.${seg}` : `['${seg}']`;
+  }
+  return out;
+}
+
 export function resolveColumn(
   table: TableDef,
   path: string[],
@@ -178,12 +190,17 @@ export function resolveColumn(
     }
   }
 
-  // Raw data path: push to where_data verbatim, evaluate by traversing the doc.
+  // Raw data path: evaluate by traversing the resource doc client-side. Push to
+  // where_data ONLY when every segment is a clean path token — a key containing
+  // dots, slashes, etc. (e.g. an annotation key) can't be expressed in
+  // ConfigHub's dotted where_data, so such paths stay client-side only and the
+  // residual filter (which always runs) decides them.
   if (quoted || table.rawDataPaths) {
+    const pushable = path.every((seg) => /^[A-Za-z0-9_*-]+$/.test(seg));
     return {
-      name: full,
+      name: rawName(path),
       type: 'string', // permissive; the literal's type drives the comparison
-      pushdown: { target: 'where_data', expr: full },
+      pushdown: pushable ? { target: 'where_data', expr: path.join('.') } : undefined,
       raw: true,
     };
   }

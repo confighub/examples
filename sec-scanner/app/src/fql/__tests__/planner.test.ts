@@ -97,6 +97,27 @@ describe('planner — pushdown', () => {
   it('still rejects unknown columns on non-raw tables', () => {
     expect(() => planOf('SELECT nope FROM units')).toThrow(/unknown column/);
   });
+
+  it('does NOT push down a bracket key with dots/slash (client-side only)', () => {
+    const p = planOf(
+      "SELECT unit FROM resources WHERE metadata.annotations['sec-scanner.confighub.com/max-severity'] = 'CRITICAL'",
+    );
+    // The key can't be expressed in ConfigHub's dotted where_data → no pushdown.
+    expect(p.fetches).toEqual([{}]);
+    expect(p.residual).not.toBeNull();
+  });
+
+  it('pushes down a clean bracket-indexed path', () => {
+    const p = planOf("SELECT unit FROM resources WHERE spec.containers[0].image ~ ':latest'");
+    expect(p.fetches).toEqual([
+      { whereData: "spec.containers.0.image ~ ':latest'" },
+    ]);
+  });
+
+  it('queries any kind (all-kinds resources table)', () => {
+    const p = planOf("SELECT unit FROM resources WHERE kind = 'Service'");
+    expect(p.fetches).toEqual([{ whereData: "kind = 'Service'" }]);
+  });
 });
 
 describe('planner — validation', () => {

@@ -45,12 +45,28 @@ comment. Keywords are case-insensitive; identifiers are not.
   pushed to `where`, some to `where_data` (see table below).
 - **Map keys** — `labels.env`, `annotations.<key>` read entity maps.
 - **Raw YAML data paths** (`resources` only) — any other dotted path is treated
-  as a path into the resource document and pushed to `where_data` verbatim:
-  `spec.replicas`, `spec.strategy.type`, `spec.template.spec.containers.*.image`.
-  Use **backticks** when the path contains `*`, `/`, `-`, or other non-identifier
-  characters: `` `spec.template.spec.containers.*.image` ``,
-  `` `metadata.annotations.example.com/team` ``. `*` matches **any** array
-  element (existential: true if any element matches); `.0.` indexes one.
+  as a path into the resource document. Use one of two forms for exotic
+  segments:
+  - **Bracket subscript** for a key that contains dots/slashes (the common case
+    for annotations/labels) — the key is one atomic segment and is **not**
+    re-split: `metadata.annotations['sec-scanner.confighub.com/max-severity']`,
+    `metadata.labels['app.kubernetes.io/name']`. Array indices too:
+    `spec.containers[0].image`. This is the same subscript form the gate's CEL
+    uses (`r.metadata.annotations['…']`), so queries and policy read alike.
+  - **Backtick-quoting** for a path with `*` wildcards:
+    `` `spec.template.spec.containers.*.image` ``. `*` matches **any** array
+    element (existential: true if any element matches); `[0]` indexes one.
+
+  A clean path (`spec.replicas`, `kind`, `spec.containers[0].image`) pushes down
+  to `where_data`; a path whose key contains dots/slashes can't be expressed in
+  ConfigHub's dotted `where_data`, so it's evaluated client-side (the residual
+  filter always runs, so the result is identical — just less server narrowing).
+
+The `resources` table is **all-kinds**: every Kubernetes resource in each Unit
+(Deployment, Service, ConfigMap, Ingress, …), not just Deployments. Narrow with
+`WHERE kind = 'Service'` or `WHERE resourceType = 'apps/v1/Deployment'`. Curated
+columns like `image`/`replicas` are Deployment-shaped sugar and read null on
+kinds that lack those paths.
 
 A **table alias** (`FROM resources r`) qualifies columns as `r.col` — purely
 ergonomic in v1 (no JOINs yet). Curated columns like `image` are just sugar over

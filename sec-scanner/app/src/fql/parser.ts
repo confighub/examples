@@ -215,13 +215,57 @@ class Parser {
   }
 
   private parseColumn(): ColumnExpr {
-    const t = this.expect('ident', 'a column name');
+    const head = this.expect('ident', 'a column name');
+    // A column is a head ident followed by zero or more subscripts/continuations:
+    //   metadata.annotations['sec-scanner.confighub.com/max-severity']
+    //   spec.template.spec.containers[0].image
+    // The head (bare or backtick) is a dotted path and splits on dots; only a
+    // bracket key is an atomic segment (never re-split on its dots/slash). So
+    // `spec.containers.*.image` splits, but ['a.b/c'] stays one segment.
+    const path: string[] = head.value.split('.');
+    let lastPos = head.pos;
+
+    for (;;) {
+      const t = this.peek();
+      if (t.type === 'lbracket') {
+        this.next();
+        const key = this.peek();
+        if (key.type === 'string') {
+          this.next();
+          path.push(key.value); // atomic — keep dots/slashes verbatim
+        } else if (key.type === 'number') {
+          this.next();
+          path.push(key.value); // array index
+        } else {
+          this.fail(`expected a quoted key or index inside [...] but found ${describe(key)}`, key.pos);
+        }
+        lastPos = this.expect('rbracket', "']' to close the subscript").pos;
+      } else if (t.type === 'dot') {
+        this.next();
+        const seg = this.peek();
+        if (seg.type === 'ident') {
+          this.next();
+          // A bare ident after a dot may itself be dotted (a.b) — flatten it.
+          for (const s of seg.value.split('.')) path.push(s);
+          lastPos = seg.pos;
+        } else if (seg.type === 'star') {
+          this.next();
+          path.push('*');
+          lastPos = seg.pos;
+        } else {
+          this.fail(`expected a path segment after '.' but found ${describe(seg)}`, seg.pos);
+        }
+      } else {
+        break;
+      }
+    }
+
     return {
       kind: 'column',
-      name: t.value,
-      path: t.value.split('.'),
-      quoted: t.quoted === true,
-      pos: t.pos,
+      name: pathToName(path),
+      path,
+      quoted: head.quoted === true,
+      pos: span(head.pos, lastPos),
     };
   }
 
@@ -391,6 +435,18 @@ class Parser {
 
 function mkCompare(op: CompareOp, left: ColumnExpr, right: LiteralExpr | ListExpr): CompareExpr {
   return { kind: 'compare', op, left, right, pos: span(left.pos, right.pos) };
+}
+
+/** Reconstruct a readable column name from path segments, bracket-quoting any
+ *  segment that isn't a plain dotted identifier (contains a dot, slash, etc.). */
+function pathToName(path: string[]): string {
+  let out = '';
+  for (const seg of path) {
+    const simple = /^[A-Za-z0-9_*]+$/.test(seg);
+    if (out === '') out += simple ? seg : `['${seg}']`;
+    else out += simple ? `.${seg}` : `['${seg}']`;
+  }
+  return out;
 }
 
 function describe(t: Token): string {
