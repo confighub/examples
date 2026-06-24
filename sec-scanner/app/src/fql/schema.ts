@@ -43,6 +43,10 @@ export interface TableDef {
   columns: Record<string, ColumnDef>;
   /** Dynamic map prefixes, keyed by FQL prefix (e.g. "labels"). */
   mapPrefixes: Record<string, MapPrefixDef>;
+  /** When true, an unresolved column is treated as a raw YAML data path and
+   *  pushed to `where_data` verbatim (resources only). Backtick-quoted columns
+   *  are always treated as raw paths regardless of this flag. */
+  rawDataPaths?: boolean;
 }
 
 // ─── Tables ───────────────────────────────────────────────────────────────────
@@ -96,6 +100,9 @@ const RESOURCES: TableDef = {
   mapPrefixes: {
     labels: { type: 'string', pushdown: { target: 'where', field: 'Labels' } },
   },
+  // Any column that isn't curated/`labels.` is a raw resource-data path
+  // (e.g. spec.strategy.type). Curated columns above are sugar over common ones.
+  rawDataPaths: true,
 };
 
 const SPACES: TableDef = {
@@ -134,31 +141,53 @@ export interface ResolvedColumn {
   name: string;
   type: ColumnType;
   pushdown?: Pushdown;
+  /** True for a raw YAML data path: evaluate traverses the resource doc (with
+   *  `*`/index support) rather than reading a flat row field. */
+  raw?: boolean;
 }
 
 /**
- * Resolve a dotted column path against a table. Handles fixed columns and
- * dynamic `prefix.key` map columns. Returns null if the column is unknown.
+ * Resolve a dotted column path against a table. Handles fixed columns, dynamic
+ * `prefix.key` map columns, and — on tables with rawDataPaths (or for any
+ * backtick-quoted column) — arbitrary YAML data paths pushed to `where_data`.
+ * Returns null if the column is unknown and the table has no raw-path fallback.
  */
-export function resolveColumn(table: TableDef, path: string[]): ResolvedColumn | null {
+export function resolveColumn(
+  table: TableDef,
+  path: string[],
+  quoted = false,
+): ResolvedColumn | null {
   const full = path.join('.');
 
-  // Fixed column (exact match, including any that legitimately contain a dot).
-  const fixed = table.columns[full];
-  if (fixed) return { name: full, type: fixed.type, pushdown: fixed.pushdown };
+  // Curated columns and map prefixes apply only to BARE (unquoted) names; a
+  // backtick-quoted name is always a verbatim data path.
+  if (!quoted) {
+    const fixed = table.columns[full];
+    if (fixed) return { name: full, type: fixed.type, pushdown: fixed.pushdown };
 
-  // Dynamic map: first segment is a known prefix, rest is the key.
-  if (path.length >= 2) {
-    const prefix = path[0];
-    const mp = table.mapPrefixes[prefix];
-    if (mp) {
-      const key = path.slice(1).join('.');
-      const pushdown: Pushdown | undefined = mp.pushdown
-        ? { target: mp.pushdown.target, expr: `${mp.pushdown.field}.${key}` }
-        : undefined;
-      return { name: full, type: mp.type, pushdown };
+    if (path.length >= 2) {
+      const prefix = path[0];
+      const mp = table.mapPrefixes[prefix];
+      if (mp) {
+        const key = path.slice(1).join('.');
+        const pushdown: Pushdown | undefined = mp.pushdown
+          ? { target: mp.pushdown.target, expr: `${mp.pushdown.field}.${key}` }
+          : undefined;
+        return { name: full, type: mp.type, pushdown };
+      }
     }
   }
+
+  // Raw data path: push to where_data verbatim, evaluate by traversing the doc.
+  if (quoted || table.rawDataPaths) {
+    return {
+      name: full,
+      type: 'string', // permissive; the literal's type drives the comparison
+      pushdown: { target: 'where_data', expr: full },
+      raw: true,
+    };
+  }
+
   return null;
 }
 

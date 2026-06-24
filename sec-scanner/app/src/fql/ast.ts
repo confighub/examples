@@ -82,13 +82,16 @@ export interface IsNullExpr {
   pos: Pos;
 }
 
-/** A column reference, possibly dotted (`labels.env`, `metadata.name`). */
+/** A column reference, possibly dotted (`labels.env`, `metadata.name`) or a
+ *  backtick-quoted verbatim data path (`` `spec.containers.*.image` ``). */
 export interface ColumnExpr {
   kind: 'column';
   /** Full dotted path as written, e.g. "labels.env". */
   name: string;
   /** Path split on dots: ["labels","env"]. */
   path: string[];
+  /** True when written backtick-quoted — treat as a raw data path. */
+  quoted?: boolean;
   pos: Pos;
 }
 
@@ -146,8 +149,9 @@ export interface SelectStmt {
   kind: 'select';
   /** SELECT * is represented as a single StarExpr projection. */
   projections: Projection[];
-  /** Virtual table name from FROM (units | resources | spaces | targets). */
-  from: { name: string; pos: Pos };
+  /** Virtual table name from FROM, with an optional alias (`FROM resources r`
+   *  or `FROM resources AS r`). The alias qualifies columns as `r.col`. */
+  from: { name: string; alias: string | null; pos: Pos };
   where: Expr | null;
   groupBy: ColumnExpr[];
   orderBy: OrderKey[];

@@ -76,11 +76,18 @@ function checkOperator(op: CompareOp, type: ColumnType, where: CompareExpr): voi
 
 // ─── Column binding ──────────────────────────────────────────────────────────
 
-function bind(table: TableDef, col: ColumnExpr): ResolvedColumn {
-  const r = resolveColumn(table, col.path);
+function bind(table: TableDef, col: ColumnExpr, alias: string | null): ResolvedColumn {
+  // Strip a leading table-alias segment ("r.kind" → "kind") when it matches the
+  // FROM alias. Quoted columns are verbatim paths and are never alias-stripped.
+  let path = col.path;
+  if (!col.quoted && alias && path.length >= 2 && path[0] === alias) {
+    path = path.slice(1);
+  }
+  const r = resolveColumn(table, path, col.quoted === true);
   if (!r) {
     throw new FqlError(
-      `unknown column "${col.name}" on ${table.source}; known: ${columnNames(table).join(', ')}`,
+      `unknown column "${col.name}" on ${table.source}; known: ${columnNames(table).join(', ')}` +
+        (table.rawDataPaths ? ' (or any resource data path, optionally `backtick-quoted`)' : ''),
       col.pos,
       'plan',
     );
@@ -149,20 +156,20 @@ function toDNF(e: Expr): Expr[][] {
 
 /** Compile the pushable atoms of one AND-group into a FetchSpec. Unpushable
  *  atoms are simply omitted (client-side residual covers them). */
-function groupToFetch(table: TableDef, atoms: Expr[]): FetchSpec {
+function groupToFetch(table: TableDef, atoms: Expr[], alias: string | null): FetchSpec {
   const whereParts: string[] = [];
   const dataParts: string[] = [];
   const resourceParts: string[] = [];
 
   for (const atom of atoms) {
     if (atom.kind === 'compare') {
-      const col = bind(table, atom.left);
+      const col = bind(table, atom.left, alias);
       checkOperator(atom.op, col.type, atom);
       if (!col.pushdown) continue; // client-side only
       const frag = compileCompare(atom, col);
       bucket(col.pushdown.target, frag, whereParts, dataParts, resourceParts);
     } else if (atom.kind === 'isnull') {
-      const col = bind(table, atom.column);
+      const col = bind(table, atom.column, alias);
       // Only push NULL checks onto entity (`where`) fields; data-path NULL
       // semantics differ (`.|`), so leave those to client-side.
       if (col.pushdown?.target === 'where') {
@@ -194,9 +201,9 @@ function bucket(
 
 // ─── Projection / order / group validation ────────────────────────────────────
 
-function validateAgg(table: TableDef, agg: AggExpr): void {
+function validateAgg(table: TableDef, agg: AggExpr, alias: string | null): void {
   if (agg.arg && agg.arg.kind === 'column') {
-    const col = bind(table, agg.arg);
+    const col = bind(table, agg.arg, alias);
     if (agg.fn !== 'COUNT' && col.type !== 'number') {
       throw new FqlError(`${agg.fn}() requires a numeric column, got ${col.type}`, agg.pos, 'plan');
     }
@@ -204,6 +211,7 @@ function validateAgg(table: TableDef, agg: AggExpr): void {
 }
 
 function validateProjections(table: TableDef, stmt: SelectStmt): void {
+  const alias = stmt.from.alias;
   const hasAgg = stmt.projections.some((p) => p.expr.kind === 'agg');
   const grouped = hasAgg || stmt.groupBy.length > 0;
   const groupCols = new Set(stmt.groupBy.map((c) => c.name));
@@ -211,11 +219,11 @@ function validateProjections(table: TableDef, stmt: SelectStmt): void {
   for (const p of stmt.projections) {
     if (p.expr.kind === 'star') continue;
     if (p.expr.kind === 'agg') {
-      validateAgg(table, p.expr);
+      validateAgg(table, p.expr, alias);
       continue;
     }
     if (p.expr.kind === 'column') {
-      bind(table, p.expr);
+      bind(table, p.expr, alias);
       if (grouped && !groupCols.has(p.expr.name)) {
         throw new FqlError(
           `column "${p.expr.name}" must appear in GROUP BY or an aggregate`,
@@ -225,16 +233,16 @@ function validateProjections(table: TableDef, stmt: SelectStmt): void {
       }
     }
   }
-  for (const c of stmt.groupBy) bind(table, c);
+  for (const c of stmt.groupBy) bind(table, c, alias);
 
   // ORDER BY may reference a SELECT output alias (standard SQL) rather than a
   // base column — collect those so we don't reject them as unknown columns.
-  const aliases = new Set(stmt.projections.map((p) => p.alias).filter((a): a is string => !!a));
+  const outAliases = new Set(stmt.projections.map((p) => p.alias).filter((a): a is string => !!a));
   for (const o of stmt.orderBy) {
     if (o.expr.kind === 'agg') {
-      validateAgg(table, o.expr);
-    } else if (o.expr.kind === 'column' && !aliases.has(o.expr.name)) {
-      bind(table, o.expr);
+      validateAgg(table, o.expr, alias);
+    } else if (o.expr.kind === 'column' && !outAliases.has(o.expr.name)) {
+      bind(table, o.expr, alias);
     }
   }
 }
@@ -262,7 +270,7 @@ export function plan(stmt: SelectStmt): ExecutionPlan {
     if (groups.length > MAX_GROUPS) {
       fetches = [{}]; // too many disjuncts → fetch broad, filter client-side
     } else {
-      fetches = groups.map((g) => groupToFetch(table, g));
+      fetches = groups.map((g) => groupToFetch(table, g, stmt.from.alias));
       // De-dup identical fetch specs (e.g. `a OR a`).
       const seen = new Set<string>();
       fetches = fetches.filter((f) => {

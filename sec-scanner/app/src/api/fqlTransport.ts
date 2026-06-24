@@ -207,11 +207,15 @@ function resourceRow(
     name: md?.name,
     namespace: md?.namespace ?? null,
     resourceType,
-    image: images.join(','), // joined for display; regex/LIKE still matches substrings
+    image: images.join(','), // curated sugar; raw paths read containers.*.image from __doc
     replicas: spec?.replicas ?? null,
     severity: a[ANNO_MAX_SEVERITY] ?? 'UNKNOWN',
     cveCount: Number.isFinite(cve) ? cve : 0,
     scannedAt: a[ANNO_SCANNED_AT] ?? '',
     cvedbVersion: a[ANNO_CVEDB_VERSION] ?? '',
+    // The raw resource doc, so FQL can evaluate arbitrary YAML data paths
+    // (e.g. `spec.template.spec.containers.*.image`) client-side. Reserved key
+    // (leading __) so it's excluded from SELECT * column discovery.
+    __doc: doc,
   };
 }

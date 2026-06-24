@@ -18,7 +18,7 @@ const res = await runQuery(
 
 ```
 SELECT  proj [, proj]*            -- or *
-FROM    units | resources | spaces | targets
+FROM    (units | resources | spaces | targets) [AS? alias]
 [WHERE  expr]
 [GROUP BY col [, col]*]
 [ORDER BY (col|agg) [ASC|DESC] [, ...]]
@@ -33,11 +33,28 @@ predicate :=
   | col [NOT] LIKE 'pat' | col ILIKE 'pat'
   | col IS [NOT] NULL
 op := = != < > <= >= ~ ~* !~ !~*      -- ~ family = POSIX regex
+col := name | name.dotted.path | `backtick quoted path` | alias.<any of those>
 ```
 
 Strings use single quotes with `''` escaping (`'it''s'`). `--` starts a line
-comment. Keywords are case-insensitive; identifiers are not. Dotted columns
-(`labels.env`) read map keys.
+comment. Keywords are case-insensitive; identifiers are not.
+
+**Columns** come in three flavors:
+
+- **Curated** (`severity`, `image`, `kind`, `slug`, …) — friendly names, some
+  pushed to `where`, some to `where_data` (see table below).
+- **Map keys** — `labels.env`, `annotations.<key>` read entity maps.
+- **Raw YAML data paths** (`resources` only) — any other dotted path is treated
+  as a path into the resource document and pushed to `where_data` verbatim:
+  `spec.replicas`, `spec.strategy.type`, `spec.template.spec.containers.*.image`.
+  Use **backticks** when the path contains `*`, `/`, `-`, or other non-identifier
+  characters: `` `spec.template.spec.containers.*.image` ``,
+  `` `metadata.annotations.example.com/team` ``. `*` matches **any** array
+  element (existential: true if any element matches); `.0.` indexes one.
+
+A **table alias** (`FROM resources r`) qualifies columns as `r.col` — purely
+ergonomic in v1 (no JOINs yet). Curated columns like `image` are just sugar over
+common raw paths; drop to a backtick path for anything not curated.
 
 ## Virtual tables
 

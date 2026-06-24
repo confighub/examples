@@ -69,6 +69,34 @@ describe('planner — pushdown', () => {
     const p = planOf("SELECT slug FROM units WHERE space = 'a' OR space = 'a'");
     expect(p.fetches).toHaveLength(1);
   });
+
+  it('strips a table alias before resolving columns', () => {
+    const p = planOf("SELECT unit FROM resources r WHERE r.kind = 'Deployment'");
+    expect(p.fetches).toEqual([{ whereData: "kind = 'Deployment'" }]);
+  });
+
+  it('pushes a raw YAML data path to where_data verbatim', () => {
+    const p = planOf("SELECT unit FROM resources WHERE spec.strategy.type = 'RollingUpdate'");
+    expect(p.fetches).toEqual([{ whereData: "spec.strategy.type = 'RollingUpdate'" }]);
+  });
+
+  it('pushes a backtick-quoted wildcard path', () => {
+    const p = planOf(
+      "SELECT unit FROM resources WHERE `spec.template.spec.containers.*.image` ~ ':latest'",
+    );
+    expect(p.fetches).toEqual([
+      { whereData: "spec.template.spec.containers.*.image ~ ':latest'" },
+    ]);
+  });
+
+  it('alias + raw path together', () => {
+    const p = planOf('SELECT unit FROM resources r WHERE r.spec.replicas > 1');
+    expect(p.fetches).toEqual([{ whereData: 'spec.replicas > 1' }]);
+  });
+
+  it('still rejects unknown columns on non-raw tables', () => {
+    expect(() => planOf('SELECT nope FROM units')).toThrow(/unknown column/);
+  });
 });
 
 describe('planner — validation', () => {

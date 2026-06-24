@@ -20,6 +20,9 @@ export interface Token {
   type: TokenType;
   /** Raw text. For keywords this is upper-cased; for strings it's the decoded value. */
   value: string;
+  /** True for backtick-quoted idents — a verbatim path that bypasses keyword
+   *  matching and may contain `*`, `/`, `-`, etc. (e.g. a YAML data path). */
+  quoted?: boolean;
   pos: Pos;
 }
 
@@ -119,6 +122,29 @@ export function lex(src: string): Token[] {
       }
       if (!closed) fail('unterminated string literal', start, i);
       tokens.push({ type: 'string', value, pos: posAt(start, i) });
+      continue;
+    }
+
+    // Backtick-quoted identifier: a verbatim path (any char but backtick).
+    // Lets a column be a full YAML data path with `*`, `/`, `-`, dots, etc.,
+    // e.g. `spec.template.spec.containers.*.image`.
+    if (c === '`') {
+      i++; // opening backtick
+      let value = '';
+      let closed = false;
+      while (i < src.length) {
+        if (src[i] === '`') {
+          i++; // closing backtick
+          closed = true;
+          break;
+        }
+        if (src[i] === '\n') break; // quoted idents don't span lines
+        value += src[i];
+        i++;
+      }
+      if (!closed) fail('unterminated backtick-quoted identifier', start, i);
+      if (value === '') fail('empty backtick-quoted identifier', start, i);
+      tokens.push({ type: 'ident', value, quoted: true, pos: posAt(start, i) });
       continue;
     }
 

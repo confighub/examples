@@ -47,6 +47,51 @@ describe('evaluate — filter', () => {
   });
 });
 
+describe('evaluate — raw YAML paths over __doc (array wildcard, existential)', () => {
+  // Rows carry the raw resource doc under __doc for data-path traversal.
+  const docRows: Row[] = [
+    {
+      unit: 'multi',
+      __doc: {
+        kind: 'Deployment',
+        spec: {
+          replicas: 3,
+          template: { spec: { containers: [{ image: 'nginx:1.27-alpine' }, { image: 'busybox:latest' }] } },
+        },
+      },
+    },
+    {
+      unit: 'single',
+      __doc: {
+        kind: 'Deployment',
+        spec: { replicas: 1, template: { spec: { containers: [{ image: 'redis:7.2-alpine' }] } } },
+      },
+    },
+  ];
+  const run = (q: string) => evaluate(parse(q), docRows, ['unit']);
+
+  it('matches existentially when ANY array element matches (* wildcard)', () => {
+    const r = run("SELECT unit FROM resources WHERE `spec.template.spec.containers.*.image` ~ ':latest'");
+    expect(r.rows.map((x) => x.unit)).toEqual(['multi']); // only multi has a :latest container
+  });
+
+  it('traverses a scalar data path with a numeric comparison', () => {
+    const r = run('SELECT unit FROM resources WHERE `spec.replicas` > 1');
+    expect(r.rows.map((x) => x.unit)).toEqual(['multi']);
+  });
+
+  it('indexes a specific array element', () => {
+    const r = run("SELECT unit FROM resources WHERE `spec.template.spec.containers.0.image` LIKE 'nginx%'");
+    expect(r.rows.map((x) => x.unit)).toEqual(['multi']);
+  });
+
+  it('resolves an alias-qualified bare path via __doc traversal', () => {
+    // `d.kind` → strip alias → "kind"; not a flat field, found in __doc.
+    const r = run("SELECT unit FROM resources d WHERE d.kind = 'Deployment'");
+    expect(r.rows.map((x) => x.unit).sort()).toEqual(['multi', 'single']);
+  });
+});
+
 describe('evaluate — projection / order / limit', () => {
   it('projects selected columns only', () => {
     const r = run("SELECT unit, image FROM resources WHERE severity = 'MEDIUM'");

@@ -29,7 +29,12 @@ const EXAMPLES: { label: string; query: string }[] = [
   {
     label: 'Critical or floating-tag images',
     query:
-      "SELECT unit, image, severity\nFROM resources\nWHERE kind = 'Deployment'\n  AND (severity = 'CRITICAL' OR image ~ ':latest')\nORDER BY severity LIMIT 20",
+      "SELECT unit, image, severity\nFROM resources r\nWHERE r.kind = 'Deployment'\n  AND (r.severity = 'CRITICAL' OR `spec.template.spec.containers.*.image` ~ ':latest')\nORDER BY severity LIMIT 20",
+  },
+  {
+    label: 'Raw YAML path: replicas > 1',
+    query:
+      "SELECT unit, replicas\nFROM resources\nWHERE kind = 'Deployment' AND `spec.replicas` > 1",
   },
   {
     label: 'Critical count per space',

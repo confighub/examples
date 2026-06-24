@@ -101,4 +101,24 @@ describe('lexer', () => {
   it('throws on an illegal character', () => {
     expect(() => lex('a & b')).toThrow(FqlError);
   });
+
+  it('lexes a backtick-quoted path verbatim (with * / -)', () => {
+    const toks = lex('`spec.template.spec.containers.*.image`');
+    expect(toks[0]).toMatchObject({
+      type: 'ident',
+      value: 'spec.template.spec.containers.*.image',
+      quoted: true,
+    });
+    const anno = lex('`metadata.annotations.sec-scanner.confighub.com/max-severity`');
+    expect(anno[0].value).toBe('metadata.annotations.sec-scanner.confighub.com/max-severity');
+  });
+
+  it('does not keyword-match inside a backtick ident', () => {
+    // `from` would normally be the FROM keyword; quoted it stays an ident.
+    expect(lex('`from`')[0]).toMatchObject({ type: 'ident', value: 'from', quoted: true });
+  });
+
+  it('throws on an unterminated backtick ident', () => {
+    expect(() => lex('`spec.replicas')).toThrow(FqlError);
+  });
 });

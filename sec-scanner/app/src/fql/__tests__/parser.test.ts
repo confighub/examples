@@ -41,6 +41,25 @@ describe('parser — statement shape', () => {
     const cmp = s.where as CompareExpr;
     expect(cmp.left.path).toEqual(['labels', 'env']);
   });
+
+  it('parses a table alias (bare and AS)', () => {
+    expect(parse('SELECT slug FROM resources r').from.alias).toBe('r');
+    expect(parse('SELECT slug FROM resources AS r').from.alias).toBe('r');
+    expect(parse('SELECT slug FROM resources').from.alias).toBeNull();
+  });
+
+  it('parses a backtick-quoted column path', () => {
+    const s = parse('SELECT slug FROM resources WHERE `spec.replicas` > 1');
+    const cmp = s.where as CompareExpr;
+    expect(cmp.left.quoted).toBe(true);
+    expect(cmp.left.path).toEqual(['spec', 'replicas']);
+  });
+
+  it('parses an alias-qualified column', () => {
+    const s = parse("SELECT slug FROM resources r WHERE r.kind = 'Deployment'");
+    const cmp = s.where as CompareExpr;
+    expect(cmp.left.path).toEqual(['r', 'kind']);
+  });
 });
 
 describe('parser — expression precedence', () => {
@@ -113,7 +132,8 @@ describe('parser — errors', () => {
   });
 
   it('rejects trailing garbage', () => {
-    expect(() => parse('SELECT slug FROM units extra')).toThrow(FqlError);
+    // `extra` is now consumed as a table alias; a second trailing token is garbage.
+    expect(() => parse('SELECT slug FROM units extra junk')).toThrow(FqlError);
   });
 
   it('rejects a non-integer LIMIT', () => {

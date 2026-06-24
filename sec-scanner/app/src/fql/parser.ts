@@ -104,7 +104,15 @@ class Parser {
     const projections = this.parseProjections();
     this.expectKw('FROM');
     const fromTok = this.expect('ident', 'a table name after FROM');
-    const from = { name: fromTok.value, pos: fromTok.pos };
+    // Optional table alias: `FROM resources r` or `FROM resources AS r`.
+    let alias: string | null = null;
+    if (this.isKw('AS')) {
+      this.next();
+      alias = this.expect('ident', 'an alias after AS').value;
+    } else if (this.peek().type === 'ident') {
+      alias = this.next().value;
+    }
+    const from = { name: fromTok.value, alias, pos: fromTok.pos };
 
     let where: Expr | null = null;
     if (this.isKw('WHERE')) {
@@ -208,7 +216,13 @@ class Parser {
 
   private parseColumn(): ColumnExpr {
     const t = this.expect('ident', 'a column name');
-    return { kind: 'column', name: t.value, path: t.value.split('.'), pos: t.pos };
+    return {
+      kind: 'column',
+      name: t.value,
+      path: t.value.split('.'),
+      quoted: t.quoted === true,
+      pos: t.pos,
+    };
   }
 
   private parseOrderKey(): OrderKey {
