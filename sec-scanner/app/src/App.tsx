@@ -6,6 +6,7 @@ import { SnapshotProvider } from './fleet/SnapshotContext';
 import { DashboardPage } from './pages/DashboardPage';
 import { FindingsPage } from './pages/FindingsPage';
 import { FleetPage } from './pages/FleetPage';
+import { QueryPage } from './pages/QueryPage';
 import { UnitPage } from './pages/UnitPage';
 
 /** Terminal pages the API client may navigate to on 403. */
@@ -24,6 +25,7 @@ const NAV = [
   { path: '/', label: 'Dashboard' },
   { path: '/fleet', label: 'Fleet' },
   { path: '/findings', label: 'Findings' },
+  { path: '/query', label: 'Query' },
 ];
 
 function NavTabs() {
@@ -71,6 +73,7 @@ export default function App() {
                 <Route path='/' element={<DashboardPage />} />
                 <Route path='/fleet' element={<FleetPage />} />
                 <Route path='/findings' element={<FindingsPage />} />
+                <Route path='/query' element={<QueryPage />} />
                 <Route path='/unit/:spaceId/:unitId' element={<UnitPage />} />
               </Routes>
             </SnapshotProvider>
