@@ -138,6 +138,21 @@ describe('planner — pushdown', () => {
     const p = planOf("SELECT unit FROM resources WHERE kind = 'Service'");
     expect(p.fetches).toEqual([{ whereData: "kind = 'Service'" }]);
   });
+
+  it('revisions: splits unit-scope (whereUnit) from revision fields (where)', () => {
+    const p = planOf("SELECT RevisionNum FROM revisions WHERE unit = 'checkout' AND Source = 'Trigger'");
+    expect(p.source).toBe('revisions');
+    expect(p.fetches).toEqual([
+      { where: "Source = 'Trigger'", whereUnit: "Slug = 'checkout'" },
+    ]);
+  });
+
+  it('revisions: space scopes whereUnit; RevisionNum pushes to where', () => {
+    const p = planOf('SELECT RevisionNum FROM revisions WHERE space = ' + "'prod' AND RevisionNum > 5");
+    expect(p.fetches).toEqual([
+      { where: 'RevisionNum > 5', whereUnit: "Space.Slug = 'prod'" },
+    ]);
+  });
 });
 
 describe('planner — validation', () => {

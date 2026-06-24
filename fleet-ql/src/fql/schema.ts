@@ -14,7 +14,13 @@
 
 export type ColumnType = 'string' | 'number' | 'boolean';
 
-export type PushdownTarget = 'where' | 'where_data' | 'whereResource';
+// where         entity filter on the primary list endpoint
+// where_data    JSONB path filter on resource data (resources)
+// whereResource resource-type metadata filter (resources)
+// whereUnit     on `revisions`: narrows WHICH units we pull revisions from
+//               (the revision endpoint is per-unit); revision-field predicates
+//               use `where` against that endpoint.
+export type PushdownTarget = 'where' | 'where_data' | 'whereResource' | 'whereUnit';
 
 export interface Pushdown {
   target: PushdownTarget;
@@ -36,7 +42,7 @@ export interface MapPrefixDef {
   pushdown?: { target: PushdownTarget; field: string }; // server map field, e.g. "Labels"
 }
 
-export type TableSource = 'units' | 'resources' | 'spaces' | 'targets';
+export type TableSource = 'units' | 'resources' | 'spaces' | 'revisions';
 
 export interface TableDef {
   source: TableSource;
@@ -134,22 +140,30 @@ const SPACES: TableDef = {
   },
 };
 
-const TARGETS: TableDef = {
-  source: 'targets',
+// Revisions are per-Unit (endpoint: /space/{id}/unit/{id}/revision). `unit` and
+// `space` narrow WHICH units we pull revisions from (whereUnit); revision-field
+// columns (RevisionNum, Source, …) push to the revision endpoint's `where`.
+const REVISIONS: TableDef = {
+  source: 'revisions',
   columns: {
-    slug: { type: 'string', pushdown: { target: 'where', expr: 'Slug' } },
-    displayName: { type: 'string', pushdown: { target: 'where', expr: 'DisplayName' } },
+    // Scoping: which units to read revisions from.
+    unit: { type: 'string', pushdown: { target: 'whereUnit', expr: 'Slug' } },
+    space: { type: 'string', pushdown: { target: 'whereUnit', expr: 'Space.Slug' } },
+    // Revision fields — pushed to the revision endpoint's `where`.
+    RevisionNum: { type: 'number', pushdown: { target: 'where', expr: 'RevisionNum' } },
+    Source: { type: 'string', pushdown: { target: 'where', expr: 'Source' } },
+    Description: { type: 'string', pushdown: { target: 'where', expr: 'Description' } },
+    CreatedAt: { type: 'string', pushdown: { target: 'where', expr: 'CreatedAt' } },
+    UserID: { type: 'string', pushdown: { target: 'where', expr: 'UserID' } },
   },
-  mapPrefixes: {
-    labels: { type: 'string', pushdown: { target: 'where', field: 'Labels' } },
-  },
+  mapPrefixes: {},
 };
 
 export const TABLES: Record<string, TableDef> = {
   units: UNITS,
   resources: RESOURCES,
   spaces: SPACES,
-  targets: TARGETS,
+  revisions: REVISIONS,
 };
 
 /** A resolved column: its type and (optional) compiled pushdown, with the FQL

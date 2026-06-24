@@ -47,7 +47,7 @@ npm run build     # tsc + production build
 | `units` | ConfigHub Units — slug, space, toolchain, revision/drift fields, gates, labels |
 | `resources` | the Kubernetes resources inside Units (all kinds) — `kind`, `name`, raw YAML paths, annotations |
 | `spaces` | Spaces — slug, labels, annotations |
-| `targets` | Targets — slug, provider, labels |
+| `revisions` | per-Unit change history — `RevisionNum`, `Source`, `Description`, `CreatedAt`, scoped by `unit`/`space` |
 
-`revisions`, `events`, `triggers`, `filters`, and `links` parse today but aren't
-wired to the planner yet — see the engine README.
+`events`, `triggers`, `filters`, and `links` parse today but aren't wired to the
+planner yet — see the engine README.

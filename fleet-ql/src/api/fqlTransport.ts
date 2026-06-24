@@ -7,7 +7,7 @@
 // evaluates arbitrary YAML data paths (images, scanner annotations, etc.)
 // against __doc client-side, so there are no domain-specific curated columns.
 
-import type { ListParams, ResourceParams, Row, Transport } from '../fql';
+import type { ListParams, ResourceParams, RevisionParams, Row, Transport } from '../fql';
 import { authHeaders } from './auth';
 import { b64decodeUtf8 } from './encoding';
 
@@ -59,8 +59,16 @@ interface SpaceListEntry {
   Space?: { Slug?: string; DisplayName?: string; SpaceID?: string; Labels?: Record<string, string>; Annotations?: Record<string, string> };
 }
 
-interface TargetListEntry {
-  Target?: { Slug?: string; DisplayName?: string; TargetID?: string; Labels?: Record<string, string> };
+interface RevisionListEntry {
+  Revision?: {
+    RevisionID?: string;
+    RevisionNum?: number;
+    Source?: string;
+    Description?: string;
+    CreatedAt?: string;
+    UserID?: string;
+    DataHash?: string;
+  };
 }
 
 interface InvokeResponse {
@@ -124,16 +132,40 @@ export const fqlTransport: Transport = {
     });
   },
 
-  async targets(params: ListParams): Promise<Row[]> {
-    // Targets are scoped per-space in the API; query org-wide via the unit
-    // endpoint's sibling /target list is not available, so use the flat list.
-    const entries = await getJson<TargetListEntry[]>('/api/target', { where: params.where });
-    return entries.map((e) => {
-      const t = e.Target ?? {};
-      const row: Row = { __id: t.TargetID, slug: t.Slug, displayName: t.DisplayName };
-      spreadMap(row, 'labels', t.Labels);
-      return row;
+  async revisions(params: RevisionParams): Promise<Row[]> {
+    // Revisions are per-Unit. First find the in-scope units (whereUnit), then
+    // fan out a revision fetch per unit (the endpoint's `where` filters revision
+    // fields). Rows carry their owning unit/space for identity and grouping.
+    const units = await getJson<UnitListEntry[]>('/api/unit', {
+      where: params.whereUnit,
+      select: 'UnitID,Slug,SpaceID',
+      include: 'SpaceID',
     });
+
+    const perUnit = await Promise.all(
+      units.map(async (e): Promise<Row[]> => {
+        const sid = e.Unit?.SpaceID;
+        const uid = e.Unit?.UnitID;
+        if (!sid || !uid) return [];
+        const revs = await getJson<RevisionListEntry[]>(
+          `/api/space/${sid}/unit/${uid}/revision`,
+          { where: params.where },
+        );
+        return revs.map((r): Row => {
+          const rev = r.Revision ?? {};
+          return {
+            unit: e.Unit?.Slug,
+            space: e.Space?.Slug,
+            RevisionNum: rev.RevisionNum,
+            Source: rev.Source,
+            Description: rev.Description,
+            CreatedAt: rev.CreatedAt,
+            UserID: rev.UserID,
+          };
+        });
+      }),
+    );
+    return perUnit.flat();
   },
 
   async resources(params: ResourceParams): Promise<Row[]> {

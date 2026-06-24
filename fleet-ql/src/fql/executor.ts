@@ -29,8 +29,10 @@ function rowKey(source: ExecutionPlan['source'], row: Row): string {
     case 'resources':
       // A Unit can hold multiple resources; key on the resource identity.
       return `${row['space']}/${row['unit']}/${row['resourceType'] ?? ''}/${row['name'] ?? ''}`;
+    case 'revisions':
+      // One revision = (space, unit, revision number).
+      return `${row['space']}/${row['unit']}/${row['RevisionNum'] ?? ''}`;
     case 'spaces':
-    case 'targets':
       return String(row['__id'] ?? row['slug']);
   }
 }
@@ -51,8 +53,8 @@ async function fetchFor(
       } as ResourceParams);
     case 'spaces':
       return transport.spaces({ where: spec.where } as ListParams);
-    case 'targets':
-      return transport.targets({ where: spec.where } as ListParams);
+    case 'revisions':
+      return transport.revisions({ whereUnit: spec.whereUnit, where: spec.where });
   }
 }
 

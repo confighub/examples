@@ -17,6 +17,7 @@ import { compileCompare, joinAnd } from './compile';
 import { FqlError } from './errors';
 import {
   columnNames,
+  type PushdownTarget,
   resolveColumn,
   type ColumnType,
   type ResolvedColumn,
@@ -35,6 +36,8 @@ export interface FetchSpec {
   where?: string;
   whereData?: string;
   whereResource?: string;
+  /** revisions only: filter on which units to pull revisions from. */
+  whereUnit?: string;
 }
 
 export interface ExecutionPlan {
@@ -198,9 +201,13 @@ function toDNF(e: Expr): Expr[][] {
 /** Compile the pushable atoms of one AND-group into a FetchSpec. Unpushable
  *  atoms are simply omitted (client-side residual covers them). */
 function groupToFetch(table: TableDef, atoms: Expr[], alias: string | null): FetchSpec {
-  const whereParts: string[] = [];
-  const dataParts: string[] = [];
-  const resourceParts: string[] = [];
+  // One bucket per pushdown target.
+  const parts: Record<PushdownTarget, string[]> = {
+    where: [],
+    where_data: [],
+    whereResource: [],
+    whereUnit: [],
+  };
 
   for (const atom of atoms) {
     if (atom.kind === 'compare') {
@@ -216,18 +223,19 @@ function groupToFetch(table: TableDef, atoms: Expr[], alias: string | null): Fet
         // Column-to-column on an entity `where` field: emit `<lhs> op <rhs>`
         // with both server-side column expressions (no literal).
         if (rhsCol!.pushdown?.target === 'where') {
-          whereParts.push(`${col.pushdown!.expr} ${atom.op} ${rhsCol!.pushdown.expr}`);
+          parts.where.push(`${col.pushdown!.expr} ${atom.op} ${rhsCol!.pushdown.expr}`);
         }
         continue;
       }
-      const frag = compileCompare(atom, col);
-      bucket(col.pushdown!.target, frag, whereParts, dataParts, resourceParts);
+      parts[col.pushdown!.target].push(compileCompare(atom, col));
     } else if (atom.kind === 'isnull') {
       const col = bind(table, atom.column, alias);
-      // Only push NULL checks onto entity (`where`) fields; data-path NULL
-      // semantics differ (`.|`), so leave those to client-side.
-      if (col.pushdown?.target === 'where') {
-        whereParts.push(`${col.pushdown.expr} IS ${atom.negated ? 'NOT NULL' : 'NULL'}`);
+      // Push NULL checks onto entity (`where`/`whereUnit`) fields only; data-path
+      // NULL semantics differ (`.|`), so leave those to client-side.
+      if (col.pushdown && (col.pushdown.target === 'where' || col.pushdown.target === 'whereUnit')) {
+        parts[col.pushdown.target].push(
+          `${col.pushdown.expr} IS ${atom.negated ? 'NOT NULL' : 'NULL'}`,
+        );
       }
     }
     // 'not'/'logical' atoms (shouldn't appear post-DNF except residual NOTs):
@@ -235,22 +243,11 @@ function groupToFetch(table: TableDef, atoms: Expr[], alias: string | null): Fet
   }
 
   const spec: FetchSpec = {};
-  if (whereParts.length) spec.where = joinAnd(whereParts);
-  if (dataParts.length) spec.whereData = joinAnd(dataParts);
-  if (resourceParts.length) spec.whereResource = joinAnd(resourceParts);
+  if (parts.where.length) spec.where = joinAnd(parts.where);
+  if (parts.where_data.length) spec.whereData = joinAnd(parts.where_data);
+  if (parts.whereResource.length) spec.whereResource = joinAnd(parts.whereResource);
+  if (parts.whereUnit.length) spec.whereUnit = joinAnd(parts.whereUnit);
   return spec;
-}
-
-function bucket(
-  target: 'where' | 'where_data' | 'whereResource',
-  frag: string,
-  where: string[],
-  data: string[],
-  resource: string[],
-): void {
-  if (target === 'where') where.push(frag);
-  else if (target === 'where_data') data.push(frag);
-  else resource.push(frag);
 }
 
 // ─── Projection / order / group validation ────────────────────────────────────

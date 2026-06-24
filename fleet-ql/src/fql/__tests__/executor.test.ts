@@ -24,7 +24,7 @@ function mockTransport(): Transport & { calls: ResourceParams[] } {
     async spaces() {
       return [];
     },
-    async targets() {
+    async revisions() {
       return [];
     },
     async resources(params: ResourceParams) {

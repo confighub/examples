@@ -6,7 +6,7 @@
 
 import type { Row } from './evaluate';
 
-/** Params for an entity-list fetch (units / spaces / targets). */
+/** Params for an entity-list fetch (units / spaces). */
 export interface ListParams {
   where?: string;
 }
@@ -18,6 +18,13 @@ export interface ResourceParams {
   whereResource?: string;
 }
 
+/** Params for a revisions fetch. Revisions are per-Unit, so `whereUnit` narrows
+ *  which Units to read from, and `where` filters revision fields per unit. */
+export interface RevisionParams {
+  whereUnit?: string;
+  where?: string;
+}
+
 /**
  * A Transport knows how to fetch each virtual table's rows from ConfigHub and
  * return them as flat FQL rows (column name → value). Each method may be called
@@ -27,5 +34,5 @@ export interface Transport {
   units(params: ListParams): Promise<Row[]>;
   resources(params: ResourceParams): Promise<Row[]>;
   spaces(params: ListParams): Promise<Row[]>;
-  targets(params: ListParams): Promise<Row[]>;
+  revisions(params: RevisionParams): Promise<Row[]>;
 }

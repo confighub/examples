@@ -19,7 +19,7 @@ const res = await runQuery(
 
 ```
 SELECT  proj [, proj]*            -- or *
-FROM    (units | resources | spaces | targets) [AS? alias]
+FROM    (units | resources | spaces | revisions) [AS? alias]
 [WHERE  expr]
 [GROUP BY col [, col]*]
 [ORDER BY (col|agg) [ASC|DESC] [, ...]]
@@ -103,10 +103,10 @@ SELECT slug FROM units WHERE ApplyGates['sec-demo-policy/no-critical-cves/vet-ce
 SELECT space, COUNT(*) AS n FROM units WHERE labels.team = 'payments' GROUP BY space
 ```
 
-> Planned tables (parse today, not yet in the catalog): `revisions` (audit
-> trail), `events` (apply results / "did it deploy"), `triggers`, `filters`,
-> `links` (dependency graph). The parser already accepts queries over them; only
-> the planner/transport wiring remains.
+> Planned tables (parse today, not yet in the catalog): `events` (apply results
+> / "did it deploy"), `triggers`, `filters`, `links` (dependency graph). The
+> parser already accepts queries over them; only the planner/transport wiring
+> remains.
 
 ## Virtual tables
 
@@ -115,7 +115,7 @@ SELECT space, COUNT(*) AS n FROM units WHERE labels.team = 'payments' GROUP BY s
 | `units` | `GET /unit` | `slug`, `space`, `toolchain`, `target`, `headRev`/`HeadRevisionNum`, `LiveRevisionNum`, `LastAppliedRevisionNum`, `UpstreamRevisionNum`, `UpstreamUnitID`, `ProviderType`, `gates`, `warnings`, `labels.*`, `annotations.*`, `ApplyGates['<space>/<trigger>/<fn>']`, `ApplyWarnings[...]` |
 | `resources` | `POST /function/invoke` + `get-resources` | `unit`, `space`, `kind`, `name`, `namespace`, `replicas`, `resourceType`, `labels.*`, + any raw data path |
 | `spaces` | `GET /space` | `slug`, `displayName`, `labels.*`, `annotations.*` |
-| `targets` | `GET /target` | `slug`, `displayName`, `labels.*` |
+| `revisions` | `GET /space/{id}/unit/{id}/revision` (per Unit) | `unit`, `space` (scope which units), `RevisionNum`, `Source`, `Description`, `CreatedAt`, `UserID` |
 
 `resources` has no domain columns: an image is the array path
 `` `spec.template.spec.containers.*.image` `` and the scanner verdict is an

@@ -1,5 +1,5 @@
 // Parser robustness corpus. A broad set of realistic fleet queries across every
-// ConfigHub domain (units, revisions, spaces, targets, gates, triggers, filters,
+// ConfigHub domain (units, revisions, spaces, gates, triggers, filters,
 // events, resources) that the parser MUST accept. The parser is table/column
 // agnostic — it validates syntax shape, not catalog membership — so these
 // exercise the grammar, not the planner. Field names mirror ConfigHub's real
@@ -44,12 +44,6 @@ const VALID: Record<string, string[]> = {
     "SELECT slug FROM spaces WHERE labels.env = 'prod'",
     "SELECT slug, displayName FROM spaces WHERE slug LIKE 'team-%' AND labels.region = 'us-east'",
     "SELECT labels.env AS env, COUNT(*) AS n FROM spaces GROUP BY labels.env",
-  ],
-  targets: [
-    "SELECT slug FROM targets WHERE ProviderType = 'Kubernetes'",
-    "SELECT slug FROM targets WHERE labels.region != 'eu-west' AND ToolchainType = 'Kubernetes/YAML'",
-    // infra facts (collected under the Cluster. prefix)
-    "SELECT slug FROM targets WHERE Facts['Cluster.KubernetesVersion'] LIKE '1.29%'",
   ],
   gates: [
     // policy audit — what's blocked, and by which gate
