@@ -113,7 +113,7 @@ SELECT space, COUNT(*) AS n FROM units WHERE labels.team = 'payments' GROUP BY s
 | Table | Source | Notable columns |
 |---|---|---|
 | `units` | `GET /unit` | `slug`, `space`, `toolchain`, `target`, `headRev`/`HeadRevisionNum`, `LiveRevisionNum`, `LastAppliedRevisionNum`, `UpstreamRevisionNum`, `UpstreamUnitID`, `ProviderType`, `gates`, `warnings`, `labels.*`, `annotations.*`, `ApplyGates['<space>/<trigger>/<fn>']`, `ApplyWarnings[...]` |
-| `resources` | `POST /function/invoke` + `get-resources` | `unit`, `space`, `kind`, `name`, `namespace`, `replicas`, `resourceType`, `labels.*`, + any raw data path |
+| `resources` | `POST /function/invoke` + `get-resources` (or a revision's data blob) | `unit`, `space`, `kind`, `name`, `namespace`, `replicas`, `resourceType`, `revision`, `labels.*`, + any raw data path |
 | `spaces` | `GET /space` | `slug`, `displayName`, `labels.*`, `annotations.*` |
 | `revisions` | `GET /space/{id}/unit/{id}/revision` (per Unit) | `unit`, `space` (scope which units), `RevisionNum`, `Source`, `Description`, `CreatedAt`, `UserID` |
 
@@ -123,6 +123,18 @@ annotation, `metadata.annotations['sec-scanner.confighub.com/max-severity']`.
 Both are read from the resource document and evaluated client-side (no server
 index for the annotation key), so a query on them fetches broadly and filters in
 the browser.
+
+**Time travel.** `WHERE revision = N` reads each in-scope unit's resources *as of*
+that revision instead of head — it fetches that revision's data blob and parses
+the resources from it. `revision = 'head'` / `'live'` resolve per unit to the
+unit's `HeadRevisionNum` / `LiveRevisionNum`. The selector is a fetch parameter,
+not a filter, so it's stripped from the client-side residual (and each row is
+stamped with the resolved `revision`). Pair it with `unit =` / `space =` scoping.
+
+```sql
+SELECT unit, `spec.template.spec.containers.*.image` AS image
+FROM resources WHERE unit = 'checkout' AND revision = 5
+```
 
 ## How it executes (the pushdown model)
 

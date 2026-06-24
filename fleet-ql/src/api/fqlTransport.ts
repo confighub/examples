@@ -7,6 +7,8 @@
 // evaluates arbitrary YAML data paths (images, scanner annotations, etc.)
 // against __doc client-side, so there are no domain-specific curated columns.
 
+import { parseAllDocuments } from 'yaml';
+
 import type { ListParams, ResourceParams, RevisionParams, Row, Transport } from '../fql';
 import { authHeaders } from './auth';
 import { b64decodeUtf8 } from './encoding';
@@ -20,6 +22,12 @@ async function getJson<T>(path: string, query: Record<string, string | undefined
   const res = await fetch(url, { credentials: 'include', headers: authHeaders() });
   if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
   return res.json() as Promise<T>;
+}
+
+async function getText(path: string): Promise<string> {
+  const res = await fetch(path, { credentials: 'include', headers: authHeaders() });
+  if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
+  return res.text();
 }
 
 async function postJson<T>(path: string, query: Record<string, string | undefined>, body: unknown): Promise<T> {
@@ -46,6 +54,7 @@ interface UnitListEntry {
     DisplayName?: string;
     ToolchainType?: string;
     HeadRevisionNum?: number;
+    LiveRevisionNum?: number;
     Labels?: Record<string, string>;
     Annotations?: Record<string, string>;
     ApplyGates?: Record<string, boolean>;
@@ -169,6 +178,13 @@ export const fqlTransport: Transport = {
   },
 
   async resources(params: ResourceParams): Promise<Row[]> {
+    // Time-travel path: read each in-scope unit's resources AS OF a specific
+    // revision (instead of head's get-resources). We resolve the unit, find the
+    // target revision's ID, fetch its data blob, and parse the K8s docs out.
+    if (params.revision !== undefined) {
+      return resourcesAtRevision(params);
+    }
+
     // get-resources over the matching Units, then explode each Unit's resource
     // list into one FQL row per Kubernetes resource.
     const responses = await postJson<InvokeResponse[]>(
@@ -201,17 +217,78 @@ export const fqlTransport: Transport = {
         } catch {
           continue;
         }
-        rows.push(resourceRow(resp, raw.ResourceType, doc));
+        rows.push(resourceRow(resp.UnitSlug, resp.SpaceSlug, raw.ResourceType, doc, 'head'));
       }
     }
     return rows;
   },
 };
 
+// ─── Time-travel: resources as of a specific revision ───────────────────────
+
+const SELECT_UNIT_REV = 'UnitID,Slug,SpaceID,HeadRevisionNum,LiveRevisionNum';
+
+/** Read resources from a specific revision per in-scope unit (params.revision
+ *  is a RevisionNum, or 'head' / 'live'). One row per K8s doc in that revision's
+ *  data, stamped with the resolved RevisionNum. */
+async function resourcesAtRevision(params: ResourceParams): Promise<Row[]> {
+  const sel = params.revision!.toLowerCase();
+  const units = await getJson<UnitListEntry[]>('/api/unit', {
+    where: params.where,
+    select: SELECT_UNIT_REV,
+    include: 'SpaceID',
+  });
+
+  const perUnit = await Promise.all(
+    units.map(async (e): Promise<Row[]> => {
+      const u = e.Unit;
+      const sid = u?.SpaceID;
+      const uid = u?.UnitID;
+      if (!sid || !uid) return [];
+
+      // Resolve the target RevisionNum: symbolic head/live, else the literal.
+      let revNum: number | undefined;
+      if (sel === 'head') revNum = u.HeadRevisionNum;
+      else if (sel === 'live') revNum = u.LiveRevisionNum;
+      else if (/^\d+$/.test(sel)) revNum = Number(sel);
+      if (revNum === undefined || revNum <= 0) return []; // never-applied 'live', etc.
+
+      // Map RevisionNum → RevisionID (the data endpoint keys on the UUID).
+      const revs = await getJson<RevisionListEntry[]>(
+        `/api/space/${sid}/unit/${uid}/revision`,
+        { where: `RevisionNum = ${revNum}`, select: 'RevisionID,RevisionNum' },
+      );
+      const revId = revs[0]?.Revision?.RevisionID;
+      if (!revId) return [];
+
+      // Fetch that revision's data blob (YAML) and split into resource docs.
+      let text: string;
+      try {
+        text = await getText(`/api/space/${sid}/unit/${uid}/revision/${revId}/data`);
+      } catch {
+        return [];
+      }
+      const out: Row[] = [];
+      for (const d of parseAllDocuments(text)) {
+        const doc = d.toJS() as Record<string, unknown> | null;
+        if (!doc || typeof doc !== 'object' || !doc['kind']) continue;
+        out.push(resourceRow(u.Slug, e.Space?.Slug, resourceTypeOf(doc), doc, String(revNum)));
+      }
+      return out;
+    }),
+  );
+  return perUnit.flat();
+}
+
+/** One FQL row for a Kubernetes resource document. `revision` is the selector
+ *  the rows were read at ('head' for the default get-resources path), stamped so
+ *  the residual `revision = N` check matches. */
 function resourceRow(
-  resp: InvokeResponse,
+  unit: string | undefined,
+  space: string | undefined,
   resourceType: string | undefined,
   doc: Record<string, unknown>,
+  revision: string,
 ): Row {
   const md = doc['metadata'] as { name?: string; namespace?: string } | undefined;
   const spec = doc['spec'] as { replicas?: number } | undefined;
@@ -221,15 +298,25 @@ function resourceRow(
     // real paths they are (containers.*.image,
     // metadata.annotations['sec-scanner.confighub.com/max-severity']), evaluated
     // client-side against __doc.
-    unit: resp.UnitSlug,
-    space: resp.SpaceSlug,
+    unit,
+    space,
     kind: doc['kind'],
     name: md?.name,
     namespace: md?.namespace ?? null,
     replicas: spec?.replicas ?? null,
     resourceType,
+    revision,
     // The raw resource doc, so FQL can evaluate arbitrary YAML data paths
     // client-side. Reserved key (leading __) — excluded from SELECT * columns.
     __doc: doc,
   };
+}
+
+/** ResourceType ("apiVersion/kind") for a parsed K8s doc, matching ConfigHub's
+ *  form, so the resourceType column and whereResource line up. */
+function resourceTypeOf(doc: Record<string, unknown>): string | undefined {
+  const apiVersion = doc['apiVersion'];
+  const kind = doc['kind'];
+  if (typeof apiVersion === 'string' && typeof kind === 'string') return `${apiVersion}/${kind}`;
+  return typeof kind === 'string' ? kind : undefined;
 }

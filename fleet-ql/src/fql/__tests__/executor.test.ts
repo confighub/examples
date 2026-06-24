@@ -29,6 +29,29 @@ function mockTransport(): Transport & { calls: ResourceParams[] } {
     },
     async resources(params: ResourceParams) {
       calls.push(params);
+      // Time-travel: when a revision is requested, return the resource as it was
+      // at that revision, stamped with the resolved number (mirrors the real
+      // transport). Here unit 'frontend' had nginx:1.20 at revision 3.
+      if (params.revision !== undefined) {
+        const rev = params.revision === 'live' || params.revision === 'head' ? '7' : params.revision;
+        const image = rev === '3' ? 'nginx:1.20-alpine' : 'nginx:1.27-alpine';
+        return [
+          {
+            space: 'sec-demo-prod',
+            unit: 'frontend',
+            resourceType: 'apps/v1/Deployment',
+            name: 'frontend',
+            kind: 'Deployment',
+            revision: rev,
+            // Raw paths read from __doc, exactly like the real transport.
+            __doc: {
+              kind: 'Deployment',
+              metadata: { name: 'frontend' },
+              spec: { template: { spec: { containers: [{ image }] } } },
+            },
+          },
+        ];
+      }
       // Simulate the server applying a sound whereData LIKE pushdown.
       let rows = RESOURCES;
       if (params.whereData?.includes("containers.*.image LIKE '%:latest'")) {
@@ -92,5 +115,27 @@ describe('executor — end to end via mock transport', () => {
     expect(res.stats.fetches).toBe(1);
     expect(res.stats.fetchedRows).toBe(4);
     expect(res.stats.resultRows).toBe(2);
+  });
+
+  it('reads a resource AS OF a specific revision (numeric selector)', async () => {
+    const t = mockTransport();
+    const res = await runQuery(
+      "SELECT unit, `spec.template.spec.containers.*.image` AS image\nFROM resources\nWHERE unit = 'frontend' AND revision = 3",
+      t,
+    );
+    expect(t.calls[0].revision).toBe('3');
+    // The numeric `revision = 3` residual matches the row stamped revision '3'.
+    expect(res.rows).toHaveLength(1);
+    expect(res.rows[0].image).toBe('nginx:1.20-alpine');
+  });
+
+  it("symbolic revision = 'live' is not filtered out by the residual", async () => {
+    const t = mockTransport();
+    const res = await runQuery("SELECT unit FROM resources WHERE revision = 'live'", t);
+    expect(t.calls[0].revision).toBe('live');
+    // Row is stamped with the resolved number ('7'), and the symbolic selector
+    // was stripped from the residual, so the row survives.
+    expect(res.rows).toHaveLength(1);
+    expect(res.rows[0].unit).toBe('frontend');
   });
 });

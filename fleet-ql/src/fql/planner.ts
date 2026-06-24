@@ -38,6 +38,9 @@ export interface FetchSpec {
   whereResource?: string;
   /** revisions only: filter on which units to pull revisions from. */
   whereUnit?: string;
+  /** resources only: read this revision's data instead of head. A RevisionNum,
+   *  or the symbolic 'head' / 'live'. */
+  revision?: string;
 }
 
 export interface ExecutionPlan {
@@ -201,13 +204,15 @@ function toDNF(e: Expr): Expr[][] {
 /** Compile the pushable atoms of one AND-group into a FetchSpec. Unpushable
  *  atoms are simply omitted (client-side residual covers them). */
 function groupToFetch(table: TableDef, atoms: Expr[], alias: string | null): FetchSpec {
-  // One bucket per pushdown target.
-  const parts: Record<PushdownTarget, string[]> = {
+  // One bucket per clause-style pushdown target. `revision` is not a clause —
+  // it's a selector captured separately below.
+  const parts: Record<'where' | 'where_data' | 'whereResource' | 'whereUnit', string[]> = {
     where: [],
     where_data: [],
     whereResource: [],
     whereUnit: [],
   };
+  let revision: string | undefined;
 
   for (const atom of atoms) {
     if (atom.kind === 'compare') {
@@ -216,6 +221,18 @@ function groupToFetch(table: TableDef, atoms: Expr[], alias: string | null): Fet
       const rhsIsColumn = atom.right.kind === 'column';
       // Always bind (validate) an RHS column even if we won't push it.
       const rhsCol = rhsIsColumn ? bind(table, atom.right as ColumnExpr, alias) : null;
+
+      // The `revision` selector: only `revision = <N | 'head' | 'live'>`. It
+      // picks which revision's data to read, so it's a fetch parameter, not a
+      // filter clause (the transport stamps `revision` onto every row, so the
+      // residual still matches).
+      if (col.pushdown?.target === 'revision') {
+        if (atom.op === '=' && atom.right.kind === 'literal') {
+          revision = revisionSelector(atom);
+        }
+        // Any other operator/shape falls through to the client-side residual.
+        continue;
+      }
 
       if (!isSoundToPush(atom.op, col, rhsIsColumn)) continue; // client-side residual
 
@@ -227,7 +244,9 @@ function groupToFetch(table: TableDef, atoms: Expr[], alias: string | null): Fet
         }
         continue;
       }
-      parts[col.pushdown!.target].push(compileCompare(atom, col));
+      parts[col.pushdown!.target as 'where' | 'where_data' | 'whereResource' | 'whereUnit'].push(
+        compileCompare(atom, col),
+      );
     } else if (atom.kind === 'isnull') {
       const col = bind(table, atom.column, alias);
       // Push NULL checks onto entity (`where`/`whereUnit`) fields only; data-path
@@ -247,7 +266,20 @@ function groupToFetch(table: TableDef, atoms: Expr[], alias: string | null): Fet
   if (parts.where_data.length) spec.whereData = joinAnd(parts.where_data);
   if (parts.whereResource.length) spec.whereResource = joinAnd(parts.whereResource);
   if (parts.whereUnit.length) spec.whereUnit = joinAnd(parts.whereUnit);
+  if (revision !== undefined) spec.revision = revision;
   return spec;
+}
+
+/** Normalize a `revision = …` RHS literal to a selector string: a RevisionNum,
+ *  or the symbolic 'head' / 'live'. */
+function revisionSelector(atom: CompareExpr): string | undefined {
+  const lit = atom.right;
+  if (lit.kind !== 'literal') return undefined;
+  if (lit.type === 'number') return String(lit.value);
+  const v = String(lit.value).toLowerCase();
+  if (v === 'head' || v === 'live') return v;
+  // A numeric string ('5') is fine too; anything else is left to the residual.
+  return /^\d+$/.test(v) ? v : undefined;
 }
 
 // ─── Projection / order / group validation ────────────────────────────────────
@@ -336,8 +368,44 @@ export function plan(stmt: SelectStmt): ExecutionPlan {
   return {
     source: table.source,
     fetches,
-    residual: stmt.where,
+    // The `revision` selector is fully handled by the fetch (and stamped onto
+    // rows as the resolved number), so strip it from the client-side residual —
+    // otherwise a symbolic `revision = 'head'` would filter out every stamped
+    // numeric row. Other predicates remain for exact re-checking.
+    residual: stmt.where ? stripRevision(stmt.where, table, stmt.from.alias) : null,
     stmt,
     needsResourceData: table.source === 'resources',
   };
+}
+
+/** Rewrite a WHERE tree, replacing any `revision <op> …` comparison with a
+ *  constant-true marker (a tautology that the evaluator treats as pass). */
+function stripRevision(e: Expr, table: TableDef, alias: string | null): Expr | null {
+  switch (e.kind) {
+    case 'logical': {
+      const l = stripRevision(e.left, table, alias);
+      const r = stripRevision(e.right, table, alias);
+      if (l === null) return r; // dropped → identity for AND, absorbing handled below
+      if (r === null) return l;
+      return { ...e, left: l, right: r };
+    }
+    case 'not': {
+      const inner = stripRevision(e.expr, table, alias);
+      return inner === null ? null : { ...e, expr: inner };
+    }
+    case 'compare': {
+      const col = resolveColumn(table, stripAlias(e.left, alias), e.left.quoted === true);
+      return col?.pushdown?.target === 'revision' ? null : e;
+    }
+    default:
+      return e;
+  }
+}
+
+/** Alias-strip a column path (mirrors bind()), for residual rewriting. */
+function stripAlias(col: ColumnExpr, alias: string | null): string[] {
+  if (!col.quoted && alias && col.path.length >= 2 && col.path[0] === alias) {
+    return col.path.slice(1);
+  }
+  return col.path;
 }

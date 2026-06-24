@@ -153,6 +153,21 @@ describe('planner — pushdown', () => {
       { where: 'RevisionNum > 5', whereUnit: "Space.Slug = 'prod'" },
     ]);
   });
+
+  it('resources: revision = N becomes a fetch selector and is stripped from residual', () => {
+    const p = planOf("SELECT unit FROM resources WHERE unit = 'checkout' AND revision = 5");
+    expect(p.fetches).toEqual([{ where: "Slug = 'checkout'", revision: '5' }]);
+    // residual keeps unit='checkout' but NOT the revision selector.
+    expect(JSON.stringify(p.residual)).toContain('checkout');
+    expect(JSON.stringify(p.residual)).not.toContain('revision');
+  });
+
+  it('resources: symbolic revision = live carries through and clears the residual', () => {
+    const p = planOf("SELECT unit FROM resources WHERE revision = 'live'");
+    expect(p.fetches).toEqual([{ revision: 'live' }]);
+    // The only predicate was the selector, so the residual is now empty.
+    expect(p.residual).toBeNull();
+  });
 });
 
 describe('planner — validation', () => {

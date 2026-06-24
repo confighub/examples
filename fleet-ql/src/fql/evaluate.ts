@@ -344,11 +344,21 @@ function applyOrder(stmt: SelectStmt, rows: Row[], ctx: EvalCtx): Row[] {
  * aggregate, order, limit. `allColumns` is the set of columns present in the
  * fetched rows (used for SELECT *).
  */
-export function evaluate(stmt: SelectStmt, rows: Row[], allColumns: string[]): ResultSet {
+export function evaluate(
+  stmt: SelectStmt,
+  rows: Row[],
+  allColumns: string[],
+  /** Predicate to re-check client-side. Defaults to the statement's WHERE, but
+   *  the planner may pass a residual that omits selector-only atoms (e.g.
+   *  `revision = …`, handled entirely by the fetch). `undefined` → use
+   *  stmt.where; `null` → no client-side filter. */
+  residual?: Expr | null,
+): ResultSet {
   const ctx: EvalCtx = { alias: stmt.from.alias };
+  const filter = residual === undefined ? stmt.where : residual;
 
   // 1. Filter (the complete WHERE, re-checked client-side).
-  const filtered = stmt.where ? rows.filter((r) => evalPredicate(stmt.where!, r, ctx)) : rows;
+  const filtered = filter ? rows.filter((r) => evalPredicate(filter, r, ctx)) : rows;
 
   // 2. Project / aggregate.
   const isAggregate =

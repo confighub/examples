@@ -20,7 +20,14 @@ export type ColumnType = 'string' | 'number' | 'boolean';
 // whereUnit     on `revisions`: narrows WHICH units we pull revisions from
 //               (the revision endpoint is per-unit); revision-field predicates
 //               use `where` against that endpoint.
-export type PushdownTarget = 'where' | 'where_data' | 'whereResource' | 'whereUnit';
+// revision      on `resources`: selects WHICH revision's data to read (a unit's
+//               head by default, or a specific RevisionNum / 'head' / 'live').
+export type PushdownTarget =
+  | 'where'
+  | 'where_data'
+  | 'whereResource'
+  | 'whereUnit'
+  | 'revision';
 
 export interface Pushdown {
   target: PushdownTarget;
@@ -112,6 +119,11 @@ const RESOURCES: TableDef = {
       type: 'string',
       pushdown: { target: 'whereResource', expr: 'ConfigHub.ResourceType' },
     },
+    // Time-travel: `WHERE revision = N` reads each unit's resources AS OF that
+    // revision (instead of head). Also accepts 'head' / 'live'. Requires unit or
+    // space scoping (it fetches a specific revision's data blob per unit). The
+    // value is stamped onto every returned row so the residual check passes.
+    revision: { type: 'number', pushdown: { target: 'revision', expr: 'revision' } },
     // NOTE: there is deliberately no `image`, `severity`, `cveCount`, etc.
     // `image` was a lossy comma-join of an array; the scanner verdict fields are
     // sec-scanner annotations, not generic resource columns. Query them as the

@@ -27,8 +27,9 @@ function rowKey(source: ExecutionPlan['source'], row: Row): string {
     case 'units':
       return String(row['__id'] ?? `${row['space']}/${row['slug']}`);
     case 'resources':
-      // A Unit can hold multiple resources; key on the resource identity.
-      return `${row['space']}/${row['unit']}/${row['resourceType'] ?? ''}/${row['name'] ?? ''}`;
+      // A Unit can hold multiple resources; key on the resource identity, plus
+      // the revision so the same resource at different revisions isn't deduped.
+      return `${row['space']}/${row['unit']}/${row['resourceType'] ?? ''}/${row['name'] ?? ''}@${row['revision'] ?? 'head'}`;
     case 'revisions':
       // One revision = (space, unit, revision number).
       return `${row['space']}/${row['unit']}/${row['RevisionNum'] ?? ''}`;
@@ -50,6 +51,7 @@ async function fetchFor(
         where: spec.where,
         whereData: spec.whereData,
         whereResource: spec.whereResource,
+        revision: spec.revision,
       } as ResourceParams);
     case 'spaces':
       return transport.spaces({ where: spec.where } as ListParams);
@@ -78,7 +80,7 @@ export async function execute(plan: ExecutionPlan, transport: Transport): Promis
   for (const r of fetched) for (const k of Object.keys(r)) if (!k.startsWith('__')) colSet.add(k);
   const allColumns = [...colSet];
 
-  const result = evaluate(plan.stmt, fetched, allColumns);
+  const result = evaluate(plan.stmt, fetched, allColumns, plan.residual);
 
   return {
     ...result,

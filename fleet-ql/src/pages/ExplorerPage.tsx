@@ -44,6 +44,11 @@ const EXAMPLES: { label: string; query: string }[] = [
     query:
       "SELECT unit, RevisionNum, Source, Description\nFROM revisions\nWHERE space = 'sec-demo-dev'\nORDER BY RevisionNum DESC LIMIT 20",
   },
+  {
+    label: 'Resource at a past revision',
+    query:
+      "SELECT unit, kind, metadata.name,\n  `spec.template.spec.containers.*.image` AS image\nFROM resources\nWHERE unit = 'legacy-frontend' AND revision = 1",
+  },
   { label: 'Prod spaces', query: "SELECT slug FROM spaces WHERE labels.env = 'prod'" },
 ];
 

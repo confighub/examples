@@ -16,6 +16,9 @@ export interface ResourceParams {
   where?: string;
   whereData?: string;
   whereResource?: string;
+  /** Read resources AS OF this revision instead of head: a RevisionNum, or the
+   *  symbolic 'head' / 'live'. */
+  revision?: string;
 }
 
 /** Params for a revisions fetch. Revisions are per-Unit, so `whereUnit` narrows
