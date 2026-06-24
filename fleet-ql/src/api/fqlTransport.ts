@@ -1,25 +1,17 @@
 // The app-side FQL Transport: implements the engine's abstract fetch operations
-// over ConfigHub's REST API (same-origin /api + bearer token, exactly like
-// raw.ts). This is the ONLY file that couples the portable fql/ engine to the
-// app — it knows ConfigHub's result shapes and flattens them into FQL rows.
+// over ConfigHub's REST API (same-origin /api + bearer token from api/auth).
+// This is the ONLY file that couples the portable fql/ engine to the app — it
+// knows ConfigHub's result shapes and flattens them into FQL rows.
 //
 // Resource rows carry generic identity + the raw resource doc (__doc); FQL
 // evaluates arbitrary YAML data paths (images, scanner annotations, etc.)
 // against __doc client-side, so there are no domain-specific curated columns.
 
 import type { ListParams, ResourceParams, Row, Transport } from '../fql';
+import { authHeaders } from './auth';
 import { b64decodeUtf8 } from './encoding';
-import { getStoredToken } from '../sdk/confighubapi';
 
-// ─── HTTP helpers (mirror raw.ts auth) ──────────────────────────────────────
-
-function authHeaders(extra?: Record<string, string>): HeadersInit {
-  const token = getStoredToken();
-  return {
-    ...(extra ?? {}),
-    ...(token !== null ? { Authorization: `Bearer ${token}` } : {}),
-  };
-}
+// ─── HTTP helpers (auth via api/auth.ts) ──────────────────────────────────
 
 async function getJson<T>(path: string, query: Record<string, string | undefined>): Promise<T> {
   const qs = new URLSearchParams();

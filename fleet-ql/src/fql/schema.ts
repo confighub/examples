@@ -232,3 +232,53 @@ export function columnNames(table: TableDef): string[] {
     ...Object.keys(table.mapPrefixes).map((p) => `${p}.*`),
   ];
 }
+
+// ─── Introspection (for the explorer sidebar + autocomplete) ─────────────────
+
+/** A column as shown in the explorer: name, type, whether it can push down, and
+ *  how it's addressed (fixed column, `prefix.key` map, or any raw data path). */
+export interface ColumnInfo {
+  name: string;
+  type: ColumnType;
+  kind: 'column' | 'map' | 'raw';
+  pushdown: PushdownTarget | null;
+}
+
+export interface TableInfo {
+  name: string;
+  source: TableSource;
+  columns: ColumnInfo[];
+  /** True if arbitrary YAML data paths are also queryable (resources). */
+  rawDataPaths: boolean;
+}
+
+/** Structured description of one table for the UI. */
+export function describeTable(name: string): TableInfo | null {
+  const t = TABLES[name];
+  if (!t) return null;
+  const columns: ColumnInfo[] = [
+    ...Object.entries(t.columns).map(([n, c]) => ({
+      name: n,
+      type: c.type,
+      kind: 'column' as const,
+      pushdown: c.pushdown?.target ?? null,
+    })),
+    ...Object.entries(t.mapPrefixes).map(([p, m]) => ({
+      name: `${p}['key']`,
+      type: m.type,
+      kind: 'map' as const,
+      pushdown: m.pushdown?.target ?? null,
+    })),
+  ];
+  return { name, source: t.source, columns, rawDataPaths: t.rawDataPaths === true };
+}
+
+/** Every table, described — the explorer's left panel. */
+export function describeTables(): TableInfo[] {
+  return Object.keys(TABLES).map((n) => describeTable(n)!);
+}
+
+/** Flat token list for autocomplete (table names + all column names). */
+export function tableNames(): string[] {
+  return Object.keys(TABLES);
+}
