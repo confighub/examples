@@ -353,7 +353,11 @@ function contextCandidates(tokens: Token[]): Completion[] {
       }
       // After a column LHS (ident/`]` not preceded by a comparison op) → operators.
       if (isColumnEnd(last) && !(prev?.type === 'op' && COMPARE.has(prev.value))) {
-        return kw('=', '!=', '<', '>', '<=', '>=', 'LIKE', 'ILIKE', 'IN', 'IS');
+        return [
+          ...kw('=', '!=', '<', '>', '<=', '>=', 'LIKE', 'ILIKE', 'IN', 'IS'),
+          // POSIX-style regex (evaluated client-side — never pushed down).
+          ...['~', '~*', '!~', '!~*'].map((o) => ({ label: o, detail: 'regex · client' })),
+        ];
       }
       // After a complete predicate (value / closed list / RHS column).
       return kw('AND', 'OR', 'GROUP BY', 'ORDER BY', 'LIMIT');

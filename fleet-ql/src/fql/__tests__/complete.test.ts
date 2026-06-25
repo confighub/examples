@@ -40,10 +40,15 @@ describe('completion — WHERE', () => {
     expect(c).toEqual(expect.arrayContaining(['kind', 'cluster', 'NOT']));
   });
 
-  it('after a column offers operators', () => {
+  it('after a column offers operators including the regex family', () => {
     expect(at('SELECT unit FROM resources WHERE kind ')).toEqual(
-      expect.arrayContaining(['=', 'LIKE', 'IN', 'IS']),
+      expect.arrayContaining(['=', 'LIKE', 'IN', 'IS', '~', '~*', '!~', '!~*']),
     );
+  });
+
+  it('recognizes a typed ~ as an operator (moves to value help, not operators)', () => {
+    // after `kind ~` the next thing is a pattern, not another operator.
+    expect(at("SELECT unit FROM resources WHERE kind ~ ")).not.toContain('LIKE');
   });
 
   it('IS offers NULL / NOT NULL', () => {
