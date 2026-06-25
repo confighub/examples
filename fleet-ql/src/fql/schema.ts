@@ -113,9 +113,23 @@ const UNITS: TableDef = {
   mapPrefixes: {
     labels: { type: 'string', pushdown: { target: 'where', field: 'Labels' } },
     annotations: { type: 'string', pushdown: { target: 'where', field: 'Annotations' } },
-    // Policy/gate audit: applyGates['<space>/<trigger>/<function>'] = true.
+    // Policy/gate audit. The key is a gate identifier in ConfigHub's form
+    //   applyGates['<space-slug>/<trigger-slug>/<function-name>']
+    // (a legacy 2-part `<trigger-slug>/<function-name>` is also accepted), e.g.
+    //   applyGates['sec-demo-policy/no-critical-cves/vet-celexpr'] = true
+    // true = the gate is failing and blocks apply. Pushes to `where` as
+    // `ApplyGates.<key> = true` (JSONB containment). ConfigHub regex-validates the
+    // key as slug/slug/function, so ONLY well-formed gate keys are pushable; and
+    // being boolean, only = / != are allowed (matching its StringBoolMap ops).
     applyGates: { type: 'boolean', pushdown: { target: 'where', field: 'ApplyGates' } },
     applyWarnings: { type: 'boolean', pushdown: { target: 'where', field: 'ApplyWarnings' } },
+    // Convenience: query gates/warnings by TRIGGER slug instead of the full
+    // `<space>/<trigger>/<function>` key — `gate['no-critical-cves'] = true` is
+    // true when ANY gate from that trigger is blocking. Client-side ONLY (the
+    // trigger component can't be matched server-side), so pair with `space =` to
+    // narrow the fetch; for an exact key use applyGates['<full/key>'] (pushes).
+    gate: { type: 'boolean' },
+    warning: { type: 'boolean' },
   },
 };
 

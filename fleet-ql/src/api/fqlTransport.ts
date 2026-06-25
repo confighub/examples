@@ -21,6 +21,7 @@ import { materializeGrants } from '../rbac/grants';
 import type { FleetResource } from '../rbac/model';
 import { materializeBindings, materializeRoles } from '../rbac/structural';
 import { authHeaders } from './auth';
+import { spreadGatesByTrigger } from './gates';
 import { b64decodeUtf8 } from './encoding';
 
 // ─── HTTP helpers (auth via api/auth.ts) ──────────────────────────────────
@@ -133,9 +134,13 @@ function unitRow(e: UnitListEntry): Row {
   };
   spreadMap(row, 'labels', u.Labels);
   spreadMap(row, 'annotations', u.Annotations);
-  // Gate/warning maps spread so `applyGates['<key>']` resolves client-side too.
+  // Gate/warning maps spread two ways: by the full key, so `applyGates['<key>']`
+  // resolves client-side too; and re-keyed by trigger-slug, so `gate['<trigger>']`
+  // works without knowing the fully-qualified key.
   for (const [k, v] of Object.entries(u.ApplyGates ?? {})) row[`applyGates.${k}`] = v;
   for (const [k, v] of Object.entries(u.ApplyWarnings ?? {})) row[`applyWarnings.${k}`] = v;
+  spreadGatesByTrigger(row, 'gate', u.ApplyGates);
+  spreadGatesByTrigger(row, 'warning', u.ApplyWarnings);
   return row;
 }
 

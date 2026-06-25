@@ -129,8 +129,11 @@ ConfigHub attribute names remain usable in hand-written queries.
 -- units with unapplied changes, per space
 SELECT space, COUNT(*) AS n FROM units WHERE headRevisionNum > liveRevisionNum GROUP BY space
 
--- what's blocked, and by which gate (StringBool map, pushed down)
+-- what's blocked, by the exact gate key (StringBool map, pushed down)
 SELECT slug FROM units WHERE applyGates['sec-demo-policy/no-critical-cves/vet-celexpr'] = true
+
+-- ...or just by TRIGGER slug (no need to know the full key; client-side)
+SELECT slug, space FROM units WHERE gate['no-critical-cves'] = true
 
 -- ownership rollup
 SELECT space, COUNT(*) AS n FROM units WHERE labels.team = 'payments' GROUP BY space
@@ -145,7 +148,7 @@ SELECT space, COUNT(*) AS n FROM units WHERE labels.team = 'payments' GROUP BY s
 
 | Table | Source | Notable columns |
 |---|---|---|
-| `units` | `GET /unit` | `slug`, `space`, `cluster`, `toolchain`, `target`, `headRevisionNum`, `liveRevisionNum`, `lastAppliedRevisionNum`, `upstreamRevisionNum`, `upstreamUnitId`, `providerType`, `gates`, `warnings`, `labels.*`, `annotations.*`, `applyGates['<space>/<trigger>/<fn>']`, `applyWarnings[...]` |
+| `units` | `GET /unit` | `slug`, `space`, `cluster`, `toolchain`, `target`, `headRevisionNum`, `liveRevisionNum`, `lastAppliedRevisionNum`, `upstreamRevisionNum`, `upstreamUnitId`, `providerType`, `gates`, `warnings`, `labels.*`, `annotations.*`, `applyGates['<space>/<trigger>/<fn>']`, `applyWarnings[...]`, `gate['<trigger>']`, `warning['<trigger>']` |
 | `resources` | `POST /function/invoke` + `get-resources` (or a revision's data blob) | `unit`, `space`, `cluster`, `target`, `kind`, `name`, `namespace`, `replicas`, `resourceType`, `revision`, `labels.*`, + any raw data path |
 | `spaces` | `GET /space` | `slug`, `displayName`, `labels.*`, `annotations.*` |
 | `revisions` | `GET /space/{id}/unit/{id}/revision` (per Unit) | `unit`, `space` (scope which units), `revisionNum`, `source`, `description`, `createdAt`, `userId` |

@@ -44,6 +44,10 @@ const EXAMPLES: { label: string; query: string }[] = [
     query: 'SELECT cluster, COUNT(*) AS units\nFROM units\nGROUP BY cluster\nORDER BY units DESC',
   },
   {
+    label: 'Blocked by a trigger',
+    query: "SELECT slug, space\nFROM units\nWHERE gate['no-critical-cves'] = true",
+  },
+  {
     label: 'Audit trail (revisions)',
     query:
       "SELECT unit, revisionNum, source, description\nFROM revisions\nWHERE space = 'sec-demo-dev'\nORDER BY revisionNum DESC LIMIT 20",
