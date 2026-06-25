@@ -40,6 +40,10 @@ const EXAMPLES: { label: string; query: string }[] = [
   },
   { label: 'Drift (unapplied)', query: 'SELECT slug, space FROM units WHERE HeadRevisionNum > LiveRevisionNum' },
   {
+    label: 'Units by cluster',
+    query: 'SELECT cluster, COUNT(*) AS units\nFROM units\nGROUP BY cluster\nORDER BY units DESC',
+  },
+  {
     label: 'Audit trail (revisions)',
     query:
       "SELECT unit, RevisionNum, Source, Description\nFROM revisions\nWHERE space = 'sec-demo-dev'\nORDER BY RevisionNum DESC LIMIT 20",

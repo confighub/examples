@@ -85,6 +85,20 @@ lexically, the server's timestamp compare and the client-side string compare agr
   ConfigHub's dotted `where_data`, so it's evaluated client-side (the residual
   filter always runs, so the result is identical — just less server narrowing).
 
+**The cluster dimension.** A Unit deploys to a **cluster** = its Target's slug,
+falling back to the Space slug for unbound ("paper cluster") Units. `units` and
+`resources` both expose `cluster` (and the raw `target`). This is the "which
+cluster" axis — group or filter a fleet by where it actually runs, across Spaces:
+
+```sql
+SELECT cluster, COUNT(*) AS units FROM units GROUP BY cluster
+SELECT unit, name FROM resources WHERE cluster = 'prod' AND kind = 'ClusterRole'
+```
+
+Because cluster's Space fallback can't be expressed as one sound pushdown clause
+(`Target.Slug = x` would miss unbound Units in Space `x`), `cluster` is filtered
+client-side; use `target` or `space` directly when you want server-side narrowing.
+
 The `resources` table is **all-kinds**: every Kubernetes resource in each Unit
 (Deployment, Service, ConfigMap, Ingress, …), not just Deployments. Narrow with
 `WHERE kind = 'Service'` or `WHERE resourceType = 'apps/v1/Deployment'`. Curated
@@ -130,8 +144,8 @@ SELECT space, COUNT(*) AS n FROM units WHERE labels.team = 'payments' GROUP BY s
 
 | Table | Source | Notable columns |
 |---|---|---|
-| `units` | `GET /unit` | `slug`, `space`, `toolchain`, `target`, `headRev`/`HeadRevisionNum`, `LiveRevisionNum`, `LastAppliedRevisionNum`, `UpstreamRevisionNum`, `UpstreamUnitID`, `ProviderType`, `gates`, `warnings`, `labels.*`, `annotations.*`, `ApplyGates['<space>/<trigger>/<fn>']`, `ApplyWarnings[...]` |
-| `resources` | `POST /function/invoke` + `get-resources` (or a revision's data blob) | `unit`, `space`, `kind`, `name`, `namespace`, `replicas`, `resourceType`, `revision`, `labels.*`, + any raw data path |
+| `units` | `GET /unit` | `slug`, `space`, `cluster`, `toolchain`, `target`, `headRev`/`HeadRevisionNum`, `LiveRevisionNum`, `LastAppliedRevisionNum`, `UpstreamRevisionNum`, `UpstreamUnitID`, `ProviderType`, `gates`, `warnings`, `labels.*`, `annotations.*`, `ApplyGates['<space>/<trigger>/<fn>']`, `ApplyWarnings[...]` |
+| `resources` | `POST /function/invoke` + `get-resources` (or a revision's data blob) | `unit`, `space`, `cluster`, `target`, `kind`, `name`, `namespace`, `replicas`, `resourceType`, `revision`, `labels.*`, + any raw data path |
 | `spaces` | `GET /space` | `slug`, `displayName`, `labels.*`, `annotations.*` |
 | `revisions` | `GET /space/{id}/unit/{id}/revision` (per Unit) | `unit`, `space` (scope which units), `RevisionNum`, `Source`, `Description`, `CreatedAt`, `UserID` |
 

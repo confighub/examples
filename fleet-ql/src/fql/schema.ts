@@ -72,6 +72,12 @@ const UNITS: TableDef = {
     space: { type: 'string', pushdown: { target: 'where', expr: 'Space.Slug' } },
     toolchain: { type: 'string', pushdown: { target: 'where', expr: 'ToolchainType' } },
     target: { type: 'string', pushdown: { target: 'where', expr: 'Target.Slug' } },
+    // cluster = the deploy Target's slug, falling back to the Space slug for
+    // unbound ("paper cluster") units (mirrors the rbac model's origin.cluster).
+    // The fallback can't be expressed as one sound pushdown clause (Target.Slug=x
+    // would miss unbound units in Space x), so cluster is computed/filtered
+    // client-side; use `target` or `space` directly when you want server narrowing.
+    cluster: { type: 'string' },
     headRev: { type: 'number', pushdown: { target: 'where', expr: 'HeadRevisionNum' } },
     // ConfigHub field names accepted verbatim so revision/drift idioms work:
     // `HeadRevisionNum > LiveRevisionNum` (unapplied changes), `LiveRevisionNum
@@ -107,6 +113,12 @@ const RESOURCES: TableDef = {
     // Identity (from the owning Unit / response metadata) — pushed to `where`.
     unit: { type: 'string', pushdown: { target: 'where', expr: 'Slug' } },
     space: { type: 'string', pushdown: { target: 'where', expr: 'Space.Slug' } },
+    // The owning Unit's deploy Target, and cluster = target ?? space. Both are
+    // resolved from a unit→cluster enrichment and filtered client-side (cluster's
+    // fallback isn't a sound single pushdown; keeping target client-side too
+    // avoids emitting a Target.Slug clause the invoke endpoint may not join).
+    target: { type: 'string' },
+    cluster: { type: 'string' },
     // Generic, single-valued Kubernetes shorthands — unambiguous sugar over a
     // real path, pushed to `where_data`. (NOT domain fictions: every K8s
     // resource has exactly one kind/name/namespace; replicas is a scalar.)

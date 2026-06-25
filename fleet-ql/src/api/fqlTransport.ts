@@ -106,6 +106,8 @@ function unitRow(e: UnitListEntry): Row {
     space: e.Space?.Slug,
     toolchain: u.ToolchainType,
     target: e.Target?.Slug ?? null,
+    // cluster = deploy target, falling back to the Space slug for unbound units.
+    cluster: e.Target?.Slug ?? e.Space?.Slug ?? null,
     headRev: u.HeadRevisionNum,
     gates: Object.keys(u.ApplyGates ?? {}).length,
     warnings: Object.keys(u.ApplyWarnings ?? {}).length,
@@ -186,17 +188,21 @@ export const fqlTransport: Transport = {
     }
 
     // get-resources over the matching Units, then explode each Unit's resource
-    // list into one FQL row per Kubernetes resource.
-    const responses = await postJson<InvokeResponse[]>(
-      '/api/function/invoke',
-      { where: params.where, where_data: params.whereData },
-      {
-        WhereResource: params.whereResource,
-        FunctionInvocations: [
-          { FunctionName: 'get-resources', Arguments: [{ ParameterName: 'body', Value: 'json' }] },
-        ],
-      },
-    );
+    // list into one FQL row per Kubernetes resource. In parallel, resolve each
+    // unit's cluster (deploy target, Space fallback) to stamp onto the rows.
+    const [responses, clusters] = await Promise.all([
+      postJson<InvokeResponse[]>(
+        '/api/function/invoke',
+        { where: params.where, where_data: params.whereData },
+        {
+          WhereResource: params.whereResource,
+          FunctionInvocations: [
+            { FunctionName: 'get-resources', Arguments: [{ ParameterName: 'body', Value: 'json' }] },
+          ],
+        },
+      ),
+      unitClusterMap(params.where),
+    ]);
 
     const rows: Row[] = [];
     for (const resp of responses) {
@@ -209,6 +215,13 @@ export const fqlTransport: Transport = {
       } catch {
         continue;
       }
+      const ci = clusters.get(`${resp.SpaceSlug ?? ''}/${resp.UnitSlug ?? ''}`);
+      const origin: ResourceOrigin = {
+        unit: resp.UnitSlug,
+        space: resp.SpaceSlug,
+        target: ci?.target ?? null,
+        cluster: ci?.cluster ?? resp.SpaceSlug ?? null,
+      };
       for (const raw of list) {
         if (!raw.ResourceBody) continue;
         let doc: Record<string, unknown>;
@@ -217,7 +230,7 @@ export const fqlTransport: Transport = {
         } catch {
           continue;
         }
-        rows.push(resourceRow(resp.UnitSlug, resp.SpaceSlug, raw.ResourceType, doc, 'head'));
+        rows.push(resourceRow(origin, raw.ResourceType, doc, 'head'));
       }
     }
     return rows;
@@ -226,7 +239,7 @@ export const fqlTransport: Transport = {
 
 // ─── Time-travel: resources as of a specific revision ───────────────────────
 
-const SELECT_UNIT_REV = 'UnitID,Slug,SpaceID,HeadRevisionNum,LiveRevisionNum';
+const SELECT_UNIT_REV = 'UnitID,Slug,SpaceID,TargetID,HeadRevisionNum,LiveRevisionNum';
 
 /** Read resources from a specific revision per in-scope unit (params.revision
  *  is a RevisionNum, or 'head' / 'live'). One row per K8s doc in that revision's
@@ -236,7 +249,7 @@ async function resourcesAtRevision(params: ResourceParams): Promise<Row[]> {
   const units = await getJson<UnitListEntry[]>('/api/unit', {
     where: params.where,
     select: SELECT_UNIT_REV,
-    include: 'SpaceID',
+    include: 'SpaceID,TargetID',
   });
 
   const perUnit = await Promise.all(
@@ -268,11 +281,17 @@ async function resourcesAtRevision(params: ResourceParams): Promise<Row[]> {
       } catch {
         return [];
       }
+      const origin: ResourceOrigin = {
+        unit: u.Slug,
+        space: e.Space?.Slug,
+        target: e.Target?.Slug ?? null,
+        cluster: e.Target?.Slug ?? e.Space?.Slug ?? null,
+      };
       const out: Row[] = [];
       for (const d of parseAllDocuments(text)) {
         const doc = d.toJS() as Record<string, unknown> | null;
         if (!doc || typeof doc !== 'object' || !doc['kind']) continue;
-        out.push(resourceRow(u.Slug, e.Space?.Slug, resourceTypeOf(doc), doc, String(revNum)));
+        out.push(resourceRow(origin, resourceTypeOf(doc), doc, String(revNum)));
       }
       return out;
     }),
@@ -280,12 +299,20 @@ async function resourcesAtRevision(params: ResourceParams): Promise<Row[]> {
   return perUnit.flat();
 }
 
+/** Where a resource came from: its owning Unit's identity and deploy target.
+ *  cluster = target ?? space (mirrors the rbac model's origin.cluster). */
+interface ResourceOrigin {
+  unit?: string;
+  space?: string;
+  target?: string | null;
+  cluster?: string | null;
+}
+
 /** One FQL row for a Kubernetes resource document. `revision` is the selector
  *  the rows were read at ('head' for the default get-resources path), stamped so
  *  the residual `revision = N` check matches. */
 function resourceRow(
-  unit: string | undefined,
-  space: string | undefined,
+  origin: ResourceOrigin,
   resourceType: string | undefined,
   doc: Record<string, unknown>,
   revision: string,
@@ -298,8 +325,10 @@ function resourceRow(
     // real paths they are (containers.*.image,
     // metadata.annotations['sec-scanner.confighub.com/max-severity']), evaluated
     // client-side against __doc.
-    unit,
-    space,
+    unit: origin.unit,
+    space: origin.space,
+    target: origin.target ?? null,
+    cluster: origin.cluster ?? origin.space ?? null,
     kind: doc['kind'],
     name: md?.name,
     namespace: md?.namespace ?? null,
@@ -310,6 +339,26 @@ function resourceRow(
     // client-side. Reserved key (leading __) — excluded from SELECT * columns.
     __doc: doc,
   };
+}
+
+/** Fetch the matching units' deploy targets, keyed by `space/unit`, so the
+ *  resources head path can stamp each resource with its cluster. One extra list
+ *  call (scoped by the same `where`); cluster = target ?? space. */
+async function unitClusterMap(
+  where: string | undefined,
+): Promise<Map<string, { cluster: string | null; target: string | null }>> {
+  const units = await getJson<UnitListEntry[]>('/api/unit', {
+    where,
+    select: 'UnitID,Slug,SpaceID,TargetID',
+    include: 'SpaceID,TargetID',
+  });
+  const m = new Map<string, { cluster: string | null; target: string | null }>();
+  for (const e of units) {
+    const space = e.Space?.Slug ?? '';
+    const target = e.Target?.Slug ?? null;
+    m.set(`${space}/${e.Unit?.Slug ?? ''}`, { cluster: target ?? e.Space?.Slug ?? null, target });
+  }
+  return m;
 }
 
 /** ResourceType ("apiVersion/kind") for a parsed K8s doc, matching ConfigHub's
