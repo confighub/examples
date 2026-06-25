@@ -22,12 +22,17 @@ export type ColumnType = 'string' | 'number' | 'boolean';
 //               use `where` against that endpoint.
 // revision      on `resources`: selects WHICH revision's data to read (a unit's
 //               head by default, or a specific RevisionNum / 'head' / 'live').
+// accessQuery   on `grants`: a field of the RBAC access question (verb/resource/
+//               apiGroup/namespace/name). Captured by the planner and applied by
+//               the materializer with RBAC semantics, then stripped from the
+//               residual (like `revision`, it's a fetch selector, not a clause).
 export type PushdownTarget =
   | 'where'
   | 'where_data'
   | 'whereResource'
   | 'whereUnit'
-  | 'revision';
+  | 'revision'
+  | 'accessQuery';
 
 export interface Pushdown {
   target: PushdownTarget;
@@ -49,7 +54,7 @@ export interface MapPrefixDef {
   pushdown?: { target: PushdownTarget; field: string }; // server map field, e.g. "Labels"
 }
 
-export type TableSource = 'units' | 'resources' | 'spaces' | 'revisions';
+export type TableSource = 'units' | 'resources' | 'spaces' | 'revisions' | 'grants';
 
 export interface TableDef {
   source: TableSource;
@@ -183,11 +188,46 @@ const REVISIONS: TableDef = {
   mapPrefixes: {},
 };
 
+// Effective RBAC access ("who can do what, on which cluster"). Materialized
+// client-side from the fleet's RBAC resources by the transport — not a ConfigHub
+// entity list. Output columns are real row fields (filtered client-side); the
+// access-question columns (verb/resource/apiGroup/namespace/name) are selectors
+// that drive the materializer's RBAC matching, not literal equality.
+const GRANTS: TableDef = {
+  source: 'grants',
+  columns: {
+    // Output columns — the resolved grant. Filtered/projected client-side.
+    subject: { type: 'string' }, // 'User:alice' / 'ServiceAccount:ns/name'
+    subjectKind: { type: 'string' }, // User | Group | ServiceAccount
+    subjectName: { type: 'string' },
+    cluster: { type: 'string' }, // deploy target (Space fallback)
+    space: { type: 'string', pushdown: { target: 'where', expr: 'Space.Slug' } },
+    unit: { type: 'string' },
+    target: { type: 'string' },
+    scope: { type: 'string' }, // namespace a RoleBinding grant is effective in; null = cluster-wide
+    role: { type: 'string' }, // the roleRef name (incl. builtins like cluster-admin)
+    viaBuiltin: { type: 'boolean' }, // granted via a builtin ClusterRole not stored in ConfigHub
+    binding: { type: 'string' },
+    // Access-question selectors → the materializer's GrantQuery. Use `=`:
+    //   WHERE verb = 'delete' AND resource = 'pods'
+    // Omitting one means "any" (who can delete *). Matching honors RBAC
+    // semantics (wildcards, ClusterRole aggregation, cluster-admin), so these
+    // never compare as literal row fields — they're stripped from the residual.
+    verb: { type: 'string', pushdown: { target: 'accessQuery', expr: 'verb' } },
+    resource: { type: 'string', pushdown: { target: 'accessQuery', expr: 'resource' } },
+    apiGroup: { type: 'string', pushdown: { target: 'accessQuery', expr: 'apiGroup' } },
+    namespace: { type: 'string', pushdown: { target: 'accessQuery', expr: 'namespace' } },
+    name: { type: 'string', pushdown: { target: 'accessQuery', expr: 'name' } },
+  },
+  mapPrefixes: {},
+};
+
 export const TABLES: Record<string, TableDef> = {
   units: UNITS,
   resources: RESOURCES,
   spaces: SPACES,
   revisions: REVISIONS,
+  grants: GRANTS,
 };
 
 /** A resolved column: its type and (optional) compiled pushdown, with the FQL

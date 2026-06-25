@@ -27,6 +27,9 @@ function mockTransport(): Transport & { calls: ResourceParams[] } {
     async revisions() {
       return [];
     },
+    async grants() {
+      return [];
+    },
     async resources(params: ResourceParams) {
       calls.push(params);
       // Time-travel: when a revision is requested, return the resource as it was

@@ -57,6 +57,9 @@ function mockTransport(): Transport {
     async revisions() {
       return [];
     },
+    async grants() {
+      return [];
+    },
   };
 }
 

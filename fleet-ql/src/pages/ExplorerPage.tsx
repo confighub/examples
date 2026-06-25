@@ -59,6 +59,19 @@ const EXAMPLES: { label: string; query: string }[] = [
       "SELECT unit, kind, metadata.name,\n  `spec.template.spec.containers.*.image` AS image\nFROM resources\nWHERE unit = 'legacy-frontend' AND revision = 1",
   },
   { label: 'Prod spaces', query: "SELECT slug FROM spaces WHERE labels.env = 'prod'" },
+  {
+    label: 'Who can delete pods',
+    query:
+      "SELECT subject, cluster, role, scope\nFROM grants\nWHERE verb = 'delete' AND resource = 'pods'\nORDER BY cluster",
+  },
+  {
+    label: 'Cluster-admin holders',
+    query: "SELECT subject, cluster, binding\nFROM grants\nWHERE role = 'cluster-admin'",
+  },
+  {
+    label: "A subject's access",
+    query: "SELECT cluster, role, scope\nFROM grants\nWHERE subject = 'Group:developers'",
+  },
 ];
 
 function PlanView({ query }: { query: string }) {

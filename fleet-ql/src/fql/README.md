@@ -148,6 +148,7 @@ SELECT space, COUNT(*) AS n FROM units WHERE labels.team = 'payments' GROUP BY s
 | `resources` | `POST /function/invoke` + `get-resources` (or a revision's data blob) | `unit`, `space`, `cluster`, `target`, `kind`, `name`, `namespace`, `replicas`, `resourceType`, `revision`, `labels.*`, + any raw data path |
 | `spaces` | `GET /space` | `slug`, `displayName`, `labels.*`, `annotations.*` |
 | `revisions` | `GET /space/{id}/unit/{id}/revision` (per Unit) | `unit`, `space` (scope which units), `RevisionNum`, `Source`, `Description`, `CreatedAt`, `UserID` |
+| `grants` | materialized from RBAC resources (`get-resources` + the rbac engine) | output: `subject`, `subjectKind`, `subjectName`, `cluster`, `space`, `unit`, `target`, `scope`, `role`, `viaBuiltin`, `binding`; access selectors: `verb`, `resource`, `apiGroup`, `namespace`, `name` |
 
 `resources` has no domain columns: an image is the array path
 `` `spec.template.spec.containers.*.image` `` and the scanner verdict is an
@@ -167,6 +168,45 @@ stamped with the resolved `revision`). Pair it with `unit =` / `space =` scoping
 SELECT unit, `spec.template.spec.containers.*.image` AS image
 FROM resources WHERE unit = 'checkout' AND revision = 5
 ```
+
+## `grants` — who can do what, on which cluster
+
+The `grants` table answers effective-access questions across the fleet. It is
+**materialized client-side**: the transport fetches the in-scope units' RBAC
+resources and the rbac engine resolves bindings → roleRefs → roles → rules
+(expanding `*`, unioning aggregated ClusterRoles, honoring `cluster-admin`) —
+something no `where_data` path can express. One row per resolved
+(cluster, binding, subject).
+
+```sql
+-- who can delete pods, fleet-wide, on which cluster, granted by what
+SELECT subject, cluster, role, scope FROM grants
+WHERE verb = 'delete' AND resource = 'pods' ORDER BY cluster
+
+-- the inverse (subject) view: everything a group holds, where
+SELECT cluster, role, scope FROM grants WHERE subject = 'Group:developers'
+
+-- blast radius of secret access (effective, incl. via wildcard / cluster-admin)
+SELECT subject, cluster FROM grants WHERE resource = 'secrets' AND verb = 'get'
+
+-- who can exec into prod pods, specifically
+SELECT subject, cluster FROM grants
+WHERE resource = 'pods/exec' AND verb = 'create' AND cluster = 'prod'
+
+-- superuser holders across the fleet
+SELECT subject, cluster, binding FROM grants WHERE role = 'cluster-admin'
+```
+
+**Access selectors vs output columns.** `verb`, `resource`, `apiGroup`,
+`namespace`, and `name` are the *access question* — they drive the materializer's
+RBAC matching (so `verb = 'delete'` also matches a rule with `verbs: ['*']`), and
+are **stripped from the client-side residual** exactly like the `revision`
+selector. Omit one for "any" (`resource = 'pods'` with no verb = who can do
+anything to pods). Everything else (`subject`, `cluster`, `role`, `scope`,
+`viaBuiltin`, …) is a real output column, filtered and projected client-side — so
+`WHERE subject = 'Group:developers'` is the inverse "what does this subject hold"
+view, and `cluster = 'prod'` narrows by where it runs. `space` pushes down to
+narrow the RBAC fetch; `cluster` is client-side (Target/Space fallback).
 
 ## How it executes (the pushdown model)
 

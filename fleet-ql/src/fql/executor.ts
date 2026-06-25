@@ -6,7 +6,7 @@
 
 import { evaluate, type ResultSet, type Row } from './evaluate';
 import type { ExecutionPlan, FetchSpec } from './planner';
-import type { ListParams, ResourceParams, Transport } from './transport';
+import type { GrantsParams, ListParams, ResourceParams, Transport } from './transport';
 
 export interface RunStats {
   /** How many server fetches were issued (= DNF AND-groups, post-dedup). */
@@ -35,6 +35,9 @@ function rowKey(source: ExecutionPlan['source'], row: Row): string {
       return `${row['space']}/${row['unit']}/${row['RevisionNum'] ?? ''}`;
     case 'spaces':
       return String(row['__id'] ?? row['slug']);
+    case 'grants':
+      // One grant = (cluster, space/unit, binding, subject, scope).
+      return `${row['cluster']}/${row['space']}/${row['unit']}/${row['binding']}/${row['subject']}/${row['scope'] ?? ''}`;
   }
 }
 
@@ -57,6 +60,8 @@ async function fetchFor(
       return transport.spaces({ where: spec.where } as ListParams);
     case 'revisions':
       return transport.revisions({ whereUnit: spec.whereUnit, where: spec.where });
+    case 'grants':
+      return transport.grants({ where: spec.where, accessQuery: spec.accessQuery } as GrantsParams);
   }
 }
 

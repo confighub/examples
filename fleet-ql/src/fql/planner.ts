@@ -15,6 +15,7 @@ import type {
 } from './ast';
 import { compileCompare, joinAnd } from './compile';
 import { FqlError } from './errors';
+import type { AccessQuerySpec } from './transport';
 import {
   columnNames,
   type PushdownTarget,
@@ -41,6 +42,8 @@ export interface FetchSpec {
   /** resources only: read this revision's data instead of head. A RevisionNum,
    *  or the symbolic 'head' / 'live'. */
   revision?: string;
+  /** grants only: the RBAC access question the materializer applies. */
+  accessQuery?: AccessQuerySpec;
 }
 
 export interface ExecutionPlan {
@@ -213,6 +216,7 @@ function groupToFetch(table: TableDef, atoms: Expr[], alias: string | null): Fet
     whereUnit: [],
   };
   let revision: string | undefined;
+  let accessQuery: AccessQuerySpec | undefined;
 
   for (const atom of atoms) {
     if (atom.kind === 'compare') {
@@ -231,6 +235,17 @@ function groupToFetch(table: TableDef, atoms: Expr[], alias: string | null): Fet
           revision = revisionSelector(atom);
         }
         // Any other operator/shape falls through to the client-side residual.
+        continue;
+      }
+
+      // The `accessQuery` selectors (grants: verb/resource/apiGroup/namespace/
+      // name): captured into the materializer's RBAC question, not a clause.
+      // Stripped from the residual (the row has no such literal field).
+      if (col.pushdown?.target === 'accessQuery') {
+        if (atom.op === '=' && atom.right.kind === 'literal') {
+          accessQuery ??= {};
+          accessQuery[col.pushdown.expr as keyof AccessQuerySpec] = String(atom.right.value);
+        }
         continue;
       }
 
@@ -267,6 +282,7 @@ function groupToFetch(table: TableDef, atoms: Expr[], alias: string | null): Fet
   if (parts.whereResource.length) spec.whereResource = joinAnd(parts.whereResource);
   if (parts.whereUnit.length) spec.whereUnit = joinAnd(parts.whereUnit);
   if (revision !== undefined) spec.revision = revision;
+  if (accessQuery !== undefined) spec.accessQuery = accessQuery;
   return spec;
 }
 
@@ -368,34 +384,39 @@ export function plan(stmt: SelectStmt): ExecutionPlan {
   return {
     source: table.source,
     fetches,
-    // The `revision` selector is fully handled by the fetch (and stamped onto
-    // rows as the resolved number), so strip it from the client-side residual —
-    // otherwise a symbolic `revision = 'head'` would filter out every stamped
-    // numeric row. Other predicates remain for exact re-checking.
-    residual: stmt.where ? stripRevision(stmt.where, table, stmt.from.alias) : null,
+    // Selector atoms (`revision`, grants `accessQuery` fields) are fully handled
+    // by the fetch, not by row fields, so strip them from the client-side
+    // residual — otherwise `revision = 'head'` would drop every stamped numeric
+    // row, and `verb = 'delete'` would drop every grant (no literal `verb`
+    // field). Other predicates remain for exact re-checking.
+    residual: stmt.where ? stripSelectors(stmt.where, table, stmt.from.alias) : null,
     stmt,
     needsResourceData: table.source === 'resources',
   };
 }
 
-/** Rewrite a WHERE tree, replacing any `revision <op> …` comparison with a
- *  constant-true marker (a tautology that the evaluator treats as pass). */
-function stripRevision(e: Expr, table: TableDef, alias: string | null): Expr | null {
+/** Targets that are fetch selectors, not row-field clauses — dropped from the
+ *  client-side residual (the fetch handles them; rows carry no matching field). */
+const SELECTOR_TARGETS: ReadonlySet<PushdownTarget> = new Set(['revision', 'accessQuery']);
+
+/** Rewrite a WHERE tree, dropping any selector comparison (`revision = …`,
+ *  grants `verb`/`resource`/… ) so only re-checkable predicates remain. */
+function stripSelectors(e: Expr, table: TableDef, alias: string | null): Expr | null {
   switch (e.kind) {
     case 'logical': {
-      const l = stripRevision(e.left, table, alias);
-      const r = stripRevision(e.right, table, alias);
+      const l = stripSelectors(e.left, table, alias);
+      const r = stripSelectors(e.right, table, alias);
       if (l === null) return r; // dropped → identity for AND, absorbing handled below
       if (r === null) return l;
       return { ...e, left: l, right: r };
     }
     case 'not': {
-      const inner = stripRevision(e.expr, table, alias);
+      const inner = stripSelectors(e.expr, table, alias);
       return inner === null ? null : { ...e, expr: inner };
     }
     case 'compare': {
       const col = resolveColumn(table, stripAlias(e.left, alias), e.left.quoted === true);
-      return col?.pushdown?.target === 'revision' ? null : e;
+      return col?.pushdown && SELECTOR_TARGETS.has(col.pushdown.target) ? null : e;
     }
     default:
       return e;

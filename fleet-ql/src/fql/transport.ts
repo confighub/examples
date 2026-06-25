@@ -28,6 +28,25 @@ export interface RevisionParams {
   where?: string;
 }
 
+/** The RBAC access question for a `grants` fetch, extracted from WHERE. Any field
+ *  omitted is a wildcard; with none set, every grant is returned. The transport's
+ *  materializer applies these with RBAC match semantics (wildcards, aggregation,
+ *  builtins) — they are NOT literal row-field filters. */
+export interface AccessQuerySpec {
+  verb?: string;
+  resource?: string;
+  apiGroup?: string;
+  namespace?: string;
+  name?: string;
+}
+
+/** Params for a `grants` fetch: `where` narrows which Units' RBAC to read;
+ *  `accessQuery` is the effective-access question applied by the materializer. */
+export interface GrantsParams {
+  where?: string;
+  accessQuery?: AccessQuerySpec;
+}
+
 /**
  * A Transport knows how to fetch each virtual table's rows from ConfigHub and
  * return them as flat FQL rows (column name → value). Each method may be called
@@ -38,4 +57,6 @@ export interface Transport {
   resources(params: ResourceParams): Promise<Row[]>;
   spaces(params: ListParams): Promise<Row[]>;
   revisions(params: RevisionParams): Promise<Row[]>;
+  /** Effective-access rows, materialized from RBAC resources (who can what). */
+  grants(params: GrantsParams): Promise<Row[]>;
 }

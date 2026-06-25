@@ -18,7 +18,14 @@ export { FqlError, renderError } from './errors';
 export type { ParseOptions } from './parser';
 export type { SelectStmt } from './ast';
 export type { ExecutionPlan, FetchSpec } from './planner';
-export type { Transport, ListParams, ResourceParams, RevisionParams } from './transport';
+export type {
+  Transport,
+  ListParams,
+  ResourceParams,
+  RevisionParams,
+  GrantsParams,
+  AccessQuerySpec,
+} from './transport';
 export type { Row, ResultSet } from './evaluate';
 export type { RunResult, RunStats } from './executor';
 export { TABLES, columnNames, describeTable, describeTables, tableNames } from './schema';

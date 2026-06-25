@@ -9,7 +9,16 @@
 
 import { parseAllDocuments } from 'yaml';
 
-import type { ListParams, ResourceParams, RevisionParams, Row, Transport } from '../fql';
+import type {
+  GrantsParams,
+  ListParams,
+  ResourceParams,
+  RevisionParams,
+  Row,
+  Transport,
+} from '../fql';
+import { materializeGrants } from '../rbac/grants';
+import type { FleetResource } from '../rbac/model';
 import { authHeaders } from './auth';
 import { b64decodeUtf8 } from './encoding';
 
@@ -234,6 +243,62 @@ export const fqlTransport: Transport = {
       }
     }
     return rows;
+  },
+
+  async grants(params: GrantsParams): Promise<Row[]> {
+    // Materialize effective RBAC access: fetch the in-scope units' resources
+    // (get-resources), resolve each unit's cluster, then let the rbac engine
+    // resolve bindings→roles→rules and answer the access question. We fetch all
+    // resources (no whereResource narrowing) and let buildClusterRbac keep only
+    // RBAC kinds — sound and simple; `where` (space) already narrows the units.
+    const [responses, clusters] = await Promise.all([
+      postJson<InvokeResponse[]>(
+        '/api/function/invoke',
+        { where: params.where },
+        {
+          FunctionInvocations: [
+            { FunctionName: 'get-resources', Arguments: [{ ParameterName: 'body', Value: 'json' }] },
+          ],
+        },
+      ),
+      unitClusterMap(params.where),
+    ]);
+
+    const fleet: FleetResource[] = [];
+    for (const resp of responses) {
+      if (!resp.Success) continue;
+      const encoded = resp.Outputs?.['ResourceList'];
+      if (!encoded) continue;
+      let list: { ResourceType?: string; ResourceName?: string; ResourceBody?: string }[];
+      try {
+        list = JSON.parse(b64decodeUtf8(encoded));
+      } catch {
+        continue;
+      }
+      const ci = clusters.get(`${resp.SpaceSlug ?? ''}/${resp.UnitSlug ?? ''}`);
+      for (const raw of list) {
+        if (!raw.ResourceBody) continue;
+        let doc: unknown;
+        try {
+          doc = JSON.parse(raw.ResourceBody);
+        } catch {
+          continue;
+        }
+        fleet.push({
+          origin: {
+            cluster: ci?.cluster ?? resp.SpaceSlug ?? '',
+            target: ci?.target ?? undefined,
+            space: resp.SpaceSlug ?? '',
+            spaceId: resp.SpaceID ?? '',
+            unitId: resp.UnitID ?? '',
+            unitSlug: resp.UnitSlug ?? '',
+            resourceName: raw.ResourceName ?? '',
+          },
+          doc,
+        });
+      }
+    }
+    return materializeGrants(fleet, params.accessQuery ?? {});
   },
 };
 
