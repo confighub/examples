@@ -66,6 +66,8 @@ const KEYWORDS = new Set([
   'LEFT',
   'OUTER',
   'ON',
+  'UNION',
+  'ALL',
 ]);
 
 const isDigit = (c: string) => c >= '0' && c <= '9';

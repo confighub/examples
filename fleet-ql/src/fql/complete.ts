@@ -315,6 +315,10 @@ function contextCandidates(tokens: Token[]): Completion[] {
   const last = tail[tail.length - 1];
   const prev = tail[tail.length - 2];
 
+  // UNION joins two SELECTs: after `UNION` a new SELECT (or ALL) begins.
+  if (isKw(last, 'UNION')) return kw('ALL', 'SELECT');
+  if (isKw(last, 'ALL') && isKw(prev, 'UNION')) return kw('SELECT');
+
   switch (clause) {
     case 'start':
       return kw('SELECT');
@@ -330,7 +334,7 @@ function contextCandidates(tokens: Token[]): Completion[] {
     }
 
     case 'from':
-      return last ? kw('WHERE', 'GROUP BY', 'ORDER BY', 'LIMIT') : tableCompletions();
+      return last ? kw('WHERE', 'GROUP BY', 'ORDER BY', 'LIMIT', 'UNION') : tableCompletions();
 
     case 'where': {
       // Inside an IN (...) value list: literals only — never columns.
@@ -360,7 +364,7 @@ function contextCandidates(tokens: Token[]): Completion[] {
         ];
       }
       // After a complete predicate (value / closed list / RHS column).
-      return kw('AND', 'OR', 'GROUP BY', 'ORDER BY', 'LIMIT');
+      return kw('AND', 'OR', 'GROUP BY', 'ORDER BY', 'LIMIT', 'UNION');
     }
 
     case 'group': {
@@ -368,7 +372,7 @@ function contextCandidates(tokens: Token[]): Completion[] {
       if (!last || last.type === 'comma') {
         return scope.star ? columnCompletions(table) : scope.group.map((g) => ({ label: g }));
       }
-      return kw('ORDER BY', 'LIMIT');
+      return kw('ORDER BY', 'LIMIT', 'UNION');
     }
 
     case 'order': {
@@ -378,8 +382,8 @@ function contextCandidates(tokens: Token[]): Completion[] {
           ? columnCompletions(table)
           : scope.order.map((o) => ({ label: o, detail: 'output' }));
       }
-      if (isKw(last, 'ASC') || isKw(last, 'DESC')) return kw('LIMIT');
-      return kw('ASC', 'DESC', 'LIMIT');
+      if (isKw(last, 'ASC') || isKw(last, 'DESC')) return kw('LIMIT', 'UNION');
+      return kw('ASC', 'DESC', 'LIMIT', 'UNION');
     }
 
     case 'limit':

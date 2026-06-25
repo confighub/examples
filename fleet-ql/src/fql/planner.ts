@@ -12,7 +12,10 @@ import type {
   Expr,
   IsNullExpr,
   JoinType,
+  OrderKey,
   SelectStmt,
+  Statement,
+  UnionStmt,
 } from './ast';
 import { compileCompare, joinAnd } from './compile';
 import { FqlError } from './errors';
@@ -632,7 +635,55 @@ function extractOnEquies(
 // ─── Public entry ──────────────────────────────────────────────────────────────
 
 /** Plan a parsed statement against the virtual-table catalog. */
-export function plan(stmt: SelectStmt): ExecutionPlan {
+/** Plan a full statement: a single SELECT (→ ExecutionPlan) or a UNION of
+ *  SELECTs (→ UnionPlan, one ExecutionPlan per branch). */
+export function plan(stmt: SelectStmt): ExecutionPlan;
+export function plan(stmt: Statement): ExecutionPlan | UnionPlan;
+export function plan(stmt: Statement): ExecutionPlan | UnionPlan {
+  return stmt.kind === 'union' ? planUnion(stmt) : planSelect(stmt);
+}
+
+/** A planned UNION: each branch planned independently; their result rows are
+ *  combined (positional column alignment) and the trailing ORDER BY / LIMIT
+ *  applied over the union. */
+export interface UnionPlan {
+  kind: 'union';
+  branches: ExecutionPlan[];
+  /** Connector before branches[i+1]: true = UNION ALL, false = UNION (distinct). */
+  all: boolean[];
+  orderBy: OrderKey[];
+  limit: number | null;
+  stmt: UnionStmt;
+}
+
+function planUnion(stmt: UnionStmt): UnionPlan {
+  const branches = stmt.branches.map(planSelect);
+
+  // Static arity check where possible: every branch must project the same number
+  // of output columns. A bare `SELECT *` branch's arity is only known once rows
+  // are fetched, so those are checked at execution time instead.
+  const arity = (b: SelectStmt): number | null =>
+    b.projections.length === 1 && b.projections[0].expr.kind === 'star'
+      ? null
+      : b.projections.length;
+  const first = arity(stmt.branches[0]);
+  if (first !== null) {
+    for (let i = 1; i < stmt.branches.length; i++) {
+      const a = arity(stmt.branches[i]);
+      if (a !== null && a !== first) {
+        throw new FqlError(
+          `each UNION branch must have the same number of columns (branch 1 has ${first}, branch ${i + 1} has ${a})`,
+          stmt.branches[i].pos,
+          'plan',
+        );
+      }
+    }
+  }
+
+  return { kind: 'union', branches, all: stmt.all, orderBy: stmt.orderBy, limit: stmt.limit, stmt };
+}
+
+function planSelect(stmt: SelectStmt): ExecutionPlan {
   if (stmt.joins.length > 0) {
     if (stmt.joins.length > 1) {
       throw new FqlError('only one JOIN is supported (two tables)', stmt.joins[1].pos, 'plan');

@@ -10,14 +10,14 @@
 //   const res = await runQuery("SELECT unit, image FROM resources WHERE severity = 'CRITICAL'", transport);
 
 import { execute, type RunResult } from './executor';
-import { parse, type ParseOptions } from './parser';
-import { plan, type ExecutionPlan } from './planner';
+import { parse, parseStatement, type ParseOptions } from './parser';
+import { plan, type ExecutionPlan, type UnionPlan } from './planner';
 import type { Transport } from './transport';
 
 export { FqlError, renderError } from './errors';
 export type { ParseOptions } from './parser';
-export type { SelectStmt } from './ast';
-export type { ExecutionPlan, FetchSpec } from './planner';
+export type { SelectStmt, Statement, UnionStmt } from './ast';
+export type { ExecutionPlan, FetchSpec, UnionPlan } from './planner';
 export type {
   Transport,
   ListParams,
@@ -35,20 +35,27 @@ export type { Completion } from './complete';
 export { explainPlan, formatExpr } from './explain';
 export type { PlanExplain, ExplainStage } from './explain';
 
-/** Parse a query into an AST (throws FqlError on syntax errors). */
-export { parse };
+/** Parse a query into an AST (throws FqlError on syntax errors). `parse` reads a
+ *  single SELECT; `parseStatement` also accepts a UNION of SELECTs. */
+export { parse, parseStatement };
 
-/** Parse + plan a query into an ExecutionPlan without running it. Useful for
- *  the "show plan" view in the console. Throws FqlError on parse/plan errors. */
+/** Parse + plan a single SELECT without running it (throws on a UNION — use
+ *  planStatement for that). */
 export function planQuery(query: string, opts?: ParseOptions): ExecutionPlan {
   return plan(parse(query, opts));
 }
 
-/** Parse, plan, and execute a query against a Transport. */
+/** Parse + plan any statement (single SELECT or a UNION) without running it.
+ *  This is the "show plan" entry the console uses. Throws on parse/plan errors. */
+export function planStatement(query: string, opts?: ParseOptions): ExecutionPlan | UnionPlan {
+  return plan(parseStatement(query, opts));
+}
+
+/** Parse, plan, and execute a query (single SELECT or UNION) against a Transport. */
 export async function runQuery(
   query: string,
   transport: Transport,
   opts?: ParseOptions,
 ): Promise<RunResult> {
-  return execute(planQuery(query, opts), transport);
+  return execute(plan(parseStatement(query, opts)), transport);
 }

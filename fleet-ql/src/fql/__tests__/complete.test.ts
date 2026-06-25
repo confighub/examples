@@ -89,12 +89,17 @@ describe('completion — GROUP BY / ORDER BY scope', () => {
     );
   });
 
-  it('after an ORDER BY key offers ASC / DESC / LIMIT', () => {
-    expect(at('SELECT space FROM units ORDER BY space ')).toEqual(['ASC', 'DESC', 'LIMIT']);
+  it('after an ORDER BY key offers ASC / DESC / LIMIT / UNION', () => {
+    expect(at('SELECT space FROM units ORDER BY space ')).toEqual(['ASC', 'DESC', 'LIMIT', 'UNION']);
   });
 
-  it('after ASC/DESC offers LIMIT', () => {
-    expect(at('SELECT space FROM units ORDER BY space DESC ')).toEqual(['LIMIT']);
+  it('after ASC/DESC offers LIMIT / UNION', () => {
+    expect(at('SELECT space FROM units ORDER BY space DESC ')).toEqual(['LIMIT', 'UNION']);
+  });
+
+  it('offers a new SELECT (or ALL) after UNION', () => {
+    expect(at('SELECT slug FROM units UNION ')).toEqual(['ALL', 'SELECT']);
+    expect(at('SELECT slug FROM units UNION ALL ')).toEqual(['SELECT']);
   });
 
   it('SELECT * falls back to all table columns for ORDER BY', () => {

@@ -181,3 +181,24 @@ export interface SelectStmt {
   limit: number | null;
   pos: Pos;
 }
+
+/** A `UNION` of two or more SELECTs. Each branch is run independently and its
+ *  rows are combined; columns align by position (output names come from the
+ *  first branch), so branches may even read different tables. A trailing
+ *  ORDER BY / LIMIT applies to the combined result. */
+export interface UnionStmt {
+  kind: 'union';
+  /** The SELECT branches, in order (≥ 2). Each carries no ORDER BY / LIMIT. */
+  branches: SelectStmt[];
+  /** The connector *before* branches[i+1]: true = UNION ALL (keep duplicates),
+   *  false = UNION (distinct). Length = branches.length - 1. */
+  all: boolean[];
+  /** ORDER BY over the combined result (references output column names). */
+  orderBy: OrderKey[];
+  /** LIMIT over the combined result. */
+  limit: number | null;
+  pos: Pos;
+}
+
+/** A top-level statement: a single SELECT or a UNION of SELECTs. */
+export type Statement = SelectStmt | UnionStmt;

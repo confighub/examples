@@ -18,6 +18,8 @@ const res = await runQuery(
 ## Grammar (v1)
 
 ```
+query := select (UNION [ALL] select)*  [ORDER BY ...] [LIMIT int]   -- trailing sort/limit binds to the union
+
 SELECT  proj [, proj]*            -- or *
 FROM    table [AS? alias]
         [ [INNER | LEFT [OUTER]] JOIN table [AS? alias] ON eqs ]   -- one join (two tables)
@@ -327,6 +329,35 @@ Rules: **both tables need aliases**; **every column must be alias-qualified**
 backtick. Fetch selectors (`revision`, the grants access-query) aren't supported
 inside a join (v1). Deferred: 3+ tables, non-equi joins, and joining the
 materialized RBAC tables.
+
+## UNION
+
+`UNION` combines two or more SELECTs into one result set. Each branch is a full,
+independent query — its own table, WHERE, GROUP BY, even a JOIN — so a UNION can
+span **different tables**, which no single WHERE or JOIN can. Columns align **by
+position**, and the output column names come from the **first** branch (so every
+branch must project the same number of columns). A trailing `ORDER BY` / `LIMIT`
+applies to the **combined** result and references the output column names.
+
+```sql
+-- everything named in the fleet, across two tables, sorted as one list
+SELECT slug, environment FROM units  WHERE space LIKE 'acme-%'
+UNION
+SELECT slug, environment FROM spaces WHERE slug  LIKE 'acme-%'
+ORDER BY slug
+
+-- a stacked audit queue: wildcard roles + orphaned bindings, fleet-wide
+SELECT cluster, name FROM roles    WHERE hasWildcard = true
+UNION
+SELECT cluster, name FROM bindings WHERE orphaned = true
+```
+
+`UNION` removes duplicate rows (compared on the full output tuple); `UNION ALL`
+keeps every row. Branches run **concurrently**; their rows are combined
+client-side (ConfigHub has no server-side set operations), so the result counter
+reports the rows fetched from the server summed across branches. A branch can't
+carry its own `ORDER BY` / `LIMIT` — those belong to the union (v1). Deferred:
+`INTERSECT` / `EXCEPT`, and parenthesized branches.
 
 ## How it executes (the pushdown model)
 

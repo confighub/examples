@@ -33,6 +33,7 @@ import type {
   SelectStmt,
   SortDir,
   StarExpr,
+  Statement,
   TableRef,
 } from './ast';
 import { FqlError, type Pos } from './errors';
@@ -106,7 +107,46 @@ class Parser {
 
   // ─── Statement ────────────────────────────────────────────────────────────
 
+  /** A full statement: a single SELECT, or two+ SELECTs combined with UNION
+   *  [ALL]. A trailing ORDER BY / LIMIT binds to the whole (combined) result. */
+  parseStatement(): Statement {
+    const first = this.parseSelectCore();
+    if (!this.isKw('UNION')) {
+      // Plain single SELECT: its own ORDER BY / LIMIT, then EOF.
+      const { orderBy, limit } = this.parseTrailing();
+      this.expectEof();
+      return { ...first, orderBy, limit, pos: span(first.pos, this.endPos(first.pos)) };
+    }
+
+    const branches: SelectStmt[] = [first];
+    const all: boolean[] = [];
+    while (this.isKw('UNION')) {
+      this.next();
+      let isAll = false;
+      if (this.isKw('ALL')) {
+        this.next();
+        isAll = true;
+      }
+      all.push(isAll);
+      branches.push(this.parseSelectCore());
+    }
+    // The trailing ORDER BY / LIMIT applies to the combined result.
+    const { orderBy, limit } = this.parseTrailing();
+    this.expectEof();
+    return { kind: 'union', branches, all, orderBy, limit, pos: span(first.pos, this.endPos(first.pos)) };
+  }
+
+  /** A single SELECT with its own trailing ORDER BY / LIMIT (no UNION). */
   parseSelect(): SelectStmt {
+    const core = this.parseSelectCore();
+    const { orderBy, limit } = this.parseTrailing();
+    this.expectEof();
+    return { ...core, orderBy, limit, pos: span(core.pos, this.endPos(core.pos)) };
+  }
+
+  /** SELECT … FROM … [JOIN …] [WHERE …] [GROUP BY …] — no ORDER BY / LIMIT / EOF,
+   *  so it composes as a UNION branch or a standalone select. */
+  private parseSelectCore(): SelectStmt {
     const startTok = this.expectKw('SELECT');
     const projections = this.parseProjections();
     this.expectKw('FROM');
@@ -130,6 +170,21 @@ class Parser {
       }
     }
 
+    return {
+      kind: 'select',
+      projections,
+      from,
+      joins,
+      where,
+      groupBy,
+      orderBy: [],
+      limit: null,
+      pos: span(startTok.pos, this.endPos(startTok.pos)),
+    };
+  }
+
+  /** Optional `ORDER BY …` then `LIMIT n`. */
+  private parseTrailing(): { orderBy: OrderKey[]; limit: number | null } {
     const orderBy: OrderKey[] = [];
     if (this.isKw('ORDER')) {
       this.next();
@@ -148,23 +203,18 @@ class Parser {
       if (n.value.includes('.')) this.fail('LIMIT must be an integer', n.pos);
       limit = Number.parseInt(n.value, 10);
     }
+    return { orderBy, limit };
+  }
 
+  private expectEof(): void {
     if (!this.atEof()) {
       this.fail(`unexpected ${describe(this.peek())} after end of query`, this.peek().pos);
     }
+  }
 
-    const endPos = this.toks[this.i - 1]?.pos ?? startTok.pos;
-    return {
-      kind: 'select',
-      projections,
-      from,
-      joins,
-      where,
-      groupBy,
-      orderBy,
-      limit,
-      pos: span(startTok.pos, endPos),
-    };
+  /** End position = the last consumed token (falls back to `from`). */
+  private endPos(fallback: Pos): Pos {
+    return this.toks[this.i - 1]?.pos ?? fallback;
   }
 
   /** A table reference: `<name> [AS? alias]`. */
@@ -598,7 +648,14 @@ export interface ParseOptions {
   now?: Date;
 }
 
-/** Parse a query string into a SelectStmt, or throw FqlError. */
+/** Parse a single SELECT into a SelectStmt, or throw FqlError. (A UNION query
+ *  is rejected here — use parseStatement.) Used for AST inspection. */
 export function parse(src: string, opts: ParseOptions = {}): SelectStmt {
   return new Parser(src, opts.now ?? new Date()).parseSelect();
+}
+
+/** Parse a full statement — a single SELECT or a UNION of SELECTs — or throw
+ *  FqlError. This is the entry the planner/executor use. */
+export function parseStatement(src: string, opts: ParseOptions = {}): Statement {
+  return new Parser(src, opts.now ?? new Date()).parseStatement();
 }

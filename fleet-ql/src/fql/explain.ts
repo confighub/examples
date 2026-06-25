@@ -3,7 +3,7 @@
 // console renders it and tests can assert on it.
 
 import type { Expr } from './ast';
-import type { ExecutionPlan, FetchSpec } from './planner';
+import type { ExecutionPlan, FetchSpec, UnionPlan } from './planner';
 import type { TableSource } from './schema';
 
 /** One stage in the plan DAG: a title plus detail lines (calls, keys, columns). */
@@ -144,8 +144,48 @@ function projectionNames(plan: ExecutionPlan): string[] {
   });
 }
 
+/** Each UNION branch as one stage: its full sub-plan (scans + pipeline) nested. */
+function branchStage(i: number, branch: ExecutionPlan): ExplainStage {
+  const be = explainPlan(branch);
+  const lines: string[] = [];
+  for (const s of be.inputs) {
+    lines.push(s.title);
+    for (const l of s.lines) lines.push(`  ${l}`);
+  }
+  for (const s of be.pipeline) {
+    lines.push(`· ${s.title}`);
+    for (const l of s.lines) lines.push(`  ${l}`);
+  }
+  return { title: `branch ${i + 1}`, lines };
+}
+
+function explainUnion(plan: UnionPlan): PlanExplain {
+  const inputs = plan.branches.map((b, i) => branchStage(i, b));
+  const allAll = plan.all.every((a) => a);
+  const anyDistinct = plan.all.some((a) => !a);
+  const pipeline: ExplainStage[] = [
+    {
+      title: `union${allAll ? ' all' : ''} · ${plan.branches.length} branches`,
+      lines: [
+        anyDistinct ? 'de-dupe on the full output row' : 'keep all rows (no de-dupe)',
+        'columns aligned by position to branch 1',
+      ],
+    },
+  ];
+  if (plan.orderBy.length) {
+    pipeline.push({
+      title: 'order by',
+      lines: [plan.orderBy.map((o) => `${exprName(o.expr)} ${o.dir}`).join(', ')],
+    });
+  }
+  if (plan.limit != null) pipeline.push({ title: `limit ${plan.limit}`, lines: [] });
+  return { inputs, pipeline };
+}
+
 /** Build the EXPLAIN view of a plan: inputs (scans) + the client-side pipeline. */
-export function explainPlan(plan: ExecutionPlan): PlanExplain {
+export function explainPlan(plan: ExecutionPlan | UnionPlan): PlanExplain {
+  if ('kind' in plan) return explainUnion(plan);
+
   const inputs: ExplainStage[] = [];
   const pipeline: ExplainStage[] = [];
   const stmt = plan.stmt;

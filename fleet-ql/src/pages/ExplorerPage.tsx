@@ -26,10 +26,11 @@ import {
   explainPlan,
   FqlError,
   type PlanExplain,
-  planQuery,
+  planStatement,
   renderError,
   runQuery,
   type RunResult,
+  type UnionPlan,
 } from '../fql';
 import { QueryEditor } from './QueryEditor';
 import { TableSidebar } from './TableSidebar';
@@ -61,6 +62,11 @@ const EXAMPLES: { label: string; query: string }[] = [
     label: 'Dev vs prod drift (JOIN)',
     query:
       "SELECT d.component AS component,\n  `d.spec.template.spec.containers.*.image` AS dev,\n  `p.spec.template.spec.containers.*.image` AS prod\nFROM resources d JOIN resources p ON d.name = p.name AND d.kind = p.kind\nWHERE d.space LIKE 'acme-%' AND p.space LIKE 'acme-%'\n  AND d.environment = 'Dev' AND p.environment = 'Prod' AND d.kind = 'Deployment'\n  AND `d.spec.template.spec.containers.*.image` != `p.spec.template.spec.containers.*.image`",
+  },
+  {
+    label: 'Units + spaces (UNION)',
+    query:
+      "SELECT slug, environment FROM units WHERE space LIKE 'acme-%'\nUNION\nSELECT slug, environment FROM spaces WHERE slug LIKE 'acme-%'\nORDER BY slug",
   },
   {
     label: 'Audit trail (revisions)',
@@ -155,11 +161,16 @@ function PlanDAG({ ex }: { ex: PlanExplain }) {
   );
 }
 
+/** Total server fetches a single-statement plan issues. */
+function callCount(p: ExecutionPlan): number {
+  return p.join ? p.join.left.fetches.length + p.join.right.fetches.length : p.fetches.length;
+}
+
 function PlanView({ query }: { query: string }) {
   const [open, setOpen] = useState(false);
-  let plan: ExecutionPlan;
+  let plan: ExecutionPlan | UnionPlan;
   try {
-    plan = planQuery(query);
+    plan = planStatement(query);
   } catch (e) {
     return (
       <Alert severity='warning' sx={{ mb: 2 }}>
@@ -167,23 +178,28 @@ function PlanView({ query }: { query: string }) {
       </Alert>
     );
   }
-  const calls = plan.join
-    ? plan.join.left.fetches.length + plan.join.right.fetches.length
-    : plan.fetches.length;
+  const calls = 'kind' in plan
+    ? plan.branches.reduce((s, b) => s + callCount(b), 0)
+    : callCount(plan);
+  const label = 'kind' in plan
+    ? `union${plan.all.every((a) => a) ? ' all' : ''} · ${plan.branches.length} branches`
+    : plan.join
+      ? `join · ${plan.join.type}`
+      : plan.source;
+  const orSplit = !('kind' in plan) && !plan.join && plan.fetches.length > 1;
   return (
     <Paper variant='outlined' sx={{ p: 1.5, mb: 2, bgcolor: 'grey.50' }}>
       <Stack direction='row' justifyContent='space-between' alignItems='center'>
         <Typography variant='caption' color='text.secondary'>
-          {plan.join ? `join · ${plan.join.type}` : plan.source} · {calls} call(s) via the
-          generated SDK client
-          {!plan.join && plan.fetches.length > 1 ? ' (OR split, unioned)' : ''} · full WHERE
-          re-checked client-side
+          {label} · {calls} call(s) via the generated SDK client
+          {orSplit ? ' (OR split, unioned)' : ''} · full WHERE re-checked client-side
         </Typography>
         <Button size='small' onClick={() => setOpen((o) => !o)} sx={{ minWidth: 0 }}>
           {open ? 'Hide plan' : 'Explain'}
         </Button>
       </Stack>
       {!open &&
+        !('kind' in plan) &&
         plan.fetches.map((f, i) => (
           <Box key={i} component='pre' sx={{ m: 0, mt: 0.5, fontSize: 12, whiteSpace: 'pre-wrap' }}>
             {`#${i + 1}  ` +

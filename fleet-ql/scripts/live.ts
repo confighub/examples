@@ -30,7 +30,7 @@ const sessionStorage = {
 // the client at module load). Node's native fetch then talks to the live server.
 (globalThis as { __CUB_API_BASE__?: string }).__CUB_API_BASE__ = `${BASE}/api`;
 
-const { runQuery, planQuery } = await import('../src/fql/index');
+const { runQuery, planStatement } = await import('../src/fql/index');
 const { fqlTransport } = await import('../src/api/fqlTransport');
 
 const QUERIES: string[] = [
@@ -78,6 +78,10 @@ const QUERIES: string[] = [
   "SELECT d.component AS component, `d.spec.template.spec.containers.*.image` AS dev, `p.spec.template.spec.containers.*.image` AS prod FROM resources d JOIN resources p ON d.name = p.name AND d.kind = p.kind WHERE d.space LIKE 'acme-%' AND p.space LIKE 'acme-%' AND d.environment = 'Dev' AND p.environment = 'Prod' AND d.kind = 'Deployment' ORDER BY component",
   // 7. JOIN drift — only the components whose dev image differs from prod
   "SELECT d.component AS component, `d.spec.template.spec.containers.*.image` AS dev, `p.spec.template.spec.containers.*.image` AS prod FROM resources d JOIN resources p ON d.name = p.name AND d.kind = p.kind WHERE d.space LIKE 'acme-%' AND p.space LIKE 'acme-%' AND d.environment = 'Dev' AND p.environment = 'Prod' AND d.kind = 'Deployment' AND `d.spec.template.spec.containers.*.image` != `p.spec.template.spec.containers.*.image` ORDER BY component",
+  // ── UNION: combine rows from two different tables into one list ──────────────
+  "SELECT slug, environment FROM units WHERE space LIKE 'acme-%' UNION SELECT slug, environment FROM spaces WHERE slug LIKE 'acme-%' ORDER BY slug",
+  // UNION ALL across two WHEREs on the same table (keeps duplicates)
+  "SELECT slug, space FROM units WHERE space = 'sec-demo-dev' UNION ALL SELECT slug, space FROM units WHERE space LIKE 'acme-storefront-%' ORDER BY space, slug",
 ];
 
 let ok = 0;
@@ -85,15 +89,18 @@ let err = 0;
 for (const q of QUERIES) {
   const oneLine = q.replace(/\s+/g, ' ');
   try {
-    const plan = planQuery(q);
-    const fetchSummary = plan.fetches
-      .map(
-        (f) =>
-          Object.entries(f)
-            .map(([k, v]) => `${k}=${typeof v === 'object' ? JSON.stringify(v) : v}`)
-            .join(' ') || '(no-pushdown)',
-      )
-      .join(' || ');
+    const plan = planStatement(q);
+    const fetchSummary =
+      'kind' in plan
+        ? `union · ${plan.branches.length} branches`
+        : plan.fetches
+            .map(
+              (f) =>
+                Object.entries(f)
+                  .map(([k, v]) => `${k}=${typeof v === 'object' ? JSON.stringify(v) : v}`)
+                  .join(' ') || '(no-pushdown)',
+            )
+            .join(' || ');
     const res = await runQuery(q, fqlTransport);
     ok++;
     console.log(
