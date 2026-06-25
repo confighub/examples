@@ -436,11 +436,13 @@ export function plan(stmt: SelectStmt): ExecutionPlan {
       // conjuncts (one fetch that still narrows) rather than scanning everything.
       fetches = [groupToFetch(table, topConjuncts(nf), alias)];
     } else {
-      const specs = groups.map((g) => groupToFetch(table, g, alias));
-      // If any OR-branch can't narrow (empty spec), the union is the whole table,
-      // so a single unconstrained fetch is equivalent and drops the redundant
-      // per-branch calls.
-      fetches = specs.some((s) => Object.keys(s).length === 0) ? [{}] : dedupeFetches(specs);
+      // One AND-only fetch per DNF group, unioned client-side — ConfigHub has no
+      // server-side OR. We do NOT collapse an unpushable (empty) branch into a
+      // single unconstrained fetch: that would be unsound when other branches
+      // carry a `revision` / `accessQuery` selector (collapsing drops it and reads
+      // the wrong data), and it discards the narrowing the other branches do get.
+      // Identical specs still de-dupe (e.g. two unpushable branches → one {}).
+      fetches = dedupeFetches(groups.map((g) => groupToFetch(table, g, alias)));
     }
   }
 

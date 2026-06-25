@@ -13,16 +13,28 @@ describe('planner — pushdown', () => {
     expect(p.source).toBe('units');
   });
 
-  it('collapses an OR with an unpushable branch to one unconstrained fetch', () => {
+  it('splits a top-level OR into two fetches (DNF) — one per AND-group', () => {
     // A bracket-keyed annotation can't push (dots/slash) → its branch fetches
-    // everything; that already subsumes the image-LIKE branch, so the union is
-    // the whole table and a single {} fetch is equivalent (and avoids the
-    // redundant narrowed call). The full WHERE is re-checked client-side.
+    // everything; the container-image LIKE pushes down. ConfigHub has no server
+    // OR, so these stay SEPARATE fetches unioned client-side (not collapsed).
     const p = planOf(
       "SELECT unit FROM resources WHERE metadata.annotations['sec-scanner.confighub.com/max-severity'] = 'CRITICAL' OR `spec.template.spec.containers.*.image` LIKE '%:latest'",
     );
-    expect(p.fetches).toEqual([{}]);
-    expect(p.residual).not.toBeNull();
+    expect(p.fetches).toHaveLength(2);
+    expect(p.fetches[0]).toEqual({});
+    expect(p.fetches[1]).toEqual({
+      whereData: "spec.template.spec.containers.*.image LIKE '%:latest'",
+    });
+  });
+
+  it('does not collapse an OR when a branch carries a revision selector', () => {
+    // Collapsing to one {} fetch would drop the revision=5 selector and read head
+    // data — unsound. Each branch must stay its own fetch.
+    const p = planOf(
+      "SELECT unit FROM resources WHERE (unit = 'checkout' AND revision = 5) OR `spec.template.spec.containers.*.image` LIKE '%:latest'",
+    );
+    expect(p.fetches).toHaveLength(2);
+    expect(p.fetches.some((f) => f.revision === '5')).toBe(true);
   });
 
   it('splits a top-level OR into two narrowed fetches when both branches push', () => {
