@@ -52,6 +52,9 @@ function mockTransport(roles: Row[], bindings: Row[]): Transport & { roleCalls: 
     async bindings() {
       return bindings.map((r) => ({ ...r }));
     },
+    async rbacFindings() {
+      return [];
+    },
   };
   return t;
 }

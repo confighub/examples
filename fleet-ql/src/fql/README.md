@@ -155,6 +155,7 @@ SELECT space, COUNT(*) AS n FROM units WHERE labels.team = 'payments' GROUP BY s
 | `grants` | materialized from RBAC resources (`get-resources` + the rbac engine) | output: `subject`, `subjectKind`, `subjectName`, `cluster`, `space`, `unit`, `target`, `scope`, `role`, `viaBuiltin`, `binding`; access selectors: `verb`, `resource`, `apiGroup`, `namespace`, `name` |
 | `roles` | materialized from RBAC resources | `name`, `kind`, `namespace`, `cluster`, `space`, `unit`, `target`, `hasWildcard`, `aggregated`, `ruleCount`, `labels.*` |
 | `bindings` | materialized from RBAC resources | `name`, `kind`, `namespace`, `cluster`, `space`, `unit`, `target`, `roleRef`, `roleRefKind`, `subjectCount`, `orphaned`, `clusterAdmin` |
+| `rbac_findings` | materialized from RBAC resources (`analyzeFleet`) | `analyzer`, `severity`, `cluster`, `space`, `unit`, `target`, `resourceKind`, `resourceName`, `namespace`, `message` |
 
 `resources` has no domain columns: an image is the array path
 `` `spec.template.spec.containers.*.image` `` and the scanner verdict is an
@@ -241,6 +242,29 @@ SELECT cluster, name FROM roles WHERE labels.team = 'platform'
 `space` pushes down to narrow the RBAC fetch; everything else (including
 `cluster`, and the computed flags `hasWildcard` / `aggregated` / `orphaned` /
 `clusterAdmin`) is filtered client-side.
+
+## `rbac_findings` — the audit complement
+
+`rbac_findings` runs every RBAC hygiene analyzer (`analyzeFleet`) and yields one
+row per finding — the analysis the boolean flags on `roles`/`bindings` don't
+cover: escalation verbs (`escalate`/`bind`/`impersonate`), risky grants
+(secrets, `pods/exec`, webhooks/CRDs), and unbound ServiceAccounts, alongside
+wildcards, cluster-admin, and orphaned bindings.
+
+```sql
+-- the high-severity audit queue, by cluster
+SELECT cluster, analyzer, resourceName, message
+FROM rbac_findings WHERE severity = 'high' ORDER BY cluster
+
+-- finding counts by analyzer
+SELECT analyzer, COUNT(*) AS n FROM rbac_findings GROUP BY analyzer ORDER BY n DESC
+
+-- who can escalate privileges, where
+SELECT cluster, resourceName FROM rbac_findings WHERE analyzer = 'privilege-escalation-verbs'
+```
+
+Analyzers: `wildcard-rules`, `privilege-escalation-verbs`, `risky-grants`,
+`cluster-admin-bindings`, `orphaned-bindings`, `unbound-service-accounts`.
 
 ## How it executes (the pushdown model)
 

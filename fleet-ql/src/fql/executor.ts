@@ -42,6 +42,9 @@ function rowKey(source: ExecutionPlan['source'], row: Row): string {
     case 'bindings':
       // One object = (cluster, space/unit, kind, namespace, name).
       return `${row['cluster']}/${row['space']}/${row['unit']}/${row['kind']}/${row['namespace'] ?? ''}/${row['name']}`;
+    case 'rbac_findings':
+      // Findings carry a stable id (analyzer:cluster:kind:ns:name).
+      return String(row['__id'] ?? `${row['analyzer']}/${row['cluster']}/${row['resourceName']}`);
   }
 }
 
@@ -70,6 +73,8 @@ async function fetchFor(
       return transport.roles({ where: spec.where } as ListParams);
     case 'bindings':
       return transport.bindings({ where: spec.where } as ListParams);
+    case 'rbac_findings':
+      return transport.rbacFindings({ where: spec.where } as ListParams);
   }
 }
 

@@ -5,6 +5,7 @@
 // view ("who can what") is the separate `grants` table — see grants.ts.
 
 import type { Row } from '../fql';
+import { analyzeFleet } from './findings';
 import { buildClusterRbac, type FleetResource } from './model';
 import { effectiveRules, isBuiltinRoleName, resolveRoleRef } from './semantics';
 
@@ -76,4 +77,24 @@ export function materializeBindings(resources: FleetResource[]): Row[] {
     }
   }
   return rows;
+}
+
+/** One row per RBAC hygiene finding (analyzeFleet): the audit complement that
+ *  covers what the boolean flags on roles/bindings don't — escalation verbs,
+ *  risky grants (secrets/exec/webhooks), unbound ServiceAccounts, etc. */
+export function materializeFindings(resources: FleetResource[]): Row[] {
+  const clusters = buildClusterRbac(resources);
+  return analyzeFleet(clusters).map((f) => ({
+    analyzer: f.analyzer,
+    severity: f.severity, // high | medium | low
+    cluster: f.cluster,
+    space: f.origin.space,
+    unit: f.origin.unitSlug,
+    target: f.origin.target ?? null,
+    resourceKind: f.resourceKind,
+    resourceName: f.resourceName,
+    namespace: f.namespace ?? null,
+    message: f.message,
+    __id: f.id, // stable finding id, for de-dup (excluded from SELECT *)
+  }));
 }

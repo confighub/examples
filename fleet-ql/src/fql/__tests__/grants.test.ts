@@ -54,6 +54,9 @@ function mockTransport(): Transport & { lastGrantQuery?: GrantsParams } {
     async bindings() {
       return [];
     },
+    async rbacFindings() {
+      return [];
+    },
     async grants(params: GrantsParams): Promise<Row[]> {
       t.lastGrantQuery = params;
       // Pretend the materializer already applied the access query: two subjects

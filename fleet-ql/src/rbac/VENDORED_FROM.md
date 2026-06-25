@@ -1,6 +1,6 @@
 # Vendored: rbac engine
 
-`model.ts`, `semantics.ts`, `whocan.ts`, `fixtures.ts` are copied from
+`model.ts`, `semantics.ts`, `whocan.ts`, `findings.ts`, `fixtures.ts` are copied from
 `../../../rbac-manager/app/src/rbac/`. They are pure, dependency-free functions
 (parse RBAC docs → cluster snapshots → effective-access queries), reused here to
 back FQL's `grants` virtual table. fleet-ql and rbac-manager are separate Vite

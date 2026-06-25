@@ -61,7 +61,8 @@ export type TableSource =
   | 'revisions'
   | 'grants'
   | 'roles'
-  | 'bindings';
+  | 'bindings'
+  | 'rbac_findings';
 
 export interface TableDef {
   source: TableSource;
@@ -288,6 +289,28 @@ const BINDINGS: TableDef = {
   mapPrefixes: {},
 };
 
+// RBAC hygiene findings (analyzeFleet), materialized from the same RBAC
+// resources. The audit complement to roles/bindings: one row per finding from
+// every analyzer (wildcards, escalation verbs, risky grants, cluster-admin
+// bindings, orphaned bindings, unbound ServiceAccounts). `space` narrows the
+// fetch; everything else is client-side.
+const RBAC_FINDINGS: TableDef = {
+  source: 'rbac_findings',
+  columns: {
+    analyzer: { type: 'string' }, // wildcard-rules, privilege-escalation-verbs, …
+    severity: { type: 'string' }, // high | medium | low
+    cluster: { type: 'string' },
+    space: { type: 'string', pushdown: { target: 'where', expr: 'Space.Slug' } },
+    unit: { type: 'string' },
+    target: { type: 'string' },
+    resourceKind: { type: 'string' },
+    resourceName: { type: 'string' },
+    namespace: { type: 'string' },
+    message: { type: 'string' },
+  },
+  mapPrefixes: {},
+};
+
 export const TABLES: Record<string, TableDef> = {
   units: UNITS,
   resources: RESOURCES,
@@ -296,6 +319,7 @@ export const TABLES: Record<string, TableDef> = {
   grants: GRANTS,
   roles: ROLES,
   bindings: BINDINGS,
+  rbac_findings: RBAC_FINDINGS,
 };
 
 /** A resolved column: its type and (optional) compiled pushdown, with the FQL

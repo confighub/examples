@@ -19,7 +19,7 @@ import type {
 } from '../fql';
 import { materializeGrants } from '../rbac/grants';
 import type { FleetResource } from '../rbac/model';
-import { materializeBindings, materializeRoles } from '../rbac/structural';
+import { materializeBindings, materializeFindings, materializeRoles } from '../rbac/structural';
 import { authHeaders } from './auth';
 import { spreadGatesByTrigger } from './gates';
 import { b64decodeUtf8 } from './encoding';
@@ -275,6 +275,10 @@ export const fqlTransport: Transport = {
 
   async bindings(params: ListParams): Promise<Row[]> {
     return materializeBindings(await fetchFleetRbac(params.where));
+  },
+
+  async rbacFindings(params: ListParams): Promise<Row[]> {
+    return materializeFindings(await fetchFleetRbac(params.where));
   },
 };
 

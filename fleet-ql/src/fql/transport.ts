@@ -63,4 +63,6 @@ export interface Transport {
   roles(params: ListParams): Promise<Row[]>;
   /** RoleBinding/ClusterRoleBinding inventory rows, materialized from RBAC. */
   bindings(params: ListParams): Promise<Row[]>;
+  /** RBAC hygiene findings (analyzeFleet), materialized from RBAC resources. */
+  rbacFindings(params: ListParams): Promise<Row[]>;
 }

@@ -66,6 +66,9 @@ function mockTransport(): Transport {
     async bindings() {
       return [];
     },
+    async rbacFindings() {
+      return [];
+    },
   };
 }
 

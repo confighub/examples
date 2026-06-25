@@ -36,6 +36,9 @@ function mockTransport(): Transport & { calls: ResourceParams[] } {
     async bindings() {
       return [];
     },
+    async rbacFindings() {
+      return [];
+    },
     async resources(params: ResourceParams) {
       calls.push(params);
       // Time-travel: when a revision is requested, return the resource as it was

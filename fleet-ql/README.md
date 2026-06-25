@@ -51,6 +51,7 @@ npm run build     # tsc + production build
 | `grants` | effective RBAC access — "who can VERB RESOURCE, on which cluster" (`subject`, `cluster`, `role`, `scope`, …) |
 | `roles` | Role/ClusterRole inventory — `hasWildcard`, `aggregated`, `ruleCount`, `labels.*` |
 | `bindings` | RoleBinding/ClusterRoleBinding inventory — `roleRef`, `subjectCount`, `orphaned`, `clusterAdmin` |
+| `rbac_findings` | RBAC hygiene findings (`analyzeFleet`) — `analyzer`, `severity`, `cluster`, `resourceName`, `message` |
 
 `events`, `triggers`, `filters`, and `links` parse today but aren't wired to the
 planner yet — see the engine README.

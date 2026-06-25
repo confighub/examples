@@ -84,6 +84,15 @@ const EXAMPLES: { label: string; query: string }[] = [
     label: 'Orphaned bindings',
     query: 'SELECT cluster, name, roleRef\nFROM bindings\nWHERE orphaned = true',
   },
+  {
+    label: 'High-severity RBAC findings',
+    query:
+      "SELECT cluster, analyzer, resourceName, message\nFROM rbac_findings\nWHERE severity = 'high'\nORDER BY cluster",
+  },
+  {
+    label: 'Findings by analyzer',
+    query: 'SELECT analyzer, COUNT(*) AS n\nFROM rbac_findings\nGROUP BY analyzer\nORDER BY n DESC',
+  },
 ];
 
 function PlanView({ query }: { query: string }) {
