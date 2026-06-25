@@ -11,6 +11,7 @@ import type {
   CompareOp,
   Expr,
   IsNullExpr,
+  JoinType,
   SelectStmt,
 } from './ast';
 import { compileCompare, joinAnd } from './compile';
@@ -48,7 +49,8 @@ export interface FetchSpec {
 
 export interface ExecutionPlan {
   source: TableSource;
-  /** One fetch per DNF AND-group; their row sets are unioned (deduped). */
+  /** One fetch per DNF AND-group; their row sets are unioned (deduped). Empty
+   *  for a join (see `join`). */
   fetches: FetchSpec[];
   /** The full original WHERE, re-evaluated client-side over fetched rows. */
   residual: Expr | null;
@@ -56,6 +58,28 @@ export interface ExecutionPlan {
   stmt: SelectStmt;
   /** resources table needs get-resources bodies; others read entity rows. */
   needsResourceData: boolean;
+  /** Present for a two-table JOIN: each side is fetched independently and the
+   *  rows are joined client-side (ConfigHub has no server-side join). */
+  join?: JoinPlan;
+}
+
+/** One side of a join: a source fetched independently, plus its alias. */
+export interface JoinSide {
+  source: TableSource;
+  alias: string;
+  fetches: FetchSpec[];
+}
+
+/** A client-side two-table equi-join. `on` is the list of key-pairs (bare,
+ *  alias-stripped flat column keys) the hash join matches on; `residual` is the
+ *  full WHERE re-checked over the alias-qualified combined rows. */
+export interface JoinPlan {
+  type: JoinType;
+  left: JoinSide;
+  right: JoinSide;
+  on: { left: string; right: string }[];
+  residual: Expr | null;
+  aliases: string[];
 }
 
 // ─── Operator/type validation (mirrors ConfigHub validateOperator) ───────────
@@ -408,10 +432,214 @@ function dedupeFetches(specs: FetchSpec[]): FetchSpec[] {
   });
 }
 
+// ─── JOIN planning ──────────────────────────────────────────────────────────
+
+/** Top-level AND operands of an expression (does not descend into OR/NOT). */
+function andConjuncts(e: Expr): Expr[] {
+  return e.kind === 'logical' && e.op === 'AND'
+    ? [...andConjuncts(e.left), ...andConjuncts(e.right)]
+    : [e];
+}
+
+/** Every table-alias (leading path segment) referenced by an expression. */
+function aliasesIn(e: Expr, into: Set<string>): void {
+  switch (e.kind) {
+    case 'logical':
+      aliasesIn(e.left, into);
+      aliasesIn(e.right, into);
+      return;
+    case 'not':
+      aliasesIn(e.expr, into);
+      return;
+    case 'compare':
+      into.add(e.left.path[0]);
+      if (e.right.kind === 'column') into.add(e.right.path[0]);
+      return;
+    case 'isnull':
+      into.add(e.column.path[0]);
+      return;
+    default:
+      return;
+  }
+}
+
+/** True when every column in `e` is qualified by exactly `alias`. */
+function onlyAlias(e: Expr, alias: string): boolean {
+  const s = new Set<string>();
+  aliasesIn(e, s);
+  return s.size === 1 && s.has(alias);
+}
+
+const lookupTable = (name: string): TableDef | undefined => TABLES[name];
+
+function requireTable(name: string, pos: ColumnExpr['pos']): TableDef {
+  const t = lookupTable(name);
+  if (!t) {
+    throw new FqlError(
+      `unknown table "${name}"; available: ${Object.keys(TABLES).join(', ')}`,
+      pos,
+      'plan',
+    );
+  }
+  return t;
+}
+
+/** Plan a two-table JOIN: validate qualified columns, route single-alias WHERE
+ *  conjuncts to each side's pushdown, extract the ON equi-keys, and carry the
+ *  full WHERE as the client-side residual over the combined rows. */
+function planJoin(stmt: SelectStmt): ExecutionPlan {
+  const j = stmt.joins[0];
+  const leftTable = requireTable(stmt.from.name, stmt.from.pos);
+  const rightTable = requireTable(j.table.name, j.table.pos);
+  const la = stmt.from.alias;
+  const ra = j.table.alias;
+  if (!la || !ra) {
+    throw new FqlError(
+      'JOIN requires table aliases, e.g. `FROM resources d JOIN resources p ON …`',
+      j.pos,
+      'plan',
+    );
+  }
+  if (la === ra) throw new FqlError(`JOIN aliases must differ (both are "${la}")`, j.pos, 'plan');
+
+  const tableFor = (alias: string): TableDef | null =>
+    alias === la ? leftTable : alias === ra ? rightTable : null;
+
+  /** Resolve an alias-qualified column to its side; reject unqualified columns,
+   *  unknown columns, and selector columns (revision/accessQuery) which a join
+   *  can't carry. */
+  const bindQual = (col: ColumnExpr): ResolvedColumn => {
+    const t = tableFor(col.path[0]);
+    if (!t || col.path.length < 2) {
+      throw new FqlError(
+        `column "${col.name}" must be qualified with a join alias (${la} or ${ra})`,
+        col.pos,
+        'plan',
+      );
+    }
+    const r = resolveColumn(t, col.path.slice(1), col.quoted === true);
+    if (!r) {
+      throw new FqlError(`unknown column "${col.name}" on ${t.source}`, col.pos, 'plan');
+    }
+    if (r.pushdown && SELECTOR_TARGETS.has(r.pushdown.target)) {
+      throw new FqlError(
+        `column "${col.name}" (a fetch selector) isn't supported inside a JOIN`,
+        col.pos,
+        'plan',
+      );
+    }
+    return r;
+  };
+
+  validateJoinClauses(stmt, j.on, bindQual);
+  const on = extractOnEquies(j.on, la, ra, bindQual);
+
+  // Push the single-alias top-level WHERE conjuncts to each side; everything else
+  // (cross-alias predicates, ORs) is left to the client-side residual.
+  const conj = stmt.where ? andConjuncts(stmt.where) : [];
+  const leftSpec = groupToFetch(leftTable, conj.filter((c) => onlyAlias(c, la)), la);
+  const rightSpec = groupToFetch(rightTable, conj.filter((c) => onlyAlias(c, ra)), ra);
+
+  return {
+    source: leftTable.source,
+    fetches: [],
+    residual: stmt.where ?? null, // re-checked over the alias-qualified combined rows
+    stmt,
+    needsResourceData: leftTable.source === 'resources' || rightTable.source === 'resources',
+    join: {
+      type: j.type,
+      left: { source: leftTable.source, alias: la, fetches: [leftSpec] },
+      right: { source: rightTable.source, alias: ra, fetches: [rightSpec] },
+      on,
+      residual: stmt.where ?? null,
+      aliases: [la, ra],
+    },
+  };
+}
+
+/** Validate every column in the projections / GROUP BY / ORDER BY / WHERE / ON of
+ *  a join, via the alias-routing `bindQual`. */
+function validateJoinClauses(
+  stmt: SelectStmt,
+  on: Expr,
+  bindQual: (c: ColumnExpr) => ResolvedColumn,
+): void {
+  const outAliases = new Set(stmt.projections.map((p) => p.alias).filter((a): a is string => !!a));
+  for (const p of stmt.projections) {
+    if (p.expr.kind === 'column') bindQual(p.expr);
+    else if (p.expr.kind === 'agg' && p.expr.arg && p.expr.arg.kind === 'column') {
+      const col = bindQual(p.expr.arg);
+      if (p.expr.fn !== 'COUNT' && col.type !== 'number') {
+        throw new FqlError(`${p.expr.fn}() requires a numeric column`, p.expr.pos, 'plan');
+      }
+    }
+  }
+  for (const c of stmt.groupBy) bindQual(c);
+  for (const o of stmt.orderBy) {
+    if (o.expr.kind === 'column' && !outAliases.has(o.expr.name)) bindQual(o.expr);
+    else if (o.expr.kind === 'agg' && o.expr.arg && o.expr.arg.kind === 'column') bindQual(o.expr.arg);
+  }
+  const walk = (e: Expr): void => {
+    switch (e.kind) {
+      case 'logical':
+        walk(e.left);
+        walk(e.right);
+        return;
+      case 'not':
+        walk(e.expr);
+        return;
+      case 'compare':
+        bindQual(e.left);
+        if (e.right.kind === 'column') bindQual(e.right);
+        return;
+      case 'isnull':
+        bindQual(e.column);
+        return;
+      default:
+        return;
+    }
+  };
+  if (stmt.where) walk(stmt.where);
+  walk(on);
+}
+
+/** Extract the ON equi-key pairs (`a.col = b.col`) as bare, alias-stripped flat
+ *  keys for the hash join. v1 supports only an AND of such equalities. */
+function extractOnEquies(
+  on: Expr,
+  la: string,
+  ra: string,
+  bindQual: (c: ColumnExpr) => ResolvedColumn,
+): { left: string; right: string }[] {
+  const bareKey = (c: ColumnExpr): string => c.path.slice(1).join('.');
+  return andConjuncts(on).map((e) => {
+    if (e.kind !== 'compare' || e.op !== '=' || e.right.kind !== 'column') {
+      throw new FqlError('JOIN ON supports only equalities `a.col = b.col`', on.pos, 'plan');
+    }
+    const l = e.left;
+    const r = e.right;
+    for (const c of [l, r]) {
+      if (bindQual(c).raw) {
+        throw new FqlError(`JOIN ON key "${c.name}" must be a column, not a raw path`, c.pos, 'plan');
+      }
+    }
+    if (l.path[0] === la && r.path[0] === ra) return { left: bareKey(l), right: bareKey(r) };
+    if (l.path[0] === ra && r.path[0] === la) return { left: bareKey(r), right: bareKey(l) };
+    throw new FqlError('JOIN ON equality must compare the two joined tables', e.pos, 'plan');
+  });
+}
+
 // ─── Public entry ──────────────────────────────────────────────────────────────
 
 /** Plan a parsed statement against the virtual-table catalog. */
 export function plan(stmt: SelectStmt): ExecutionPlan {
+  if (stmt.joins.length > 0) {
+    if (stmt.joins.length > 1) {
+      throw new FqlError('only one JOIN is supported (two tables)', stmt.joins[1].pos, 'plan');
+    }
+    return planJoin(stmt);
+  }
+
   const table = TABLES[stmt.from.name];
   if (!table) {
     throw new FqlError(

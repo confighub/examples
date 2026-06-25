@@ -48,6 +48,11 @@ const EXAMPLES: { label: string; query: string }[] = [
     query: "SELECT slug, space\nFROM units\nWHERE gate['no-critical-cves'] = true",
   },
   {
+    label: 'Dev vs prod drift (JOIN)',
+    query:
+      "SELECT d.component AS component,\n  `d.spec.template.spec.containers.*.image` AS dev,\n  `p.spec.template.spec.containers.*.image` AS prod\nFROM resources d JOIN resources p ON d.name = p.name AND d.kind = p.kind\nWHERE d.space LIKE 'acme-%' AND p.space LIKE 'acme-%'\n  AND d.environment = 'Dev' AND p.environment = 'Prod' AND d.kind = 'Deployment'\n  AND `d.spec.template.spec.containers.*.image` != `p.spec.template.spec.containers.*.image`",
+  },
+  {
     label: 'Audit trail (revisions)',
     query:
       "SELECT unit, revisionNum, source, description\nFROM revisions\nWHERE space = 'sec-demo-dev'\nORDER BY revisionNum DESC LIMIT 20",

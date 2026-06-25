@@ -19,7 +19,8 @@ const res = await runQuery(
 
 ```
 SELECT  proj [, proj]*            -- or *
-FROM    (units | resources | spaces | revisions) [AS? alias]
+FROM    table [AS? alias]
+        [ [INNER | LEFT [OUTER]] JOIN table [AS? alias] ON eqs ]   -- one join (two tables)
 [WHERE  expr]
 [GROUP BY col [, col]*]
 [ORDER BY (col|agg) [ASC|DESC] [, ...]]
@@ -105,9 +106,9 @@ The `resources` table is **all-kinds**: every Kubernetes resource in each Unit
 columns like `image`/`replicas` are Deployment-shaped sugar and read null on
 kinds that lack those paths.
 
-A **table alias** (`FROM resources r`) qualifies columns as `r.col` — purely
-ergonomic in v1 (no JOINs yet). Curated columns like `image` are just sugar over
-common raw paths; drop to a backtick path for anything not curated.
+A **table alias** (`FROM resources r`) qualifies columns as `r.col` — ergonomic
+for single-table queries and required for joins (see Joins). Curated columns are
+just sugar over common raw paths; drop to a backtick path for anything not curated.
 
 **Column-to-column comparison.** The right-hand side of a comparison can be
 another column, which is how you express ConfigHub's drift idioms:
@@ -296,6 +297,37 @@ SELECT cluster, resourceName FROM rbac_findings WHERE analyzer = 'privilege-esca
 Analyzers: `wildcard-rules`, `privilege-escalation-verbs`, `risky-grants`,
 `cluster-admin-bindings`, `orphaned-bindings`, `unbound-service-accounts`.
 
+## Joins
+
+FQL supports a **two-table equi-join** (`INNER` or `LEFT`), including a
+self-join. ConfigHub has no server-side join, so it's done **client-side**: each
+side is fetched independently (its single-alias WHERE predicates push down), then
+the rows are hash-joined on the `ON` equalities and the full WHERE is re-checked
+over the combined rows. The flagship use is the cross-environment / cross-revision
+diff:
+
+```sql
+-- which components' dev image differs from prod (the promotion gap)
+SELECT d.component AS component,
+  `d.spec.template.spec.containers.*.image` AS dev,
+  `p.spec.template.spec.containers.*.image` AS prod
+FROM resources d JOIN resources p ON d.name = p.name AND d.kind = p.kind
+WHERE d.space LIKE 'acme-%' AND p.space LIKE 'acme-%'
+  AND d.environment = 'Dev' AND p.environment = 'Prod' AND d.kind = 'Deployment'
+  AND `d.spec.template.spec.containers.*.image` != `p.spec.template.spec.containers.*.image`
+
+-- units with no resources (LEFT join + null right side)
+SELECT u.slug FROM units u LEFT JOIN resources r ON u.slug = r.unit
+```
+
+Rules: **both tables need aliases**; **every column must be alias-qualified**
+(`d.kind`); the `ON` is an AND of `a.col = b.col` equalities on plain columns
+(not raw paths). A **qualified raw path** puts the alias *inside* the backticks —
+`` `d.spec.template…image` `` — because `d.` outside can't be lexed before a
+backtick. Fetch selectors (`revision`, the grants access-query) aren't supported
+inside a join (v1). Deferred: 3+ tables, non-equi joins, and joining the
+materialized RBAC tables.
+
 ## How it executes (the pushdown model)
 
 ConfigHub's filter grammar is **AND-only — no OR, no parentheses**. FQL bridges
@@ -333,6 +365,7 @@ Tests live in `__tests__/` (vitest): `npm test`.
 
 ## Out of scope (v2)
 
-JOINs across tables, DISTINCT, subqueries, and any write/DML — FQL is read-only;
-mutations stay with the existing server-side `yq-i` path. Saved queries / history
-are a UI concern, not the language.
+Joins beyond two tables / non-equi joins / joining the materialized RBAC tables,
+DISTINCT, subqueries, and any write/DML — FQL is read-only; mutations stay with
+the existing server-side `yq-i` path. Saved queries / history are a UI concern,
+not the language.

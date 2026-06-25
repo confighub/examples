@@ -24,6 +24,8 @@ import type {
   CompareOp,
   Expr,
   IsNullExpr,
+  JoinClause,
+  JoinType,
   ListExpr,
   LiteralExpr,
   OrderKey,
@@ -31,6 +33,7 @@ import type {
   SelectStmt,
   SortDir,
   StarExpr,
+  TableRef,
 } from './ast';
 import { FqlError, type Pos } from './errors';
 import { lex, type Token, type TokenType } from './lexer';
@@ -107,16 +110,8 @@ class Parser {
     const startTok = this.expectKw('SELECT');
     const projections = this.parseProjections();
     this.expectKw('FROM');
-    const fromTok = this.expect('ident', 'a table name after FROM');
-    // Optional table alias: `FROM resources r` or `FROM resources AS r`.
-    let alias: string | null = null;
-    if (this.isKw('AS')) {
-      this.next();
-      alias = this.expect('ident', 'an alias after AS').value;
-    } else if (this.peek().type === 'ident') {
-      alias = this.next().value;
-    }
-    const from = { name: fromTok.value, alias, pos: fromTok.pos };
+    const from = this.parseTableRef();
+    const joins = this.parseJoins();
 
     let where: Expr | null = null;
     if (this.isKw('WHERE')) {
@@ -163,12 +158,52 @@ class Parser {
       kind: 'select',
       projections,
       from,
+      joins,
       where,
       groupBy,
       orderBy,
       limit,
       pos: span(startTok.pos, endPos),
     };
+  }
+
+  /** A table reference: `<name> [AS? alias]`. */
+  private parseTableRef(): TableRef {
+    const nameTok = this.expect('ident', 'a table name');
+    let alias: string | null = null;
+    if (this.isKw('AS')) {
+      this.next();
+      alias = this.expect('ident', 'an alias after AS').value;
+    } else if (this.peek().type === 'ident') {
+      alias = this.next().value;
+    }
+    return { name: nameTok.value, alias, pos: nameTok.pos };
+  }
+
+  /** Zero or more `[INNER | LEFT [OUTER]] JOIN <table> ON <expr>` clauses. */
+  private parseJoins(): JoinClause[] {
+    const joins: JoinClause[] = [];
+    for (;;) {
+      let type: JoinType = 'inner';
+      if (this.isKw('INNER')) {
+        this.next();
+      } else if (this.isKw('LEFT')) {
+        this.next();
+        if (this.isKw('OUTER')) this.next();
+        type = 'left';
+      }
+      if (!this.isKw('JOIN')) {
+        // A LEFT/INNER not followed by JOIN is a syntax error we should surface.
+        if (type === 'left') this.fail(`expected JOIN but found ${describe(this.peek())}`);
+        break;
+      }
+      const joinTok = this.next(); // JOIN
+      const table = this.parseTableRef();
+      this.expectKw('ON');
+      const on = this.parseExpr();
+      joins.push({ type, table, on, pos: span(joinTok.pos, on.pos) });
+    }
+    return joins;
   }
 
   private parseProjections(): Projection[] {

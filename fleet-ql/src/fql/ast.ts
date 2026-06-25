@@ -147,14 +147,34 @@ export interface OrderKey {
   pos: Pos;
 }
 
-/** The whole query: a single SELECT over one virtual table. */
+/** A table reference in FROM / JOIN: a virtual-table name with an optional alias
+ *  (`resources r` or `resources AS r`). The alias qualifies columns as `r.col`. */
+export interface TableRef {
+  name: string;
+  alias: string | null;
+  pos: Pos;
+}
+
+export type JoinType = 'inner' | 'left';
+
+/** A `[INNER|LEFT] JOIN <table> ON <expr>` clause. v1 supports one join (two
+ *  tables); `on` is a conjunction of `a.col = b.col` equalities. */
+export interface JoinClause {
+  type: JoinType;
+  table: TableRef;
+  on: Expr;
+  pos: Pos;
+}
+
+/** The whole query: a SELECT over one virtual table, optionally joined to one
+ *  more. SELECT * is a single StarExpr projection. */
 export interface SelectStmt {
   kind: 'select';
-  /** SELECT * is represented as a single StarExpr projection. */
   projections: Projection[];
-  /** Virtual table name from FROM, with an optional alias (`FROM resources r`
-   *  or `FROM resources AS r`). The alias qualifies columns as `r.col`. */
-  from: { name: string; alias: string | null; pos: Pos };
+  /** The left/driving table. */
+  from: TableRef;
+  /** Zero joins = single-table query; one join = a two-table join (v1 cap). */
+  joins: JoinClause[];
   where: Expr | null;
   groupBy: ColumnExpr[];
   orderBy: OrderKey[];

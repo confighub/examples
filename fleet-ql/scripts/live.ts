@@ -75,6 +75,10 @@ const QUERIES: string[] = [
   "SELECT environment, COUNT(*) AS units FROM units WHERE space LIKE 'acme-%' GROUP BY environment ORDER BY environment",
   // 5. ownership / region view (well-known labels as columns)
   "SELECT component, environment, region, replicas FROM resources WHERE space LIKE 'acme-%' AND environment = 'Prod' AND kind = 'Deployment' ORDER BY component",
+  // 6. JOIN — dev vs prod image per component (self-join across environments)
+  "SELECT d.component AS component, `d.spec.template.spec.containers.*.image` AS dev, `p.spec.template.spec.containers.*.image` AS prod FROM resources d JOIN resources p ON d.name = p.name AND d.kind = p.kind WHERE d.space LIKE 'acme-%' AND p.space LIKE 'acme-%' AND d.environment = 'Dev' AND p.environment = 'Prod' AND d.kind = 'Deployment' ORDER BY component",
+  // 7. JOIN drift — only the components whose dev image differs from prod
+  "SELECT d.component AS component, `d.spec.template.spec.containers.*.image` AS dev, `p.spec.template.spec.containers.*.image` AS prod FROM resources d JOIN resources p ON d.name = p.name AND d.kind = p.kind WHERE d.space LIKE 'acme-%' AND p.space LIKE 'acme-%' AND d.environment = 'Dev' AND p.environment = 'Prod' AND d.kind = 'Deployment' AND `d.spec.template.spec.containers.*.image` != `p.spec.template.spec.containers.*.image` ORDER BY component",
 ];
 
 let ok = 0;

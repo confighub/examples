@@ -24,17 +24,22 @@ export interface ResultSet {
   rows: Row[];
 }
 
-/** Per-evaluation context: the FROM alias to strip from column paths. */
+/** Per-evaluation context. Single-table mode strips the FROM alias from column
+ *  paths; join mode keeps columns alias-qualified (`d.kind`) — combined rows are
+ *  keyed that way and each side's doc lives at `<alias>.__doc`. */
 interface EvalCtx {
   alias: string | null;
+  joinAliases?: ReadonlySet<string>;
 }
 
 /** The reserved row key holding the raw resource doc for data-path traversal. */
 const DOC_KEY = '__doc';
 
 /** Strip a leading table-alias segment from a column path (r.kind → kind).
- *  Quoted columns are verbatim and never stripped. */
+ *  Quoted columns are verbatim and never stripped. In join mode the alias is part
+ *  of the qualified key, so nothing is stripped. */
 function effectivePath(col: ColumnExpr, ctx: EvalCtx): string[] {
+  if (ctx.joinAliases) return col.path;
   if (!col.quoted && ctx.alias && col.path.length >= 2 && col.path[0] === ctx.alias) {
     return col.path.slice(1);
   }
@@ -55,13 +60,21 @@ function collectValues(row: Row, col: ColumnExpr, ctx: EvalCtx): unknown[] {
   // Flat field (curated column / map key already flattened onto the row).
   if (!col.quoted && flatKey in row) return [row[flatKey]];
 
-  // Otherwise traverse the resource doc with wildcard/index support.
-  const doc = row[DOC_KEY];
+  // Pick the doc to traverse. In join mode a qualified raw path (`d.spec.x`)
+  // traverses that side's doc at `d.__doc`; otherwise the row's own `__doc`.
+  let doc: unknown;
+  let rest = path;
+  if (ctx.joinAliases && path.length >= 1 && ctx.joinAliases.has(path[0])) {
+    doc = row[`${path[0]}.${DOC_KEY}`];
+    rest = path.slice(1);
+  } else {
+    doc = row[DOC_KEY];
+  }
   if (doc === undefined) {
     // No doc to traverse; fall back to shallow nested lookup on the row itself.
     return [shallowGet(row, path)];
   }
-  return traverse(doc, path);
+  return traverse(doc, rest);
 }
 
 /** Walk `node` along `path`, expanding `*` to all array elements and numeric
@@ -353,8 +366,11 @@ export function evaluate(
    *  `revision = …`, handled entirely by the fetch). `undefined` → use
    *  stmt.where; `null` → no client-side filter. */
   residual?: Expr | null,
+  /** When set, evaluate in join mode: columns stay alias-qualified and each
+   *  side's doc is at `<alias>.__doc` (rows are the combined join rows). */
+  joinAliases?: ReadonlySet<string>,
 ): ResultSet {
-  const ctx: EvalCtx = { alias: stmt.from.alias };
+  const ctx: EvalCtx = { alias: stmt.from.alias, joinAliases };
   const filter = residual === undefined ? stmt.where : residual;
 
   // 1. Filter (the complete WHERE, re-checked client-side).

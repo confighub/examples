@@ -61,6 +61,11 @@ const KEYWORDS = new Set([
   'AVG',
   'NOW',
   'INTERVAL',
+  'JOIN',
+  'INNER',
+  'LEFT',
+  'OUTER',
+  'ON',
 ]);
 
 const isDigit = (c: string) => c >= '0' && c <= '9';
