@@ -66,7 +66,9 @@ function args(obj: Record<string, string | undefined>): string {
 /** `cub.GET('<path>', { params: { query: {…} } })` (params omitted when empty). */
 function getCall(path: string, query: Record<string, string | undefined>): string {
   const q = args(query);
-  return q ? `cub.GET('${path}', { params: { query: { ${q} } } })` : `cub.GET('${path}', {})`;
+  return q
+    ? `cub.GET('${path}', { params: { query: { ${q} } } })`
+    : `cub.GET('${path}', {})  // no pushdown — fetch all, filter client-side`;
 }
 
 /** `cub.POST('/function/invoke', …)` running get-resources, with pushed query/body. */
@@ -79,7 +81,8 @@ function invokeCall(spec: Pick<FetchSpec, 'where' | 'whereData' | 'whereResource
     .filter(Boolean)
     .join(', ');
   const params = q ? `params: { query: { ${q} } }, ` : '';
-  return `cub.POST('/function/invoke', { ${params}body: { ${body} } })`;
+  const note = q ? '' : '  // no pushdown — fetch all, filter client-side';
+  return `cub.POST('/function/invoke', { ${params}body: { ${body} } })${note}`;
 }
 
 /** The generated-client call(s) a single fetch compiles to, for `source`. */
@@ -153,15 +156,25 @@ export function explainPlan(plan: ExecutionPlan): PlanExplain {
     inputs.push(scanStage(j.right.source, j.right.alias, j.right.fetches));
     pipeline.push({
       title: `hash join · ${j.type}`,
-      lines: j.on.map((o) => `on ${j.left.alias}.${o.left} = ${j.right.alias}.${o.right}`),
+      lines: [
+        ...j.on.map((o) => `on ${j.left.alias}.${o.left} = ${j.right.alias}.${o.right}`),
+        j.type === 'left' ? 'unmatched left rows kept (right cols → null)' : 'unmatched rows dropped',
+      ],
     });
-    if (j.residual) pipeline.push({ title: 'filter · client-side', lines: [formatExpr(j.residual)] });
+    if (j.residual) {
+      pipeline.push({ title: 'filter · full WHERE (client-side)', lines: [formatExpr(j.residual)] });
+    }
   } else {
     inputs.push(scanStage(plan.source, stmt.from.alias, plan.fetches));
     if (plan.fetches.length > 1) {
-      pipeline.push({ title: 'union + de-dupe', lines: [`${plan.fetches.length} fetches, OR branches merged`] });
+      pipeline.push({
+        title: 'union + de-dupe · OR branches',
+        lines: [`${plan.fetches.length} fetches merged (ConfigHub has no server-side OR)`],
+      });
     }
-    if (plan.residual) pipeline.push({ title: 'filter · client-side', lines: [formatExpr(plan.residual)] });
+    if (plan.residual) {
+      pipeline.push({ title: 'filter · full WHERE (client-side)', lines: [formatExpr(plan.residual)] });
+    }
   }
 
   const hasAgg = stmt.groupBy.length > 0 || stmt.projections.some((p) => p.expr.kind === 'agg');
@@ -178,7 +191,7 @@ export function explainPlan(plan: ExecutionPlan): PlanExplain {
     });
   }
   if (stmt.limit != null) pipeline.push({ title: `limit ${stmt.limit}`, lines: [] });
-  pipeline.push({ title: 'project', lines: [projectionNames(plan).join(', ')] });
+  pipeline.push({ title: 'project · SELECT', lines: [projectionNames(plan).join(', ')] });
 
   return { inputs, pipeline };
 }

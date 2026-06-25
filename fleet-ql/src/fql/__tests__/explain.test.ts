@@ -24,19 +24,24 @@ describe('explainPlan — single table', () => {
     expect(call).toContain('FunctionInvocations: [get-resources]');
     expect(call).toContain('where: "Space.Slug = \'sec-demo-dev\'"');
     expect(call).toContain('where_data: "kind = \'Deployment\'"');
-    expect(titles(e.pipeline)).toEqual(['filter · client-side', 'project']);
+    expect(titles(e.pipeline)).toEqual(['filter · full WHERE (client-side)', 'project · SELECT']);
   });
 
   it('shows union + de-dupe for an OR that splits into two fetches', () => {
     const e = ex("SELECT unit FROM resources WHERE kind = 'Service' OR kind = 'Ingress'");
     // kind = ... OR kind = ... → two where_data fetches.
-    expect(titles(e.pipeline)).toContain('union + de-dupe');
+    expect(titles(e.pipeline)).toContain('union + de-dupe · OR branches');
   });
 
   it('shows group + aggregate / order / limit stages', () => {
     const e = ex('SELECT space, COUNT(*) AS n FROM units GROUP BY space ORDER BY n DESC LIMIT 5');
     expect(e.inputs[0].lines.join('\n')).toContain("cub.GET('/unit'");
-    expect(titles(e.pipeline)).toEqual(['group + aggregate', 'order by', 'limit 5', 'project']);
+    expect(titles(e.pipeline)).toEqual([
+      'group + aggregate',
+      'order by',
+      'limit 5',
+      'project · SELECT',
+    ]);
   });
 });
 
@@ -50,7 +55,11 @@ describe('explainPlan — join', () => {
     expect(e.inputs[0].lines.join('\n')).toContain('where: "Space.Slug LIKE \'acme-%\'"');
     const join = e.pipeline.find((s) => s.title.startsWith('hash join'));
     expect(join?.title).toBe('hash join · inner');
-    expect(join?.lines).toEqual(['on d.name = p.name', 'on d.kind = p.kind']);
-    expect(titles(e.pipeline)).toContain('filter · client-side');
+    expect(join?.lines).toEqual([
+      'on d.name = p.name',
+      'on d.kind = p.kind',
+      'unmatched rows dropped',
+    ]);
+    expect(titles(e.pipeline)).toContain('filter · full WHERE (client-side)');
   });
 });

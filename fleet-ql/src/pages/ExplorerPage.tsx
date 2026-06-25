@@ -205,12 +205,19 @@ function PlanView({ query }: { query: string }) {
 
 function ResultGrid({ result }: { result: RunResult }) {
   if (result.rows.length === 0) {
-    return <Alert severity='info'>No rows. ({result.stats.fetchedRows} fetched, all filtered out.)</Alert>;
+    const j = result.stats.joinedRows;
+    return (
+      <Alert severity='info'>
+        No rows. ({result.stats.fetchedRows} fetched{j != null ? `, ${j} after join` : ''} — all
+        filtered out by the WHERE.)
+      </Alert>
+    );
   }
   return (
     <Box sx={{ overflow: 'auto' }}>
       <Typography variant='caption' color='text.secondary' sx={{ display: 'block', mb: 1 }}>
-        {result.stats.resultRows} row(s) · {result.stats.fetchedRows} fetched ·{' '}
+        {result.stats.resultRows} row(s) · {result.stats.fetchedRows} fetched from the server
+        {result.stats.joinedRows != null ? ` · ${result.stats.joinedRows} after join` : ''} ·{' '}
         {result.stats.fetches} API call(s)
       </Typography>
       <Table size='small' stickyHeader>
