@@ -65,6 +65,10 @@ interface UnitListEntry {
     ToolchainType?: string;
     HeadRevisionNum?: number;
     LiveRevisionNum?: number;
+    LastAppliedRevisionNum?: number;
+    UpstreamRevisionNum?: number;
+    UpstreamUnitID?: string;
+    ProviderType?: string;
     Labels?: Record<string, string>;
     Annotations?: Record<string, string>;
     ApplyGates?: Record<string, boolean>;
@@ -118,17 +122,25 @@ function unitRow(e: UnitListEntry): Row {
     target: e.Target?.Slug ?? null,
     // cluster = deploy target, falling back to the Space slug for unbound units.
     cluster: e.Target?.Slug ?? e.Space?.Slug ?? null,
-    headRev: u.HeadRevisionNum,
+    headRevisionNum: u.HeadRevisionNum,
+    liveRevisionNum: u.LiveRevisionNum,
+    lastAppliedRevisionNum: u.LastAppliedRevisionNum,
+    upstreamRevisionNum: u.UpstreamRevisionNum,
+    upstreamUnitId: u.UpstreamUnitID,
+    providerType: u.ProviderType,
     gates: Object.keys(u.ApplyGates ?? {}).length,
     warnings: Object.keys(u.ApplyWarnings ?? {}).length,
   };
   spreadMap(row, 'labels', u.Labels);
   spreadMap(row, 'annotations', u.Annotations);
+  // Gate/warning maps spread so `applyGates['<key>']` resolves client-side too.
+  for (const [k, v] of Object.entries(u.ApplyGates ?? {})) row[`applyGates.${k}`] = v;
+  for (const [k, v] of Object.entries(u.ApplyWarnings ?? {})) row[`applyWarnings.${k}`] = v;
   return row;
 }
 
 const SELECT_UNIT =
-  'UnitID,Slug,DisplayName,SpaceID,TargetID,ToolchainType,HeadRevisionNum,Labels,Annotations,ApplyGates,ApplyWarnings';
+  'UnitID,Slug,DisplayName,SpaceID,TargetID,ToolchainType,HeadRevisionNum,LiveRevisionNum,LastAppliedRevisionNum,UpstreamRevisionNum,UpstreamUnitID,ProviderType,Labels,Annotations,ApplyGates,ApplyWarnings';
 
 // ─── Transport implementation ────────────────────────────────────────────────
 
@@ -177,11 +189,11 @@ export const fqlTransport: Transport = {
           return {
             unit: e.Unit?.Slug,
             space: e.Space?.Slug,
-            RevisionNum: rev.RevisionNum,
-            Source: rev.Source,
-            Description: rev.Description,
-            CreatedAt: rev.CreatedAt,
-            UserID: rev.UserID,
+            revisionNum: rev.RevisionNum,
+            source: rev.Source,
+            description: rev.Description,
+            createdAt: rev.CreatedAt,
+            userId: rev.UserID,
           };
         });
       }),

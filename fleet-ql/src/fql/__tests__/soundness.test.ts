@@ -31,7 +31,7 @@ describe('soundness — operators that MUST push down', () => {
     ['IN', "SELECT unit FROM resources WHERE kind IN ('Service', 'Ingress')"],
     ['entity = on units', "SELECT slug FROM units WHERE space = 'prod'"],
     ['IS NULL on entity field', 'SELECT slug FROM units WHERE target IS NULL'],
-    ['column-vs-column (entity)', 'SELECT slug FROM units WHERE HeadRevisionNum > LiveRevisionNum'],
+    ['column-vs-column (entity)', 'SELECT slug FROM units WHERE headRevisionNum > liveRevisionNum'],
   ];
   for (const [name, q] of SOUND) {
     it(`pushes: ${name}`, () => expect(pushed(q)).toBe(true));

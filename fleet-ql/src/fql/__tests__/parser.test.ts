@@ -90,10 +90,10 @@ describe('parser — statement shape', () => {
   });
 
   it('parses a column-to-column comparison', () => {
-    const s = parse('SELECT slug FROM units WHERE HeadRevisionNum > LiveRevisionNum');
+    const s = parse('SELECT slug FROM units WHERE headRevisionNum > liveRevisionNum');
     const cmp = s.where as CompareExpr;
     expect(cmp.right.kind).toBe('column');
-    expect((cmp.right as { name: string }).name).toBe('LiveRevisionNum');
+    expect((cmp.right as { name: string }).name).toBe('liveRevisionNum');
   });
 
   it('parses a bracket key in a projection with AS', () => {

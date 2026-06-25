@@ -32,7 +32,7 @@ function rowKey(source: ExecutionPlan['source'], row: Row): string {
       return `${row['space']}/${row['unit']}/${row['resourceType'] ?? ''}/${row['name'] ?? ''}@${row['revision'] ?? 'head'}`;
     case 'revisions':
       // One revision = (space, unit, revision number).
-      return `${row['space']}/${row['unit']}/${row['RevisionNum'] ?? ''}`;
+      return `${row['space']}/${row['unit']}/${row['revisionNum'] ?? ''}`;
     case 'spaces':
       return String(row['__id'] ?? row['slug']);
     case 'grants':

@@ -38,7 +38,7 @@ const EXAMPLES: { label: string; query: string }[] = [
     query:
       "SELECT unit,\n  metadata.annotations['sec-scanner.confighub.com/max-severity'] AS severity\nFROM resources\nWHERE metadata.annotations['sec-scanner.confighub.com/max-severity'] = 'CRITICAL'",
   },
-  { label: 'Drift (unapplied)', query: 'SELECT slug, space FROM units WHERE HeadRevisionNum > LiveRevisionNum' },
+  { label: 'Drift (unapplied)', query: 'SELECT slug, space FROM units WHERE headRevisionNum > liveRevisionNum' },
   {
     label: 'Units by cluster',
     query: 'SELECT cluster, COUNT(*) AS units\nFROM units\nGROUP BY cluster\nORDER BY units DESC',
@@ -46,12 +46,12 @@ const EXAMPLES: { label: string; query: string }[] = [
   {
     label: 'Audit trail (revisions)',
     query:
-      "SELECT unit, RevisionNum, Source, Description\nFROM revisions\nWHERE space = 'sec-demo-dev'\nORDER BY RevisionNum DESC LIMIT 20",
+      "SELECT unit, revisionNum, source, description\nFROM revisions\nWHERE space = 'sec-demo-dev'\nORDER BY revisionNum DESC LIMIT 20",
   },
   {
     label: 'Changed in last 24h',
     query:
-      "SELECT unit, RevisionNum, Source, UserID\nFROM revisions\nWHERE space = 'sec-demo-dev' AND CreatedAt > now() - interval '24h'\nORDER BY CreatedAt DESC",
+      "SELECT unit, revisionNum, source, userId\nFROM revisions\nWHERE space = 'sec-demo-dev' AND createdAt > now() - interval '24h'\nORDER BY createdAt DESC",
   },
   {
     label: 'Resource at a past revision',

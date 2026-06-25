@@ -130,7 +130,7 @@ describe('planner — pushdown', () => {
   });
 
   it('pushes a sound column-to-column comparison on entity fields', () => {
-    const p = planOf('SELECT slug FROM units WHERE HeadRevisionNum > LiveRevisionNum');
+    const p = planOf('SELECT slug FROM units WHERE headRevisionNum > liveRevisionNum');
     expect(p.fetches).toEqual([{ where: 'HeadRevisionNum > LiveRevisionNum' }]);
   });
 
@@ -140,15 +140,15 @@ describe('planner — pushdown', () => {
   });
 
   it('revisions: splits unit-scope (whereUnit) from revision fields (where)', () => {
-    const p = planOf("SELECT RevisionNum FROM revisions WHERE unit = 'checkout' AND Source = 'Trigger'");
+    const p = planOf("SELECT revisionNum FROM revisions WHERE unit = 'checkout' AND source = 'Trigger'");
     expect(p.source).toBe('revisions');
     expect(p.fetches).toEqual([
       { where: "Source = 'Trigger'", whereUnit: "Slug = 'checkout'" },
     ]);
   });
 
-  it('revisions: space scopes whereUnit; RevisionNum pushes to where', () => {
-    const p = planOf('SELECT RevisionNum FROM revisions WHERE space = ' + "'prod' AND RevisionNum > 5");
+  it('revisions: space scopes whereUnit; revisionNum pushes to where', () => {
+    const p = planOf('SELECT revisionNum FROM revisions WHERE space = ' + "'prod' AND revisionNum > 5");
     expect(p.fetches).toEqual([
       { where: 'RevisionNum > 5', whereUnit: "Space.Slug = 'prod'" },
     ]);

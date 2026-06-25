@@ -2,8 +2,10 @@
 // ConfigHub domain (units, revisions, spaces, gates, triggers, filters,
 // events, resources) that the parser MUST accept. The parser is table/column
 // agnostic — it validates syntax shape, not catalog membership — so these
-// exercise the grammar, not the planner. Field names mirror ConfigHub's real
-// queryable attributes (see libra/internal/models/*.go).
+// exercise the grammar, not the planner. Field names here deliberately mirror
+// ConfigHub's raw PascalCase wire attributes (see libra/internal/models/*.go)
+// to prove the grammar accepts them (incl. keyword collisions like From/Source);
+// FQL's actual column surface is camelCase (see schema.ts).
 
 import { describe, expect, it } from 'vitest';
 

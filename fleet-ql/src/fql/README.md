@@ -43,12 +43,12 @@ comment. Keywords are case-insensitive; identifiers are not.
 
 **`now()` and intervals.** `now()` folds to the current instant; `now() - interval
 '24h'` shifts it. This is the "what changed recently" idiom against the `revisions`
-table's `CreatedAt`:
+table's `createdAt`:
 
 ```sql
-SELECT unit, RevisionNum, UserID FROM revisions
-WHERE space = 'sec-demo-dev' AND CreatedAt > now() - interval '24h'
-ORDER BY CreatedAt DESC
+SELECT unit, revisionNum, userId FROM revisions
+WHERE space = 'sec-demo-dev' AND createdAt > now() - interval '24h'
+ORDER BY createdAt DESC
 ```
 
 The `interval` keyword is optional (`now() - '7d'` works). Duration units are
@@ -113,23 +113,24 @@ common raw paths; drop to a backtick path for anything not curated.
 another column, which is how you express ConfigHub's drift idioms:
 
 ```sql
-SELECT slug FROM units WHERE HeadRevisionNum > LiveRevisionNum   -- unapplied changes
-SELECT slug FROM units WHERE LiveRevisionNum = 0                  -- never applied
-SELECT slug FROM units WHERE UpstreamRevisionNum > 0             -- clones
+SELECT slug FROM units WHERE headRevisionNum > liveRevisionNum   -- unapplied changes
+SELECT slug FROM units WHERE liveRevisionNum = 0                  -- never applied
+SELECT slug FROM units WHERE upstreamRevisionNum > 0             -- clones
 ```
 
-**Keyword field names.** ConfigHub has fields that collide with SQL keywords
-(`From` on filters, `Source` on revisions). These are accepted as column names
-wherever a column is expected.
+**Keyword field names.** FQL columns are camelCase, but the parser still accepts
+identifiers that collide with SQL keywords wherever a column is expected — e.g.
+ConfigHub's `From` field on filters, or a capitalized `Source` — so raw
+ConfigHub attribute names remain usable in hand-written queries.
 
 ### Drift / gate / audit examples
 
 ```sql
 -- units with unapplied changes, per space
-SELECT space, COUNT(*) AS n FROM units WHERE HeadRevisionNum > LiveRevisionNum GROUP BY space
+SELECT space, COUNT(*) AS n FROM units WHERE headRevisionNum > liveRevisionNum GROUP BY space
 
 -- what's blocked, and by which gate (StringBool map, pushed down)
-SELECT slug FROM units WHERE ApplyGates['sec-demo-policy/no-critical-cves/vet-celexpr'] = true
+SELECT slug FROM units WHERE applyGates['sec-demo-policy/no-critical-cves/vet-celexpr'] = true
 
 -- ownership rollup
 SELECT space, COUNT(*) AS n FROM units WHERE labels.team = 'payments' GROUP BY space
@@ -144,10 +145,10 @@ SELECT space, COUNT(*) AS n FROM units WHERE labels.team = 'payments' GROUP BY s
 
 | Table | Source | Notable columns |
 |---|---|---|
-| `units` | `GET /unit` | `slug`, `space`, `cluster`, `toolchain`, `target`, `headRev`/`HeadRevisionNum`, `LiveRevisionNum`, `LastAppliedRevisionNum`, `UpstreamRevisionNum`, `UpstreamUnitID`, `ProviderType`, `gates`, `warnings`, `labels.*`, `annotations.*`, `ApplyGates['<space>/<trigger>/<fn>']`, `ApplyWarnings[...]` |
+| `units` | `GET /unit` | `slug`, `space`, `cluster`, `toolchain`, `target`, `headRevisionNum`, `liveRevisionNum`, `lastAppliedRevisionNum`, `upstreamRevisionNum`, `upstreamUnitId`, `providerType`, `gates`, `warnings`, `labels.*`, `annotations.*`, `applyGates['<space>/<trigger>/<fn>']`, `applyWarnings[...]` |
 | `resources` | `POST /function/invoke` + `get-resources` (or a revision's data blob) | `unit`, `space`, `cluster`, `target`, `kind`, `name`, `namespace`, `replicas`, `resourceType`, `revision`, `labels.*`, + any raw data path |
 | `spaces` | `GET /space` | `slug`, `displayName`, `labels.*`, `annotations.*` |
-| `revisions` | `GET /space/{id}/unit/{id}/revision` (per Unit) | `unit`, `space` (scope which units), `RevisionNum`, `Source`, `Description`, `CreatedAt`, `UserID` |
+| `revisions` | `GET /space/{id}/unit/{id}/revision` (per Unit) | `unit`, `space` (scope which units), `revisionNum`, `source`, `description`, `createdAt`, `userId` |
 | `grants` | materialized from RBAC resources (`get-resources` + the rbac engine) | output: `subject`, `subjectKind`, `subjectName`, `cluster`, `space`, `unit`, `target`, `scope`, `role`, `viaBuiltin`, `binding`; access selectors: `verb`, `resource`, `apiGroup`, `namespace`, `name` |
 | `roles` | materialized from RBAC resources | `name`, `kind`, `namespace`, `cluster`, `space`, `unit`, `target`, `hasWildcard`, `aggregated`, `ruleCount`, `labels.*` |
 | `bindings` | materialized from RBAC resources | `name`, `kind`, `namespace`, `cluster`, `space`, `unit`, `target`, `roleRef`, `roleRefKind`, `subjectCount`, `orphaned`, `clusterAdmin` |
@@ -162,7 +163,7 @@ the browser.
 **Time travel.** `WHERE revision = N` reads each in-scope unit's resources *as of*
 that revision instead of head — it fetches that revision's data blob and parses
 the resources from it. `revision = 'head'` / `'live'` resolve per unit to the
-unit's `HeadRevisionNum` / `LiveRevisionNum`. The selector is a fetch parameter,
+unit's `headRevisionNum` / `liveRevisionNum`. The selector is a fetch parameter,
 not a filter, so it's stripped from the client-side residual (and each row is
 stamped with the resolved `revision`). Pair it with `unit =` / `space =` scoping.
 

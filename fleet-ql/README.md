@@ -47,7 +47,10 @@ npm run build     # tsc + production build
 | `units` | ConfigHub Units — slug, space, toolchain, revision/drift fields, gates, labels |
 | `resources` | the Kubernetes resources inside Units (all kinds) — `kind`, `name`, raw YAML paths, annotations |
 | `spaces` | Spaces — slug, labels, annotations |
-| `revisions` | per-Unit change history — `RevisionNum`, `Source`, `Description`, `CreatedAt`, scoped by `unit`/`space` |
+| `revisions` | per-Unit change history — `revisionNum`, `source`, `description`, `createdAt`, scoped by `unit`/`space` |
+| `grants` | effective RBAC access — "who can VERB RESOURCE, on which cluster" (`subject`, `cluster`, `role`, `scope`, …) |
+| `roles` | Role/ClusterRole inventory — `hasWildcard`, `aggregated`, `ruleCount`, `labels.*` |
+| `bindings` | RoleBinding/ClusterRoleBinding inventory — `roleRef`, `subjectCount`, `orphaned`, `clusterAdmin` |
 
 `events`, `triggers`, `filters`, and `links` parse today but aren't wired to the
 planner yet — see the engine README.

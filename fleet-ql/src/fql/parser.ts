@@ -399,7 +399,7 @@ class Parser {
     }
 
     // Comparison / regex operator. RHS is a literal, or another column for
-    // column-to-column comparison (e.g. HeadRevisionNum > LiveRevisionNum).
+    // column-to-column comparison (e.g. headRevisionNum > liveRevisionNum).
     // TRUE/FALSE are value literals, not columns, so exclude them here.
     if (t.type === 'op' && CMP_OPS.has(t.value)) {
       this.next();
@@ -444,7 +444,7 @@ class Parser {
   }
 
   /** `now()` or `now() ± [interval] '24h'`. Folds to a constant RFC3339 string
-   *  literal at parse time, so a timestamp predicate (`CreatedAt > now() -
+   *  literal at parse time, so a timestamp predicate (`createdAt > now() -
    *  interval '24h'`) compiles and pushes down exactly like a hand-typed literal.
    *  RFC3339 UTC sorts lexically, so the server's timestamp compare and the
    *  client-side string compare agree. */

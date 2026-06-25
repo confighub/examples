@@ -90,32 +90,32 @@ const UNITS: TableDef = {
     // would miss unbound units in Space x), so cluster is computed/filtered
     // client-side; use `target` or `space` directly when you want server narrowing.
     cluster: { type: 'string' },
-    headRev: { type: 'number', pushdown: { target: 'where', expr: 'HeadRevisionNum' } },
-    // ConfigHub field names accepted verbatim so revision/drift idioms work:
-    // `HeadRevisionNum > LiveRevisionNum` (unapplied changes), `LiveRevisionNum
-    // = 0` (never applied), `UpstreamRevisionNum > 0` (clones). All push to where.
-    HeadRevisionNum: { type: 'number', pushdown: { target: 'where', expr: 'HeadRevisionNum' } },
-    LiveRevisionNum: { type: 'number', pushdown: { target: 'where', expr: 'LiveRevisionNum' } },
-    LastAppliedRevisionNum: {
+    // FQL columns are camelCase; the pushdown.expr keeps ConfigHub's real field
+    // name. The revision/drift idioms work as: `headRevisionNum > liveRevisionNum`
+    // (unapplied changes), `liveRevisionNum = 0` (never applied),
+    // `upstreamRevisionNum > 0` (clones). All push to where.
+    headRevisionNum: { type: 'number', pushdown: { target: 'where', expr: 'HeadRevisionNum' } },
+    liveRevisionNum: { type: 'number', pushdown: { target: 'where', expr: 'LiveRevisionNum' } },
+    lastAppliedRevisionNum: {
       type: 'number',
       pushdown: { target: 'where', expr: 'LastAppliedRevisionNum' },
     },
-    UpstreamRevisionNum: {
+    upstreamRevisionNum: {
       type: 'number',
       pushdown: { target: 'where', expr: 'UpstreamRevisionNum' },
     },
-    UpstreamUnitID: { type: 'string', pushdown: { target: 'where', expr: 'UpstreamUnitID' } },
-    ProviderType: { type: 'string', pushdown: { target: 'where', expr: 'ProviderType' } },
+    upstreamUnitId: { type: 'string', pushdown: { target: 'where', expr: 'UpstreamUnitID' } },
+    providerType: { type: 'string', pushdown: { target: 'where', expr: 'ProviderType' } },
     // Derived/aggregate-ish columns evaluated client-side from the fetched Unit.
-    gates: { type: 'number' }, // count of ApplyGates keys
-    warnings: { type: 'number' }, // count of ApplyWarnings keys
+    gates: { type: 'number' }, // count of applyGates keys
+    warnings: { type: 'number' }, // count of applyWarnings keys
   },
   mapPrefixes: {
     labels: { type: 'string', pushdown: { target: 'where', field: 'Labels' } },
     annotations: { type: 'string', pushdown: { target: 'where', field: 'Annotations' } },
-    // Policy/gate audit: ApplyGates['<space>/<trigger>/<function>'] = true.
-    ApplyGates: { type: 'boolean', pushdown: { target: 'where', field: 'ApplyGates' } },
-    ApplyWarnings: { type: 'boolean', pushdown: { target: 'where', field: 'ApplyWarnings' } },
+    // Policy/gate audit: applyGates['<space>/<trigger>/<function>'] = true.
+    applyGates: { type: 'boolean', pushdown: { target: 'where', field: 'ApplyGates' } },
+    applyWarnings: { type: 'boolean', pushdown: { target: 'where', field: 'ApplyWarnings' } },
   },
 };
 
@@ -178,7 +178,8 @@ const SPACES: TableDef = {
 
 // Revisions are per-Unit (endpoint: /space/{id}/unit/{id}/revision). `unit` and
 // `space` narrow WHICH units we pull revisions from (whereUnit); revision-field
-// columns (RevisionNum, Source, …) push to the revision endpoint's `where`.
+// columns (revisionNum, source, …) push to the revision endpoint's `where`
+// (camelCase FQL column → ConfigHub's PascalCase field via pushdown.expr).
 const REVISIONS: TableDef = {
   source: 'revisions',
   columns: {
@@ -186,11 +187,11 @@ const REVISIONS: TableDef = {
     unit: { type: 'string', pushdown: { target: 'whereUnit', expr: 'Slug' } },
     space: { type: 'string', pushdown: { target: 'whereUnit', expr: 'Space.Slug' } },
     // Revision fields — pushed to the revision endpoint's `where`.
-    RevisionNum: { type: 'number', pushdown: { target: 'where', expr: 'RevisionNum' } },
-    Source: { type: 'string', pushdown: { target: 'where', expr: 'Source' } },
-    Description: { type: 'string', pushdown: { target: 'where', expr: 'Description' } },
-    CreatedAt: { type: 'string', pushdown: { target: 'where', expr: 'CreatedAt' } },
-    UserID: { type: 'string', pushdown: { target: 'where', expr: 'UserID' } },
+    revisionNum: { type: 'number', pushdown: { target: 'where', expr: 'RevisionNum' } },
+    source: { type: 'string', pushdown: { target: 'where', expr: 'Source' } },
+    description: { type: 'string', pushdown: { target: 'where', expr: 'Description' } },
+    createdAt: { type: 'string', pushdown: { target: 'where', expr: 'CreatedAt' } },
+    userId: { type: 'string', pushdown: { target: 'where', expr: 'UserID' } },
   },
   mapPrefixes: {},
 };
