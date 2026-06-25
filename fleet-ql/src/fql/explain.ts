@@ -48,39 +48,81 @@ export function formatExpr(e: Expr): string {
   }
 }
 
-// ─── Plan → stages ───────────────────────────────────────────────────────────
+// ─── Plan → stages: the generated-SDK calls each fetch compiles to ───────────
+//
+// Calls go through the generated openapi-fetch client (`cub`, src/sdk/client.ts),
+// typed against the OpenAPI `paths` map. The explainer renders the real client
+// call — method, path, and the args derived from the pushed-down predicates — so
+// "show plan" points straight at the SDK.
 
-const ENDPOINT: Record<TableSource, string> = {
-  units: 'GET /unit',
-  spaces: 'GET /space',
-  revisions: 'GET /space/{id}/unit/{id}/revision (per unit)',
-  resources: 'POST /function/invoke · get-resources',
-  grants: 'POST /function/invoke · get-resources → rbac materialize',
-  roles: 'POST /function/invoke · get-resources → rbac materialize',
-  bindings: 'POST /function/invoke · get-resources → rbac materialize',
-  rbac_findings: 'POST /function/invoke · get-resources → rbac materialize',
-};
+/** A query/path arg object as openapi-fetch receives it, e.g. `{ where: "…" }`. */
+function args(obj: Record<string, string | undefined>): string {
+  return Object.entries(obj)
+    .filter(([, v]) => v !== undefined && v !== '')
+    .map(([k, v]) => `${k}: ${JSON.stringify(v)}`)
+    .join(', ');
+}
 
-/** The clause lines a single fetch spec carries (what actually narrows it). */
-function fetchClauses(spec: FetchSpec): string[] {
-  const out: string[] = [];
-  if (spec.where) out.push(`where: ${spec.where}`);
-  if (spec.whereData) out.push(`where_data: ${spec.whereData}`);
-  if (spec.whereResource) out.push(`whereResource: ${spec.whereResource}`);
-  if (spec.whereUnit) out.push(`whereUnit: ${spec.whereUnit}`);
-  if (spec.revision) out.push(`revision: ${spec.revision}`);
-  if (spec.accessQuery) out.push(`access: ${JSON.stringify(spec.accessQuery)}`);
-  return out.length ? out : ['(no pushdown — full scan)'];
+/** `cub.GET('<path>', { params: { query: {…} } })` (params omitted when empty). */
+function getCall(path: string, query: Record<string, string | undefined>): string {
+  const q = args(query);
+  return q ? `cub.GET('${path}', { params: { query: { ${q} } } })` : `cub.GET('${path}', {})`;
+}
+
+/** `cub.POST('/function/invoke', …)` running get-resources, with pushed query/body. */
+function invokeCall(spec: Pick<FetchSpec, 'where' | 'whereData' | 'whereResource'>): string {
+  const q = args({ where: spec.where, where_data: spec.whereData });
+  const body = [
+    spec.whereResource ? `WhereResource: ${JSON.stringify(spec.whereResource)}` : '',
+    `FunctionInvocations: [get-resources]`,
+  ]
+    .filter(Boolean)
+    .join(', ');
+  const params = q ? `params: { query: { ${q} } }, ` : '';
+  return `cub.POST('/function/invoke', { ${params}body: { ${body} } })`;
+}
+
+/** The generated-client call(s) a single fetch compiles to, for `source`. */
+function sdkCalls(source: TableSource, spec: FetchSpec): string[] {
+  switch (source) {
+    case 'units':
+      return [getCall('/unit', { where: spec.where })];
+    case 'spaces':
+      return [getCall('/space', { where: spec.where })];
+    case 'revisions':
+      return [
+        `${getCall('/unit', { where: spec.whereUnit })}  // scope units`,
+        `${getCall('/space/{space_id}/unit/{unit_id}/revision', { where: spec.where })}  // per unit`,
+      ];
+    case 'resources':
+      // Time-travel: resolve each unit's RevisionID, then read its data blob.
+      if (spec.revision !== undefined) {
+        return [
+          `${getCall('/unit', { where: spec.where })}  // in-scope units`,
+          `cub.GET('/space/{space_id}/unit/{unit_id}/revision', …)  // resolve RevisionID`,
+          `cub.GET('/space/{space_id}/unit/{unit_id}/revision/{revision_id}/data', { parseAs: 'text' })  // revision = ${spec.revision}`,
+        ];
+      }
+      return [invokeCall(spec)];
+    case 'grants':
+    case 'roles':
+    case 'bindings':
+    case 'rbac_findings':
+      return [
+        invokeCall({ where: spec.where }),
+        `→ rbac materialize (${source})`,
+        ...(spec.accessQuery ? [`access selector: ${JSON.stringify(spec.accessQuery)}`] : []),
+      ];
+  }
 }
 
 function scanStage(source: TableSource, alias: string | null, fetches: FetchSpec[]): ExplainStage {
   const title = `scan ${source}${alias ? ` ${alias}` : ''}`;
-  if (fetches.length === 0) return { title, lines: [ENDPOINT[source], '(no fetch)'] };
+  if (fetches.length === 0) return { title, lines: ['(no fetch)'] };
   const lines: string[] = [];
   fetches.forEach((spec, i) => {
-    if (fetches.length > 1) lines.push(`#${i + 1}  ${ENDPOINT[source]}`);
-    else lines.push(ENDPOINT[source]);
-    for (const c of fetchClauses(spec)) lines.push(`    ${c}`);
+    if (fetches.length > 1) lines.push(`# fetch ${i + 1}`);
+    lines.push(...sdkCalls(source, spec));
   });
   return { title, lines };
 }

@@ -174,7 +174,8 @@ function PlanView({ query }: { query: string }) {
     <Paper variant='outlined' sx={{ p: 1.5, mb: 2, bgcolor: 'grey.50' }}>
       <Stack direction='row' justifyContent='space-between' alignItems='center'>
         <Typography variant='caption' color='text.secondary'>
-          {plan.join ? `join · ${plan.join.type}` : plan.source} · {calls} API call(s)
+          {plan.join ? `join · ${plan.join.type}` : plan.source} · {calls} call(s) via the
+          generated SDK client
           {!plan.join && plan.fetches.length > 1 ? ' (OR split, unioned)' : ''} · full WHERE
           re-checked client-side
         </Typography>

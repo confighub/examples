@@ -15,13 +15,15 @@ describe('formatExpr', () => {
 });
 
 describe('explainPlan — single table', () => {
-  it('shows the scan, its pushdown call, filter, and project', () => {
+  it('shows the generated-SDK call with its args, filter, and project', () => {
     const e = ex("SELECT unit, kind FROM resources WHERE space = 'sec-demo-dev' AND kind = 'Deployment'");
     expect(e.inputs).toHaveLength(1);
     expect(e.inputs[0].title).toBe('scan resources');
-    expect(e.inputs[0].lines.join('\n')).toContain('get-resources');
-    expect(e.inputs[0].lines.join('\n')).toContain("where: Space.Slug = 'sec-demo-dev'");
-    expect(e.inputs[0].lines.join('\n')).toContain("where_data: kind = 'Deployment'");
+    const call = e.inputs[0].lines.join('\n');
+    expect(call).toContain("cub.POST('/function/invoke'");
+    expect(call).toContain('FunctionInvocations: [get-resources]');
+    expect(call).toContain('where: "Space.Slug = \'sec-demo-dev\'"');
+    expect(call).toContain('where_data: "kind = \'Deployment\'"');
     expect(titles(e.pipeline)).toEqual(['filter · client-side', 'project']);
   });
 
@@ -33,6 +35,7 @@ describe('explainPlan — single table', () => {
 
   it('shows group + aggregate / order / limit stages', () => {
     const e = ex('SELECT space, COUNT(*) AS n FROM units GROUP BY space ORDER BY n DESC LIMIT 5');
+    expect(e.inputs[0].lines.join('\n')).toContain("cub.GET('/unit'");
     expect(titles(e.pipeline)).toEqual(['group + aggregate', 'order by', 'limit 5', 'project']);
   });
 });
@@ -44,7 +47,7 @@ describe('explainPlan — join', () => {
         "WHERE d.space LIKE 'acme-%' AND p.environment = 'Prod'",
     );
     expect(titles(e.inputs)).toEqual(['scan resources d', 'scan resources p']);
-    expect(e.inputs[0].lines.join('\n')).toContain("where: Space.Slug LIKE 'acme-%'");
+    expect(e.inputs[0].lines.join('\n')).toContain('where: "Space.Slug LIKE \'acme-%\'"');
     const join = e.pipeline.find((s) => s.title.startsWith('hash join'));
     expect(join?.title).toBe('hash join · inner');
     expect(join?.lines).toEqual(['on d.name = p.name', 'on d.kind = p.kind']);
