@@ -30,11 +30,15 @@ export function QueryEditor({ value, onChange, onRun }: QueryEditorProps) {
   const matches = useMemo(() => {
     const w = word.toLowerCase();
     // Empty word → show the whole contextual pool (e.g. the SELECT fields right
-    // after typing "GROUP BY "); otherwise prefix-filter it.
+    // after typing "GROUP BY "); otherwise prefix-filter. A candidate's `match`
+    // (a map column's bare prefix) is matched instead of its display label.
     const filtered =
       w === ''
         ? pool
-        : pool.filter((s) => s.label.toLowerCase().startsWith(w) && s.label.toLowerCase() !== w);
+        : pool.filter((s) => {
+            const key = (s.match ?? s.label).toLowerCase();
+            return key.startsWith(w) && s.label.toLowerCase() !== w;
+          });
     return filtered.slice(0, 8);
   }, [pool, word]);
 
@@ -45,11 +49,12 @@ export function QueryEditor({ value, onChange, onRun }: QueryEditorProps) {
     const next = value.slice(0, start) + insert + value.slice(caret);
     onChange(next);
     setOpen(false);
-    // Restore focus + place caret after the inserted token.
+    // Restore focus + place the caret after the inserted token, or `caretBack`
+    // chars earlier — e.g. inside the quotes of a `labels['']` scaffold.
     requestAnimationFrame(() => {
       const el = ref.current;
       if (el) {
-        const pos = start + insert.length;
+        const pos = start + insert.length - (s.caretBack ?? 0);
         el.focus();
         el.setSelectionRange(pos, pos);
         setCaret(pos);

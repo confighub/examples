@@ -12,6 +12,7 @@
 //  - clause keywords are offered in grammar order only
 //  - completion is suppressed inside a string / backtick literal
 
+import { FqlError } from './errors';
 import { lex, type Token } from './lexer';
 import { describeTable, tableNames } from './schema';
 
@@ -20,6 +21,12 @@ export interface Completion {
   detail?: string;
   /** Text inserted (defaults to label). */
   insert?: string;
+  /** Prefix-matched against the in-progress word instead of `label` — a map
+   *  column matches on its bare prefix (`labels`), not the display `labels['key']`. */
+  match?: string;
+  /** Place the caret this many chars before the end of the inserted text, to drop
+   *  inside the quotes of a `labels['']` scaffold. */
+  caretBack?: number;
 }
 
 const AGG = new Set(['COUNT', 'MAX', 'MIN', 'SUM', 'AVG']);
@@ -51,12 +58,23 @@ function inLiteral(text: string, caret: number): boolean {
   return str || tick;
 }
 
-function tolerantLex(src: string): Token[] | null {
-  try {
-    return lex(src).filter((t) => t.type !== 'eof');
-  } catch {
-    return null;
+const strip = (toks: Token[]): Token[] => toks.filter((t) => t.type !== 'eof');
+
+/** Lex defensively: blank out an offending char and retry (up to a few times), so
+ *  a stray illegal char anywhere in the query doesn't kill all completion — the
+ *  surrounding clause structure is preserved. */
+function tolerantLex(src: string): Token[] {
+  let s = src;
+  for (let i = 0; i < 8; i++) {
+    try {
+      return strip(lex(s));
+    } catch (e) {
+      const at = e instanceof FqlError && e.pos ? e.pos.start : -1;
+      if (at < 0 || at >= s.length) break;
+      s = s.slice(0, at) + ' ' + s.slice(at + 1);
+    }
   }
+  return [];
 }
 
 const kw = (...words: string[]): Completion[] =>
@@ -77,16 +95,52 @@ function aggCompletions(): Completion[] {
   ];
 }
 
-/** Columns of the FROM table (+ a raw-path stub for resources). */
+/** Columns of the FROM table (+ raw-path completions for resources). */
 function columnCompletions(table: string | null): Completion[] {
   const info = table ? describeTable(table) : null;
   if (!info) return [];
-  const out: Completion[] = info.columns.map((c) => ({
-    label: c.name,
-    detail: `${c.type}${c.pushdown ? '' : ' · client'}`,
-  }));
-  if (info.rawDataPaths) out.push({ label: '`spec.…`', detail: 'raw YAML path', insert: '`spec.' });
+  const out: Completion[] = [];
+  for (const c of info.columns) {
+    if (c.kind === 'map') {
+      // Map columns (labels['key'], gate['key'], …) — offer a scaffold and drop
+      // the caret inside the quotes; match on the bare prefix so typing toward it
+      // narrows (the display label's `['key']` placeholder never prefix-matches a
+      // real key).
+      const prefix = c.name.split('[')[0];
+      out.push({
+        label: c.name,
+        detail: `${c.type} key`,
+        match: prefix,
+        insert: `${prefix}['']`,
+        caretBack: 2,
+      });
+    } else {
+      out.push({ label: c.name, detail: `${c.type}${c.pushdown ? '' : ' · client'}` });
+    }
+  }
+  if (info.rawDataPaths) out.push(...rawPathCompletions());
   return out;
+}
+
+/** Curated raw-path completions for `resources`. Closed (no dangling backtick) so
+ *  accepting one doesn't strand the editor inside an open literal. */
+function rawPathCompletions(): Completion[] {
+  return [
+    {
+      label: '`spec.template.spec.containers.*.image`',
+      detail: 'container image',
+      match: '`spec',
+      insert: '`spec.template.spec.containers.*.image`',
+    },
+    { label: '`spec.replicas`', detail: 'raw path', match: '`spec', insert: '`spec.replicas`' },
+    {
+      label: "metadata.annotations['key']",
+      detail: 'annotation',
+      match: 'metadata',
+      insert: "metadata.annotations['']",
+      caretBack: 2,
+    },
+  ];
 }
 
 // ─── Token reconstruction (column text + scope extraction) ────────────────────
@@ -204,17 +258,58 @@ function tableOf(tokens: Token[]): string | null {
 
 const COMPARE = new Set(['=', '!=', '<', '>', '<=', '>=', '~', '~*', '!~', '!~*']);
 const isKw = (t: Token | undefined, v: string) => !!t && t.type === 'keyword' && t.value === v;
+/** A token that ends a column reference (a bare/dotted ident or a `]` subscript). */
+const isColumnEnd = (t: Token | undefined) => !!t && (t.type === 'ident' || t.type === 'rbracket');
+
+/** True when the tail's caret position is inside an `IN ( … )` value list (the
+ *  nearest unclosed `(` was opened right after an `IN`). Such a `(` wraps literals,
+ *  not a predicate group, so we must not offer columns there. */
+function inInList(tail: Token[]): boolean {
+  const stack: boolean[] = [];
+  for (let i = 0; i < tail.length; i++) {
+    const t = tail[i];
+    if (t.type === 'lparen') stack.push(isKw(tail[i - 1], 'IN'));
+    else if (t.type === 'rparen') stack.pop();
+  }
+  return stack.length > 0 && stack[stack.length - 1];
+}
+
+// Single-shot clauses: never suggest one that already exists elsewhere in the query.
+const SINGLE_CLAUSES = new Set(['WHERE', 'GROUP BY', 'ORDER BY', 'LIMIT']);
+function presentClauses(text: string): Set<string> {
+  const toks = tolerantLex(text);
+  const s = new Set<string>();
+  for (let i = 0; i < toks.length; i++) {
+    const t = toks[i];
+    if (t.type !== 'keyword') continue;
+    if (t.value === 'WHERE') s.add('WHERE');
+    else if (t.value === 'LIMIT') s.add('LIMIT');
+    else if (t.value === 'GROUP' && toks[i + 1]?.value === 'BY') s.add('GROUP BY');
+    else if (t.value === 'ORDER' && toks[i + 1]?.value === 'BY') s.add('ORDER BY');
+  }
+  return s;
+}
 
 // ─── Public entry ──────────────────────────────────────────────────────────────
 
 /** Contextual completion candidates for the caret position (unfiltered by the
- *  in-progress word; the editor prefix-filters). Empty inside string literals. */
+ *  in-progress word; the editor prefix-filters). */
 export function completionsAt(text: string, caret: number): Completion[] {
-  if (inLiteral(text, caret)) return [];
-  const { start } = currentWord(text, caret);
-  const tokens = tolerantLex(text.slice(0, start));
-  if (tokens === null) return [];
+  const { word, start } = currentWord(text, caret);
+  // Suppress inside a literal opened BEFORE the word, or while typing a string
+  // value. A backtick the word itself opens is a raw path → keep completing.
+  if (inLiteral(text, start)) return [];
+  if (word.startsWith("'")) return [];
 
+  const tokens = tolerantLex(text.slice(0, start));
+  const out = contextCandidates(tokens);
+  // Drop clause keywords that already exist elsewhere in the query (no look-ahead
+  // past the caret would otherwise let us suggest a duplicate clause).
+  const present = presentClauses(text);
+  return out.filter((c) => !(SINGLE_CLAUSES.has(c.label) && present.has(c.label)));
+}
+
+function contextCandidates(tokens: Token[]): Completion[] {
   const { clause, tail } = clauseOf(tokens);
   const table = tableOf(tokens);
   const last = tail[tail.length - 1];
@@ -225,58 +320,49 @@ export function completionsAt(text: string, caret: number): Completion[] {
       return kw('SELECT');
 
     case 'select': {
-      // Inside an aggregate's parens: COUNT( … → arg.
-      const openAgg =
-        last?.type === 'lparen' && prev?.type === 'keyword' && AGG.has(prev.value);
+      const openAgg = last?.type === 'lparen' && prev?.type === 'keyword' && AGG.has(prev.value);
       if (openAgg) return [{ label: '*', detail: 'all' }, ...columnCompletions(table)];
       if (!last || last.type === 'comma') {
         return [...columnCompletions(table), ...aggCompletions(), { label: '*', detail: 'all' }];
       }
       if (isKw(last, 'AS')) return []; // free-text alias
-      // After a complete projection item.
       return kw('AS', 'FROM');
     }
 
-    case 'from': {
-      if (!last) return tableCompletions();
-      // table (and optional alias) present → next clauses.
-      return kw('WHERE', 'GROUP BY', 'ORDER BY', 'LIMIT');
-    }
+    case 'from':
+      return last ? kw('WHERE', 'GROUP BY', 'ORDER BY', 'LIMIT') : tableCompletions();
 
     case 'where': {
-      // Predicate start: after WHERE / AND / OR / NOT / '('.
-      if (
-        !last ||
-        last.type === 'lparen' ||
-        isKw(last, 'AND') ||
-        isKw(last, 'OR') ||
-        isKw(last, 'NOT')
-      ) {
-        return [...columnCompletions(table), ...kw('NOT')];
-      }
-      // IS [NOT] NULL.
+      // Inside an IN (...) value list: literals only — never columns.
+      if (inInList(tail)) return [];
+      // IS [NOT] NULL (checked before the predicate-start NOT guard).
       if (isKw(last, 'IS')) return kw('NULL', 'NOT NULL');
       if (isKw(last, 'NOT') && isKw(prev, 'IS')) return kw('NULL');
-      // IN / NOT IN → value list.
+      // NOT after a column → it can only introduce IN / LIKE.
+      if (isKw(last, 'NOT') && isColumnEnd(prev)) return kw('IN', 'LIKE');
+      // IN / NOT IN → open the value list.
       if (isKw(last, 'IN')) return [{ label: '(', detail: 'value list' }];
       // After a comparison operator → value help.
-      if (last.type === 'op' && COMPARE.has(last.value)) return valueHelp(table, prev);
-      // LIKE/ILIKE expect a quoted pattern → free text.
+      if (last?.type === 'op' && COMPARE.has(last.value)) return valueHelp(table, prev);
+      // LIKE / ILIKE expect a quoted pattern → free text.
       if (isKw(last, 'LIKE') || isKw(last, 'ILIKE')) return [];
-      // After a column (an ident NOT preceded by a comparison op) → operators.
-      const afterColumn =
-        (last.type === 'ident' || last.type === 'rbracket') &&
-        !(prev?.type === 'op' && COMPARE.has(prev.value));
-      if (afterColumn) return kw('=', '!=', '<', '>', '<=', '>=', 'LIKE', 'ILIKE', 'IN', 'IS');
-      // After a complete predicate (value/closed list/RHS column).
+      // Predicate start: after WHERE / AND / OR / a predicate-group '(' / a
+      // *leading* NOT (post-column/IS NOT already handled above).
+      if (!last || last.type === 'lparen' || isKw(last, 'AND') || isKw(last, 'OR') || isKw(last, 'NOT')) {
+        return [...columnCompletions(table), ...kw('NOT')];
+      }
+      // After a column LHS (ident/`]` not preceded by a comparison op) → operators.
+      if (isColumnEnd(last) && !(prev?.type === 'op' && COMPARE.has(prev.value))) {
+        return kw('=', '!=', '<', '>', '<=', '>=', 'LIKE', 'ILIKE', 'IN', 'IS');
+      }
+      // After a complete predicate (value / closed list / RHS column).
       return kw('AND', 'OR', 'GROUP BY', 'ORDER BY', 'LIMIT');
     }
 
     case 'group': {
       const scope = selectScope(tokens);
       if (!last || last.type === 'comma') {
-        const cols = scope.star ? columnCompletions(table) : scope.group.map((g) => ({ label: g }));
-        return cols;
+        return scope.star ? columnCompletions(table) : scope.group.map((g) => ({ label: g }));
       }
       return kw('ORDER BY', 'LIMIT');
     }
@@ -289,7 +375,6 @@ export function completionsAt(text: string, caret: number): Completion[] {
           : scope.order.map((o) => ({ label: o, detail: 'output' }));
       }
       if (isKw(last, 'ASC') || isKw(last, 'DESC')) return kw('LIMIT');
-      // After an order key → direction first, then LIMIT.
       return kw('ASC', 'DESC', 'LIMIT');
     }
 
