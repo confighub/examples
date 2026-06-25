@@ -188,18 +188,42 @@ function nnf(e: Expr, neg: boolean): Expr {
   }
 }
 
-/** Distribute to DNF: an OR-list of AND-groups (each a flat atom list). */
-function toDNF(e: Expr): Expr[][] {
-  if (e.kind === 'logical') {
-    if (e.op === 'OR') return [...toDNF(e.left), ...toDNF(e.right)];
-    // AND → cross product of the two sides' groups.
+/** Distribute to DNF (an OR-list of AND-groups), aborting to `null` as soon as
+ *  the group count would exceed `max`. The cross-product is never materialized
+ *  past the cap, so a pathologically nested WHERE can't blow up time or memory —
+ *  the old approach built the whole DNF first and only then checked its length. */
+function boundedDNF(e: Expr, max: number): Expr[][] | null {
+  if (e.kind === 'logical' && e.op === 'OR') {
+    const l = boundedDNF(e.left, max);
+    if (!l) return null;
+    const r = boundedDNF(e.right, max);
+    if (!r) return null;
+    if (l.length + r.length > max) return null;
+    return [...l, ...r];
+  }
+  if (e.kind === 'logical' && e.op === 'AND') {
+    const l = boundedDNF(e.left, max);
+    if (!l) return null;
+    const r = boundedDNF(e.right, max);
+    if (!r) return null;
+    if (l.length * r.length > max) return null;
     const out: Expr[][] = [];
-    for (const a of toDNF(e.left)) {
-      for (const b of toDNF(e.right)) out.push([...a, ...b]);
-    }
+    for (const a of l) for (const b of r) out.push([...a, ...b]);
     return out;
   }
   return [[e]]; // a single atom is one group of one
+}
+
+/** Atoms that hold for EVERY result row: those reachable from the root through
+ *  AND only (an OR subtree guarantees nothing). Pushing just these is the sound
+ *  fallback when DNF is too large — one fetch that still narrows by the common
+ *  conditions, instead of scanning the whole table. */
+function topConjuncts(e: Expr): Expr[] {
+  if (e.kind === 'logical' && e.op === 'AND') {
+    return [...topConjuncts(e.left), ...topConjuncts(e.right)];
+  }
+  if (e.kind === 'logical' && e.op === 'OR') return [];
+  return [e];
 }
 
 // ─── Pushdown partition ───────────────────────────────────────────────────────
@@ -346,6 +370,44 @@ function validateProjections(table: TableDef, stmt: SelectStmt): void {
   }
 }
 
+/** Bind & type-check every WHERE atom, independent of how (or whether) it gets
+ *  pushed down — so an unknown column or bad operator is rejected the same way
+ *  regardless of the fetch strategy (the DNF and the over-cap fallback paths push
+ *  different subsets). */
+function validateWhere(table: TableDef, e: Expr, alias: string | null): void {
+  switch (e.kind) {
+    case 'logical':
+      validateWhere(table, e.left, alias);
+      validateWhere(table, e.right, alias);
+      return;
+    case 'not':
+      validateWhere(table, e.expr, alias);
+      return;
+    case 'compare': {
+      const col = bind(table, e.left, alias);
+      checkOperator(e.op, col.type, e);
+      if (e.right.kind === 'column') bind(table, e.right, alias);
+      return;
+    }
+    case 'isnull':
+      bind(table, e.column, alias);
+      return;
+    default:
+      return;
+  }
+}
+
+/** De-dupe identical fetch specs (e.g. `a OR a`). */
+function dedupeFetches(specs: FetchSpec[]): FetchSpec[] {
+  const seen = new Set<string>();
+  return specs.filter((f) => {
+    const key = JSON.stringify(f);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 // ─── Public entry ──────────────────────────────────────────────────────────────
 
 /** Plan a parsed statement against the virtual-table catalog. */
@@ -360,24 +422,25 @@ export function plan(stmt: SelectStmt): ExecutionPlan {
   }
 
   validateProjections(table, stmt);
+  const alias = stmt.from.alias;
 
   let fetches: FetchSpec[];
   if (!stmt.where) {
     fetches = [{}]; // unconstrained single fetch
   } else {
-    const groups = toDNF(nnf(stmt.where, false));
-    if (groups.length > MAX_GROUPS) {
-      fetches = [{}]; // too many disjuncts → fetch broad, filter client-side
+    validateWhere(table, stmt.where, alias);
+    const nf = nnf(stmt.where, false);
+    const groups = boundedDNF(nf, MAX_GROUPS);
+    if (groups === null) {
+      // Too many OR-branches to enumerate: push only the guaranteed top-level
+      // conjuncts (one fetch that still narrows) rather than scanning everything.
+      fetches = [groupToFetch(table, topConjuncts(nf), alias)];
     } else {
-      fetches = groups.map((g) => groupToFetch(table, g, stmt.from.alias));
-      // De-dup identical fetch specs (e.g. `a OR a`).
-      const seen = new Set<string>();
-      fetches = fetches.filter((f) => {
-        const key = JSON.stringify(f);
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
+      const specs = groups.map((g) => groupToFetch(table, g, alias));
+      // If any OR-branch can't narrow (empty spec), the union is the whole table,
+      // so a single unconstrained fetch is equivalent and drops the redundant
+      // per-branch calls.
+      fetches = specs.some((s) => Object.keys(s).length === 0) ? [{}] : dedupeFetches(specs);
     }
   }
 

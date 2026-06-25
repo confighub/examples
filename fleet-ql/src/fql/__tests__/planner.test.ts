@@ -13,16 +13,24 @@ describe('planner — pushdown', () => {
     expect(p.source).toBe('units');
   });
 
-  it('splits a top-level OR into two fetches (DNF)', () => {
-    // A bracket-keyed annotation can't push (dots/slash) → client-side group;
-    // the container-image LIKE pushes down soundly.
+  it('collapses an OR with an unpushable branch to one unconstrained fetch', () => {
+    // A bracket-keyed annotation can't push (dots/slash) → its branch fetches
+    // everything; that already subsumes the image-LIKE branch, so the union is
+    // the whole table and a single {} fetch is equivalent (and avoids the
+    // redundant narrowed call). The full WHERE is re-checked client-side.
     const p = planOf(
       "SELECT unit FROM resources WHERE metadata.annotations['sec-scanner.confighub.com/max-severity'] = 'CRITICAL' OR `spec.template.spec.containers.*.image` LIKE '%:latest'",
     );
+    expect(p.fetches).toEqual([{}]);
+    expect(p.residual).not.toBeNull();
+  });
+
+  it('splits a top-level OR into two narrowed fetches when both branches push', () => {
+    const p = planOf(
+      "SELECT unit FROM resources WHERE kind = 'Service' OR `spec.template.spec.containers.*.image` LIKE '%:latest'",
+    );
     expect(p.fetches).toHaveLength(2);
-    // the annotation group has no pushdown.
-    expect(p.fetches[0]).toEqual({});
-    // image LIKE pushes to where_data.
+    expect(p.fetches[0]).toEqual({ whereData: "kind = 'Service'" });
     expect(p.fetches[1]).toEqual({
       whereData: "spec.template.spec.containers.*.image LIKE '%:latest'",
     });
@@ -211,5 +219,32 @@ describe('planner — validation', () => {
       expect(e).toBeInstanceOf(FqlError);
       expect((e as FqlError).pos).not.toBeNull();
     }
+  });
+});
+
+describe('planner — robustness & efficiency', () => {
+  // A WHERE whose DNF blows up past MAX_GROUPS: many ANDed OR-pairs (units cols).
+  const big = (n: number) =>
+    Array.from({ length: n }, (_, i) => `(slug = 'A${i}' OR space = 'B${i}')`).join(' AND ');
+
+  it('does not explode on a pathological DNF; falls back to common conjuncts', () => {
+    // 8 ANDed OR-pairs → 2^8 = 256 DNF groups, well past the cap. The pushable
+    // top-level conjunct (toolchain) still narrows the single fallback fetch.
+    const p = planOf(`SELECT slug FROM units WHERE toolchain = 'Helm' AND ${big(8)}`);
+    expect(p.fetches).toEqual([{ where: "ToolchainType = 'Helm'" }]);
+    expect(p.residual).not.toBeNull(); // full WHERE still re-checked client-side
+  });
+
+  it('fallback fetches the whole table only when no top-level conjunct pushes', () => {
+    const p = planOf(`SELECT slug FROM units WHERE ${big(8)}`);
+    expect(p.fetches).toEqual([{}]);
+  });
+
+  it('validates WHERE columns even on the over-cap fallback path', () => {
+    // nonesuch is unknown on units (no raw-path fallback); must still throw even
+    // though the DNF is never enumerated.
+    expect(() => planOf(`SELECT slug FROM units WHERE nonesuch = 1 AND ${big(8)}`)).toThrow(
+      FqlError,
+    );
   });
 });
