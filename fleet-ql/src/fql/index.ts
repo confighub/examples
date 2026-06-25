@@ -32,6 +32,8 @@ export { TABLES, columnNames, describeTable, describeTables, tableNames } from '
 export type { ColumnInfo, TableInfo } from './schema';
 export { completionsAt, currentWord } from './complete';
 export type { Completion } from './complete';
+export { explainPlan, formatExpr } from './explain';
+export type { PlanExplain, ExplainStage } from './explain';
 
 /** Parse a query into an AST (throws FqlError on syntax errors). */
 export { parse };

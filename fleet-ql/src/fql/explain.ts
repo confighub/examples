@@ -1,0 +1,142 @@
+// Turn an ExecutionPlan into a human-readable EXPLAIN: the pipeline stages (a
+// small DAG) and the API calls each fetch compiles to. Portable (no UI), so the
+// console renders it and tests can assert on it.
+
+import type { Expr } from './ast';
+import type { ExecutionPlan, FetchSpec } from './planner';
+import type { TableSource } from './schema';
+
+/** One stage in the plan DAG: a title plus detail lines (calls, keys, columns). */
+export interface ExplainStage {
+  title: string;
+  lines: string[];
+}
+
+export interface PlanExplain {
+  /** The leaf scan(s): one for a single table, two for a join (run concurrently). */
+  inputs: ExplainStage[];
+  /** The client-side pipeline applied to the fetched rows, top to bottom. */
+  pipeline: ExplainStage[];
+}
+
+// ─── Expr → readable FQL (for the residual / filter stage) ───────────────────
+
+function literalText(v: string | number | boolean, type: string): string {
+  if (type === 'string') return `'${String(v).replaceAll("'", "''")}'`;
+  return String(v);
+}
+
+/** Render an expression back to readable FQL (used for the residual filter). */
+export function formatExpr(e: Expr): string {
+  switch (e.kind) {
+    case 'logical':
+      return `(${formatExpr(e.left)} ${e.op} ${formatExpr(e.right)})`;
+    case 'not':
+      return `NOT ${formatExpr(e.expr)}`;
+    case 'isnull':
+      return `${e.column.name} IS ${e.negated ? 'NOT NULL' : 'NULL'}`;
+    case 'compare': {
+      const r = e.right;
+      let rhs: string;
+      if (r.kind === 'literal') rhs = literalText(r.value, r.type);
+      else if (r.kind === 'column') rhs = r.name;
+      else rhs = `(${r.items.map((i) => literalText(i.value, i.type)).join(', ')})`;
+      return `${e.left.name} ${e.op} ${rhs}`;
+    }
+    default:
+      return '?';
+  }
+}
+
+// ─── Plan → stages ───────────────────────────────────────────────────────────
+
+const ENDPOINT: Record<TableSource, string> = {
+  units: 'GET /unit',
+  spaces: 'GET /space',
+  revisions: 'GET /space/{id}/unit/{id}/revision (per unit)',
+  resources: 'POST /function/invoke · get-resources',
+  grants: 'POST /function/invoke · get-resources → rbac materialize',
+  roles: 'POST /function/invoke · get-resources → rbac materialize',
+  bindings: 'POST /function/invoke · get-resources → rbac materialize',
+  rbac_findings: 'POST /function/invoke · get-resources → rbac materialize',
+};
+
+/** The clause lines a single fetch spec carries (what actually narrows it). */
+function fetchClauses(spec: FetchSpec): string[] {
+  const out: string[] = [];
+  if (spec.where) out.push(`where: ${spec.where}`);
+  if (spec.whereData) out.push(`where_data: ${spec.whereData}`);
+  if (spec.whereResource) out.push(`whereResource: ${spec.whereResource}`);
+  if (spec.whereUnit) out.push(`whereUnit: ${spec.whereUnit}`);
+  if (spec.revision) out.push(`revision: ${spec.revision}`);
+  if (spec.accessQuery) out.push(`access: ${JSON.stringify(spec.accessQuery)}`);
+  return out.length ? out : ['(no pushdown — full scan)'];
+}
+
+function scanStage(source: TableSource, alias: string | null, fetches: FetchSpec[]): ExplainStage {
+  const title = `scan ${source}${alias ? ` ${alias}` : ''}`;
+  if (fetches.length === 0) return { title, lines: [ENDPOINT[source], '(no fetch)'] };
+  const lines: string[] = [];
+  fetches.forEach((spec, i) => {
+    if (fetches.length > 1) lines.push(`#${i + 1}  ${ENDPOINT[source]}`);
+    else lines.push(ENDPOINT[source]);
+    for (const c of fetchClauses(spec)) lines.push(`    ${c}`);
+  });
+  return { title, lines };
+}
+
+function exprName(e: Expr): string {
+  if (e.kind === 'column') return e.name;
+  if (e.kind === 'agg') return `${e.fn.toLowerCase()}(${e.arg && e.arg.kind === 'column' ? e.arg.name : '*'})`;
+  return '*';
+}
+
+function projectionNames(plan: ExecutionPlan): string[] {
+  return plan.stmt.projections.map((p) => {
+    if (p.alias) return p.alias;
+    if (p.expr.kind === 'star') return '*';
+    return exprName(p.expr);
+  });
+}
+
+/** Build the EXPLAIN view of a plan: inputs (scans) + the client-side pipeline. */
+export function explainPlan(plan: ExecutionPlan): PlanExplain {
+  const inputs: ExplainStage[] = [];
+  const pipeline: ExplainStage[] = [];
+  const stmt = plan.stmt;
+
+  if (plan.join) {
+    const j = plan.join;
+    inputs.push(scanStage(j.left.source, j.left.alias, j.left.fetches));
+    inputs.push(scanStage(j.right.source, j.right.alias, j.right.fetches));
+    pipeline.push({
+      title: `hash join · ${j.type}`,
+      lines: j.on.map((o) => `on ${j.left.alias}.${o.left} = ${j.right.alias}.${o.right}`),
+    });
+    if (j.residual) pipeline.push({ title: 'filter · client-side', lines: [formatExpr(j.residual)] });
+  } else {
+    inputs.push(scanStage(plan.source, stmt.from.alias, plan.fetches));
+    if (plan.fetches.length > 1) {
+      pipeline.push({ title: 'union + de-dupe', lines: [`${plan.fetches.length} fetches, OR branches merged`] });
+    }
+    if (plan.residual) pipeline.push({ title: 'filter · client-side', lines: [formatExpr(plan.residual)] });
+  }
+
+  const hasAgg = stmt.groupBy.length > 0 || stmt.projections.some((p) => p.expr.kind === 'agg');
+  if (hasAgg) {
+    pipeline.push({
+      title: stmt.groupBy.length ? 'group + aggregate' : 'aggregate',
+      lines: stmt.groupBy.length ? [`by ${stmt.groupBy.map((c) => c.name).join(', ')}`] : [],
+    });
+  }
+  if (stmt.orderBy.length) {
+    pipeline.push({
+      title: 'order by',
+      lines: [stmt.orderBy.map((o) => `${exprName(o.expr)} ${o.dir}`).join(', ')],
+    });
+  }
+  if (stmt.limit != null) pipeline.push({ title: `limit ${stmt.limit}`, lines: [] });
+  pipeline.push({ title: 'project', lines: [projectionNames(plan).join(', ')] });
+
+  return { inputs, pipeline };
+}

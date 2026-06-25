@@ -17,10 +17,20 @@ import {
   TableRow,
   Typography,
 } from '@mui/material';
-import { useCallback, useState } from 'react';
+import { Fragment, useCallback, useState } from 'react';
 
 import { fqlTransport } from '../api/fqlTransport';
-import { FqlError, planQuery, renderError, runQuery, type RunResult } from '../fql';
+import {
+  type ExecutionPlan,
+  type ExplainStage,
+  explainPlan,
+  FqlError,
+  type PlanExplain,
+  planQuery,
+  renderError,
+  runQuery,
+  type RunResult,
+} from '../fql';
 import { QueryEditor } from './QueryEditor';
 import { TableSidebar } from './TableSidebar';
 
@@ -100,16 +110,80 @@ const EXAMPLES: { label: string; query: string }[] = [
   },
 ];
 
-function PlanView({ query }: { query: string }) {
-  try {
-    const plan = planQuery(query);
-    return (
-      <Paper variant='outlined' sx={{ p: 1.5, mb: 2, bgcolor: 'grey.50' }}>
-        <Typography variant='caption' color='text.secondary'>
-          {plan.source} · {plan.fetches.length} server fetch(es)
-          {plan.fetches.length > 1 ? ' (OR split, unioned)' : ''} · full WHERE re-checked client-side
+/** One stage box in the plan DAG. */
+function Stage({ stage }: { stage: ExplainStage }) {
+  return (
+    <Paper variant='outlined' sx={{ p: 1, bgcolor: 'background.paper' }}>
+      <Typography variant='caption' sx={{ fontWeight: 600, display: 'block' }}>
+        {stage.title}
+      </Typography>
+      {stage.lines.map((l, i) => (
+        <Box
+          key={i}
+          component='pre'
+          sx={{ m: 0, fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap', color: 'text.secondary' }}
+        >
+          {l}
+        </Box>
+      ))}
+    </Paper>
+  );
+}
+
+/** The plan as a top-to-bottom DAG: leaf scan(s) → client-side pipeline. */
+function PlanDAG({ ex }: { ex: PlanExplain }) {
+  const arrow = (
+    <Box sx={{ textAlign: 'center', color: 'text.disabled', lineHeight: 1, fontSize: 14 }}>↓</Box>
+  );
+  return (
+    <Box sx={{ mt: 1.5, display: 'flex', flexDirection: 'column', gap: 0.5, maxWidth: 560 }}>
+      {ex.inputs.map((s, i) => (
+        <Stage key={`in${i}`} stage={s} />
+      ))}
+      {ex.inputs.length > 1 && (
+        <Typography variant='caption' color='text.secondary' sx={{ textAlign: 'center' }}>
+          (fetched concurrently)
         </Typography>
-        {plan.fetches.map((f, i) => (
+      )}
+      {ex.pipeline.map((s, i) => (
+        <Fragment key={`p${i}`}>
+          {arrow}
+          <Stage stage={s} />
+        </Fragment>
+      ))}
+    </Box>
+  );
+}
+
+function PlanView({ query }: { query: string }) {
+  const [open, setOpen] = useState(false);
+  let plan: ExecutionPlan;
+  try {
+    plan = planQuery(query);
+  } catch (e) {
+    return (
+      <Alert severity='warning' sx={{ mb: 2 }}>
+        {e instanceof FqlError ? e.message : String(e)}
+      </Alert>
+    );
+  }
+  const calls = plan.join
+    ? plan.join.left.fetches.length + plan.join.right.fetches.length
+    : plan.fetches.length;
+  return (
+    <Paper variant='outlined' sx={{ p: 1.5, mb: 2, bgcolor: 'grey.50' }}>
+      <Stack direction='row' justifyContent='space-between' alignItems='center'>
+        <Typography variant='caption' color='text.secondary'>
+          {plan.join ? `join · ${plan.join.type}` : plan.source} · {calls} API call(s)
+          {!plan.join && plan.fetches.length > 1 ? ' (OR split, unioned)' : ''} · full WHERE
+          re-checked client-side
+        </Typography>
+        <Button size='small' onClick={() => setOpen((o) => !o)} sx={{ minWidth: 0 }}>
+          {open ? 'Hide plan' : 'Explain'}
+        </Button>
+      </Stack>
+      {!open &&
+        plan.fetches.map((f, i) => (
           <Box key={i} component='pre' sx={{ m: 0, mt: 0.5, fontSize: 12, whiteSpace: 'pre-wrap' }}>
             {`#${i + 1}  ` +
               (Object.keys(f).length === 0
@@ -123,15 +197,9 @@ function PlanView({ query }: { query: string }) {
                     .join('\n     '))}
           </Box>
         ))}
-      </Paper>
-    );
-  } catch (e) {
-    return (
-      <Alert severity='warning' sx={{ mb: 2 }}>
-        {e instanceof FqlError ? e.message : String(e)}
-      </Alert>
-    );
-  }
+      {open && <PlanDAG ex={explainPlan(plan)} />}
+    </Paper>
+  );
 }
 
 function ResultGrid({ result }: { result: RunResult }) {
