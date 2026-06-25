@@ -39,6 +39,9 @@ const QUERIES: string[] = [
   'SELECT slug, headRevisionNum, liveRevisionNum, lastAppliedRevisionNum FROM units WHERE space = ' + "'sec-demo-dev'",
   'SELECT slug, space FROM units WHERE headRevisionNum > liveRevisionNum',
   'SELECT cluster, COUNT(*) AS units FROM units GROUP BY cluster ORDER BY units DESC',
+  // cluster dimension, both paths: bound units -> Target.Slug, unbound -> Space fallback
+  "SELECT slug, target, cluster FROM units WHERE space = 'sec-demo-dev' ORDER BY cluster, slug",
+  "SELECT slug FROM units WHERE cluster = 'blue-cluster'",
   "SELECT slug FROM spaces WHERE slug LIKE 'sec-demo-%'",
   // ── gates (the applyGates verification, live) ───────────────────────────────
   "SELECT slug, space FROM units WHERE gate['no-critical-cves'] = true",
