@@ -28,7 +28,7 @@ export function TableSidebar({ onInsert }: TableSidebarProps) {
   return (
     <Box sx={{ height: '100%', overflow: 'auto', bgcolor: 'grey.50', borderRight: 1, borderColor: 'divider' }}>
       <Typography variant='overline' sx={{ px: 2, pt: 1.5, display: 'block', color: 'text.secondary' }}>
-        Tables
+        Virtual Tables
       </Typography>
       <List dense disablePadding>
         {tables.map((t) => {
