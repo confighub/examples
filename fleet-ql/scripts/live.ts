@@ -25,11 +25,10 @@ const sessionStorage = {
 (globalThis as unknown as { window: unknown }).window = { sessionStorage };
 (globalThis as unknown as { sessionStorage: unknown }).sessionStorage = sessionStorage;
 
-const realFetch = globalThis.fetch.bind(globalThis);
-globalThis.fetch = ((input: unknown, init?: unknown) => {
-  const url = typeof input === 'string' && input.startsWith('/') ? BASE + input : input;
-  return realFetch(url as Parameters<typeof realFetch>[0], init as Parameters<typeof realFetch>[1]);
-}) as typeof fetch;
+// The openapi-fetch client builds an absolute Request, so it needs a real base
+// URL outside the browser. Set it before importing the transport (which creates
+// the client at module load). Node's native fetch then talks to the live server.
+(globalThis as { __CUB_API_BASE__?: string }).__CUB_API_BASE__ = `${BASE}/api`;
 
 const { runQuery, planQuery } = await import('../src/fql/index');
 const { fqlTransport } = await import('../src/api/fqlTransport');

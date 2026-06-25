@@ -1,7 +1,8 @@
 // Minimal auth for the explorer: a bearer token kept in sessionStorage (pasted
 // from `cub auth get-token`), sent as Authorization on same-origin /api calls.
 // In a same-origin deployment the session cookie works without a token; this is
-// the dev fallback. No RTK / generated SDK — fleet-ql talks to /api with fetch.
+// the dev fallback. The typed client (sdk/client.ts) attaches these headers to
+// every request via middleware.
 
 const TOKEN_KEY = 'confighub-token';
 

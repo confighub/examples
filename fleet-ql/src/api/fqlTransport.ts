@@ -1,7 +1,11 @@
 // The app-side FQL Transport: implements the engine's abstract fetch operations
-// over ConfigHub's REST API (same-origin /api + bearer token from api/auth).
-// This is the ONLY file that couples the portable fql/ engine to the app — it
-// knows ConfigHub's result shapes and flattens them into FQL rows.
+// over ConfigHub's REST API. This is the ONLY file that couples the portable
+// fql/ engine to the app — it knows ConfigHub's result shapes and flattens them
+// into FQL rows.
+//
+// HTTP goes through the generated, typed `cub` client (openapi-fetch over the
+// OpenAPI `paths` map); request params and response bodies are checked against
+// the spec, so there are no hand-written endpoint shapes here.
 //
 // Resource rows carry generic identity + the raw resource doc (__doc); FQL
 // evaluates arbitrary YAML data paths (images, scanner annotations, etc.)
@@ -20,89 +24,14 @@ import type {
 import { materializeGrants } from '../rbac/grants';
 import type { FleetResource } from '../rbac/model';
 import { materializeBindings, materializeFindings, materializeRoles } from '../rbac/structural';
-import { authHeaders } from './auth';
+import { cub, type Schemas } from '../sdk/client';
 import { spreadGatesByTrigger } from './gates';
 import { b64decodeUtf8 } from './encoding';
 
-// ─── HTTP helpers (auth via api/auth.ts) ──────────────────────────────────
-
-async function getJson<T>(path: string, query: Record<string, string | undefined>): Promise<T> {
-  const qs = new URLSearchParams();
-  for (const [k, v] of Object.entries(query)) if (v !== undefined && v !== '') qs.set(k, v);
-  const url = qs.toString() ? `${path}?${qs}` : path;
-  const res = await fetch(url, { credentials: 'include', headers: authHeaders() });
-  if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
-  return res.json() as Promise<T>;
-}
-
-async function getText(path: string): Promise<string> {
-  const res = await fetch(path, { credentials: 'include', headers: authHeaders() });
-  if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
-  return res.text();
-}
-
-async function postJson<T>(path: string, query: Record<string, string | undefined>, body: unknown): Promise<T> {
-  const qs = new URLSearchParams();
-  for (const [k, v] of Object.entries(query)) if (v !== undefined && v !== '') qs.set(k, v);
-  const url = qs.toString() ? `${path}?${qs}` : path;
-  const res = await fetch(url, {
-    method: 'POST',
-    credentials: 'include',
-    headers: authHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
-  return res.json() as Promise<T>;
-}
-
-// ─── Result-shape types (subset of the SDK) ─────────────────────────────────
-
-interface UnitListEntry {
-  Unit?: {
-    Slug?: string;
-    UnitID?: string;
-    SpaceID?: string;
-    DisplayName?: string;
-    ToolchainType?: string;
-    HeadRevisionNum?: number;
-    LiveRevisionNum?: number;
-    LastAppliedRevisionNum?: number;
-    UpstreamRevisionNum?: number;
-    UpstreamUnitID?: string;
-    ProviderType?: string;
-    Labels?: Record<string, string>;
-    Annotations?: Record<string, string>;
-    ApplyGates?: Record<string, boolean>;
-    ApplyWarnings?: Record<string, boolean>;
-  };
-  Space?: { Slug?: string };
-  Target?: { Slug?: string };
-}
-
-interface SpaceListEntry {
-  Space?: { Slug?: string; DisplayName?: string; SpaceID?: string; Labels?: Record<string, string>; Annotations?: Record<string, string> };
-}
-
-interface RevisionListEntry {
-  Revision?: {
-    RevisionID?: string;
-    RevisionNum?: number;
-    Source?: string;
-    Description?: string;
-    CreatedAt?: string;
-    UserID?: string;
-    DataHash?: string;
-  };
-}
-
-interface InvokeResponse {
-  Success?: boolean;
-  UnitID?: string;
-  UnitSlug?: string;
-  SpaceID?: string;
-  SpaceSlug?: string;
-  Outputs?: Record<string, string> | null;
-}
+// Result shapes come from the generated OpenAPI components (authoritative).
+type ExtendedUnit = Schemas['ExtendedUnit'];
+type ExtendedSpace = Schemas['ExtendedSpace'];
+type ExtendedRevision = Schemas['ExtendedRevision'];
 
 // ─── Flattening: API shapes → FQL rows ──────────────────────────────────────
 
@@ -112,8 +41,8 @@ function spreadMap(row: Row, prefix: string, map?: Record<string, string>): void
   for (const [k, v] of Object.entries(map)) row[`${prefix}.${k}`] = v;
 }
 
-function unitRow(e: UnitListEntry): Row {
-  const u = e.Unit ?? {};
+function unitRow(e: ExtendedUnit): Row {
+  const u: Partial<Schemas['Unit']> = e.Unit ?? {};
   const row: Row = {
     __id: u.UnitID,
     slug: u.Slug,
@@ -152,22 +81,44 @@ function unitRow(e: UnitListEntry): Row {
 const SELECT_UNIT =
   'UnitID,Slug,DisplayName,SpaceID,TargetID,ToolchainType,HeadRevisionNum,LiveRevisionNum,LastAppliedRevisionNum,UpstreamRevisionNum,UpstreamUnitID,ProviderType,Labels,Annotations,ApplyGates,ApplyWarnings';
 
+// The get-resources invocation body, shared by the resources and RBAC paths.
+const GET_RESOURCES: Schemas['FunctionInvocationsRequest']['FunctionInvocations'] = [
+  { FunctionName: 'get-resources', Arguments: [{ ParameterName: 'body', Value: 'json' }] },
+];
+
+/** Decode the base64 ResourceList output of a get-resources invocation into the
+ *  list of raw resources, or [] if it's missing / unparseable. */
+function resourceList(
+  resp: Schemas['FunctionInvocationsResponse'],
+): { ResourceType?: string; ResourceName?: string; ResourceBody?: string }[] {
+  if (!resp.Success) return [];
+  const encoded = resp.Outputs?.['ResourceList'];
+  if (!encoded) return [];
+  try {
+    return JSON.parse(b64decodeUtf8(encoded));
+  } catch {
+    return [];
+  }
+}
+
 // ─── Transport implementation ────────────────────────────────────────────────
 
 export const fqlTransport: Transport = {
   async units(params: ListParams): Promise<Row[]> {
-    const entries = await getJson<UnitListEntry[]>('/api/unit', {
-      where: params.where,
-      select: SELECT_UNIT,
-      include: 'SpaceID,TargetID',
+    const { data, error, response } = await cub.GET('/unit', {
+      params: { query: { where: params.where, select: SELECT_UNIT, include: 'SpaceID,TargetID' } },
     });
-    return entries.map(unitRow);
+    if (error || !data) throw new Error(`/unit: HTTP ${response.status}`);
+    return data.map(unitRow);
   },
 
   async spaces(params: ListParams): Promise<Row[]> {
-    const entries = await getJson<SpaceListEntry[]>('/api/space', { where: params.where });
-    return entries.map((e) => {
-      const s = e.Space ?? {};
+    const { data, error, response } = await cub.GET('/space', {
+      params: { query: { where: params.where } },
+    });
+    if (error || !data) throw new Error(`/space: HTTP ${response.status}`);
+    return data.map((e: ExtendedSpace) => {
+      const s: Partial<Schemas['Space']> = e.Space ?? {};
       const row: Row = {
         __id: s.SpaceID,
         slug: s.Slug,
@@ -186,23 +137,21 @@ export const fqlTransport: Transport = {
     // Revisions are per-Unit. First find the in-scope units (whereUnit), then
     // fan out a revision fetch per unit (the endpoint's `where` filters revision
     // fields). Rows carry their owning unit/space for identity and grouping.
-    const units = await getJson<UnitListEntry[]>('/api/unit', {
-      where: params.whereUnit,
-      select: 'UnitID,Slug,SpaceID',
-      include: 'SpaceID',
+    const { data: units, error, response } = await cub.GET('/unit', {
+      params: { query: { where: params.whereUnit, select: 'UnitID,Slug,SpaceID', include: 'SpaceID' } },
     });
+    if (error || !units) throw new Error(`/unit: HTTP ${response.status}`);
 
     const perUnit = await Promise.all(
-      units.map(async (e): Promise<Row[]> => {
+      units.map(async (e: ExtendedUnit): Promise<Row[]> => {
         const sid = e.Unit?.SpaceID;
         const uid = e.Unit?.UnitID;
         if (!sid || !uid) return [];
-        const revs = await getJson<RevisionListEntry[]>(
-          `/api/space/${sid}/unit/${uid}/revision`,
-          { where: params.where },
-        );
-        return revs.map((r): Row => {
-          const rev = r.Revision ?? {};
+        const { data: revs } = await cub.GET('/space/{space_id}/unit/{unit_id}/revision', {
+          params: { path: { space_id: sid, unit_id: uid }, query: { where: params.where } },
+        });
+        return (revs ?? []).map((r: ExtendedRevision): Row => {
+          const rev: Partial<Schemas['Revision']> = r.Revision ?? {};
           return {
             unit: e.Unit?.Slug,
             space: e.Space?.Slug,
@@ -229,31 +178,17 @@ export const fqlTransport: Transport = {
     // get-resources over the matching Units, then explode each Unit's resource
     // list into one FQL row per Kubernetes resource. In parallel, resolve each
     // unit's cluster (deploy target, Space fallback) to stamp onto the rows.
-    const [responses, clusters] = await Promise.all([
-      postJson<InvokeResponse[]>(
-        '/api/function/invoke',
-        { where: params.where, where_data: params.whereData },
-        {
-          WhereResource: params.whereResource,
-          FunctionInvocations: [
-            { FunctionName: 'get-resources', Arguments: [{ ParameterName: 'body', Value: 'json' }] },
-          ],
-        },
-      ),
+    const [inv, clusters] = await Promise.all([
+      cub.POST('/function/invoke', {
+        params: { query: { where: params.where, where_data: params.whereData } },
+        body: { WhereResource: params.whereResource, FunctionInvocations: GET_RESOURCES },
+      }),
       unitClusterMap(params.where),
     ]);
+    if (inv.error || !inv.data) throw new Error(`/function/invoke: HTTP ${inv.response.status}`);
 
     const rows: Row[] = [];
-    for (const resp of responses) {
-      if (!resp.Success) continue;
-      const encoded = resp.Outputs?.['ResourceList'];
-      if (!encoded) continue;
-      let list: { ResourceType?: string; ResourceName?: string; ResourceBody?: string }[];
-      try {
-        list = JSON.parse(b64decodeUtf8(encoded));
-      } catch {
-        continue;
-      }
+    for (const resp of inv.data) {
       const ci = clusters.get(`${resp.SpaceSlug ?? ''}/${resp.UnitSlug ?? ''}`);
       const origin: ResourceOrigin = {
         unit: resp.UnitSlug,
@@ -264,7 +199,7 @@ export const fqlTransport: Transport = {
         component: ci?.component ?? null,
         region: ci?.region ?? null,
       };
-      for (const raw of list) {
+      for (const raw of resourceList(resp)) {
         if (!raw.ResourceBody) continue;
         let doc: Record<string, unknown>;
         try {
@@ -304,32 +239,19 @@ export const fqlTransport: Transport = {
  *  whereResource narrowing) and let buildClusterRbac keep only RBAC kinds —
  *  sound and simple; `where` (space) already narrows which units are read. */
 async function fetchFleetRbac(where: string | undefined): Promise<FleetResource[]> {
-  const [responses, clusters] = await Promise.all([
-    postJson<InvokeResponse[]>(
-      '/api/function/invoke',
-      { where },
-      {
-        FunctionInvocations: [
-          { FunctionName: 'get-resources', Arguments: [{ ParameterName: 'body', Value: 'json' }] },
-        ],
-      },
-    ),
+  const [inv, clusters] = await Promise.all([
+    cub.POST('/function/invoke', {
+      params: { query: { where } },
+      body: { FunctionInvocations: GET_RESOURCES },
+    }),
     unitClusterMap(where),
   ]);
+  if (inv.error || !inv.data) throw new Error(`/function/invoke: HTTP ${inv.response.status}`);
 
   const fleet: FleetResource[] = [];
-  for (const resp of responses) {
-    if (!resp.Success) continue;
-    const encoded = resp.Outputs?.['ResourceList'];
-    if (!encoded) continue;
-    let list: { ResourceType?: string; ResourceName?: string; ResourceBody?: string }[];
-    try {
-      list = JSON.parse(b64decodeUtf8(encoded));
-    } catch {
-      continue;
-    }
+  for (const resp of inv.data) {
     const ci = clusters.get(`${resp.SpaceSlug ?? ''}/${resp.UnitSlug ?? ''}`);
-    for (const raw of list) {
+    for (const raw of resourceList(resp)) {
       if (!raw.ResourceBody) continue;
       let doc: unknown;
       try {
@@ -363,18 +285,17 @@ const SELECT_UNIT_REV = 'UnitID,Slug,SpaceID,TargetID,Labels,HeadRevisionNum,Liv
  *  data, stamped with the resolved RevisionNum. */
 async function resourcesAtRevision(params: ResourceParams): Promise<Row[]> {
   const sel = params.revision!.toLowerCase();
-  const units = await getJson<UnitListEntry[]>('/api/unit', {
-    where: params.where,
-    select: SELECT_UNIT_REV,
-    include: 'SpaceID,TargetID',
+  const { data: units, error, response } = await cub.GET('/unit', {
+    params: { query: { where: params.where, select: SELECT_UNIT_REV, include: 'SpaceID,TargetID' } },
   });
+  if (error || !units) throw new Error(`/unit: HTTP ${response.status}`);
 
   const perUnit = await Promise.all(
-    units.map(async (e): Promise<Row[]> => {
+    units.map(async (e: ExtendedUnit): Promise<Row[]> => {
       const u = e.Unit;
       const sid = u?.SpaceID;
       const uid = u?.UnitID;
-      if (!sid || !uid) return [];
+      if (!u || !sid || !uid) return [];
 
       // Resolve the target RevisionNum: symbolic head/live, else the literal.
       let revNum: number | undefined;
@@ -384,20 +305,22 @@ async function resourcesAtRevision(params: ResourceParams): Promise<Row[]> {
       if (revNum === undefined || revNum <= 0) return []; // never-applied 'live', etc.
 
       // Map RevisionNum → RevisionID (the data endpoint keys on the UUID).
-      const revs = await getJson<RevisionListEntry[]>(
-        `/api/space/${sid}/unit/${uid}/revision`,
-        { where: `RevisionNum = ${revNum}`, select: 'RevisionID,RevisionNum' },
-      );
-      const revId = revs[0]?.Revision?.RevisionID;
+      const { data: revs } = await cub.GET('/space/{space_id}/unit/{unit_id}/revision', {
+        params: {
+          path: { space_id: sid, unit_id: uid },
+          query: { where: `RevisionNum = ${revNum}`, select: 'RevisionID,RevisionNum' },
+        },
+      });
+      const revId = revs?.[0]?.Revision?.RevisionID;
       if (!revId) return [];
 
       // Fetch that revision's data blob (YAML) and split into resource docs.
-      let text: string;
-      try {
-        text = await getText(`/api/space/${sid}/unit/${uid}/revision/${revId}/data`);
-      } catch {
-        return [];
-      }
+      const { data: text, error: dErr } = await cub.GET(
+        '/space/{space_id}/unit/{unit_id}/revision/{revision_id}/data',
+        { params: { path: { space_id: sid, unit_id: uid, revision_id: revId } }, parseAs: 'text' },
+      );
+      if (dErr || text === undefined) return [];
+
       const origin: ResourceOrigin = {
         unit: u.Slug,
         space: e.Space?.Slug,
@@ -480,13 +403,11 @@ interface UnitOrigin {
 }
 
 async function unitClusterMap(where: string | undefined): Promise<Map<string, UnitOrigin>> {
-  const units = await getJson<UnitListEntry[]>('/api/unit', {
-    where,
-    select: 'UnitID,Slug,SpaceID,TargetID,Labels',
-    include: 'SpaceID,TargetID',
+  const { data: units } = await cub.GET('/unit', {
+    params: { query: { where, select: 'UnitID,Slug,SpaceID,TargetID,Labels', include: 'SpaceID,TargetID' } },
   });
   const m = new Map<string, UnitOrigin>();
-  for (const e of units) {
+  for (const e of units ?? []) {
     const space = e.Space?.Slug ?? '';
     const target = e.Target?.Slug ?? null;
     const labels = e.Unit?.Labels ?? {};
