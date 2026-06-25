@@ -43,6 +43,10 @@ Note on contract standard: [`EXAMPLE_CONTRACT_STANDARD.md`](./EXAMPLE_CONTRACT_S
 
 Some other examples
 
+- Fleet guardrails that analyze config, record a verdict as data, and gate apply
+  on it: [`sec-scanner`](./sec-scanner/README.md) (container CVEs),
+  [`rbac-manager`](./rbac-manager/README.md) (RBAC hygiene), and
+  [`cost-estimator`](./cost-estimator/README.md) (workload cloud cost).
 - Agentic RBAC companion patterns:
   [`rbac-manager-for-agents`](./rbac-manager-for-agents/README.md),
   [`rbac-manager-over-redis`](./rbac-manager-over-redis/README.md), and

@@ -1,0 +1,30 @@
+# Workload: cache — in-memory cache. Single replica, small footprint.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cache
+  labels:
+    cost-estimator.confighub.com/workload: cache
+    app.kubernetes.io/component: cache
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cache
+  template:
+    metadata:
+      labels:
+        app: cache
+    spec:
+      containers:
+        - name: redis
+          image: redis:7.4-alpine
+          ports:
+            - containerPort: 6379
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
