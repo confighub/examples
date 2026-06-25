@@ -148,9 +148,9 @@ SELECT space, COUNT(*) AS n FROM units WHERE labels.team = 'payments' GROUP BY s
 
 | Table | Source | Notable columns |
 |---|---|---|
-| `units` | `GET /unit` | `slug`, `space`, `cluster`, `toolchain`, `target`, `headRevisionNum`, `liveRevisionNum`, `lastAppliedRevisionNum`, `upstreamRevisionNum`, `upstreamUnitId`, `providerType`, `gates`, `warnings`, `labels.*`, `annotations.*`, `applyGates['<space>/<trigger>/<fn>']`, `applyWarnings[...]`, `gate['<trigger>']`, `warning['<trigger>']` |
-| `resources` | `POST /function/invoke` + `get-resources` (or a revision's data blob) | `unit`, `space`, `cluster`, `target`, `kind`, `name`, `namespace`, `replicas`, `resourceType`, `revision`, `labels.*`, + any raw data path |
-| `spaces` | `GET /space` | `slug`, `displayName`, `labels.*`, `annotations.*` |
+| `units` | `GET /unit` | `slug`, `space`, `cluster`, `environment`, `component`, `region`, `toolchain`, `target`, `headRevisionNum`, `liveRevisionNum`, `lastAppliedRevisionNum`, `upstreamRevisionNum`, `upstreamUnitId`, `providerType`, `gates`, `warnings`, `labels.*`, `annotations.*`, `applyGates['<space>/<trigger>/<fn>']`, `applyWarnings[...]`, `gate['<trigger>']`, `warning['<trigger>']` |
+| `resources` | `POST /function/invoke` + `get-resources` (or a revision's data blob) | `unit`, `space`, `cluster`, `target`, `environment`, `component`, `region`, `kind`, `name`, `namespace`, `replicas`, `resourceType`, `revision`, `labels.*`, + any raw data path |
+| `spaces` | `GET /space` | `slug`, `displayName`, `environment`, `component`, `region`, `labels.*`, `annotations.*` |
 | `revisions` | `GET /space/{id}/unit/{id}/revision` (per Unit) | `unit`, `space` (scope which units), `revisionNum`, `source`, `description`, `createdAt`, `userId` |
 | `grants` | materialized from RBAC resources (`get-resources` + the rbac engine) | output: `subject`, `subjectKind`, `subjectName`, `cluster`, `space`, `unit`, `target`, `scope`, `role`, `viaBuiltin`, `binding`; access selectors: `verb`, `resource`, `apiGroup`, `namespace`, `name` |
 | `roles` | materialized from RBAC resources | `name`, `kind`, `namespace`, `cluster`, `space`, `unit`, `target`, `hasWildcard`, `aggregated`, `ruleCount`, `labels.*` |
@@ -175,6 +175,36 @@ stamped with the resolved `revision`). Pair it with `unit =` / `space =` scoping
 SELECT unit, `spec.template.spec.containers.*.image` AS image
 FROM resources WHERE unit = 'checkout' AND revision = 5
 ```
+
+## Fleet & promotion (environment/component/region)
+
+ConfigHub's well-known fleet labels — `Component`, `Environment`, `Region`,
+`Owner`, `Variant` — organize a multi-component fleet across dev/staging/prod.
+FQL exposes `environment`, `component`, and `region` as first-class columns
+(sugar over `labels.Environment` etc.): on `units`/`spaces` they push to `where
+Labels.<X>`; on `resources` they're stamped from the owning unit and filtered
+client-side. The cluster dimension layers on top — one env-cluster (`dev-cluster`/
+`staging-cluster`/`prod-cluster`) spans every component in that environment.
+
+```sql
+-- fleet inventory: every workload's version + replicas across environments
+SELECT component, environment, `spec.template.spec.containers.*.image` AS image, replicas
+FROM resources WHERE space LIKE 'acme-%' AND kind = 'Deployment'
+ORDER BY component, environment
+
+-- the promotion gap: dev ahead of staging/prod, awaiting promotion
+SELECT environment, `spec.template.spec.containers.*.image` AS image
+FROM resources WHERE component = 'storefront' AND kind = 'Deployment' ORDER BY environment
+
+-- per-environment / per-cluster posture
+SELECT environment, COUNT(*) AS units FROM units WHERE space LIKE 'acme-%' GROUP BY environment
+SELECT cluster, COUNT(*) AS units FROM units WHERE space LIKE 'acme-%' GROUP BY cluster
+```
+
+Promotion itself is a ConfigHub operation (`cub unit update --upgrade` along the
+`dev → staging → prod` upstream chain, or `cub variant promote`); FQL is how you
+*see* the gap before and confirm convergence after. `scripts/fleet-setup.sh`
+seeds this fleet; `scripts/live.ts` runs the scenarios end to end.
 
 ## `grants` — who can do what, on which cluster
 

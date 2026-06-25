@@ -107,6 +107,11 @@ const UNITS: TableDef = {
     },
     upstreamUnitId: { type: 'string', pushdown: { target: 'where', expr: 'UpstreamUnitID' } },
     providerType: { type: 'string', pushdown: { target: 'where', expr: 'ProviderType' } },
+    // ConfigHub well-known fleet labels as first-class columns (sugar over the
+    // labels.* map; push to where exactly like labels.Environment would).
+    environment: { type: 'string', pushdown: { target: 'where', expr: 'Labels.Environment' } },
+    component: { type: 'string', pushdown: { target: 'where', expr: 'Labels.Component' } },
+    region: { type: 'string', pushdown: { target: 'where', expr: 'Labels.Region' } },
     // Derived/aggregate-ish columns evaluated client-side from the fetched Unit.
     gates: { type: 'number' }, // count of applyGates keys
     warnings: { type: 'number' }, // count of applyWarnings keys
@@ -163,6 +168,11 @@ const RESOURCES: TableDef = {
     // space scoping (it fetches a specific revision's data blob per unit). The
     // value is stamped onto every returned row so the residual check passes.
     revision: { type: 'number', pushdown: { target: 'revision', expr: 'revision' } },
+    // Owning unit's well-known fleet labels, stamped onto each resource row by
+    // the transport enrichment (like cluster/target). Client-side only.
+    environment: { type: 'string' },
+    component: { type: 'string' },
+    region: { type: 'string' },
     // NOTE: there is deliberately no `image`, `severity`, `cveCount`, etc.
     // `image` was a lossy comma-join of an array; the scanner verdict fields are
     // sec-scanner annotations, not generic resource columns. Query them as the
@@ -184,6 +194,10 @@ const SPACES: TableDef = {
   columns: {
     slug: { type: 'string', pushdown: { target: 'where', expr: 'Slug' } },
     displayName: { type: 'string', pushdown: { target: 'where', expr: 'DisplayName' } },
+    // Well-known fleet labels as first-class columns (sugar over labels.*).
+    environment: { type: 'string', pushdown: { target: 'where', expr: 'Labels.Environment' } },
+    component: { type: 'string', pushdown: { target: 'where', expr: 'Labels.Component' } },
+    region: { type: 'string', pushdown: { target: 'where', expr: 'Labels.Region' } },
   },
   mapPrefixes: {
     labels: { type: 'string', pushdown: { target: 'where', field: 'Labels' } },

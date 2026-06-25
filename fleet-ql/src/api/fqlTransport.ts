@@ -129,6 +129,11 @@ function unitRow(e: UnitListEntry): Row {
     upstreamRevisionNum: u.UpstreamRevisionNum,
     upstreamUnitId: u.UpstreamUnitID,
     providerType: u.ProviderType,
+    // Well-known fleet labels as flat fields, so they project / GROUP BY (the
+    // `environment` etc. columns also push to where via Labels.* for filtering).
+    environment: u.Labels?.Environment ?? null,
+    component: u.Labels?.Component ?? null,
+    region: u.Labels?.Region ?? null,
     gates: Object.keys(u.ApplyGates ?? {}).length,
     warnings: Object.keys(u.ApplyWarnings ?? {}).length,
   };
@@ -163,7 +168,14 @@ export const fqlTransport: Transport = {
     const entries = await getJson<SpaceListEntry[]>('/api/space', { where: params.where });
     return entries.map((e) => {
       const s = e.Space ?? {};
-      const row: Row = { __id: s.SpaceID, slug: s.Slug, displayName: s.DisplayName };
+      const row: Row = {
+        __id: s.SpaceID,
+        slug: s.Slug,
+        displayName: s.DisplayName,
+        environment: s.Labels?.Environment ?? null,
+        component: s.Labels?.Component ?? null,
+        region: s.Labels?.Region ?? null,
+      };
       spreadMap(row, 'labels', s.Labels);
       spreadMap(row, 'annotations', s.Annotations);
       return row;
@@ -248,6 +260,9 @@ export const fqlTransport: Transport = {
         space: resp.SpaceSlug,
         target: ci?.target ?? null,
         cluster: ci?.cluster ?? resp.SpaceSlug ?? null,
+        environment: ci?.environment ?? null,
+        component: ci?.component ?? null,
+        region: ci?.region ?? null,
       };
       for (const raw of list) {
         if (!raw.ResourceBody) continue;
@@ -341,7 +356,7 @@ async function fetchFleetRbac(where: string | undefined): Promise<FleetResource[
 
 // ─── Time-travel: resources as of a specific revision ───────────────────────
 
-const SELECT_UNIT_REV = 'UnitID,Slug,SpaceID,TargetID,HeadRevisionNum,LiveRevisionNum';
+const SELECT_UNIT_REV = 'UnitID,Slug,SpaceID,TargetID,Labels,HeadRevisionNum,LiveRevisionNum';
 
 /** Read resources from a specific revision per in-scope unit (params.revision
  *  is a RevisionNum, or 'head' / 'live'). One row per K8s doc in that revision's
@@ -388,6 +403,9 @@ async function resourcesAtRevision(params: ResourceParams): Promise<Row[]> {
         space: e.Space?.Slug,
         target: e.Target?.Slug ?? null,
         cluster: e.Target?.Slug ?? e.Space?.Slug ?? null,
+        environment: u.Labels?.Environment ?? null,
+        component: u.Labels?.Component ?? null,
+        region: u.Labels?.Region ?? null,
       };
       const out: Row[] = [];
       for (const d of parseAllDocuments(text)) {
@@ -408,6 +426,9 @@ interface ResourceOrigin {
   space?: string;
   target?: string | null;
   cluster?: string | null;
+  environment?: string | null;
+  component?: string | null;
+  region?: string | null;
 }
 
 /** One FQL row for a Kubernetes resource document. `revision` is the selector
@@ -431,6 +452,9 @@ function resourceRow(
     space: origin.space,
     target: origin.target ?? null,
     cluster: origin.cluster ?? origin.space ?? null,
+    environment: origin.environment ?? null,
+    component: origin.component ?? null,
+    region: origin.region ?? null,
     kind: doc['kind'],
     name: md?.name,
     namespace: md?.namespace ?? null,
@@ -443,22 +467,36 @@ function resourceRow(
   };
 }
 
-/** Fetch the matching units' deploy targets, keyed by `space/unit`, so the
- *  resources head path can stamp each resource with its cluster. One extra list
- *  call (scoped by the same `where`); cluster = target ?? space. */
-async function unitClusterMap(
-  where: string | undefined,
-): Promise<Map<string, { cluster: string | null; target: string | null }>> {
+/** Per-unit origin enrichment keyed by `space/unit`, so the resources head path
+ *  can stamp each resource with its cluster (deploy target, Space fallback) and
+ *  the unit's well-known fleet labels. One extra list call (scoped by the same
+ *  `where`). */
+interface UnitOrigin {
+  cluster: string | null;
+  target: string | null;
+  environment: string | null;
+  component: string | null;
+  region: string | null;
+}
+
+async function unitClusterMap(where: string | undefined): Promise<Map<string, UnitOrigin>> {
   const units = await getJson<UnitListEntry[]>('/api/unit', {
     where,
-    select: 'UnitID,Slug,SpaceID,TargetID',
+    select: 'UnitID,Slug,SpaceID,TargetID,Labels',
     include: 'SpaceID,TargetID',
   });
-  const m = new Map<string, { cluster: string | null; target: string | null }>();
+  const m = new Map<string, UnitOrigin>();
   for (const e of units) {
     const space = e.Space?.Slug ?? '';
     const target = e.Target?.Slug ?? null;
-    m.set(`${space}/${e.Unit?.Slug ?? ''}`, { cluster: target ?? e.Space?.Slug ?? null, target });
+    const labels = e.Unit?.Labels ?? {};
+    m.set(`${space}/${e.Unit?.Slug ?? ''}`, {
+      cluster: target ?? e.Space?.Slug ?? null,
+      target,
+      environment: labels.Environment ?? null,
+      component: labels.Component ?? null,
+      region: labels.Region ?? null,
+    });
   }
   return m;
 }

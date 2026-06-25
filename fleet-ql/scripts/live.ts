@@ -64,6 +64,17 @@ const QUERIES: string[] = [
   "SELECT cluster, name FROM roles WHERE space = 'sec-demo-dev'",
   "SELECT cluster, name, orphaned FROM bindings WHERE space = 'sec-demo-dev'",
   "SELECT analyzer, COUNT(*) AS n FROM rbac_findings WHERE space = 'sec-demo-dev' GROUP BY analyzer",
+  // ── acme fleet: dev/staging/prod across 3 components + promotion ────────────
+  // 1. fleet inventory matrix — every workload's version + replicas across envs
+  "SELECT component, environment, `spec.template.spec.containers.*.image` AS image, replicas FROM resources WHERE space LIKE 'acme-%' AND kind = 'Deployment' ORDER BY component, environment",
+  // 2. promotion gap — storefront dev is ahead of staging/prod (awaiting promotion)
+  "SELECT environment, `spec.template.spec.containers.*.image` AS image FROM resources WHERE space LIKE 'acme-storefront-%' AND kind = 'Deployment' ORDER BY environment",
+  // 3. per-cluster posture — env clusters span all components
+  "SELECT cluster, COUNT(*) AS units FROM units WHERE space LIKE 'acme-%' GROUP BY cluster ORDER BY cluster",
+  // 4. per-environment rollup with the new first-class column
+  "SELECT environment, COUNT(*) AS units FROM units WHERE space LIKE 'acme-%' GROUP BY environment ORDER BY environment",
+  // 5. ownership / region view (well-known labels as columns)
+  "SELECT component, environment, region, replicas FROM resources WHERE space LIKE 'acme-%' AND environment = 'Prod' AND kind = 'Deployment' ORDER BY component",
 ];
 
 let ok = 0;

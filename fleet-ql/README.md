@@ -44,8 +44,8 @@ npm run build     # tsc + production build
 
 | Table | What it queries |
 |---|---|
-| `units` | ConfigHub Units — slug, space, toolchain, revision/drift fields, gates, labels |
-| `resources` | the Kubernetes resources inside Units (all kinds) — `kind`, `name`, raw YAML paths, annotations |
+| `units` | ConfigHub Units — slug, space, `cluster`, `environment`/`component`/`region`, revision/drift fields, gates, labels |
+| `resources` | the Kubernetes resources inside Units (all kinds) — `kind`, `name`, `cluster`, `environment`/`component`/`region`, raw YAML paths, annotations |
 | `spaces` | Spaces — slug, labels, annotations |
 | `revisions` | per-Unit change history — `revisionNum`, `source`, `description`, `createdAt`, scoped by `unit`/`space` |
 | `grants` | effective RBAC access — "who can VERB RESOURCE, on which cluster" (`subject`, `cluster`, `role`, `scope`, …) |
@@ -55,3 +55,11 @@ npm run build     # tsc + production build
 
 `events`, `triggers`, `filters`, and `links` parse today but aren't wired to the
 planner yet — see the engine README.
+
+## Demo fleet
+
+`scripts/fleet-setup.sh` seeds a multi-component dev/staging/prod fleet
+(`acme-storefront/orders/payments` × 3 envs, bound to env-clusters, labeled with
+the well-known fleet labels) with a `dev → staging → prod` promotion chain.
+`scripts/live.ts` runs read-only fleet + promotion scenarios against a live
+ConfigHub (`npx vite-node scripts/live.ts`); `scripts/fleet-teardown.sh` removes it.
