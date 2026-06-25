@@ -59,6 +59,8 @@ const KEYWORDS = new Set([
   'MIN',
   'SUM',
   'AVG',
+  'NOW',
+  'INTERVAL',
 ]);
 
 const isDigit = (c: string) => c >= '0' && c <= '9';
@@ -210,6 +212,16 @@ export function lex(src: string): Token[] {
         continue;
       case '*':
         tokens.push({ type: 'star', value: '*', pos: posAt(start, i + 1) });
+        i++;
+        continue;
+      // `-` and `+` are only meaningful in interval arithmetic (`now() - interval
+      // '24h'`); a lone `-` reaches here because the `--` comment is handled above.
+      case '-':
+        tokens.push({ type: 'op', value: '-', pos: posAt(start, i + 1) });
+        i++;
+        continue;
+      case '+':
+        tokens.push({ type: 'op', value: '+', pos: posAt(start, i + 1) });
         i++;
         continue;
       case '=':

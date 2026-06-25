@@ -45,6 +45,11 @@ const EXAMPLES: { label: string; query: string }[] = [
       "SELECT unit, RevisionNum, Source, Description\nFROM revisions\nWHERE space = 'sec-demo-dev'\nORDER BY RevisionNum DESC LIMIT 20",
   },
   {
+    label: 'Changed in last 24h',
+    query:
+      "SELECT unit, RevisionNum, Source, UserID\nFROM revisions\nWHERE space = 'sec-demo-dev' AND CreatedAt > now() - interval '24h'\nORDER BY CreatedAt DESC",
+  },
+  {
     label: 'Resource at a past revision',
     query:
       "SELECT unit, kind, metadata.name,\n  `spec.template.spec.containers.*.image` AS image\nFROM resources\nWHERE unit = 'legacy-frontend' AND revision = 1",

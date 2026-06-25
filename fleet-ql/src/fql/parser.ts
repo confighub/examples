@@ -57,9 +57,13 @@ function span(a: Pos, b: Pos): Pos {
 class Parser {
   private toks: Token[];
   private i = 0;
+  /** Wall-clock instant `now()` folds to. Injectable so queries are
+   *  deterministic in tests; defaults to the real current time. */
+  private now: Date;
 
-  constructor(src: string) {
+  constructor(src: string, now: Date) {
     this.toks = lex(src);
+    this.now = now;
   }
 
   private peek(): Token {
@@ -400,8 +404,13 @@ class Parser {
     if (t.type === 'op' && CMP_OPS.has(t.value)) {
       this.next();
       const r = this.peek();
+      // TRUE/FALSE/NOW are value keywords, not columns.
       const rhsIsColumn =
-        r.type === 'ident' || (r.type === 'keyword' && r.value !== 'TRUE' && r.value !== 'FALSE');
+        r.type === 'ident' ||
+        (r.type === 'keyword' &&
+          r.value !== 'TRUE' &&
+          r.value !== 'FALSE' &&
+          r.value !== 'NOW');
       const rhs = rhsIsColumn ? this.parseColumn() : this.parseValue();
       return mkCompare(t.value as CompareOp, column, rhs);
     }
@@ -428,7 +437,38 @@ class Parser {
       this.next();
       return { kind: 'literal', value: t.value === 'TRUE', type: 'boolean', pos: t.pos };
     }
+    if (t.type === 'keyword' && t.value === 'NOW') {
+      return this.parseNowExpr();
+    }
     this.fail(`expected a literal value but found ${describe(t)}`, t.pos);
+  }
+
+  /** `now()` or `now() ± [interval] '24h'`. Folds to a constant RFC3339 string
+   *  literal at parse time, so a timestamp predicate (`CreatedAt > now() -
+   *  interval '24h'`) compiles and pushes down exactly like a hand-typed literal.
+   *  RFC3339 UTC sorts lexically, so the server's timestamp compare and the
+   *  client-side string compare agree. */
+  private parseNowExpr(): LiteralExpr {
+    const nowTok = this.expectKw('NOW');
+    this.expect('lparen', "'(' after now");
+    let endPos = this.expect('rparen', "')' to close now()").pos;
+
+    let ms = this.now.getTime();
+    const t = this.peek();
+    if (t.type === 'op' && (t.value === '-' || t.value === '+')) {
+      this.next();
+      const sign = t.value === '-' ? -1 : 1;
+      if (this.isKw('INTERVAL')) this.next(); // `interval` keyword optional
+      const dur = this.expect('string', "a quoted duration like '24h' after now() -");
+      ms += sign * intervalToMs(dur.value, dur.pos);
+      endPos = dur.pos;
+    }
+    return {
+      kind: 'literal',
+      value: new Date(ms).toISOString(),
+      type: 'string',
+      pos: span(nowTok.pos, endPos),
+    };
   }
 
   private parseStringLiteral(after: string): LiteralExpr {
@@ -450,6 +490,38 @@ class Parser {
     const close = this.expect('rparen', "')' to close the value list");
     return { kind: 'list', items, pos: span(open.pos, close.pos) };
   }
+}
+
+/** Duration units → milliseconds. Months/years are deliberately omitted: their
+ *  length is variable, so an exact ms folding would be a lie. */
+const UNIT_MS: Record<string, number> = {
+  s: 1_000, sec: 1_000, secs: 1_000, second: 1_000, seconds: 1_000,
+  m: 60_000, min: 60_000, mins: 60_000, minute: 60_000, minutes: 60_000,
+  h: 3_600_000, hr: 3_600_000, hrs: 3_600_000, hour: 3_600_000, hours: 3_600_000,
+  d: 86_400_000, day: 86_400_000, days: 86_400_000,
+  w: 604_800_000, week: 604_800_000, weeks: 604_800_000,
+};
+
+/** Parse an interval string (`'24h'`, `'7 days'`, `'30m'`) to milliseconds. */
+function intervalToMs(text: string, pos: Pos): number {
+  const m = /^\s*(\d+(?:\.\d+)?)\s*([A-Za-z]+)\s*$/.exec(text);
+  if (!m) {
+    throw new FqlError(
+      `invalid interval ${JSON.stringify(text)}; use e.g. '24h', '7d', '30m'`,
+      pos,
+      'parse',
+    );
+  }
+  const unit = m[2].toLowerCase();
+  const ms = UNIT_MS[unit];
+  if (ms === undefined) {
+    throw new FqlError(
+      `unknown interval unit "${m[2]}"; use s, m, h, d, or w (months/years aren't fixed-length)`,
+      pos,
+      'parse',
+    );
+  }
+  return Number(m[1]) * ms;
 }
 
 function mkCompare(
@@ -485,7 +557,13 @@ function describe(t: Token): string {
   }
 }
 
+/** Options for parsing. `now` fixes the instant `now()` folds to (defaults to
+ *  the real current time); pass a fixed Date for deterministic tests. */
+export interface ParseOptions {
+  now?: Date;
+}
+
 /** Parse a query string into a SelectStmt, or throw FqlError. */
-export function parse(src: string): SelectStmt {
-  return new Parser(src).parseSelect();
+export function parse(src: string, opts: ParseOptions = {}): SelectStmt {
+  return new Parser(src, opts.now ?? new Date()).parseSelect();
 }

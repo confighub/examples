@@ -35,10 +35,28 @@ predicate :=
   | col IS [NOT] NULL
 op := = != < > <= >= ~ ~* !~ !~*      -- ~ family = POSIX regex
 col := name | name.dotted.path | `backtick quoted path` | alias.<any of those>
+value := string | number | TRUE | FALSE | now() [ (+|-) [interval] 'DUR' ]
 ```
 
 Strings use single quotes with `''` escaping (`'it''s'`). `--` starts a line
 comment. Keywords are case-insensitive; identifiers are not.
+
+**`now()` and intervals.** `now()` folds to the current instant; `now() - interval
+'24h'` shifts it. This is the "what changed recently" idiom against the `revisions`
+table's `CreatedAt`:
+
+```sql
+SELECT unit, RevisionNum, UserID FROM revisions
+WHERE space = 'sec-demo-dev' AND CreatedAt > now() - interval '24h'
+ORDER BY CreatedAt DESC
+```
+
+The `interval` keyword is optional (`now() - '7d'` works). Duration units are
+`s`/`m`/`h`/`d`/`w` (with long forms like `'3 hours'`, `'1 day'`); months and years
+are rejected because they aren't fixed-length. The folding happens at **parse
+time** to a constant RFC3339-UTC string literal, so the predicate pushes down to
+`where` exactly like a hand-typed timestamp — and because RFC3339-UTC sorts
+lexically, the server's timestamp compare and the client-side string compare agree.
 
 **Columns** come in three flavors:
 
