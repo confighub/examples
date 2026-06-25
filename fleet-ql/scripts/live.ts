@@ -41,7 +41,9 @@ const QUERIES: string[] = [
   'SELECT cluster, COUNT(*) AS units FROM units GROUP BY cluster ORDER BY units DESC',
   // cluster dimension, both paths: bound units -> Target.Slug, unbound -> Space fallback
   "SELECT slug, target, cluster FROM units WHERE space = 'sec-demo-dev' ORDER BY cluster, slug",
-  "SELECT slug FROM units WHERE cluster = 'blue-cluster'",
+  // fleet view: units and images per cluster (cluster spans bound + fallback)
+  "SELECT cluster, COUNT(*) AS units FROM units WHERE space = 'sec-demo-dev' GROUP BY cluster ORDER BY cluster",
+  "SELECT cluster, unit, `spec.template.spec.containers.*.image` AS image FROM resources WHERE space = 'sec-demo-dev' ORDER BY cluster",
   "SELECT slug FROM spaces WHERE slug LIKE 'sec-demo-%'",
   // ── gates (the applyGates verification, live) ───────────────────────────────
   "SELECT slug, space FROM units WHERE gate['no-critical-cves'] = true",
