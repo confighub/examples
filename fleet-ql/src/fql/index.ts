@@ -30,6 +30,8 @@ export type { Row, ResultSet } from './evaluate';
 export type { RunResult, RunStats } from './executor';
 export { TABLES, columnNames, describeTable, describeTables, tableNames } from './schema';
 export type { ColumnInfo, TableInfo } from './schema';
+export { completionsAt, currentWord } from './complete';
+export type { Completion } from './complete';
 
 /** Parse a query into an AST (throws FqlError on syntax errors). */
 export { parse };

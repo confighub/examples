@@ -6,50 +6,9 @@
 import { Box, List, ListItemButton, ListItemText, Paper } from '@mui/material';
 import { useMemo, useRef, useState } from 'react';
 
-import { describeTable, tableNames } from '../fql';
+import { type Completion, completionsAt, currentWord } from '../fql';
 
-const KEYWORDS = [
-  'SELECT',
-  'FROM',
-  'WHERE',
-  'AND',
-  'OR',
-  'NOT',
-  'IN',
-  'IS',
-  'NULL',
-  'LIKE',
-  'ILIKE',
-  'GROUP BY',
-  'ORDER BY',
-  'ASC',
-  'DESC',
-  'LIMIT',
-  'AS',
-  'COUNT(*)',
-];
-
-interface Suggestion {
-  label: string;
-  detail?: string;
-  /** Text inserted (defaults to label). */
-  insert?: string;
-}
-
-/** The word currently being typed, and its start offset. */
-function currentWord(text: string, caret: number): { word: string; start: number } {
-  let start = caret;
-  // A "word" for completion includes dotted paths and brackets so column paths
-  // complete as a unit; break on whitespace and the structural punctuation.
-  while (start > 0 && !/[\s(),]/.test(text[start - 1])) start--;
-  return { word: text.slice(start, caret), start };
-}
-
-/** The table named in the query's FROM clause (for column suggestions). */
-function tableInQuery(text: string): string | null {
-  const m = /\bFROM\s+([A-Za-z_][A-Za-z0-9_]*)/i.exec(text);
-  return m ? m[1].toLowerCase() : null;
-}
+type Suggestion = Completion;
 
 export interface QueryEditorProps {
   value: string;
@@ -63,30 +22,20 @@ export function QueryEditor({ value, onChange, onRun }: QueryEditorProps) {
   const [active, setActive] = useState(0);
   const [caret, setCaret] = useState(0);
 
-  // Build the suggestion pool from keywords + tables + the FROM table's columns.
-  const pool = useMemo<Suggestion[]>(() => {
-    const out: Suggestion[] = [
-      ...tableNames().map((t) => ({ label: t, detail: 'table' })),
-      ...KEYWORDS.map((k) => ({ label: k, detail: 'keyword' })),
-    ];
-    const t = tableInQuery(value);
-    const info = t ? describeTable(t) : null;
-    if (info) {
-      for (const c of info.columns) {
-        out.push({ label: c.name, detail: `${c.type}${c.pushdown ? '' : ' · client'}` });
-      }
-      if (info.rawDataPaths) {
-        out.push({ label: '`spec.…`', detail: 'raw YAML path', insert: '`spec.' });
-      }
-    }
-    return out;
-  }, [value]);
+  // The contextual candidate pool: only what's grammatical at the caret
+  // (clause-aware — see fql/complete.ts).
+  const pool = useMemo<Suggestion[]>(() => completionsAt(value, caret), [value, caret]);
 
   const { word, start } = currentWord(value, caret);
   const matches = useMemo(() => {
-    if (word.trim() === '') return [];
     const w = word.toLowerCase();
-    return pool.filter((s) => s.label.toLowerCase().startsWith(w) && s.label.toLowerCase() !== w).slice(0, 8);
+    // Empty word → show the whole contextual pool (e.g. the SELECT fields right
+    // after typing "GROUP BY "); otherwise prefix-filter it.
+    const filtered =
+      w === ''
+        ? pool
+        : pool.filter((s) => s.label.toLowerCase().startsWith(w) && s.label.toLowerCase() !== w);
+    return filtered.slice(0, 8);
   }, [pool, word]);
 
   const showPopup = open && matches.length > 0;
