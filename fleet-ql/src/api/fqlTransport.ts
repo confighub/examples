@@ -19,6 +19,7 @@ import type {
 } from '../fql';
 import { materializeGrants } from '../rbac/grants';
 import type { FleetResource } from '../rbac/model';
+import { materializeBindings, materializeRoles } from '../rbac/structural';
 import { authHeaders } from './auth';
 import { b64decodeUtf8 } from './encoding';
 
@@ -245,62 +246,77 @@ export const fqlTransport: Transport = {
     return rows;
   },
 
+  // The RBAC tables share one fetch+parse (fetchFleetRbac); each runs a
+  // different materializer over the same FleetResource[].
   async grants(params: GrantsParams): Promise<Row[]> {
-    // Materialize effective RBAC access: fetch the in-scope units' resources
-    // (get-resources), resolve each unit's cluster, then let the rbac engine
-    // resolve bindings→roles→rules and answer the access question. We fetch all
-    // resources (no whereResource narrowing) and let buildClusterRbac keep only
-    // RBAC kinds — sound and simple; `where` (space) already narrows the units.
-    const [responses, clusters] = await Promise.all([
-      postJson<InvokeResponse[]>(
-        '/api/function/invoke',
-        { where: params.where },
-        {
-          FunctionInvocations: [
-            { FunctionName: 'get-resources', Arguments: [{ ParameterName: 'body', Value: 'json' }] },
-          ],
-        },
-      ),
-      unitClusterMap(params.where),
-    ]);
+    return materializeGrants(await fetchFleetRbac(params.where), params.accessQuery ?? {});
+  },
 
-    const fleet: FleetResource[] = [];
-    for (const resp of responses) {
-      if (!resp.Success) continue;
-      const encoded = resp.Outputs?.['ResourceList'];
-      if (!encoded) continue;
-      let list: { ResourceType?: string; ResourceName?: string; ResourceBody?: string }[];
+  async roles(params: ListParams): Promise<Row[]> {
+    return materializeRoles(await fetchFleetRbac(params.where));
+  },
+
+  async bindings(params: ListParams): Promise<Row[]> {
+    return materializeBindings(await fetchFleetRbac(params.where));
+  },
+};
+
+// ─── Shared RBAC fetch (grants / roles / bindings) ──────────────────────────
+
+/** Fetch the in-scope units' resources (get-resources) + each unit's cluster,
+ *  and assemble FleetResource[] for the rbac engine. We fetch all resources (no
+ *  whereResource narrowing) and let buildClusterRbac keep only RBAC kinds —
+ *  sound and simple; `where` (space) already narrows which units are read. */
+async function fetchFleetRbac(where: string | undefined): Promise<FleetResource[]> {
+  const [responses, clusters] = await Promise.all([
+    postJson<InvokeResponse[]>(
+      '/api/function/invoke',
+      { where },
+      {
+        FunctionInvocations: [
+          { FunctionName: 'get-resources', Arguments: [{ ParameterName: 'body', Value: 'json' }] },
+        ],
+      },
+    ),
+    unitClusterMap(where),
+  ]);
+
+  const fleet: FleetResource[] = [];
+  for (const resp of responses) {
+    if (!resp.Success) continue;
+    const encoded = resp.Outputs?.['ResourceList'];
+    if (!encoded) continue;
+    let list: { ResourceType?: string; ResourceName?: string; ResourceBody?: string }[];
+    try {
+      list = JSON.parse(b64decodeUtf8(encoded));
+    } catch {
+      continue;
+    }
+    const ci = clusters.get(`${resp.SpaceSlug ?? ''}/${resp.UnitSlug ?? ''}`);
+    for (const raw of list) {
+      if (!raw.ResourceBody) continue;
+      let doc: unknown;
       try {
-        list = JSON.parse(b64decodeUtf8(encoded));
+        doc = JSON.parse(raw.ResourceBody);
       } catch {
         continue;
       }
-      const ci = clusters.get(`${resp.SpaceSlug ?? ''}/${resp.UnitSlug ?? ''}`);
-      for (const raw of list) {
-        if (!raw.ResourceBody) continue;
-        let doc: unknown;
-        try {
-          doc = JSON.parse(raw.ResourceBody);
-        } catch {
-          continue;
-        }
-        fleet.push({
-          origin: {
-            cluster: ci?.cluster ?? resp.SpaceSlug ?? '',
-            target: ci?.target ?? undefined,
-            space: resp.SpaceSlug ?? '',
-            spaceId: resp.SpaceID ?? '',
-            unitId: resp.UnitID ?? '',
-            unitSlug: resp.UnitSlug ?? '',
-            resourceName: raw.ResourceName ?? '',
-          },
-          doc,
-        });
-      }
+      fleet.push({
+        origin: {
+          cluster: ci?.cluster ?? resp.SpaceSlug ?? '',
+          target: ci?.target ?? undefined,
+          space: resp.SpaceSlug ?? '',
+          spaceId: resp.SpaceID ?? '',
+          unitId: resp.UnitID ?? '',
+          unitSlug: resp.UnitSlug ?? '',
+          resourceName: raw.ResourceName ?? '',
+        },
+        doc,
+      });
     }
-    return materializeGrants(fleet, params.accessQuery ?? {});
-  },
-};
+  }
+  return fleet;
+}
 
 // ─── Time-travel: resources as of a specific revision ───────────────────────
 

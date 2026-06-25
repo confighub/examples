@@ -59,4 +59,8 @@ export interface Transport {
   revisions(params: RevisionParams): Promise<Row[]>;
   /** Effective-access rows, materialized from RBAC resources (who can what). */
   grants(params: GrantsParams): Promise<Row[]>;
+  /** Role/ClusterRole inventory rows, materialized from RBAC resources. */
+  roles(params: ListParams): Promise<Row[]>;
+  /** RoleBinding/ClusterRoleBinding inventory rows, materialized from RBAC. */
+  bindings(params: ListParams): Promise<Row[]>;
 }

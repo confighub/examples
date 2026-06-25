@@ -54,7 +54,14 @@ export interface MapPrefixDef {
   pushdown?: { target: PushdownTarget; field: string }; // server map field, e.g. "Labels"
 }
 
-export type TableSource = 'units' | 'resources' | 'spaces' | 'revisions' | 'grants';
+export type TableSource =
+  | 'units'
+  | 'resources'
+  | 'spaces'
+  | 'revisions'
+  | 'grants'
+  | 'roles'
+  | 'bindings';
 
 export interface TableDef {
   source: TableSource;
@@ -222,12 +229,58 @@ const GRANTS: TableDef = {
   mapPrefixes: {},
 };
 
+// Structural RBAC inventory, materialized client-side from the same RBAC
+// resources as `grants`. One row per Role/ClusterRole (`roles`) or per
+// RoleBinding/ClusterRoleBinding (`bindings`), with computed audit flags. All
+// columns are output fields filtered client-side, except `space` (narrows the
+// RBAC fetch). `cluster` is client-side (Target/Space fallback).
+const ROLES: TableDef = {
+  source: 'roles',
+  columns: {
+    name: { type: 'string' },
+    kind: { type: 'string' }, // Role | ClusterRole
+    namespace: { type: 'string' }, // null for ClusterRole
+    cluster: { type: 'string' },
+    space: { type: 'string', pushdown: { target: 'where', expr: 'Space.Slug' } },
+    unit: { type: 'string' },
+    target: { type: 'string' },
+    hasWildcard: { type: 'boolean' }, // any rule wildcards verbs/resources/apiGroups
+    aggregated: { type: 'boolean' }, // ClusterRole aggregationRule present
+    ruleCount: { type: 'number' },
+  },
+  mapPrefixes: {
+    // Role metadata.labels, spread onto the materialized row (client-side).
+    labels: { type: 'string' },
+  },
+};
+
+const BINDINGS: TableDef = {
+  source: 'bindings',
+  columns: {
+    name: { type: 'string' },
+    kind: { type: 'string' }, // RoleBinding | ClusterRoleBinding
+    namespace: { type: 'string' }, // null for ClusterRoleBinding
+    cluster: { type: 'string' },
+    space: { type: 'string', pushdown: { target: 'where', expr: 'Space.Slug' } },
+    unit: { type: 'string' },
+    target: { type: 'string' },
+    roleRef: { type: 'string' }, // referenced role name
+    roleRefKind: { type: 'string' }, // Role | ClusterRole
+    subjectCount: { type: 'number' },
+    orphaned: { type: 'boolean' }, // roleRef resolves to nothing and isn't a builtin
+    clusterAdmin: { type: 'boolean' }, // grants superuser (cluster-admin or *-on-*-in-*)
+  },
+  mapPrefixes: {},
+};
+
 export const TABLES: Record<string, TableDef> = {
   units: UNITS,
   resources: RESOURCES,
   spaces: SPACES,
   revisions: REVISIONS,
   grants: GRANTS,
+  roles: ROLES,
+  bindings: BINDINGS,
 };
 
 /** A resolved column: its type and (optional) compiled pushdown, with the FQL

@@ -60,6 +60,12 @@ function mockTransport(): Transport {
     async grants() {
       return [];
     },
+    async roles() {
+      return [];
+    },
+    async bindings() {
+      return [];
+    },
   };
 }
 

@@ -149,6 +149,8 @@ SELECT space, COUNT(*) AS n FROM units WHERE labels.team = 'payments' GROUP BY s
 | `spaces` | `GET /space` | `slug`, `displayName`, `labels.*`, `annotations.*` |
 | `revisions` | `GET /space/{id}/unit/{id}/revision` (per Unit) | `unit`, `space` (scope which units), `RevisionNum`, `Source`, `Description`, `CreatedAt`, `UserID` |
 | `grants` | materialized from RBAC resources (`get-resources` + the rbac engine) | output: `subject`, `subjectKind`, `subjectName`, `cluster`, `space`, `unit`, `target`, `scope`, `role`, `viaBuiltin`, `binding`; access selectors: `verb`, `resource`, `apiGroup`, `namespace`, `name` |
+| `roles` | materialized from RBAC resources | `name`, `kind`, `namespace`, `cluster`, `space`, `unit`, `target`, `hasWildcard`, `aggregated`, `ruleCount`, `labels.*` |
+| `bindings` | materialized from RBAC resources | `name`, `kind`, `namespace`, `cluster`, `space`, `unit`, `target`, `roleRef`, `roleRefKind`, `subjectCount`, `orphaned`, `clusterAdmin` |
 
 `resources` has no domain columns: an image is the array path
 `` `spec.template.spec.containers.*.image` `` and the scanner verdict is an
@@ -207,6 +209,34 @@ anything to pods). Everything else (`subject`, `cluster`, `role`, `scope`,
 `WHERE subject = 'Group:developers'` is the inverse "what does this subject hold"
 view, and `cluster = 'prod'` narrows by where it runs. `space` pushes down to
 narrow the RBAC fetch; `cluster` is client-side (Target/Space fallback).
+
+## `roles` / `bindings` — the structural RBAC inventory
+
+Where `grants` answers *effective* access, `roles` and `bindings` are the
+**object inventory** — one row per Role/ClusterRole and per RoleBinding/
+ClusterRoleBinding, materialized from the same RBAC fetch with computed audit
+flags (the same logic as the rbac findings analyzers).
+
+```sql
+-- wildcard roles, fleet-wide
+SELECT cluster, name, kind FROM roles WHERE hasWildcard = true
+
+-- aggregated ClusterRoles
+SELECT cluster, name FROM roles WHERE aggregated = true
+
+-- orphaned bindings (roleRef points at a role that doesn't exist, not a builtin)
+SELECT cluster, name, roleRef FROM bindings WHERE orphaned = true
+
+-- every superuser binding across the fleet
+SELECT cluster, name, roleRef FROM bindings WHERE clusterAdmin = true
+
+-- roles owned by a team, by cluster
+SELECT cluster, name FROM roles WHERE labels.team = 'platform'
+```
+
+`space` pushes down to narrow the RBAC fetch; everything else (including
+`cluster`, and the computed flags `hasWildcard` / `aggregated` / `orphaned` /
+`clusterAdmin`) is filtered client-side.
 
 ## How it executes (the pushdown model)
 

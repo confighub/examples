@@ -38,6 +38,10 @@ function rowKey(source: ExecutionPlan['source'], row: Row): string {
     case 'grants':
       // One grant = (cluster, space/unit, binding, subject, scope).
       return `${row['cluster']}/${row['space']}/${row['unit']}/${row['binding']}/${row['subject']}/${row['scope'] ?? ''}`;
+    case 'roles':
+    case 'bindings':
+      // One object = (cluster, space/unit, kind, namespace, name).
+      return `${row['cluster']}/${row['space']}/${row['unit']}/${row['kind']}/${row['namespace'] ?? ''}/${row['name']}`;
   }
 }
 
@@ -62,6 +66,10 @@ async function fetchFor(
       return transport.revisions({ whereUnit: spec.whereUnit, where: spec.where });
     case 'grants':
       return transport.grants({ where: spec.where, accessQuery: spec.accessQuery } as GrantsParams);
+    case 'roles':
+      return transport.roles({ where: spec.where } as ListParams);
+    case 'bindings':
+      return transport.bindings({ where: spec.where } as ListParams);
   }
 }
 

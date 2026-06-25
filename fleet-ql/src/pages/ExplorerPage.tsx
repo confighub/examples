@@ -72,6 +72,14 @@ const EXAMPLES: { label: string; query: string }[] = [
     label: "A subject's access",
     query: "SELECT cluster, role, scope\nFROM grants\nWHERE subject = 'Group:developers'",
   },
+  {
+    label: 'Wildcard roles',
+    query: 'SELECT cluster, name, kind\nFROM roles\nWHERE hasWildcard = true',
+  },
+  {
+    label: 'Orphaned bindings',
+    query: 'SELECT cluster, name, roleRef\nFROM bindings\nWHERE orphaned = true',
+  },
 ];
 
 function PlanView({ query }: { query: string }) {
