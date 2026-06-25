@@ -1,17 +1,19 @@
-// Package cost turns a parsed workload + a price book into a monthly cost
+// Package cost turns a parsed workload + the cost database into a monthly cost
 // estimate and a discrete budget verdict (the signal the within-budget guardrail
 // gates on).
 package cost
 
 import (
 	"math"
+	"strings"
 
+	"costest/internal/costdb"
 	"costest/internal/k8s"
-	"costest/internal/pricing"
 )
 
 // Budget status values. OVER is what the within-budget guardrail blocks on;
-// UNKNOWN means the workload couldn't be costed (missing resource requests).
+// UNKNOWN means the workload couldn't be costed (missing resource requests, or
+// no budget configured for its environment).
 const (
 	StatusOK      = "OK"
 	StatusWarn    = "WARN"
@@ -26,12 +28,16 @@ const warnRatio = 0.8
 type Report struct {
 	Unit           string  `json:"unit,omitempty" yaml:"unit,omitempty"`
 	Space          string  `json:"space,omitempty" yaml:"space,omitempty"`
+	SpaceID        string  `json:"-" yaml:"-"` // identity for write-back; not serialized
+	UnitID         string  `json:"-" yaml:"-"`
 	Kind           string  `json:"kind" yaml:"kind"`
 	Name           string  `json:"name" yaml:"name"`
 	Replicas       int     `json:"replicas" yaml:"replicas"`
 	CPUCores       float64 `json:"cpu_cores" yaml:"cpu_cores"`
 	MemoryGB       float64 `json:"memory_gb" yaml:"memory_gb"`
 	StorageGB      float64 `json:"storage_gb" yaml:"storage_gb"`
+	GPUUnits       float64 `json:"gpu_units" yaml:"gpu_units"`
+	Provider       string  `json:"provider" yaml:"provider"`
 	Region         string  `json:"region" yaml:"region"`
 	Environment    string  `json:"environment,omitempty" yaml:"environment,omitempty"`
 	MonthlyUSD     float64 `json:"monthly_usd" yaml:"monthly_usd"`
@@ -41,24 +47,34 @@ type Report struct {
 	PricingVersion string  `json:"pricing_version" yaml:"pricing_version"`
 }
 
-// Estimate costs a workload. region/env come from the unit's labels (region
-// drives the price multiplier; env selects the budget).
-func Estimate(w *k8s.Workload, region, env string, pb *pricing.PriceBook, budgets map[string]float64) Report {
-	var cpu, mem float64
+// Estimate costs a workload. provider/region come from the unit's labels
+// (default to the cost DB's defaults); env selects the budget.
+func Estimate(w *k8s.Workload, provider, region, env string, book *costdb.Book) Report {
+	if provider == "" {
+		provider = book.DefaultProvider
+	}
+	if region == "" {
+		region = book.DefaultRegion
+	}
+
+	var cpu, mem, gpu float64
 	for _, c := range w.Containers {
 		cpu += c.CPU
 		mem += c.Memory
+		gpu += c.GPU
 	}
 	reps := float64(w.Replicas)
-	cpuTotal := cpu * reps
-	memTotal := mem * reps
+	cpuTotal, memTotal, gpuTotal := cpu*reps, mem*reps, gpu*reps
 
-	mult := pb.Multiplier(region)
-	compute := (cpuTotal*pb.Rates.CPUCoreHour + memTotal*pb.Rates.MemoryGBHour) * pb.HoursPerMonth
-	storage := w.StorageGB * pb.Rates.StorageGBMonth
-	monthly := (compute + storage) * mult
+	cpuRate, _ := book.Rate(provider, region, "cpu")
+	memRate, _ := book.Rate(provider, region, "memory")
+	gpuRate, _ := book.Rate(provider, region, "gpu")
+	stoRate, _ := book.Rate(provider, region, "storage")
 
-	budget := pricing.Budget(budgets, env)
+	compute := (cpuTotal*cpuRate + memTotal*memRate + gpuTotal*gpuRate) * book.HoursPerMonth
+	monthly := compute + w.StorageGB*stoRate
+
+	budget, hasBudget := book.Budget(strings.ToLower(env))
 	r := Report{
 		Kind:           w.Kind,
 		Name:           w.Name,
@@ -66,22 +82,24 @@ func Estimate(w *k8s.Workload, region, env string, pb *pricing.PriceBook, budget
 		CPUCores:       round(cpuTotal, 3),
 		MemoryGB:       round(memTotal, 3),
 		StorageGB:      round(w.StorageGB, 3),
-		Region:         regionOr(region, pb.DefaultRegion),
+		GPUUnits:       round(gpuTotal, 3),
+		Provider:       provider,
+		Region:         region,
 		Environment:    env,
 		MonthlyUSD:     round(monthly, 2),
 		BudgetUSD:      budget,
 		MissingRequest: w.MissingRequests(),
-		PricingVersion: pb.Version,
+		PricingVersion: book.Version,
 	}
-	r.BudgetStatus = status(r.MissingRequest, monthly, budget)
+	r.BudgetStatus = status(r.MissingRequest, hasBudget, monthly, budget)
 	return r
 }
 
-func status(missing bool, monthly, budget float64) string {
+func status(missing, hasBudget bool, monthly, budget float64) string {
 	if missing {
 		return StatusUnknown // can't cost an unbounded workload
 	}
-	if budget <= 0 {
+	if !hasBudget || budget <= 0 {
 		return StatusUnknown // no budget configured for this environment
 	}
 	switch ratio := monthly / budget; {
@@ -92,13 +110,6 @@ func status(missing bool, monthly, budget float64) string {
 	default:
 		return StatusOK
 	}
-}
-
-func regionOr(region, def string) string {
-	if region == "" {
-		return def
-	}
-	return region
 }
 
 func round(v float64, places int) float64 {

@@ -4,7 +4,7 @@
 # Read-only on ConfigHub. Asserts the Space/Trigger/Filter/Unit layout, the
 # gate matrix (each planted violation carries exactly its intended Apply Gate,
 # clean workloads are ungated, prod requires approval), that the estimator wrote
-# its estimates back as data, and that the price book is present.
+# its estimates back as data, and that the cost database is present.
 #
 # Usage:   ./demo-verify.sh
 #
@@ -111,17 +111,17 @@ else
   fail "cost-estimate-record holds per-workload estimates"
 fi
 
-# Provenance: units record the pricing version, and the policy Space holds the
-# current pricebook-status.
+# Provenance: units record the cost-DB version, and the policy Space holds the
+# current costdb-status.
 if $cub unit data --space "$DEV_SPACE" frontend 2>/dev/null | grep -q 'pricing-version'; then
   pass "estimate: ${DEV_SPACE}/frontend records pricing-version"
 else
   fail "estimate: ${DEV_SPACE}/frontend records pricing-version"
 fi
-if $cub unit data --space "$POLICY_SPACE" pricebook-status 2>/dev/null | grep -q 'pricingVersion:'; then
-  pass "pricebook-status Unit present in ${POLICY_SPACE}"
+if $cub unit data --space "$POLICY_SPACE" costdb-status 2>/dev/null | grep -q 'costdbVersion:'; then
+  pass "costdb-status Unit present in ${POLICY_SPACE}"
 else
-  fail "pricebook-status Unit present in ${POLICY_SPACE} (run estimate-fleet --status-space ${POLICY_SPACE})"
+  fail "costdb-status Unit present in ${POLICY_SPACE} (run estimate-fleet --status-space ${POLICY_SPACE})"
 fi
 
 # ── Gate matrix ───────────────────────────────────────────────────────────────
@@ -142,12 +142,18 @@ check "no gate: ${STAGING_SPACE}/frontend (within budget, passes the pack)" \
 check "no gate: ${DEV_SPACE}/frontend (within budget, passes the pack)" \
   no_gates "$DEV_SPACE" frontend
 
-# ── Price book ────────────────────────────────────────────────────────────────
+# ── Cost database ─────────────────────────────────────────────────────────────
 
-if [[ -f "${SCRIPT_DIR}/pricing/pricebook.json" ]] && grep -q '"version"' "${SCRIPT_DIR}/pricing/pricebook.json"; then
-  pass "price book present (pricing/pricebook.json)"
+COST_DB="${COST_ESTIMATOR_DB:-${SCRIPT_DIR}/costdb/cost.db}"
+if command -v sqlite3 &>/dev/null; then
+  prices="$(sqlite3 "$COST_DB" 'SELECT count(*) FROM price' 2>/dev/null || echo 0)"
+  if [[ "${prices:-0}" -gt 0 ]]; then
+    pass "cost DB holds ${prices} prices"
+  else
+    fail "cost DB holds prices (got ${prices:-0}; run ./costdb/build.sh)"
+  fi
 else
-  fail "price book present (pricing/pricebook.json)"
+  pass "cost DB check skipped (sqlite3 not on PATH)"
 fi
 
 # ── Result ────────────────────────────────────────────────────────────────────

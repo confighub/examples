@@ -59,6 +59,7 @@ export function UnitDialog({ row, onClose }: { row: CostRow | null; onClose: () 
           <TableBody>
             <Row k="kind" v={row.kind} />
             <Row k="environment" v={row.environment || '—'} />
+            <Row k="provider" v={row.provider || '—'} />
             <Row k="region" v={row.region || '—'} />
             <Row k="cpu cores" v={num(row.cpuCores)} />
             <Row k="memory (GB)" v={num(row.memoryGb)} />

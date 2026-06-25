@@ -3,8 +3,9 @@
 Workload cloud cost managed as **data**, in ConfigHub.
 
 A custom estimator reads each workload's resource requests from its ConfigHub
-Unit, costs them against a static, versioned price book (CPU + memory + storage),
-and writes the monthly estimate **and a budget verdict** back onto the Unit as
+Unit, costs them against a local **SQLite cost database** (KubeCost-style
+per-provider/region rates for CPU + memory + storage + GPU, plus per-environment
+budgets), and writes the monthly estimate **and a budget verdict** back onto the Unit as
 annotations. Guardrail Triggers then gate apply on whatever it flagged OVER
 budget — so a cost overrun is caught at config time, not on the cloud bill. The
 config (the resource requests) and the verdict (the cost) are the same versioned
@@ -24,7 +25,7 @@ verdict as data, gate on it — applied to cost.
         +----------->  cost-demo-staging (Environment=Staging)
         +----------->  cost-demo-prod    (Environment=Prod;    + approval required)
 
-   pricebook.json (CPU/mem/storage rates + per-env budgets)
+   costdb/cost.db (SQLite: per-provider/region rates + per-env budgets)
         ▲
         │ cost = requests × replicas × rates  (+ storage)
    estimator ── read requests ─▶ cost ─▶ budget verdict ─▶ write back to Units
@@ -52,14 +53,19 @@ A self-contained Go binary (`costest`) that talks to the ConfigHub REST API
 directly (the same surface the web app uses) — no `cub` shell-out:
 
 ```bash
-costest estimate <file|->            # cost one manifest against the price book
+costest import --fixtures            # load pricing + budgets into the cost DB
+costest estimate <file|->            # cost one manifest against the cost DB
 costest inventory --space <glob>     # the fleet's cost inventory, one query
 costest estimate-fleet --space <glob> --write-back   # cost every workload; record as data
 ```
 
-The cost model and budgets live in [`pricing/pricebook.json`](./pricing/) — a
-static, versioned, editable file. Nothing here calls a live cloud-pricing API;
-the point is a deterministic, auditable estimate.
+The cost model lives in a SQLite **cost database** ([`costdb/`](./costdb/)) — the
+same on-disk shape `sec-scanner` uses for its `cvedb`: a pure-Go SQLite file
+(`modernc.org/sqlite`, no cgo, no `sqlite3` binary) of per-(provider, region,
+resource) rates + per-environment budgets, seeded from
+[`costdb/fixtures/pricing.json`](./costdb/fixtures/pricing.json) by
+`costest import` (run `./costdb/build.sh`). Nothing here calls a live
+cloud-pricing API; the point is a deterministic, offline, auditable estimate.
 
 ## The console (`app/`)
 
@@ -94,8 +100,9 @@ command behavior.
 
 - **Paper clusters.** ConfigHub Spaces only — no Targets, Workers, or live
   deploys, and no external network.
-- **Static pricing.** The price book is a checked-in JSON, not a billing API.
-  CPU + memory + storage only (no GPU / network / egress in v1).
+- **Static pricing.** The cost DB is built from checked-in fixtures, not a live
+  billing API (`--source FILE` imports a custom export). CPU + memory + storage +
+  GPU, per provider/region; no network / egress / spot in v1.
 - **The estimator computes; ConfigHub stores.** The binary holds no state; every
   durable thing (requests, estimate, verdict, budgets) is ConfigHub or the price
   book.

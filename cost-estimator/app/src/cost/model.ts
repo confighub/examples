@@ -10,6 +10,7 @@ export interface CostRow {
   space: string;
   unit: string;
   environment: string;
+  provider: string;
   region: string;
   workload: string;
   kind: string;

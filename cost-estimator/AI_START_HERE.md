@@ -1,9 +1,9 @@
 # AI Guide: cost-estimator
 
-Workload cloud cost managed as data: a static, versioned price book, a custom
-estimator that costs each workload from its resource requests, cost estimates +
-budget verdicts written back onto ConfigHub Units, and Apply Gates that block
-the over-budget.
+Workload cloud cost managed as data: a SQLite cost database (KubeCost-style
+per-provider/region rates + per-env budgets), a custom estimator that costs each
+workload from its resource requests, cost estimates + budget verdicts written
+back onto ConfigHub Units, and Apply Gates that block the over-budget.
 
 ## CRITICAL: Demo Pacing
 
@@ -17,20 +17,25 @@ may want to inspect the GUI or the estimates between stages.
 > stage so I can look around. I'm authenticated with cub. (No cluster needed —
 > these are paper clusters; nothing deploys.)
 
-## Stage 1: Cost one workload
+## Stage 1: Stand up the cost database, cost one workload
 
 ```bash
-( cd estimator && go build -o costest . )            # build the estimator
+./costdb/build.sh                                    # build costest + the SQLite cost DB (imports the pricing fixtures)
+./estimator/costest version                          # cost-DB version + price-row count
+# (optional, if you have the sqlite3 CLI) peek at the rates:
+sqlite3 costdb/cost.db "SELECT provider, region, resource, usd FROM price ORDER BY 1,2,3 LIMIT 8;"
 
 # cost a small Deployment, then a deliberately over-provisioned one (dev budget)
 ./estimator/costest estimate --env prod manifests/workloads/db.yaml
-./estimator/costest estimate --env dev  manifests/violations/oversized-analytics.yaml
+./estimator/costest estimate --env dev --region us-west-2 manifests/violations/oversized-analytics.yaml
 ```
 
-Expected: `db` costs a few dollars a month (note the storage line from its
-volumeClaimTemplates); `oversized-analytics` is well over a thousand a month and
-reports `"budget_status": "OVER"`. The estimate is `requests × replicas × price
-book` — deterministic, offline, auditable. `--json` is the default shape.
+Expected: the cost DB loads ~28 prices across aws/gcp regions; `db` costs a few
+dollars a month (note the storage line from its volumeClaimTemplates);
+`oversized-analytics` is well over a thousand a month and reports
+`"budget_status": "OVER"`. The estimate is `requests × replicas × rates`, looked
+up by provider/region in the SQLite cost DB — deterministic, offline, auditable.
+`--json` is the default shape.
 
 **PAUSE.** Wait for the human.
 
@@ -69,7 +74,7 @@ fleet costs and which workloads blow their budget is the hard part.
 export CONFIGHUB_URL="https://hub.confighub.com" CONFIGHUB_TOKEN="$(cub auth get-token)"
 
 # every workload, every environment, one query — with its monthly cost + verdict
-./estimator/costest inventory --space "cost-demo-*" --pricebook pricing/pricebook.json
+./estimator/costest inventory --space "cost-demo-*"
 
 # which Units did the estimator mark OVER budget? (verdict stored as data)
 cub unit list --space "*" --where "Annotations.'cost-estimator.confighub.com/budget-status' = 'OVER'"
@@ -109,7 +114,7 @@ cub function do --space cost-demo-dev --unit oversized-analytics \
   -- yq-i '.spec.replicas = 1'
 
 # re-estimate + write back; the OVER verdict flips and the gate lifts
-./estimator/costest estimate-fleet --space "cost-demo-dev" --write-back --pricebook pricing/pricebook.json
+./estimator/costest estimate-fleet --space "cost-demo-dev" --write-back
 cub unit get oversized-analytics --space cost-demo-dev -o jq=".Unit.ApplyGates"
 ```
 
@@ -122,18 +127,20 @@ remains OVER.)
 
 ## Stage 6: Re-price the fleet — know what changed
 
-Cloud prices change. Each estimate records the price-book version it ran against
-(`pricing-version`), and the policy Space holds the current `pricebook-status`,
-so after you edit `pricing/pricebook.json` you re-estimate to re-stamp the fleet.
+Cloud prices change. The cost DB stamps every estimate with its version
+(`pricing-version` on each Unit; the policy Space holds the current
+`costdb-status`), so after you edit the pricing fixtures you re-import and
+re-estimate to re-stamp the fleet.
 
 ```bash
-# raise the CPU rate in pricing/pricebook.json (and bump "version"), then:
-./estimator/costest estimate-fleet --space "cost-demo-*" --write-back --status-space cost-demo-policy --pricebook pricing/pricebook.json
-cub unit data --space cost-demo-policy pricebook-status     # the version the fleet was costed against
+# raise a CPU rate in costdb/fixtures/pricing.json, then re-import + re-estimate:
+./estimator/costest import --source costdb/fixtures/pricing.json
+./estimator/costest estimate-fleet --space "cost-demo-*" --write-back --status-space cost-demo-policy
+cub unit data --space cost-demo-policy costdb-status        # the cost-DB version the fleet was costed against
 ```
 
 Expected: every workload's `monthly-usd` and `pricing-version` update in one
-pass; `pricebook-status` reflects the new version.
+pass; `costdb-status` reflects the new cost-DB version.
 
 **PAUSE.** Wait for the human.
 

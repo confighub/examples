@@ -20,6 +20,7 @@ type Container struct {
 	Name   string
 	CPU    float64
 	Memory float64
+	GPU    float64 // requested nvidia.com/gpu count
 	HasCPU bool
 	HasMem bool
 }
@@ -96,6 +97,11 @@ func Parse(data []byte) (*Workload, error) {
 			if v, ok := c.Resources.Requests["memory"]; ok {
 				if gb, err := ParseBytesGiB(v); err == nil {
 					cn.Memory, cn.HasMem = gb, true
+				}
+			}
+			if v, ok := c.Resources.Requests["nvidia.com/gpu"]; ok {
+				if n, err := strconv.ParseFloat(v, 64); err == nil {
+					cn.GPU = n
 				}
 			}
 			w.Containers = append(w.Containers, cn)

@@ -20,7 +20,7 @@
 #   require-approval   vet-approvedby 1 (prod only)
 #
 # The within-budget gate is data-driven: the custom estimator (estimator/) reads
-# each Unit's resource requests, costs them against a static price book, and
+# each Unit's resource requests, costs them against a SQLite cost database, and
 # writes the monthly estimate + a budget verdict back onto the Unit as
 # annotations. The Trigger then gates whatever it marked OVER. Config (the
 # requests) and the verdict both live as data.
@@ -48,7 +48,7 @@ PREFIX="${PREFIX:-cost-demo}"
 EXAMPLE_NAME="cost-estimator"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MANIFESTS="${SCRIPT_DIR}/manifests"
-PRICEBOOK="${SCRIPT_DIR}/pricing/pricebook.json"
+export COST_ESTIMATOR_DB="${COST_ESTIMATOR_DB:-${SCRIPT_DIR}/costdb/cost.db}"
 
 cub="${CUB:-cub}"
 
@@ -72,9 +72,9 @@ cost-estimator setup plan
 =========================
 
 Model: workload cost managed as data. Resource requests live in ConfigHub Units;
-a custom estimator costs each workload against a static, versioned price book and
-writes the monthly estimate + a budget verdict back as data; guardrails gate the
-over-budget.
+a custom estimator costs each workload against a SQLite cost database (KubeCost-
+style per-provider/region rates + per-env budgets) and writes the monthly
+estimate + a budget verdict back as data; guardrails gate the over-budget.
 
     ${POLICY_SPACE}            ${BASE_SPACE}
     (guardrail Triggers          (workload Units with requests:
@@ -85,7 +85,7 @@ over-budget.
             +----------->  ${PREFIX}-staging (Environment=Staging)
             +----------->  ${PREFIX}-prod    (Environment=Prod;    + approval required)
 
-       pricebook.json (CPU/mem/storage rates + per-env budgets)
+       costdb/cost.db (SQLite: per-provider/region rates + per-env budgets)
             ▲
             │ cost = requests × replicas × rates  (+ storage)
        estimator ── read requests ─▶ cost ─▶ budget verdict ─▶ write back to Units
@@ -104,11 +104,11 @@ Will create (idempotently):
       no-requests-web      no resource requests          → gated (requests-required, static)
 
 Then: build + run the estimator over the fleet with --write-back so the
-within-budget gate fires on the over-budget Units, and publish a pricebook-status
+within-budget gate fires on the over-budget Units, and publish a costdb-status
 Unit into ${POLICY_SPACE}.
 
-Mutates: ConfigHub (Spaces/Units) only. No Kubernetes Targets, Workers, or live
-deploys; no external network.
+Mutates: ConfigHub (Spaces/Units) + a local SQLite file (costdb/cost.db). No
+Kubernetes Targets, Workers, or live deploys; no external network.
 EOF
 }
 
@@ -122,9 +122,10 @@ explain_json() {
   "mutates": true,
   "mutates_confighub": true,
   "mutates_live_infra": false,
+  "mutates_local_costdb": true,
   "spaces": [${spaces_json%,}],
   "units": [${units_json%,}],
-  "pricing_model": "static price book (pricing/pricebook.json), CPU + memory + storage",
+  "pricing_model": "SQLite cost database (costdb/cost.db), KubeCost-style per-(provider,region,resource) rates + per-env budgets",
   "notes": {
     "workloads_cloned_into": ["${PREFIX}-dev", "${PREFIX}-staging", "${PREFIX}-prod"],
     "violations_space": "${PREFIX}-dev",
@@ -250,7 +251,7 @@ for w in "${WORKLOADS[@]}"; do
   else
     # Feed config via stdin ("-") so no local source path is recorded.
     $cub unit create --space "$BASE_SPACE" "$w" - \
-      --label app=cost-estimator --label "workload=${w}" \
+      --label app=cost-estimator --label "workload=${w}" --label Provider=aws \
       --change-desc "Seed ${w} workload with resource requests" \
       < "${MANIFESTS}/workloads/${w}.yaml" >/dev/null
     note "  created unit ${w}"; ((created+=1))
@@ -258,8 +259,8 @@ for w in "${WORKLOADS[@]}"; do
 done
 
 # ── 3. Cluster Spaces: clones of the base workloads ───────────────────────────
-# Region drives the price multiplier; Environment selects the budget (both are
-# well-known ConfigHub fleet labels the estimator reads).
+# Provider + Region drive the price lookup; Environment selects the budget (all
+# ConfigHub labels the estimator reads).
 
 cluster_env()    { case "$1" in *-dev) echo Dev ;; *-staging) echo Staging ;; *-prod) echo Prod ;; esac; }
 cluster_region() { case "$1" in *-dev) echo us-west-2 ;; *-staging) echo us-east-2 ;; *-prod) echo us-east-1 ;; esac; }
@@ -279,7 +280,7 @@ for space in "${CLUSTER_SPACES[@]}"; do
     else
       $cub unit create --space "$space" "$w" \
         --upstream-unit "$w" --upstream-space "$BASE_SPACE" \
-        --label app=cost-estimator --label "workload=${w}" \
+        --label app=cost-estimator --label "workload=${w}" --label Provider=aws \
         --label "Environment=${env}" --label "Region=${region}" \
         --change-desc "Clone ${w} workload from ${BASE_SPACE}" >/dev/null
       note "  cloned unit ${w}"; ((created+=1))
@@ -298,7 +299,7 @@ for v in "${VIOLATIONS[@]}"; do
   else
     # Feed config via stdin ("-") so no local source path is recorded.
     $cub unit create --space "$DEV_SPACE" "$v" - \
-      --label app=cost-estimator --label imported=true \
+      --label app=cost-estimator --label imported=true --label Provider=aws \
       --label "Environment=${dev_env}" --label "Region=${dev_region}" \
       --change-desc "Planted demo violation: ${v}" \
       < "${MANIFESTS}/violations/${v}.yaml" >/dev/null
@@ -310,24 +311,22 @@ done
 
 if (( DO_ESTIMATE )); then
   note ""
-  note "Estimating the fleet (price book + custom estimator)"
+  note "Estimating the fleet (cost database + custom estimator)"
+  # Stand up the SQLite cost DB (builds costest + imports the pricing fixtures).
+  "${SCRIPT_DIR}/costdb/build.sh"
   estimator_bin="${SCRIPT_DIR}/estimator/costest"
-  if [[ ! -x "$estimator_bin" ]]; then
-    note "  building estimator..."
-    ( cd "${SCRIPT_DIR}/estimator" && go build -o costest . )
-  fi
   # The estimator talks to the ConfigHub REST API directly (like the web app does),
   # so bridge this cub session's server URL + token to it via the environment.
   export CONFIGHUB_URL="${CONFIGHUB_URL:-$($cub context get 2>/dev/null | awk '/Server URL/{print $NF}')}"
   export CONFIGHUB_TOKEN="${CONFIGHUB_TOKEN:-$($cub auth get-token 2>/dev/null)}"
   note "  costing workloads across ${PREFIX}-* and writing estimates back..."
   "$estimator_bin" estimate-fleet --space "${PREFIX}-*" --write-back \
-    --status-space "$POLICY_SPACE" --pricebook "$PRICEBOOK"
+    --status-space "$POLICY_SPACE"
 else
   note ""
   note "Skipped estimate (--no-estimate). The within-budget gate will not fire until you run:"
-  note "  (cd estimator && go build -o costest .)"
-  note "  ./estimator/costest estimate-fleet --space '${PREFIX}-*' --write-back --pricebook pricing/pricebook.json"
+  note "  ./costdb/build.sh"
+  note "  ./estimator/costest estimate-fleet --space '${PREFIX}-*' --write-back --status-space ${POLICY_SPACE}"
 fi
 
 # ── Summary ───────────────────────────────────────────────────────────────────
@@ -339,7 +338,7 @@ Done. Created ${created} entities, skipped ${skipped} existing.
 Inspect the result:
   $cub unit list --space "${PREFIX}-*" --where "Labels.app = 'cost-estimator'"
   $cub unit get oversized-analytics --space ${DEV_SPACE} -o jq=".Unit.ApplyGates"
-  ./estimator/costest inventory --space "${PREFIX}-*" --pricebook pricing/pricebook.json
+  ./estimator/costest inventory --space "${PREFIX}-*"
 
 Next: ./demo-verify.sh confirms the layout, the gate matrix, and the estimates.
 EOF

@@ -48,15 +48,15 @@ Stable, machine-checkable behavior for this example. See
 
 ### `./demo-setup.sh`
 
-- mutates: yes (ConfigHub Spaces/Units only; no Targets, Workers, or live
-  infrastructure; no external network)
+- mutates: yes (ConfigHub Spaces/Units + a local SQLite file at costdb/cost.db;
+  no Targets, Workers, or live infrastructure; no external network)
 - creates: 5 spaces, 4 triggers, 2 filters, 4 base units, 12 cloned units,
-  2 violation units; then runs the estimator, writes the cost + budget-verdict
-  annotations back onto every workload (incl. `estimated-at` + `pricing-version`),
-  publishes one `AppConfig/YAML` `cost-estimate-record` Unit per Space (the full
-  per-workload estimates), and a `pricebook-status` Unit (current price-book
-  version) in the policy Space
-- supports: `--no-estimate` (seed ConfigHub only; skip the estimate)
+  2 violation units; then builds the cost DB, runs the estimator, writes the cost
+  + budget-verdict annotations back onto every workload (incl. `provider`,
+  `region`, `estimated-at`, `pricing-version`), publishes one `AppConfig/YAML`
+  `cost-estimate-record` Unit per Space (the full per-workload estimates), and a
+  `costdb-status` Unit (current cost-DB version) in the policy Space
+- supports: `--no-estimate` (seed ConfigHub only; skip the cost DB + estimate)
 - idempotent: re-running skips existing entities and re-estimates
 - cleanup: none by design (demo data persists); manual teardown in AI_START_HERE.md
 
@@ -72,19 +72,32 @@ Stable, machine-checkable behavior for this example. See
   `requests-required`); clean workloads are ungated; prod requires approval;
   each Space's `AppConfig/YAML` `cost-estimate-record` Unit exists and holds the
   per-workload estimates; units record the `pricing-version` they were costed
-  against and the `pricebook-status` Unit is present; the price book is present
+  against and the `costdb-status` Unit is present; the cost database holds prices
+
+### `./costdb/build.sh` (or `./estimator/costest import`)
+
+- mutates: the cost DB SQLite file (default `costdb/cost.db`, or
+  `$COST_ESTIMATOR_DB`), not ConfigHub
+- sources: the curated fixtures (`--fixtures --fixtures-dir DIR`) or a custom
+  pricing export (`--source FILE`); `--if-empty` skips when the DB already has prices
+- behavior: upserts per-(provider, region, resource) rates + per-environment
+  budgets + meta through a pure-Go SQLite driver (no `sqlite3` binary, no cgo, no
+  Python); idempotent; records an `import_log` row whose `max(finished_at)` is the
+  cost-DB version
+- proves: KubeCost-style pricing lives in one self-contained, versioned SQLite
+  file the estimator reads
 
 ### `./estimator/costest estimate <file|->`
 
 - mutates: no
-- reads: a Kubernetes manifest (file or stdin) + the price book
-  (`--pricebook`, default `pricing/pricebook.json`)
+- reads: a Kubernetes manifest (file or stdin) + the cost DB (`--db`, default
+  `costdb/cost.db`)
 - output shape: a JSON cost report — `{kind, name, replicas, cpu_cores,
-  memory_gb, storage_gb, region, environment, monthly_usd, budget_usd,
-  budget_status, missing_requests, pricing_version}`
-- supports: `--region R`, `--env E`, `--budgets FILE`
+  memory_gb, storage_gb, gpu_units, provider, region, environment, monthly_usd,
+  budget_usd, budget_status, missing_requests, pricing_version}`
+- supports: `--provider P`, `--region R`, `--env E`
 - proves: one workload's monthly cost and budget verdict are computed
-  deterministically from its resource requests and a static price book
+  deterministically from its resource requests and the cost DB
 
 ### `./estimator/costest inventory --space <glob>`
 
@@ -100,11 +113,12 @@ Stable, machine-checkable behavior for this example. See
 - mutates: yes (ConfigHub) — on each workload Unit, sets the gate-signal +
   provenance annotations `cost-estimator.confighub.com/budget-status`,
   `.../monthly-usd`, `.../cpu-cores`, `.../memory-gb`, `.../storage-gb`,
-  `.../estimated-at`, `.../pricing-version` via a server-side `yq-i` invocation;
-  and upserts one **`AppConfig/YAML`** `cost-estimate-record` Unit per Space
-  (labeled `role=cost-record`) holding the full per-workload estimates
-- supports: `--status-space SLUG` (upsert a `pricebook-status` `AppConfig/YAML`
-  Unit recording the current price-book version), `--budgets FILE`,
+  `.../provider`, `.../region`, `.../estimated-at`, `.../pricing-version` via a
+  server-side `yq-i` invocation; and upserts one **`AppConfig/YAML`**
+  `cost-estimate-record` Unit per Space (labeled `role=cost-record`) holding the
+  full per-workload estimates
+- supports: `--status-space SLUG` (upsert a `costdb-status` `AppConfig/YAML`
+  Unit recording the current cost-DB version), `--db PATH`, `--provider P`,
   `--where EXPR`, `--fail-on-over` (exit 3 if any workload is OVER), `--json`
 - all via the REST API; requires `CONFIGHUB_URL` + `CONFIGHUB_TOKEN`
 - proves: cost estimates become ConfigHub data, which the within-budget
