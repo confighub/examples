@@ -1,7 +1,7 @@
-// Form-driven RBAC edits compiled to server-side yq-i invocations. The
-// client never re-serializes YAML: it parses only to populate the pickers,
-// the mutation itself runs in ConfigHub's function executor (preserving
-// comments and formatting), and the preview diff comes from a dry run.
+// Form-driven RBAC edits that resolve to shared, parameterized set-yq
+// Invocations. The client never re-serializes YAML: it parses only to populate
+// the pickers, the mutation itself runs in ConfigHub's function executor
+// (preserving comments and formatting), and the preview diff comes from a dry run.
 
 import {
   Box,
@@ -100,11 +100,11 @@ type Operation = 'add-verb' | 'remove-verb' | 'add-subject' | 'remove-subject';
 export interface StructuredEditProps {
   /** Current unit YAML (for pickers only — never written back from here). */
   yamlText: string;
-  /** Run the compiled yq-i expression: dry-run preview, then commit. */
-  onPreview: (yqExpression: string, summary: string) => void;
+  /** Preview then commit the structured edit via its parameterized Invocation. */
+  onPreview: (edit: CompiledEdit) => void;
 }
 
-/** Quick edits: pick the change, we compile it to a yq-i expression. */
+/** Quick edits: pick the change, we resolve it to a parameterized Invocation. */
 export function StructuredEdit({ yamlText, onPreview }: StructuredEditProps) {
   const parsed = useMemo(() => parseUnitYaml(yamlText), [yamlText]);
   const [op, setOp] = useState<Operation>('add-verb');
@@ -298,14 +298,18 @@ export function StructuredEdit({ yamlText, onPreview }: StructuredEditProps) {
         <Button
           variant='outlined'
           disabled={compiled === null}
-          onClick={() => compiled && onPreview(compiled.expr, compiled.summary)}
+          onClick={() => compiled && onPreview(compiled)}
         >
           Preview change
         </Button>
       </Stack>
       {compiled && (
         <Box component='code' sx={{ display: 'block', mt: 1, fontSize: 12, color: 'text.secondary' }}>
-          yq-i '{compiled.expr}'
+          {compiled.slug}(
+          {Object.entries(compiled.params)
+            .map(([k, v]) => `${k}=${v}`)
+            .join(', ')}
+          )
         </Box>
       )}
     </Paper>

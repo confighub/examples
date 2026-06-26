@@ -7,7 +7,7 @@ allowed-tools: Bash(cub-rbac --help) Bash(cub-rbac * --help) Bash(cub auth statu
 
 # rbac-edit
 
-Apply a single structured change to one RBAC Unit — add/remove a verb on a role rule, or add/remove a subject on a binding. The change is compiled to a server-side yq edit that modifies the literal YAML in place (comments and formatting preserved). It is **dry-run by default**; nothing is written until you re-run with `--commit` and a `--change-desc`.
+Apply a single structured change to one RBAC Unit — add/remove a verb on a role rule, or add/remove a subject on a binding. The change is applied by a shared, parameterized server-side `set-yq` Invocation that modifies the literal YAML in place (comments and formatting preserved); the CLI supplies only the variable values as parameters. It is **dry-run by default**; nothing is written until you re-run with `--commit` and a `--change-desc`.
 
 ## Why this matters
 
@@ -30,7 +30,8 @@ This is the safe write path for RBAC: structured edits instead of hand-editing Y
 ## Preflight gates
 
 1. `cub-rbac preflight` succeeds (cub installed, ConfigHub session valid). If not, ask the user to run `cub auth login` and retry.
-2. The user has Edit permission on the target Unit (the commit will fail server-side otherwise — report the error, don't retry blindly).
+2. The shared edit Invocations exist. They are created once per organization with `cub-rbac edit install` (the same way the guardrail Triggers are installed). If an edit fails because the Invocation is not found, run `cub-rbac edit install` and retry.
+3. The user has Edit permission on the target Unit (the commit will fail server-side otherwise — report the error, don't retry blindly).
 
 ## The loop
 

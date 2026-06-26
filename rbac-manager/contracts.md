@@ -8,7 +8,11 @@ Stable, machine-checkable behavior for this example. See
 - mutates: yes (ConfigHub only)
 - creates: 3 Warn=true guardrail Triggers (label `Pack=rbac-guardrails`) plus a
   `Trigger` Filter selecting them, ONCE in a policy Space (default
-  `policy-guardrails`, override with `--policy-space SLUG`)
+  `policy-guardrails`, override with `--policy-space SLUG`); and the 4
+  parameterized set-yq edit Invocations (`rbac-add-verb`, `rbac-remove-verb`,
+  `rbac-add-subject`, `rbac-remove-subject`) in the `rbac-edits` Space — the
+  shared, declarative edit templates the app and the agent CLI invoke with
+  parameters instead of compiling yq client-side
 - wires: points each in-scope Space's `TriggerFilterID` at that Filter —
   Spaces with Kubernetes/YAML Units, optionally narrowed with `--where-space EXPR`
 - skips: Spaces with a custom `WhereTrigger`, a different `TriggerFilterID`, or
@@ -51,7 +55,8 @@ Stable, machine-checkable behavior for this example. See
 
 - mutates: yes (ConfigHub only; no Targets, Workers, or live infrastructure)
 - creates: 5 spaces, 5 triggers, 2 filters, 4 base units, 12 cloned units,
-  3 violation units, 1 divergence revision
+  3 violation units, 1 divergence revision; plus the `rbac-edits` Space and its
+  4 parameterized set-yq edit Invocations (shared with the web app and agent CLI)
 - idempotent: re-running skips existing entities (`exists, skipping`)
 - cleanup: none by design (demo data persists); manual teardown documented in
   AI_START_HERE.md

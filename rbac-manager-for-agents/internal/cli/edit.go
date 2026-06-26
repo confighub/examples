@@ -24,6 +24,7 @@ ApplyGates; gates and warnings are evaluated server-side as usual, and applying
 the resulting revision is a separate step (cub unit apply).`,
 	}
 	cmd.AddCommand(
+		newEditInstallCmd(),
 		newAddVerbCmd(),
 		newRemoveVerbCmd(),
 		newAddSubjectCmd(),
@@ -117,8 +118,10 @@ func newRemoveSubjectCmd() *cobra.Command {
 	return cmd
 }
 
-// runEdit previews (dry-run) or commits a compiled edit against one Unit.
-func runEdit(cmd *cobra.Command, unitRef string, edit rbac.CompiledEdit, c commitFlags) error {
+// runEdit previews (dry-run) or commits an edit against one Unit by invoking the
+// shared, parameterized set-yq Invocation (resolved cross-space from the edit
+// library Space) with the edit's parameter values.
+func runEdit(cmd *cobra.Command, unitRef string, edit rbac.EditInvocation, c commitFlags) error {
 	space, unit, err := parseUnitRef(unitRef)
 	if err != nil {
 		return err
@@ -126,6 +129,10 @@ func runEdit(cmd *cobra.Command, unitRef string, edit rbac.CompiledEdit, c commi
 	if err := cub.Preflight(cmd.Context()); err != nil {
 		return err
 	}
-	base := []string{"function", "do", "--space", space, "--unit", unit, "set-yq", edit.Expr, "-o", "mutations"}
+	base := []string{"invocation", "invoke", "set", rbac.EditLibrarySpace + "/" + edit.Slug,
+		"--space", space, "--unit", unit, "-o", "mutations"}
+	for _, p := range edit.Params {
+		base = append(base, "--param", p)
+	}
 	return runMutation(cmd, base, c, edit.Summary)
 }
