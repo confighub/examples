@@ -123,7 +123,7 @@ type fleetEditResp struct {
 	UnitSlug        string `json:"UnitSlug"`
 }
 
-func runFleetEdit(cmd *cobra.Command, fl fleetFlags, edit rbac.CompiledEdit) error {
+func runFleetEdit(cmd *cobra.Command, fl fleetFlags, edit rbac.EditInvocation) error {
 	if strings.TrimSpace(fl.where) == "" {
 		return fmt.Errorf("--where is required to scope a fleet edit (use a deliberate selector, e.g. \"Space.Labels.Environment = 'prod'\")")
 	}
@@ -131,7 +131,12 @@ func runFleetEdit(cmd *cobra.Command, fl fleetFlags, edit rbac.CompiledEdit) err
 		return err
 	}
 	where := k8sWhere + " AND " + fl.where
-	base := []string{"function", "do", "--space", "*", "--where", where, "set-yq", edit.Expr, "-o", "json"}
+	// Org-scoped invoke must use -o json (the mutations renderer panics on --space "*").
+	base := []string{"invocation", "invoke", "set", rbac.EditLibrarySpace + "/" + edit.Slug,
+		"--space", "*", "--where", where, "-o", "json"}
+	for _, p := range edit.Params {
+		base = append(base, "--param", p)
+	}
 	args, err := mutationArgs(base, fl.commitFlags)
 	if err != nil {
 		return err

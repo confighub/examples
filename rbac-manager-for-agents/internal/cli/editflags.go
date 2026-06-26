@@ -12,9 +12,9 @@ import (
 	"github.com/confighub/examples/rbac-manager-for-agents/internal/rbac"
 )
 
-// verbEditFlags bind the inputs for add-verb / remove-verb and compile them to a
-// CompiledEdit. Shared by the single-Unit `edit` and the fleet-wide `fleet-edit`
-// commands.
+// verbEditFlags bind the inputs for add-verb / remove-verb and resolve them to an
+// EditInvocation (stored Invocation slug + parameter values). Shared by the
+// single-Unit `edit` and the fleet-wide `fleet-edit` commands.
 type verbEditFlags struct {
 	roleKind string
 	role     string
@@ -32,24 +32,24 @@ func (f *verbEditFlags) bind(cmd *cobra.Command) {
 	_ = cmd.MarkFlagRequired("verb")
 }
 
-func (f *verbEditFlags) compile(add bool) (rbac.CompiledEdit, error) {
+func (f *verbEditFlags) compile(add bool) (rbac.EditInvocation, error) {
 	rk, err := normalizeRoleKind(f.roleKind)
 	if err != nil {
-		return rbac.CompiledEdit{}, err
+		return rbac.EditInvocation{}, err
 	}
 	if err := validateName("role", f.role); err != nil {
-		return rbac.CompiledEdit{}, err
+		return rbac.EditInvocation{}, err
 	}
 	if err := validateName("verb", f.verb); err != nil {
-		return rbac.CompiledEdit{}, err
+		return rbac.EditInvocation{}, err
 	}
 	if f.rule < 0 {
-		return rbac.CompiledEdit{}, fmt.Errorf("--rule must be >= 0")
+		return rbac.EditInvocation{}, fmt.Errorf("--rule must be >= 0")
 	}
 	if add {
-		return rbac.CompileAddVerb(rk, f.role, f.rule, f.verb), nil
+		return rbac.AddVerb(rk, f.role, f.rule, f.verb), nil
 	}
-	return rbac.CompileRemoveVerb(rk, f.role, f.rule, f.verb), nil
+	return rbac.RemoveVerb(rk, f.role, f.rule, f.verb), nil
 }
 
 // subjectEditFlags bind the inputs for add-subject / remove-subject.
@@ -73,33 +73,33 @@ func (f *subjectEditFlags) bind(cmd *cobra.Command) {
 	_ = cmd.MarkFlagRequired("subject-name")
 }
 
-func (f *subjectEditFlags) compile(add bool) (rbac.CompiledEdit, error) {
+func (f *subjectEditFlags) compile(add bool) (rbac.EditInvocation, error) {
 	bk, err := normalizeBindingKind(f.bindingKind)
 	if err != nil {
-		return rbac.CompiledEdit{}, err
+		return rbac.EditInvocation{}, err
 	}
 	sk, err := normalizeSubjectKind(f.subjectKind)
 	if err != nil {
-		return rbac.CompiledEdit{}, err
+		return rbac.EditInvocation{}, err
 	}
 	if err := validateName("binding", f.binding); err != nil {
-		return rbac.CompiledEdit{}, err
+		return rbac.EditInvocation{}, err
 	}
 	if err := validateName("subject-name", f.subjectName); err != nil {
-		return rbac.CompiledEdit{}, err
+		return rbac.EditInvocation{}, err
 	}
 	if f.subjectNamespace != "" {
 		if err := validateName("subject-namespace", f.subjectNamespace); err != nil {
-			return rbac.CompiledEdit{}, err
+			return rbac.EditInvocation{}, err
 		}
 	}
 	if sk == "ServiceAccount" && f.subjectNamespace == "" {
-		return rbac.CompiledEdit{}, fmt.Errorf("--subject-namespace is required for a ServiceAccount subject")
+		return rbac.EditInvocation{}, fmt.Errorf("--subject-namespace is required for a ServiceAccount subject")
 	}
 	if add {
-		return rbac.CompileAddSubject(bk, f.binding, sk, f.subjectName, f.subjectNamespace), nil
+		return rbac.AddSubject(bk, f.binding, sk, f.subjectName, f.subjectNamespace), nil
 	}
-	return rbac.CompileRemoveSubject(bk, f.binding, sk, f.subjectName, f.subjectNamespace), nil
+	return rbac.RemoveSubject(bk, f.binding, sk, f.subjectName, f.subjectNamespace), nil
 }
 
 func normalizeRoleKind(s string) (string, error) {

@@ -2,7 +2,7 @@
 name: rbac-fleet
 description: 'Apply RBAC changes across many ConfigHub Units at once with the cub-rbac CLI: bulk structured edits (fleet-edit) and override-preserving variant propagation from upstream (promote). Use for "add deletecollection to the developer role in every dev cluster", "remove the wildcard verb from this persona role fleet-wide", "add the oncall group to viewers across prod", "propagate the base RBAC change to all staging clones", "upgrade downstream RBAC units to their upstream", "which downstream units are behind their base?". Both are dry-run by default and require --commit + --change-desc; they never bypass ApplyGates and never apply to clusters. Not for a single Unit (use rbac-edit), not for inventory/queries (use rbac-audit / rbac-whocan), not for installing policy (use rbac-guardrails), not for rolling out to clusters (use cub-apply).'
 phase: act
-allowed-tools: Bash(cub-rbac --help) Bash(cub-rbac * --help) Bash(cub auth status) Bash(cub-rbac preflight) Bash(cub-rbac snapshot *) Bash(cub-rbac list *) Bash(cub-rbac fleet-edit *) Bash(cub-rbac promote *)
+allowed-tools: Bash(cub-rbac --help) Bash(cub-rbac * --help) Bash(cub auth status) Bash(cub-rbac preflight) Bash(cub-rbac snapshot *) Bash(cub-rbac list *) Bash(cub-rbac edit install) Bash(cub-rbac fleet-edit *) Bash(cub-rbac promote *)
 ---
 
 # rbac-fleet
@@ -36,7 +36,8 @@ The fleet is queried and changed like a database: one `--where` selector compile
 ## Preflight gates
 
 1. `cub-rbac preflight` succeeds (cub installed, ConfigHub session valid). If not, ask the user to run `cub auth login` and retry.
-2. The user has Edit permission on the targeted Units (the commit fails server-side otherwise — report it, don't retry blindly).
+2. The shared edit Invocations exist (used by `fleet-edit`). They are created once per organization with `cub-rbac edit install`. If a fleet-edit fails because the Invocation is not found, run `cub-rbac edit install` and retry.
+3. The user has Edit permission on the targeted Units (the commit fails server-side otherwise — report it, don't retry blindly).
 
 ## Scoping — `--where` is required
 

@@ -30,6 +30,12 @@ import { b64decodeUtf8, b64encodeUtf8 } from '../api/encoding';
 import { fetchRevisionDataText } from '../api/raw';
 import { FriendlyResource } from '../components/friendly/RbacFriendly';
 import { StructuredEdit } from '../components/StructuredEdit';
+import type { CompiledEdit } from '../rbac/edits';
+import {
+  useEditInvocationIds,
+  editRequest,
+  EDIT_INVOCATIONS_MISSING,
+} from '../rbac/editInvocations';
 import { clusterContextFor } from '../fleet/enrichment';
 import { useSnapshot } from '../fleet/SnapshotContext';
 import {
@@ -123,6 +129,7 @@ export function UnitPage() {
   const [updateUnit, updateState] = useUpdateUnitMutation();
   const [patchUnit, patchState] = usePatchUnitMutation();
   const [invokeFunctions, invokeState] = useInvokeFunctionsMutation();
+  const { idBySlug } = useEditInvocationIds();
   const [applyUnit, applyState] = useApplyUnitMutation();
   const [approveUnit, approveState] = useApproveUnitMutation();
 
@@ -154,7 +161,7 @@ export function UnitPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionInfo, setActionInfo] = useState<string | null>(null);
   /** A dry-run-previewed function edit awaiting a change description. */
-  const [pendingEdit, setPendingEdit] = useState<{ expr: string; after: string } | null>(null);
+  const [pendingEdit, setPendingEdit] = useState<{ edit: CompiledEdit; after: string } | null>(null);
 
   if (isError) {
     return (
@@ -224,23 +231,22 @@ export function UnitPage() {
     }
   };
 
-  const yqInvocation = (expr: string) => ({
-    FunctionInvocations: [
-      { FunctionName: 'yq-i', Arguments: [{ ParameterName: 'yq-expression', Value: expr }] },
-    ],
-  });
-
   // The invoke endpoint requires unit_id+revision_id together; targeting the
   // head of one unit goes through a where clause instead (as the CLI does).
   const unitWhere = `UnitID = '${unitId}'`;
 
-  const previewEdit = async (expr: string) => {
+  const previewEdit = async (edit: CompiledEdit) => {
     setActionError(null);
+    const body = editRequest(idBySlug, edit);
+    if (!body) {
+      setActionError(EDIT_INVOCATIONS_MISSING);
+      return;
+    }
     const result = await invokeFunctions({
       spaceId,
       where: unitWhere,
       dryRun: 'true',
-      functionInvocationsRequest: yqInvocation(expr),
+      functionInvocationsRequest: body,
     });
     if ('error' in result && result.error) {
       setActionError('Dry run failed.');
@@ -248,7 +254,7 @@ export function UnitPage() {
     }
     const response = (result.data ?? [])[0];
     if (!response?.Success) {
-      setActionError('Dry run did not succeed — check the expression.');
+      setActionError('Dry run did not succeed — check the inputs.');
       return;
     }
     const after = response.ConfigData ? b64decodeUtf8(response.ConfigData) : originalText;
@@ -256,17 +262,22 @@ export function UnitPage() {
       setActionInfo('No change: the edit is already in effect.');
       return;
     }
-    setPendingEdit({ expr, after });
+    setPendingEdit({ edit, after });
   };
 
   const commitEdit = async (changeDescription: string) => {
     if (pendingEdit === null) return;
     setActionError(null);
+    const body = editRequest(idBySlug, pendingEdit.edit);
+    if (!body) {
+      setActionError(EDIT_INVOCATIONS_MISSING);
+      return;
+    }
     const result = await invokeFunctions({
       spaceId,
       where: unitWhere,
       functionInvocationsRequest: {
-        ...yqInvocation(pendingEdit.expr),
+        ...body,
         ChangeDescription: changeDescription,
       },
     });
@@ -353,7 +364,7 @@ export function UnitPage() {
         </Alert>
       )}
 
-      <StructuredEdit yamlText={originalText} onPreview={(expr) => void previewEdit(expr)} />
+      <StructuredEdit yamlText={originalText} onPreview={(edit) => void previewEdit(edit)} />
 
       <ToggleButtonGroup
         size='small'

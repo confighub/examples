@@ -32,6 +32,11 @@ import { fetchUnitDataText } from '../api/raw';
 import { useSnapshot } from '../fleet/SnapshotContext';
 import { CompiledEdit, compileAddVerb, compileRemoveVerb } from '../rbac/edits';
 import {
+  useEditInvocationIds,
+  editRequest,
+  EDIT_INVOCATIONS_MISSING,
+} from '../rbac/editInvocations';
+import {
   useBulkPatchUnitsMutation,
   useInvokeFunctionsOnOrgMutation,
 } from '../sdk/confighubapi.gen';
@@ -106,6 +111,7 @@ function matchesSelection(labels: Record<string, string> | undefined, selection:
 export function FleetPage() {
   const { snapshot, isLoading } = useSnapshot();
   const [invokeOrg, invokeState] = useInvokeFunctionsOnOrgMutation();
+  const { idBySlug } = useEditInvocationIds();
   const [bulkPatch, bulkPatchState] = useBulkPatchUnitsMutation();
 
   // Discover the standard label values actually present on in-scope Spaces, so
@@ -172,14 +178,15 @@ export function FleetPage() {
       op === 'add-verb'
         ? compileAddVerb(roleKind, roleName, ruleIdx, verb)
         : compileRemoveVerb(roleKind, roleName, ruleIdx, verb);
+    const body = editRequest(idBySlug, edit);
+    if (!body) {
+      setMessage({ kind: 'error', text: EDIT_INVOCATIONS_MISSING });
+      return;
+    }
     const result = await invokeOrg({
       where,
       dryRun: 'true',
-      functionInvocationsRequest: {
-        FunctionInvocations: [
-          { FunctionName: 'yq-i', Arguments: [{ ParameterName: 'yq-expression', Value: edit.expr }] },
-        ],
-      },
+      functionInvocationsRequest: body,
     });
     if ('error' in result && result.error) {
       setMessage({ kind: 'error', text: 'Dry run failed.' });
@@ -210,15 +217,15 @@ export function FleetPage() {
 
   const commitBulkEdit = async () => {
     if (pending === null) return;
+    const body = editRequest(idBySlug, pending.edit);
+    if (!body) {
+      setMessage({ kind: 'error', text: EDIT_INVOCATIONS_MISSING });
+      return;
+    }
     const result = await invokeOrg({
       where: pending.where,
       functionInvocationsRequest: {
-        FunctionInvocations: [
-          {
-            FunctionName: 'yq-i',
-            Arguments: [{ ParameterName: 'yq-expression', Value: pending.edit.expr }],
-          },
-        ],
+        ...body,
         ChangeDescription: changeDesc,
       },
     });

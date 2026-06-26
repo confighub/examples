@@ -5,9 +5,13 @@
 #
 #   rbac-demo-policy    Triggers (the RBAC guardrail pack) + Filters. No Units.
 #   rbac-demo-base      Canonical persona Units: developer, operator, viewer, ci.
-#   rbac-demo-dev       "Cluster" Space (env=dev,     region=use1) — persona clones
-#   rbac-demo-staging   "Cluster" Space (env=staging, region=use1) — persona clones
-#   rbac-demo-prod      "Cluster" Space (env=prod,    region=use2) — persona clones
+#   rbac-demo-dev       "Cluster" Space (Environment=dev,     Region=use1) — persona clones
+#   rbac-demo-staging   "Cluster" Space (Environment=staging, Region=use1) — persona clones
+#   rbac-demo-prod      "Cluster" Space (Environment=prod,    Region=use2) — persona clones
+#
+# Every Space is stamped with the well-known Fleet labels so it appears in the
+# app's Fleet Ops selectors: Component=rbac, Variant (base | dev | staging |
+# prod), Environment, Region, Layer=Security, Owner=Platform.
 #
 # Cluster Spaces select the guardrail Triggers via a Filter in the policy
 # Space (TriggerFilterID pattern), so policy is defined once and enforced
@@ -77,9 +81,9 @@ enforced centrally via Triggers + Apply Gates.
      + Filters, no Units)       developer, operator, viewer, ci)
             |                          |  clone (upstream/downstream)
             | TriggerFilterID          v
-            +----------->  ${PREFIX}-dev   (env=dev,     region=use1)
-            +----------->  ${PREFIX}-staging (env=staging, region=use1)
-            +----------->  ${PREFIX}-prod  (env=prod,    region=use2; + approval required)
+            +----------->  ${PREFIX}-dev   (Environment=dev,     Region=use1)
+            +----------->  ${PREFIX}-staging (Environment=staging, Region=use1)
+            +----------->  ${PREFIX}-prod  (Environment=prod,    Region=use2; + approval required)
 
 Will create (idempotently):
   - 5 Spaces: ${POLICY_SPACE}, ${BASE_SPACE}, ${CLUSTER_SPACES[*]}
@@ -90,6 +94,8 @@ Will create (idempotently):
       no-cluster-admin-binding  vet-celexpr (no cluster-admin ClusterRoleBindings)
       require-approval          vet-approvedby 1 (prod only)
   - 2 Trigger Filters: rbac-guardrails (Scope=all), rbac-guardrails-prod (all incl. approval)
+  - 1 rbac-edits Space with 4 parameterized set-yq edit Invocations
+    (rbac-add-verb, rbac-remove-verb, rbac-add-subject, rbac-remove-subject)
   - 4 persona Units in ${BASE_SPACE}, cloned into each of the 3 cluster Spaces (12 clones)
   - 1 divergence: ${PREFIX}-dev/developer gains the "delete" verb (server-side yq-i)
   - 3 planted violations in ${PREFIX}-dev (2 gated, 1 app-side audit finding)
@@ -232,10 +238,16 @@ ensure_filter() { # slug where
 ensure_filter rbac-guardrails      "Labels.Pack = 'rbac-guardrails' AND Labels.Scope = 'all'"
 ensure_filter rbac-guardrails-prod "Labels.Pack = 'rbac-guardrails'"
 
+# ── 1b. Edit Invocations: shared, parameterized set-yq edits ──────────────────
+# The same Invocations the web app and agent CLI use to apply structured edits.
+source "$(dirname "${BASH_SOURCE[0]}")/install-edit-invocations.sh"
+install_edit_invocations
+
 # ── 2. Base Space: canonical persona Units ────────────────────────────────────
 
 note "Base Space: ${BASE_SPACE}"
 ensure_space "$BASE_SPACE" --label app=rbac-manager --label role=base \
+  --label Component=rbac --label Variant=base --label Layer=Security --label Owner=Platform \
   --trigger-filter "${POLICY_SPACE}/rbac-guardrails"
 
 for persona in "${PERSONAS[@]}"; do
@@ -258,9 +270,12 @@ cluster_filter() { case "$1" in *-prod) echo rbac-guardrails-prod ;; *) echo rba
 
 for space in "${CLUSTER_SPACES[@]}"; do
   env="$(cluster_env "$space")"
-  note "Cluster Space: ${space} (env=${env}, region=$(cluster_region "$space"))"
+  note "Cluster Space: ${space} (Environment=${env}, Region=$(cluster_region "$space"))"
   ensure_space "$space" \
-    --label app=rbac-manager --label "env=${env}" --label "region=$(cluster_region "$space")" \
+    --label app=rbac-manager \
+    --label Component=rbac --label "Variant=${env}" \
+    --label "Environment=${env}" --label "Region=$(cluster_region "$space")" \
+    --label Layer=Security --label Owner=Platform \
     --trigger-filter "${POLICY_SPACE}/$(cluster_filter "$space")"
 
   for persona in "${PERSONAS[@]}"; do

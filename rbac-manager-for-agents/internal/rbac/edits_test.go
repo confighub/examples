@@ -4,57 +4,106 @@
 package rbac
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 )
 
-func TestCompileAddVerb(t *testing.T) {
-	e := CompileAddVerb("ClusterRole", "viewer", 0, "get")
-	want := `(select(.kind == "ClusterRole" and .metadata.name == "viewer").rules[0].verbs) |= ((. + ["get"]) | unique)`
-	if e.Expr != want {
-		t.Errorf("expr =\n %s\nwant\n %s", e.Expr, want)
+func TestAddVerb(t *testing.T) {
+	e := AddVerb("ClusterRole", "viewer", 0, "get")
+	if e.Slug != InvAddVerb {
+		t.Errorf("slug = %q, want %q", e.Slug, InvAddVerb)
+	}
+	want := []string{"roleKind=ClusterRole", "roleName=viewer", "ruleIdx=0", "verb=get"}
+	if !reflect.DeepEqual(e.Params, want) {
+		t.Errorf("params = %v, want %v", e.Params, want)
 	}
 	if !strings.Contains(e.Summary, "Add verb") {
 		t.Errorf("summary = %q", e.Summary)
 	}
 }
 
-func TestCompileRemoveVerb(t *testing.T) {
-	e := CompileRemoveVerb("Role", "reader", 2, "delete")
-	want := `(select(.kind == "Role" and .metadata.name == "reader").rules[2].verbs) |= (. - ["delete"])`
-	if e.Expr != want {
-		t.Errorf("expr =\n %s\nwant\n %s", e.Expr, want)
+func TestRemoveVerb(t *testing.T) {
+	e := RemoveVerb("Role", "reader", 2, "delete")
+	if e.Slug != InvRemoveVerb {
+		t.Errorf("slug = %q", e.Slug)
+	}
+	want := []string{"roleKind=Role", "roleName=reader", "ruleIdx=2", "verb=delete"}
+	if !reflect.DeepEqual(e.Params, want) {
+		t.Errorf("params = %v, want %v", e.Params, want)
 	}
 }
 
-func TestCompileAddSubject_Group(t *testing.T) {
-	e := CompileAddSubject("ClusterRoleBinding", "devs-bind", "Group", "devs", "")
-	want := `select(.kind == "ClusterRoleBinding" and .metadata.name == "devs-bind").subjects += [{"kind": "Group", "name": "devs", "apiGroup": "rbac.authorization.k8s.io"}]`
-	if e.Expr != want {
-		t.Errorf("expr =\n %s\nwant\n %s", e.Expr, want)
+// add-subject: a Group/User carries an apiGroup and an empty namespace; a
+// ServiceAccount carries a namespace and an empty apiGroup. The template drops
+// the empty field server-side.
+func TestAddSubject_Group(t *testing.T) {
+	e := AddSubject("ClusterRoleBinding", "devs-bind", "Group", "devs", "")
+	want := []string{
+		"bindingKind=ClusterRoleBinding", "bindingName=devs-bind",
+		"subjectKind=Group", "subjectName=devs",
+		"subjectNamespace=", "subjectApiGroup=rbac.authorization.k8s.io",
+	}
+	if !reflect.DeepEqual(e.Params, want) {
+		t.Errorf("params = %v, want %v", e.Params, want)
 	}
 }
 
-func TestCompileAddSubject_ServiceAccount(t *testing.T) {
-	e := CompileAddSubject("RoleBinding", "rb", "ServiceAccount", "ci", "apps")
-	want := `select(.kind == "RoleBinding" and .metadata.name == "rb").subjects += [{"kind": "ServiceAccount", "name": "ci", "namespace": "apps"}]`
-	if e.Expr != want {
-		t.Errorf("expr =\n %s\nwant\n %s", e.Expr, want)
+func TestAddSubject_ServiceAccount(t *testing.T) {
+	e := AddSubject("RoleBinding", "rb", "ServiceAccount", "ci", "apps")
+	want := []string{
+		"bindingKind=RoleBinding", "bindingName=rb",
+		"subjectKind=ServiceAccount", "subjectName=ci",
+		"subjectNamespace=apps", "subjectApiGroup=",
+	}
+	if !reflect.DeepEqual(e.Params, want) {
+		t.Errorf("params = %v, want %v", e.Params, want)
 	}
 }
 
-func TestCompileRemoveSubject_ServiceAccount(t *testing.T) {
-	e := CompileRemoveSubject("RoleBinding", "rb", "ServiceAccount", "ci", "apps")
-	want := `select(.kind == "RoleBinding" and .metadata.name == "rb").subjects |= map(select(((.kind == "ServiceAccount") and (.name == "ci") and (.namespace == "apps")) | not))`
-	if e.Expr != want {
-		t.Errorf("expr =\n %s\nwant\n %s", e.Expr, want)
+func TestRemoveSubject(t *testing.T) {
+	e := RemoveSubject("RoleBinding", "rb", "ServiceAccount", "ci", "apps")
+	if e.Slug != InvRemoveSubject {
+		t.Errorf("slug = %q", e.Slug)
+	}
+	want := []string{
+		"bindingKind=RoleBinding", "bindingName=rb",
+		"subjectKind=ServiceAccount", "subjectName=ci", "subjectNamespace=apps",
+	}
+	if !reflect.DeepEqual(e.Params, want) {
+		t.Errorf("params = %v, want %v", e.Params, want)
 	}
 }
 
-func TestCompileRemoveSubject_User(t *testing.T) {
-	e := CompileRemoveSubject("ClusterRoleBinding", "crb", "User", "alice", "")
-	want := `select(.kind == "ClusterRoleBinding" and .metadata.name == "crb").subjects |= map(select(((.kind == "User") and (.name == "alice")) | not))`
-	if e.Expr != want {
-		t.Errorf("expr =\n %s\nwant\n %s", e.Expr, want)
+// TestEditInvocationSpecs_Cover asserts every builder slug has a matching stored
+// spec, and that each spec declares a parameter for every value the builder
+// supplies (so an invoke never sends an undeclared parameter).
+func TestEditInvocationSpecs_Cover(t *testing.T) {
+	specBySlug := map[string]EditInvocationSpec{}
+	for _, s := range EditInvocationSpecs {
+		specBySlug[s.Slug] = s
+	}
+	cases := []EditInvocation{
+		AddVerb("Role", "r", 0, "get"),
+		RemoveVerb("Role", "r", 0, "get"),
+		AddSubject("RoleBinding", "b", "ServiceAccount", "ci", "apps"),
+		RemoveSubject("RoleBinding", "b", "User", "alice", ""),
+	}
+	for _, c := range cases {
+		spec, ok := specBySlug[c.Slug]
+		if !ok {
+			t.Errorf("no EditInvocationSpec for slug %q", c.Slug)
+			continue
+		}
+		declared := map[string]bool{}
+		for _, p := range spec.Parameters {
+			declared[p.Name] = true
+		}
+		for _, kv := range c.Params {
+			name := strings.SplitN(kv, "=", 2)[0]
+			if !declared[name] {
+				t.Errorf("%s supplies undeclared parameter %q", c.Slug, name)
+			}
+		}
 	}
 }
