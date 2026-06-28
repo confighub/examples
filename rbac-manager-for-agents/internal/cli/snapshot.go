@@ -54,10 +54,11 @@ Clusters are ConfigHub Targets (the Space slug is used for unbound "paper
 cluster" Units). Canonical base/policy Spaces are excluded from the inventory.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cub.Preflight(cmd.Context()); err != nil {
+			client, err := cub.Preflight(cmd.Context())
+			if err != nil {
 				return err
 			}
-			snap, err := snapshot.Load(cmd.Context(), scope.scope())
+			snap, err := snapshot.Load(cmd.Context(), client, scope.scope())
 			if err != nil {
 				return err
 			}

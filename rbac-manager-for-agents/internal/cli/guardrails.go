@@ -5,13 +5,16 @@ package cli
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
+
+	"github.com/confighub/sdk/core/cubapi"
+	api "github.com/confighub/sdk/core/function/api"
+	goclientnew "github.com/confighub/sdk/core/openapi/goclient-new"
 
 	"github.com/confighub/examples/rbac-manager-for-agents/internal/cub"
 )
@@ -94,15 +97,16 @@ to apply. Spaces that already select Triggers another way (a custom WhereTrigger
 a different TriggerFilterID, or their own Triggers) are reported, not modified.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cub.Preflight(cmd.Context()); err != nil {
+			client, err := cub.Preflight(cmd.Context())
+			if err != nil {
 				return err
 			}
-			plan, err := buildGuardrailsPlan(cmd.Context(), policySpace, whereSpace)
+			plan, err := buildGuardrailsPlan(cmd.Context(), client, policySpace, whereSpace)
 			if err != nil {
 				return err
 			}
 			if commit {
-				if err := executeGuardrails(cmd, policySpace, plan); err != nil {
+				if err := executeGuardrails(cmd, client, policySpace, plan); err != nil {
 					return err
 				}
 				plan.Committed = true
@@ -128,7 +132,7 @@ type spaceInfo struct {
 	TriggerFilterID string
 }
 
-func buildGuardrailsPlan(ctx context.Context, policySpace, whereSpace string) (guardrailsPlan, error) {
+func buildGuardrailsPlan(ctx context.Context, client *cubapi.Client, policySpace, whereSpace string) (guardrailsPlan, error) {
 	plan := guardrailsPlan{
 		PolicySpace: policySpace,
 		Filter:      policySpace + "/" + guardrailFilterSlug,
@@ -137,18 +141,18 @@ func buildGuardrailsPlan(ctx context.Context, policySpace, whereSpace string) (g
 		plan.Triggers = append(plan.Triggers, t.slug)
 	}
 
-	spaces, err := listSpaces(ctx, whereSpace)
+	spaces, err := listSpaces(ctx, client, whereSpace)
 	if err != nil {
 		return plan, fmt.Errorf("list spaces: %w", err)
 	}
-	k8sSpaces, err := k8sSpaceSlugs(ctx)
+	k8sSpaces, err := k8sSpaceSlugs(ctx, client)
 	if err != nil {
 		return plan, fmt.Errorf("find Kubernetes/YAML spaces: %w", err)
 	}
 
 	// Existing policy filter ID, if any, to detect already-wired Spaces.
-	filterID, _ := guardrailFilterID(ctx, policySpace)
-	if _, err := cub.Run(ctx, "space", "get", policySpace, "--quiet"); err == nil {
+	filterID, _ := guardrailFilterID(ctx, client, policySpace)
+	if _, err := cubapi.ResolveSpace(ctx, client, policySpace); err == nil {
 		plan.PolicySpaceExists = true
 	}
 
@@ -164,7 +168,7 @@ func buildGuardrailsPlan(ctx context.Context, policySpace, whereSpace string) (g
 		case s.WhereTrigger != "" && !strings.Contains(s.WhereTrigger, s.SpaceID):
 			plan.Skipped = append(plan.Skipped, skipEntry{s.Slug, "custom WhereTrigger — point it at the guardrail Filter as well"})
 		default:
-			ownTriggers, err := spaceTriggerCount(ctx, s.Slug)
+			ownTriggers, err := spaceTriggerCount(ctx, client, s.SpaceID)
 			if err != nil {
 				return plan, err
 			}
@@ -181,29 +185,50 @@ func buildGuardrailsPlan(ctx context.Context, policySpace, whereSpace string) (g
 	return plan, nil
 }
 
-func executeGuardrails(cmd *cobra.Command, policySpace string, plan guardrailsPlan) error {
+func executeGuardrails(cmd *cobra.Command, client *cubapi.Client, policySpace string, plan guardrailsPlan) error {
 	ctx := cmd.Context()
 	out := cmd.OutOrStdout()
 
-	if _, err := cub.Run(ctx, "space", "create", policySpace, "--label", "app=rbac-manager", "--label", "role=policy", "--allow-exists"); err != nil {
+	ps, err := cubapi.EnsureSpace(ctx, client, goclientnew.Space{
+		Slug:   policySpace,
+		Labels: map[string]string{"app": "rbac-manager", "role": "policy"},
+	})
+	if err != nil {
 		return fmt.Errorf("create policy space %s: %w", policySpace, err)
 	}
 	for _, t := range guardrailTriggers {
-		if _, err := cub.Run(ctx, "trigger", "create", "--space", policySpace, "--warn", "--allow-exists",
-			"--label", "Pack="+guardrailPackLabel, "--description", t.desc,
-			t.slug, "Mutation", "Kubernetes/YAML", "vet-celexpr", t.expr); err != nil {
+		if _, err := cubapi.EnsureTrigger(ctx, client, goclientnew.Trigger{
+			SpaceID:       ps.SpaceID,
+			Slug:          t.slug,
+			Description:   t.desc,
+			Event:         "Mutation",
+			ToolchainType: "Kubernetes/YAML",
+			FunctionName:  "vet-celexpr",
+			Arguments:     cubapi.Arguments([]api.FunctionArgument{{Value: t.expr}}),
+			Warn:          true,
+			Labels:        map[string]string{"Pack": guardrailPackLabel},
+		}); err != nil {
 			return fmt.Errorf("create trigger %s: %w", t.slug, err)
 		}
 	}
-	if _, err := cub.Run(ctx, "filter", "create", "--space", policySpace, "--allow-exists",
-		guardrailFilterSlug, "Trigger", "--where-field", "Labels.Pack = '"+guardrailPackLabel+"'"); err != nil {
+	flt, err := cubapi.EnsureFilter(ctx, client, goclientnew.Filter{
+		SpaceID: ps.SpaceID,
+		Slug:    guardrailFilterSlug,
+		From:    "Trigger",
+		Where:   "Labels.Pack = '" + guardrailPackLabel + "'",
+	})
+	if err != nil {
 		return fmt.Errorf("create filter %s: %w", guardrailFilterSlug, err)
 	}
 	fprintln(out, fmt.Sprintf("Policy pack ready in %s.", policySpace))
 
 	filterRef := policySpace + "/" + guardrailFilterSlug
 	for _, slug := range plan.Wire {
-		if _, err := cub.Run(ctx, "space", "update", slug, "--where-trigger", "-", "--trigger-filter", filterRef); err != nil {
+		sp, err := cubapi.ResolveSpace(ctx, client, slug)
+		if err != nil {
+			return fmt.Errorf("wire space %s: %w", slug, err)
+		}
+		if err := cubapi.SetSpaceTriggerFilter(ctx, client, sp, flt.FilterID); err != nil {
 			return fmt.Errorf("wire space %s: %w", slug, err)
 		}
 		fprintln(out, "  wired "+slug+" → "+filterRef)
@@ -245,10 +270,11 @@ func newGuardrailsStatusCmd() *cobra.Command {
 		Short: "List Units with RBAC ApplyWarnings or ApplyGates",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cub.Preflight(cmd.Context()); err != nil {
+			client, err := cub.Preflight(cmd.Context())
+			if err != nil {
 				return err
 			}
-			rows, err := guardrailStatusRows(cmd.Context())
+			rows, err := guardrailStatusRows(cmd.Context(), client)
 			if err != nil {
 				return err
 			}
@@ -279,19 +305,28 @@ type statusRow struct {
 // guardrailStatusRows lists Units carrying ApplyWarnings or ApplyGates. The
 // --where grammar is AND-only (no OR/parentheses), so it runs one query per
 // condition and merges by space/unit.
-func guardrailStatusRows(ctx context.Context) ([]statusRow, error) {
+func guardrailStatusRows(ctx context.Context, client *cubapi.Client) ([]statusRow, error) {
 	byKey := map[string]statusRow{}
 	for _, cond := range []string{"LEN(ApplyWarnings) > 0", "LEN(ApplyGates) > 0"} {
-		units, err := listFlaggedUnits(ctx, "ToolchainType = 'Kubernetes/YAML' AND "+cond)
+		units, err := cubapi.ListUnits(ctx, client,
+			cubapi.NewWhere("ToolchainType = 'Kubernetes/YAML'").And(cond),
+			cubapi.ListOpts{Include: "SpaceID", Select: "Slug,SpaceID,ApplyWarnings,ApplyGates"})
 		if err != nil {
 			return nil, err
 		}
-		for _, u := range units {
-			byKey[u.Space.Slug+"/"+u.Unit.Slug] = statusRow{
-				Space:    u.Space.Slug,
-				Unit:     u.Unit.Slug,
-				Warnings: len(u.Unit.ApplyWarnings),
-				Gates:    len(u.Unit.ApplyGates),
+		for _, eu := range units {
+			if eu.Unit == nil {
+				continue
+			}
+			space := ""
+			if eu.Space != nil {
+				space = eu.Space.Slug
+			}
+			byKey[space+"/"+eu.Unit.Slug] = statusRow{
+				Space:    space,
+				Unit:     eu.Unit.Slug,
+				Warnings: len(eu.Unit.ApplyWarnings),
+				Gates:    len(eu.Unit.ApplyGates),
 			}
 		}
 	}
@@ -308,105 +343,75 @@ func guardrailStatusRows(ctx context.Context) ([]statusRow, error) {
 	return rows, nil
 }
 
-type flaggedUnit struct {
-	Unit struct {
-		Slug          string         `json:"Slug"`
-		ApplyWarnings map[string]any `json:"ApplyWarnings"`
-		ApplyGates    map[string]any `json:"ApplyGates"`
-	} `json:"Unit"`
-	Space struct {
-		Slug string `json:"Slug"`
-	} `json:"Space"`
-}
+// --- query helpers ---
 
-func listFlaggedUnits(ctx context.Context, where string) ([]flaggedUnit, error) {
-	out, err := cub.Run(ctx, "unit", "list", "--space", "*", "--where", where,
-		"--select", "Slug,SpaceID,ApplyWarnings,ApplyGates", "-o", "json")
-	if err != nil {
-		return nil, err
-	}
-	var units []flaggedUnit
-	if out != "" {
-		if err := json.Unmarshal([]byte(out), &units); err != nil {
-			return nil, err
-		}
-	}
-	return units, nil
-}
-
-// --- cub helpers ---
-
-func listSpaces(ctx context.Context, whereSpace string) ([]spaceInfo, error) {
+func listSpaces(ctx context.Context, client *cubapi.Client, whereSpace string) ([]spaceInfo, error) {
 	// WhereTrigger / TriggerFilterID are not in the default column set, so they
 	// come back null unless explicitly selected — select them so the
 	// already-wired / custom-config classification is correct.
-	const selectFields = "Slug,SpaceID,WhereTrigger,TriggerFilterID"
-	args := []string{"space", "list", "--select", selectFields, "-o", "json"}
+	where := cubapi.Where{}
 	if whereSpace != "" {
-		args = []string{"space", "list", "--where", whereSpace, "--select", selectFields, "-o", "json"}
+		where = cubapi.NewWhere(whereSpace)
 	}
-	out, err := cub.Run(ctx, args...)
+	spaces, err := cubapi.ListSpaces(ctx, client, where,
+		cubapi.ListOpts{Select: "Slug,SpaceID,WhereTrigger,TriggerFilterID"})
 	if err != nil {
 		return nil, err
 	}
-	var rows []struct {
-		Space struct {
-			SpaceID         string `json:"SpaceID"`
-			Slug            string `json:"Slug"`
-			WhereTrigger    string `json:"WhereTrigger"`
-			TriggerFilterID string `json:"TriggerFilterID"`
-		} `json:"Space"`
-	}
-	if out != "" {
-		if err := json.Unmarshal([]byte(out), &rows); err != nil {
-			return nil, err
+	infos := make([]spaceInfo, 0, len(spaces))
+	for _, es := range spaces {
+		if es.Space == nil {
+			continue
 		}
-	}
-	infos := make([]spaceInfo, 0, len(rows))
-	for _, r := range rows {
+		triggerFilterID := ""
+		if es.Space.TriggerFilterID != nil {
+			triggerFilterID = es.Space.TriggerFilterID.String()
+		}
 		infos = append(infos, spaceInfo{
-			SpaceID:         r.Space.SpaceID,
-			Slug:            r.Space.Slug,
-			WhereTrigger:    r.Space.WhereTrigger,
-			TriggerFilterID: r.Space.TriggerFilterID,
+			SpaceID:         es.Space.SpaceID.String(),
+			Slug:            es.Space.Slug,
+			WhereTrigger:    es.Space.WhereTrigger,
+			TriggerFilterID: triggerFilterID,
 		})
 	}
 	return infos, nil
 }
 
-func k8sSpaceSlugs(ctx context.Context) (map[string]bool, error) {
-	out, err := cub.Run(ctx, "unit", "list", "--space", "*", "--where", "ToolchainType = 'Kubernetes/YAML'", "-o", "jq=.[].Space.Slug")
+func k8sSpaceSlugs(ctx context.Context, client *cubapi.Client) (map[string]bool, error) {
+	units, err := cubapi.ListUnits(ctx, client, cubapi.NewWhere("ToolchainType = 'Kubernetes/YAML'"),
+		cubapi.ListOpts{Include: "SpaceID", Select: "Slug,SpaceID"})
 	if err != nil {
 		return nil, err
 	}
 	set := map[string]bool{}
-	for line := range strings.SplitSeq(out, "\n") {
-		s := strings.Trim(strings.TrimSpace(line), `"`)
-		if s != "" {
-			set[s] = true
+	for _, eu := range units {
+		if eu.Space != nil && eu.Space.Slug != "" {
+			set[eu.Space.Slug] = true
 		}
 	}
 	return set, nil
 }
 
-func guardrailFilterID(ctx context.Context, policySpace string) (string, error) {
-	out, err := cub.Run(ctx, "filter", "get", guardrailFilterSlug, "--space", policySpace, "-o", "jq=.Filter.FilterID")
+// guardrailFilterID returns the UUID of the guardrail Filter in policySpace, or
+// an error if the Space or Filter does not exist yet.
+func guardrailFilterID(ctx context.Context, client *cubapi.Client, policySpace string) (string, error) {
+	ps, err := cubapi.ResolveSpace(ctx, client, policySpace)
 	if err != nil {
 		return "", err
 	}
-	return strings.Trim(strings.TrimSpace(out), `"`), nil
+	flt, err := cubapi.ResolveFilter(ctx, client, ps.SpaceID, guardrailFilterSlug)
+	if err != nil {
+		return "", err
+	}
+	return flt.FilterID.String(), nil
 }
 
-func spaceTriggerCount(ctx context.Context, space string) (int, error) {
-	out, err := cub.Run(ctx, "trigger", "list", "--space", space, "-o", "jq=.[].Trigger.Slug")
+func spaceTriggerCount(ctx context.Context, client *cubapi.Client, spaceID string) (int, error) {
+	triggers, err := cubapi.ListTriggers(ctx, client,
+		cubapi.NewWhere(fmt.Sprintf("SpaceID = '%s'", spaceID)),
+		cubapi.ListOpts{Select: "Slug,SpaceID"})
 	if err != nil {
 		return 0, err
 	}
-	count := 0
-	for line := range strings.SplitSeq(out, "\n") {
-		if strings.TrimSpace(line) != "" {
-			count++
-		}
-	}
-	return count, nil
+	return len(triggers), nil
 }

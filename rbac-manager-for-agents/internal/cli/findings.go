@@ -52,10 +52,11 @@ Filter with --severity (high|medium|low) and --analyzer.`,
 					return fmt.Errorf("invalid --severity %q: use high, medium, or low", severityFilter)
 				}
 			}
-			if err := cub.Preflight(cmd.Context()); err != nil {
+			client, err := cub.Preflight(cmd.Context())
+			if err != nil {
 				return err
 			}
-			snap, err := snapshot.Load(cmd.Context(), scope.scope())
+			snap, err := snapshot.Load(cmd.Context(), client, scope.scope())
 			if err != nil {
 				return err
 			}
