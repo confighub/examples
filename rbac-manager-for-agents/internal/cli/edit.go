@@ -4,7 +4,14 @@
 package cli
 
 import (
+	"context"
+	"fmt"
+
 	"github.com/spf13/cobra"
+
+	"github.com/confighub/sdk/cliutil"
+	"github.com/confighub/sdk/core/cubapi"
+	goclientnew "github.com/confighub/sdk/core/openapi/goclient-new"
 
 	"github.com/confighub/examples/rbac-manager-for-agents/internal/cub"
 	"github.com/confighub/examples/rbac-manager-for-agents/internal/rbac"
@@ -35,7 +42,7 @@ the resulting revision is a separate step (cub unit apply).`,
 
 func newAddVerbCmd() *cobra.Command {
 	var f verbEditFlags
-	var c commitFlags
+	var c cliutil.CommitFlags
 	cmd := &cobra.Command{
 		Use:   "add-verb <space>/<unit>",
 		Short: "Add a verb to a role's rule (idempotent)",
@@ -51,13 +58,13 @@ func newAddVerbCmd() *cobra.Command {
 		},
 	}
 	f.bind(cmd)
-	addCommitFlags(cmd, &c)
+	c.Bind(cmd)
 	return cmd
 }
 
 func newRemoveVerbCmd() *cobra.Command {
 	var f verbEditFlags
-	var c commitFlags
+	var c cliutil.CommitFlags
 	cmd := &cobra.Command{
 		Use:     "remove-verb <space>/<unit>",
 		Short:   "Remove a verb from a role's rule",
@@ -72,13 +79,13 @@ func newRemoveVerbCmd() *cobra.Command {
 		},
 	}
 	f.bind(cmd)
-	addCommitFlags(cmd, &c)
+	c.Bind(cmd)
 	return cmd
 }
 
 func newAddSubjectCmd() *cobra.Command {
 	var f subjectEditFlags
-	var c commitFlags
+	var c cliutil.CommitFlags
 	cmd := &cobra.Command{
 		Use:     "add-subject <space>/<unit>",
 		Short:   "Add a subject to a binding",
@@ -93,13 +100,13 @@ func newAddSubjectCmd() *cobra.Command {
 		},
 	}
 	f.bind(cmd)
-	addCommitFlags(cmd, &c)
+	c.Bind(cmd)
 	return cmd
 }
 
 func newRemoveSubjectCmd() *cobra.Command {
 	var f subjectEditFlags
-	var c commitFlags
+	var c cliutil.CommitFlags
 	cmd := &cobra.Command{
 		Use:     "remove-subject <space>/<unit>",
 		Short:   "Remove a subject from a binding",
@@ -114,25 +121,60 @@ func newRemoveSubjectCmd() *cobra.Command {
 		},
 	}
 	f.bind(cmd)
-	addCommitFlags(cmd, &c)
+	c.Bind(cmd)
 	return cmd
 }
 
 // runEdit previews (dry-run) or commits an edit against one Unit by invoking the
-// shared, parameterized set-yq Invocation (resolved cross-space from the edit
-// library Space) with the edit's parameter values.
-func runEdit(cmd *cobra.Command, unitRef string, edit rbac.EditInvocation, c commitFlags) error {
+// shared, parameterized set-yq Invocation (resolved from the edit library Space)
+// over that single Unit with the edit's parameter values.
+func runEdit(cmd *cobra.Command, unitRef string, edit rbac.EditInvocation, c cliutil.CommitFlags) error {
 	space, unit, err := parseUnitRef(unitRef)
 	if err != nil {
 		return err
 	}
-	if err := cub.Preflight(cmd.Context()); err != nil {
+	client, err := cub.Preflight(cmd.Context())
+	if err != nil {
 		return err
 	}
-	base := []string{"invocation", "invoke", "set", rbac.EditLibrarySpace + "/" + edit.Slug,
-		"--space", space, "--unit", unit, "-o", "mutations"}
-	for _, p := range edit.Params {
-		base = append(base, "--param", p)
+	ch, err := commitChange(c, edit.Summary)
+	if err != nil {
+		return err
 	}
-	return runMutation(cmd, base, c, edit.Summary)
+	ctx := cmd.Context()
+
+	sp, err := cubapi.ResolveSpace(ctx, client, space)
+	if err != nil {
+		return err
+	}
+	inv, err := resolveEditInvocation(ctx, client, edit.Slug)
+	if err != nil {
+		return err
+	}
+
+	where := fmt.Sprintf("SpaceID = '%s' AND Slug = '%s'", sp.SpaceID.String(), unit)
+	res, err := cubapi.InvokeStoredInvocation(ctx, client, inv.InvocationID,
+		editParams(edit.Params), cubapi.Selector{Where: where}, ch)
+	if err != nil {
+		return err
+	}
+	changed, err := changedUnits(res)
+	if err != nil {
+		return err
+	}
+	return reportFleet(cmd, c, edit.Summary, changed)
+}
+
+// resolveEditInvocation finds a stored edit Invocation by slug in the edit
+// library Space, with a remediation hint when the library is not installed.
+func resolveEditInvocation(ctx context.Context, client *cubapi.Client, slug string) (*goclientnew.Invocation, error) {
+	lib, err := cubapi.ResolveSpace(ctx, client, rbac.EditLibrarySpace)
+	if err != nil {
+		return nil, fmt.Errorf("edit library not installed — run `cub-rbac edit install`: %w", err)
+	}
+	inv, err := cubapi.ResolveInvocation(ctx, client, lib.SpaceID, slug)
+	if err != nil {
+		return nil, fmt.Errorf("edit library not installed — run `cub-rbac edit install`: %w", err)
+	}
+	return inv, nil
 }

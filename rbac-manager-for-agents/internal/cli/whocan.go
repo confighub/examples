@@ -47,10 +47,11 @@ bindings to admin/edit/view/system:* are reported by 'findings', not here.`,
   cub-rbac who-can update deployments --api-group apps`,
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cub.Preflight(cmd.Context()); err != nil {
+			client, err := cub.Preflight(cmd.Context())
+			if err != nil {
 				return err
 			}
-			snap, err := snapshot.Load(cmd.Context(), scope.scope())
+			snap, err := snapshot.Load(cmd.Context(), client, scope.scope())
 			if err != nil {
 				return err
 			}
@@ -148,10 +149,11 @@ SUBJECT is "Kind:Name", or "ServiceAccount:namespace/name" for a ServiceAccount:
 			if err != nil {
 				return err
 			}
-			if err := cub.Preflight(cmd.Context()); err != nil {
+			client, err := cub.Preflight(cmd.Context())
+			if err != nil {
 				return err
 			}
-			snap, err := snapshot.Load(cmd.Context(), scope.scope())
+			snap, err := snapshot.Load(cmd.Context(), client, scope.scope())
 			if err != nil {
 				return err
 			}

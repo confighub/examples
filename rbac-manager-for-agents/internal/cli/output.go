@@ -4,11 +4,12 @@
 package cli
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 
 	"github.com/spf13/cobra"
+
+	"github.com/confighub/sdk/cliutil"
 
 	"github.com/confighub/examples/rbac-manager-for-agents/internal/snapshot"
 )
@@ -40,11 +41,10 @@ func (s scopeFlags) scope() snapshot.Scope {
 	return snapshot.Scope{TargetWhere: s.targetWhere, SpaceWhere: s.spaceWhere}
 }
 
+// printJSON writes v as indented JSON, via cliutil so the example shares the
+// SDK's output formatting.
 func printJSON(w io.Writer, v any) error {
-	enc := json.NewEncoder(w)
-	enc.SetIndent("", "  ")
-	enc.SetEscapeHTML(false)
-	return enc.Encode(v)
+	return cliutil.PrintJSON(w, v)
 }
 
 func fprintln(w io.Writer, a ...any) {

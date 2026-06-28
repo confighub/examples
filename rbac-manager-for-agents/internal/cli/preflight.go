@@ -19,7 +19,7 @@ func newPreflightCmd() *cobra.Command {
 		Short: "Verify cub is installed and the ConfigHub session is valid",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cub.Preflight(cmd.Context()); err != nil {
+			if _, err := cub.Preflight(cmd.Context()); err != nil {
 				return err
 			}
 			cmd.Println("cub-rbac: ready (cub found, ConfigHub session valid)")

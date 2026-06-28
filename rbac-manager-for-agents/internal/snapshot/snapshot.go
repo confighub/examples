@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: MIT
 
 // Package snapshot loads a fleet-wide view of Kubernetes RBAC config from
-// ConfigHub by shelling out to cub. It discovers every Kubernetes/YAML Unit the
-// user can view (optionally narrowed by scope filters), extracts just the RBAC
-// resources server-side via the get-resources function, and joins them with
-// Unit / Space / Target metadata into the rbac analysis model.
+// ConfigHub via the API. It discovers every Kubernetes/YAML Unit the user can
+// view (optionally narrowed by scope filters), extracts just the RBAC resources
+// server-side via the get-resources function, and joins them with Unit / Space /
+// Target metadata into the rbac analysis model.
 //
 // This is the Go port of the web app's fleet snapshot loader. Two get-resources
 // invocations run in parallel because a single WhereResource conjunction can't
@@ -19,7 +19,10 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/confighub/examples/rbac-manager-for-agents/internal/cub"
+	"github.com/confighub/sdk/core/cubapi"
+	api "github.com/confighub/sdk/core/function/api"
+	goclientnew "github.com/confighub/sdk/core/openapi/goclient-new"
+
 	"github.com/confighub/examples/rbac-manager-for-agents/internal/rbac"
 )
 
@@ -79,41 +82,6 @@ type Snapshot struct {
 	Scope Scope
 }
 
-// --- cub JSON shapes (only the fields we read) ---
-
-type extUnit struct {
-	Unit struct {
-		UnitID                string            `json:"UnitID"`
-		Slug                  string            `json:"Slug"`
-		SpaceID               string            `json:"SpaceID"`
-		TargetID              string            `json:"TargetID"`
-		Labels                map[string]string `json:"Labels"`
-		ApplyGates            map[string]any    `json:"ApplyGates"`
-		HeadRevisionNum       int64             `json:"HeadRevisionNum"`
-		LiveRevisionNum       int64             `json:"LiveRevisionNum"`
-		UpstreamRevisionNum   int64             `json:"UpstreamRevisionNum"`
-		LastChangeDescription string            `json:"LastChangeDescription"`
-	} `json:"Unit"`
-	Space struct {
-		SpaceID string            `json:"SpaceID"`
-		Slug    string            `json:"Slug"`
-		Labels  map[string]string `json:"Labels"`
-	} `json:"Space"`
-	Target struct {
-		TargetID string `json:"TargetID"`
-		Slug     string `json:"Slug"`
-	} `json:"Target"`
-}
-
-type funcResp struct {
-	Success   bool              `json:"Success"`
-	UnitID    string            `json:"UnitID"`
-	SpaceID   string            `json:"SpaceID"`
-	SpaceSlug string            `json:"SpaceSlug"`
-	UnitSlug  string            `json:"UnitSlug"`
-	Outputs   map[string]string `json:"Outputs"`
-}
-
 type rawResource struct {
 	ResourceType string `json:"ResourceType"`
 	ResourceName string `json:"ResourceName"`
@@ -135,20 +103,20 @@ func isCanonicalSpace(labels map[string]string) bool {
 	return false
 }
 
-// Load fetches and assembles the fleet snapshot.
-func Load(ctx context.Context, scope Scope) (*Snapshot, error) {
+// Load fetches and assembles the fleet snapshot using the given API client.
+func Load(ctx context.Context, c *cubapi.Client, scope Scope) (*Snapshot, error) {
 	// Fetch unit metadata and both resource invocations concurrently.
 	var (
 		wg                 sync.WaitGroup
-		units              []extUnit
-		rbacResps, saResps []funcResp
+		units              []*goclientnew.ExtendedUnit
+		rbacResps, saResps []cubapi.UnitOutcome
 		unitsErr, rbacErr  error
 		saErr              error
 	)
 	wg.Add(3)
-	go func() { defer wg.Done(); units, unitsErr = listUnits(ctx) }()
-	go func() { defer wg.Done(); rbacResps, rbacErr = getResources(ctx, rbacWhereData, rbacWhereResource) }()
-	go func() { defer wg.Done(); saResps, saErr = getResources(ctx, saWhereData, saWhereResource) }()
+	go func() { defer wg.Done(); units, unitsErr = listUnits(ctx, c) }()
+	go func() { defer wg.Done(); rbacResps, rbacErr = getResources(ctx, c, rbacWhereData, rbacWhereResource) }()
+	go func() { defer wg.Done(); saResps, saErr = getResources(ctx, c, saWhereData, saWhereResource) }()
 	wg.Wait()
 	for _, e := range []struct {
 		what string
@@ -159,7 +127,7 @@ func Load(ctx context.Context, scope Scope) (*Snapshot, error) {
 		}
 	}
 
-	scopedSpaceIDs, scopedTargetIDs, err := resolveScope(ctx, scope)
+	scopedSpaceIDs, scopedTargetIDs, err := resolveScope(ctx, c, scope)
 	if err != nil {
 		return nil, err
 	}
@@ -169,26 +137,42 @@ func Load(ctx context.Context, scope Scope) (*Snapshot, error) {
 	// Space matches the space filter.
 	inScope := make(map[string]UnitMeta, len(units))
 	for _, eu := range units {
-		if eu.Unit.UnitID == "" {
+		if eu.Unit == nil || isZeroUUID(eu.Unit.UnitID) {
 			continue
 		}
+		unitID := eu.Unit.UnitID.String()
+		spaceID := eu.Unit.SpaceID.String()
+		targetID := ""
+		if eu.Unit.TargetID != nil {
+			targetID = eu.Unit.TargetID.String()
+		}
 		var ok bool
-		if eu.Unit.TargetID != "" {
-			ok = scopedTargetIDs == nil || scopedTargetIDs[eu.Unit.TargetID]
+		if targetID != "" {
+			ok = scopedTargetIDs == nil || scopedTargetIDs[targetID]
 		} else {
-			ok = scopedSpaceIDs == nil || scopedSpaceIDs[eu.Unit.SpaceID]
+			ok = scopedSpaceIDs == nil || scopedSpaceIDs[spaceID]
 		}
 		if !ok {
 			continue
 		}
-		inScope[eu.Unit.UnitID] = UnitMeta{
-			UnitID:                eu.Unit.UnitID,
+		var spaceSlug string
+		var spaceLabels map[string]string
+		if eu.Space != nil {
+			spaceSlug = eu.Space.Slug
+			spaceLabels = eu.Space.Labels
+		}
+		targetSlug := ""
+		if eu.Target != nil {
+			targetSlug = eu.Target.Slug
+		}
+		inScope[unitID] = UnitMeta{
+			UnitID:                unitID,
 			Slug:                  eu.Unit.Slug,
-			SpaceID:               eu.Unit.SpaceID,
-			SpaceSlug:             eu.Space.Slug,
-			SpaceLabels:           eu.Space.Labels,
-			TargetID:              eu.Unit.TargetID,
-			TargetSlug:            eu.Target.Slug,
+			SpaceID:               spaceID,
+			SpaceSlug:             spaceSlug,
+			SpaceLabels:           spaceLabels,
+			TargetID:              targetID,
+			TargetSlug:            targetSlug,
 			Labels:                eu.Unit.Labels,
 			GateCount:             len(eu.Unit.ApplyGates),
 			HeadRevisionNum:       eu.Unit.HeadRevisionNum,
@@ -199,7 +183,7 @@ func Load(ctx context.Context, scope Scope) (*Snapshot, error) {
 	}
 
 	var resources []rbac.FleetResource
-	collect := func(resps []funcResp) {
+	collect := func(resps []cubapi.UnitOutcome) {
 		for _, r := range resps {
 			if !r.Success || r.UnitID == "" {
 				continue
@@ -260,75 +244,58 @@ func Load(ctx context.Context, scope Scope) (*Snapshot, error) {
 	}, nil
 }
 
-func listUnits(ctx context.Context) ([]extUnit, error) {
-	out, err := cub.Run(ctx, "unit", "list", "--space", "*", "--where", k8sUnitsWhere, "-o", "json")
-	if err != nil {
-		return nil, err
-	}
-	return decodeJSON[[]extUnit](out)
+// listUnits returns every Kubernetes/YAML Unit org-wide, with Space and Target
+// expanded so the snapshot can join their slugs and labels.
+func listUnits(ctx context.Context, c *cubapi.Client) ([]*goclientnew.ExtendedUnit, error) {
+	return cubapi.ListUnits(ctx, c, cubapi.NewWhere(k8sUnitsWhere),
+		cubapi.ListOpts{Include: "SpaceID,TargetID"})
 }
 
-func getResources(ctx context.Context, whereData, whereResource string) ([]funcResp, error) {
-	out, err := cub.Run(ctx, "function", "do", "--space", "*",
-		"--where", k8sUnitsWhere,
-		"--where-data", whereData,
-		"--where-resource", whereResource,
-		"--toolchain", "Kubernetes/YAML",
-		"get-resources", "json", "-o", "json")
+// getResources runs the get-resources function over the matching Units and
+// returns the per-Unit outcomes (the resource list lands in Outputs).
+func getResources(ctx context.Context, c *cubapi.Client, whereData, whereResource string) ([]cubapi.UnitOutcome, error) {
+	res, err := cubapi.InvokeFunction(ctx, c,
+		api.FunctionInvocation{FunctionName: "get-resources", Arguments: []api.FunctionArgument{{Value: "json"}}},
+		cubapi.Selector{
+			Where:         k8sUnitsWhere,
+			WhereData:     whereData,
+			WhereResource: whereResource,
+		},
+		cubapi.Change{}) // read-only: dry-run
 	if err != nil {
 		return nil, err
 	}
-	return decodeJSON[[]funcResp](out)
+	return res.Outcomes, nil
 }
 
 // resolveScope returns the in-scope Space and Target ID sets, or nil sets when
 // the corresponding filter is empty (meaning "everything").
-func resolveScope(ctx context.Context, scope Scope) (spaceIDs, targetIDs map[string]bool, err error) {
+func resolveScope(ctx context.Context, c *cubapi.Client, scope Scope) (spaceIDs, targetIDs map[string]bool, err error) {
 	if scope.SpaceWhere != "" {
-		spaceIDs, err = idSet(ctx, []string{"space", "list", "--where", scope.SpaceWhere, "-o", "json"}, "SpaceID")
+		spaces, err := cubapi.ListSpaces(ctx, c, cubapi.NewWhere(scope.SpaceWhere), cubapi.ListOpts{Select: "SpaceID,Slug"})
 		if err != nil {
 			return nil, nil, fmt.Errorf("scope space filter: %w", err)
 		}
+		spaceIDs = make(map[string]bool, len(spaces))
+		for _, es := range spaces {
+			if es.Space != nil {
+				spaceIDs[es.Space.SpaceID.String()] = true
+			}
+		}
 	}
 	if scope.TargetWhere != "" {
-		targetIDs, err = idSet(ctx, []string{"target", "list", "--space", "*", "--where", scope.TargetWhere, "-o", "json"}, "TargetID")
+		targets, err := cubapi.ListTargets(ctx, c, cubapi.NewWhere(scope.TargetWhere), cubapi.ListOpts{Select: "TargetID,Slug"})
 		if err != nil {
 			return nil, nil, fmt.Errorf("scope target filter: %w", err)
 		}
+		targetIDs = make(map[string]bool, len(targets))
+		for _, et := range targets {
+			if et.Target != nil {
+				targetIDs[et.Target.TargetID.String()] = true
+			}
+		}
 	}
 	return spaceIDs, targetIDs, nil
-}
-
-// idSet runs a cub list command and collects the given ID field from each
-// element, looking inside an embedded entity wrapper when present.
-func idSet(ctx context.Context, args []string, idField string) (map[string]bool, error) {
-	out, err := cub.Run(ctx, args...)
-	if err != nil {
-		return nil, err
-	}
-	rows, err := decodeJSON[[]map[string]json.RawMessage](out)
-	if err != nil {
-		return nil, err
-	}
-	set := make(map[string]bool, len(rows))
-	for _, row := range rows {
-		// The element may be {"<Entity>": {"<idField>": ...}} or flat.
-		for _, raw := range row {
-			var obj map[string]any
-			if json.Unmarshal(raw, &obj) == nil {
-				if id, ok := obj[idField].(string); ok && id != "" {
-					set[id] = true
-				}
-			}
-		}
-		if v, ok := row[idField]; ok {
-			var id string
-			if json.Unmarshal(v, &id) == nil && id != "" {
-				set[id] = true
-			}
-		}
-	}
-	return set, nil
 }
 
 func decodeResourceList(encoded string) []rawResource {
@@ -346,13 +313,8 @@ func decodeResourceList(encoded string) []rawResource {
 	return list
 }
 
-func decodeJSON[T any](s string) (T, error) {
-	var v T
-	if s == "" {
-		return v, nil
-	}
-	err := json.Unmarshal([]byte(s), &v)
-	return v, err
+func isZeroUUID(id goclientnew.UUID) bool {
+	return id == goclientnew.UUID{}
 }
 
 func firstNonEmpty(a, b string) string {

@@ -5,47 +5,56 @@ package cli
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
-	"github.com/spf13/cobra"
-
-	"github.com/confighub/examples/rbac-manager-for-agents/internal/cub"
+	"github.com/confighub/sdk/cliutil"
+	"github.com/confighub/sdk/core/cubapi"
 )
 
-// commitFlags are shared by every mutating command. Mutations are dry-run by
-// default; --commit performs the write and requires --change-desc for
-// provenance.
-type commitFlags struct {
-	commit     bool
-	changeDesc string
+// commitChange converts the shared dry-run/commit flags (cliutil.CommitFlags)
+// into a cubapi.Change: empty on dry-run, the change description on commit. It
+// enforces that a commit carries a description (summary is suggested in the error).
+func commitChange(c cliutil.CommitFlags, summary string) (cubapi.Change, error) {
+	desc, _, err := c.Validate(summary)
+	if err != nil {
+		return cubapi.Change{}, err
+	}
+	return cubapi.Change{Description: desc}, nil
 }
 
-func addCommitFlags(cmd *cobra.Command, c *commitFlags) {
-	cmd.Flags().BoolVar(&c.commit, "commit", false, "perform the change (default is dry-run: preview the diff only)")
-	cmd.Flags().StringVar(&c.changeDesc, "change-desc", "", "change description recorded with the change (required with --commit)")
-}
-
-// runMutation previews (dry-run) or commits a cub mutation. baseArgs is the cub
-// argv up to but excluding --dry-run / --change-desc; it must already include an
-// output selector (e.g. -o mutations) so the preview shows a diff. summary is a
-// human description used in the banner and as the suggested change description.
-func runMutation(cmd *cobra.Command, baseArgs []string, c commitFlags, summary string) error {
-	if !c.commit {
-		fprintln(cmd.OutOrStdout(), "Dry run — "+summary)
-		args := append(append([]string{}, baseArgs...), "--dry-run")
-		if err := cub.RunStreaming(cmd.Context(), args...); err != nil {
-			return err
+// changedUnits returns the "space/unit" labels of the Units an invocation
+// actually mutated. It returns an error if any Unit failed, surfacing the first
+// failure with its message.
+func changedUnits(res *cubapi.Result) ([]string, error) {
+	if failed := res.Failed(); len(failed) > 0 {
+		f := failed[0]
+		ref := strings.Trim(f.SpaceSlug+"/"+f.UnitSlug, "/")
+		if ref == "" {
+			ref = "unit"
 		}
-		fprintln(cmd.OutOrStdout(), fmt.Sprintf(
-			"\nNo changes written. Re-run with --commit --change-desc \"...\" to apply (suggested: %q).", summary))
-		return nil
+		return nil, fmt.Errorf("invocation failed on %s: %s", ref, f.Error)
 	}
-	if strings.TrimSpace(c.changeDesc) == "" {
-		return fmt.Errorf("--change-desc is required with --commit (describe the change and why; suggested: %q)", summary)
+	var changed []string
+	for _, o := range res.Outcomes {
+		if o.Success && o.HasMutations {
+			changed = append(changed, o.SpaceSlug+"/"+o.UnitSlug)
+		}
 	}
-	args := append(append([]string{}, baseArgs...), "--change-desc", c.changeDesc)
-	fprintln(cmd.OutOrStdout(), "Committing — "+summary)
-	return cub.RunStreaming(cmd.Context(), args...)
+	sort.Strings(changed)
+	return changed, nil
+}
+
+// editParams turns the edit Invocation's "name=value" parameter strings into the
+// parameter map a stored Invocation expects.
+func editParams(params []string) map[string]any {
+	m := make(map[string]any, len(params))
+	for _, p := range params {
+		if k, v, ok := strings.Cut(p, "="); ok {
+			m[k] = v
+		}
+	}
+	return m
 }
 
 func parseUnitRef(ref string) (space, unit string, err error) {
