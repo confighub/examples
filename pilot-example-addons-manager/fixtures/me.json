@@ -1,0 +1,8 @@
+{
+  "http": 200,
+  "body": {
+    "DisplayName": "Fixture Operator",
+    "Username": "fixture.operator@example.com",
+    "Organization": "sample-org"
+  }
+}

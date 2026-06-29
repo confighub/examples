@@ -1,0 +1,15 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kyverno-admission-controller
+  labels:
+    helm.sh/chart: kyverno-3.2.6
+    app.kubernetes.io/version: 1.12.0
+spec:
+  replicas: 3
+  template:
+    spec:
+      serviceAccountName: kyverno-admission-controller
+      containers:
+        - name: kyverno
+          image: ghcr.io/kyverno/kyverno:latest

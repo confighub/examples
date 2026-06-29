@@ -1,0 +1,16 @@
+{
+  "name": "confighub-addon-manager-sample",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Standalone ConfigHub Add-on Manager sample app",
+  "scripts": {
+    "start": "node server.mjs",
+    "start:fixture": "DATA_MODE=fixture node server.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "verify": "node scripts/verify.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

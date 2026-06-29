@@ -1,0 +1,106 @@
+{
+  "helm-metrics-server-dev": [
+    {
+      "Slug": "metrics-server-core",
+      "DisplayName": "metrics-server core",
+      "HeadRevisionNum": 8,
+      "LastAppliedRevisionNum": 8,
+      "LiveRevisionNum": 8,
+      "Labels": {
+        "Component": "metrics-server",
+        "Variant": "dev",
+        "HelmChartVersion": "3.12.1"
+      }
+    },
+    {
+      "Slug": "metrics-server-rbac",
+      "DisplayName": "metrics-server rbac",
+      "HeadRevisionNum": 4,
+      "LastAppliedRevisionNum": 4,
+      "LiveRevisionNum": 4,
+      "Labels": {
+        "Component": "rbac",
+        "Variant": "dev",
+        "HelmChartVersion": "3.12.1"
+      }
+    }
+  ],
+  "helm-metrics-server-prod": [
+    {
+      "Slug": "metrics-server-core",
+      "DisplayName": "metrics-server core",
+      "HeadRevisionNum": 12,
+      "LastAppliedRevisionNum": 11,
+      "LiveRevisionNum": 11,
+      "Labels": {
+        "Component": "metrics-server",
+        "Variant": "prod",
+        "HelmChartVersion": "3.11.0"
+      }
+    },
+    {
+      "Slug": "metrics-server-rbac",
+      "DisplayName": "metrics-server rbac",
+      "HeadRevisionNum": 7,
+      "LastAppliedRevisionNum": 7,
+      "LiveRevisionNum": 7,
+      "Labels": {
+        "Component": "rbac",
+        "Variant": "prod",
+        "HelmChartVersion": "3.11.0"
+      }
+    }
+  ],
+  "helm-ingress-nginx-prod": [
+    {
+      "Slug": "ingress-nginx-controller",
+      "DisplayName": "ingress-nginx controller",
+      "HeadRevisionNum": 17,
+      "LastAppliedRevisionNum": 17,
+      "LiveRevisionNum": 17,
+      "Labels": {
+        "Component": "controller",
+        "Variant": "prod",
+        "HelmChartVersion": "4.10.1"
+      }
+    },
+    {
+      "Slug": "ingress-nginx-admission",
+      "DisplayName": "ingress-nginx admission",
+      "HeadRevisionNum": 5,
+      "LastAppliedRevisionNum": 5,
+      "LiveRevisionNum": 5,
+      "Labels": {
+        "Component": "admission",
+        "Variant": "prod",
+        "HelmChartVersion": "4.10.1"
+      }
+    }
+  ],
+  "helm-kyverno-prod": [
+    {
+      "Slug": "kyverno-controller",
+      "DisplayName": "kyverno controller",
+      "HeadRevisionNum": 21,
+      "LastAppliedRevisionNum": 20,
+      "LiveRevisionNum": 20,
+      "Labels": {
+        "Component": "controller",
+        "Variant": "prod",
+        "HelmChartVersion": "3.2.6"
+      }
+    },
+    {
+      "Slug": "kyverno-policies",
+      "DisplayName": "kyverno policies",
+      "HeadRevisionNum": 13,
+      "LastAppliedRevisionNum": 13,
+      "LiveRevisionNum": 13,
+      "Labels": {
+        "Component": "policies",
+        "Variant": "prod",
+        "HelmChartVersion": "3.2.6"
+      }
+    }
+  ]
+}

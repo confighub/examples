@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Add-on Manager</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>Add-on Manager</h1>
+      <p>ConfigHub add-ons across Variants</p>
+    </div>
+    <div class="status-row">
+      <span class="chip warn" id="mode">checking</span>
+      <span class="chip" id="identity">identity pending</span>
+    </div>
+  </header>
+
+  <section class="workflow-band">
+    <div class="workflow-heading">
+      <h2>Workflow</h2>
+      <p id="workflow-summary">Loading workflow...</p>
+    </div>
+    <ol class="workflow-steps" id="workflow-steps"></ol>
+  </section>
+
+  <main class="layout">
+    <aside class="inventory-panel">
+      <div class="panel-title">
+        <h2>Add-ons by Variant</h2>
+        <span id="inventory-count">0</span>
+      </div>
+      <div class="toolbar">
+        <button class="button secondary" id="refresh">Refresh</button>
+        <select id="mode-select" aria-label="Data mode">
+          <option value="auto">Auto</option>
+          <option value="fixture">Fixture</option>
+          <option value="live">Live</option>
+        </select>
+      </div>
+      <div id="inventory" class="inventory-list"></div>
+    </aside>
+
+    <section class="workspace">
+      <div class="workspace-header">
+        <div>
+          <h2 id="selection-title">Select an add-on Variant</h2>
+          <p id="selection-subtitle">Inventory is grouped by add-on, Variant, space, and Unit.</p>
+        </div>
+        <div class="scope-grid" id="scope-grid"></div>
+      </div>
+
+      <div class="split">
+        <section class="surface">
+          <div class="panel-title">
+            <h2>Units</h2>
+            <span id="unit-count">0</span>
+          </div>
+          <div id="units" class="unit-table empty">No Variant selected.</div>
+        </section>
+
+        <section class="surface">
+          <div class="panel-title">
+            <h2>Current Unit</h2>
+            <span id="unit-source">-</span>
+          </div>
+          <div id="detail" class="detail empty">No Unit selected.</div>
+        </section>
+      </div>
+
+      <section class="surface proof-surface">
+        <div class="panel-title">
+          <h2>Approval And Proof</h2>
+          <span id="proof-state">preview</span>
+        </div>
+        <div class="proof-layout">
+          <div class="actions">
+            <button class="button" id="preview-config" disabled>Preview config</button>
+            <button class="button" id="prepare-scope" disabled>Prepare scope</button>
+            <button class="button danger" id="apply" disabled>Apply rollout</button>
+            <button class="button secondary" id="export-receipt" disabled>Export receipt</button>
+          </div>
+          <div>
+            <div class="tabs" id="proof-tabs"></div>
+            <div class="proof-body" id="proof-body">Select a Unit to see proof.</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="surface">
+        <div class="panel-title">
+          <h2>Event Log</h2>
+          <span id="event-count">0</span>
+        </div>
+        <ol class="event-log" id="event-log"></ol>
+      </section>
+    </section>
+  </main>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
