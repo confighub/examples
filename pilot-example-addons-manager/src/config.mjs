@@ -1,0 +1,30 @@
+export const ROOT_URL = new URL("../", import.meta.url);
+export const PUBLIC_URL = new URL("../public/", import.meta.url);
+export const FIXTURES_URL = new URL("../fixtures/", import.meta.url);
+
+export function runtimeConfig(env = process.env) {
+  return {
+    port: Number(env.PORT || 5173),
+    dataMode: env.DATA_MODE || "auto",
+    configHubBase: (env.CONFIGHUB_BASE || "https://hub.confighub.com").replace(/\/+$/, ""),
+  };
+}
+
+export function jsonResponse(payload, status = 200, headers = {}) {
+  return {
+    status,
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      ...headers,
+    },
+    body: JSON.stringify(payload, null, 2) + "\n",
+  };
+}
+
+export function textResponse(body, status = 200, contentType = "text/plain; charset=utf-8") {
+  return {
+    status,
+    headers: {"content-type": contentType},
+    body,
+  };
+}
