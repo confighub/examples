@@ -10,6 +10,7 @@ const state = {
   selection: null,
   detail: null,
   receipt: null,
+  bindings: null,
   proofTab: "Revision",
   events: [],
 };
@@ -64,6 +65,36 @@ async function loadAppConfig() {
   $("#auth-base").textContent = state.appConfig.configHubBase || "not set";
   $("#auth-client").textContent = state.appConfig.oauthClientId || "not set";
   renderAuthState();
+}
+
+async function loadBindings() {
+  state.bindings = await localApi("/app/bindings");
+  renderBindings();
+}
+
+function renderBindings() {
+  const status = state.bindings?.status || "LIVE_BINDINGS_UNKNOWN";
+  const present = status === "LIVE_BINDINGS_PRESENT";
+  $("#binding-state").textContent = present ? "bindings ready" : "bindings missing";
+  $("#binding-state").className = `chip ${present ? "ok" : "warn"}`;
+  $("#binding-file").textContent = present ? "live binding file loaded" : "copy data/live-bindings.example.json";
+  const rows = present
+    ? [
+        ["ConfigHub object", state.bindings.bindings?.configHub?.objectUrl],
+        ["Approval object", state.bindings.bindings?.approval?.objectId],
+        ["Action endpoint", state.bindings.bindings?.action?.endpoint],
+        ["Proof receipt", state.bindings.bindings?.proof?.receiptObjectId],
+        ["Runtime evidence", state.bindings.bindings?.runtime?.evidenceSource],
+      ]
+    : [
+        ["Status", status],
+        ["Required file", state.bindings?.requiredFile],
+        ["Example file", state.bindings?.exampleFile],
+        ["Reason", state.bindings?.reason],
+      ];
+  $("#binding-grid").innerHTML = rows
+    .map(([label, value]) => `<div><span>${escapeHtml(label)}</span><b>${escapeHtml(value || "-")}</b></div>`)
+    .join("");
 }
 
 function renderAuthState() {
@@ -346,6 +377,9 @@ function enableButtons() {
   $("#prepare-scope").disabled = false;
   $("#export-receipt").disabled = false;
   $("#apply").disabled = true;
+  $("#apply").title = state.bindings?.status === "LIVE_BINDINGS_PRESENT"
+    ? "Apply remains disabled until the governed write executor is added."
+    : "Apply remains disabled until live ConfigHub bindings and the governed write executor are added.";
 }
 
 function renderProof() {
@@ -425,6 +459,7 @@ async function boot() {
   disableButtons();
   renderScope();
   await loadAppConfig();
+  await loadBindings();
   await completeRedirectIfPresent();
   await loadWorkflow();
   await loadIdentity();

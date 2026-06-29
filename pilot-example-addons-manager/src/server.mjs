@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { jsonResponse, PUBLIC_URL, runtimeConfig, textResponse } from "./config.mjs";
+import { DATA_URL, jsonResponse, PUBLIC_URL, runtimeConfig, textResponse } from "./config.mjs";
 import {
   fixtureDetail,
   fixtureInventory,
@@ -17,6 +17,7 @@ import {
 import { buildApprovalScope, WORKFLOW } from "./workflow.mjs";
 
 const PUBLIC_DIR = fileURLToPath(PUBLIC_URL);
+const DATA_DIR = fileURLToPath(DATA_URL);
 
 const CONTENT_TYPES = {
   ".html": "text/html; charset=utf-8",
@@ -48,9 +49,26 @@ function appConfig(req, config) {
   };
 }
 
+async function liveBindings() {
+  try {
+    const raw = await fs.readFile(path.join(DATA_DIR, "live-bindings.json"), "utf8");
+    return {status: "LIVE_BINDINGS_PRESENT", bindings: JSON.parse(raw)};
+  } catch {
+    return {
+      status: "LIVE_BINDINGS_MISSING",
+      requiredFile: "data/live-bindings.json",
+      exampleFile: "data/live-bindings.example.json",
+      reason: "Live ConfigHub object, approval, action, proof, and runtime evidence bindings are not configured.",
+    };
+  }
+}
+
 async function handleApp(req, url, config) {
   if (url.pathname === "/app/config") {
     return jsonResponse(appConfig(req, config));
+  }
+  if (url.pathname === "/app/bindings") {
+    return jsonResponse(await liveBindings());
   }
   return jsonResponse({error: "unknown app route"}, 404);
 }

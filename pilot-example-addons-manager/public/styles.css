@@ -336,7 +336,8 @@ th {
   padding: 14px;
 }
 
-.auth-grid {
+.auth-grid,
+.binding-grid {
   display: grid;
   grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) auto;
   gap: 10px;
@@ -344,20 +345,27 @@ th {
   align-items: stretch;
 }
 
-.auth-grid > div {
+.binding-grid {
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
+}
+
+.auth-grid > div,
+.binding-grid > div {
   border: 1px solid var(--line);
   border-radius: 7px;
   padding: 9px 10px;
   background: #fbfcfd;
 }
 
-.auth-grid span {
+.auth-grid span,
+.binding-grid span {
   display: block;
   color: var(--muted);
   font-size: 11px;
 }
 
-.auth-grid b {
+.auth-grid b,
+.binding-grid b {
   display: block;
   overflow-wrap: anywhere;
 }

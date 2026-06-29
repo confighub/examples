@@ -1,6 +1,7 @@
 export const ROOT_URL = new URL("../", import.meta.url);
 export const PUBLIC_URL = new URL("../public/", import.meta.url);
 export const FIXTURES_URL = new URL("../fixtures/", import.meta.url);
+export const DATA_URL = new URL("../data/", import.meta.url);
 
 export function runtimeConfig(env = process.env) {
   const configHubBase = (

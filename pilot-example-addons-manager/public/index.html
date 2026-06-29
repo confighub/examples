@@ -16,6 +16,7 @@
       <span class="chip warn" id="mode">checking</span>
       <span class="chip" id="identity">identity pending</span>
       <span class="chip" id="auth-state">auth pending</span>
+      <span class="chip warn" id="binding-state">bindings pending</span>
     </div>
   </header>
 
@@ -82,6 +83,16 @@
             <button class="button" id="login" disabled>Sign in</button>
             <button class="button secondary" id="call-me" disabled>Call /api/me</button>
           </div>
+        </div>
+      </section>
+
+      <section class="surface binding-surface">
+        <div class="panel-title">
+          <h2>Live Bindings</h2>
+          <span id="binding-file">data/live-bindings.json</span>
+        </div>
+        <div class="binding-grid" id="binding-grid">
+          <div class="empty">Checking live binding status...</div>
         </div>
       </section>
 

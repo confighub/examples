@@ -12,6 +12,21 @@ Run the test suite only:
 npm test
 ```
 
+Check browser OAuth discovery against a live ConfigHub server:
+
+```bash
+CONFIGHUB_BASE=<server-url> OAUTH_CLIENT_ID=<client-id> npm run oauth:smoke
+```
+
+Check live operation bindings:
+
+```bash
+npm run binding:check
+```
+
+`npm run binding:check` is expected to fail with `LIVE_BINDINGS_MISSING` until
+`data/live-bindings.json` exists. That failure is the safety gate working.
+
 The tests use bundled fixture data and do not need ConfigHub credentials.
 
 The verifier also checks that:
@@ -23,4 +38,6 @@ The verifier also checks that:
 - fixture inventory is available;
 - browser OAuth configuration is exposed to the browser;
 - the browser auth helper contains PKCE and token-exchange checks;
+- the live binding status endpoint is visible;
+- the OAuth smoke and binding check scripts exist;
 - mutation routes stay blocked.

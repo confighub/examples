@@ -27,6 +27,7 @@ test("serves the browser app shell", async () => {
     assert.match(html, /Add-on Manager/);
     assert.match(html, /Add-ons by Variant/);
     assert.match(html, /Browser OAuth/);
+    assert.match(html, /Live Bindings/);
     assert.match(html, /Approval And Proof/);
   });
 });
@@ -62,6 +63,15 @@ test("serves workflow and fixture inventory", async () => {
     assert.equal(inventory.source, "fixture");
     assert.equal(inventory.totals.addons, 3);
     assert.equal(inventory.totals.units, 8);
+  });
+});
+
+test("serves live binding status", async () => {
+  await withServer(async (base) => {
+    const bindings = await getJson(base, "/app/bindings");
+    assert.equal(bindings.status, "LIVE_BINDINGS_MISSING");
+    assert.equal(bindings.requiredFile, "data/live-bindings.json");
+    assert.equal(bindings.exampleFile, "data/live-bindings.example.json");
   });
 });
 
