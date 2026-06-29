@@ -7,6 +7,7 @@
   "scripts": {
     "start": "node server.mjs",
     "start:fixture": "DATA_MODE=fixture node server.mjs",
+    "start:browser": "node server.mjs",
     "test": "node --test tests/*.test.mjs",
     "verify": "node scripts/verify.mjs"
   },

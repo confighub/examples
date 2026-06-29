@@ -21,4 +21,6 @@ The verifier also checks that:
 - the server can start;
 - the browser shell loads;
 - fixture inventory is available;
+- browser OAuth configuration is exposed to the browser;
+- the browser auth helper contains PKCE and token-exchange checks;
 - mutation routes stay blocked.

@@ -7,13 +7,14 @@ The app is a small standalone web application:
 - Fixture data lives in `fixtures/`.
 - Tests live in `tests/`.
 
-The server has two data paths:
+The app has two data paths:
 
-- `fixture`: read bundled sample data.
-- `live`: call `cub` read commands using the user's local ConfigHub session.
+- `fixture`: read bundled sample data from the local server.
+- `browser OAuth`: sign in through the registered browser client and call the
+  ConfigHub API directly from the browser.
 
-The default `auto` mode tries live reads and falls back to fixtures when live
-credentials or command access are unavailable.
+The local server only serves static assets, fixture endpoints, and app
+configuration. It does not proxy live ConfigHub API reads.
 
 ## Workflow Shape
 

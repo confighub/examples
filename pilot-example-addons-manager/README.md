@@ -3,28 +3,35 @@
 This is a complete standalone ConfigHub sample app for reviewing platform
 add-ons across Variants.
 
-It includes the browser app, local API server, fixture data, live ConfigHub read
-adapters, tests, and docs. It has no dependency on any external generator
-workspace.
+It includes the browser app, local static server, fixture data, browser OAuth
+login, direct ConfigHub API reads, tests, and docs. It has no dependency on any
+external generator workspace.
 
 ## What It Does
 
 - Shows add-ons grouped by Variant.
 - Reads ConfigHub spaces, Units, revisions, and Unit data.
 - Works without credentials by using bundled fixture data.
-- Uses `cub` for live ConfigHub reads when credentials are available.
+- Uses browser OAuth for live ConfigHub reads when an OAuth client is registered.
 - Shows approval scope, blocked actions, proof tabs, and receipt preview.
 - Keeps mutation endpoints disabled until a real governed write path is added.
 
 ## Requirements
 
 - Node.js 20 or newer
-- Optional: `cub` and an authenticated ConfigHub session for live reads
+- Optional: a `cub` build that includes `oauthclient`, used only to register the
+  browser app client
 
-Check live access:
+The `oauthclient` command is currently on the ConfigHub feature branch from PR
+4665. Until that command is released, build `cub` from that branch before
+registering the app:
 
 ```bash
-cub auth status
+cd /path/to/confighub
+git fetch origin pull/4665/head:oauthclient-registration
+git checkout oauthclient-registration
+make build-cli
+bin/cub auth login --server https://pr-4665.testhub.confighub.net
 ```
 
 ## Run The App
@@ -47,6 +54,22 @@ To force bundled sample data:
 npm run start:fixture
 ```
 
+## Run With Browser OAuth
+
+Register this browser app against the ConfigHub server. The redirect URI must
+match the local app URL:
+
+```bash
+export CONFIGHUB_BASE=https://pr-4665.testhub.confighub.net
+export OAUTH_CLIENT_ID=$(/path/to/confighub/bin/cub oauthclient create addon-manager \
+  --redirect-uri http://localhost:5173/ -o jq='.ClientID')
+CONFIGHUB_BASE=$CONFIGHUB_BASE OAUTH_CLIENT_ID=$OAUTH_CLIENT_ID npm start
+```
+
+Open the app, choose `Browser OAuth`, click `Sign in`, and then click
+`Call /api/me`. After sign-in, inventory reads go directly from the browser to
+the ConfigHub API with the minted browser token.
+
 ## Verify
 
 ```bash
@@ -62,21 +85,15 @@ tooling that produced it.
 
 ```bash
 PORT=5173
-DATA_MODE=auto
 CONFIGHUB_BASE=https://hub.confighub.com
+OAUTH_CLIENT_ID=<registered-browser-client-id>
 ```
-
-`DATA_MODE` can be:
-
-- `auto`: try live ConfigHub reads first, then fall back to fixtures.
-- `live`: require live ConfigHub reads.
-- `fixture`: use bundled sample data only.
 
 ## Project Layout
 
 ```text
-public/       browser UI
-src/          local API server and ConfigHub adapters
+public/       browser UI and browser OAuth helper
+src/          local static server and fixture endpoints
 fixtures/     offline sample data
 tests/        Node test suite
 scripts/      verification script

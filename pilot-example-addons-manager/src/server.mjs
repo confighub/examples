@@ -14,17 +14,6 @@ import {
   fixtureUnitData,
   fixtureUnits,
 } from "./fixtures.mjs";
-import {
-  liveDetail,
-  liveInventory,
-  liveMe,
-  liveReceipt,
-  liveRevisions,
-  liveSpaces,
-  liveUnit,
-  liveUnitData,
-  liveUnits,
-} from "./confighub.mjs";
 import { buildApprovalScope, WORKFLOW } from "./workflow.mjs";
 
 const PUBLIC_DIR = fileURLToPath(PUBLIC_URL);
@@ -47,34 +36,26 @@ function queryParam(url, name, fallback = "") {
   return url.searchParams.get(name) || fallback;
 }
 
-function modeFrom(url, config) {
-  return queryParam(url, "mode", config.dataMode);
-}
-
-function isError(payload) {
-  return payload && typeof payload === "object" && payload.error;
-}
-
-async function withDataMode(url, config, liveFn, fixtureFn) {
-  const mode = modeFrom(url, config);
-  if (mode === "fixture") return {source: "fixture", payload: await fixtureFn()};
-  if (mode === "live") return {source: "live", payload: await liveFn()};
-  let livePayload;
-  try {
-    livePayload = await liveFn();
-  } catch (error) {
-    livePayload = {error: String(error.message || error)};
-  }
-  if (!isError(livePayload)) return {source: "live", payload: livePayload};
-  const fixturePayload = await fixtureFn();
+function appConfig(req, config) {
+  const origin = `http://${req.headers.host || `localhost:${config.port}`}`;
   return {
-    source: "fixture",
-    warning: livePayload.error,
-    payload: fixturePayload,
+    app: "Add-on Manager",
+    configHubBase: config.configHubBase,
+    oauthClientId: config.oauthClientId,
+    browserAuthConfigured: Boolean(config.configHubBase && config.oauthClientId),
+    redirectUri: `${origin}/`,
+    dataMode: config.dataMode,
   };
 }
 
-async function handleApi(req, url, config) {
+async function handleApp(req, url, config) {
+  if (url.pathname === "/app/config") {
+    return jsonResponse(appConfig(req, config));
+  }
+  return jsonResponse({error: "unknown app route"}, 404);
+}
+
+async function handleApi(req, url) {
   if (req.method === "POST") {
     if (url.pathname === "/api/approvals" || url.pathname === "/api/apply") {
       return jsonResponse(
@@ -93,62 +74,53 @@ async function handleApi(req, url, config) {
   }
 
   if (url.pathname === "/api/me") {
-    const result = await withDataMode(url, config, () => liveMe(config), fixtureMe);
-    return jsonResponse({...result.payload, source: result.source, warning: result.warning});
+    return jsonResponse({...await fixtureMe(), source: "fixture"});
   }
 
   if (url.pathname === "/api/spaces") {
-    const result = await withDataMode(url, config, liveSpaces, fixtureSpaces);
-    return jsonResponse({...result.payload, source: result.source, warning: result.warning});
+    return jsonResponse({...await fixtureSpaces(), source: "fixture"});
   }
 
   if (url.pathname === "/api/inventory") {
-    const result = await withDataMode(url, config, liveInventory, fixtureInventory);
-    return jsonResponse({...result.payload, source: result.source, warning: result.warning});
+    return jsonResponse({...await fixtureInventory(), source: "fixture"});
   }
 
   if (url.pathname === "/api/units") {
     const space = queryParam(url, "space");
-    const result = await withDataMode(url, config, () => liveUnits(space), () => fixtureUnits(space));
-    return jsonResponse({items: result.payload.items || result.payload.Items || result.payload, source: result.source, warning: result.warning});
+    return jsonResponse({items: await fixtureUnits(space), source: "fixture"});
   }
 
   if (url.pathname === "/api/unit") {
     const space = queryParam(url, "space");
     const unit = queryParam(url, "unit");
-    const result = await withDataMode(url, config, () => liveUnit(space, unit), () => fixtureUnit(space, unit));
-    return jsonResponse({item: result.payload.Unit || result.payload, source: result.source, warning: result.warning});
+    return jsonResponse({item: await fixtureUnit(space, unit), source: "fixture"});
   }
 
   if (url.pathname === "/api/revisions") {
     const space = queryParam(url, "space");
     const unit = queryParam(url, "unit");
-    const result = await withDataMode(url, config, () => liveRevisions(space, unit), () => fixtureRevisions(space, unit));
-    return jsonResponse({items: result.payload.items || result.payload.Items || result.payload, source: result.source, warning: result.warning});
+    return jsonResponse({items: await fixtureRevisions(space, unit), source: "fixture"});
   }
 
   if (url.pathname === "/api/unitdata") {
     const space = queryParam(url, "space");
     const unit = queryParam(url, "unit");
-    const result = await withDataMode(url, config, () => liveUnitData(space, unit), () => fixtureUnitData(space, unit));
-    return jsonResponse({text: result.payload.text || result.payload || "", source: result.source, warning: result.warning});
+    return jsonResponse({text: await fixtureUnitData(space, unit), source: "fixture"});
   }
 
   if (url.pathname === "/api/detail") {
     const space = queryParam(url, "space");
     const unit = queryParam(url, "unit");
-    const result = await withDataMode(url, config, () => liveDetail(space, unit), () => fixtureDetail(space, unit));
-    return jsonResponse({...result.payload, source: result.source, warning: result.warning});
+    return jsonResponse({...await fixtureDetail(space, unit), source: "fixture"});
   }
 
   if (url.pathname === "/api/proposal") {
     const space = queryParam(url, "space");
     const unit = queryParam(url, "unit");
-    const result = await withDataMode(url, config, () => liveDetail(space, unit), () => fixtureDetail(space, unit));
+    const detail = await fixtureDetail(space, unit);
     return jsonResponse({
-      source: result.source,
-      warning: result.warning,
-      approvalScope: buildApprovalScope(result.payload),
+      source: "fixture",
+      approvalScope: buildApprovalScope(detail),
       previewOnly: true,
     });
   }
@@ -156,8 +128,7 @@ async function handleApi(req, url, config) {
   if (url.pathname === "/api/receipt") {
     const space = queryParam(url, "space");
     const unit = queryParam(url, "unit");
-    const result = await withDataMode(url, config, () => liveReceipt(space, unit), () => fixtureReceipt(space, unit));
-    return jsonResponse({...result.payload, source: result.source, warning: result.warning});
+    return jsonResponse({...await fixtureReceipt(space, unit), source: "fixture"});
   }
 
   return jsonResponse({error: "unknown API route"}, 404);
@@ -185,7 +156,11 @@ export function createAppServer(options = {}) {
     const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
     try {
       if (url.pathname.startsWith("/api/")) {
-        send(res, await handleApi(req, url, config));
+        send(res, await handleApi(req, url));
+        return;
+      }
+      if (url.pathname.startsWith("/app/")) {
+        send(res, await handleApp(req, url, config));
         return;
       }
       send(res, await serveStatic(url));
@@ -206,6 +181,7 @@ export async function main() {
   const server = createAppServer(config);
   await listen(server, config.port);
   console.log(`Add-on Manager sample app: http://localhost:${config.port}`);
-  console.log(`data mode: ${config.dataMode}`);
+  console.log(`fixture mode: local sample data`);
+  console.log(`browser OAuth configured: ${Boolean(config.oauthClientId)}`);
   return server;
 }
