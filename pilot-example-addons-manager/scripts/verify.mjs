@@ -8,6 +8,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const skipDirs = new Set([".git", "node_modules", "coverage", ".local"]);
 const forbiddenToolWord = "pi" + "lot";
 const removedRuntimeWord = "py" + "thon";
+const removedBridgeCommand = "auth " + "get-token";
 
 async function walk(dir) {
   const out = [];
@@ -28,6 +29,7 @@ for (const file of files) {
   const text = await fs.readFile(file, "utf8").catch(() => "");
   assert(!text.toLowerCase().includes(forbiddenToolWord), `generator-tool wording remains in ${path.relative(root, file)}`);
   assert(!text.toLowerCase().includes(removedRuntimeWord), `removed runtime wording remains in ${path.relative(root, file)}`);
+  assert(!text.toLowerCase().includes(removedBridgeCommand), `local CLI token bridge remains in ${path.relative(root, file)}`);
 }
 
 const testFiles = files

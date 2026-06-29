@@ -26,8 +26,29 @@ test("serves the browser app shell", async () => {
     assert.equal(response.status, 200);
     assert.match(html, /Add-on Manager/);
     assert.match(html, /Add-ons by Variant/);
+    assert.match(html, /Browser OAuth/);
     assert.match(html, /Approval And Proof/);
   });
+});
+
+test("serves browser OAuth app configuration", async () => {
+  const server = createAppServer({
+    dataMode: "fixture",
+    port: 0,
+    configHubBase: "https://pr-4665.testhub.confighub.net",
+    oauthClientId: "sample-client-id",
+  });
+  const address = await listen(server, 0);
+  const base = `http://127.0.0.1:${address.port}`;
+  try {
+    const config = await getJson(base, "/app/config");
+    assert.equal(config.browserAuthConfigured, true);
+    assert.equal(config.configHubBase, "https://pr-4665.testhub.confighub.net");
+    assert.equal(config.oauthClientId, "sample-client-id");
+    assert.equal(config.redirectUri, `${base}/`);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
 });
 
 test("serves workflow and fixture inventory", async () => {

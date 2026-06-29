@@ -1,5 +1,11 @@
+import { completeLoginFromRedirect, startLogin } from "./auth.js";
+import { createConfigHubBrowserClient } from "./confighub-api.js";
+
 const state = {
-  mode: "auto",
+  mode: "fixture",
+  appConfig: null,
+  session: null,
+  browserClient: null,
   inventory: null,
   selection: null,
   detail: null,
@@ -17,9 +23,8 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;");
 }
 
-async function api(path) {
-  const join = path.includes("?") ? "&" : "?";
-  const response = await fetch(`${path}${join}mode=${encodeURIComponent(state.mode)}`);
+async function localApi(path) {
+  const response = await fetch(path);
   const payload = await response.json();
   if (!response.ok && !payload.error) payload.error = response.statusText;
   return payload;
@@ -36,13 +41,103 @@ function logEvent(text) {
 
 function setModeChip(source, warning) {
   const mode = $("#mode");
-  mode.textContent = warning ? `${source} with fallback` : `${source} mode`;
+  mode.textContent = warning ? `${source} with fallback` : source;
   mode.className = `chip ${warning ? "warn" : "ok"}`;
 }
 
+function resetSelection() {
+  state.inventory = null;
+  state.selection = null;
+  state.detail = null;
+  state.receipt = null;
+  $("#selection-title").textContent = "Select an add-on Variant";
+  $("#selection-subtitle").textContent = "Inventory is grouped by add-on, Variant, space, and Unit.";
+  $("#units").innerHTML = `<div class="empty">No Variant selected.</div>`;
+  $("#unit-count").textContent = "0";
+  renderScope();
+  renderDetail();
+  renderProof();
+}
+
+async function loadAppConfig() {
+  state.appConfig = await localApi("/app/config");
+  $("#auth-base").textContent = state.appConfig.configHubBase || "not set";
+  $("#auth-client").textContent = state.appConfig.oauthClientId || "not set";
+  renderAuthState();
+}
+
+function renderAuthState() {
+  const configured = Boolean(state.appConfig?.browserAuthConfigured);
+  const signedIn = Boolean(state.session);
+  $("#login").disabled = !configured || signedIn;
+  $("#call-me").disabled = !signedIn;
+  $("#mode-select").querySelector("option[value=browser]").disabled = !configured;
+  if (!configured) {
+    $("#auth-state").textContent = "Browser OAuth not configured";
+    $("#auth-state").className = "chip warn";
+  } else if (signedIn) {
+    $("#auth-state").textContent = `Signed in / org ${state.session.organizationId || "unknown"}`;
+    $("#auth-state").className = "chip ok";
+  } else {
+    $("#auth-state").textContent = "Ready to sign in";
+    $("#auth-state").className = "chip";
+  }
+}
+
+async function completeRedirectIfPresent() {
+  try {
+    const session = await completeLoginFromRedirect();
+    if (session) {
+      state.session = session;
+      state.browserClient = createConfigHubBrowserClient(session);
+      state.mode = "browser";
+      $("#mode-select").value = "browser";
+      logEvent("Completed browser OAuth sign-in.");
+    }
+  } catch (error) {
+    logEvent(`Sign-in failed: ${error.message || error}`);
+  }
+  renderAuthState();
+}
+
+async function login() {
+  try {
+    await startLogin({
+      baseUrl: state.appConfig.configHubBase,
+      clientId: state.appConfig.oauthClientId,
+    });
+  } catch (error) {
+    logEvent(`Sign-in failed: ${error.message || error}`);
+  }
+}
+
+async function callMe() {
+  if (!state.browserClient) return;
+  try {
+    const payload = await state.browserClient.me();
+    $("#identity").textContent = payload.DisplayName || payload.Username || payload.user || "authenticated browser user";
+    $("#identity").className = "chip ok";
+    logEvent("Browser token called ConfigHub /api/me successfully.");
+  } catch (error) {
+    $("#identity").textContent = "/api/me failed";
+    $("#identity").className = "chip bad";
+    logEvent(`/api/me failed: ${error.message || error}`);
+  }
+}
+
 async function loadIdentity() {
-  const identity = await api("/api/me");
   const element = $("#identity");
+  if (state.mode === "browser") {
+    if (!state.browserClient) {
+      element.textContent = "sign in for browser mode";
+      element.className = "chip warn";
+      return;
+    }
+    await callMe();
+    return;
+  }
+
+  const identity = await localApi("/api/me");
   if (identity.error) {
     element.textContent = identity.error;
     element.className = "chip warn";
@@ -54,7 +149,7 @@ async function loadIdentity() {
 }
 
 async function loadWorkflow() {
-  const workflow = await api("/api/workflow");
+  const workflow = await localApi("/api/workflow");
   $("#workflow-summary").textContent = workflow.summary || "";
   $("#workflow-steps").innerHTML = (workflow.steps || [])
     .map((step, index) => `
@@ -76,31 +171,42 @@ async function loadWorkflow() {
   });
 }
 
-async function loadInventory() {
-  $("#inventory").innerHTML = `<div class="unit-table empty">Loading inventory...</div>`;
-  const inventory = await api("/api/inventory");
-  if (inventory.error) {
-    $("#inventory").innerHTML = `<div class="unit-table empty">${escapeHtml(inventory.error)}</div>`;
-    return;
+async function readInventory() {
+  if (state.mode === "browser") {
+    if (!state.browserClient) throw new Error("Sign in before loading browser OAuth inventory.");
+    return state.browserClient.inventory();
   }
-  state.inventory = inventory;
-  setModeChip(inventory.source || "fixture", inventory.warning);
-  $("#inventory-count").textContent = `${inventory.totals.addons} add-ons / ${inventory.totals.variants} Variants`;
-  $("#inventory").innerHTML = (inventory.addons || [])
-    .map((group) => `
-      <section>
-        <div class="addon-heading">${escapeHtml(group.addon)} <span class="muted">${group.variants.length} Variant${group.variants.length === 1 ? "" : "s"}</span></div>
-        ${group.variants.map((variant) => `
-          <button class="variant-row" data-addon="${escapeHtml(group.addon)}" data-space="${escapeHtml(variant.slug)}">
-            <span class="row-title">${escapeHtml(variant.variant)}</span>
-            <span class="row-meta">${escapeHtml(variant.slug)} / ${variant.unitCount} Units</span>
-          </button>
-        `).join("")}
-      </section>
-    `)
-    .join("");
-  document.querySelectorAll(".variant-row").forEach((row) => row.addEventListener("click", () => selectVariant(row)));
-  logEvent(`Loaded ${inventory.totals.variants} Variants from ${inventory.source || "fixture"} data.`);
+  return localApi("/api/inventory");
+}
+
+async function loadInventory() {
+  resetSelection();
+  $("#inventory").innerHTML = `<div class="unit-table empty">Loading inventory...</div>`;
+  try {
+    const inventory = await readInventory();
+    if (inventory.error) throw new Error(inventory.error);
+    state.inventory = inventory;
+    setModeChip(inventory.source || "fixture", inventory.warning);
+    $("#inventory-count").textContent = `${inventory.totals.addons} add-ons / ${inventory.totals.variants} Variants`;
+    $("#inventory").innerHTML = (inventory.addons || [])
+      .map((group) => `
+        <section>
+          <div class="addon-heading">${escapeHtml(group.addon)} <span class="muted">${group.variants.length} Variant${group.variants.length === 1 ? "" : "s"}</span></div>
+          ${group.variants.map((variant) => `
+            <button class="variant-row" data-addon="${escapeHtml(group.addon)}" data-space="${escapeHtml(variant.slug)}">
+              <span class="row-title">${escapeHtml(variant.variant)}</span>
+              <span class="row-meta">${escapeHtml(variant.slug)} / ${variant.unitCount} Units</span>
+            </button>
+          `).join("")}
+        </section>
+      `)
+      .join("");
+    document.querySelectorAll(".variant-row").forEach((row) => row.addEventListener("click", () => selectVariant(row)));
+    logEvent(`Loaded ${inventory.totals.variants} Variants from ${inventory.source || "fixture"} data.`);
+  } catch (error) {
+    $("#inventory").innerHTML = `<div class="unit-table empty">${escapeHtml(error.message || error)}</div>`;
+    setModeChip(state.mode, true);
+  }
 }
 
 function findVariant(space) {
@@ -131,6 +237,7 @@ function selectVariant(row) {
     addon: row.dataset.addon,
     space: row.dataset.space,
     variant: found?.variant.variant || "default",
+    spaceRecord: found?.variant || null,
     units: found?.variant.units || [],
   };
   state.detail = null;
@@ -169,19 +276,39 @@ function renderUnits() {
   document.querySelectorAll(".unit-row").forEach((row) => row.addEventListener("click", () => selectUnit(row)));
 }
 
+async function readDetail(unit) {
+  if (state.mode === "browser") {
+    return state.browserClient.detail(state.selection.spaceRecord, unit);
+  }
+  return localApi(`/api/detail?space=${encodeURIComponent(state.selection.space)}&unit=${encodeURIComponent(unit.slug)}`);
+}
+
+async function readReceipt(detail) {
+  if (state.mode === "browser") {
+    return state.browserClient.receipt(detail);
+  }
+  return localApi(`/api/receipt?space=${encodeURIComponent(state.selection.space)}&unit=${encodeURIComponent(detail.unit.slug)}`);
+}
+
 async function selectUnit(row) {
   document.querySelectorAll(".unit-row").forEach((item) => item.classList.remove("selected"));
   row.classList.add("selected");
-  const unit = row.dataset.unit;
-  state.selection.unit = unit;
+  const unit = state.selection.units.find((item) => item.slug === row.dataset.unit);
+  state.selection.unit = unit.slug;
+  state.selection.unitRecord = unit;
   renderScope(state.selection);
-  state.detail = await api(`/api/detail?space=${encodeURIComponent(state.selection.space)}&unit=${encodeURIComponent(unit)}`);
-  state.receipt = await api(`/api/receipt?space=${encodeURIComponent(state.selection.space)}&unit=${encodeURIComponent(unit)}`);
-  $("#unit-source").textContent = state.detail.source || "fixture";
-  renderDetail();
-  enableButtons();
-  renderProof();
-  logEvent(`Previewed Unit ${unit}.`);
+  try {
+    state.detail = await readDetail(unit);
+    state.receipt = await readReceipt(state.detail);
+    $("#unit-source").textContent = state.detail.source || state.mode;
+    renderDetail();
+    enableButtons();
+    renderProof();
+    logEvent(`Previewed Unit ${unit.slug}.`);
+  } catch (error) {
+    $("#detail").innerHTML = `<div class="empty">${escapeHtml(error.message || error)}</div>`;
+    logEvent(`Unit preview failed: ${error.message || error}`);
+  }
 }
 
 function renderDetail() {
@@ -254,7 +381,10 @@ function previewConfig() {
 }
 
 async function prepareScope() {
-  const proposal = await api(`/api/proposal?space=${encodeURIComponent(state.selection.space)}&unit=${encodeURIComponent(state.selection.unit)}`);
+  if (!state.detail) return;
+  const proposal = state.mode === "browser"
+    ? state.browserClient.proposal(state.detail)
+    : await localApi(`/api/proposal?space=${encodeURIComponent(state.selection.space)}&unit=${encodeURIComponent(state.selection.unit)}`);
   state.proofTab = "Approval";
   renderProof();
   $("#proof-body").innerHTML = `<pre>${escapeHtml(JSON.stringify(proposal.approvalScope, null, 2))}</pre>`;
@@ -274,11 +404,16 @@ function exportReceipt() {
 
 function wireControls() {
   $("#refresh").addEventListener("click", loadInventory);
-  $("#mode-select").addEventListener("change", (event) => {
+  $("#mode-select").addEventListener("change", async (event) => {
     state.mode = event.target.value;
-    loadIdentity();
-    loadInventory();
+    if (state.mode === "browser" && !state.browserClient) {
+      logEvent("Sign in before loading browser OAuth inventory.");
+    }
+    await loadIdentity();
+    await loadInventory();
   });
+  $("#login").addEventListener("click", login);
+  $("#call-me").addEventListener("click", callMe);
   $("#preview-config").addEventListener("click", previewConfig);
   $("#prepare-scope").addEventListener("click", prepareScope);
   $("#export-receipt").addEventListener("click", exportReceipt);
@@ -289,6 +424,8 @@ async function boot() {
   wireControls();
   disableButtons();
   renderScope();
+  await loadAppConfig();
+  await completeRedirectIfPresent();
   await loadWorkflow();
   await loadIdentity();
   await loadInventory();

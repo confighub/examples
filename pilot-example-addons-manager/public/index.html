@@ -15,6 +15,7 @@
     <div class="status-row">
       <span class="chip warn" id="mode">checking</span>
       <span class="chip" id="identity">identity pending</span>
+      <span class="chip" id="auth-state">auth pending</span>
     </div>
   </header>
 
@@ -35,9 +36,8 @@
       <div class="toolbar">
         <button class="button secondary" id="refresh">Refresh</button>
         <select id="mode-select" aria-label="Data mode">
-          <option value="auto">Auto</option>
           <option value="fixture">Fixture</option>
-          <option value="live">Live</option>
+          <option value="browser">Browser OAuth</option>
         </select>
       </div>
       <div id="inventory" class="inventory-list"></div>
@@ -69,6 +69,21 @@
           <div id="detail" class="detail empty">No Unit selected.</div>
         </section>
       </div>
+
+      <section class="surface auth-surface">
+        <div class="panel-title">
+          <h2>Browser OAuth</h2>
+          <span>direct ConfigHub API</span>
+        </div>
+        <div class="auth-grid">
+          <div><span>ConfigHub base</span><b id="auth-base">not set</b></div>
+          <div><span>Client ID</span><b id="auth-client">not set</b></div>
+          <div class="auth-actions">
+            <button class="button" id="login" disabled>Sign in</button>
+            <button class="button secondary" id="call-me" disabled>Call /api/me</button>
+          </div>
+        </div>
+      </section>
 
       <section class="surface proof-surface">
         <div class="panel-title">
