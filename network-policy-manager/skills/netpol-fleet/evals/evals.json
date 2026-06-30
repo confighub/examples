@@ -1,0 +1,33 @@
+{
+  "skill_name": "netpol-fleet",
+  "evals": [
+    {
+      "id": 1,
+      "name": "bulk-default-deny-dry-run",
+      "prompt": "Add a default-deny to every namespace in our fleet that doesn't have one.",
+      "expected_output": "Runs preflight, then `cub-netpol fleet default-deny` (dry-run) to list the uncovered namespaces, confirms the scope, and only then re-runs with --commit --change-desc. Notes Units are created but not applied; idempotent on covered namespaces.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "promote-dry-run",
+      "prompt": "Which NetworkPolicy Units are behind their upstream baseline?",
+      "expected_output": "Runs `cub-netpol promote` (dry-run) and reports the Units behind upstream (or that nothing is behind upstream). Does not commit.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "promote-baseline",
+      "prompt": "Roll the default-deny baseline out to all the downstream cluster spaces.",
+      "expected_output": "Previews `cub-netpol promote --where \"Slug LIKE 'default-deny-%'\"`, confirms scope, then commits with --change-desc. Hands off the cluster rollout to cub-apply.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "routes-single-elsewhere",
+      "prompt": "Just add a default-deny to the payments namespace.",
+      "expected_output": "Recognizes this is a single-namespace change and routes to netpol-fix `default-deny payments`, not the fleet command.",
+      "files": []
+    }
+  ]
+}

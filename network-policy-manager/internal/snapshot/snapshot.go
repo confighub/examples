@@ -1,0 +1,345 @@
+// Copyright (C) ConfigHub, Inc.
+// SPDX-License-Identifier: MIT
+
+// Package snapshot loads a fleet-wide view of the Kubernetes config relevant to
+// NetworkPolicy from ConfigHub via the API. It discovers every Kubernetes/YAML
+// Unit the user can view (optionally narrowed by scope filters), extracts the
+// NetworkPolicies, Namespaces, pod-bearing workloads, and Services server-side
+// via the get-resources function, and joins them with Unit / Space / Target
+// metadata into the netpol analysis model.
+//
+// Coverage analysis is a join across resource types — a NetworkPolicy means
+// nothing without the pods its podSelector matches — so the snapshot pulls all
+// four families. Several get-resources invocations run in parallel because a
+// single WhereResource conjunction can't express the union of resource types.
+package snapshot
+
+import (
+	"context"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"sync"
+
+	"github.com/confighub/sdk/core/cubapi"
+	api "github.com/confighub/sdk/core/function/api"
+	goclientnew "github.com/confighub/sdk/core/openapi/goclient-new"
+
+	"github.com/confighub/examples/network-policy-manager/internal/netpol"
+)
+
+const k8sUnitsWhere = "ToolchainType = 'Kubernetes/YAML'"
+
+// resourceQuery is one (whereData, whereResource) pair driving a get-resources
+// invocation. whereData narrows Units server-side by the kind their config
+// carries; whereResource selects which resource types get returned.
+type resourceQuery struct {
+	whereData     string
+	whereResource string
+}
+
+// resourceQueries enumerate the resource families the coverage model needs. They
+// run as parallel get-resources invocations.
+var resourceQueries = []resourceQuery{
+	{"kind = 'NetworkPolicy'", "ConfigHub.ResourceType = 'networking.k8s.io/v1/NetworkPolicy'"},
+	{"kind = 'Namespace'", "ConfigHub.ResourceType = 'v1/Namespace'"},
+	{"kind IN ('Deployment', 'StatefulSet', 'DaemonSet', 'ReplicaSet')", "ConfigHub.ResourceType LIKE 'apps/v1/%'"},
+	{"kind IN ('Job', 'CronJob')", "ConfigHub.ResourceType LIKE 'batch/%'"},
+	{"kind = 'Pod'", "ConfigHub.ResourceType = 'v1/Pod'"},
+	{"kind = 'Service'", "ConfigHub.ResourceType = 'v1/Service'"},
+}
+
+// Scope narrows the fleet. Both are ConfigHub filter expressions (the same
+// `where` syntax cub uses); empty means everything the user can view. Targets
+// scope deployed Units (Clusters are Targets); Spaces scope untargeted base
+// Units.
+type Scope struct {
+	TargetWhere string
+	SpaceWhere  string
+}
+
+// UnitMeta is the per-Unit metadata the snapshot joins onto resources.
+type UnitMeta struct {
+	UnitID                string            `json:"unitId"`
+	Slug                  string            `json:"slug"`
+	SpaceID               string            `json:"spaceId"`
+	SpaceSlug             string            `json:"spaceSlug"`
+	SpaceLabels           map[string]string `json:"spaceLabels,omitempty"`
+	TargetID              string            `json:"targetId,omitempty"`
+	TargetSlug            string            `json:"targetSlug,omitempty"`
+	Labels                map[string]string `json:"labels,omitempty"`
+	GateCount             int               `json:"gateCount"`
+	HeadRevisionNum       int64             `json:"headRevisionNum"`
+	LiveRevisionNum       int64             `json:"liveRevisionNum"`
+	UpstreamRevisionNum   int64             `json:"upstreamRevisionNum,omitempty"`
+	LastChangeDescription string            `json:"lastChangeDescription,omitempty"`
+}
+
+// Gated reports whether the Unit has any ApplyGates attached.
+func (u UnitMeta) Gated() bool { return u.GateCount > 0 }
+
+// Unapplied reports whether the Unit's head revision has not been applied live.
+func (u UnitMeta) Unapplied() bool {
+	return u.LiveRevisionNum == 0 || u.LiveRevisionNum < u.HeadRevisionNum
+}
+
+// Snapshot is a fleet-wide NetworkPolicy view.
+type Snapshot struct {
+	// Clusters holds NetworkPolicy-relevant entities per cluster, excluding
+	// canonical (base/policy) definitions. Keyed by Target slug (Space slug for
+	// unbound Units).
+	Clusters map[string]*netpol.ClusterNetpol
+	// Resources is every parsed resource, including canonical ones, for the
+	// explorer.
+	Resources []netpol.FleetResource
+	// Units is in-scope Unit metadata by UnitID.
+	Units map[string]UnitMeta
+	Scope Scope
+}
+
+type rawResource struct {
+	ResourceType string `json:"ResourceType"`
+	ResourceName string `json:"ResourceName"`
+	ResourceBody string `json:"ResourceBody"`
+}
+
+// Canonical Spaces hold definitions, not deployed config, so their Units stay
+// out of cluster analysis. The standard Variant=base label marks a base/template
+// Space; a `role` label of base/policy is also treated as canonical.
+func isCanonicalSpace(labels map[string]string) bool {
+	switch labels["Variant"] {
+	case "base":
+		return true
+	}
+	switch labels["role"] {
+	case "base", "policy":
+		return true
+	}
+	return false
+}
+
+// Load fetches and assembles the fleet snapshot using the given API client.
+func Load(ctx context.Context, c *cubapi.Client, scope Scope) (*Snapshot, error) {
+	var (
+		wg       sync.WaitGroup
+		units    []*goclientnew.ExtendedUnit
+		unitsErr error
+		outcomes = make([][]cubapi.UnitOutcome, len(resourceQueries))
+		queryErr = make([]error, len(resourceQueries))
+	)
+	wg.Add(1 + len(resourceQueries))
+	go func() { defer wg.Done(); units, unitsErr = listUnits(ctx, c) }()
+	for i, q := range resourceQueries {
+		go func(i int, q resourceQuery) {
+			defer wg.Done()
+			outcomes[i], queryErr[i] = getResources(ctx, c, q.whereData, q.whereResource)
+		}(i, q)
+	}
+	wg.Wait()
+
+	if unitsErr != nil {
+		return nil, fmt.Errorf("list units: %w", unitsErr)
+	}
+	for i, err := range queryErr {
+		if err != nil {
+			return nil, fmt.Errorf("get resources (%s): %w", resourceQueries[i].whereResource, err)
+		}
+	}
+
+	scopedSpaceIDs, scopedTargetIDs, err := resolveScope(ctx, c, scope)
+	if err != nil {
+		return nil, err
+	}
+
+	// Build in-scope unit map. Scope rule: targeted units are in scope iff their
+	// Target matches the target filter; untargeted (base) units iff their Space
+	// matches the space filter.
+	inScope := make(map[string]UnitMeta, len(units))
+	for _, eu := range units {
+		if eu.Unit == nil || isZeroUUID(eu.Unit.UnitID) {
+			continue
+		}
+		unitID := eu.Unit.UnitID.String()
+		spaceID := eu.Unit.SpaceID.String()
+		targetID := ""
+		if eu.Unit.TargetID != nil {
+			targetID = eu.Unit.TargetID.String()
+		}
+		var ok bool
+		if targetID != "" {
+			ok = scopedTargetIDs == nil || scopedTargetIDs[targetID]
+		} else {
+			ok = scopedSpaceIDs == nil || scopedSpaceIDs[spaceID]
+		}
+		if !ok {
+			continue
+		}
+		var spaceSlug string
+		var spaceLabels map[string]string
+		if eu.Space != nil {
+			spaceSlug = eu.Space.Slug
+			spaceLabels = eu.Space.Labels
+		}
+		targetSlug := ""
+		if eu.Target != nil {
+			targetSlug = eu.Target.Slug
+		}
+		inScope[unitID] = UnitMeta{
+			UnitID:                unitID,
+			Slug:                  eu.Unit.Slug,
+			SpaceID:               spaceID,
+			SpaceSlug:             spaceSlug,
+			SpaceLabels:           spaceLabels,
+			TargetID:              targetID,
+			TargetSlug:            targetSlug,
+			Labels:                eu.Unit.Labels,
+			GateCount:             len(eu.Unit.ApplyGates),
+			HeadRevisionNum:       eu.Unit.HeadRevisionNum,
+			LiveRevisionNum:       eu.Unit.LiveRevisionNum,
+			UpstreamRevisionNum:   eu.Unit.UpstreamRevisionNum,
+			LastChangeDescription: eu.Unit.LastChangeDescription,
+		}
+	}
+
+	var resources []netpol.FleetResource
+	collect := func(resps []cubapi.UnitOutcome) {
+		for _, r := range resps {
+			if !r.Success || r.UnitID == "" {
+				continue
+			}
+			meta, ok := inScope[r.UnitID]
+			if !ok {
+				continue // out of scope
+			}
+			space := r.SpaceSlug
+			if space == "" {
+				space = meta.SpaceSlug
+			}
+			cluster := meta.TargetSlug
+			if cluster == "" {
+				cluster = space
+			}
+			canonical := isCanonicalSpace(meta.SpaceLabels)
+			for _, raw := range decodeResourceList(r.Outputs["ResourceList"]) {
+				if raw.ResourceBody == "" {
+					continue
+				}
+				var doc any
+				if err := json.Unmarshal([]byte(raw.ResourceBody), &doc); err != nil {
+					continue
+				}
+				resources = append(resources, netpol.FleetResource{
+					Origin: netpol.ResourceOrigin{
+						Cluster:      cluster,
+						Target:       meta.TargetSlug,
+						Space:        space,
+						SpaceID:      r.SpaceID,
+						UnitID:       r.UnitID,
+						UnitSlug:     firstNonEmpty(r.UnitSlug, meta.Slug),
+						ResourceName: raw.ResourceName,
+						Canonical:    canonical,
+					},
+					Doc: doc,
+				})
+			}
+		}
+	}
+	for _, o := range outcomes {
+		collect(o)
+	}
+
+	// Canonical definitions stay out of cluster analysis.
+	var forAnalysis []netpol.FleetResource
+	for _, r := range resources {
+		if !r.Origin.Canonical {
+			forAnalysis = append(forAnalysis, r)
+		}
+	}
+
+	return &Snapshot{
+		Clusters:  netpol.BuildFleet(forAnalysis),
+		Resources: resources,
+		Units:     inScope,
+		Scope:     scope,
+	}, nil
+}
+
+// listUnits returns every Kubernetes/YAML Unit org-wide, with Space and Target
+// expanded so the snapshot can join their slugs and labels.
+func listUnits(ctx context.Context, c *cubapi.Client) ([]*goclientnew.ExtendedUnit, error) {
+	return cubapi.ListUnits(ctx, c, cubapi.NewWhere(k8sUnitsWhere),
+		cubapi.ListOpts{Include: "SpaceID,TargetID"})
+}
+
+// getResources runs the get-resources function over the matching Units and
+// returns the per-Unit outcomes (the resource list lands in Outputs).
+func getResources(ctx context.Context, c *cubapi.Client, whereData, whereResource string) ([]cubapi.UnitOutcome, error) {
+	res, err := cubapi.InvokeFunction(ctx, c,
+		api.FunctionInvocation{FunctionName: "get-resources", Arguments: []api.FunctionArgument{{Value: "json"}}},
+		cubapi.Selector{
+			Where:         k8sUnitsWhere,
+			WhereData:     whereData,
+			WhereResource: whereResource,
+		},
+		cubapi.Change{}) // read-only: dry-run
+	if err != nil {
+		return nil, err
+	}
+	return res.Outcomes, nil
+}
+
+// resolveScope returns the in-scope Space and Target ID sets, or nil sets when
+// the corresponding filter is empty (meaning "everything").
+func resolveScope(ctx context.Context, c *cubapi.Client, scope Scope) (spaceIDs, targetIDs map[string]bool, err error) {
+	if scope.SpaceWhere != "" {
+		spaces, err := cubapi.ListSpaces(ctx, c, cubapi.NewWhere(scope.SpaceWhere), cubapi.ListOpts{Select: "SpaceID,Slug"})
+		if err != nil {
+			return nil, nil, fmt.Errorf("scope space filter: %w", err)
+		}
+		spaceIDs = make(map[string]bool, len(spaces))
+		for _, es := range spaces {
+			if es.Space != nil {
+				spaceIDs[es.Space.SpaceID.String()] = true
+			}
+		}
+	}
+	if scope.TargetWhere != "" {
+		targets, err := cubapi.ListTargets(ctx, c, cubapi.NewWhere(scope.TargetWhere), cubapi.ListOpts{Select: "TargetID,Slug"})
+		if err != nil {
+			return nil, nil, fmt.Errorf("scope target filter: %w", err)
+		}
+		targetIDs = make(map[string]bool, len(targets))
+		for _, et := range targets {
+			if et.Target != nil {
+				targetIDs[et.Target.TargetID.String()] = true
+			}
+		}
+	}
+	return spaceIDs, targetIDs, nil
+}
+
+func decodeResourceList(encoded string) []rawResource {
+	if encoded == "" {
+		return nil
+	}
+	decoded, err := base64.StdEncoding.DecodeString(encoded)
+	if err != nil {
+		return nil
+	}
+	var list []rawResource
+	if err := json.Unmarshal(decoded, &list); err != nil {
+		return nil
+	}
+	return list
+}
+
+func isZeroUUID(id goclientnew.UUID) bool {
+	return id == goclientnew.UUID{}
+}
+
+func firstNonEmpty(a, b string) string {
+	if a != "" {
+		return a
+	}
+	return b
+}

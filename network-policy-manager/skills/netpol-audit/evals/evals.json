@@ -1,0 +1,33 @@
+{
+  "skill_name": "netpol-audit",
+  "evals": [
+    {
+      "id": 1,
+      "name": "coverage-gaps",
+      "prompt": "Which namespaces in our fleet have no default-deny NetworkPolicy?",
+      "expected_output": "Runs `cub-netpol preflight` then `cub-netpol coverage` (JSON or -o table) and reports the namespaces where DD-INGRESS is no (have workloads but no default-deny ingress). Does not mutate, does not fall back to kubectl.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "fleet-inventory",
+      "prompt": "Give me a per-cluster count of NetworkPolicies and workloads.",
+      "expected_output": "Runs `cub-netpol snapshot` (optionally -o table or jq on the JSON) and reports per-cluster networkPolicies / workloads counts plus totals.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "list-policies-one-namespace",
+      "prompt": "List the NetworkPolicies in the apptique namespace on prod-cluster.",
+      "expected_output": "Runs `cub-netpol list --kind NetworkPolicy --cluster prod-cluster --namespace apptique`, using the filters rather than post-filtering. Read-only.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "routes-connectivity-elsewhere",
+      "prompt": "Who can reach the payments service?",
+      "expected_output": "Recognizes this is an effective-connectivity question, not inventory, and routes to netpol-connectivity / `cub-netpol who-can-reach` rather than answering with snapshot/list.",
+      "files": []
+    }
+  ]
+}
