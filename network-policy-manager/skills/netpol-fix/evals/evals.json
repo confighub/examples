@@ -1,0 +1,33 @@
+{
+  "skill_name": "netpol-fix",
+  "evals": [
+    {
+      "id": 1,
+      "name": "default-deny-dry-run-then-commit",
+      "prompt": "Lock down the payments namespace on prod-cluster with a default-deny.",
+      "expected_output": "Runs preflight, previews `cub-netpol default-deny payments --cluster prod-cluster` (dry-run, shows the YAML), and only on confirmation re-runs with --commit --change-desc. Notes the Unit is created but not applied. Does not kubectl.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "allow-from-links",
+      "prompt": "Generate the allow policies for apptique-prod from our Links.",
+      "expected_output": "Previews `cub-netpol allow-from-links --space apptique-prod` (one consolidated policy per destination from the dependency graph), then commits with --change-desc on confirmation. Mentions re-runs upsert/idempotent.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "fix-dns",
+      "prompt": "This egress default-deny is blocking DNS — add the kube-dns allowance to apptique-prod/default-deny-apptique.",
+      "expected_output": "Runs `cub-netpol fix dns apptique-prod/default-deny-apptique` (dry-run then --commit), which adds the kube-dns :53 egress allowance via set-yq; no-op if already present.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "routes-apply-elsewhere",
+      "prompt": "Now apply that default-deny to the cluster.",
+      "expected_output": "Does not apply from this skill; routes to cub-apply / `cub unit apply` for the rollout, noting netpol-fix only edits stored config.",
+      "files": []
+    }
+  ]
+}

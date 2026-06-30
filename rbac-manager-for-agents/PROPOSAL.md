@@ -39,7 +39,7 @@ it talks to ConfigHub through the published HTTP API/SDK. Its substance is in th
    (`vet-schemas`, `vet-celexpr`, `vet-approvedby`).
 
 **Key takeaway for the agent tool:** raw `cub` already does the CRUD, triggers, apply, and bulk
-function invocation. What it does *not* do is the **analysis engine** and the **fleet-snapshot
+function invocation. What it does _not_ do is the **analysis engine** and the **fleet-snapshot
 join**. An agent should not re-derive Kubernetes authorization semantics (especially ClusterRole
 aggregation and wildcard matching) inside its context window on every task — that is exactly the
 deterministic, testable logic we should ship as a binary.
@@ -49,14 +49,14 @@ deterministic, testable logic we should ship as a binary.
 Current Anthropic guidance points the same direction the ConfigHub tooling already leans:
 
 - **Skills are the "brain"; tools are the "plumbing."** Skills are discoverable folders of
-  instructions that teach an agent *when and how* to use tools; they load on demand and keep
+  instructions that teach an agent _when and how_ to use tools; they load on demand and keep
   context lean. ([Agent Skills](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills))
 - **Prefer code/CLI execution over a wide tool surface.** Loading many tool definitions up front
   bloats context; having the agent call a CLI (and load only relevant instructions) is more
   token-efficient and composes better.
   ([Code execution with MCP](https://www.anthropic.com/engineering/code-execution-with-mcp),
   [Advanced tool use](https://www.anthropic.com/engineering/advanced-tool-use))
-- **Design tools *for agents*, not for developers** — high-signal, token-efficient outputs;
+- **Design tools _for agents_, not for developers** — high-signal, token-efficient outputs;
   composable verbs. ([Writing tools for agents](https://www.anthropic.com/engineering/writing-tools-for-agents))
 
 The `cub` CLI is already agent-friendly: agent-tuned help (`CONFIGHUB_AGENT=1 cub … --help`),
@@ -96,6 +96,9 @@ this later, we can add a thin MCP adapter over the same commands without forking
 
 ### 4.1 How `cub-rbac` talks to ConfigHub: exec `cub` (not the SDK)
 
+Important: This document is out of date. The RBAC manager now uses the SDK to call
+ConfigHub APIs.
+
 Shell out to `cub` for all ConfigHub I/O.
 
 - **Auth for free.** The subprocess inherits the user's `cub` session — no token handling and no
@@ -118,9 +121,9 @@ Port model / semantics / whocan / findings to Go as a self-contained package, pa
 excellent unit-test coverage potential, and it is precisely what an agent should not recompute
 in-context. Port the existing web-app test fixtures to Go table tests to lock behavior.
 
-*(Alternative considered: call the ConfigHub Go SDK/HTTP API directly. Rejected as the default —
+_(Alternative considered: call the ConfigHub Go SDK/HTTP API directly. Rejected as the default —
 it means reimplementing auth/session, scoping, and change-description plumbing. Revisit only if a
-needed operation has no `cub` surface, which appears rare.)*
+needed operation has no `cub` surface, which appears rare.)_
 
 ### 4.3 Output: JSON-first, agent-shaped
 
@@ -135,24 +138,24 @@ needed operation has no `cub` surface, which appears rare.)*
 
 Read (no mutation, safe to auto-approve):
 
-| Web page | `cub-rbac` command | Notes |
-|---|---|---|
-| Dashboard | `cub-rbac snapshot` | Fleet inventory: per-cluster Units, gated/unapplied counts. JSON. |
-| Explorer | `cub-rbac list [--kind] [--cluster] [--persona]` | Browse RBAC resources across the fleet. |
-| Who can | `cub-rbac who-can <verb> <resource> [--namespace] [--name]` | Effective-access query. |
-| (inverse) | `cub-rbac access <subject>` | What a subject can do (inverse query). |
-| Findings | `cub-rbac findings [--severity] [--analyzer]` | Six hygiene analyzers. |
-| Unit detail | `cub-rbac show <space>/<unit>` | Friendly + raw, provenance, gate state. |
+| Web page    | `cub-rbac` command                                          | Notes                                                             |
+| ----------- | ----------------------------------------------------------- | ----------------------------------------------------------------- |
+| Dashboard   | `cub-rbac snapshot`                                         | Fleet inventory: per-cluster Units, gated/unapplied counts. JSON. |
+| Explorer    | `cub-rbac list [--kind] [--cluster] [--persona]`            | Browse RBAC resources across the fleet.                           |
+| Who can     | `cub-rbac who-can <verb> <resource> [--namespace] [--name]` | Effective-access query.                                           |
+| (inverse)   | `cub-rbac access <subject>`                                 | What a subject can do (inverse query).                            |
+| Findings    | `cub-rbac findings [--severity] [--analyzer]`               | Six hygiene analyzers.                                            |
+| Unit detail | `cub-rbac show <space>/<unit>`                              | Friendly + raw, provenance, gate state.                           |
 
 Write (mutating — dry-run by default, require `--change-desc`, never bypass gates):
 
-| Web action | `cub-rbac` command | Implementation |
-|---|---|---|
-| Quick/structured edit | `cub-rbac edit <unit> add-verb/remove-verb/add-subject/...` | Compiles to server-side `yq-i` via `cub function do`; dry-run diff then commit. |
-| Fleet bulk edit | `cub-rbac fleet-edit --where … <op>` | Org-scoped `yq-i`; one server request, multi-diff preview. |
-| Variant propagation | `cub-rbac promote --where …` | Override-preserving `--patch --upgrade`; reports "behind upstream". |
-| Apply / Approve / Rollback | defer to `cub unit apply/approve` + `cub unit update --restore` | Routed via skills. |
-| Guardrail pack | `cub-rbac guardrails install --policy-space … --where-space …` | Triggers + Filter + `TriggerFilterID` wiring. |
+| Web action                 | `cub-rbac` command                                              | Implementation                                                                  |
+| -------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Quick/structured edit      | `cub-rbac edit <unit> add-verb/remove-verb/add-subject/...`     | Compiles to server-side `yq-i` via `cub function do`; dry-run diff then commit. |
+| Fleet bulk edit            | `cub-rbac fleet-edit --where … <op>`                            | Org-scoped `yq-i`; one server request, multi-diff preview.                      |
+| Variant propagation        | `cub-rbac promote --where …`                                    | Override-preserving `--patch --upgrade`; reports "behind upstream".             |
+| Apply / Approve / Rollback | defer to `cub unit apply/approve` + `cub unit update --restore` | Routed via skills.                                                              |
+| Guardrail pack             | `cub-rbac guardrails install --policy-space … --where-space …`  | Triggers + Filter + `TriggerFilterID` wiring.                                   |
 
 ## 6. Agent Skills to ship
 

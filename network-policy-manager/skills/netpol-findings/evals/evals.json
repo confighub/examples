@@ -1,0 +1,33 @@
+{
+  "skill_name": "netpol-findings",
+  "evals": [
+    {
+      "id": 1,
+      "name": "hygiene-audit",
+      "prompt": "Audit our NetworkPolicy hygiene across the fleet.",
+      "expected_output": "Runs `cub-netpol preflight` then `cub-netpol findings` (JSON or -o table) and reports findings grouped by severity with counts by analyzer. Read-only.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "high-severity-only",
+      "prompt": "Show only the high-severity NetworkPolicy issues.",
+      "expected_output": "Runs `cub-netpol findings --severity high` and reports the missing-default-deny-ingress / uncovered-ingress / metadata-egress findings.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "metadata-egress",
+      "prompt": "Do any of our policies allow egress to the cloud metadata IP?",
+      "expected_output": "Runs `cub-netpol findings --analyzer metadata-egress` and reports any policies admitting 169.254.169.254, then routes the fix to netpol-fix `fix metadata`. Does not mutate.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "routes-fix-elsewhere",
+      "prompt": "Fix the namespaces that are missing a default-deny.",
+      "expected_output": "Recognizes this is a write request and routes to netpol-fix `default-deny` (or netpol-fleet `fleet default-deny`), rather than mutating from this read-only skill.",
+      "files": []
+    }
+  ]
+}

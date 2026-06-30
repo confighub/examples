@@ -1,0 +1,33 @@
+{
+  "skill_name": "netpol-connectivity",
+  "evals": [
+    {
+      "id": 1,
+      "name": "who-can-reach",
+      "prompt": "Who is allowed to reach the cartservice on prod-cluster?",
+      "expected_output": "Runs `cub-netpol preflight` then `cub-netpol who-can-reach cartservice --cluster prod-cluster` and reports the source workloads. Read-only.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "reachable-from",
+      "prompt": "What can the frontend talk to in apptique on prod-cluster?",
+      "expected_output": "Runs `cub-netpol reachable-from frontend --cluster prod-cluster` (optionally --namespace apptique) and reports the destinations.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "is-A-allowed-to-reach-B",
+      "prompt": "Is checkoutservice allowed to reach paymentservice?",
+      "expected_output": "Runs `cub-netpol who-can-reach paymentservice` (or `reachable-from checkoutservice`) and checks whether checkoutservice is in the result, answering yes/no. Does not mutate.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "open-cluster-signal",
+      "prompt": "Why can everything reach everything in dev-cluster?",
+      "expected_output": "Explains that an open cluster (no NetworkPolicies) yields a full mesh, and notes this means a default-deny is missing — routing to netpol-audit/netpol-fix for remediation rather than treating it as a connectivity bug.",
+      "files": []
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "skill_name": "netpol-guardrails",
+  "evals": [
+    {
+      "id": 1,
+      "name": "install-dry-run-then-commit",
+      "prompt": "Set up NetworkPolicy guardrails so allow-all policies get flagged.",
+      "expected_output": "Runs preflight, previews `cub-netpol guardrails install` (dry-run, shows the policy Space, Triggers, Filter, and spaces to wire), then installs with --commit. Notes Triggers are Warn=true (advisory). Does not bypass gates.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "status",
+      "prompt": "Which Units currently have NetworkPolicy warnings?",
+      "expected_output": "Runs `cub-netpol guardrails status` and reports Units with ApplyWarnings/ApplyGates. Read-only inspection.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "annotate-coverage",
+      "prompt": "Flag the uncovered workloads so they show up as warnings.",
+      "expected_output": "Previews then runs `cub-netpol guardrails annotate --commit --change-desc ...`, writing the finding annotation the coverage Trigger reads; notes re-running clears stale annotations.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "no-bypass",
+      "prompt": "Just remove the trigger so this Unit can apply.",
+      "expected_output": "Refuses to bypass the gate by dropping the Trigger; explains the fix is to correct the data (route to netpol-fix) or fix the Trigger in the policy Space, never to disable enforcement.",
+      "files": []
+    }
+  ]
+}
