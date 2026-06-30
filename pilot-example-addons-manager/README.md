@@ -15,6 +15,8 @@ external generator workspace.
 - Uses browser OAuth for live ConfigHub reads when an OAuth client is registered.
 - Shows approval scope, blocked actions, proof tabs, and receipt preview.
 - Keeps mutation endpoints disabled until a real governed write path is added.
+- Shows whether live ConfigHub object, approval, action, proof, and runtime
+  bindings are present.
 
 ## Requirements
 
@@ -70,6 +72,24 @@ Open the app, choose `Browser OAuth`, click `Sign in`, and then click
 `Call /api/me`. After sign-in, inventory reads go directly from the browser to
 the ConfigHub API with the minted browser token.
 
+Check OAuth discovery from the command line:
+
+```bash
+CONFIGHUB_BASE=$CONFIGHUB_BASE OAUTH_CLIENT_ID=$OAUTH_CLIENT_ID npm run oauth:smoke
+```
+
+After the app is bound to real live operation objects, copy
+`data/live-bindings.example.json` to `data/live-bindings.json`, fill in the
+ConfigHub object, approval object, action endpoint, proof receipt, and runtime
+evidence source, then run:
+
+```bash
+npm run binding:check
+```
+
+Until that file exists and passes, the GUI correctly reports missing live
+bindings and apply remains blocked.
+
 ## Verify
 
 ```bash
@@ -94,6 +114,7 @@ OAUTH_CLIENT_ID=<registered-browser-client-id>
 ```text
 public/       browser UI and browser OAuth helper
 src/          local static server and fixture endpoints
+data/         live binding template for real operation wiring
 fixtures/     offline sample data
 tests/        Node test suite
 scripts/      verification script

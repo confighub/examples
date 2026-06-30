@@ -1,0 +1,29 @@
+{
+  "schema": "confighub.live-bindings.v0",
+  "configHub": {
+    "objectUrl": "https://hub.confighub.com/space/<space-id>/unit/<unit-id>",
+    "space": "helm-kyverno-prod",
+    "unit": "kyverno-controller"
+  },
+  "approval": {
+    "objectId": "approval/<approval-id>",
+    "mode": "explicit approval before mutation"
+  },
+  "action": {
+    "endpoint": "https://hub.confighub.com/api/<approved-action-endpoint>",
+    "method": "POST",
+    "description": "Governed add-on update action"
+  },
+  "proof": {
+    "receiptObjectId": "receipt/<receipt-id>",
+    "requiredLayers": [
+      "ConfigHub revision",
+      "approval",
+      "controller",
+      "runtime"
+    ]
+  },
+  "runtime": {
+    "evidenceSource": "controller and cluster readback for the selected Variant"
+  }
+}

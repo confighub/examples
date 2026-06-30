@@ -24,3 +24,19 @@ test("browser ConfigHub client calls inventory endpoints directly", async () => 
   assert.match(client, /\/revision/);
   assert.match(client, /browser-oauth/);
 });
+
+test("command-line proof checks exist", async () => {
+  const oauth = await fs.readFile(path.join(root, "scripts", "oauth-smoke.mjs"), "utf8");
+  assert.match(oauth, /CONFIGHUB_BASE/);
+  assert.match(oauth, /OAUTH_CLIENT_ID/);
+  assert.match(oauth, /TokenExchangeEndpoint/);
+  assert.match(oauth, /\/api\/me/);
+
+  const bindings = await fs.readFile(path.join(root, "scripts", "binding-check.mjs"), "utf8");
+  assert.match(bindings, /LIVE_BINDINGS_MISSING/);
+  assert.match(bindings, /configHub/);
+  assert.match(bindings, /approval/);
+  assert.match(bindings, /action/);
+  assert.match(bindings, /proof/);
+  assert.match(bindings, /runtime/);
+});

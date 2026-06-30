@@ -28,6 +28,12 @@ Start this app:
 CONFIGHUB_BASE=$CONFIGHUB_BASE OAUTH_CLIENT_ID=$OAUTH_CLIENT_ID npm start
 ```
 
+Check OAuth discovery before calling the browser flow complete:
+
+```bash
+CONFIGHUB_BASE=$CONFIGHUB_BASE OAUTH_CLIENT_ID=$OAUTH_CLIENT_ID npm run oauth:smoke
+```
+
 Then open `http://localhost:5173/`, choose `Browser OAuth`, and click `Sign in`.
 
 After sign-in, the browser reads:
@@ -40,3 +46,22 @@ After sign-in, the browser reads:
 
 The app does not write to ConfigHub. Apply remains disabled and local POST
 requests to approval/apply routes return `405` with a plain explanation.
+
+## Live Binding Gate
+
+Live operation is not complete until the app is bound to real operation objects.
+Copy the example binding file:
+
+```bash
+cp data/live-bindings.example.json data/live-bindings.json
+```
+
+Fill in the ConfigHub object URL, approval object, action endpoint, proof
+receipt, and runtime evidence source. Then run:
+
+```bash
+npm run binding:check
+```
+
+The GUI shows `bindings missing` until that check can pass. Even after bindings
+are present, apply stays disabled until a governed write executor is added.
