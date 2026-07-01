@@ -19,6 +19,9 @@ external generator workspace.
   bindings are present.
 - Shows a governed action contract so the read-only app can say exactly which
   operation layers still need to be bound before Apply can be enabled.
+- Keeps the first screen lightweight: no frontend framework, parallel startup
+  reads, and a compact readiness rail for auth, inventory, scope, and operation
+  state.
 
 ## Requirements
 

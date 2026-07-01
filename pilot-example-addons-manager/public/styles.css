@@ -77,13 +77,66 @@ code {
 .chip.warn { color: var(--warn); background: #fff5df; border-color: #edd39d; }
 .chip.bad { color: var(--bad); background: #fff0f0; border-color: #edc0c0; }
 
-.workflow-band {
+.workflow-band,
+.runway-band {
   display: grid;
-  grid-template-columns: minmax(230px, 340px) 1fr;
   gap: 18px;
   padding: 18px 24px;
-  background: #eaf2f5;
   border-bottom: 1px solid var(--line);
+}
+
+.workflow-band {
+  grid-template-columns: minmax(230px, 340px) 1fr;
+  background: #eaf2f5;
+}
+
+.runway-band {
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  background: #f8fbfc;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.runway-card {
+  min-height: 82px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 10px 12px;
+}
+
+.runway-card span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.runway-card b {
+  display: block;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+
+.runway-card p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.runway-card.ok {
+  border-color: #bfdcc9;
+  background: #f4fbf6;
+}
+
+.runway-card.warn {
+  border-color: #edd39d;
+  background: #fff9ed;
 }
 
 .workflow-heading h2, .panel-title h2 {
@@ -113,7 +166,7 @@ code {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 10px;
-  min-height: 92px;
+  min-height: 76px;
 }
 
 .workflow-steps span {
@@ -133,6 +186,10 @@ code {
   margin: 0;
   color: var(--muted);
   font-size: 12px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .layout {
@@ -494,11 +551,17 @@ pre {
     grid-template-columns: 1fr;
   }
 
+  .scope-grid {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 640px) {
   .workflow-steps {
     grid-template-columns: repeat(2, minmax(130px, 1fr));
   }
 
-  .scope-grid {
-    min-width: 0;
+  .runway-band {
+    grid-template-columns: 1fr;
   }
 }
