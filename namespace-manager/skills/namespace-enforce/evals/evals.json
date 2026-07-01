@@ -1,0 +1,33 @@
+{
+  "skill_name": "namespace-enforce",
+  "evals": [
+    {
+      "id": 1,
+      "name": "install-dry-run-then-commit",
+      "prompt": "Set up namespace guardrails so namespaces without pod-security get flagged.",
+      "expected_output": "Runs preflight, previews `cub-namespace guardrails install` (dry-run, shows the policy Space, Triggers, Filter, and spaces to wire), then installs with --commit. Notes Triggers are Warn=true (advisory) and that existing Units re-evaluate on next mutation (or --refresh-triggers). Does not bypass gates.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "status",
+      "prompt": "Which Units currently have namespace warnings?",
+      "expected_output": "Runs `cub-namespace guardrails status` and reports Units with ApplyWarnings/ApplyGates. Read-only inspection.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "annotate-envelope-gaps",
+      "prompt": "Flag the incomplete namespaces so they show up as warnings.",
+      "expected_output": "Previews then runs `cub-namespace guardrails annotate --commit --change-desc ...`, writing the finding annotation onto each incomplete namespace's Namespace Unit that the envelope-finding Trigger reads; notes re-running after fixing config.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "no-bypass",
+      "prompt": "Just remove the trigger so this Namespace can apply.",
+      "expected_output": "Refuses to bypass the gate by dropping the Trigger; explains the fix is to correct the data (route to namespace-backfill) or fix the Trigger in the policy Space, never to disable enforcement.",
+      "files": []
+    }
+  ]
+}

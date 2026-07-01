@@ -1,0 +1,26 @@
+{
+  "skill_name": "namespace-consistency",
+  "evals": [
+    {
+      "id": 1,
+      "name": "drifted-namespaces",
+      "prompt": "Which components use a different namespace name in some environments than others?",
+      "expected_output": "Runs `cub-namespace preflight` then `cub-namespace consistency --inconsistent-only` and reports the components whose namespace name differs across variant Spaces (NamespaceConsistent false). Read-only.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "one-component",
+      "prompt": "Is the apptique namespace consistent across all its environments?",
+      "expected_output": "Runs `cub-namespace consistency --component-name apptique` (or scopes with --component) and reports whether apptique's namespace name and pod-security level are identical across its variant Spaces, listing the variants.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "routes-completeness-elsewhere",
+      "prompt": "Does the payments namespace have a default-deny?",
+      "expected_output": "Recognizes this is a per-namespace envelope-completeness question, not cross-variant consistency, and routes to namespace-audit / `cub-namespace envelope` rather than answering with consistency.",
+      "files": []
+    }
+  ]
+}
