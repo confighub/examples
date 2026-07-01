@@ -48,10 +48,11 @@ cub-rbac findings                          # all findings, JSON, severity-sorted
 cub-rbac findings -o table                 # human table
 cub-rbac findings --severity high          # high only
 cub-rbac findings --analyzer wildcard-rules
-cub-rbac findings --target-where "Slug LIKE 'prod-%'"   # scope to prod
+cub-rbac findings --environment prod                    # scope to prod (label shorthand)
+cub-rbac findings --where "Target.ProviderType = 'OCI'" # scope by any Unit/Space/Target attribute
 ```
 
-Filters: `--severity` (high | medium | low), `--analyzer` (e.g. `cluster-admin-bindings`). Scope with `--target-where` / `--space-where`.
+Filters: `--severity` (high | medium | low), `--analyzer` (e.g. `cluster-admin-bindings`). Scope the fleet with a single Unit `--where` filter, or the label shorthands `--component` / `--environment` / `--region` / `--owner` / `--layer` / `--variant` (each expands to `Space.Labels.<Key> = '<value>'`). ConfigHub `where` is flat AND-only — no parentheses, no OR; the shorthands AND onto any `--where`.
 
 Each finding row: severity, analyzer, cluster, resource kind, resource (namespace/name), the Unit, and a message explaining the issue and remediation.
 

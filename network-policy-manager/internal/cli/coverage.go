@@ -19,18 +19,18 @@ import (
 type coverageReport struct {
 	Namespaces []netpol.NamespaceCoverage `json:"namespaces"`
 	Totals     struct {
-		Namespaces          int `json:"namespaces"`
-		WithoutDefaultDeny  int `json:"namespacesWithoutDefaultDenyIngress"`
-		Workloads           int `json:"workloads"`
-		UncoveredIngress    int `json:"uncoveredIngressWorkloads"`
-		UncoveredEgress     int `json:"uncoveredEgressWorkloads"`
+		Namespaces         int `json:"namespaces"`
+		WithoutDefaultDeny int `json:"namespacesWithoutDefaultDenyIngress"`
+		Workloads          int `json:"workloads"`
+		UncoveredIngress   int `json:"uncoveredIngressWorkloads"`
+		UncoveredEgress    int `json:"uncoveredEgressWorkloads"`
 	} `json:"totals"`
-	Scope snapshot.Scope `json:"scope"`
+	Filter string `json:"filter,omitempty"`
 }
 
 func newCoverageCmd() *cobra.Command {
 	var output string
-	var scope scopeFlags
+	var filter filterFlags
 	var clusterFilter, namespaceFilter, direction string
 	cmd := &cobra.Command{
 		Use:   "coverage",
@@ -51,7 +51,7 @@ Filter with --cluster, --namespace, and --direction (ingress|egress). With
 			if err != nil {
 				return err
 			}
-			snap, err := snapshot.Load(cmd.Context(), client, scope.scope())
+			snap, err := snapshot.Load(cmd.Context(), client, filter.predicate())
 			if err != nil {
 				return err
 			}
@@ -64,7 +64,7 @@ Filter with --cluster, --namespace, and --direction (ingress|egress). With
 		},
 	}
 	addOutputFlag(cmd, &output)
-	addScopeFlags(cmd, &scope)
+	addFilterFlags(cmd, &filter)
 	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "filter by cluster (Target or Space slug)")
 	cmd.Flags().StringVar(&namespaceFilter, "namespace", "", "filter by namespace")
 	cmd.Flags().StringVar(&direction, "direction", "", "limit to a coverage gap in this direction: ingress | egress")
@@ -103,7 +103,7 @@ func buildCoverageReport(snap *snapshot.Snapshot, clusterFilter, namespaceFilter
 		}
 	}
 	report.Totals.Namespaces = len(report.Namespaces)
-	report.Scope = snap.Scope
+	report.Filter = snap.Filter
 	return report
 }
 

@@ -73,6 +73,46 @@ A typical loop: **`coverage`/`findings`** to see the gaps → **`fleet default-d
 + **`allow-from-links`** to fix them as data → **`who-can-reach`** to verify the
 intended least-privilege graph → **`guardrails`** to keep it that way.
 
+## Scoping the fleet
+
+The read commands (and `fleet default-deny` / `promote`) narrow the fleet with a
+**single ConfigHub Unit `--where` predicate**. One Unit-level filter can already
+reference Unit, Space, and Target metadata, so there is no separate Space or
+Target filter — the server does the scoping and only the matching Units' config
+is fetched.
+
+```bash
+# Only Units bound to an OCI Target (the ProviderType ArgoCD/Flux pull from)
+bin/cub-netpol coverage --where "Target.ProviderType = 'OCI'" -o table
+
+# By Slug, or any Space/Target attribute
+bin/cub-netpol snapshot --where "Space.Slug LIKE 'apptique-%'" -o table
+```
+
+For the standard Space labels the `cub variant` commands use, there are
+convenience shorthands that compile to `Space.Labels.<Key> = '<value>'`:
+`--component`, `--environment`, `--region`, `--owner`, `--layer`, `--variant`.
+They are AND-joined with any raw `--where`:
+
+```bash
+bin/cub-netpol coverage --environment prod --region us-east -o table
+# ≡ --where "Space.Labels.Environment = 'prod' AND Space.Labels.Region = 'us-east'"
+```
+
+ConfigHub `where` is **flat AND-only** — no parentheses, no `OR`. A parenthesized
+clause fails server-side with `invalid attribute name`, so express alternatives
+as separate invocations rather than one OR expression.
+
+`--cluster` and `--namespace` are **client-side display filters** applied to the
+already-fetched snapshot (they match the cluster key, which is the Target slug,
+or the Space slug for unbound Units — a server-side `Target.Slug` predicate would
+wrongly miss clusters keyed by Space slug). Use them to focus output, not to
+scope the server-side fetch.
+
+> Tip: bind base/template Units to a **Noop-ProviderType** dummy Target — a
+> no-apply, server-hosted bridge that never touches a cluster — so every Unit is
+> targeted and `Target.Slug` is a consistent grouping key across the fleet.
+
 ## Agent skills
 
 `skills/` holds six ConfigHub-format agent skills (read vs. write split, scoped

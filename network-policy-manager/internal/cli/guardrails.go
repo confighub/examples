@@ -357,7 +357,7 @@ type annotateResult struct {
 
 func newGuardrailsAnnotateCmd() *cobra.Command {
 	var output, clusterFilter string
-	var scope scopeFlags
+	var filter filterFlags
 	var commit cliutil.CommitFlags
 	cmd := &cobra.Command{
 		Use:   "annotate",
@@ -380,7 +380,7 @@ finding, so its annotation is removed). Dry run unless --commit --change-desc.`,
 			if err != nil {
 				return err
 			}
-			snap, err := snapshot.Load(cmd.Context(), client, scope.scope())
+			snap, err := snapshot.Load(cmd.Context(), client, filter.predicate())
 			if err != nil {
 				return err
 			}
@@ -442,7 +442,7 @@ finding, so its annotation is removed). Dry run unless --commit --change-desc.`,
 		},
 	}
 	addOutputFlag(cmd, &output)
-	addScopeFlags(cmd, &scope)
+	addFilterFlags(cmd, &filter)
 	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "only annotate Units in this cluster")
 	commit.Bind(cmd)
 	return cmd

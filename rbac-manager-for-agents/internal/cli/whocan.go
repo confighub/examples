@@ -29,7 +29,7 @@ type grantRow struct {
 
 func newWhoCanCmd() *cobra.Command {
 	var output, apiGroup, namespace, name string
-	var scope scopeFlags
+	var filter filterFlags
 	cmd := &cobra.Command{
 		Use:   "who-can <verb> <resource>",
 		Short: "Find every subject that can perform an action, fleet-wide",
@@ -51,7 +51,7 @@ bindings to admin/edit/view/system:* are reported by 'findings', not here.`,
 			if err != nil {
 				return err
 			}
-			snap, err := snapshot.Load(cmd.Context(), client, scope.scope())
+			snap, err := snapshot.Load(cmd.Context(), client, filter.predicate())
 			if err != nil {
 				return err
 			}
@@ -71,7 +71,7 @@ bindings to admin/edit/view/system:* are reported by 'findings', not here.`,
 		},
 	}
 	addOutputFlag(cmd, &output)
-	addScopeFlags(cmd, &scope)
+	addFilterFlags(cmd, &filter)
 	cmd.Flags().StringVar(&apiGroup, "api-group", "", "API group of the resource (default core)")
 	cmd.Flags().StringVar(&namespace, "namespace", "", "restrict to grants effective in this namespace")
 	cmd.Flags().StringVar(&name, "name", "", "specific object name (honors resourceNames)")
@@ -133,7 +133,7 @@ type subjectGrantRow struct {
 
 func newAccessCmd() *cobra.Command {
 	var output string
-	var scope scopeFlags
+	var filter filterFlags
 	cmd := &cobra.Command{
 		Use:   "access <subject>",
 		Short: "List every role a subject holds, fleet-wide (inverse of who-can)",
@@ -153,7 +153,7 @@ SUBJECT is "Kind:Name", or "ServiceAccount:namespace/name" for a ServiceAccount:
 			if err != nil {
 				return err
 			}
-			snap, err := snapshot.Load(cmd.Context(), client, scope.scope())
+			snap, err := snapshot.Load(cmd.Context(), client, filter.predicate())
 			if err != nil {
 				return err
 			}
@@ -166,7 +166,7 @@ SUBJECT is "Kind:Name", or "ServiceAccount:namespace/name" for a ServiceAccount:
 		},
 	}
 	addOutputFlag(cmd, &output)
-	addScopeFlags(cmd, &scope)
+	addFilterFlags(cmd, &filter)
 	return cmd
 }
 

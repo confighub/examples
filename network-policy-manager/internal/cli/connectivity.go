@@ -66,7 +66,7 @@ intersected with each destination's ingress).`,
 
 func newReachCmd(use, direction, short, long string) *cobra.Command {
 	var output string
-	var scope scopeFlags
+	var filter filterFlags
 	var clusterFilter, namespaceFilter, kindFilter string
 	cmd := &cobra.Command{
 		Use:   use + " <workload-name>",
@@ -78,7 +78,7 @@ func newReachCmd(use, direction, short, long string) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			snap, err := snapshot.Load(cmd.Context(), client, scope.scope())
+			snap, err := snapshot.Load(cmd.Context(), client, filter.predicate())
 			if err != nil {
 				return err
 			}
@@ -109,7 +109,7 @@ func newReachCmd(use, direction, short, long string) *cobra.Command {
 		},
 	}
 	addOutputFlag(cmd, &output)
-	addScopeFlags(cmd, &scope)
+	addFilterFlags(cmd, &filter)
 	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "restrict to this cluster (Target or Space slug)")
 	cmd.Flags().StringVar(&namespaceFilter, "namespace", "", "restrict to this namespace")
 	cmd.Flags().StringVar(&kindFilter, "kind", "", "restrict to this workload kind (Deployment, StatefulSet, ...)")

@@ -18,7 +18,7 @@ import (
 func newDefaultDenyCmd() *cobra.Command {
 	var output, clusterFilter, spaceOverride string
 	var egress bool
-	var scope scopeFlags
+	var filter filterFlags
 	var commit cliutil.CommitFlags
 	cmd := &cobra.Command{
 		Use:   "default-deny <namespace>",
@@ -48,7 +48,7 @@ This is a dry run unless you pass --commit --change-desc "…".`,
 			if err != nil {
 				return err
 			}
-			snap, err := snapshot.Load(cmd.Context(), client, scope.scope())
+			snap, err := snapshot.Load(cmd.Context(), client, filter.predicate())
 			if err != nil {
 				return err
 			}
@@ -61,7 +61,7 @@ This is a dry run unless you pass --commit --change-desc "…".`,
 		},
 	}
 	addOutputFlag(cmd, &output)
-	addScopeFlags(cmd, &scope)
+	addFilterFlags(cmd, &filter)
 	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "cluster (Target or Space slug) when the namespace exists in more than one")
 	cmd.Flags().StringVar(&spaceOverride, "space", "", "Space slug to create the Unit in when the namespace spans more than one")
 	cmd.Flags().BoolVar(&egress, "egress", false, "also deny egress (allowing DNS egress to kube-dns)")

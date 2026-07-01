@@ -53,16 +53,19 @@ cub-rbac list --cluster prod-use2-oci -o table  # one cluster
 cub-rbac list --kind Role --namespace payments  # kind + namespace
 ```
 
-Filters: `--kind` (Role | ClusterRole | RoleBinding | ClusterRoleBinding | ServiceAccount), `--cluster` (Target or Space slug), `--namespace`.
+Client-side display filters on `list`: `--kind` (Role | ClusterRole | RoleBinding | ClusterRoleBinding | ServiceAccount), `--cluster` (Target or Space slug), `--namespace`. These narrow the printed rows, not the server query.
 
 ### Scoping the fleet
 
-Both commands accept ConfigHub filter expressions to narrow scope:
+Both commands scope the fleet server-side with a single ConfigHub Unit `--where` filter. Because one Unit filter can reference Unit, Space, and Target attributes, there is no separate Space/Target filter:
 
-- `--target-where "Slug LIKE 'prod-%'"` — scope deployed Units by Target.
-- `--space-where "Labels.Environment = 'prod'"` — scope untargeted base Units by Space.
+- `--where "Target.ProviderType = 'OCI'"` — by any Unit/Space/Target attribute (Slug, Labels.*, Space.*, Target.*).
+- `--where "Slug = 'rbac'"` — by Unit slug across the fleet.
+- Label shorthands over `Space.Labels.*`: `--component`, `--environment`, `--region`, `--owner`, `--layer`, `--variant` (e.g. `--environment prod`).
 
-Prefer scoping server-side with these over post-filtering large JSON.
+ConfigHub `where` is flat AND-only — no parentheses, no OR (a parenthesized clause fails with `invalid attribute name`); the shorthands AND onto any `--where`. Prefer scoping server-side with `--where` over post-filtering large JSON.
+
+> Base/template Units can bind a Noop-ProviderType dummy Target (server-hosted, never applied) so every Unit is targeted and `Target.Slug` is a consistent grouping key.
 
 ## Working with output
 

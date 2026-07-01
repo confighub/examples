@@ -37,12 +37,12 @@ type snapshotReport struct {
 		GatedUnits     int `json:"gatedUnits"`
 		UnappliedUnits int `json:"unappliedUnits"`
 	} `json:"totals"`
-	Scope snapshot.Scope `json:"scope"`
+	Filter string `json:"filter,omitempty"`
 }
 
 func newSnapshotCmd() *cobra.Command {
 	var output string
-	var scope scopeFlags
+	var filter filterFlags
 	cmd := &cobra.Command{
 		Use:   "snapshot",
 		Short: "Fleet RBAC inventory: per-cluster role/binding/SA and Unit counts",
@@ -58,7 +58,7 @@ cluster" Units). Canonical base/policy Spaces are excluded from the inventory.`,
 			if err != nil {
 				return err
 			}
-			snap, err := snapshot.Load(cmd.Context(), client, scope.scope())
+			snap, err := snapshot.Load(cmd.Context(), client, filter.predicate())
 			if err != nil {
 				return err
 			}
@@ -71,7 +71,7 @@ cluster" Units). Canonical base/policy Spaces are excluded from the inventory.`,
 		},
 	}
 	addOutputFlag(cmd, &output)
-	addScopeFlags(cmd, &scope)
+	addFilterFlags(cmd, &filter)
 	return cmd
 }
 
@@ -141,7 +141,7 @@ func buildSnapshotReport(snap *snapshot.Snapshot) snapshotReport {
 		report.Totals.UnappliedUnits += cs.UnappliedUnits
 	}
 	report.Totals.Clusters = len(report.Clusters)
-	report.Scope = snap.Scope
+	report.Filter = snap.Filter
 	return report
 }
 

@@ -51,10 +51,33 @@ bin/cub-rbac guardrails install -o table      # plan the policy pack (add --comm
 bin/cub-rbac guardrails status                # Units with ApplyWarnings / ApplyGates
 ```
 
-All read commands accept `--target-where` / `--space-where` to scope the fleet
-(ConfigHub filter expressions), and `-o json` (default) or `-o table`. Write
-commands (`edit`, `guardrails install`) are **dry-run by default** and require an
-explicit `--commit`; `edit --commit` also requires `--change-desc`.
+All read commands (and the fleet write commands `fleet-edit` / `promote`) scope
+the fleet with a single ConfigHub Unit `--where` filter, plus opinionated
+label shorthands — `--component`, `--environment`, `--region`, `--owner`,
+`--layer`, `--variant` — that expand to `Space.Labels.<Key> = '<value>'`. A
+single Unit filter can reference Unit, Space, and Target metadata (e.g.
+`--where "Target.ProviderType = 'OCI'"` or `--where "Slug = 'rbac'"`), so the
+server does all the scoping and only the matching Units' resources are fetched.
+
+ConfigHub `where` is **flat AND-only** — no parentheses and no `OR`. The label
+shorthands are ANDed onto any raw `--where` with a bare `AND`; a parenthesized
+clause is rejected with `invalid attribute name`. To express a union, run the
+command once per branch.
+
+`list` and `who-can` additionally accept `--cluster` / `--namespace` as
+**client-side display filters** (the cluster key is the Target slug, or the
+Space slug for unbound Units); they narrow the printed rows, not the server
+query.
+
+Reads also take `-o json` (default) or `-o table`. Write commands (`edit`,
+`fleet-edit`, `promote`, `guardrails install`) are **dry-run by default** and
+require an explicit `--commit`; committing an `edit` also requires
+`--change-desc`.
+
+> **Tip:** so every Unit is targeted and `Target.Slug` is a consistent
+> grouping key, base/template Units can bind a dummy Target with a Noop
+> ProviderType — server-hosted and never applied — rather than being left
+> unbound.
 
 ## Agent Skills
 

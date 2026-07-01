@@ -80,7 +80,7 @@ func newFixMetadataCmd() *cobra.Command {
 
 func newFixSubCmd(use, short, yqExpr, action string, guard func(*netpol.NetworkPolicyEntity) (bool, string)) *cobra.Command {
 	var output string
-	var scope scopeFlags
+	var filter filterFlags
 	var commit cliutil.CommitFlags
 	cmd := &cobra.Command{
 		Use:   use + " <space>/<unit>",
@@ -103,7 +103,7 @@ func newFixSubCmd(use, short, yqExpr, action string, guard func(*netpol.NetworkP
 			if err != nil {
 				return fmt.Errorf("resolve space %q: %w", space, err)
 			}
-			snap, err := snapshot.Load(cmd.Context(), client, scope.scope())
+			snap, err := snapshot.Load(cmd.Context(), client, filter.predicate())
 			if err != nil {
 				return err
 			}
@@ -128,18 +128,18 @@ func newFixSubCmd(use, short, yqExpr, action string, guard func(*netpol.NetworkP
 		},
 	}
 	addOutputFlag(cmd, &output)
-	addScopeFlags(cmd, &scope)
+	addFilterFlags(cmd, &filter)
 	commit.Bind(cmd)
 	return cmd
 }
 
 type fixResult struct {
-	Action    string `json:"action"`
-	Space     string `json:"space"`
-	Unit      string `json:"unit"`
-	DryRun    bool   `json:"dryRun"`
-	Mutated   bool   `json:"mutated"`
-	Error     string `json:"error,omitempty"`
+	Action  string `json:"action"`
+	Space   string `json:"space"`
+	Unit    string `json:"unit"`
+	DryRun  bool   `json:"dryRun"`
+	Mutated bool   `json:"mutated"`
+	Error   string `json:"error,omitempty"`
 }
 
 func reportFix(cmd *cobra.Command, res *cubapi.Result, space, unit, action string, dryRun bool, output string) error {

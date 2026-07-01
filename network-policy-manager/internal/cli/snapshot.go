@@ -37,12 +37,12 @@ type snapshotReport struct {
 		GatedUnits      int `json:"gatedUnits"`
 		UnappliedUnits  int `json:"unappliedUnits"`
 	} `json:"totals"`
-	Scope snapshot.Scope `json:"scope"`
+	Filter string `json:"filter,omitempty"`
 }
 
 func newSnapshotCmd() *cobra.Command {
 	var output string
-	var scope scopeFlags
+	var filter filterFlags
 	cmd := &cobra.Command{
 		Use:   "snapshot",
 		Short: "Fleet inventory: per-cluster NetworkPolicy / namespace / workload / service and Unit counts",
@@ -61,7 +61,7 @@ Coverage gaps ("which namespaces/workloads have no policy?") are reported by the
 			if err != nil {
 				return err
 			}
-			snap, err := snapshot.Load(cmd.Context(), client, scope.scope())
+			snap, err := snapshot.Load(cmd.Context(), client, filter.predicate())
 			if err != nil {
 				return err
 			}
@@ -74,7 +74,7 @@ Coverage gaps ("which namespaces/workloads have no policy?") are reported by the
 		},
 	}
 	addOutputFlag(cmd, &output)
-	addScopeFlags(cmd, &scope)
+	addFilterFlags(cmd, &filter)
 	return cmd
 }
 
@@ -135,7 +135,7 @@ func buildSnapshotReport(snap *snapshot.Snapshot) snapshotReport {
 		report.Totals.UnappliedUnits += cs.UnappliedUnits
 	}
 	report.Totals.Clusters = len(report.Clusters)
-	report.Scope = snap.Scope
+	report.Filter = snap.Filter
 	return report
 }
 

@@ -18,17 +18,16 @@ import (
 )
 
 // fleetFlags scope a fleet-wide mutation to a set of Units and carry the
-// dry-run/commit controls. --where is required so a fleet mutation is always a
-// deliberate, scoped action.
+// dry-run/commit controls. A selector (raw --where and/or a label shorthand) is
+// required so a fleet mutation is always a deliberate, scoped action. The
+// selector is ANDed with ToolchainType='Kubernetes/YAML'.
 type fleetFlags struct {
-	where string
+	filterFlags
 	cliutil.CommitFlags
 }
 
 func (f *fleetFlags) bind(cmd *cobra.Command) {
-	cmd.Flags().StringVar(&f.where, "where", "",
-		"ConfigHub filter selecting the Units to change (required). ANDed with ToolchainType='Kubernetes/YAML'. "+
-			"e.g. \"Space.Labels.Environment = 'prod'\" or \"Slug = 'rbac'\"")
+	addFilterFlags(cmd, &f.filterFlags)
 	f.CommitFlags.Bind(cmd)
 }
 
@@ -102,8 +101,9 @@ func newFleetSubjectCmd(use string, add bool) *cobra.Command {
 }
 
 func runFleetEdit(cmd *cobra.Command, fl fleetFlags, edit rbac.EditInvocation) error {
-	if strings.TrimSpace(fl.where) == "" {
-		return fmt.Errorf("--where is required to scope a fleet edit (use a deliberate selector, e.g. \"Space.Labels.Environment = 'prod'\")")
+	sel := fl.predicate()
+	if strings.TrimSpace(sel) == "" {
+		return fmt.Errorf("--where (or a label selector like --environment) is required to scope a fleet edit (use a deliberate selector, e.g. \"Space.Labels.Environment = 'prod'\")")
 	}
 	client, err := cub.Preflight(cmd.Context())
 	if err != nil {
@@ -121,7 +121,7 @@ func runFleetEdit(cmd *cobra.Command, fl fleetFlags, edit rbac.EditInvocation) e
 	}
 	// One org-wide invocation over every matching Unit. The structured response
 	// reports per-Unit results directly — no CLI output parsing.
-	where := k8sWhere + " AND " + fl.where
+	where := k8sWhere + " AND " + sel
 	res, err := cubapi.InvokeStoredInvocation(ctx, client, inv.InvocationID,
 		editParams(edit.Params), cubapi.Selector{Where: where}, ch)
 	if err != nil {
@@ -131,7 +131,7 @@ func runFleetEdit(cmd *cobra.Command, fl fleetFlags, edit rbac.EditInvocation) e
 	if err != nil {
 		return err
 	}
-	return reportFleet(cmd, fl.CommitFlags, edit.Summary+" — fleet: "+fl.where, changed)
+	return reportFleet(cmd, fl.CommitFlags, edit.Summary+" — fleet: "+sel, changed)
 }
 
 // --- promote (variant propagation) ---
@@ -153,8 +153,9 @@ upgraded revisions to clusters is a separate step (cub unit apply).`,
   cub-rbac promote --where "Space.Labels.Environment = 'prod'" --commit --change-desc "propagate base RBAC update (OPS-12)"`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if strings.TrimSpace(fl.where) == "" {
-				return fmt.Errorf("--where is required to scope the promotion (e.g. \"Space.Labels.Environment = 'prod'\")")
+			sel := fl.predicate()
+			if strings.TrimSpace(sel) == "" {
+				return fmt.Errorf("--where (or a label selector like --environment) is required to scope the promotion (e.g. \"Space.Labels.Environment = 'prod'\")")
 			}
 			client, err := cub.Preflight(cmd.Context())
 			if err != nil {
@@ -164,7 +165,7 @@ upgraded revisions to clusters is a separate step (cub unit apply).`,
 			if err != nil {
 				return err
 			}
-			where := k8sWhere + " AND UpstreamRevisionNum > 0 AND " + fl.where
+			where := k8sWhere + " AND UpstreamRevisionNum > 0 AND " + sel
 			res, err := cubapi.UpgradeUnits(cmd.Context(), client, where, ch)
 			if err != nil {
 				return err
@@ -173,7 +174,7 @@ upgraded revisions to clusters is a separate step (cub unit apply).`,
 			if err != nil {
 				return err
 			}
-			return reportFleet(cmd, fl.CommitFlags, "Upgrade downstream Units from upstream — fleet: "+fl.where, changed)
+			return reportFleet(cmd, fl.CommitFlags, "Upgrade downstream Units from upstream — fleet: "+sel, changed)
 		},
 	}
 	fl.bind(cmd)

@@ -28,7 +28,7 @@ type findingRow struct {
 
 func newFindingsCmd() *cobra.Command {
 	var output, severityFilter, analyzerFilter string
-	var scope scopeFlags
+	var filter filterFlags
 	cmd := &cobra.Command{
 		Use:   "findings",
 		Short: "Report RBAC hygiene findings across the fleet",
@@ -56,7 +56,7 @@ Filter with --severity (high|medium|low) and --analyzer.`,
 			if err != nil {
 				return err
 			}
-			snap, err := snapshot.Load(cmd.Context(), client, scope.scope())
+			snap, err := snapshot.Load(cmd.Context(), client, filter.predicate())
 			if err != nil {
 				return err
 			}
@@ -69,7 +69,7 @@ Filter with --severity (high|medium|low) and --analyzer.`,
 		},
 	}
 	addOutputFlag(cmd, &output)
-	addScopeFlags(cmd, &scope)
+	addFilterFlags(cmd, &filter)
 	cmd.Flags().StringVar(&severityFilter, "severity", "", "filter by severity: high | medium | low")
 	cmd.Flags().StringVar(&analyzerFilter, "analyzer", "", "filter by analyzer name (e.g. wildcard-rules)")
 	return cmd

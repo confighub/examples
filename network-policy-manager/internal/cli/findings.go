@@ -19,16 +19,16 @@ import (
 type findingsReport struct {
 	Findings []netpol.Finding `json:"findings"`
 	Totals   struct {
-		Total    int            `json:"total"`
+		Total      int            `json:"total"`
 		BySeverity map[string]int `json:"bySeverity"`
 		ByAnalyzer map[string]int `json:"byAnalyzer"`
 	} `json:"totals"`
-	Scope snapshot.Scope `json:"scope"`
+	Filter string `json:"filter,omitempty"`
 }
 
 func newFindingsCmd() *cobra.Command {
 	var output string
-	var scope scopeFlags
+	var filter filterFlags
 	var severityFilter, analyzerFilter, clusterFilter string
 	cmd := &cobra.Command{
 		Use:   "findings",
@@ -48,7 +48,7 @@ Filter with --severity (high|medium|low), --analyzer, and --cluster.`,
 			if err != nil {
 				return err
 			}
-			snap, err := snapshot.Load(cmd.Context(), client, scope.scope())
+			snap, err := snapshot.Load(cmd.Context(), client, filter.predicate())
 			if err != nil {
 				return err
 			}
@@ -61,7 +61,7 @@ Filter with --severity (high|medium|low), --analyzer, and --cluster.`,
 		},
 	}
 	addOutputFlag(cmd, &output)
-	addScopeFlags(cmd, &scope)
+	addFilterFlags(cmd, &filter)
 	cmd.Flags().StringVar(&severityFilter, "severity", "", "filter by severity: high | medium | low")
 	cmd.Flags().StringVar(&analyzerFilter, "analyzer", "", "filter by analyzer name")
 	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "filter by cluster (Target or Space slug)")
@@ -95,7 +95,7 @@ func buildFindingsReport(snap *snapshot.Snapshot, severityFilter, analyzerFilter
 		}
 	}
 	report.Totals.Total = len(report.Findings)
-	report.Scope = snap.Scope
+	report.Filter = snap.Filter
 	return report
 }
 

@@ -44,7 +44,7 @@ type fleetDenyItem struct {
 func newFleetDefaultDenyCmd() *cobra.Command {
 	var output, clusterFilter string
 	var egress bool
-	var scope scopeFlags
+	var filter filterFlags
 	var commit cliutil.CommitFlags
 	cmd := &cobra.Command{
 		Use:   "default-deny",
@@ -56,7 +56,7 @@ form of 'default-deny', driven directly by the coverage analysis.
 
 Namespaces that already have a default-deny ingress are left alone (so re-runs
 are idempotent). With --egress the generated policies also deny egress while
-allowing DNS. Scope with --cluster / --space-where.
+allowing DNS. Scope with --where (or a label shorthand) and/or --cluster.
 
 Dry run unless --commit --change-desc.`,
 		Args: cobra.NoArgs,
@@ -69,7 +69,7 @@ Dry run unless --commit --change-desc.`,
 			if err != nil {
 				return err
 			}
-			snap, err := snapshot.Load(cmd.Context(), client, scope.scope())
+			snap, err := snapshot.Load(cmd.Context(), client, filter.predicate())
 			if err != nil {
 				return err
 			}
@@ -94,7 +94,7 @@ Dry run unless --commit --change-desc.`,
 		},
 	}
 	addOutputFlag(cmd, &output)
-	addScopeFlags(cmd, &scope)
+	addFilterFlags(cmd, &filter)
 	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "limit to this cluster (Target or Space slug)")
 	cmd.Flags().BoolVar(&egress, "egress", false, "also deny egress (allowing DNS egress to kube-dns)")
 	commit.Bind(cmd)
@@ -168,7 +168,8 @@ func reportFleetDefaultDeny(cmd *cobra.Command, items []fleetDenyItem, dryRun bo
 // --- promote: pull downstream NetworkPolicy Units up to their upstream ---
 
 func newPromoteCmd() *cobra.Command {
-	var output, whereFilter string
+	var output string
+	var filter filterFlags
 	var commit cliutil.CommitFlags
 	cmd := &cobra.Command{
 		Use:   "promote",
@@ -191,8 +192,8 @@ or a Space-label predicate). Dry run unless --commit --change-desc.`,
 				return err
 			}
 			where := "ToolchainType = 'Kubernetes/YAML' AND UpstreamRevisionNum > 0"
-			if whereFilter != "" {
-				where += " AND " + whereFilter
+			if p := filter.predicate(); p != "" {
+				where += " AND " + p
 			}
 			ch := cubapi.Change{}
 			if !dryRun {
@@ -206,7 +207,7 @@ or a Space-label predicate). Dry run unless --commit --change-desc.`,
 		},
 	}
 	addOutputFlag(cmd, &output)
-	cmd.Flags().StringVar(&whereFilter, "where", "", "additional ConfigHub Unit filter to scope the promotion")
+	addFilterFlags(cmd, &filter)
 	commit.Bind(cmd)
 	return cmd
 }

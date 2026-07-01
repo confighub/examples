@@ -39,13 +39,17 @@ The fleet is queried and changed like a database: one `--where` selector compile
 2. The shared edit Invocations exist (used by `fleet-edit`). They are created once per organization with `cub-rbac edit install`. If a fleet-edit fails because the Invocation is not found, run `cub-rbac edit install` and retry.
 3. The user has Edit permission on the targeted Units (the commit fails server-side otherwise — report it, don't retry blindly).
 
-## Scoping — `--where` is required
+## Scoping — a selector is required
 
-Both commands require `--where`, a ConfigHub filter selecting the Units to change. It is ANDed with `ToolchainType = 'Kubernetes/YAML'`. The grammar is **AND-only** (no OR, no parentheses). Common selectors:
+Both commands require a selector — either a raw `--where` filter or at least one label shorthand — so a fleet mutation is always deliberate and scoped. The selector is ANDed with `ToolchainType = 'Kubernetes/YAML'`. The grammar is **AND-only** (no OR, no parentheses — a parenthesized clause fails with `invalid attribute name`). Common selectors:
 
-- `--where "Space.Labels.Environment = 'dev'"` — by standard Space label (Units inherit their cluster's Space labels).
-- `--where "Space.Labels.Environment = 'prod' AND Space.Labels.Region = 'us-east'"`
+- `--environment dev` — label shorthand; expands to `Space.Labels.Environment = 'dev'`. Other shorthands: `--component`, `--region`, `--owner`, `--layer`, `--variant`.
+- `--where "Space.Labels.Environment = 'dev'"` — the raw equivalent (Units inherit their cluster's Space labels).
+- `--environment prod --region us-east` — shorthands AND together (and AND onto any raw `--where`).
+- `--where "Target.ProviderType = 'OCI'"` — by any Unit/Space/Target attribute.
 - `--where "Slug = 'rbac'"` — by Unit slug across the fleet.
+
+Running with no selector at all is rejected.
 
 Confirm the selector hits the intended Units first with **rbac-audit** (`cub-rbac snapshot` / `list`).
 
