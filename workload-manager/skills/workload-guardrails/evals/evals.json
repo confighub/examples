@@ -1,0 +1,33 @@
+{
+  "skill_name": "workload-guardrails",
+  "evals": [
+    {
+      "id": 1,
+      "name": "install-pack-dry-run-then-commit",
+      "prompt": "Enforce that our workloads set memory limits and run as non-root.",
+      "expected_output": "Runs `cub-workload preflight`, previews `cub-workload guardrails install` (dry-run: shows Triggers, spaces to wire, skips), then on confirmation `guardrails install --commit`. Triggers are Warn=true (advisory), not blocking by default.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "annotate-pdb-coverage",
+      "prompt": "Make uncovered multi-replica workloads show a PDB warning.",
+      "expected_output": "Explains PDB coverage uses annotate-then-validate, runs `cub-workload guardrails annotate` dry-run then --commit --change-desc after install. Read side is workload-availability.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "status",
+      "prompt": "Which workloads are currently flagged by the readiness guardrails?",
+      "expected_output": "Runs `cub-workload guardrails status` and reports Units with ApplyWarnings/ApplyGates. Read-only.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "routes-fix-elsewhere",
+      "prompt": "Now fix the workloads that got flagged.",
+      "expected_output": "Routes to workload-harden (single) or workload-fleet (bulk) to remediate, rather than trying to fix from the guardrails skill.",
+      "files": []
+    }
+  ]
+}

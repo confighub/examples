@@ -1,0 +1,33 @@
+{
+  "skill_name": "workload-audit",
+  "evals": [
+    {
+      "id": 1,
+      "name": "readiness-gaps",
+      "prompt": "Which workloads in our fleet run as root or have no memory limit?",
+      "expected_output": "Runs `cub-workload preflight` then `cub-workload readiness` (JSON or -o table, optionally --failing-only or --dimension security/resources) and reports the workloads whose SECURITY / RESOURCES dimensions warn or fail. Does not mutate, does not fall back to kubectl.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "fleet-inventory",
+      "prompt": "Give me a per-cluster count of workloads.",
+      "expected_output": "Runs `cub-workload snapshot` (optionally -o table or jq on the JSON) and reports per-cluster workload counts plus totals.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "score-one-namespace",
+      "prompt": "How production-ready are the workloads in the apptique namespace on dev-cluster?",
+      "expected_output": "Runs `cub-workload readiness --cluster dev-cluster --namespace apptique` and reports each workload's per-dimension pass/warn/fail. Read-only.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "routes-availability-elsewhere",
+      "prompt": "Which of our multi-replica workloads have no PodDisruptionBudget?",
+      "expected_output": "Recognizes this is a PDB-coverage question, not the readiness scorecard, and routes to workload-availability / `cub-workload availability` rather than answering with snapshot/readiness.",
+      "files": []
+    }
+  ]
+}

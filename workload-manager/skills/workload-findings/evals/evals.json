@@ -1,0 +1,33 @@
+{
+  "skill_name": "workload-findings",
+  "evals": [
+    {
+      "id": 1,
+      "name": "ranked-findings",
+      "prompt": "What's wrong with our workloads, most important first?",
+      "expected_output": "Runs `cub-workload preflight` then `cub-workload findings` (JSON or -o table) and reports findings most-severe first with analyzer and workload. Read-only.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "high-severity-only",
+      "prompt": "Show only the high-severity workload issues in prod.",
+      "expected_output": "Runs `cub-workload findings --severity high --environment prod` (or --where equivalent) rather than post-filtering, and reports the high findings. Read-only.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "analyzer-filter",
+      "prompt": "List just the security findings across the fleet.",
+      "expected_output": "Runs `cub-workload findings --analyzer security` and reports the security-analyzer findings.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "routes-fix-elsewhere",
+      "prompt": "Fix the high-severity findings.",
+      "expected_output": "Recognizes fixing is a write action and routes to workload-harden (single) or workload-fleet (bulk) rather than mutating from this read-only skill.",
+      "files": []
+    }
+  ]
+}
