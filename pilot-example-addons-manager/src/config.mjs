@@ -15,6 +15,7 @@ export function runtimeConfig(env = process.env) {
     dataMode: env.DATA_MODE || "fixture",
     configHubBase,
     oauthClientId,
+    liveBindingsFile: env.LIVE_BINDINGS_FILE || "",
   };
 }
 
