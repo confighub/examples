@@ -54,6 +54,10 @@ function cleanBlockedReason(value) {
   return isBlockedValue(value) ? value.slice("blocked:".length).replaceAll("-", " ") : value;
 }
 
+function bindingValueReady(value) {
+  return Boolean(value) && !isBlockedValue(value);
+}
+
 function bindingReadiness() {
   const status = state.bindings?.status || "LIVE_BINDINGS_UNKNOWN";
   const bindings = state.bindings?.bindings || {};
@@ -66,8 +70,10 @@ function bindingReadiness() {
     };
   }
   const blockers = [
+    bindings.configHub?.objectUrl,
     bindings.approval?.objectId,
     bindings.action?.endpoint,
+    bindings.action?.contract?.kind === "ConfigHub-governed-action.v0" ? "" : "blocked:action-contract-missing",
     bindings.runtime?.evidenceSource,
   ].filter(isBlockedValue);
   if (blockers.length) {
@@ -139,7 +145,86 @@ function renderBindings() {
   $("#binding-grid").innerHTML = rows
     .map(([label, value]) => `<div><span>${escapeHtml(label)}</span><b>${escapeHtml(value || "-")}</b></div>`)
     .join("");
+  renderActionContract();
   refreshActionState();
+}
+
+function actionContract() {
+  const bindings = state.bindings?.bindings || {};
+  return bindings.action?.contract || {
+    kind: "ConfigHub-governed-action.v0",
+    operation: "review-addon-version",
+    description: "Preview add-on scope and hold Apply until ConfigHub approval, action, controller, and runtime bindings are real.",
+  };
+}
+
+function contractSteps() {
+  const bindings = state.bindings?.bindings || {};
+  const contract = actionContract();
+  const hasBinding = state.bindings?.status === "LIVE_BINDINGS_PRESENT";
+  const hasObject = hasBinding && bindingValueReady(bindings.configHub?.objectUrl);
+  const hasApproval = hasBinding && bindingValueReady(bindings.approval?.objectId);
+  const hasAction = hasBinding && bindingValueReady(bindings.action?.endpoint);
+  const hasRuntime = hasBinding && bindingValueReady(bindings.runtime?.evidenceSource);
+  const hasUser = Boolean(state.session);
+  const selectedScope = [state.selection?.space, state.selection?.unit].filter(Boolean).join(" / ");
+  const boundScope = [bindings.configHub?.space, bindings.configHub?.unit].filter(Boolean).join(" / ");
+  return [
+    {
+      label: "User",
+      title: hasUser ? "Browser user signed in" : "Browser user required",
+      detail: hasUser ? (state.session?.displayName || state.session?.username || "authenticated") : "Sign in before Browser OAuth operations.",
+      ready: hasUser,
+    },
+    {
+      label: "Scope",
+      title: state.detail?.unit ? "Variant and Unit selected" : "Select a Variant Unit",
+      detail: selectedScope || boundScope || "Pick a live add-on Variant and Unit before preparing approval.",
+      ready: Boolean(state.detail?.unit || boundScope),
+    },
+    {
+      label: "ConfigHub",
+      title: hasObject ? "Object binding present" : "Object binding missing",
+      detail: bindings.configHub?.objectUrl || "Bind the ConfigHub object URL used by this app.",
+      ready: hasObject,
+    },
+    {
+      label: "Approval",
+      title: hasApproval ? "Approval scope bound" : "Approval scope required",
+      detail: bindings.approval?.objectId || "Bind a ChangeSet, approval object, or equivalent governed scope.",
+      ready: hasApproval,
+    },
+    {
+      label: "Action",
+      title: hasAction ? "Action executor bound" : "Action executor required",
+      detail: bindings.action?.endpoint || contract.description || "Bind the approved operation endpoint or invocation.",
+      ready: hasAction,
+    },
+    {
+      label: "Proof",
+      title: hasRuntime ? "Runtime proof bound" : "Controller/runtime proof required",
+      detail: bindings.runtime?.evidenceSource || "Bind controller delivery and runtime readback before claiming success.",
+      ready: hasRuntime,
+    },
+  ];
+}
+
+function renderActionContract() {
+  const container = $("#action-contract");
+  if (!container) return;
+  const contract = actionContract();
+  const readiness = bindingReadiness();
+  const contractState = $("#contract-state");
+  if (contractState) {
+    contractState.textContent = `${contract.operation || "operation"} / ${readiness.label}`;
+  }
+  container.innerHTML = contractSteps().map((step) => `
+    <div class="contract-step ${step.ready ? "pass" : "watch"}">
+      <span>${escapeHtml(step.ready ? "bound" : "needed")} · ${escapeHtml(step.label)}</span>
+      <b>${escapeHtml(step.title)}</b>
+      <p>${escapeHtml(step.detail)}</p>
+    </div>
+  `).join("");
 }
 
 function renderAuthState() {
@@ -158,6 +243,7 @@ function renderAuthState() {
     $("#auth-state").textContent = "Ready to sign in";
     $("#auth-state").className = "chip";
   }
+  renderActionContract();
   refreshActionState();
 }
 
@@ -342,6 +428,7 @@ function selectVariant(row) {
   renderScope(state.selection);
   renderUnits();
   renderDetail();
+  renderActionContract();
   renderProof();
   logEvent(`Selected Variant ${state.selection.variant} for ${state.selection.addon}.`);
 }
@@ -398,6 +485,7 @@ async function selectUnit(row) {
     $("#unit-source").textContent = state.detail.source || state.mode;
     renderDetail();
     enableButtons();
+    renderActionContract();
     renderProof();
     logEvent(`Previewed Unit ${unit.slug}.`);
   } catch (error) {
@@ -411,6 +499,7 @@ function renderDetail() {
     $("#detail").innerHTML = `<div class="empty">No Unit selected.</div>`;
     $("#unit-source").textContent = "-";
     disableButtons();
+    renderActionContract();
     return;
   }
   const detail = state.detail;
@@ -428,6 +517,7 @@ function renderDetail() {
     </div>
     ${(detail.warnings || []).map((warning) => `<div class="warning">${escapeHtml(warning)}</div>`).join("")}
   `;
+  renderActionContract();
 }
 
 function disableButtons() {
@@ -481,7 +571,7 @@ function renderProof() {
     body.innerHTML = `<b>${escapeHtml(proof.approval)}</b><pre>${escapeHtml(JSON.stringify(scope, null, 2))}</pre>`;
   } else if (tab === "Gate") {
     const readiness = bindingReadiness();
-    body.innerHTML = `<b>${escapeHtml(proof.gate)}</b><p class="muted">${escapeHtml(readiness.note)}</p><pre>${escapeHtml(JSON.stringify(state.bindings || {}, null, 2))}</pre>`;
+    body.innerHTML = `<b>${escapeHtml(proof.gate)}</b><p class="muted">${escapeHtml(readiness.note)}</p><pre>${escapeHtml(JSON.stringify({contract: actionContract(), bindings: state.bindings || {}}, null, 2))}</pre>`;
   } else if (tab === "Controller") {
     body.innerHTML = `<b>${escapeHtml(proof.controller)}</b><p class="muted">No Argo, Flux, or other controller readback is wired in this standalone sample.</p>`;
   } else if (tab === "Runtime") {

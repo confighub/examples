@@ -38,6 +38,8 @@ test("command-line proof checks exist", async () => {
   assert.match(bindings, /configHub/);
   assert.match(bindings, /approval/);
   assert.match(bindings, /action/);
+  assert.match(bindings, /action\.contract/);
+  assert.match(bindings, /ConfigHub-governed-action\.v0/);
   assert.match(bindings, /proof/);
   assert.match(bindings, /runtime/);
 });
@@ -46,6 +48,9 @@ test("browser app explains live readiness states", async () => {
   const app = await fs.readFile(path.join(root, "public", "app.js"), "utf8");
   assert.match(app, /read-only live surface/);
   assert.match(app, /live operation bound/);
+  assert.match(app, /Governed-action|ConfigHub-governed-action\.v0/);
+  assert.match(app, /Action executor required/);
+  assert.match(app, /Controller\/runtime proof required/);
   assert.match(app, /No add-on Variants found in this ConfigHub org yet/);
   assert.match(app, /Apply remains blocked/);
 });

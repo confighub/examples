@@ -35,6 +35,12 @@ for (const [section, field] of required) {
   assert.ok(bindings[section][field], `${section}.${field} is required`);
 }
 
+assert.ok(bindings.action.contract, "action.contract is required");
+assert.equal(bindings.action.contract.kind, "ConfigHub-governed-action.v0", "action.contract.kind must be ConfigHub-governed-action.v0");
+assert.ok(bindings.action.contract.operation, "action.contract.operation is required");
+assert.ok(Array.isArray(bindings.action.contract.scopeFields), "action.contract.scopeFields must be an array");
+assert.ok(Array.isArray(bindings.action.contract.requires), "action.contract.requires must be an array");
+
 if (hasPlaceholder(bindings)) {
   console.error(JSON.stringify({
     status: "LIVE_BINDINGS_PLACEHOLDER",

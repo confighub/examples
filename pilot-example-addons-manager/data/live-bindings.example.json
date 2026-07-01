@@ -12,7 +12,34 @@
   "action": {
     "endpoint": "https://hub.confighub.com/api/<approved-action-endpoint>",
     "method": "POST",
-    "description": "Governed add-on update action"
+    "description": "Governed add-on update action",
+    "contract": {
+      "kind": "ConfigHub-governed-action.v0",
+      "operation": "review-addon-version",
+      "trigger": "user-approved-scope",
+      "scopeFields": [
+        "org",
+        "space",
+        "variant",
+        "unit",
+        "action",
+        "revision",
+        "target",
+        "strategy",
+        "addon",
+        "version"
+      ],
+      "requires": [
+        "browser OAuth user",
+        "ConfigHub object URL",
+        "Variant and Unit scope",
+        "approval object",
+        "governed action executor",
+        "controller proof",
+        "runtime proof"
+      ],
+      "mutationPolicy": "Apply remains disabled unless every binding is real and non-placeholder."
+    }
   },
   "proof": {
     "receiptObjectId": "receipt/<receipt-id>",
