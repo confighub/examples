@@ -46,6 +46,49 @@ function setModeChip(source, warning) {
   mode.className = `chip ${warning ? "warn" : "ok"}`;
 }
 
+function setRunwayCard(id, stateName, title, detail) {
+  const card = $(`#${id}`);
+  if (!card) return;
+  card.className = `runway-card ${stateName}`;
+  card.querySelector("b").textContent = title;
+  card.querySelector("p").textContent = detail;
+}
+
+function renderRunway() {
+  const readiness = bindingReadiness();
+  const inventoryTotals = state.inventory?.totals;
+  const authReady = Boolean(state.session) || state.mode === "fixture";
+  const authTitle = state.session
+    ? (state.session.displayName || state.session.username || "signed in")
+    : state.mode === "browser"
+      ? "sign in needed"
+      : "fixture operator";
+  setRunwayCard(
+    "runway-auth",
+    authReady ? "ok" : "warn",
+    authTitle,
+    state.mode === "browser" ? "Browser OAuth reads ConfigHub directly." : "Fixture mode keeps the app runnable offline.",
+  );
+  setRunwayCard(
+    "runway-inventory",
+    inventoryTotals?.variants ? "ok" : "warn",
+    inventoryTotals?.variants ? `${inventoryTotals.variants} Variants` : "loading",
+    inventoryTotals?.addons ? `${inventoryTotals.addons} add-ons / ${inventoryTotals.units} Units` : "Waiting for inventory.",
+  );
+  setRunwayCard(
+    "runway-scope",
+    state.detail?.unit ? "ok" : "warn",
+    state.detail?.unit?.slug || state.selection?.space || "not selected",
+    state.detail?.unit ? `${state.selection?.addon} / ${state.selection?.variant}` : "Choose a Variant and Unit.",
+  );
+  setRunwayCard(
+    "runway-operation",
+    readiness.applyReady ? "ok" : "warn",
+    readiness.label,
+    readiness.note,
+  );
+}
+
 function isBlockedValue(value) {
   return typeof value === "string" && value.startsWith("blocked:");
 }
@@ -104,6 +147,7 @@ function resetSelection() {
   renderScope();
   renderDetail();
   renderProof();
+  renderRunway();
 }
 
 async function loadAppConfig() {
@@ -146,6 +190,7 @@ function renderBindings() {
     .map(([label, value]) => `<div><span>${escapeHtml(label)}</span><b>${escapeHtml(value || "-")}</b></div>`)
     .join("");
   renderActionContract();
+  renderRunway();
   refreshActionState();
 }
 
@@ -244,6 +289,7 @@ function renderAuthState() {
     $("#auth-state").className = "chip";
   }
   renderActionContract();
+  renderRunway();
   refreshActionState();
 }
 
@@ -309,6 +355,7 @@ async function loadIdentity() {
   const body = identity.body || identity;
   element.textContent = body.DisplayName || body.Username || body.user || "sample user";
   element.className = "chip ok";
+  renderRunway();
 }
 
 async function loadWorkflow() {
@@ -367,6 +414,7 @@ async function loadInventory() {
     if (!(inventory.addons || []).length) {
       $("#inventory").innerHTML = emptyInventoryMessage();
       logEvent(`Loaded 0 Variants from ${inventory.source || "fixture"} data.`);
+      renderRunway();
       return;
     }
     $("#inventory").innerHTML = (inventory.addons || [])
@@ -384,9 +432,11 @@ async function loadInventory() {
       .join("");
     document.querySelectorAll(".variant-row").forEach((row) => row.addEventListener("click", () => selectVariant(row)));
     logEvent(`Loaded ${inventory.totals.variants} Variants from ${inventory.source || "fixture"} data.`);
+    renderRunway();
   } catch (error) {
     $("#inventory").innerHTML = `<div class="unit-table empty">${escapeHtml(error.message || error)}</div>`;
     setModeChip(state.mode, true);
+    renderRunway();
   }
 }
 
@@ -430,6 +480,7 @@ function selectVariant(row) {
   renderDetail();
   renderActionContract();
   renderProof();
+  renderRunway();
   logEvent(`Selected Variant ${state.selection.variant} for ${state.selection.addon}.`);
 }
 
@@ -487,6 +538,7 @@ async function selectUnit(row) {
     enableButtons();
     renderActionContract();
     renderProof();
+    renderRunway();
     logEvent(`Previewed Unit ${unit.slug}.`);
   } catch (error) {
     $("#detail").innerHTML = `<div class="empty">${escapeHtml(error.message || error)}</div>`;
@@ -500,6 +552,7 @@ function renderDetail() {
     $("#unit-source").textContent = "-";
     disableButtons();
     renderActionContract();
+    renderRunway();
     return;
   }
   const detail = state.detail;
@@ -518,6 +571,7 @@ function renderDetail() {
     ${(detail.warnings || []).map((warning) => `<div class="warning">${escapeHtml(warning)}</div>`).join("")}
   `;
   renderActionContract();
+  renderRunway();
 }
 
 function disableButtons() {
@@ -552,6 +606,7 @@ function refreshActionState() {
   }
   const proofState = $("#proof-state");
   if (proofState) proofState.textContent = readiness.label;
+  renderRunway();
 }
 
 function renderProof() {
@@ -631,12 +686,21 @@ async function boot() {
   wireControls();
   disableButtons();
   renderScope();
-  await loadAppConfig();
-  await loadBindings();
+  renderRunway();
+  const startup = await Promise.allSettled([
+    loadAppConfig(),
+    loadBindings(),
+    loadWorkflow(),
+  ]);
+  for (const result of startup) {
+    if (result.status === "rejected") logEvent(`Startup check failed: ${result.reason?.message || result.reason}`);
+  }
   await completeRedirectIfPresent();
-  await loadWorkflow();
-  await loadIdentity();
-  await loadInventory();
+  const liveReads = await Promise.allSettled([loadIdentity(), loadInventory()]);
+  for (const result of liveReads) {
+    if (result.status === "rejected") logEvent(`Live read failed: ${result.reason?.message || result.reason}`);
+  }
+  renderRunway();
 }
 
 boot();

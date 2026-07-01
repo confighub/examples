@@ -29,6 +29,7 @@ test("serves the browser app shell", async () => {
     const html = await response.text();
     assert.equal(response.status, 200);
     assert.match(html, /Add-on Manager/);
+    assert.match(html, /Operational readiness/);
     assert.match(html, /Add-ons by Variant/);
     assert.match(html, /Browser OAuth/);
     assert.match(html, /Live Bindings/);
