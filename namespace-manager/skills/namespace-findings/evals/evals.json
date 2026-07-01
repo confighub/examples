@@ -1,0 +1,33 @@
+{
+  "skill_name": "namespace-findings",
+  "evals": [
+    {
+      "id": 1,
+      "name": "high-severity",
+      "prompt": "Show me the high-severity namespace governance problems across the fleet.",
+      "expected_output": "Runs `cub-namespace preflight` then `cub-namespace findings --severity high` and reports the high findings (missing-default-deny, duplicate-namespace) with their namespaces/clusters. Read-only.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "duplicate-namespaces",
+      "prompt": "Are any namespaces defined twice on the same cluster?",
+      "expected_output": "Runs `cub-namespace findings --analyzer duplicate-namespace` and reports duplicate-namespace collisions (name + Target), or states there are none.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "scoped-to-cluster",
+      "prompt": "What namespace issues does prod-cluster have?",
+      "expected_output": "Runs `cub-namespace findings --cluster prod-cluster` and reports the findings for that cluster, ranked by severity.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "routes-inventory-elsewhere",
+      "prompt": "How many namespaces do we have per cluster?",
+      "expected_output": "Recognizes this is an inventory question, not a findings scan, and routes to namespace-audit / `cub-namespace snapshot` rather than running findings.",
+      "files": []
+    }
+  ]
+}

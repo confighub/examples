@@ -1,0 +1,33 @@
+{
+  "skill_name": "namespace-audit",
+  "evals": [
+    {
+      "id": 1,
+      "name": "envelope-gaps",
+      "prompt": "Which namespaces in our fleet are missing a default-deny NetworkPolicy or pod-security labels?",
+      "expected_output": "Runs `cub-namespace preflight` then `cub-namespace envelope` (JSON or -o table, optionally --incomplete-only) and reports the namespaces whose DEFAULT-DENY / POD-SECURITY members are missing. Does not mutate, does not fall back to kubectl.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "fleet-inventory",
+      "prompt": "Give me a per-cluster count of namespaces and workloads.",
+      "expected_output": "Runs `cub-namespace snapshot` (optionally -o table or jq on the JSON) and reports per-cluster namespaces / workloads counts plus totals.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "list-namespaces-one-cluster",
+      "prompt": "List the Namespaces on prod-cluster.",
+      "expected_output": "Runs `cub-namespace list --kind Namespace --cluster prod-cluster`, using the filters rather than post-filtering. Read-only.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "routes-consistency-elsewhere",
+      "prompt": "Is the apptique namespace the same across dev and prod?",
+      "expected_output": "Recognizes this is a cross-variant consistency question, not inventory, and routes to namespace-consistency / `cub-namespace consistency` rather than answering with snapshot/envelope.",
+      "files": []
+    }
+  ]
+}

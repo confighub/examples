@@ -1,0 +1,26 @@
+{
+  "skill_name": "namespace-promote",
+  "evals": [
+    {
+      "id": 1,
+      "name": "promote-dry-run",
+      "prompt": "Which namespace-envelope Units are behind their upstream baseline?",
+      "expected_output": "Runs `cub-namespace promote` (dry-run) and reports the Units behind upstream (or that nothing is behind upstream). Does not commit.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "promote-component",
+      "prompt": "Roll the tightened default-deny out to all the apptique variant spaces.",
+      "expected_output": "Previews `cub-namespace promote --component apptique` (or a --where scope), confirms scope, then commits with --commit --change-desc. Hands off the cluster rollout to cub-apply.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "routes-single-elsewhere",
+      "prompt": "Just add a default-deny to the payments space.",
+      "expected_output": "Recognizes this is a single-Space change, not a fleet promotion, and routes to namespace-backfill, not promote.",
+      "files": []
+    }
+  ]
+}
