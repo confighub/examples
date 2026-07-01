@@ -1,0 +1,50 @@
+{
+  "meta": {
+    "default_provider": "aws",
+    "default_region": "us-east-1",
+    "currency": "USD",
+    "hours_per_month": "730"
+  },
+  "prices": [
+    { "provider": "aws", "region": "us-east-1",      "resource": "cpu",     "unit": "core-hour", "usd": 0.0310 },
+    { "provider": "aws", "region": "us-east-1",      "resource": "memory",  "unit": "gb-hour",   "usd": 0.0040 },
+    { "provider": "aws", "region": "us-east-1",      "resource": "storage", "unit": "gb-month",  "usd": 0.0800 },
+    { "provider": "aws", "region": "us-east-1",      "resource": "gpu",     "unit": "gpu-hour",  "usd": 0.9000 },
+
+    { "provider": "aws", "region": "us-east-2",      "resource": "cpu",     "unit": "core-hour", "usd": 0.0310 },
+    { "provider": "aws", "region": "us-east-2",      "resource": "memory",  "unit": "gb-hour",   "usd": 0.0040 },
+    { "provider": "aws", "region": "us-east-2",      "resource": "storage", "unit": "gb-month",  "usd": 0.0800 },
+    { "provider": "aws", "region": "us-east-2",      "resource": "gpu",     "unit": "gpu-hour",  "usd": 0.9000 },
+
+    { "provider": "aws", "region": "us-west-2",      "resource": "cpu",     "unit": "core-hour", "usd": 0.0326 },
+    { "provider": "aws", "region": "us-west-2",      "resource": "memory",  "unit": "gb-hour",   "usd": 0.0042 },
+    { "provider": "aws", "region": "us-west-2",      "resource": "storage", "unit": "gb-month",  "usd": 0.0800 },
+    { "provider": "aws", "region": "us-west-2",      "resource": "gpu",     "unit": "gpu-hour",  "usd": 0.9180 },
+
+    { "provider": "aws", "region": "eu-west-1",      "resource": "cpu",     "unit": "core-hour", "usd": 0.0342 },
+    { "provider": "aws", "region": "eu-west-1",      "resource": "memory",  "unit": "gb-hour",   "usd": 0.0044 },
+    { "provider": "aws", "region": "eu-west-1",      "resource": "storage", "unit": "gb-month",  "usd": 0.0880 },
+    { "provider": "aws", "region": "eu-west-1",      "resource": "gpu",     "unit": "gpu-hour",  "usd": 0.9900 },
+
+    { "provider": "aws", "region": "ap-southeast-1", "resource": "cpu",     "unit": "core-hour", "usd": 0.0356 },
+    { "provider": "aws", "region": "ap-southeast-1", "resource": "memory",  "unit": "gb-hour",   "usd": 0.0046 },
+    { "provider": "aws", "region": "ap-southeast-1", "resource": "storage", "unit": "gb-month",  "usd": 0.0920 },
+    { "provider": "aws", "region": "ap-southeast-1", "resource": "gpu",     "unit": "gpu-hour",  "usd": 1.0350 },
+
+    { "provider": "gcp", "region": "us-central1",    "resource": "cpu",     "unit": "core-hour", "usd": 0.0317 },
+    { "provider": "gcp", "region": "us-central1",    "resource": "memory",  "unit": "gb-hour",   "usd": 0.0043 },
+    { "provider": "gcp", "region": "us-central1",    "resource": "storage", "unit": "gb-month",  "usd": 0.0400 },
+    { "provider": "gcp", "region": "us-central1",    "resource": "gpu",     "unit": "gpu-hour",  "usd": 0.3500 },
+
+    { "provider": "gcp", "region": "europe-west1",   "resource": "cpu",     "unit": "core-hour", "usd": 0.0349 },
+    { "provider": "gcp", "region": "europe-west1",   "resource": "memory",  "unit": "gb-hour",   "usd": 0.0047 },
+    { "provider": "gcp", "region": "europe-west1",   "resource": "storage", "unit": "gb-month",  "usd": 0.0440 },
+    { "provider": "gcp", "region": "europe-west1",   "resource": "gpu",     "unit": "gpu-hour",  "usd": 0.3850 }
+  ],
+  "budgets": [
+    { "environment": "dev",     "monthly_usd": 500 },
+    { "environment": "staging", "monthly_usd": 1000 },
+    { "environment": "prod",    "monthly_usd": 3000 },
+    { "environment": "default", "monthly_usd": 1000 }
+  ]
+}

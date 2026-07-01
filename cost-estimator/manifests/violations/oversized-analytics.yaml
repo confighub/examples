@@ -1,0 +1,30 @@
+# Planted violation: oversized-analytics — a wildly over-provisioned batch tier
+# (10 replicas × 4 cores / 16Gi each). The estimator flags it OVER its env
+# budget, so the within-budget guardrail gates its apply.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oversized-analytics
+  labels:
+    cost-estimator.confighub.com/workload: oversized-analytics
+    app.kubernetes.io/component: analytics
+spec:
+  replicas: 10
+  selector:
+    matchLabels:
+      app: oversized-analytics
+  template:
+    metadata:
+      labels:
+        app: oversized-analytics
+    spec:
+      containers:
+        - name: spark
+          image: ghcr.io/acme/analytics:2.3.0
+          resources:
+            requests:
+              cpu: "4"
+              memory: 16Gi
+            limits:
+              cpu: "8"
+              memory: 32Gi

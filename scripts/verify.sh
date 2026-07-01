@@ -136,6 +136,7 @@ ai_guide_examples=(
   "${repo_root}/promotion-demo-data"
   "${repo_root}/rbac-manager"
   "${repo_root}/sec-scanner"
+  "${repo_root}/cost-estimator"
   "${repo_root}/redis-platform-with-rbac-guardrails"
   # global-app-layer examples
   "${repo_root}/incubator/global-app-layer/single-component"

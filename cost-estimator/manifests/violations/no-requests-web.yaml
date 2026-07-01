@@ -1,0 +1,25 @@
+# Planted violation: no-requests-web — a Deployment with no resource requests.
+# It can't be costed (unbounded), and it's a scheduling hazard, so the
+# requests-required guardrail gates its apply.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: no-requests-web
+  labels:
+    cost-estimator.confighub.com/workload: no-requests-web
+    app.kubernetes.io/component: web
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: no-requests-web
+  template:
+    metadata:
+      labels:
+        app: no-requests-web
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports:
+            - containerPort: 80
