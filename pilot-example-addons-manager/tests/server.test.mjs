@@ -32,6 +32,7 @@ test("serves the browser app shell", async () => {
     assert.match(html, /Add-ons by Variant/);
     assert.match(html, /Browser OAuth/);
     assert.match(html, /Live Bindings/);
+    assert.match(html, /Governed Action Contract/);
     assert.match(html, /Approval And Proof/);
   });
 });

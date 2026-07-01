@@ -17,6 +17,8 @@ external generator workspace.
 - Keeps mutation endpoints disabled until a real governed write path is added.
 - Shows whether live ConfigHub object, approval, action, proof, and runtime
   bindings are present.
+- Shows a governed action contract so the read-only app can say exactly which
+  operation layers still need to be bound before Apply can be enabled.
 
 ## Requirements
 
@@ -87,8 +89,12 @@ evidence source, then run:
 npm run binding:check
 ```
 
-Until that file exists and passes, the GUI correctly reports missing live
-bindings and apply remains blocked.
+The binding file also carries `action.contract`, which names the operation,
+scope fields, required proof layers, and mutation policy. Until that file exists
+and passes, the GUI correctly reports missing live bindings and Apply remains
+blocked. If the file passes but the action endpoint or runtime evidence is
+still marked `blocked:*`, the GUI reports a read-only live surface rather than
+pretending preview is a rollout.
 
 ## Verify
 
@@ -125,4 +131,6 @@ docs/         architecture, live mode, and testing notes
 
 This app is intentionally safe as a sample. It does not create approvals, apply
 changes, or mutate live ConfigHub state. The browser clearly shows those gaps
-instead of pretending a preview is a rollout.
+instead of pretending a preview is a rollout. The next product step is to bind
+the action contract to an official ConfigHub governed-action primitive and
+controller/runtime proof source.

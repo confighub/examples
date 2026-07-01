@@ -63,5 +63,13 @@ receipt, and runtime evidence source. Then run:
 npm run binding:check
 ```
 
-The GUI shows `bindings missing` until that check can pass. Even after bindings
-are present, apply stays disabled until a governed write executor is added.
+The GUI shows `bindings missing` until that check can pass. The binding file
+must also include `action.contract`, which defines the operation name, required
+scope fields, required proof layers, and mutation policy. Even after bindings
+are present, Apply stays disabled when the action endpoint or runtime evidence
+is still marked `blocked:*`.
+
+The current PR-server proof reaches authenticated browser reads, real Variant
+inventory, real Unit data, revision history, and approval scope. It does not
+claim a live operation until a target, worker, governed action executor,
+controller proof, and runtime readback are bound.

@@ -364,6 +364,49 @@ th {
   grid-template-columns: repeat(2, minmax(180px, 1fr));
 }
 
+.contract-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(170px, 1fr));
+  gap: 10px;
+  padding: 14px;
+}
+
+.contract-step {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 10px;
+  background: #fbfcfd;
+  display: grid;
+  gap: 6px;
+  min-height: 118px;
+}
+
+.contract-step.pass {
+  border-color: #bfdcc9;
+  background: #f4fbf6;
+}
+
+.contract-step.watch {
+  border-color: #edd39d;
+  background: #fff9ed;
+}
+
+.contract-step b {
+  font-size: 13px;
+}
+
+.contract-step span {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  font-weight: 750;
+}
+
+.contract-step p {
+  margin: 0;
+  color: var(--muted);
+}
+
 .auth-grid > div,
 .binding-grid > div {
   border: 1px solid var(--line);
@@ -447,7 +490,7 @@ pre {
 }
 
 @media (max-width: 1100px) {
-  .workflow-band, .layout, .split, .proof-layout {
+  .workflow-band, .layout, .split, .proof-layout, .contract-grid {
     grid-template-columns: 1fr;
   }
 
