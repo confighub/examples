@@ -22,8 +22,12 @@ The web app is a static SPA with **no app-specific backend** — all state lives
 it talks to ConfigHub through the published HTTP API/SDK. Its substance is in three layers:
 
 1. **A fleet-snapshot orchestration layer** — runs two parallel server-side `get-resources`
-   function invocations (RBAC kinds + ServiceAccounts), joins the results with Unit/Space/Target
-   metadata, applies a scope rule, and decodes the resource lists.
+   function invocations (RBAC kinds + ServiceAccounts), scoped by a single ConfigHub Unit
+   `where` filter (with `--component`/`--environment`/… label shorthands over `Space.Labels.*`),
+   joins the results with Unit/Space/Target metadata, and decodes the resource lists. Because one
+   Unit filter can reference Unit, Space, and Target attributes, the server does all the scoping —
+   no separate Space/Target pre-queries. ConfigHub `where` is flat AND-only (no parentheses, no
+   `OR`).
 2. **A pure analysis engine** (React-free, unit-tested) — the real value-add over raw `cub`:
    - **model** — parse K8s RBAC resources from Unit bodies into typed entities with provenance.
    - **semantics** — full K8s authorization matching (verb/resource/apiGroup wildcards,
@@ -225,7 +229,9 @@ examples/rbac-manager-for-agents/
 1. **Confirm the `get-resources` invoke is fully expressible via `cub`** (the app uses two
    parallel org-scoped invokes). If not, that is an SDK/CLI gap to file, not work around.
 2. **Persona/cluster modeling** — confirm the label conventions (`Variant=base`, standard Space
-   labels) the snapshot and scope rule should rely on.
+   labels) the snapshot and `--where` scoping (incl. the label shorthands) should rely on. Base/
+   template Units can bind a Noop-ProviderType dummy Target (server-hosted, never applied) so every
+   Unit is targeted and `Target.Slug` is a consistent grouping key.
 3. **Findings parity** — port all six analyzers verbatim, or trim to the highest-signal set for v1?
 
 ## Sources

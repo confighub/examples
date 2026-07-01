@@ -5,7 +5,7 @@
       "id": 1,
       "name": "who-can-delete-secrets-prod",
       "prompt": "Who can delete secrets in our prod clusters?",
-      "expected_output": "Runs `cub-rbac preflight`, then `cub-rbac who-can delete secrets` scoped to prod with --target-where (e.g. \"Slug LIKE 'prod-%'\"). Reports the subjects with their cluster, binding/role, and namespace scope. Does not mutate; does not use kubectl auth can-i.",
+      "expected_output": "Runs `cub-rbac preflight`, then `cub-rbac who-can delete secrets` scoped to prod with --environment prod (or --where \"Space.Labels.Environment = 'prod'\"). Reports the subjects with their cluster, binding/role, and namespace scope. Does not mutate; does not use kubectl auth can-i.",
       "files": []
     },
     {

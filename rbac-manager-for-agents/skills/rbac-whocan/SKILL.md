@@ -70,7 +70,8 @@ Subject format is `Kind:Name`, or `ServiceAccount:namespace/name` for a ServiceA
 
 ## Scoping & output
 
-- Narrow the fleet with `--target-where` / `--space-where` (ConfigHub filter expressions), e.g. `--target-where "Slug LIKE 'prod-%'"`.
+- Narrow the fleet with a single Unit `--where` filter (may reference Unit, Space, and Target attributes, e.g. `--where "Target.ProviderType = 'OCI'"`), or the label shorthands `--component` / `--environment` / `--region` / `--owner` / `--layer` / `--variant` (each expands to `Space.Labels.<Key> = '<value>'`, e.g. `--environment prod`). ConfigHub `where` is flat AND-only — no parentheses, no OR; the shorthands AND onto any `--where`.
+- `--namespace` on `who-can` is a client-side display filter (restricts to grants effective in that namespace), not part of the server query.
 - JSON by default; `-o table` for humans. Pipe JSON into `jq` for grouping/counting.
 
 ## Interpreting results

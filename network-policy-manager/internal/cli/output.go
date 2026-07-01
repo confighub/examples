@@ -6,12 +6,11 @@ package cli
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/confighub/sdk/cliutil"
-
-	"github.com/confighub/examples/network-policy-manager/internal/snapshot"
 )
 
 // outputFlag is the shared -o/--output value: "json" (default) or "table".
@@ -24,21 +23,55 @@ func addOutputFlag(cmd *cobra.Command, dest *string) {
 	cmd.Flags().StringVarP(dest, "output", "o", outputJSON, "output format: json | table")
 }
 
-// scopeFlags binds --target-where / --space-where and yields a snapshot.Scope.
-type scopeFlags struct {
-	targetWhere string
-	spaceWhere  string
+// filterFlags binds the fleet-scoping flags and compiles them into one
+// ConfigHub Unit `--where` predicate. A single Unit-level filter can reference
+// Unit, Space, and Target metadata (Space.Labels.*, Target.Slug,
+// Target.ProviderType, ...), so there is no need for separate Space/Target
+// filters — the server does the scoping and only the matching Units' resources
+// are fetched. The opinionated label flags are convenience shorthands over
+// --where, mirroring the standard Space labels the `cub variant` commands use.
+type filterFlags struct {
+	where       string
+	component   string
+	environment string
+	region      string
+	owner       string
+	layer       string
+	variant     string
 }
 
-func addScopeFlags(cmd *cobra.Command, s *scopeFlags) {
-	cmd.Flags().StringVar(&s.targetWhere, "target-where", "",
-		"ConfigHub filter over Targets to scope deployed Units (e.g. \"Slug LIKE 'prod-%'\")")
-	cmd.Flags().StringVar(&s.spaceWhere, "space-where", "",
-		"ConfigHub filter over Spaces to scope untargeted base Units")
+func addFilterFlags(cmd *cobra.Command, f *filterFlags) {
+	cmd.Flags().StringVar(&f.where, "where", "",
+		"raw ConfigHub Unit filter; may reference Slug, Labels.*, Space.*, Target.* (e.g. \"Target.ProviderType = 'OCI'\")")
+	cmd.Flags().StringVar(&f.component, "component", "", "select Units whose Space has Labels.Component = <value>")
+	cmd.Flags().StringVar(&f.environment, "environment", "", "select Units whose Space has Labels.Environment = <value>")
+	cmd.Flags().StringVar(&f.region, "region", "", "select Units whose Space has Labels.Region = <value>")
+	cmd.Flags().StringVar(&f.owner, "owner", "", "select Units whose Space has Labels.Owner = <value>")
+	cmd.Flags().StringVar(&f.layer, "layer", "", "select Units whose Space has Labels.Layer = <value>")
+	cmd.Flags().StringVar(&f.variant, "variant", "", "select Units whose Space has Labels.Variant = <value>")
 }
 
-func (s scopeFlags) scope() snapshot.Scope {
-	return snapshot.Scope{TargetWhere: s.targetWhere, SpaceWhere: s.spaceWhere}
+// predicate compiles the flags into a single ConfigHub `where` expression
+// (empty when nothing is set, i.e. the whole fleet the user can view). ConfigHub
+// `where` is flat AND-only — no parentheses, no OR — so the label shorthands are
+// joined to any raw --where with a bare AND.
+func (f filterFlags) predicate() string {
+	var terms []string
+	if f.where != "" {
+		terms = append(terms, f.where)
+	}
+	eq := func(field, val string) {
+		if val != "" {
+			terms = append(terms, fmt.Sprintf("%s = '%s'", field, strings.ReplaceAll(val, "'", "''")))
+		}
+	}
+	eq("Space.Labels.Component", f.component)
+	eq("Space.Labels.Environment", f.environment)
+	eq("Space.Labels.Region", f.region)
+	eq("Space.Labels.Owner", f.owner)
+	eq("Space.Labels.Layer", f.layer)
+	eq("Space.Labels.Variant", f.variant)
+	return strings.Join(terms, " AND ")
 }
 
 // printJSON writes v as indented JSON, via cliutil so the example shares the

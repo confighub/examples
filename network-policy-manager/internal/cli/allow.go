@@ -20,7 +20,7 @@ import (
 func newAllowCmd() *cobra.Command {
 	var output, clusterFilter, srcNamespace, dstNamespace, port, spaceOverride string
 	var egress bool
-	var scope scopeFlags
+	var filter filterFlags
 	var commit cliutil.CommitFlags
 	cmd := &cobra.Command{
 		Use:   "allow <src-workload> <dst-workload>",
@@ -47,7 +47,7 @@ This is a dry run unless you pass --commit --change-desc "…".`,
 			if err != nil {
 				return err
 			}
-			snap, err := snapshot.Load(cmd.Context(), client, scope.scope())
+			snap, err := snapshot.Load(cmd.Context(), client, filter.predicate())
 			if err != nil {
 				return err
 			}
@@ -79,7 +79,7 @@ This is a dry run unless you pass --commit --change-desc "…".`,
 		},
 	}
 	addOutputFlag(cmd, &output)
-	addScopeFlags(cmd, &scope)
+	addFilterFlags(cmd, &filter)
 	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "cluster (Target or Space slug) to resolve both workloads in")
 	cmd.Flags().StringVar(&srcNamespace, "src-namespace", "", "namespace of the source workload (disambiguation)")
 	cmd.Flags().StringVar(&dstNamespace, "dst-namespace", "", "namespace of the destination workload (disambiguation)")

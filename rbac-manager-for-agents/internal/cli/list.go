@@ -28,7 +28,7 @@ type resourceRow struct {
 
 func newListCmd() *cobra.Command {
 	var output string
-	var scope scopeFlags
+	var filter filterFlags
 	var kindFilter, clusterFilter, namespaceFilter string
 	cmd := &cobra.Command{
 		Use:   "list",
@@ -45,7 +45,7 @@ Filter with --kind, --cluster, and --namespace.`,
 			if err != nil {
 				return err
 			}
-			snap, err := snapshot.Load(cmd.Context(), client, scope.scope())
+			snap, err := snapshot.Load(cmd.Context(), client, filter.predicate())
 			if err != nil {
 				return err
 			}
@@ -58,7 +58,7 @@ Filter with --kind, --cluster, and --namespace.`,
 		},
 	}
 	addOutputFlag(cmd, &output)
-	addScopeFlags(cmd, &scope)
+	addFilterFlags(cmd, &filter)
 	cmd.Flags().StringVar(&kindFilter, "kind", "", "filter by kind (Role, ClusterRole, RoleBinding, ClusterRoleBinding, ServiceAccount)")
 	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "filter by cluster (Target or Space slug)")
 	cmd.Flags().StringVar(&namespaceFilter, "namespace", "", "filter by namespace")

@@ -46,7 +46,7 @@ type allowFromLink struct {
 func newAllowFromLinksCmd() *cobra.Command {
 	var output, spaceFilter, clusterFilter, port string
 	var perEdge bool
-	var scope scopeFlags
+	var filter filterFlags
 	var commit cliutil.CommitFlags
 	cmd := &cobra.Command{
 		Use:   "allow-from-links",
@@ -80,7 +80,7 @@ This is a dry run unless you pass --commit --change-desc "…".`,
 			if err != nil {
 				return err
 			}
-			snap, err := snapshot.Load(cmd.Context(), client, scope.scope())
+			snap, err := snapshot.Load(cmd.Context(), client, filter.predicate())
 			if err != nil {
 				return err
 			}
@@ -108,7 +108,7 @@ This is a dry run unless you pass --commit --change-desc "…".`,
 		},
 	}
 	addOutputFlag(cmd, &output)
-	addScopeFlags(cmd, &scope)
+	addFilterFlags(cmd, &filter)
 	cmd.Flags().StringVar(&spaceFilter, "space", "", "only consider Links whose consumer (From) Unit is in this Space")
 	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "only consider Links in this cluster")
 	cmd.Flags().StringVar(&port, "port", "", "restrict each rule to this port (numeric or named; protocol TCP)")

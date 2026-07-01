@@ -49,15 +49,6 @@ var resourceQueries = []resourceQuery{
 	{"kind = 'Service'", "ConfigHub.ResourceType = 'v1/Service'"},
 }
 
-// Scope narrows the fleet. Both are ConfigHub filter expressions (the same
-// `where` syntax cub uses); empty means everything the user can view. Targets
-// scope deployed Units (Clusters are Targets); Spaces scope untargeted base
-// Units.
-type Scope struct {
-	TargetWhere string
-	SpaceWhere  string
-}
-
 // UnitMeta is the per-Unit metadata the snapshot joins onto resources.
 type UnitMeta struct {
 	UnitID                string            `json:"unitId"`
@@ -94,7 +85,9 @@ type Snapshot struct {
 	Resources []netpol.FleetResource
 	// Units is in-scope Unit metadata by UnitID.
 	Units map[string]UnitMeta
-	Scope Scope
+	// Filter is the ConfigHub Unit `where` predicate the snapshot was scoped
+	// by (empty = the whole fleet the user can view).
+	Filter string `json:"filter,omitempty"`
 }
 
 type rawResource struct {
@@ -118,8 +111,18 @@ func isCanonicalSpace(labels map[string]string) bool {
 	return false
 }
 
-// Load fetches and assembles the fleet snapshot using the given API client.
-func Load(ctx context.Context, c *cubapi.Client, scope Scope) (*Snapshot, error) {
+// Load fetches and assembles the fleet snapshot using the given API client,
+// scoped by a single ConfigHub Unit `where` predicate (empty = everything the
+// user can view). The predicate may reference Unit, Space, and Target metadata;
+// it is applied server-side to both the Unit list and the get-resources fetch,
+// so only matching Units' resources are pulled.
+func Load(ctx context.Context, c *cubapi.Client, where string) (*Snapshot, error) {
+	// ConfigHub `where` is flat AND-only (no parentheses), so clauses are joined
+	// with a bare AND.
+	unitWhere := k8sUnitsWhere
+	if where != "" {
+		unitWhere = k8sUnitsWhere + " AND " + where
+	}
 	var (
 		wg       sync.WaitGroup
 		units    []*goclientnew.ExtendedUnit
@@ -128,11 +131,11 @@ func Load(ctx context.Context, c *cubapi.Client, scope Scope) (*Snapshot, error)
 		queryErr = make([]error, len(resourceQueries))
 	)
 	wg.Add(1 + len(resourceQueries))
-	go func() { defer wg.Done(); units, unitsErr = listUnits(ctx, c) }()
+	go func() { defer wg.Done(); units, unitsErr = listUnits(ctx, c, unitWhere) }()
 	for i, q := range resourceQueries {
 		go func(i int, q resourceQuery) {
 			defer wg.Done()
-			outcomes[i], queryErr[i] = getResources(ctx, c, q.whereData, q.whereResource)
+			outcomes[i], queryErr[i] = getResources(ctx, c, unitWhere, q.whereData, q.whereResource)
 		}(i, q)
 	}
 	wg.Wait()
@@ -146,14 +149,8 @@ func Load(ctx context.Context, c *cubapi.Client, scope Scope) (*Snapshot, error)
 		}
 	}
 
-	scopedSpaceIDs, scopedTargetIDs, err := resolveScope(ctx, c, scope)
-	if err != nil {
-		return nil, err
-	}
-
-	// Build in-scope unit map. Scope rule: targeted units are in scope iff their
-	// Target matches the target filter; untargeted (base) units iff their Space
-	// matches the space filter.
+	// The server has already scoped the Units to the predicate; build metadata
+	// for every returned Unit and join resources onto it by UnitID.
 	inScope := make(map[string]UnitMeta, len(units))
 	for _, eu := range units {
 		if eu.Unit == nil || isZeroUUID(eu.Unit.UnitID) {
@@ -164,15 +161,6 @@ func Load(ctx context.Context, c *cubapi.Client, scope Scope) (*Snapshot, error)
 		targetID := ""
 		if eu.Unit.TargetID != nil {
 			targetID = eu.Unit.TargetID.String()
-		}
-		var ok bool
-		if targetID != "" {
-			ok = scopedTargetIDs == nil || scopedTargetIDs[targetID]
-		} else {
-			ok = scopedSpaceIDs == nil || scopedSpaceIDs[spaceID]
-		}
-		if !ok {
-			continue
 		}
 		var spaceSlug string
 		var spaceLabels map[string]string
@@ -260,24 +248,26 @@ func Load(ctx context.Context, c *cubapi.Client, scope Scope) (*Snapshot, error)
 		Clusters:  netpol.BuildFleet(forAnalysis),
 		Resources: resources,
 		Units:     inScope,
-		Scope:     scope,
+		Filter:    where,
 	}, nil
 }
 
-// listUnits returns every Kubernetes/YAML Unit org-wide, with Space and Target
-// expanded so the snapshot can join their slugs and labels.
-func listUnits(ctx context.Context, c *cubapi.Client) ([]*goclientnew.ExtendedUnit, error) {
-	return cubapi.ListUnits(ctx, c, cubapi.NewWhere(k8sUnitsWhere),
+// listUnits returns every Kubernetes/YAML Unit matching the given where
+// predicate, with Space and Target expanded so the snapshot can join their slugs
+// and labels.
+func listUnits(ctx context.Context, c *cubapi.Client, where string) ([]*goclientnew.ExtendedUnit, error) {
+	return cubapi.ListUnits(ctx, c, cubapi.NewWhere(where),
 		cubapi.ListOpts{Include: "SpaceID,TargetID"})
 }
 
 // getResources runs the get-resources function over the matching Units and
-// returns the per-Unit outcomes (the resource list lands in Outputs).
-func getResources(ctx context.Context, c *cubapi.Client, whereData, whereResource string) ([]cubapi.UnitOutcome, error) {
+// returns the per-Unit outcomes (the resource list lands in Outputs). The same
+// where predicate that scopes the Unit list scopes the resource fetch.
+func getResources(ctx context.Context, c *cubapi.Client, where, whereData, whereResource string) ([]cubapi.UnitOutcome, error) {
 	res, err := cubapi.InvokeFunction(ctx, c,
 		api.FunctionInvocation{FunctionName: "get-resources", Arguments: []api.FunctionArgument{{Value: "json"}}},
 		cubapi.Selector{
-			Where:         k8sUnitsWhere,
+			Where:         where,
 			WhereData:     whereData,
 			WhereResource: whereResource,
 		},
@@ -286,36 +276,6 @@ func getResources(ctx context.Context, c *cubapi.Client, whereData, whereResourc
 		return nil, err
 	}
 	return res.Outcomes, nil
-}
-
-// resolveScope returns the in-scope Space and Target ID sets, or nil sets when
-// the corresponding filter is empty (meaning "everything").
-func resolveScope(ctx context.Context, c *cubapi.Client, scope Scope) (spaceIDs, targetIDs map[string]bool, err error) {
-	if scope.SpaceWhere != "" {
-		spaces, err := cubapi.ListSpaces(ctx, c, cubapi.NewWhere(scope.SpaceWhere), cubapi.ListOpts{Select: "SpaceID,Slug"})
-		if err != nil {
-			return nil, nil, fmt.Errorf("scope space filter: %w", err)
-		}
-		spaceIDs = make(map[string]bool, len(spaces))
-		for _, es := range spaces {
-			if es.Space != nil {
-				spaceIDs[es.Space.SpaceID.String()] = true
-			}
-		}
-	}
-	if scope.TargetWhere != "" {
-		targets, err := cubapi.ListTargets(ctx, c, cubapi.NewWhere(scope.TargetWhere), cubapi.ListOpts{Select: "TargetID,Slug"})
-		if err != nil {
-			return nil, nil, fmt.Errorf("scope target filter: %w", err)
-		}
-		targetIDs = make(map[string]bool, len(targets))
-		for _, et := range targets {
-			if et.Target != nil {
-				targetIDs[et.Target.TargetID.String()] = true
-			}
-		}
-	}
-	return spaceIDs, targetIDs, nil
 }
 
 func decodeResourceList(encoded string) []rawResource {
