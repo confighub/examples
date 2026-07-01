@@ -1,0 +1,33 @@
+{
+  "skill_name": "observability-findings",
+  "evals": [
+    {
+      "id": 1,
+      "name": "ranked-findings",
+      "prompt": "What observability gaps do we have, most important first?",
+      "expected_output": "Runs `cub-observability preflight` then `cub-observability findings` (JSON or -o table), most-severe first. Read-only.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "uncovered",
+      "prompt": "Which metrics Services aren't being scraped?",
+      "expected_output": "Runs `cub-observability findings --analyzer coverage` and reports uncovered metrics Services.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "dangling",
+      "prompt": "Do we have any ServiceMonitors that select nothing?",
+      "expected_output": "Runs `cub-observability findings --analyzer dangling` and reports dangling ServiceMonitors.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "routes-fix-elsewhere",
+      "prompt": "Fix the uncovered services.",
+      "expected_output": "Routes to observability-instrument (`cub-observability ensure-servicemonitor`) rather than mutating from this read-only skill.",
+      "files": []
+    }
+  ]
+}

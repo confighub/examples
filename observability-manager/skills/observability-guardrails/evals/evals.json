@@ -1,0 +1,33 @@
+{
+  "skill_name": "observability-guardrails",
+  "evals": [
+    {
+      "id": 1,
+      "name": "install-dry-run-then-commit",
+      "prompt": "Enforce that our metrics services are scraped by a ServiceMonitor.",
+      "expected_output": "Runs `cub-observability preflight`, previews `cub-observability guardrails install` (dry-run), then on confirmation `guardrails install --commit`, and explains coverage uses annotate-then-validate (run `guardrails annotate --commit` too). Trigger is Warn=true.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "annotate",
+      "prompt": "Make the uncovered metrics services show a warning.",
+      "expected_output": "Runs `cub-observability guardrails annotate` dry-run then --commit --change-desc, after the pack is installed.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "status",
+      "prompt": "Which services are flagged by the observability guardrails?",
+      "expected_output": "Runs `cub-observability guardrails status` and reports Units with ApplyWarnings/ApplyGates. Read-only.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "routes-fix-elsewhere",
+      "prompt": "Now fix the flagged services.",
+      "expected_output": "Routes to observability-instrument (`cub-observability ensure-servicemonitor`) to remediate, rather than fixing from the guardrails skill.",
+      "files": []
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "skill_name": "observability-audit",
+  "evals": [
+    {
+      "id": 1,
+      "name": "coverage",
+      "prompt": "Which of our metrics-exposing Services are actually scraped by a ServiceMonitor?",
+      "expected_output": "Runs `cub-observability preflight` then `cub-observability coverage` (JSON or -o table) and reports each metrics Service's covering ServiceMonitor or MISSING. Read-only.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "sidecars",
+      "prompt": "Which workloads have an OpenTelemetry sidecar?",
+      "expected_output": "Runs `cub-observability sidecars` (optionally --missing-only) and reports sidecar presence per workload.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "per-cluster-counts",
+      "prompt": "How many ServiceMonitors and metrics Services per cluster?",
+      "expected_output": "Runs `cub-observability snapshot` and reports per-cluster ServiceMonitor / Service / metrics-Service counts.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "routes-fix-elsewhere",
+      "prompt": "Add a ServiceMonitor for the checkout service.",
+      "expected_output": "Recognizes this is a fix and routes to observability-instrument (`cub-observability ensure-servicemonitor`) rather than acting from this read-only skill.",
+      "files": []
+    }
+  ]
+}
