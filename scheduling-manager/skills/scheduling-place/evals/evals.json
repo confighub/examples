@@ -1,0 +1,33 @@
+{
+  "skill_name": "scheduling-place",
+  "evals": [
+    {
+      "id": 1,
+      "name": "pin-node-pool",
+      "prompt": "Pin the trainer deployment in ml-prod to the gpu node pool.",
+      "expected_output": "Runs `cub-scheduling preflight`, previews `cub-scheduling set-node-selector ml-prod/trainer --selector pool=gpu` (or `profile apply placement-gpu`) dry-run, then commits with --commit --change-desc. No cluster apply; no gate bypass.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "toleration",
+      "prompt": "Let the trainer tolerate the spot taint.",
+      "expected_output": "Runs `cub-scheduling set-tolerations ml-prod/trainer --toleration spot:NoSchedule` dry-run then --commit, and notes a toleration alone doesn't pin placement.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "fleet-gpu",
+      "prompt": "Put every prod ml workload on the gpu nodes.",
+      "expected_output": "Runs `cub-scheduling fleet-edit --profile placement-gpu --environment prod --component ml` dry-run (reports count) then --commit --change-desc.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "routes-availability-elsewhere",
+      "prompt": "Spread the trainer replicas across nodes so a node loss doesn't take them all.",
+      "expected_output": "Recognizes this is availability (pod anti-affinity / topology spread), not placement, and routes to workload-manager (cub-workload ensure-spread) rather than acting here.",
+      "files": []
+    }
+  ]
+}
