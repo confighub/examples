@@ -49,10 +49,29 @@ function appConfig(req, config) {
   };
 }
 
-async function liveBindings() {
+function hasPlaceholder(value) {
+  if (typeof value === "string") {
+    return value.includes("<") || value.includes(">") || value.includes("example-fill");
+  }
+  if (Array.isArray(value)) return value.some(hasPlaceholder);
+  if (value && typeof value === "object") return Object.values(value).some(hasPlaceholder);
+  return false;
+}
+
+async function liveBindings(config) {
+  const bindingFile = config.liveBindingsFile || path.join(DATA_DIR, "live-bindings.json");
   try {
-    const raw = await fs.readFile(path.join(DATA_DIR, "live-bindings.json"), "utf8");
-    return {status: "LIVE_BINDINGS_PRESENT", bindings: JSON.parse(raw)};
+    const raw = await fs.readFile(bindingFile, "utf8");
+    const bindings = JSON.parse(raw);
+    if (hasPlaceholder(bindings)) {
+      return {
+        status: "LIVE_BINDINGS_PLACEHOLDER",
+        bindings,
+        requiredFile: "data/live-bindings.json",
+        reason: "The live binding file still contains example placeholder values.",
+      };
+    }
+    return {status: "LIVE_BINDINGS_PRESENT", bindings};
   } catch {
     return {
       status: "LIVE_BINDINGS_MISSING",
@@ -68,7 +87,7 @@ async function handleApp(req, url, config) {
     return jsonResponse(appConfig(req, config));
   }
   if (url.pathname === "/app/bindings") {
-    return jsonResponse(await liveBindings());
+    return jsonResponse(await liveBindings(config));
   }
   return jsonResponse({error: "unknown app route"}, 404);
 }

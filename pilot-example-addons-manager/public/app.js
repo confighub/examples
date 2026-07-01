@@ -46,6 +46,46 @@ function setModeChip(source, warning) {
   mode.className = `chip ${warning ? "warn" : "ok"}`;
 }
 
+function isBlockedValue(value) {
+  return typeof value === "string" && value.startsWith("blocked:");
+}
+
+function cleanBlockedReason(value) {
+  return isBlockedValue(value) ? value.slice("blocked:".length).replaceAll("-", " ") : value;
+}
+
+function bindingReadiness() {
+  const status = state.bindings?.status || "LIVE_BINDINGS_UNKNOWN";
+  const bindings = state.bindings?.bindings || {};
+  if (status !== "LIVE_BINDINGS_PRESENT") {
+    return {
+      label: status === "LIVE_BINDINGS_PLACEHOLDER" ? "replace placeholders" : "bindings missing",
+      chip: "warn",
+      applyReady: false,
+      note: state.bindings?.reason || "Create deployment-local live bindings before live operation.",
+    };
+  }
+  const blockers = [
+    bindings.approval?.objectId,
+    bindings.action?.endpoint,
+    bindings.runtime?.evidenceSource,
+  ].filter(isBlockedValue);
+  if (blockers.length) {
+    return {
+      label: "read-only live surface",
+      chip: "warn",
+      applyReady: false,
+      note: `ConfigHub read proof is connected. Apply remains blocked: ${blockers.map(cleanBlockedReason).join("; ")}.`,
+    };
+  }
+  return {
+    label: "live operation bound",
+    chip: "ok",
+    applyReady: true,
+    note: "ConfigHub object, approval, action, proof, and runtime bindings are present.",
+  };
+}
+
 function resetSelection() {
   state.inventory = null;
   state.selection = null;
@@ -74,17 +114,21 @@ async function loadBindings() {
 
 function renderBindings() {
   const status = state.bindings?.status || "LIVE_BINDINGS_UNKNOWN";
-  const present = status === "LIVE_BINDINGS_PRESENT";
-  $("#binding-state").textContent = present ? "bindings ready" : "bindings missing";
-  $("#binding-state").className = `chip ${present ? "ok" : "warn"}`;
-  $("#binding-file").textContent = present ? "live binding file loaded" : "copy data/live-bindings.example.json";
-  const rows = present
+  const readiness = bindingReadiness();
+  const bindings = state.bindings?.bindings || {};
+  $("#binding-state").textContent = readiness.label;
+  $("#binding-state").className = `chip ${readiness.chip}`;
+  $("#binding-file").textContent = status === "LIVE_BINDINGS_PRESENT" ? "deployment-local binding loaded" : "data/live-bindings.json";
+  const rows = status === "LIVE_BINDINGS_PRESENT"
     ? [
-        ["ConfigHub object", state.bindings.bindings?.configHub?.objectUrl],
-        ["Approval object", state.bindings.bindings?.approval?.objectId],
-        ["Action endpoint", state.bindings.bindings?.action?.endpoint],
-        ["Proof receipt", state.bindings.bindings?.proof?.receiptObjectId],
-        ["Runtime evidence", state.bindings.bindings?.runtime?.evidenceSource],
+        ["Readiness", readiness.note],
+        ["ConfigHub object", bindings.configHub?.objectUrl],
+        ["Org / space", [bindings.configHub?.externalOrganizationId || bindings.configHub?.organizationId, bindings.configHub?.space || bindings.configHub?.spaceId].filter(Boolean).join(" / ")],
+        ["Approval", bindings.approval?.objectId],
+        ["Action", bindings.action?.endpoint],
+        ["Proof", bindings.proof?.receiptObjectId],
+        ["Runtime", bindings.runtime?.evidenceSource],
+        ["Runtime readback", bindings.runtime?.readback],
       ]
     : [
         ["Status", status],
@@ -95,6 +139,7 @@ function renderBindings() {
   $("#binding-grid").innerHTML = rows
     .map(([label, value]) => `<div><span>${escapeHtml(label)}</span><b>${escapeHtml(value || "-")}</b></div>`)
     .join("");
+  refreshActionState();
 }
 
 function renderAuthState() {
@@ -113,6 +158,7 @@ function renderAuthState() {
     $("#auth-state").textContent = "Ready to sign in";
     $("#auth-state").className = "chip";
   }
+  refreshActionState();
 }
 
 async function completeRedirectIfPresent() {
@@ -210,6 +256,19 @@ async function readInventory() {
   return localApi("/api/inventory");
 }
 
+function emptyInventoryMessage() {
+  if (state.mode === "browser") {
+    return `
+      <div class="empty-state">
+        <b>No add-on Variants found in this ConfigHub org yet.</b>
+        <p>The browser sign-in and ConfigHub read path can be working even when the org has no spaces named like <code>helm-&lt;addon&gt;-&lt;variant&gt;</code> and no add-on Units yet.</p>
+        <p>Next proof: create or import add-on Units, then refresh Browser OAuth inventory.</p>
+      </div>
+    `;
+  }
+  return `<div class="empty-state"><b>No add-on Variants found.</b><p>Use fixture mode for bundled sample data, or connect a ConfigHub org that has add-on spaces and Units.</p></div>`;
+}
+
 async function loadInventory() {
   resetSelection();
   $("#inventory").innerHTML = `<div class="unit-table empty">Loading inventory...</div>`;
@@ -219,6 +278,11 @@ async function loadInventory() {
     state.inventory = inventory;
     setModeChip(inventory.source || "fixture", inventory.warning);
     $("#inventory-count").textContent = `${inventory.totals.addons} add-ons / ${inventory.totals.variants} Variants`;
+    if (!(inventory.addons || []).length) {
+      $("#inventory").innerHTML = emptyInventoryMessage();
+      logEvent(`Loaded 0 Variants from ${inventory.source || "fixture"} data.`);
+      return;
+    }
     $("#inventory").innerHTML = (inventory.addons || [])
       .map((group) => `
         <section>
@@ -370,16 +434,34 @@ function disableButtons() {
   for (const id of ["preview-config", "prepare-scope", "apply", "export-receipt"]) {
     $(`#${id}`).disabled = true;
   }
+  refreshActionState();
 }
 
 function enableButtons() {
   $("#preview-config").disabled = false;
   $("#prepare-scope").disabled = false;
   $("#export-receipt").disabled = false;
-  $("#apply").disabled = true;
-  $("#apply").title = state.bindings?.status === "LIVE_BINDINGS_PRESENT"
-    ? "Apply remains disabled until the governed write executor is added."
-    : "Apply remains disabled until live ConfigHub bindings and the governed write executor are added.";
+  refreshActionState();
+}
+
+function refreshActionState() {
+  const readiness = bindingReadiness();
+  const hasUnit = Boolean(state.detail?.unit);
+  const actionNote = $("#action-note");
+  if (actionNote) {
+    actionNote.textContent = hasUnit
+      ? readiness.note
+      : "Select a Unit to preview config, prepare approval scope, and inspect proof.";
+  }
+  const apply = $("#apply");
+  if (apply) {
+    apply.disabled = true;
+    apply.title = readiness.applyReady
+      ? "Apply is still disabled in this sample until a scenario-specific executor is implemented."
+      : readiness.note;
+  }
+  const proofState = $("#proof-state");
+  if (proofState) proofState.textContent = readiness.label;
 }
 
 function renderProof() {
@@ -398,7 +480,8 @@ function renderProof() {
   } else if (tab === "Approval") {
     body.innerHTML = `<b>${escapeHtml(proof.approval)}</b><pre>${escapeHtml(JSON.stringify(scope, null, 2))}</pre>`;
   } else if (tab === "Gate") {
-    body.innerHTML = `<b>${escapeHtml(proof.gate)}</b><p class="muted">Apply stays disabled until approval, write path, controller proof, and runtime proof are connected.</p>`;
+    const readiness = bindingReadiness();
+    body.innerHTML = `<b>${escapeHtml(proof.gate)}</b><p class="muted">${escapeHtml(readiness.note)}</p><pre>${escapeHtml(JSON.stringify(state.bindings || {}, null, 2))}</pre>`;
   } else if (tab === "Controller") {
     body.innerHTML = `<b>${escapeHtml(proof.controller)}</b><p class="muted">No Argo, Flux, or other controller readback is wired in this standalone sample.</p>`;
   } else if (tab === "Runtime") {

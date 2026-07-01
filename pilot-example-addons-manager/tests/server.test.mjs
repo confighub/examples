@@ -3,7 +3,11 @@ import test from "node:test";
 import { createAppServer, listen } from "../src/server.mjs";
 
 async function withServer(fn) {
-  const server = createAppServer({dataMode: "fixture", port: 0});
+  const server = createAppServer({
+    dataMode: "fixture",
+    port: 0,
+    liveBindingsFile: "data/does-not-exist-for-tests.json",
+  });
   const address = await listen(server, 0);
   const base = `http://127.0.0.1:${address.port}`;
   try {

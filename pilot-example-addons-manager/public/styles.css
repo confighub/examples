@@ -310,6 +310,21 @@ th {
   color: var(--muted);
 }
 
+.empty-state {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  color: var(--muted);
+}
+
+.empty-state b {
+  color: var(--text);
+}
+
+.empty-state p {
+  margin: 0;
+}
+
 .detail-grid {
   display: grid;
   grid-template-columns: 150px 1fr;

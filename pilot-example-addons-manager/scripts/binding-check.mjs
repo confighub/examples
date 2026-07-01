@@ -21,9 +21,26 @@ const required = [
   ["runtime", "evidenceSource"],
 ];
 
+function hasPlaceholder(value) {
+  if (typeof value === "string") {
+    return value.includes("<") || value.includes(">") || value.includes("example-fill");
+  }
+  if (Array.isArray(value)) return value.some(hasPlaceholder);
+  if (value && typeof value === "object") return Object.values(value).some(hasPlaceholder);
+  return false;
+}
+
 for (const [section, field] of required) {
   assert.ok(bindings[section], `${section} section is required`);
   assert.ok(bindings[section][field], `${section}.${field} is required`);
+}
+
+if (hasPlaceholder(bindings)) {
+  console.error(JSON.stringify({
+    status: "LIVE_BINDINGS_PLACEHOLDER",
+    reason: "data/live-bindings.json still contains example placeholder values",
+  }, null, 2));
+  process.exit(1);
 }
 
 console.log(JSON.stringify({
