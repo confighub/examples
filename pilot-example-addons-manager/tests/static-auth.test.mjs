@@ -46,6 +46,8 @@ test("command-line proof checks exist", async () => {
 
 test("browser app explains live readiness states", async () => {
   const app = await fs.readFile(path.join(root, "public", "app.js"), "utf8");
+  assert.match(app, /renderRunway/);
+  assert.match(app, /Promise\.allSettled/);
   assert.match(app, /read-only live surface/);
   assert.match(app, /live operation bound/);
   assert.match(app, /Governed-action|ConfigHub-governed-action\.v0/);
