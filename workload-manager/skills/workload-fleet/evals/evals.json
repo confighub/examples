@@ -1,0 +1,33 @@
+{
+  "skill_name": "workload-fleet",
+  "evals": [
+    {
+      "id": 1,
+      "name": "fleet-harden",
+      "prompt": "Harden every workload in prod.",
+      "expected_output": "Runs `cub-workload preflight`, previews `cub-workload fleet-edit --profile harden-restricted --environment prod` (dry-run, reports the count that would change), then on confirmation commits with --commit --change-desc. No cluster apply; no gate bypass.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "list-profiles",
+      "prompt": "What workload profiles are available?",
+      "expected_output": "Runs `cub-workload profile list` (optionally -o table) and reports the profile slugs, functions, and parameters. Suggests `profile install` if empty.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "promote-downstream",
+      "prompt": "Roll the checkout workload fixes downstream to their variant spaces.",
+      "expected_output": "Runs `cub-workload promote --component checkout` dry-run then --commit --change-desc (override-preserving upgrade). No cluster apply.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "routes-single-elsewhere",
+      "prompt": "Just add a PDB to the web deployment.",
+      "expected_output": "Recognizes this is a single-workload fix and routes to workload-harden (`cub-workload ensure-pdb`) rather than fleet-edit.",
+      "files": []
+    }
+  ]
+}

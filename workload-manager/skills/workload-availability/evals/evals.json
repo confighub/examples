@@ -1,0 +1,33 @@
+{
+  "skill_name": "workload-availability",
+  "evals": [
+    {
+      "id": 1,
+      "name": "uncovered-workloads",
+      "prompt": "Which multi-replica workloads have no PodDisruptionBudget?",
+      "expected_output": "Runs `cub-workload preflight` then `cub-workload availability` (optionally --issues-only / -o table) and reports the multi-replica workloads whose PDB column is MISSING. Read-only; does not fall back to kubectl.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "eviction-lock",
+      "prompt": "Do any of our PodDisruptionBudgets block node drains entirely?",
+      "expected_output": "Runs `cub-workload availability` and reports workloads where BLOCKS-EVICT is yes (minAvailable >= replicas or maxUnavailable: 0). Read-only.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "spread-check",
+      "prompt": "Which workloads could lose all replicas if one node fails?",
+      "expected_output": "Runs `cub-workload availability` and reports multi-replica workloads with SPREAD = no (no pod anti-affinity or topology spread). Read-only.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "routes-fix-elsewhere",
+      "prompt": "Add a PodDisruptionBudget to the checkout deployment.",
+      "expected_output": "Recognizes this is a fix, not a report, and routes to workload-harden / `cub-workload ensure-pdb` rather than mutating from this read-only skill.",
+      "files": []
+    }
+  ]
+}

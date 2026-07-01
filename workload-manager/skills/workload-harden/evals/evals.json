@@ -1,0 +1,33 @@
+{
+  "skill_name": "workload-harden",
+  "evals": [
+    {
+      "id": 1,
+      "name": "harden-dry-run-then-commit",
+      "prompt": "Harden the frontend deployment in apptique-prod.",
+      "expected_output": "Runs `cub-workload preflight`, previews `cub-workload harden apptique-prod/frontend` (dry-run), then on confirmation commits with --commit --change-desc. Does not apply to a cluster; does not bypass gates.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "set-resources-tier",
+      "prompt": "Give the checkout deployment medium CPU/memory requests and limits.",
+      "expected_output": "Runs `cub-workload set-resources <space>/checkout --tier medium` dry-run then --commit --change-desc. Reports the mutation; no cluster apply.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "ensure-pdb",
+      "prompt": "Add a PodDisruptionBudget for the web deployment.",
+      "expected_output": "Runs `cub-workload ensure-pdb <space>/web` dry-run (shows the derived PDB manifest) then --commit --change-desc, creating a new PDB Unit (not applied).",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "routes-bulk-elsewhere",
+      "prompt": "Harden every workload in prod.",
+      "expected_output": "Recognizes this is a fleet-wide change and routes to workload-fleet (`fleet-edit --profile harden-restricted --environment prod`) rather than looping single harden commands.",
+      "files": []
+    }
+  ]
+}
