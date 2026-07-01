@@ -1,0 +1,33 @@
+{
+  "skill_name": "observability-instrument",
+  "evals": [
+    {
+      "id": 1,
+      "name": "ensure-servicemonitor",
+      "prompt": "Add a ServiceMonitor so the frontend service in apptique-dev gets scraped.",
+      "expected_output": "Runs `cub-observability preflight`, previews `cub-observability ensure-servicemonitor apptique-dev/frontend` (dry-run, shows the derived manifest), then commits with --commit --change-desc, creating a new ServiceMonitor Unit (not applied).",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "inject-sidecar",
+      "prompt": "Inject an OpenTelemetry collector sidecar into the web deployment.",
+      "expected_output": "Runs `cub-observability inject-sidecar <space>/web --image otel/opentelemetry-collector:...` dry-run then --commit --change-desc. Uses set-path find-or-append; re-run replaces, not duplicates. No cluster apply.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "fleet-sidecar",
+      "prompt": "Add the otel collector to every prod workload.",
+      "expected_output": "Runs `cub-observability fleet-edit --profile otel-sidecar --environment prod --param image=...` dry-run (count) then --commit --change-desc.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "routes-read-elsewhere",
+      "prompt": "Which services aren't scraped?",
+      "expected_output": "Recognizes this is a read and routes to observability-findings / observability-audit rather than mutating.",
+      "files": []
+    }
+  ]
+}
