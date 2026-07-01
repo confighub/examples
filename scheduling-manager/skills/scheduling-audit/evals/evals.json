@@ -1,0 +1,33 @@
+{
+  "skill_name": "scheduling-audit",
+  "evals": [
+    {
+      "id": 1,
+      "name": "placement-report",
+      "prompt": "Where are our workloads allowed to schedule?",
+      "expected_output": "Runs `cub-scheduling preflight` then `cub-scheduling placement` (JSON or -o table) and reports each workload's nodeSelector / tolerations / node affinity and whether it is constrained. Read-only.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "unconstrained",
+      "prompt": "Which workloads can land on any node?",
+      "expected_output": "Runs `cub-scheduling placement --unconstrained-only` and reports workloads with no nodeSelector and no required node affinity.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "per-cluster-counts",
+      "prompt": "How many workloads pin a node pool per cluster?",
+      "expected_output": "Runs `cub-scheduling snapshot` and reports per-cluster nodeSelector/tolerations/nodeAffinity counts.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "routes-availability-elsewhere",
+      "prompt": "Do our multi-replica workloads spread across nodes with anti-affinity?",
+      "expected_output": "Recognizes pod anti-affinity / topology spread is availability, not placement, and routes to workload-manager (cub-workload availability) rather than answering here.",
+      "files": []
+    }
+  ]
+}

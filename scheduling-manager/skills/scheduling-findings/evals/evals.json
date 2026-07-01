@@ -1,0 +1,33 @@
+{
+  "skill_name": "scheduling-findings",
+  "evals": [
+    {
+      "id": 1,
+      "name": "ranked-findings",
+      "prompt": "What placement problems do our workloads have?",
+      "expected_output": "Runs `cub-scheduling preflight` then `cub-scheduling findings` (JSON or -o table) and reports placement findings most-severe first. Read-only.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "toleration-without-placement",
+      "prompt": "Which workloads tolerate a taint but could still land on general nodes?",
+      "expected_output": "Runs `cub-scheduling findings` and reports the tolerations-without-placement findings (tolerates a taint but no nodeSelector / required node affinity).",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "scope-component",
+      "prompt": "Placement findings for the ml component only.",
+      "expected_output": "Runs `cub-scheduling findings --component ml` (or --where equivalent).",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "routes-fix-elsewhere",
+      "prompt": "Fix those placement findings.",
+      "expected_output": "Recognizes fixing is a write action and routes to scheduling-place rather than mutating from this read-only skill.",
+      "files": []
+    }
+  ]
+}

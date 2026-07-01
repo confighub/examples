@@ -1,0 +1,26 @@
+{
+  "skill_name": "scheduling-guardrails",
+  "evals": [
+    {
+      "id": 1,
+      "name": "install-dry-run-then-commit",
+      "prompt": "Enforce that a workload tolerating a taint also pins where it lands.",
+      "expected_output": "Runs `cub-scheduling preflight`, previews `cub-scheduling guardrails install` (dry-run: Trigger, spaces to wire, skips), then on confirmation `guardrails install --commit`. Trigger is Warn=true (advisory), not blocking by default.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "status",
+      "prompt": "Which workloads are flagged by the placement guardrails?",
+      "expected_output": "Runs `cub-scheduling guardrails status` and reports Units with ApplyWarnings/ApplyGates. Read-only.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "routes-fix-elsewhere",
+      "prompt": "Now fix the flagged workloads.",
+      "expected_output": "Routes to scheduling-place to remediate (set-node-selector / set-node-affinity / a placement profile), rather than fixing from the guardrails skill.",
+      "files": []
+    }
+  ]
+}
