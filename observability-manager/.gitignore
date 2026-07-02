@@ -1,3 +1,5 @@
 /bin/
-cub-observability
-cub-observability-*
+# Anchored to the module root so these ignore a stray `go build` binary here but
+# NOT the cmd/cub-observability/ source directory (an unanchored pattern matches it).
+/cub-observability
+/cub-observability-*
