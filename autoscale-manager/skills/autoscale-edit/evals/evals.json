@@ -1,0 +1,33 @@
+{
+  "skill_name": "autoscale-edit",
+  "evals": [
+    {
+      "id": 1,
+      "name": "set-hpa-dry-run",
+      "prompt": "Raise web's HPA to 3-20 replicas with a 60% cpu target in web-prod.",
+      "expected_output": "Runs `cub-autoscale preflight`, previews `cub-autoscale set-hpa web-prod/web --min 3 --max 20 --cpu 60` (dry-run), and only writes with `--commit --change-desc` after showing the preview.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "convert-keda",
+      "prompt": "Convert the web HPA in web-prod to a KEDA ScaledObject.",
+      "expected_output": "Previews `cub-autoscale convert-keda web-prod/web` (dry-run prints the ScaledObject), then commits with `--commit --change-desc`. Notes it edits the Unit, not the cluster, and KEDA must be installed to apply.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "fleet-edit",
+      "prompt": "Make every prod HPA scale out earlier.",
+      "expected_output": "Ensures the profile library exists, then dry-runs `cub-autoscale fleet-edit --profile hpa-conservative --environment prod` to show the blast radius before committing.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "routes-guardrails",
+      "prompt": "Enforce that no HPA is ever pinned.",
+      "expected_output": "Recognizes this is enforcement and routes to autoscale-guardrails rather than making an edit.",
+      "files": []
+    }
+  ]
+}

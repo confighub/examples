@@ -1,0 +1,33 @@
+{
+  "skill_name": "autoscale-guardrails",
+  "evals": [
+    {
+      "id": 1,
+      "name": "install-preview",
+      "prompt": "Enforce that no HPA in our fleet is pinned.",
+      "expected_output": "Runs `cub-autoscale preflight` then `cub-autoscale guardrails install` (dry-run) to show the autoscaler-not-pinned Trigger and which Spaces would be wired, before re-running with --commit.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "schema-check",
+      "prompt": "Make sure the ScaledObjects we generate pass schema validation.",
+      "expected_output": "Explains the schema-valid vet-schemas Trigger in the guardrails pack validates every mutation (including convert-keda output, keda.sh is in the catalog) and installs the pack.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "status",
+      "prompt": "Which autoscalers are flagged right now?",
+      "expected_output": "Runs `cub-autoscale guardrails status` and lists Units with autoscaling ApplyWarnings or ApplyGates.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "conservative-skip",
+      "prompt": "Wire the guardrails into every Space.",
+      "expected_output": "Notes install is conservative — it skips Spaces that already select Triggers their own way and reports them rather than clobbering, and that wiring those means adding the guardrail Filter to their existing selector.",
+      "files": []
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "skill_name": "autoscale-audit",
+  "evals": [
+    {
+      "id": 1,
+      "name": "list-autoscalers",
+      "prompt": "What autoscalers do we have across the fleet?",
+      "expected_output": "Runs `cub-autoscale preflight` then `cub-autoscale list` (JSON or -o table) and reports each HPA / ScaledObject with its scale target, min/max, and whether it is pinned. Read-only.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "per-cluster-counts",
+      "prompt": "How many workloads are autoscaled per cluster?",
+      "expected_output": "Runs `cub-autoscale snapshot` and reports per-cluster HPA / ScaledObject / workload / autoscaled counts.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "pinned",
+      "prompt": "Are any of our HPAs unable to scale?",
+      "expected_output": "Runs `cub-autoscale list` and points at the PINNED column (min == max), or routes to autoscale-findings for the ranked view.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "routes-findings",
+      "prompt": "Which workloads have no autoscaler at all?",
+      "expected_output": "Recognizes this is an anti-pattern report and routes to autoscale-findings (no-autoscaler analyzer) rather than answering from the raw inventory.",
+      "files": []
+    }
+  ]
+}
