@@ -1,0 +1,33 @@
+{
+  "skill_name": "autoscale-findings",
+  "evals": [
+    {
+      "id": 1,
+      "name": "all-findings",
+      "prompt": "What autoscaling problems do we have?",
+      "expected_output": "Runs `cub-autoscale preflight` then `cub-autoscale findings` (JSON or -o table) and reports pinned autoscalers, workloads without an autoscaler, and PDB-vs-minReplicas conflicts, most-severe first. Read-only.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "pinned",
+      "prompt": "Which of our HPAs can't actually scale?",
+      "expected_output": "Runs `cub-autoscale findings` and reports the autoscaler-pinned analyzer (min == max).",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "pdb-conflict",
+      "prompt": "Is any PodDisruptionBudget blocking scale-down?",
+      "expected_output": "Runs `cub-autoscale findings` and reports the pdb-blocks-min-scale analyzer (PDB minAvailable >= autoscaler minReplicas), the cross-resource check.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "routes-fix",
+      "prompt": "Fix the pinned HPA on web.",
+      "expected_output": "Recognizes this is a fix and routes to autoscale-edit (set-hpa / profile) rather than answering here.",
+      "files": []
+    }
+  ]
+}
