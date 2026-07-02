@@ -1,0 +1,76 @@
+import assert from 'node:assert/strict';
+import { createAppServer } from '../src/server.mjs';
+
+process.env.AUTH_MODE = 'browser-oauth';
+process.env.CONFIGHUB_BASE_URL = 'https://confighub.example.test';
+process.env.OAUTH_CLIENT_ID = 'client_test';
+
+const server = createAppServer();
+await new Promise((resolve, reject) => {
+  server.once('error', reject);
+  server.listen(0, '127.0.0.1', resolve);
+});
+const port = server.address().port;
+
+async function json(path, options = {}) {
+  const response = await fetch(`http://localhost:${port}${path}`, options);
+  const data = await response.json();
+  return {response, data};
+}
+
+try {
+  const page = await fetch(`http://localhost:${port}/`);
+  assert.equal(page.status, 200);
+  const pageText = await page.text();
+  assert.match(pageText, /ConfigHub operational app/);
+  assert.match(pageText, /Operational readiness/);
+  assert.match(pageText, /Governed action contract/);
+
+  const config = await json('/app/config');
+  assert.equal(config.response.status, 200);
+  assert.equal(config.data.authMode, 'browser-oauth');
+
+  const workflow = await json('/api/workflow');
+  assert.equal(workflow.response.status, 200);
+  assert.ok(workflow.data.variants.length >= 1);
+  assert.equal(workflow.data.governedAction.kind, 'ConfigHub-governed-action.v0');
+  assert.ok(workflow.data.governedAction.operation);
+
+  const variants = await json('/api/variants');
+  assert.equal(variants.response.status, 200);
+  assert.ok(variants.data.variants.every(row => row.variant));
+
+  const bindings = await json('/api/bindings');
+  assert.equal(bindings.response.status, 200);
+  assert.equal(bindings.data.status, 'LIVE_BINDINGS_MISSING');
+
+  const missingAuth = await json('/api/preview', {
+    method: 'POST',
+    headers: {'content-type': 'application/json'},
+    body: JSON.stringify({variantId: variants.data.variants[0].id}),
+  });
+  if (true) {
+    assert.equal(missingAuth.response.status, 401);
+    assert.equal(missingAuth.data.error, 'SIGN_IN_REQUIRED');
+  } else {
+    assert.equal(missingAuth.response.status, 200);
+  }
+
+  const preview = await json('/api/preview', {
+    method: 'POST',
+    headers: {'content-type': 'application/json', authorization: 'Bearer test-token'},
+    body: JSON.stringify({variantId: variants.data.variants[0].id}),
+  });
+  assert.equal(preview.response.status, 200);
+  assert.equal(preview.data.status, 'PREVIEW_READY');
+
+  const apply = await json('/api/apply', {
+    method: 'POST',
+    headers: {'content-type': 'application/json', authorization: 'Bearer test-token'},
+    body: JSON.stringify({variantId: variants.data.variants[0].id}),
+  });
+  assert.equal(apply.response.status, 409);
+  assert.equal(apply.data.error, 'LIVE_BINDINGS_REQUIRED');
+} finally {
+  await new Promise(resolve => server.close(resolve));
+}

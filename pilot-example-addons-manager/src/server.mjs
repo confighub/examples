@@ -1,224 +1,240 @@
-import fs from "node:fs/promises";
-import http from "node:http";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { DATA_URL, jsonResponse, PUBLIC_URL, runtimeConfig, textResponse } from "./config.mjs";
-import {
-  fixtureDetail,
-  fixtureInventory,
-  fixtureMe,
-  fixtureReceipt,
-  fixtureRevisions,
-  fixtureSpaces,
-  fixtureUnit,
-  fixtureUnitData,
-  fixtureUnits,
-} from "./fixtures.mjs";
-import { buildApprovalScope, WORKFLOW } from "./workflow.mjs";
+import { createServer } from 'node:http';
+import { readFile } from 'node:fs/promises';
+import { extname, join, normalize } from 'node:path';
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { readRuntimeConfig } from './config.mjs';
+import { readWorkflow } from './workflow.mjs';
 
-const PUBLIC_DIR = fileURLToPath(PUBLIC_URL);
-const DATA_DIR = fileURLToPath(DATA_URL);
+const here = dirname(fileURLToPath(import.meta.url));
+const root = join(here, '..');
+const publicDir = join(root, 'public');
 
-const CONTENT_TYPES = {
-  ".html": "text/html; charset=utf-8",
-  ".css": "text/css; charset=utf-8",
-  ".js": "text/javascript; charset=utf-8",
-  ".json": "application/json; charset=utf-8",
-  ".svg": "image/svg+xml",
-  ".txt": "text/plain; charset=utf-8",
+const contentTypes = {
+  '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.svg': 'image/svg+xml; charset=utf-8',
 };
 
-function send(res, response) {
-  res.writeHead(response.status, response.headers);
-  res.end(response.body);
+function sendJson(res, status, value) {
+  res.writeHead(status, {'content-type': 'application/json; charset=utf-8'});
+  res.end(JSON.stringify(value, null, 2));
 }
 
-function queryParam(url, name, fallback = "") {
-  return url.searchParams.get(name) || fallback;
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    let data = '';
+    req.on('data', chunk => { data += chunk; });
+    req.on('end', () => {
+      if (!data) {
+        resolve({});
+        return;
+      }
+      try {
+        resolve(JSON.parse(data));
+      } catch (error) {
+        reject(error);
+      }
+    });
+  });
 }
 
-function appConfig(req, config) {
-  const origin = `http://${req.headers.host || `localhost:${config.port}`}`;
-  return {
-    app: "Add-on Manager",
-    configHubBase: config.configHubBase,
-    oauthClientId: config.oauthClientId,
-    browserAuthConfigured: Boolean(config.configHubBase && config.oauthClientId),
-    redirectUri: `${origin}/`,
-    dataMode: config.dataMode,
-  };
+function hasBearer(req) {
+  const auth = req.headers.authorization || '';
+  return auth.startsWith('Bearer ');
 }
 
-function hasPlaceholder(value) {
-  if (typeof value === "string") {
-    return value.includes("<") || value.includes(">") || value.includes("example-fill");
-  }
-  if (Array.isArray(value)) return value.some(hasPlaceholder);
-  if (value && typeof value === "object") return Object.values(value).some(hasPlaceholder);
-  return false;
-}
-
-async function liveBindings(config) {
-  const bindingFile = config.liveBindingsFile || path.join(DATA_DIR, "live-bindings.json");
+async function readLiveBindings() {
   try {
-    const raw = await fs.readFile(bindingFile, "utf8");
+    const raw = await readFile(join(root, 'data', 'live-bindings.json'), 'utf8');
     const bindings = JSON.parse(raw);
     if (hasPlaceholder(bindings)) {
       return {
-        status: "LIVE_BINDINGS_PLACEHOLDER",
+        status: 'LIVE_BINDINGS_PLACEHOLDER',
         bindings,
-        requiredFile: "data/live-bindings.json",
-        reason: "The live binding file still contains example placeholder values.",
+        requiredFile: 'data/live-bindings.json',
+        exampleFile: 'data/live-bindings.example.json',
+        reason: 'The live binding file still contains example placeholder values.',
       };
     }
-    return {status: "LIVE_BINDINGS_PRESENT", bindings};
+    const contractError = bindingContractError(bindings);
+    if (contractError) {
+      return {
+        status: 'LIVE_BINDINGS_INCOMPLETE',
+        bindings,
+        requiredFile: 'data/live-bindings.json',
+        exampleFile: 'data/live-bindings.example.json',
+        reason: contractError,
+      };
+    }
+    return {status: 'LIVE_BINDINGS_PRESENT', bindings};
   } catch {
     return {
-      status: "LIVE_BINDINGS_MISSING",
-      requiredFile: "data/live-bindings.json",
-      exampleFile: "data/live-bindings.example.json",
-      reason: "Live ConfigHub object, approval, action, proof, and runtime evidence bindings are not configured.",
+      status: 'LIVE_BINDINGS_MISSING',
+      bindings: null,
+      requiredFile: 'data/live-bindings.json',
+      exampleFile: 'data/live-bindings.example.json',
     };
   }
 }
 
-async function handleApp(req, url, config) {
-  if (url.pathname === "/app/config") {
-    return jsonResponse(appConfig(req, config));
+function hasPlaceholder(value) {
+  if (typeof value === 'string') {
+    return value.includes('<') || value.includes('>') || value.includes('example-fill');
   }
-  if (url.pathname === "/app/bindings") {
-    return jsonResponse(await liveBindings(config));
+  if (Array.isArray(value)) {
+    return value.some(hasPlaceholder);
   }
-  return jsonResponse({error: "unknown app route"}, 404);
+  if (value && typeof value === 'object') {
+    return Object.values(value).some(hasPlaceholder);
+  }
+  return false;
 }
 
-async function handleApi(req, url) {
-  if (req.method === "POST") {
-    if (url.pathname === "/api/approvals" || url.pathname === "/api/apply") {
-      return jsonResponse(
-        {
-          error: "read-only sample app: live mutation requires a governed approval and apply path",
-          blocked: true,
-        },
-        405,
-      );
-    }
-    return jsonResponse({error: "unsupported write route"}, 405);
-  }
-
-  if (url.pathname === "/api/workflow") {
-    return jsonResponse(WORKFLOW);
-  }
-
-  if (url.pathname === "/api/me") {
-    return jsonResponse({...await fixtureMe(), source: "fixture"});
-  }
-
-  if (url.pathname === "/api/spaces") {
-    return jsonResponse({...await fixtureSpaces(), source: "fixture"});
-  }
-
-  if (url.pathname === "/api/inventory") {
-    return jsonResponse({...await fixtureInventory(), source: "fixture"});
-  }
-
-  if (url.pathname === "/api/units") {
-    const space = queryParam(url, "space");
-    return jsonResponse({items: await fixtureUnits(space), source: "fixture"});
-  }
-
-  if (url.pathname === "/api/unit") {
-    const space = queryParam(url, "space");
-    const unit = queryParam(url, "unit");
-    return jsonResponse({item: await fixtureUnit(space, unit), source: "fixture"});
-  }
-
-  if (url.pathname === "/api/revisions") {
-    const space = queryParam(url, "space");
-    const unit = queryParam(url, "unit");
-    return jsonResponse({items: await fixtureRevisions(space, unit), source: "fixture"});
-  }
-
-  if (url.pathname === "/api/unitdata") {
-    const space = queryParam(url, "space");
-    const unit = queryParam(url, "unit");
-    return jsonResponse({text: await fixtureUnitData(space, unit), source: "fixture"});
-  }
-
-  if (url.pathname === "/api/detail") {
-    const space = queryParam(url, "space");
-    const unit = queryParam(url, "unit");
-    return jsonResponse({...await fixtureDetail(space, unit), source: "fixture"});
-  }
-
-  if (url.pathname === "/api/proposal") {
-    const space = queryParam(url, "space");
-    const unit = queryParam(url, "unit");
-    const detail = await fixtureDetail(space, unit);
-    return jsonResponse({
-      source: "fixture",
-      approvalScope: buildApprovalScope(detail),
-      previewOnly: true,
-    });
-  }
-
-  if (url.pathname === "/api/receipt") {
-    const space = queryParam(url, "space");
-    const unit = queryParam(url, "unit");
-    return jsonResponse({...await fixtureReceipt(space, unit), source: "fixture"});
-  }
-
-  return jsonResponse({error: "unknown API route"}, 404);
+function bindingContractError(bindings) {
+  const contract = bindings?.action?.contract;
+  if (!contract) return 'action.contract is required';
+  if (contract.kind !== 'ConfigHub-governed-action.v0') return 'action.contract.kind must be ConfigHub-governed-action.v0';
+  if (!contract.operation) return 'action.contract.operation is required';
+  if (!Array.isArray(contract.scopeFields)) return 'action.contract.scopeFields must be an array';
+  if (!Array.isArray(contract.requires)) return 'action.contract.requires must be an array';
+  return '';
 }
 
-async function serveStatic(url) {
-  const requested = url.pathname === "/" ? "index.html" : url.pathname.replace(/^\/+/, "");
-  const resolved = path.resolve(PUBLIC_DIR, requested);
-  if (!resolved.startsWith(PUBLIC_DIR)) return textResponse("not found", 404);
+async function serveStatic(req, res, url) {
+  const requested = url.pathname === '/' ? '/index.html' : url.pathname;
+  const safePath = normalize(requested).replace(/^\.{2,}/, '');
+  const filePath = join(publicDir, safePath);
+  if (!filePath.startsWith(publicDir)) {
+    sendJson(res, 403, {error: 'FORBIDDEN'});
+    return;
+  }
   try {
-    const body = await fs.readFile(resolved);
-    return {
-      status: 200,
-      headers: {"content-type": CONTENT_TYPES[path.extname(resolved)] || "application/octet-stream"},
-      body,
-    };
+    const body = await readFile(filePath);
+    res.writeHead(200, {'content-type': contentTypes[extname(filePath)] || 'application/octet-stream'});
+    res.end(body);
   } catch {
-    return textResponse("not found", 404);
+    sendJson(res, 404, {error: 'NOT_FOUND'});
   }
 }
 
-export function createAppServer(options = {}) {
-  const config = {...runtimeConfig(), ...options};
-  return http.createServer(async (req, res) => {
-    const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
+function authBlocked(req, workflow) {
+  return workflow.authMode === 'browser-oauth' && !hasBearer(req);
+}
+
+export function createAppServer() {
+  return createServer(async (req, res) => {
+    const url = new URL(req.url || '/', 'http://localhost');
+    const workflow = await readWorkflow();
+    const runtime = readRuntimeConfig();
+    workflow.authMode = runtime.authMode;
+
     try {
-      if (url.pathname.startsWith("/api/")) {
-        send(res, await handleApi(req, url));
+      if (req.method === 'GET' && url.pathname === '/app/config') {
+        sendJson(res, 200, {
+          authMode: runtime.authMode,
+          configHubBaseUrl: runtime.configHubBaseUrl,
+          oauthClientId: runtime.oauthClientId,
+          callbackPath: '/callback',
+          workflowStatus: workflow.status,
+        });
         return;
       }
-      if (url.pathname.startsWith("/app/")) {
-        send(res, await handleApp(req, url, config));
+
+      if (req.method === 'GET' && url.pathname === '/api/workflow') {
+        sendJson(res, 200, workflow);
         return;
       }
-      send(res, await serveStatic(url));
+
+      if (req.method === 'GET' && url.pathname === '/api/variants') {
+        sendJson(res, 200, {variants: workflow.variants});
+        return;
+      }
+
+      if (req.method === 'GET' && url.pathname.startsWith('/api/variants/')) {
+        const id = decodeURIComponent(url.pathname.split('/').pop() || '');
+        const variant = workflow.variants.find(item => item.id === id);
+        sendJson(res, variant ? 200 : 404, variant || {error: 'VARIANT_NOT_FOUND'});
+        return;
+      }
+
+      if (req.method === 'GET' && url.pathname === '/api/receipt') {
+        const liveBindings = await readLiveBindings();
+        sendJson(res, 200, {
+          status: 'WAITING_FOR_LIVE_PROOF',
+          app: workflow.app.name,
+          checks: workflow.proofTabs.map(tab => ({id: tab.id, label: tab.label, status: tab.status})),
+          liveBindings,
+          stopRules: workflow.stopRules,
+        });
+        return;
+      }
+
+      if (req.method === 'GET' && url.pathname === '/api/bindings') {
+        sendJson(res, 200, await readLiveBindings());
+        return;
+      }
+
+      if (req.method === 'POST' && url.pathname === '/api/preview') {
+        if (authBlocked(req, workflow)) {
+          sendJson(res, 401, {error: 'SIGN_IN_REQUIRED'});
+          return;
+        }
+        const body = await readBody(req);
+        sendJson(res, 200, {
+          status: 'PREVIEW_READY',
+          variantId: body.variantId || workflow.variants[0]?.id,
+          message: 'Scope preview ready. Review approval before any live operation.',
+        });
+        return;
+      }
+
+      if (req.method === 'POST' && url.pathname === '/api/approval') {
+        if (authBlocked(req, workflow)) {
+          sendJson(res, 401, {error: 'SIGN_IN_REQUIRED'});
+          return;
+        }
+        const body = await readBody(req);
+        sendJson(res, 200, {
+          status: 'APPROVAL_RECORDED_LOCALLY',
+          variantId: body.variantId || workflow.variants[0]?.id,
+          scopeFields: workflow.approval.scopeFields,
+          nextGate: 'Bind this approval to the live ConfigHub action before apply.',
+        });
+        return;
+      }
+
+      if (req.method === 'POST' && url.pathname === '/api/apply') {
+        if (authBlocked(req, workflow)) {
+          sendJson(res, 401, {error: 'SIGN_IN_REQUIRED'});
+          return;
+        }
+        const liveBindings = await readLiveBindings();
+        if (liveBindings.status !== 'LIVE_BINDINGS_PRESENT') {
+          sendJson(res, 409, {
+            error: 'LIVE_BINDINGS_REQUIRED',
+            message: 'Create data/live-bindings.json before running a live operation.',
+            liveBindings,
+          });
+          return;
+        }
+        sendJson(res, 409, {
+          error: 'LIVE_ACTION_EXECUTOR_REQUIRED',
+          message: 'Bindings are present, but the scenario-specific ConfigHub action executor is not implemented in this export.',
+        });
+        return;
+      }
+
+      if (req.method === 'GET') {
+        await serveStatic(req, res, url);
+        return;
+      }
+
+      sendJson(res, 405, {error: 'METHOD_NOT_ALLOWED'});
     } catch (error) {
-      send(res, jsonResponse({error: String(error.message || error)}, 500));
+      sendJson(res, 500, {error: 'SERVER_ERROR', message: String(error.message || error)});
     }
   });
-}
-
-export function listen(server, port) {
-  return new Promise((resolve) => {
-    server.listen(port, "127.0.0.1", () => resolve(server.address()));
-  });
-}
-
-export async function main() {
-  const config = runtimeConfig();
-  const server = createAppServer(config);
-  await listen(server, config.port);
-  console.log(`Add-on Manager sample app: http://localhost:${config.port}`);
-  console.log(`fixture mode: local sample data`);
-  console.log(`browser OAuth configured: ${Boolean(config.oauthClientId)}`);
-  return server;
 }

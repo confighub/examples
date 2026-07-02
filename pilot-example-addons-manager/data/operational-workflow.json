@@ -1,0 +1,288 @@
+{
+  "analysisCards": [
+    {
+      "body": "Install, upgrade, review, and prove platform add-ons through governed ConfigHub delivery paths.",
+      "title": "Use case"
+    },
+    {
+      "body": "The workflow keeps review, approval, action, proof, and rollback visible before any live operation is allowed.",
+      "title": "Operational workflow"
+    },
+    {
+      "body": "The browser app turns the workflow into screens, controls, and proof cards without becoming a separate source of truth.",
+      "title": "App and GUI"
+    },
+    {
+      "body": "The app is complete only after ConfigHub browser sign-in, object binding, approval binding, action binding, and proof receipt checks pass.",
+      "title": "Live proof"
+    }
+  ],
+  "app": {
+    "name": "Add-on Manager",
+    "slug": "add-on-manager",
+    "summary": "Install, upgrade, review, and prove platform add-ons through governed ConfigHub delivery paths."
+  },
+  "approval": {
+    "blockerPolicy": "Any broader scope, missing approval, missing strategy, or missing proof tab blocks app generation or mutation.",
+    "mode": "explicit-approval",
+    "requiredForMutation": true,
+    "scopeFields": [
+      "org",
+      "space",
+      "variant",
+      "unit",
+      "action",
+      "revision",
+      "target",
+      "strategy",
+      "addon",
+      "version"
+    ]
+  },
+  "authMode": "browser-oauth",
+  "bindingRequirements": [
+    "ConfigHub object or verified URL",
+    "approval object",
+    "governed action contract",
+    "action endpoint",
+    "proof receipt object",
+    "runtime evidence source"
+  ],
+  "configHub": {
+    "baseUrlEnv": "CONFIGHUB_BASE_URL",
+    "oauthClientEnv": "OAUTH_CLIENT_ID",
+    "objectTypes": [
+      "View",
+      "Filter",
+      "Unit",
+      "Revision",
+      "Approval",
+      "Action",
+      "Controller",
+      "Receipt"
+    ],
+    "urlProofRequired": true
+  },
+  "controls": [
+    {
+      "availableWhen": "The Strategy, scope boundary, backing ConfigHub object, and required proof rows are visible.",
+      "disabledReason": "Disabled until the scope boundary, approval gate, and required proof rows are complete.",
+      "id": "map-add-on-inventory-and-versions",
+      "label": "Map Add On Inventory And Versions",
+      "proofConsequence": "Changes the proof/receipt state only through the declared ConfigHub authority path; missing evidence keeps the app in WATCH or BLOCK.",
+      "purpose": "Let the operator map add-on inventory and versions within the approved ConfigHub scope."
+    },
+    {
+      "availableWhen": "The Strategy, scope boundary, backing ConfigHub object, and required proof rows are visible.",
+      "disabledReason": "Disabled until the scope boundary, approval gate, and required proof rows are complete.",
+      "id": "preview-install-or-upgrade-impact",
+      "label": "Preview Install Or Upgrade Impact",
+      "proofConsequence": "Changes the proof/receipt state only through the declared ConfigHub authority path; missing evidence keeps the app in WATCH or BLOCK.",
+      "purpose": "Let the operator preview install or upgrade impact within the approved ConfigHub scope."
+    },
+    {
+      "availableWhen": "The Strategy, scope boundary, backing ConfigHub object, and required proof rows are visible.",
+      "disabledReason": "Disabled until the scope boundary, approval gate, and required proof rows are complete.",
+      "id": "request-scoped-approval",
+      "label": "Request Scoped Approval",
+      "proofConsequence": "Changes the proof/receipt state only through the declared ConfigHub authority path; missing evidence keeps the app in WATCH or BLOCK.",
+      "purpose": "Let the operator request scoped approval within the approved ConfigHub scope."
+    },
+    {
+      "availableWhen": "The Strategy, scope boundary, backing ConfigHub object, and required proof rows are visible.",
+      "disabledReason": "Disabled until the scope boundary, approval gate, and required proof rows are complete.",
+      "id": "apply-approved-add-on-rollout-through-confighub",
+      "label": "Apply Approved Add On Rollout Through Confighub",
+      "proofConsequence": "Changes the proof/receipt state only through the declared ConfigHub authority path; missing evidence keeps the app in WATCH or BLOCK.",
+      "purpose": "Let the operator apply approved add-on rollout through ConfigHub within the approved ConfigHub scope."
+    },
+    {
+      "availableWhen": "The Strategy, scope boundary, backing ConfigHub object, and required proof rows are visible.",
+      "disabledReason": "Disabled until the scope boundary, approval gate, and required proof rows are complete.",
+      "id": "prove-controller-and-runtime-state",
+      "label": "Prove Controller And Runtime State",
+      "proofConsequence": "Changes the proof/receipt state only through the declared ConfigHub authority path; missing evidence keeps the app in WATCH or BLOCK.",
+      "purpose": "Let the operator prove controller and runtime state within the approved ConfigHub scope."
+    }
+  ],
+  "generatedAt": "2026-07-02T06:07:27+00:00",
+  "governedAction": {
+    "kind": "ConfigHub-governed-action.v0",
+    "mutationPolicy": "Apply remains disabled unless every binding is real and non-placeholder.",
+    "operation": "add-on-manager",
+    "requires": [
+      "browser OAuth user",
+      "ConfigHub object URL",
+      "Variant and Unit scope",
+      "approval object",
+      "governed action executor",
+      "controller proof",
+      "runtime proof"
+    ],
+    "scopeFields": [
+      "org",
+      "space",
+      "variant",
+      "unit",
+      "action",
+      "revision",
+      "target",
+      "strategy",
+      "addon",
+      "version"
+    ],
+    "trigger": "user-approved-scope"
+  },
+  "operationalLoop": [
+    {
+      "command": "preflight",
+      "harnessStep": "Doorway / Gate",
+      "productStep": "readiness check",
+      "purpose": "Check package, auth mode, workflow contract, Variant inventory, and live-binding readiness before risk."
+    },
+    {
+      "command": "map/list",
+      "harnessStep": "Intake",
+      "productStep": "Map",
+      "purpose": "Show affected Variants and their ConfigHub spaces, Units, URLs, risk, and next action."
+    },
+    {
+      "command": "findings",
+      "harnessStep": "Route",
+      "productStep": "Recommend",
+      "purpose": "Show proof gaps, blockers, and the next safe action."
+    },
+    {
+      "command": "preview",
+      "harnessStep": "Gate",
+      "productStep": "Preview",
+      "purpose": "Preview the scoped change without mutating ConfigHub, Git, a controller, or runtime."
+    },
+    {
+      "command": "approve/commit",
+      "harnessStep": "Run after approval",
+      "productStep": "Operate",
+      "purpose": "Commit only means an approved scoped ConfigHub mutation through the governed action path."
+    },
+    {
+      "command": "verify",
+      "harnessStep": "Prove",
+      "productStep": "Verify",
+      "purpose": "Check ConfigHub, approval, action, controller/runtime evidence, URL proof, and omissions."
+    },
+    {
+      "command": "receipt",
+      "harnessStep": "Prove / Learn",
+      "productStep": "Receipt",
+      "purpose": "Leave a compact result that a human or automation can review and rerun."
+    }
+  ],
+  "proofTabs": [
+    {
+      "id": "config_hub_revision",
+      "label": "ConfigHub revision",
+      "layer": "confighub",
+      "status": "waiting"
+    },
+    {
+      "id": "approval_record",
+      "label": "Approval record",
+      "layer": "approval",
+      "status": "waiting"
+    },
+    {
+      "id": "gate_verdict",
+      "label": "Gate verdict",
+      "layer": "policy",
+      "status": "waiting"
+    },
+    {
+      "id": "controller_reconciliation",
+      "label": "Controller reconciliation",
+      "layer": "controller",
+      "status": "waiting"
+    },
+    {
+      "id": "runtime_field",
+      "label": "Runtime field",
+      "layer": "runtime",
+      "status": "waiting"
+    },
+    {
+      "id": "receipt",
+      "label": "Receipt",
+      "layer": "receipt",
+      "status": "waiting"
+    }
+  ],
+  "scenario": {
+    "day": "Day-1",
+    "id": "addon-manager",
+    "jobToBeDone": "Install, upgrade, review, and prove platform add-ons through governed ConfigHub delivery paths."
+  },
+  "schema": "confighub.operational-workflow.v0",
+  "scopeModel": {
+    "implementationBindings": [
+      "ConfigHub Space",
+      "ConfigHub Unit",
+      "Filter",
+      "Target",
+      "where predicate"
+    ],
+    "rule": "Show Variants to users first; compile to ConfigHub spaces, units, filters, targets, and predicates underneath.",
+    "userFacingScope": "Variant"
+  },
+  "status": "live-auth-required",
+  "stopRules": [
+    "Do not run a live action without a signed-in ConfigHub user.",
+    "Do not run a live action without exact Variant scope.",
+    "Do not run a live action without approval.",
+    "Do not call the workflow complete until ConfigHub and runtime proof agree."
+  ],
+  "strategy": "confighub-oci-argo",
+  "variants": [
+    {
+      "app": "Add-on Manager",
+      "configHubUrl": "",
+      "id": "add-on-manager-dev",
+      "nextAction": "preview change",
+      "object": "View:addon-inventory",
+      "risk": "medium",
+      "space": "not-yet-bound-dev-space",
+      "status": "ready to inspect",
+      "unit": "add-on-manager-dev",
+      "variant": "dev"
+    },
+    {
+      "app": "Add-on Manager",
+      "configHubUrl": "",
+      "id": "add-on-manager-stage",
+      "nextAction": "preview change",
+      "object": "View:addon-inventory",
+      "risk": "medium",
+      "space": "not-yet-bound-stage-space",
+      "status": "ready to inspect",
+      "unit": "add-on-manager-stage",
+      "variant": "stage"
+    },
+    {
+      "app": "Add-on Manager",
+      "configHubUrl": "",
+      "id": "add-on-manager-prod",
+      "nextAction": "approve exact scope",
+      "object": "View:addon-inventory",
+      "risk": "high",
+      "space": "not-yet-bound-prod-space",
+      "status": "needs review",
+      "unit": "add-on-manager-prod",
+      "variant": "prod"
+    }
+  ],
+  "workflowSteps": [
+    "map add-on inventory and versions",
+    "preview install or upgrade impact",
+    "request scoped approval",
+    "apply approved add-on rollout through ConfigHub",
+    "prove controller and runtime state"
+  ]
+}

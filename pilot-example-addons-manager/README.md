@@ -1,139 +1,130 @@
-# Add-on Manager Sample App
+# Add-on Manager
 
-This is a complete standalone ConfigHub sample app for reviewing platform
-add-ons across Variants.
+This is a standalone ConfigHub operational app. It helps an operator review
+affected Variants, preview a proposed change, approve the exact scope, run the
+allowed action, and read the proof receipt.
 
-It includes the browser app, local static server, fixture data, browser OAuth
-login, direct ConfigHub API reads, tests, and docs. It has no dependency on any
-external generator workspace.
-
-## What It Does
-
-- Shows add-ons grouped by Variant.
-- Reads ConfigHub spaces, Units, revisions, and Unit data.
-- Works without credentials by using bundled fixture data.
-- Uses browser OAuth for live ConfigHub reads when an OAuth client is registered.
-- Shows approval scope, blocked actions, proof tabs, and receipt preview.
-- Keeps mutation endpoints disabled until a real governed write path is added.
-- Shows whether live ConfigHub object, approval, action, proof, and runtime
-  bindings are present.
-- Shows a governed action contract so the read-only app can say exactly which
-  operation layers still need to be bound before Apply can be enabled.
-- Keeps the first screen lightweight: no frontend framework, parallel startup
-  reads, and a compact readiness rail for auth, inventory, scope, and operation
-  state.
-
-## Requirements
-
-- Node.js 20 or newer
-- Optional: a `cub` build that includes `oauthclient`, used only to register the
-  browser app client
-
-The `oauthclient` command is currently on the ConfigHub feature branch from PR
-4665. Until that command is released, build `cub` from that branch before
-registering the app:
-
-```bash
-cd /path/to/confighub
-git fetch origin pull/4665/head:oauthclient-registration
-git checkout oauthclient-registration
-make build-cli
-bin/cub auth login --server https://pr-4665.testhub.confighub.net
-```
-
-## Run The App
-
-From this directory:
-
-```bash
-npm start
-```
-
-Open:
-
-```text
-http://localhost:5173/
-```
-
-To force bundled sample data:
-
-```bash
-npm run start:fixture
-```
-
-## Run With Browser OAuth
-
-Register this browser app against the ConfigHub server. The redirect URI must
-match the local app URL:
-
-```bash
-export CONFIGHUB_BASE=https://pr-4665.testhub.confighub.net
-export OAUTH_CLIENT_ID=$(/path/to/confighub/bin/cub oauthclient create addon-manager \
-  --redirect-uri http://localhost:5173/ -o jq='.ClientID')
-CONFIGHUB_BASE=$CONFIGHUB_BASE OAUTH_CLIENT_ID=$OAUTH_CLIENT_ID npm start
-```
-
-Open the app, choose `Browser OAuth`, click `Sign in`, and then click
-`Call /api/me`. After sign-in, inventory reads go directly from the browser to
-the ConfigHub API with the minted browser token.
-
-Check OAuth discovery from the command line:
-
-```bash
-CONFIGHUB_BASE=$CONFIGHUB_BASE OAUTH_CLIENT_ID=$OAUTH_CLIENT_ID npm run oauth:smoke
-```
-
-After the app is bound to real live operation objects, copy
-`data/live-bindings.example.json` to `data/live-bindings.json`, fill in the
-ConfigHub object, approval object, action endpoint, proof receipt, and runtime
-evidence source, then run:
-
-```bash
-npm run binding:check
-```
-
-The binding file also carries `action.contract`, which names the operation,
-scope fields, required proof layers, and mutation policy. Until that file exists
-and passes, the GUI correctly reports missing live bindings and Apply remains
-blocked. If the file passes but the action endpoint or runtime evidence is
-still marked `blocked:*`, the GUI reports a read-only live surface rather than
-pretending preview is a rollout.
-
-## Verify
+## Run Locally
 
 ```bash
 npm test
 npm run verify
+node cli.mjs preflight --json
+PORT=5173 npm start
 ```
 
-The verifier checks that the app starts, the UI loads, fixture data works, live
-mutation routes remain blocked, and the sample contains no references to the
-tooling that produced it.
-
-## Runtime Configuration
-
-```bash
-PORT=5173
-CONFIGHUB_BASE=https://hub.confighub.com
-OAUTH_CLIENT_ID=<registered-browser-client-id>
-```
-
-## Project Layout
+Then open:
 
 ```text
-public/       browser UI and browser OAuth helper
-src/          local static server and fixture endpoints
-data/         live binding template for real operation wiring
-fixtures/     offline sample data
-tests/        Node test suite
-scripts/      verification script
-docs/         architecture, live mode, and testing notes
+http://localhost:5173
 ```
 
-## Boundaries
+## 15-Minute Package Check
 
-This app is intentionally safe as a sample. It does not create approvals, apply
-changes, or mutate live ConfigHub state. The browser clearly shows those gaps
-instead of pretending a preview is a rollout. The next product step is to bind
-the action contract to an official ConfigHub governed-action primitive and
-controller/runtime proof source.
+This package is meant to make a newly defined operational workflow usable
+quickly: scenario, browser GUI, CLI sibling, tests, and proof gaps should all
+be visible in one short pass.
+
+```bash
+npm run verify
+node cli.mjs preflight --json
+node cli.mjs map --json
+node cli.mjs findings --json
+PORT=5173 npm start
+```
+
+Use the GUI to confirm the same Variant scope, findings, approval gate, action
+state, and proof gaps shown by the CLI. If those surfaces disagree, fix the
+shared workflow contract before connecting live operations.
+
+## Connect To ConfigHub
+
+Create a browser OAuth client for this app, then start the app with the server URL and client ID.
+
+```bash
+cub auth status
+cub oauthclient create add-on-manager --redirect-uri http://localhost:5173/callback
+CONFIGHUB_BASE_URL=https://your-confighub-server.example OAUTH_CLIENT_ID=<client-id> PORT=5173 npm start
+```
+
+The browser sign-in uses PKCE. When ConfigHub exposes `AuthIssuer`, the app discovers the issuer's OpenID configuration, exchanges the authorization code with the issuer, then exchanges that identity token through ConfigHub. The app calls ConfigHub with `Authorization: Bearer <token>` after sign-in.
+
+## What The App Shows
+
+- Variants grouped by app, space, unit, risk, and next action.
+- Plain-English cards explaining how the use case became a workflow, app, and proof path.
+- A compact readiness rail for auth, inventory, scope, and operation state.
+- The current workflow step in plain English.
+- Controls that explain why they are enabled or disabled.
+- Approval scope and proof tabs before any live operation is allowed.
+- A ConfigHub object or URL gap so the operator can see what authority is in use.
+
+## CLI Sibling
+
+The command-line surface uses the same `data/operational-workflow.json` and
+`data/live-bindings.json` files as the browser app:
+
+```bash
+node cli.mjs preflight --json
+node cli.mjs map --json
+node cli.mjs findings --json
+node cli.mjs preview --variant <variant-id> --json
+node cli.mjs commit --variant <variant-id> --json
+node cli.mjs verify --json
+node cli.mjs receipt --json
+```
+
+The loop is:
+
+```text
+preflight -> map/list -> findings -> preview -> approve/commit -> verify -> receipt
+```
+
+`commit` means an approved scoped ConfigHub mutation. In this starter package it
+stays blocked until the live ConfigHub object, approval object, governed action
+executor, proof receipt, and runtime evidence are bound.
+
+## Live Proof Checks
+
+```bash
+CONFIGHUB_BASE_URL=https://your-confighub-server.example OAUTH_CLIENT_ID=<client-id> npm run oauth:smoke
+npm run binding:check
+```
+
+`oauth:smoke` checks ConfigHub browser-auth discovery and, when
+`CONFIGHUB_ACCESS_TOKEN` is present, `/api/me`. `binding:check` requires
+`data/live-bindings.json` to name the live ConfigHub object, approval object,
+governed action contract, action endpoint, proof receipt, and runtime evidence
+source. The check rejects copied placeholder values from
+`data/live-bindings.example.json`.
+
+On a fresh clone, `npm run binding:check` is expected to fail with
+`LIVE_BINDINGS_MISSING` until you create deployment-local
+`data/live-bindings.json`. That is the correct safe default, not a broken app.
+
+If the ConfigHub org is live but the scenario-specific write path is not ready
+yet, bind the app to the verified read surface and make the missing pieces
+explicit. For example, the action endpoint can be
+`blocked:governed-write-executor-not-installed` and runtime evidence can be
+`blocked:no-controller-or-runtime-target-bound`. That makes the GUI useful
+without pretending apply is ready.
+
+## Files
+
+- `public/`: browser UI.
+- `cli.mjs`: command-line sibling for the same workflow.
+- `src/`: local server and workflow loader.
+- `data/operational-workflow.json`: the ConfigHub workflow contract used by the app.
+- `data/live-bindings.example.json`: the live binding contract to copy when connecting the app, including the governed action contract.
+- `data/live-bindings.json`: deployment-local live bindings; intentionally ignored by Git.
+- `SPECIFICATION.md`: what the app is allowed to do.
+- `JUSTIFICATION.md`: why this workflow deserves an operational app.
+- `skills/`: generated assistant skill and trigger-eval stubs for routing future use.
+- `tests/`: deterministic local checks.
+- `app-export-manifest.json`: export receipt.
+
+## Live Completion Rule
+
+The app is live only when a user signs in through ConfigHub browser OAuth, the
+app can call ConfigHub successfully, the affected Variants are bound to real
+ConfigHub objects, and the proof receipt reflects the action that ran.

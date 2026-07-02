@@ -1,19 +1,24 @@
 {
-  "name": "confighub-addon-manager-sample",
+  "name": "add-on-manager",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Standalone ConfigHub Add-on Manager sample app",
+  "bin": {
+    "add-on-manager": "./cli.mjs"
+  },
   "scripts": {
     "start": "node server.mjs",
-    "start:fixture": "DATA_MODE=fixture node server.mjs",
-    "start:browser": "node server.mjs",
-    "test": "node --test tests/*.test.mjs",
+    "test": "node tests/app.test.mjs && node tests/auth-surface.test.mjs && node tests/cli.test.mjs",
+    "cli": "node cli.mjs",
+    "cli:preflight": "node cli.mjs preflight --json",
+    "cli:map": "node cli.mjs map --json",
+    "cli:findings": "node cli.mjs findings --json",
+    "cli:verify": "node cli.mjs verify --json",
     "oauth:smoke": "node scripts/oauth-smoke.mjs",
     "binding:check": "node scripts/binding-check.mjs",
-    "verify": "node scripts/verify.mjs"
+    "verify": "node scripts/verify.mjs && npm test"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=18"
   }
 }

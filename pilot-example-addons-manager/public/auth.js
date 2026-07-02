@@ -1,143 +1,157 @@
-const PKCE_KEY = "addon_manager_pkce";
-const redirectUri = `${window.location.origin}${window.location.pathname}`;
+const ACCESS_TOKEN_KEY = 'confighub_app_access_token';
+const VERIFIER_KEY = 'confighub_app_code_verifier';
+const STATE_KEY = 'confighub_app_oauth_state';
 
-function trimSlash(value) {
-  return String(value || "").replace(/\/+$/, "");
+function base64Url(bytes) {
+  const binary = String.fromCharCode(...bytes);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
 }
 
-function b64url(buffer) {
-  return btoa(String.fromCharCode(...new Uint8Array(buffer)))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-}
-
-function randomString(bytes = 64) {
-  return b64url(crypto.getRandomValues(new Uint8Array(bytes)).buffer);
+function randomString(size = 32) {
+  const bytes = new Uint8Array(size);
+  crypto.getRandomValues(bytes);
+  return base64Url(bytes);
 }
 
 async function sha256(value) {
-  return b64url(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)));
+  const bytes = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return base64Url(new Uint8Array(digest));
 }
 
-function decodeJwtClaims(token) {
-  const payload = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-  return JSON.parse(atob(payload));
+function callbackUrl(config) {
+  return `${location.origin}${config.callbackPath || '/callback'}`;
 }
 
-export async function discoverConfigHub(baseUrl) {
-  const response = await fetch(`${trimSlash(baseUrl)}/api/info`);
-  if (!response.ok) throw new Error(`/api/info failed: ${response.status}`);
-  return response.json();
-}
-
-async function discoverIssuer(issuer) {
-  const response = await fetch(`${trimSlash(issuer)}/.well-known/openid-configuration`);
-  if (!response.ok) throw new Error(`OIDC discovery failed: ${response.status}`);
-  return response.json();
-}
-
-export async function startLogin({baseUrl, clientId}) {
-  const info = await discoverConfigHub(baseUrl);
-  if (!info.AuthIssuer || !info.TokenExchangeEndpoint) {
-    throw new Error("This ConfigHub server is not configured for browser token exchange.");
+async function discover(config) {
+  const base = (config.configHubBaseUrl || '').replace(/\/$/, '');
+  if (!base) {
+    throw new Error('CONFIGHUB_BASE_URL is required for browser OAuth');
   }
-  const oidc = await discoverIssuer(info.AuthIssuer);
-  const verifier = randomString();
-  const state = randomString(16);
-  const challenge = await sha256(verifier);
-  sessionStorage.setItem(PKCE_KEY, JSON.stringify({
-    verifier,
-    state,
-    clientId,
-    baseUrl,
-    tokenEndpoint: oidc.token_endpoint,
-    exchangeEndpoint: info.TokenExchangeEndpoint,
-  }));
-
-  const authUrl = new URL(oidc.authorization_endpoint);
-  authUrl.search = new URLSearchParams({
-    response_type: "code",
-    client_id: clientId,
-    redirect_uri: redirectUri,
-    scope: "openid email profile organization",
-    code_challenge: challenge,
-    code_challenge_method: "S256",
-    state,
-  }).toString();
-  window.location.assign(authUrl.toString());
-}
-
-let pendingCompletion = null;
-
-export function completeLoginFromRedirect() {
-  if (!pendingCompletion) pendingCompletion = completeLogin();
-  return pendingCompletion;
-}
-
-async function completeLogin() {
-  const params = new URLSearchParams(window.location.search);
-  const error = params.get("error");
-  if (error) {
-    history.replaceState({}, "", redirectUri);
-    throw new Error(`Identity provider returned ${error}: ${params.get("error_description") || ""}`);
+  const response = await fetch(`${base}/api/info`);
+  if (!response.ok) {
+    throw new Error('ConfigHub discovery failed');
   }
-  const code = params.get("code");
-  if (!code) return null;
-
-  const savedRaw = sessionStorage.getItem(PKCE_KEY);
-  sessionStorage.removeItem(PKCE_KEY);
-  history.replaceState({}, "", redirectUri);
-  if (!savedRaw) throw new Error("No saved login state. Start sign-in again.");
-  const saved = JSON.parse(savedRaw);
-  if (params.get("state") !== saved.state) throw new Error("Login state mismatch.");
-
-  const tokenResponse = await fetch(saved.tokenEndpoint, {
-    method: "POST",
-    headers: {"content-type": "application/x-www-form-urlencoded"},
-    body: new URLSearchParams({
-      grant_type: "authorization_code",
-      code,
-      redirect_uri: redirectUri,
-      client_id: saved.clientId,
-      code_verifier: saved.verifier,
-    }),
-  });
-  if (!tokenResponse.ok) {
-    throw new Error(`Identity token exchange failed: ${tokenResponse.status} ${await tokenResponse.text()}`);
+  const info = await response.json();
+  const authIssuer = info.AuthIssuer || info.auth_issuer || info.authIssuer;
+  let authorizationEndpoint = info.AuthorizationEndpoint || info.authorization_endpoint || info.oauth_authorization_endpoint;
+  let tokenEndpoint = info.TokenEndpoint || info.token_endpoint;
+  if ((!authorizationEndpoint || !tokenEndpoint) && authIssuer) {
+    const oidcResponse = await fetch(`${authIssuer.replace(/\/$/, '')}/.well-known/openid-configuration`);
+    if (!oidcResponse.ok) {
+      throw new Error('OpenID discovery failed');
+    }
+    const oidc = await oidcResponse.json();
+    authorizationEndpoint = authorizationEndpoint || oidc.authorization_endpoint;
+    tokenEndpoint = tokenEndpoint || oidc.token_endpoint;
   }
-  const identityToken = await tokenResponse.json();
-
-  const exchangeResponse = await fetch(saved.exchangeEndpoint, {
-    method: "POST",
-    headers: {"content-type": "application/x-www-form-urlencoded"},
-    body: new URLSearchParams({
-      grant_type: "urn:ietf:params:oauth:grant-type:token-exchange",
-      subject_token: identityToken.access_token,
-      subject_token_type: "urn:ietf:params:oauth:token-type:access_token",
-    }),
-  });
-  if (!exchangeResponse.ok) {
-    throw new Error(`ConfigHub token exchange failed: ${exchangeResponse.status} ${await exchangeResponse.text()}`);
+  const tokenExchangeEndpoint = info.TokenExchangeEndpoint || info.token_exchange_endpoint || `${base}/auth/exchange`;
+  if (!authorizationEndpoint) {
+    throw new Error('authorization endpoint missing from ConfigHub discovery');
   }
-  const minted = await exchangeResponse.json();
-
+  if (!tokenEndpoint) {
+    throw new Error('OIDC token endpoint missing from ConfigHub discovery');
+  }
+  if (!tokenExchangeEndpoint) {
+    throw new Error('TokenExchangeEndpoint missing from ConfigHub discovery');
+  }
   return {
-    baseUrl: saved.baseUrl,
-    accessToken: minted.access_token,
-    organizationId: minted.organization_id,
-    identityClaims: decodeJwtClaims(identityToken.access_token),
+    authIssuer,
+    authorizationEndpoint,
+    tokenEndpoint,
+    tokenExchangeEndpoint,
   };
 }
 
-export async function callConfigHub(session, path, {asText = false} = {}) {
-  const response = await fetch(`${trimSlash(session.baseUrl)}${path}`, {
-    headers: {authorization: `Bearer ${session.accessToken}`},
-  });
-  const body = asText ? await response.text() : await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const detail = typeof body === "string" ? body : JSON.stringify(body);
-    throw new Error(`${path} failed: ${response.status} ${detail}`);
+export async function startSignIn(config) {
+  if (!config.oauthClientId) {
+    throw new Error('OAUTH_CLIENT_ID is required for browser OAuth');
   }
-  return body;
+  const endpoints = await discover(config);
+  const verifier = randomString(48);
+  const state = randomString(24);
+  const challenge = await sha256(verifier);
+  sessionStorage.setItem(VERIFIER_KEY, verifier);
+  sessionStorage.setItem(STATE_KEY, state);
+  const url = new URL(endpoints.authorizationEndpoint);
+  url.searchParams.set('response_type', 'code');
+  url.searchParams.set('client_id', config.oauthClientId);
+  url.searchParams.set('redirect_uri', callbackUrl(config));
+  url.searchParams.set('scope', 'openid profile email organization');
+  url.searchParams.set('state', state);
+  url.searchParams.set('code_challenge', challenge);
+  url.searchParams.set('code_challenge_method', 'S256');
+  location.assign(url.toString());
+}
+
+export async function completeSignIn(config) {
+  const params = new URLSearchParams(location.search);
+  const code = params.get('code');
+  const state = params.get('state');
+  if (!code) {
+    return null;
+  }
+  if (state !== sessionStorage.getItem(STATE_KEY)) {
+    throw new Error('OAuth state mismatch');
+  }
+  const verifier = sessionStorage.getItem(VERIFIER_KEY);
+  const endpoints = await discover(config);
+  const identityResponse = await fetch(endpoints.tokenEndpoint, {
+    method: 'POST',
+    headers: {'content-type': 'application/x-www-form-urlencoded'},
+    body: new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: callbackUrl(config),
+      client_id: config.oauthClientId,
+      code_verifier: verifier,
+    }),
+  });
+  if (!identityResponse.ok) {
+    throw new Error('Identity token endpoint failed');
+  }
+  const identityToken = await identityResponse.json();
+  const exchangeResponse = await fetch(endpoints.tokenExchangeEndpoint, {
+    method: 'POST',
+    headers: {'content-type': 'application/x-www-form-urlencoded'},
+    body: new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
+      subject_token: identityToken.access_token,
+      subject_token_type: 'urn:ietf:params:oauth:token-type:access_token',
+    }),
+  });
+  if (!exchangeResponse.ok) {
+    throw new Error('TokenExchangeEndpoint failed');
+  }
+  const token = await exchangeResponse.json();
+  const accessToken = token.access_token || token.AccessToken;
+  if (!accessToken) {
+    throw new Error('TokenExchangeEndpoint response did not include an access token');
+  }
+  sessionStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+  history.replaceState({}, '', location.origin + location.pathname);
+  return accessToken;
+}
+
+export function getAccessToken() {
+  return sessionStorage.getItem(ACCESS_TOKEN_KEY);
+}
+
+export async function configHubFetch(config, path, options = {}) {
+  const token = getAccessToken();
+  if (!token) {
+    throw new Error('Sign in before calling ConfigHub');
+  }
+  const base = (config.configHubBaseUrl || '').replace(/\/$/, '');
+  const response = await fetch(`${base}${path}`, {
+    ...options,
+    headers: {
+      ...(options.headers || {}),
+      authorization: `Bearer ${token}`,
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`ConfigHub API returned ${response.status}`);
+  }
+  return response.json();
 }
