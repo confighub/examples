@@ -1,0 +1,50 @@
+{
+  "app_name": "Add-on Manager",
+  "auth_mode": "browser-oauth",
+  "config_hub_browser_oauth_default": true,
+  "created_at": "2026-07-02T06:07:27+00:00",
+  "files": [
+    ".gitignore",
+    "JUSTIFICATION.md",
+    "README.md",
+    "SPECIFICATION.md",
+    "app-export-manifest.json",
+    "cli.mjs",
+    "data/live-bindings.example.json",
+    "data/operational-workflow.json",
+    "package.json",
+    "public/app.js",
+    "public/auth.js",
+    "public/index.html",
+    "public/styles.css",
+    "scripts/binding-check.mjs",
+    "scripts/oauth-smoke.mjs",
+    "scripts/verify.mjs",
+    "server.mjs",
+    "skills/add-on-manager-operator/SKILL.md",
+    "skills/add-on-manager-operator/evals/trigger_evals.json",
+    "src/config.mjs",
+    "src/server.mjs",
+    "src/workflow.mjs",
+    "tests/app.test.mjs",
+    "tests/auth-surface.test.mjs",
+    "tests/cli.test.mjs"
+  ],
+  "next_gate": "Register a ConfigHub browser OAuth client, start this app, run oauth:smoke, sign in, verify /api/me, create deployment-local live-bindings.json from verified ConfigHub read objects or explicit blocked: reasons, run binding:check, then bind the scenario-specific live action executor and runtime proof.",
+  "non_claims": [
+    "The export did not mutate ConfigHub, a controller, or Kubernetes.",
+    "The export wrote files only under this app directory; any Git commit or push is a delivery step, not live operational proof.",
+    "The generic apply endpoint is blocked until the live ConfigHub action, approval object, proof receipt, and runtime evidence source are bound."
+  ],
+  "opt_out": false,
+  "scenario_id": "addon-manager",
+  "schema": "confighub.operational-app-export.v0",
+  "status": "APP_EXPORT_READY_BROWSER_OAUTH",
+  "test_result": {
+    "command": "npm run verify",
+    "returncode": 0,
+    "status": "PASS",
+    "stderr": "",
+    "stdout": "\n> add-on-manager@0.1.0 verify\n> node scripts/verify.mjs && npm test\n\n\n> add-on-manager@0.1.0 test\n> node tests/app.test.mjs && node tests/auth-surface.test.mjs && node tests/cli.test.mjs\n\n"
+  }
+}

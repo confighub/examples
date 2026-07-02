@@ -1,163 +1,112 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Add-on Manager</title>
-  <link rel="stylesheet" href="/styles.css">
-</head>
-<body>
-  <header class="topbar">
-    <div>
-      <h1>Add-on Manager</h1>
-      <p>ConfigHub add-ons across Variants</p>
-    </div>
-    <div class="status-row">
-      <span class="chip warn" id="mode">checking</span>
-      <span class="chip" id="identity">identity pending</span>
-      <span class="chip" id="auth-state">auth pending</span>
-      <span class="chip warn" id="binding-state">bindings pending</span>
-    </div>
-  </header>
-
-  <section class="workflow-band">
-    <div class="workflow-heading">
-      <h2>Workflow</h2>
-      <p id="workflow-summary">Loading workflow...</p>
-    </div>
-    <ol class="workflow-steps" id="workflow-steps"></ol>
-  </section>
-
-  <section class="runway-band" aria-label="Operational readiness">
-    <div class="runway-card" id="runway-auth">
-      <span>Auth</span>
-      <b>checking</b>
-      <p>Identity and ConfigHub access.</p>
-    </div>
-    <div class="runway-card" id="runway-inventory">
-      <span>Inventory</span>
-      <b>loading</b>
-      <p>Add-ons grouped by Variant.</p>
-    </div>
-    <div class="runway-card" id="runway-scope">
-      <span>Scope</span>
-      <b>not selected</b>
-      <p>Variant and Unit under review.</p>
-    </div>
-    <div class="runway-card" id="runway-operation">
-      <span>Operation</span>
-      <b>blocked</b>
-      <p>Approval, action, and proof path.</p>
-    </div>
-  </section>
-
-  <main class="layout">
-    <aside class="inventory-panel">
-      <div class="panel-title">
-        <h2>Add-ons by Variant</h2>
-        <span id="inventory-count">0</span>
-      </div>
-      <div class="toolbar">
-        <button class="button secondary" id="refresh">Refresh</button>
-        <select id="mode-select" aria-label="Data mode">
-          <option value="fixture">Fixture</option>
-          <option value="browser">Browser OAuth</option>
-        </select>
-      </div>
-      <div id="inventory" class="inventory-list"></div>
-    </aside>
-
-    <section class="workspace">
-      <div class="workspace-header">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ConfigHub Operational App</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="topbar">
         <div>
-          <h2 id="selection-title">Select an add-on Variant</h2>
-          <p id="selection-subtitle">Inventory is grouped by add-on, Variant, space, and Unit.</p>
+          <p class="eyebrow">ConfigHub operational app</p>
+          <h1 id="app-title">Loading...</h1>
         </div>
-        <div class="scope-grid" id="scope-grid"></div>
-      </div>
-
-      <div class="split">
-        <section class="surface">
-          <div class="panel-title">
-            <h2>Units</h2>
-            <span id="unit-count">0</span>
-          </div>
-          <div id="units" class="unit-table empty">No Variant selected.</div>
-        </section>
-
-        <section class="surface">
-          <div class="panel-title">
-            <h2>Current Unit</h2>
-            <span id="unit-source">-</span>
-          </div>
-          <div id="detail" class="detail empty">No Unit selected.</div>
-        </section>
-      </div>
-
-      <section class="surface auth-surface">
-        <div class="panel-title">
-          <h2>Browser OAuth</h2>
-          <span>direct ConfigHub API</span>
-        </div>
-        <div class="auth-grid">
-          <div><span>ConfigHub base</span><b id="auth-base">not set</b></div>
-          <div><span>Client ID</span><b id="auth-client">not set</b></div>
-          <div class="auth-actions">
-            <button class="button" id="login" disabled>Sign in</button>
-            <button class="button secondary" id="call-me" disabled>Call /api/me</button>
-          </div>
+        <div class="auth-panel">
+          <span id="auth-state" class="chip">checking</span>
+          <button id="sign-in" type="button">Sign in</button>
         </div>
       </section>
 
-      <section class="surface binding-surface">
-        <div class="panel-title">
-          <h2>Live Bindings</h2>
-          <span id="binding-file">data/live-bindings.json</span>
+      <section class="explain">
+        <div>
+          <h2>What this app does</h2>
+          <p id="job"></p>
         </div>
-        <div class="binding-grid" id="binding-grid">
-          <div class="empty">Checking live binding status...</div>
+        <ol id="workflow-steps"></ol>
+      </section>
+
+      <section class="readiness" aria-label="Operational readiness">
+        <div class="readiness-card" id="ready-auth">
+          <span>Auth</span>
+          <strong>checking</strong>
+          <p>ConfigHub user session.</p>
+        </div>
+        <div class="readiness-card" id="ready-inventory">
+          <span>Inventory</span>
+          <strong>loading</strong>
+          <p>Variants available to review.</p>
+        </div>
+        <div class="readiness-card" id="ready-scope">
+          <span>Scope</span>
+          <strong>not selected</strong>
+          <p>Variant and Unit under review.</p>
+        </div>
+        <div class="readiness-card" id="ready-operation">
+          <span>Operation</span>
+          <strong>blocked</strong>
+          <p>Approval, action, and proof path.</p>
         </div>
       </section>
 
-      <section class="surface action-contract-surface">
-        <div class="panel-title">
-          <h2>Governed Action Contract</h2>
-          <span id="contract-state">waiting for live bindings</span>
+      <section class="analysis">
+        <div class="section-heading">
+          <h2>How this became an operational app</h2>
+          <span class="chip">review before action</span>
         </div>
-        <div class="contract-grid" id="action-contract">
-          <div class="empty">Select a Unit to review the operation contract.</div>
-        </div>
+        <div id="analysis-cards" class="analysis-cards"></div>
       </section>
 
-      <section class="surface proof-surface">
-        <div class="panel-title">
-          <h2>Approval And Proof</h2>
-          <span id="proof-state">preview</span>
-        </div>
-        <div class="proof-layout">
+      <section class="layout">
+        <aside class="variants">
+          <div class="section-heading">
+            <h2>Variants</h2>
+            <button id="refresh" type="button">Refresh</button>
+          </div>
+          <div id="variant-list" class="variant-list"></div>
+        </aside>
+
+        <section class="detail">
+          <div class="section-heading">
+            <h2 id="variant-title">Select a Variant</h2>
+            <span id="variant-status" class="chip">waiting</span>
+          </div>
+          <dl id="variant-fields" class="fields"></dl>
           <div class="actions">
-            <button class="button" id="preview-config" disabled>Preview config</button>
-            <button class="button" id="prepare-scope" disabled>Prepare scope</button>
-            <button class="button danger" id="apply" disabled>Apply rollout</button>
-            <button class="button secondary" id="export-receipt" disabled>Export receipt</button>
+            <button id="preview" type="button">Preview change</button>
+            <button id="approve" type="button">Approve scope</button>
+            <button id="apply" type="button">Run allowed action</button>
           </div>
-          <div>
-            <div class="tabs" id="proof-tabs"></div>
-            <div class="proof-body" id="proof-body">Select a Unit to see proof.</div>
-          </div>
-        </div>
+          <p id="action-note" class="note"></p>
+        </section>
       </section>
 
-      <section class="surface">
-        <div class="panel-title">
-          <h2>Event Log</h2>
-          <span id="event-count">0</span>
+      <section class="proof">
+        <div class="section-heading">
+          <h2>Proof</h2>
+          <button id="proof-refresh" type="button">Check proof</button>
         </div>
-        <ol class="event-log" id="event-log"></ol>
+        <div id="proof-tabs" class="proof-tabs"></div>
       </section>
-    </section>
-  </main>
 
-  <script type="module" src="/app.js"></script>
-</body>
+      <section class="contract">
+        <div class="section-heading">
+          <h2>Governed action contract</h2>
+          <span id="contract-state" class="chip">waiting</span>
+        </div>
+        <div id="action-contract" class="contract-grid"></div>
+      </section>
+
+      <section class="bindings">
+        <div class="section-heading">
+          <h2>Live bindings</h2>
+          <button id="bindings-refresh" type="button">Check bindings</button>
+        </div>
+        <p id="bindings-status" class="note"></p>
+        <ul id="binding-requirements" class="requirements"></ul>
+      </section>
+    </main>
+    <script type="module" src="/app.js"></script>
+  </body>
 </html>

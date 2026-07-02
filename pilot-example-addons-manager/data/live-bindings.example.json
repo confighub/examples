@@ -1,22 +1,18 @@
 {
-  "schema": "confighub.live-bindings.v0",
-  "configHub": {
-    "objectUrl": "https://hub.confighub.com/space/<space-id>/unit/<unit-id>",
-    "space": "helm-kyverno-prod",
-    "unit": "kyverno-controller"
-  },
-  "approval": {
-    "objectId": "approval/<approval-id>",
-    "mode": "explicit approval before mutation"
-  },
   "action": {
-    "endpoint": "https://hub.confighub.com/api/<approved-action-endpoint>",
-    "method": "POST",
-    "description": "Governed add-on update action",
     "contract": {
       "kind": "ConfigHub-governed-action.v0",
-      "operation": "review-addon-version",
-      "trigger": "user-approved-scope",
+      "mutationPolicy": "Apply remains disabled unless every binding is real and non-placeholder.",
+      "operation": "add-on-manager",
+      "requires": [
+        "browser OAuth user",
+        "ConfigHub object URL",
+        "Variant and Unit scope",
+        "approval object",
+        "governed action executor",
+        "controller proof",
+        "runtime proof"
+      ],
       "scopeFields": [
         "org",
         "space",
@@ -29,28 +25,53 @@
         "addon",
         "version"
       ],
-      "requires": [
-        "browser OAuth user",
-        "ConfigHub object URL",
-        "Variant and Unit scope",
-        "approval object",
-        "governed action executor",
-        "controller proof",
-        "runtime proof"
-      ],
-      "mutationPolicy": "Apply remains disabled unless every binding is real and non-placeholder."
-    }
+      "trigger": "user-approved-scope"
+    },
+    "description": "Use blocked:governed-write-executor-not-installed until the scenario-specific executor exists.",
+    "endpoint": "<configHub-action-endpoint-or-function>",
+    "method": "POST"
   },
-  "proof": {
-    "receiptObjectId": "receipt/<receipt-id>",
-    "requiredLayers": [
-      "ConfigHub revision",
-      "approval",
-      "controller",
-      "runtime"
+  "approval": {
+    "mode": "explicit approval before mutation",
+    "objectId": "<approval-object-id>",
+    "scope": [
+      "org",
+      "space",
+      "variant",
+      "unit",
+      "action",
+      "revision",
+      "target",
+      "strategy",
+      "addon",
+      "version"
     ]
   },
+  "configHub": {
+    "externalOrganizationId": "<external-organization-id>",
+    "objectUrl": "https://<confighub-server>/<verified-object-url>",
+    "organizationId": "<internal-organization-id>",
+    "server": "https://<confighub-server>",
+    "space": "not-yet-bound-dev-space",
+    "spaceId": "<space-id>",
+    "unit": "add-on-manager-dev",
+    "variant": "dev"
+  },
+  "proof": {
+    "proofTabs": [
+      "config_hub_revision",
+      "approval_record",
+      "gate_verdict",
+      "controller_reconciliation",
+      "runtime_field",
+      "receipt"
+    ],
+    "receiptObjectId": "<receipt-object-id>"
+  },
   "runtime": {
-    "evidenceSource": "controller and cluster readback for the selected Variant"
-  }
+    "evidenceSource": "<controller-or-runtime-proof-source>",
+    "readback": "Use blocked:no-controller-or-runtime-target-bound until controller and runtime proof are available."
+  },
+  "schema": "confighub.live-bindings.v0",
+  "status": "example-fill-with-live-values"
 }
