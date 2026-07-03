@@ -6,6 +6,8 @@ allowed action, and read the proof receipt.
 
 ## Run Locally
 
+Requires Node.js 18 or newer.
+
 ```bash
 npm test
 npm run verify
@@ -54,6 +56,10 @@ client ID. It creates or reuses the `add-on-manager-local` OAuth client with the
 redirect URI `http://localhost:5173/callback`.
 
 The browser sign-in uses PKCE. When ConfigHub exposes `AuthIssuer`, the app discovers the issuer's OpenID configuration, exchanges the authorization code with the issuer, then exchanges that identity token through ConfigHub. The app calls ConfigHub with `Authorization: Bearer <token>` after sign-in.
+
+After sign-in, the top status chip should show `ConfigHub connected`. If it
+only shows `signed in`, the OAuth callback completed but `/api/me` did not
+confirm the ConfigHub user/org yet.
 
 ## What The App Shows
 

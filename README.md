@@ -21,6 +21,7 @@ If you are not logged in yet, run `cub auth login` before the `cub` commands.
 - [`gitops-import`](./gitops-import/README.md): canonical Argo CD GitOps import example and docs companion.
 - [`initiatives-demo`](./initiatives-demo/README.md): 5 compliance initiatives backed by Kyverno CEL policies, with sample Kubernetes units to evaluate.
 - [`custom-workers`](./custom-workers/): worker extension examples, including bridge, function, and policy workers.
+- [`pilot-example-addons-manager`](./pilot-example-addons-manager/README.md): standalone generated operational app with Variant-first GUI, CLI sibling, production ConfigHub browser OAuth registration, and live-binding proof gates.
 - [`global-app`](./global-app/README.md): classic multi-service app example.
 - [`helm-platform-components`](./helm-platform-components/README.md): platform component example for Helm-managed infrastructure.
 - [`vm-fleet`](./vm-fleet/README.md): VM fleet operations example.
@@ -53,6 +54,7 @@ Some other examples
   [`redis-platform-with-rbac-guardrails`](./redis-platform-with-rbac-guardrails/README.md)
 - Incubator and experimental paths: [`incubator/README.md`](./incubator/README.md)
 - App mutation and platform flow: [`spring-platform/springboot-platform-app-centric`](./spring-platform/springboot-platform-app-centric/README.md)
+- Standalone operational app shape: [`pilot-example-addons-manager`](./pilot-example-addons-manager/README.md)
 
 `cub-scout` remains useful as companion material and as a source of comparison fixtures:
 
