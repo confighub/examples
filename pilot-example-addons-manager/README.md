@@ -39,13 +39,19 @@ shared workflow contract before connecting live operations.
 
 ## Connect To ConfigHub
 
-Create a browser OAuth client for this app, then start the app with the server URL and client ID.
+Create a browser OAuth client for this app, then start the app with the server
+URL and client ID. Production ConfigHub supports this through `cub
+oauthclient`.
 
 ```bash
 cub auth status
-cub oauthclient create add-on-manager --redirect-uri http://localhost:5173/callback
-CONFIGHUB_BASE_URL=https://your-confighub-server.example OAUTH_CLIENT_ID=<client-id> PORT=5173 npm start
+npm run oauth:register
+CONFIGHUB_BASE_URL=https://hub.confighub.com OAUTH_CLIENT_ID=<client-id> PORT=5173 npm start
 ```
+
+`npm run oauth:register` prints the exact `npm start` command with the generated
+client ID. It creates or reuses the `add-on-manager-local` OAuth client with the
+redirect URI `http://localhost:5173/callback`.
 
 The browser sign-in uses PKCE. When ConfigHub exposes `AuthIssuer`, the app discovers the issuer's OpenID configuration, exchanges the authorization code with the issuer, then exchanges that identity token through ConfigHub. The app calls ConfigHub with `Authorization: Bearer <token>` after sign-in.
 
@@ -87,7 +93,7 @@ executor, proof receipt, and runtime evidence are bound.
 ## Live Proof Checks
 
 ```bash
-CONFIGHUB_BASE_URL=https://your-confighub-server.example OAUTH_CLIENT_ID=<client-id> npm run oauth:smoke
+CONFIGHUB_BASE_URL=https://hub.confighub.com OAUTH_CLIENT_ID=<client-id> npm run oauth:smoke
 npm run binding:check
 ```
 

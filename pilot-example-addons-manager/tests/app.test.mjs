@@ -26,6 +26,10 @@ try {
   assert.match(pageText, /Operational readiness/);
   assert.match(pageText, /Governed action contract/);
 
+  const callbackPage = await fetch(`http://localhost:${port}/callback`);
+  assert.equal(callbackPage.status, 200);
+  assert.match(await callbackPage.text(), /ConfigHub operational app/);
+
   const config = await json('/app/config');
   assert.equal(config.response.status, 200);
   assert.equal(config.data.authMode, 'browser-oauth');

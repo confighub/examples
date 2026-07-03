@@ -104,7 +104,9 @@ function bindingContractError(bindings) {
 }
 
 async function serveStatic(req, res, url) {
-  const requested = url.pathname === '/' ? '/index.html' : url.pathname;
+  const requested = url.pathname === '/' || url.pathname === '/callback'
+    ? '/index.html'
+    : url.pathname;
   const safePath = normalize(requested).replace(/^\.{2,}/, '');
   const filePath = join(publicDir, safePath);
   if (!filePath.startsWith(publicDir)) {
