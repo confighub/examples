@@ -14,6 +14,7 @@
     "cli:map": "node cli.mjs map --json",
     "cli:findings": "node cli.mjs findings --json",
     "cli:verify": "node cli.mjs verify --json",
+    "oauth:register": "node scripts/register-oauth-client.mjs",
     "oauth:smoke": "node scripts/oauth-smoke.mjs",
     "binding:check": "node scripts/binding-check.mjs",
     "verify": "node scripts/verify.mjs && npm test"
