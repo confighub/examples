@@ -3,7 +3,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 const forbidden = ['pi' + 'lot', 'py' + 'thon'];
-const skipDirs = new Set(['.git', 'node_modules']);
+const skipDirs = new Set(['.git', 'node_modules', '.lifecycle']);
 
 async function files(dir) {
   const entries = await readdir(dir, {withFileTypes: true});

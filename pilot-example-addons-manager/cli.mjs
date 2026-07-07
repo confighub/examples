@@ -213,24 +213,30 @@ function commit() {
   const bindings = bindingStatus();
   const variant = selectedVariant();
   if (!bindings.readyForCommit) {
+    // Expected operational blocker, not a shell failure: typed BLOCK at exit 0.
     return output({
+      verdict: 'BLOCK',
+      reason: 'APPROVED_CONFIGHUB_MUTATION_REQUIRED',
       status: 'COMMIT_BLOCKED',
       error: 'APPROVED_CONFIGHUB_MUTATION_REQUIRED',
       app: workflow.app.name,
       variant,
-      reason: bindings.reason,
+      liveBindings: bindings.status,
+      detail: bindings.reason,
       message: 'commit means an approved scoped ConfigHub mutation, not a local CLI flag being accepted.',
       nextGate: 'Create real live bindings and rerun findings, preview, approval, verify, and receipt.',
-    }, 2);
+    }, 0);
   }
   return output({
+    verdict: 'BLOCK',
+    reason: 'LIVE_ACTION_EXECUTOR_REQUIRED',
     status: 'COMMIT_BLOCKED',
     error: 'LIVE_ACTION_EXECUTOR_REQUIRED',
     app: workflow.app.name,
     variant,
-    reason: 'Live bindings are present, but this generated starter has no scenario-specific action executor.',
+    detail: 'Live bindings are present, but this generated starter has no scenario-specific action executor.',
     nextGate: 'Wire the governed ConfigHub action executor before enabling commit.',
-  }, 2);
+  }, 0);
 }
 
 function verify() {

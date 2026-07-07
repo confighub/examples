@@ -4,9 +4,13 @@ This is a standalone ConfigHub operational app. It helps an operator review
 affected Variants, preview a proposed change, approve the exact scope, run the
 allowed action, and read the proof receipt.
 
-## Run Locally
+Original request:
 
-Requires Node.js 18 or newer.
+```text
+addon-manager
+```
+
+## Run Locally
 
 ```bash
 npm test
@@ -41,25 +45,22 @@ shared workflow contract before connecting live operations.
 
 ## Connect To ConfigHub
 
-Create a browser OAuth client for this app, then start the app with the server
-URL and client ID. Production ConfigHub supports this through `cub
-oauthclient`.
+The live browser GUI uses the ConfigHub Custom UI Apps JavaScript SDK: `@confighub/react-auth` for sign-in and `@confighub/api` for typed ConfigHub API calls. Do not reimplement browser OAuth in the app.
+
+Create a browser OAuth client for this app, install the UI dependencies, then start the SDK-backed GUI with the server URL and client ID. Production ConfigHub supports client registration through `cub oauthclient`.
 
 ```bash
 cub auth status
 npm run oauth:register
-CONFIGHUB_BASE_URL=https://hub.confighub.com OAUTH_CLIENT_ID=<client-id> PORT=5173 npm start
+npm install
+VITE_CONFIGHUB_BASE_URL=https://hub.confighub.com VITE_OAUTH_CLIENT_ID=<client-id> npm run ui:dev
 ```
 
-`npm run oauth:register` prints the exact `npm start` command with the generated
-client ID. It creates or reuses the `add-on-manager-local` OAuth client with the
-redirect URI `http://localhost:5173/callback`.
+`npm run oauth:register` prints the exact SDK UI command with the generated client ID. It creates or reuses the local OAuth client with the redirect URI `http://localhost:5173/`.
 
-The browser sign-in uses PKCE. When ConfigHub exposes `AuthIssuer`, the app discovers the issuer's OpenID configuration, exchanges the authorization code with the issuer, then exchanges that identity token through ConfigHub. The app calls ConfigHub with `Authorization: Bearer <token>` after sign-in.
+The SDK discovers ConfigHub auth settings from `{{baseUrl}}/api/info`, runs OIDC Authorization Code with PKCE, exchanges the IdP token for a ConfigHub-minted token, keeps that token in memory, and calls ConfigHub with `Authorization: Bearer <token>`.
 
-After sign-in, the top status chip should show `ConfigHub connected`. If it
-only shows `signed in`, the OAuth callback completed but `/api/me` did not
-confirm the ConfigHub user/org yet.
+`PORT=5173 npm start` still runs the local workflow harness and CLI parity server. Use `npm run ui:dev` for the live browser-auth GUI.
 
 ## What The App Shows
 
@@ -94,7 +95,11 @@ preflight -> map/list -> findings -> preview -> approve/commit -> verify -> rece
 
 `commit` means an approved scoped ConfigHub mutation. In this starter package it
 stays blocked until the live ConfigHub object, approval object, governed action
-executor, proof receipt, and runtime evidence are bound.
+executor, proof receipt, and runtime evidence are bound. That blocker is a typed
+`{"verdict": "BLOCK"}` at exit 0, not a shell failure — every CLI, lifecycle,
+and binding-check result follows the same rule. See **Result Contract** in
+`SPECIFICATION.md` for the full `verdict`/`reason` table; branch on those fields,
+not on shell success.
 
 ## Live Proof Checks
 
@@ -110,9 +115,14 @@ governed action contract, action endpoint, proof receipt, and runtime evidence
 source. The check rejects copied placeholder values from
 `data/live-bindings.example.json`.
 
-On a fresh clone, `npm run binding:check` is expected to fail with
-`LIVE_BINDINGS_MISSING` until you create deployment-local
-`data/live-bindings.json`. That is the correct safe default, not a broken app.
+On a fresh clone, `npm run binding:check` classifies the state as
+`{"verdict": "WATCH", "reason": "LIVE_BINDINGS_MISSING"}` and exits 0 until you
+create deployment-local `data/live-bindings.json`.
+That is the correct safe default, not a broken app: the check exits non-zero
+only if the file exists but cannot be parsed. Every generated CLI and lifecycle
+blocker follows the same rule — expected `BLOCK`/`ASK`/`WATCH` outcomes are
+typed JSON at exit 0; non-zero is reserved for malformed input, missing core
+files, or a runtime refusal (a decommissioned `npm start`).
 
 If the ConfigHub org is live but the scenario-specific write path is not ready
 yet, bind the app to the verified read surface and make the missing pieces
@@ -121,14 +131,94 @@ explicit. For example, the action endpoint can be
 `blocked:no-controller-or-runtime-target-bound`. That makes the GUI useful
 without pretending apply is ready.
 
+## ConfigHub Self-Management
+
+This operational app is also a ConfigHub-managed app. Its own config,
+Variants, OAuth settings, deployment manifests, promotions, lifecycle,
+security, and fleet placement belong in ConfigHub too.
+
+The starter self-management pack lives under `confighub/`:
+
+- `confighub/self-management.json`: app config, Variant, delivery, promotion,
+  lifecycle, security, fleet, and proof contract.
+- `confighub/variants/*.json`: ConfigHub app config Units for dev, stage, and
+  prod-style Variants.
+- `confighub/k8s/*.yaml`: Kubernetes manifests to govern and deliver through
+  ConfigHub OCI GitOps.
+
+The live app is not complete until those app-self-management artifacts are
+created as ConfigHub Units, promoted through real Variants, delivered through
+`ArgoCDOCI` or `FluxOCI`, reconciled by the controller, and proven running on
+Kubernetes.
+
+## App Lifecycle
+
+The workflow loop above is the app's job. The commands below are the app's own
+life. Every export ships all six:
+
+```bash
+node lifecycle.mjs install --json
+node lifecycle.mjs upgrade [--from <regenerated-dir>] [--apply] --json
+node lifecycle.mjs migrate --json
+node lifecycle.mjs rollback [--to <backup-stamp>] --json
+node lifecycle.mjs rotate-auth --client-id <new-client-id> --json
+node lifecycle.mjs decommission --confirm --json
+```
+
+- `install` verifies the app layout, records local install state under
+  `.lifecycle/`, and refreshes the fleet record's binding status.
+- `upgrade` diffs a regeneration against local modifications. The generator
+  name and version are pinned in `app-export-manifest.json`; regenerate with
+  the same or a newer generator into a separate directory, then run
+  `upgrade --from <dir>`. Local-only edits are preserved, upstream-only
+  changes apply cleanly with `--apply`, and files changed on both sides are
+  reported as conflicts and never overwritten.
+- `migrate` applies schema-version migrations for
+  `data/operational-workflow.json`, `data/live-bindings.json`, and
+  `confighub/self-management.json`. The supported schema versions are pinned
+  in the manifest's `schemas` block.
+- `rollback` restores the most recent lifecycle backup (taken automatically
+  before any lifecycle mutation). The app's ConfigHub-side config rolls back
+  separately by restoring the app config Unit revision through the governed
+  path.
+- `rotate-auth` records an OAuth client rotation: validate the new
+  browser-client id, update the deployment secret through the governed config
+  path, restart, then prove with `npm run oauth:smoke` and a fresh sign-in
+  before revoking the old client.
+- `decommission` (with `--confirm`) retires the app: the fleet record
+  transitions to `RETIRED` with the decommission receipt as evidence,
+  `npm start` is blocked, an index file named by `CONFIGHUB_FLEET_INDEX_FILE`
+  is deregistered when present, and the fleet-record Unit change is applied
+  through the governed path. `rollback` reverses it.
+
+## Fleet Registry
+
+This app is registered in an org-level fleet index at export time. The record
+lives at `confighub/registry/fleet-record.json` with a ConfigHub-Unit-shaped
+sibling at `confighub/registry/fleet-record.unit.yaml`: app id, version,
+generator version, owner, on-call, binding status, and destination. The record
+carries the registry state machine `WATCH -> LIVE -> DEPRECATED -> RETIRED`;
+every transition records actor, evidence, timestamp, generator version, and
+ConfigHub URL (`node lifecycle.mjs registry --json` to inspect, `--to` to
+transition; `LIVE` requires the proof layers green). See
+`confighub/registry/README.md` for the registration commands and the fleet
+index shape decision.
+
 ## Files
 
 - `public/`: browser UI.
+- `ui/`: SDK-backed React browser GUI built with `@confighub/react-auth` and
+  `@confighub/api`; this is the default live UI tool for ConfigHub apps.
 - `cli.mjs`: command-line sibling for the same workflow.
+- `lifecycle.mjs`: the app's own life — install, upgrade, migrate, rollback, rotate-auth, decommission.
 - `src/`: local server and workflow loader.
 - `data/operational-workflow.json`: the ConfigHub workflow contract used by the app.
 - `data/live-bindings.example.json`: the live binding contract to copy when connecting the app, including the governed action contract.
 - `data/live-bindings.json`: deployment-local live bindings; intentionally ignored by Git.
+- `confighub/`: self-management pack for this app's own ConfigHub config,
+  Variant overlays, and CH-OCI-GitOps Kubernetes delivery.
+- `confighub/registry/`: fleet-record for the org-level app registry, in JSON
+  and ConfigHub-Unit-shaped YAML, plus registration commands.
 - `SPECIFICATION.md`: what the app is allowed to do.
 - `JUSTIFICATION.md`: why this workflow deserves an operational app.
 - `skills/`: generated assistant skill and trigger-eval stubs for routing future use.

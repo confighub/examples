@@ -1,0 +1,36 @@
+{
+  "app": "add-on-manager",
+  "authMode": "browser-oauth",
+  "component": "add-on-manager",
+  "config": {
+    "configHubBaseUrlEnv": "CONFIGHUB_BASE_URL",
+    "liveBindings": "data/live-bindings.json",
+    "mutationDefault": "blocked-until-approval-and-proof",
+    "oauthClientIdEnv": "OAUTH_CLIENT_ID",
+    "replicas": 1,
+    "workflowContract": "data/operational-workflow.json"
+  },
+  "promotion": {
+    "requires": [
+      "source and destination Variant comparison",
+      "approved app version or config change",
+      "controller proof",
+      "runtime proof",
+      "receipt"
+    ],
+    "source": "dev"
+  },
+  "proofRequired": [
+    "ConfigHub app config revision",
+    "Variant promotion or explicit Variant config revision",
+    "OCI artifact or target proof",
+    "controller reconciliation",
+    "Kubernetes deployment runtime state",
+    "browser OAuth /api/me",
+    "app receipt"
+  ],
+  "purpose": "Pre-production proof with browser OAuth and ConfigHub read paths.",
+  "schema": "confighub.generated-operational-app.config-unit.v0",
+  "space": "add-on-manager-stage",
+  "variant": "stage"
+}

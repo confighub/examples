@@ -8,16 +8,39 @@
   },
   "scripts": {
     "start": "node server.mjs",
-    "test": "node tests/app.test.mjs && node tests/auth-surface.test.mjs && node tests/cli.test.mjs",
+    "test": "node tests/app.test.mjs && node tests/auth-surface.test.mjs && node tests/ui-tool.test.mjs && node tests/cli.test.mjs && node tests/lifecycle.test.mjs",
+    "ui:dev": "vite --host 127.0.0.1 --port 5173 --config vite.config.ts",
+    "ui:build": "vite build --config vite.config.ts",
+    "ui:preview": "vite preview --host 127.0.0.1 --port 5173 --config vite.config.ts",
     "cli": "node cli.mjs",
     "cli:preflight": "node cli.mjs preflight --json",
     "cli:map": "node cli.mjs map --json",
     "cli:findings": "node cli.mjs findings --json",
     "cli:verify": "node cli.mjs verify --json",
+    "lifecycle": "node lifecycle.mjs",
+    "lifecycle:install": "node lifecycle.mjs install --json",
+    "lifecycle:upgrade": "node lifecycle.mjs upgrade --json",
+    "lifecycle:migrate": "node lifecycle.mjs migrate --json",
+    "lifecycle:rollback": "node lifecycle.mjs rollback --json",
+    "lifecycle:rotate-auth": "node lifecycle.mjs rotate-auth --json",
+    "lifecycle:decommission": "node lifecycle.mjs decommission --json",
     "oauth:register": "node scripts/register-oauth-client.mjs",
     "oauth:smoke": "node scripts/oauth-smoke.mjs",
     "binding:check": "node scripts/binding-check.mjs",
     "verify": "node scripts/verify.mjs && npm test"
+  },
+  "dependencies": {
+    "@confighub/react-auth": "^0.1.0",
+    "@confighub/api": "^0.1.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.7.0",
+    "typescript": "~5.6.2",
+    "vite": "^6.4.2"
   },
   "engines": {
     "node": ">=18"

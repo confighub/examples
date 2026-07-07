@@ -2,7 +2,64 @@
   "app_name": "Add-on Manager",
   "auth_mode": "browser-oauth",
   "config_hub_browser_oauth_default": true,
-  "created_at": "2026-07-02T06:07:27+00:00",
+  "created_at": "2026-07-07T11:19:31+00:00",
+  "destination": {
+    "ci": "github-actions",
+    "deploy_target": "argo-oci",
+    "license": "apache-2.0",
+    "mode": "existing",
+    "org": "confighub",
+    "repo": "examples",
+    "status": "DECLARED",
+    "visibility": "public"
+  },
+  "file_hashes": {
+    ".gitignore": "2b49e793b6c423eb20030904cccbbe6bdaa2222b131123503fe084c2395f3093",
+    "JUSTIFICATION.md": "895330817c93788ccbea4426e89210fdfe48208a8772f4ce0c9abd4b62b1a606",
+    "README.md": "d45753cf311d5e035c1b8f601217773d7702071f9c7b156abcbcc0714796aa1d",
+    "SPECIFICATION.md": "31d478b3c79bdbb5549713cb455c7fa4c0361dce9de903aa60de6eb9edcc4196",
+    "cli.mjs": "49c25f998b53255ebd81290f683a82846c26a621312b4fc5c5a7840ba6622e79",
+    "confighub/README.md": "e2b576caead5b93d07d4d5e8fb96545e0b8218d8d3125bd3c740ff3d7c74257c",
+    "confighub/k8s/deployment.yaml": "b90c17e624eeb3dfb22189a369b53bb11bd3fb0e6ba04e5b434b297e143117c8",
+    "confighub/k8s/networkpolicy.yaml": "841d3ad080d4e200f47796eb54a930500db9319ce1e9c7b828c233731b2fa875",
+    "confighub/k8s/service.yaml": "d8a79d87b23707448610ad53c061b8cd67fef48766fd3f596800d94e9451fb26",
+    "confighub/registry/README.md": "9de11470b95e3354378134e8f9356d4fc96b684b156407bf329b07eb981651a8",
+    "confighub/registry/fleet-record.json": "e448825ee563b11001554ed0a3ad20a6ae4dbafa6a4d2deca094ab52245bca53",
+    "confighub/registry/fleet-record.unit.yaml": "626ee4791939f1312e00ca0918daabaaf22d2a3b918a024212212ef390353e06",
+    "confighub/self-management.json": "1ed10619680eb8677e7f60e26961a87844c474236f92c0a471a543e65c540c50",
+    "confighub/variants/dev.json": "7f44171cb30a4ff27529df4f4a0e2a45ac5046e544ac7d4ebcf10c4a9cdb92a6",
+    "confighub/variants/prod.json": "0338adbc103253413b2663f983db6497956d5e4366c72c035c20a7928f994deb",
+    "confighub/variants/stage.json": "0b2d9d909821f7f0c61b09028c22410f6ef536a3d54d00204e6686a832bd906f",
+    "data/live-bindings.example.json": "fddac3cde12600b7c7a8db62da739facd5fb5c5beb969a84e74312171d4ac018",
+    "data/operational-workflow.json": "4db7c594d26b08355d7af62de95e057e9da2e996295fb62a577d69f41235d024",
+    "index.html": "8affb90411b451b6850cc25cc0c36226fa4146efae07883bd59afabb0e93b780",
+    "lifecycle.mjs": "fa43edb48b9a922fae1cc2c6b524f49b3e968453cc4d2b6d37ae56dc5b7c1402",
+    "package.json": "e9bd9f182b599193727bf04eae0bd5f0f7dbf5184632aefd4521de36b410f2af",
+    "public/app.js": "c11af2cfa149c534f04ae2de8a35c99573b026654b8b3e824614405e26af1cee",
+    "public/auth.js": "bea5f7edd4e4010a74170a5f9588ef31f29fde37227de075825e7489695acc7f",
+    "public/index.html": "0274631338c4e714cebf6d128c20769fceafedf62c19fedda2c390382ac07cdf",
+    "public/styles.css": "8878b600994c33dc928f8758276ac1ee7372d0605b06e7807176237da537584b",
+    "scripts/binding-check.mjs": "a4c7dd624222768ce29f0a2eeba634d91348fea2f0dc52f27af8980ba9d3b5cd",
+    "scripts/oauth-smoke.mjs": "fee70ca08a301214cf4a05ea250961c2588ef120a3c8653ac007c2967058c109",
+    "scripts/register-oauth-client.mjs": "004d2751a2b7b8d7db6c471514f711e442a3c8c376dc984661aaed2c90e0e195",
+    "scripts/verify.mjs": "f8aee7e923ed631e258ea5ae896fb614c1df83be0bcd86b66942b9932846036f",
+    "server.mjs": "a17c4e492f406a382c99bc878ebe8950de76f7e64dfde3b8125265dc77f422de",
+    "skills/add-on-manager-operator/SKILL.md": "081ec44ec4bf7115a4c061eb7b2a778841c9d7799892aaaeb0e075b2eb1c97a9",
+    "skills/add-on-manager-operator/evals/trigger_evals.json": "55bdf79fbe816dc7464b9abcc4ac6b13acdacadead4d6780a6afd65c3036fc0c",
+    "src/config.mjs": "808c80121d167f2521f66c66e6445a49f02f185a2c0311b81325349ab06c72b5",
+    "src/server.mjs": "c8d581bf97dd93b1ac984431382e01d75d8d5e0c7be1b77a817b34c269dcc71e",
+    "src/workflow.mjs": "b4a4fcfcebab21979f3abae0914ce99ec31128d7eda552934c0571a5be69b5c7",
+    "tests/app.test.mjs": "4a0a9221ee3079018b0597a913d48370eabffb8fb9ea6cf120cc62cfeca9eb53",
+    "tests/auth-surface.test.mjs": "91c58bdc7ab51caae7bd1f5431fcf9b4f14dc246ec590373f42e235abfe36078",
+    "tests/cli.test.mjs": "a18c66604c3b78bd2a4a51a5dc6ec7076f25baa7f47c56784667ca669d928622",
+    "tests/lifecycle.test.mjs": "09da4b73d699660ceb430c0e281f3fec42af8b82d81a94a63eba9eb1ebfe3ab6",
+    "tests/ui-tool.test.mjs": "34213d388bac77f5e467e8862119c44a65c8a23e97c3db4eda7fab830d6797ad",
+    "tsconfig.json": "3d1888b990356721fe73d78af880aa6941bf51182ca2dec2c7032df7b6e7d2dd",
+    "ui/src/App.tsx": "eab236caf763abecd87093c3f2c61a47dd0588f3f9a5d42fc72686bab4931c3e",
+    "ui/src/index.css": "0722d7dd6e753e4f38ee2587a6f8c240813431adfa93147c6f911b773282212c",
+    "ui/src/main.tsx": "e4630c016297efca69042d99c325ae6718699e24847539e4ffaece07bca76bc9",
+    "vite.config.ts": "607c7849680658c8028cdeafdf177ecbf5e3e0407aac2e6436bf30ea42f4be8f"
+  },
   "files": [
     ".gitignore",
     "JUSTIFICATION.md",
@@ -10,8 +67,21 @@
     "SPECIFICATION.md",
     "app-export-manifest.json",
     "cli.mjs",
+    "confighub/README.md",
+    "confighub/k8s/deployment.yaml",
+    "confighub/k8s/networkpolicy.yaml",
+    "confighub/k8s/service.yaml",
+    "confighub/registry/README.md",
+    "confighub/registry/fleet-record.json",
+    "confighub/registry/fleet-record.unit.yaml",
+    "confighub/self-management.json",
+    "confighub/variants/dev.json",
+    "confighub/variants/prod.json",
+    "confighub/variants/stage.json",
     "data/live-bindings.example.json",
     "data/operational-workflow.json",
+    "index.html",
+    "lifecycle.mjs",
     "package.json",
     "public/app.js",
     "public/auth.js",
@@ -19,6 +89,7 @@
     "public/styles.css",
     "scripts/binding-check.mjs",
     "scripts/oauth-smoke.mjs",
+    "scripts/register-oauth-client.mjs",
     "scripts/verify.mjs",
     "server.mjs",
     "skills/add-on-manager-operator/SKILL.md",
@@ -28,23 +99,93 @@
     "src/workflow.mjs",
     "tests/app.test.mjs",
     "tests/auth-surface.test.mjs",
-    "tests/cli.test.mjs"
+    "tests/cli.test.mjs",
+    "tests/lifecycle.test.mjs",
+    "tests/ui-tool.test.mjs",
+    "tsconfig.json",
+    "ui/src/App.tsx",
+    "ui/src/index.css",
+    "ui/src/main.tsx",
+    "vite.config.ts"
   ],
+  "generator": {
+    "commit": "a2a321f",
+    "name": "confighub-operational-app-export",
+    "regeneration_policy": "Regenerate with the same or a newer generator version, then run node lifecycle.mjs upgrade --from <regenerated-dir> to diff the regeneration against local modifications.",
+    "version": "0.1.6"
+  },
+  "intent": {
+    "raw": "addon-manager"
+  },
+  "lifecycle": {
+    "commands": [
+      "install",
+      "upgrade",
+      "migrate",
+      "rollback",
+      "rotate-auth",
+      "decommission"
+    ],
+    "entrypoint": "lifecycle.mjs"
+  },
   "next_gate": "Register a ConfigHub browser OAuth client, start this app, run oauth:smoke, sign in, verify /api/me, create deployment-local live-bindings.json from verified ConfigHub read objects or explicit blocked: reasons, run binding:check, then bind the scenario-specific live action executor and runtime proof.",
   "non_claims": [
     "The export did not mutate ConfigHub, a controller, or Kubernetes.",
     "The export wrote files only under this app directory; any Git commit or push is a delivery step, not live operational proof.",
-    "The generic apply endpoint is blocked until the live ConfigHub action, approval object, proof receipt, and runtime evidence source are bound."
+    "The generic apply endpoint is blocked until the live ConfigHub action, approval object, proof receipt, and runtime evidence source are bound.",
+    "Fleet registration recorded the app in the org-level index shape; the fleet-record Unit itself is created through the governed path, not by this export."
   ],
   "opt_out": false,
+  "registry": {
+    "fleet_index_unit": "confighub-app-fleet/add-on-manager-fleet-record",
+    "model": "one-unit-per-app",
+    "on_call": "platform-oncall",
+    "owner": "platform-team",
+    "record": "confighub/registry/fleet-record.json",
+    "state": "WATCH",
+    "state_machine": [
+      "WATCH",
+      "LIVE",
+      "DEPRECATED",
+      "RETIRED"
+    ],
+    "status": "REGISTERED",
+    "unit_yaml": "confighub/registry/fleet-record.unit.yaml"
+  },
   "scenario_id": "addon-manager",
   "schema": "confighub.operational-app-export.v0",
+  "schemas": {
+    "live_bindings": "confighub.live-bindings.v0",
+    "migrations": [],
+    "operational_workflow": "confighub.operational-workflow.v0",
+    "self_management": "confighub.generated-operational-app.self-management.v0"
+  },
   "status": "APP_EXPORT_READY_BROWSER_OAUTH",
   "test_result": {
     "command": "npm run verify",
     "returncode": 0,
     "status": "PASS",
     "stderr": "",
-    "stdout": "\n> add-on-manager@0.1.0 verify\n> node scripts/verify.mjs && npm test\n\n\n> add-on-manager@0.1.0 test\n> node tests/app.test.mjs && node tests/auth-surface.test.mjs && node tests/cli.test.mjs\n\n"
+    "stdout": "\n> add-on-manager@0.1.0 verify\n> node scripts/verify.mjs && npm test\n\n\n> add-on-manager@0.1.0 test\n> node tests/app.test.mjs && node tests/auth-surface.test.mjs && node tests/ui-tool.test.mjs && node tests/cli.test.mjs && node tests/lifecycle.test.mjs\n\n"
+  },
+  "ui_tool": {
+    "apiClientPackage": "@confighub/api",
+    "apiHook": "useConfigHub",
+    "authHook": "useAuth",
+    "docsUrl": "https://docs.confighub.com/developer/custom-ui-apps/",
+    "env": {
+      "baseUrl": "VITE_CONFIGHUB_BASE_URL",
+      "clientId": "VITE_OAUTH_CLIENT_ID"
+    },
+    "flow": "OIDC Authorization Code with PKCE, followed by ConfigHub token exchange discovered from /api/info.",
+    "name": "ConfigHub Custom UI Apps JavaScript SDK",
+    "packages": {
+      "@confighub/api": "^0.1.0",
+      "@confighub/react-auth": "^0.1.0"
+    },
+    "reactProvider": "ConfigHubAuthProvider",
+    "redirectUri": "http://localhost:5173/",
+    "repoUrl": "https://github.com/confighub/js-sdk",
+    "tokenPosture": "The SDK keeps the minted ConfigHub token in memory and only stores the transient PKCE verifier in sessionStorage."
   }
 }

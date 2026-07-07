@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: add-on-manager
+  labels:
+    app.kubernetes.io/name: add-on-manager
+    app.kubernetes.io/part-of: generated-operational-apps
+    confighub.com/component: add-on-manager
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: add-on-manager
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: add-on-manager
+        confighub.com/component: add-on-manager
+    spec:
+      containers:
+        - name: app
+          image: ghcr.io/your-org/add-on-manager:0.1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 5173
+          env:
+            - name: CONFIGHUB_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: add-on-manager-config
+                  key: CONFIGHUB_BASE_URL
+            - name: OAUTH_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: add-on-manager-oauth
+                  key: OAUTH_CLIENT_ID
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: add-on-manager
+  labels:
+    app.kubernetes.io/name: add-on-manager
+    confighub.com/component: add-on-manager
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: add-on-manager
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
