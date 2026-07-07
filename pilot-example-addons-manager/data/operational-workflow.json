@@ -105,7 +105,22 @@
       "purpose": "Let the operator prove controller and runtime state within the approved ConfigHub scope."
     }
   ],
-  "generatedAt": "2026-07-02T06:07:27+00:00",
+  "destination": {
+    "ci": "github-actions",
+    "deployTarget": "argo-oci",
+    "license": "apache-2.0",
+    "mode": "existing",
+    "org": "confighub",
+    "repo": "examples",
+    "status": "DECLARED",
+    "visibility": "public"
+  },
+  "generatedAt": "2026-07-07T11:19:31+00:00",
+  "generator": {
+    "name": "confighub-operational-app-export",
+    "regenerationPolicy": "Regenerate with the same or a newer generator version, then run node lifecycle.mjs upgrade --from <regenerated-dir> to diff the regeneration against local modifications.",
+    "version": "0.1.6"
+  },
   "governedAction": {
     "kind": "ConfigHub-governed-action.v0",
     "mutationPolicy": "Apply remains disabled unless every binding is real and non-placeholder.",
@@ -133,6 +148,17 @@
     ],
     "trigger": "user-approved-scope"
   },
+  "intent": {
+    "raw": "addon-manager"
+  },
+  "lifecycle": [
+    "install",
+    "upgrade",
+    "migrate",
+    "rollback",
+    "rotate-auth",
+    "decommission"
+  ],
   "operationalLoop": [
     {
       "command": "preflight",
@@ -215,12 +241,32 @@
       "status": "waiting"
     }
   ],
+  "registry": {
+    "fleetIndexUnit": "confighub-app-fleet/add-on-manager-fleet-record",
+    "model": "one-unit-per-app",
+    "onCall": "platform-oncall",
+    "owner": "platform-team",
+    "record": "confighub/registry/fleet-record.json",
+    "state": "WATCH",
+    "stateMachine": [
+      "WATCH",
+      "LIVE",
+      "DEPRECATED",
+      "RETIRED"
+    ]
+  },
   "scenario": {
     "day": "Day-1",
     "id": "addon-manager",
     "jobToBeDone": "Install, upgrade, review, and prove platform add-ons through governed ConfigHub delivery paths."
   },
   "schema": "confighub.operational-workflow.v0",
+  "schemas": {
+    "liveBindings": "confighub.live-bindings.v0",
+    "migrations": [],
+    "operationalWorkflow": "confighub.operational-workflow.v0",
+    "selfManagement": "confighub.generated-operational-app.self-management.v0"
+  },
   "scopeModel": {
     "implementationBindings": [
       "ConfigHub Space",
@@ -232,6 +278,111 @@
     "rule": "Show Variants to users first; compile to ConfigHub spaces, units, filters, targets, and predicates underneath.",
     "userFacingScope": "Variant"
   },
+  "selfManagement": {
+    "app": {
+      "component": "add-on-manager",
+      "description": "The generated operational app is itself managed by ConfigHub.",
+      "name": "Add-on Manager",
+      "slug": "add-on-manager"
+    },
+    "auth": {
+      "mode": "browser-oauth",
+      "oauthClient": "ConfigHub browser OAuth client required for live app mode."
+    },
+    "configHub": {
+      "configUnits": [
+        "app-config",
+        "oauth-client",
+        "deployment-policy",
+        "runtime-proof-policy"
+      ],
+      "org": "required-for-live-app",
+      "variantMechanics": "Use ConfigHub Variant spaces for dev, stage, prod, and any customer or fleet overlays."
+    },
+    "delivery": {
+      "controller": "Argo",
+      "deploymentManifests": [
+        "confighub/k8s/deployment.yaml",
+        "confighub/k8s/service.yaml",
+        "confighub/k8s/networkpolicy.yaml"
+      ],
+      "kubernetesNamespace": "add-on-manager",
+      "route": "ConfigHub app config -> OCI artifact -> Argo -> Kubernetes",
+      "strategy": "confighub-oci-argo",
+      "targetProvider": "ArgoCDOCI"
+    },
+    "fleet": {
+      "model": "Repeat the same app component across orgs, clusters, or customer Variants with per-Variant config overlays.",
+      "supported": true
+    },
+    "lifecycle": {
+      "commands": [
+        "install",
+        "upgrade",
+        "migrate",
+        "rollback",
+        "rotate-auth",
+        "decommission"
+      ],
+      "entrypoint": "lifecycle.mjs",
+      "note": "The domain loop (preflight through receipt) is the app's job; these commands are the app's own life."
+    },
+    "promotion": {
+      "defaultPath": "dev -> stage -> prod",
+      "requires": [
+        "source and destination Variant comparison",
+        "approved app version or config change",
+        "controller proof",
+        "runtime proof",
+        "receipt"
+      ]
+    },
+    "proofRequired": [
+      "ConfigHub app config revision",
+      "Variant promotion or explicit Variant config revision",
+      "OCI artifact or target proof",
+      "controller reconciliation",
+      "Kubernetes deployment runtime state",
+      "browser OAuth /api/me",
+      "app receipt"
+    ],
+    "schema": "confighub.generated-operational-app.self-management.v0",
+    "security": [
+      "browser OAuth",
+      "least-privilege ConfigHub scope",
+      "NetworkPolicy",
+      "mutation gate",
+      "runtime proof gate"
+    ],
+    "status": "WATCH",
+    "stopRule": "Repo-local app code is not live proof. Keep this app in WATCH until ConfigHub, controller, runtime, URL, and receipt evidence exist for the app itself.",
+    "variants": [
+      {
+        "configUnit": "app-config",
+        "id": "dev",
+        "promotionSource": "base",
+        "purpose": "Developer review and local-live smoke.",
+        "replicas": 1,
+        "space": "add-on-manager-dev"
+      },
+      {
+        "configUnit": "app-config",
+        "id": "stage",
+        "promotionSource": "dev",
+        "purpose": "Pre-production proof with browser OAuth and ConfigHub read paths.",
+        "replicas": 1,
+        "space": "add-on-manager-stage"
+      },
+      {
+        "configUnit": "app-config",
+        "id": "prod",
+        "promotionSource": "stage",
+        "purpose": "Approved production operation.",
+        "replicas": 2,
+        "space": "add-on-manager-prod"
+      }
+    ]
+  },
   "status": "live-auth-required",
   "stopRules": [
     "Do not run a live action without a signed-in ConfigHub user.",
@@ -240,6 +391,26 @@
     "Do not call the workflow complete until ConfigHub and runtime proof agree."
   ],
   "strategy": "confighub-oci-argo",
+  "uiTool": {
+    "apiClientPackage": "@confighub/api",
+    "apiHook": "useConfigHub",
+    "authHook": "useAuth",
+    "docsUrl": "https://docs.confighub.com/developer/custom-ui-apps/",
+    "env": {
+      "baseUrl": "VITE_CONFIGHUB_BASE_URL",
+      "clientId": "VITE_OAUTH_CLIENT_ID"
+    },
+    "flow": "OIDC Authorization Code with PKCE, followed by ConfigHub token exchange discovered from /api/info.",
+    "name": "ConfigHub Custom UI Apps JavaScript SDK",
+    "packages": {
+      "@confighub/api": "^0.1.0",
+      "@confighub/react-auth": "^0.1.0"
+    },
+    "reactProvider": "ConfigHubAuthProvider",
+    "redirectUri": "http://localhost:5173/",
+    "repoUrl": "https://github.com/confighub/js-sdk",
+    "tokenPosture": "The SDK keeps the minted ConfigHub token in memory and only stores the transient PKCE verifier in sessionStorage."
+  },
   "variants": [
     {
       "app": "Add-on Manager",

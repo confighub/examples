@@ -33,7 +33,10 @@ assert.equal(preview.status, 'PREVIEW_READY');
 assert.equal(preview.variant.id, workflow.variants[0].id);
 assert.equal(preview.mutation, 'none');
 
-const commit = run(['commit', '--variant', workflow.variants[0].id, '--json'], 2);
+// Expected operational blocker: typed BLOCK at exit 0, not a shell failure.
+const commit = run(['commit', '--variant', workflow.variants[0].id, '--json'], 0);
+assert.equal(commit.verdict, 'BLOCK');
+assert.equal(commit.reason, 'APPROVED_CONFIGHUB_MUTATION_REQUIRED');
 assert.equal(commit.status, 'COMMIT_BLOCKED');
 assert.equal(commit.error, 'APPROVED_CONFIGHUB_MUTATION_REQUIRED');
 assert.match(commit.message, /approved scoped ConfigHub mutation/);

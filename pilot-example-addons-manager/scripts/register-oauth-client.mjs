@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 
 const name = process.env.OAUTH_CLIENT_NAME || 'add-on-manager-local';
-const redirectUri = process.env.OAUTH_REDIRECT_URI || 'http://localhost:5173/callback';
+const redirectUri = process.env.OAUTH_REDIRECT_URI || 'http://localhost:5173/';
 
 function runCub(args) {
   return spawnSync('cub', args, {
@@ -43,7 +43,9 @@ console.log(JSON.stringify({
   env: {
     CONFIGHUB_BASE_URL: process.env.CONFIGHUB_BASE_URL || 'https://hub.confighub.com',
     OAUTH_CLIENT_ID: clientId,
+    VITE_CONFIGHUB_BASE_URL: process.env.CONFIGHUB_BASE_URL || 'https://hub.confighub.com',
+    VITE_OAUTH_CLIENT_ID: clientId,
     PORT: process.env.PORT || '5173',
   },
-  run: `CONFIGHUB_BASE_URL=${process.env.CONFIGHUB_BASE_URL || 'https://hub.confighub.com'} OAUTH_CLIENT_ID=${clientId} PORT=${process.env.PORT || '5173'} npm start`,
+  run: `VITE_CONFIGHUB_BASE_URL=${process.env.CONFIGHUB_BASE_URL || 'https://hub.confighub.com'} VITE_OAUTH_CLIENT_ID=${clientId} npm run ui:dev`,
 }, null, 2));

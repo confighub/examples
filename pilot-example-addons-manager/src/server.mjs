@@ -139,7 +139,7 @@ export function createAppServer() {
           authMode: runtime.authMode,
           configHubBaseUrl: runtime.configHubBaseUrl,
           oauthClientId: runtime.oauthClientId,
-          callbackPath: '/callback',
+          callbackPath: '/',
           workflowStatus: workflow.status,
         });
         return;

@@ -339,7 +339,13 @@ async function setupAuth() {
   setAuthState(state.token ? 'signed in' : 'sign-in required');
   renderActionContract();
   renderReadiness();
-  $('#sign-in').addEventListener('click', () => state.auth.startSignIn(state.config));
+  $('#sign-in').addEventListener('click', async () => {
+    try {
+      await state.auth.startSignIn(state.config);
+    } catch (error) {
+      setNote(error.message || String(error));
+    }
+  });
   if (state.token && state.config.configHubBaseUrl) {
     try {
       await state.auth.configHubFetch(state.config, '/api/me');

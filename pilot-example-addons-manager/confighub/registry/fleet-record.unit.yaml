@@ -1,0 +1,57 @@
+# ConfigHub Unit data: org-level app fleet-record.
+# Create the fleet Space once per org:  cub space create confighub-app-fleet
+# Register this app:  cub unit create --space confighub-app-fleet add-on-manager-fleet-record confighub/registry/fleet-record.unit.yaml --change-desc "Register add-on-manager in the app fleet index"
+# State machine: WATCH -> LIVE -> DEPRECATED -> RETIRED; transition via node lifecycle.mjs registry --to <state>.
+# Deregister: run node lifecycle.mjs decommission --confirm (RETIRED), then apply the record through the governed path.
+# Index shape: one-unit-per-app (default pending team ratification; see confighub/registry/README.md).
+app:
+  id: add-on-manager
+  name: Add-on Manager
+  scenario: addon-manager
+  version: 0.1.0
+bindings:
+  checkedAt: '2026-07-07T11:19:31+00:00'
+  status: LIVE_BINDINGS_MISSING
+deregistration: null
+destination:
+  ci: github-actions
+  deployTarget: argo-oci
+  license: apache-2.0
+  mode: existing
+  org: confighub
+  repo: examples
+  status: DECLARED
+  visibility: public
+fleetIndex:
+  decisionNote: 'Default pending team ratification (generated-operational-app contract
+    draft, open question 3): one fleet-record Unit per app inside the org fleet Space,
+    so revisions, gates, and decommission stay scoped to a single app. The org-level
+    index is the Space-level view over those Units. The alternative under review is
+    a single per-org index Unit.'
+  model: one-unit-per-app
+  space: confighub-app-fleet
+  unit: add-on-manager-fleet-record
+  unitRef: confighub-app-fleet/add-on-manager-fleet-record
+generator:
+  commit: a2a321f
+  exportSchema: confighub.operational-app-export.v0
+  name: confighub-operational-app-export
+  version: 0.1.6
+onCall: platform-oncall
+owner: platform-team
+registeredAt: '2026-07-07T11:19:31+00:00'
+schema: confighub.app-fleet-record.v0
+state: WATCH
+stateMachine:
+- WATCH
+- LIVE
+- DEPRECATED
+- RETIRED
+transitions:
+- actor: platform-team
+  configHubUrl: ''
+  evidence: export manifest and generated-app test result
+  from: null
+  generatorVersion: 0.1.6
+  timestamp: '2026-07-07T11:19:31+00:00'
+  to: WATCH

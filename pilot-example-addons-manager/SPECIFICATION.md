@@ -8,6 +8,12 @@ This app is allowed to help an operator review affected Variants, preview a
 proposed change, approve the exact scope, run only the connected governed
 action, and verify the receipt.
 
+## Original Request
+
+```text
+addon-manager
+```
+
 ## User-Facing Scope
 
 The app speaks in Variants first.
@@ -51,6 +57,41 @@ preflight -> map/list -> findings -> preview -> approve/commit -> verify -> rece
 | `approve/commit` | Run after approval | Operate | Commit only means an approved scoped ConfigHub mutation through the governed action path. |
 | `verify` | Prove | Verify | Check ConfigHub, approval, action, controller/runtime evidence, URL proof, and omissions. |
 | `receipt` | Prove / Learn | Receipt | Leave a compact result that a human or automation can review and rerun. |
+
+## App Lifecycle Commands
+
+The workflow loop is the app's job. The app's own life is covered by
+`lifecycle.mjs`, required in every export:
+
+- install
+- upgrade
+- migrate
+- rollback
+- rotate-auth
+- decommission
+
+`upgrade` diffs a regeneration (generator version pinned in
+`app-export-manifest.json`) against local modifications. `migrate` applies
+schema-version migrations for the shared contract files. `decommission`
+deregisters the app from the org-level fleet index.
+
+## Result Contract
+
+Every `cli.mjs`, `lifecycle.mjs`, and `binding:check` result is JSON carrying a
+`verdict` and a stable `reason`:
+
+| `verdict` | Meaning | Exit |
+|---|---|---|
+| `PASS` | The action completed. | 0 |
+| `WATCH` | Not proven yet / waiting (e.g. `LIVE_BINDINGS_MISSING`, upgrade conflicts). | 0 |
+| `BLOCK` | Refused: the action cannot proceed as asked (e.g. `commit` with no live bindings, an invalid registry transition). | 0 |
+| `ASK` | A human decision is required (e.g. `decommission` without `--confirm`). | 0 |
+| `ERROR` | The command could not run: malformed input, a missing core file it must parse, a parse failure, or an unknown command. | non-zero |
+
+An expected blocker is a successful, scriptable classification: `PASS`, `WATCH`,
+`BLOCK`, and `ASK` all **exit 0**. A non-zero exit means `ERROR` only. Branch on
+`verdict` and `reason`, never on shell success. The single runtime exception is
+`node server.mjs` after `decommission`, which refuses to start and exits 3.
 
 ## Approval Scope
 
