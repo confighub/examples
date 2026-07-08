@@ -15,17 +15,24 @@ function run(args, expectedStatus = 0) {
 
 const preflight = run(['preflight', '--json']);
 assert.match(preflight.status, /PASS|WATCH/);
+// Result Contract: every read command carries a typed verdict and stable reason.
+assert.equal(preflight.verdict, preflight.status);
+assert.equal(preflight.reason, preflight.liveBindings);
 assert.equal(preflight.sharedContract, 'data/operational-workflow.json');
 assert.ok(preflight.commandLoop.some(row => row.command === 'preflight'));
 assert.ok(preflight.commandLoop.some(row => row.command === 'approve/commit'));
 assert.ok(preflight.commandLoop.every(row => row.harnessStep));
 
 const mapped = run(['map', '--json']);
+assert.equal(mapped.verdict, 'PASS');
+assert.equal(mapped.reason, 'VARIANT_SCOPE_MAPPED');
 assert.equal(mapped.scopeModel.userFacingScope, 'Variant');
 assert.deepEqual(mapped.variants.map(row => row.id), workflow.variants.map(row => row.id));
 
 const findings = run(['findings', '--json']);
 assert.equal(findings.status, 'WATCH');
+assert.equal(findings.verdict, 'WATCH');
+assert.equal(findings.reason, 'LIVE_BINDINGS_MISSING');
 assert.ok(findings.findings.some(row => row.code === 'LIVE_BINDINGS_MISSING'));
 
 const preview = run(['preview', '--variant', workflow.variants[0].id, '--json']);
@@ -43,10 +50,14 @@ assert.match(commit.message, /approved scoped ConfigHub mutation/);
 
 const verify = run(['verify', '--json']);
 assert.equal(verify.status, 'WATCH');
+assert.equal(verify.verdict, 'WATCH');
+assert.equal(verify.reason, 'LIVE_BINDINGS_MISSING');
 assert.equal(verify.liveBindings, 'LIVE_BINDINGS_MISSING');
 
 const receipt = run(['receipt', '--json']);
 assert.equal(receipt.status, 'WAITING_FOR_LIVE_PROOF');
+assert.equal(receipt.verdict, 'WATCH');
+assert.equal(receipt.reason, 'LIVE_BINDINGS_MISSING');
 assert.equal(receipt.liveBindings, 'LIVE_BINDINGS_MISSING');
 
 const guardrails = run(['guardrails', '--json']);

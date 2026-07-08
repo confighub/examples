@@ -124,6 +124,8 @@ function printHuman(value) {
 function preflight() {
   const bindings = bindingStatus();
   return {
+    verdict: bindings.readyForCommit ? 'PASS' : 'WATCH',
+    reason: bindings.status,
     status: bindings.readyForCommit ? 'PASS' : 'WATCH',
     app: workflow.app.name,
     commandLoop: workflow.operationalLoop,
@@ -141,6 +143,8 @@ function preflight() {
 
 function mapVariants() {
   return {
+    verdict: 'PASS',
+    reason: 'VARIANT_SCOPE_MAPPED',
     status: 'PASS',
     app: workflow.app.name,
     scopeModel: workflow.scopeModel,
@@ -168,8 +172,11 @@ function findings() {
       nextAction: 'Keep this rule visible in GUI and CLI.',
     });
   }
+  const blocked = rows.some(row => row.severity === 'high');
   return {
-    status: rows.some(row => row.severity === 'high') ? 'WATCH' : 'PASS',
+    verdict: blocked ? 'WATCH' : 'PASS',
+    reason: blocked ? bindings.status : 'NO_BLOCKING_FINDINGS',
+    status: blocked ? 'WATCH' : 'PASS',
     app: workflow.app.name,
     findings: rows,
     nextGate: 'Preview a scoped Variant change, or bind missing live proof first.',
@@ -242,7 +249,9 @@ function commit() {
 function verify() {
   const bindings = bindingStatus();
   return {
-    status: bindings.readyForCommit ? 'WATCH' : 'WATCH',
+    verdict: 'WATCH',
+    reason: bindings.readyForCommit ? 'RUNTIME_PROOF_PENDING' : bindings.status,
+    status: 'WATCH',
     app: workflow.app.name,
     liveBindings: bindings.status,
     proofTabs: workflow.proofTabs,
@@ -256,6 +265,8 @@ function verify() {
 function receipt() {
   const bindings = bindingStatus();
   return {
+    verdict: 'WATCH',
+    reason: bindings.readyForCommit ? 'SCENARIO_EXECUTOR_NOT_RUN' : bindings.status,
     status: 'WAITING_FOR_LIVE_PROOF',
     app: workflow.app.name,
     scenario: workflow.scenario,
