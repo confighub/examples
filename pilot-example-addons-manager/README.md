@@ -25,6 +25,10 @@ Then open:
 http://localhost:5173
 ```
 
+That page is `public/` served by `server.mjs` — the offline contract harness
+for checking CLI/GUI parity on a cold clone, not the primary UI; the live
+SDK-backed GUI lives in `ui/` (see **Connect To ConfigHub** below).
+
 ## 15-Minute Package Check
 
 This package is meant to make a newly defined operational workflow usable
@@ -45,7 +49,7 @@ shared workflow contract before connecting live operations.
 
 ## Connect To ConfigHub
 
-The live browser GUI uses the ConfigHub Custom UI Apps JavaScript SDK: `@confighub/react-auth` for sign-in and `@confighub/api` for typed ConfigHub API calls. Do not reimplement browser OAuth in the app.
+The live browser GUI uses the ConfigHub Custom UI Apps JavaScript SDK: `@confighub/react-auth` for sign-in and `@confighub/api` for typed ConfigHub API calls. Do not reimplement browser OAuth in the app. For a live read/write SPA built on the same SDK, see [`../promoter`](../promoter).
 
 Create a browser OAuth client for this app, install the UI dependencies, then start the SDK-backed GUI with the server URL and client ID. Production ConfigHub supports client registration through `cub oauthclient`.
 
@@ -206,7 +210,7 @@ index shape decision.
 
 ## Files
 
-- `public/`: browser UI.
+- `public/`: offline contract harness UI, served by `server.mjs` (not the primary UI).
 - `ui/`: SDK-backed React browser GUI built with `@confighub/react-auth` and
   `@confighub/api`; this is the default live UI tool for ConfigHub apps.
 - `cli.mjs`: command-line sibling for the same workflow.

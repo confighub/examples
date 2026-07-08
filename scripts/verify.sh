@@ -138,6 +138,8 @@ ai_guide_examples=(
   "${repo_root}/sec-scanner"
   "${repo_root}/cost-estimator"
   "${repo_root}/redis-platform-with-rbac-guardrails"
+  # standalone generated operational app (UI app + zero-dependency CLI, no setup.sh)
+  "${repo_root}/pilot-example-addons-manager"
   # global-app-layer examples
   "${repo_root}/incubator/global-app-layer/single-component"
   "${repo_root}/incubator/global-app-layer/frontend-postgres"
@@ -278,5 +280,33 @@ for example_dir in "${ai_guide_examples[@]}"; do
 
   echo "    PASS: ${example_name}"
 done
+
+# ==================== pilot-example-addons-manager runnable checks ====================
+#
+# The addons manager is a generated operational app: its tests, verifier, and
+# CLI are zero-dependency (node builtins only), so repo verification runs them
+# on every clone. The CLI check also enforces the Result Contract: read
+# commands must carry a typed verdict and a stable reason.
+
+addons_dir="${repo_root}/pilot-example-addons-manager"
+echo "==> Running addons-manager tests: npm test"
+(cd "${addons_dir}" && npm test --silent)
+echo "==> Running addons-manager verifier: npm run verify"
+(cd "${addons_dir}" && npm run verify --silent)
+echo "==> Checking addons-manager Result Contract: node cli.mjs preflight --json"
+(cd "${addons_dir}" && node cli.mjs preflight --json | node -e '
+  let raw = "";
+  process.stdin.on("data", chunk => raw += chunk);
+  process.stdin.on("end", () => {
+    const result = JSON.parse(raw);
+    for (const field of ["verdict", "reason"]) {
+      if (typeof result[field] !== "string" || !result[field]) {
+        console.error(`preflight output is missing a ${field} field`);
+        process.exit(1);
+      }
+    }
+    console.log(`    preflight verdict=${result.verdict} reason=${result.reason}`);
+  });
+')
 
 echo "All example checks passed."
