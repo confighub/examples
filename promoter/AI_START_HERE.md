@@ -3,25 +3,30 @@
 A promotion-workflow webapp on top of ConfigHub's component/variant layout.
 Kargo-like, but promotion is a real ConfigHub upstream upgrade. Unlike the
 seed-and-verify examples, this is a UI app with no `setup.sh` — it reads an
-existing org and stores its own state in a `promoter` Space.
+existing org and stores its own state in a `promoter` Space. It is built on the
+published ConfigHub JS SDK: [`@confighub/rtk-query`](https://github.com/confighub/js-sdk)
+for data and [`@confighub/react-auth`](https://github.com/confighub/js-sdk) for
+browser-direct OIDC PKCE login.
 
 ## Prerequisites
 
 - An org with component/variant Spaces (Spaces labelled `Component` and
   `Variant`). Seed one with `../promotion-demo-data` if you don't have one.
 - [cub CLI](https://docs.confighub.com/get-started/setup/) authenticated
-  (`cub auth login`) — only needed to grab a dev token and to inspect results.
+  (`cub auth login`) — to register the dev OAuth client and inspect results.
 
 ## Run it locally
 
 ```bash
 cd app
+cub oauthclient create promoter-dev --redirect-uri http://localhost:5181/
 npm install
-npm run dev          # http://localhost:5181
+cp .env.example .env.local   # set VITE_OAUTH_CLIENT_ID to the id printed above
+npm run dev                  # http://localhost:5181
 ```
 
-Paste a token from `cub auth get-token` when prompted (dev-only; the hosted
-deployment uses the same-origin session cookie automatically).
+Click **Log in** to run the browser-direct OIDC PKCE flow (no token paste, no
+proxy). `VITE_CONFIGHUB_BASE_URL` defaults to `https://hub.confighub.com`.
 
 ## What to try
 
@@ -61,6 +66,6 @@ deployment uses the same-origin session cookie automatically).
 
 ## Deploy
 
-`deploy/` mirrors the UI-preview hosting pattern (nginx same-origin proxy,
-ConfigHub-managed Deployment unit, GitHub Actions image bump). See
-[deploy/README.md](deploy/README.md).
+`deploy/` hosts the built SPA as static files (nginx, no proxy — the browser
+talks directly to hub.confighub.com), as a ConfigHub-managed Deployment unit
+with a GitHub Actions image bump. See [deploy/README.md](deploy/README.md).

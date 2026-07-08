@@ -8,10 +8,11 @@
     "build": "tsc --noEmit && vite build",
     "lint": "tsc --noEmit",
     "preview": "vite preview",
-    "vendor-sdk": "scripts/vendor-sdk.sh",
     "test": "vitest run"
   },
   "dependencies": {
+    "@confighub/react-auth": "^0.1.1",
+    "@confighub/rtk-query": "^0.1.1",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
     "@mui/material": "^6.4.8",

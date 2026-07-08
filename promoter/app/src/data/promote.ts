@@ -14,7 +14,7 @@ import {
   useApplyUnitMutation,
   useLazyListAllUnitsQuery,
   usePatchUnitMutation,
-} from '../sdk/confighubapi.gen';
+} from '@confighub/rtk-query';
 
 export interface UnitPromotability {
   unitId: string;

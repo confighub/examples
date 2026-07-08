@@ -7,26 +7,24 @@ top of the ConfigHub API.
 
 ## How it works
 
-The app is a static SPA that only talks to relative `/api` and `/auth` paths.
-A small nginx container serves the built bundle and proxies those two paths to
-the ConfigHub API, making the deployment same-origin: the standard ConfigHub
-session-cookie login works with no OAuth configuration in the app, and no CORS
-is required.
+The app is a static SPA that talks **browser-direct** to the ConfigHub API and
+signs in with `@confighub/react-auth`'s OIDC PKCE flow. nginx just serves the
+built bundle — there is no `/api` proxy — so hosting is pure static file serving.
+The instance URL and this app's OAuth client id are baked into the bundle at
+build time.
 
 ```
-Browser ── https://promoter.test.confighub.net
-              │
-              ▼
-           nginx ──── /            → SPA bundle (dist/)
-                 ──── /api, /auth  → ConfigHub API (Host: hub.confighub.com)
+Browser ── https://promoter.test.confighub.net   (nginx: static SPA bundle)
+   │
+   └────────────────────────────────────────────▶ https://hub.confighub.com/api
+                                                   (OIDC PKCE login + API, CORS)
 ```
 
 Pieces:
 
-- `Dockerfile`, `nginx.conf`, `docker-entrypoint.sh` — multi-stage build
-  (Node → nginx:alpine, non-root). `API_BACKEND_URL` is substituted into the
-  nginx config at container start; the demo points it at the in-cluster API
-  service, but `https://hub.confighub.com` works from anywhere.
+- `Dockerfile`, `nginx.conf` — multi-stage build (Node → nginx:alpine,
+  non-root). `npm run build` bakes in `VITE_CONFIGHUB_BASE_URL` and
+  `VITE_OAUTH_CLIENT_ID` (passed as `--build-arg`s); nginx serves the result.
 - `k8s.yaml` — Service, Deployment, and Traefik IngressRoutes. This is the
   initial data for a long-lived ConfigHub unit (`promoter` in the
   `prod-use2-ui-preview` space) — the deployment is itself managed as
@@ -35,11 +33,24 @@ Pieces:
   and pushes `ghcr.io/confighub/promoter:<sha>`, then updates the unit's
   image reference with `cub function do set-image-reference`.
 
-The hostname rides the existing `*.test.confighub.net` wildcard DNS, TLS cert,
-and Keycloak redirect-URI allowlist used by UI previews, so no DNS, cert, or
-IdP changes are needed.
+The hostname rides the existing `*.test.confighub.net` wildcard DNS and TLS
+cert used by UI previews, so no DNS or cert changes are needed. Two things do
+depend on the ConfigHub instance: the prod origin must have a registered OAuth
+client (its redirect URI) and be allowed by the API's **CORS** policy.
 
 ## One-time setup
+
+0. Register this deployment's OAuth client and expose its id to CI as a repo
+   **variable** (it's a public PKCE client id, not a secret):
+
+   ```sh
+   cub oauthclient create promoter-prod --redirect-uri https://promoter.test.confighub.net/
+   gh variable set PROMOTER_OAUTH_CLIENT_ID --repo confighub/examples   # paste the id
+   ```
+
+   Also confirm hub.confighub.com's CORS policy allows
+   `https://promoter.test.confighub.net`.
+
 
 1. Deploy credentials: this workflow **reuses the rbac-manager deploy worker**
    (`RBAC_MANAGER_DEPLOY_WORKER_ID` / `RBAC_MANAGER_DEPLOY_WORKER_SECRET` repo
@@ -69,9 +80,9 @@ the unit, not this file, is the source of truth for any later config edits.
 
 ## Hosting your own UI like this
 
-The same pattern works against the public API from any infrastructure: serve
-your SPA and proxy `/api` to `https://hub.confighub.com`. The session-cookie
-login flow requires your origin to be in ConfigHub's IdP redirect allowlist,
-so outside ConfigHub-operated infrastructure use the app's bearer-token mode
-instead: get a token with `cub auth get-token` and paste it at the prompt
-(see `../app/README.md`).
+The same pattern works from any static host — GitHub Pages, S3+CloudFront, a
+plain nginx container. Serve the built bundle, register an OAuth client for your
+origin (`cub oauthclient create <name> --redirect-uri <origin>`), and make sure
+that origin is allowed by the API's CORS policy. No proxy, backend, or
+server-side session is involved — the browser holds the minted token in memory
+and calls `hub.confighub.com/api` directly.

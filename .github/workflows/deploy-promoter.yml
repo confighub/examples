@@ -41,6 +41,8 @@ jobs:
         run: |
           docker build \
             --label org.opencontainers.image.source=https://github.com/${{ github.repository }} \
+            --build-arg VITE_CONFIGHUB_BASE_URL=https://hub.confighub.com \
+            --build-arg VITE_OAUTH_CLIENT_ID=${{ vars.PROMOTER_OAUTH_CLIENT_ID }} \
             -t ghcr.io/confighub/promoter:${{ github.sha }} \
             -f promoter/deploy/Dockerfile promoter/
           docker push ghcr.io/confighub/promoter:${{ github.sha }}
