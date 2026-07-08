@@ -6,7 +6,7 @@
 
 import { useMemo } from 'react';
 
-import { useListSpacesQuery, SpaceRead } from '../sdk/confighubapi.gen';
+import { useListSpacesQuery, SpaceRead } from '@confighub/rtk-query';
 
 export const COMPONENT_LABEL = 'Component';
 export const VARIANT_LABEL = 'Variant';

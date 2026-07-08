@@ -7,9 +7,13 @@ performs a real ConfigHub upstream upgrade — the same `cub unit update --patch
 --upgrade` that moves config down a clone chain.
 
 Unlike the other examples in this repo, promoter does **not** seed data. It is
-a webapp that runs on top of an existing component/variant layout and reuses
-ConfigHub auth, deployed the same way as ConfigHub's UI previews (see
-[deploy/README.md](deploy/README.md)). Point it at an org seeded with
+a webapp that runs on top of an existing component/variant layout, built on the
+published ConfigHub JS SDK ([confighub/js-sdk](https://github.com/confighub/js-sdk)):
+data via [`@confighub/rtk-query`](https://www.npmjs.com/package/@confighub/rtk-query)
+and browser-direct login via
+[`@confighub/react-auth`](https://www.npmjs.com/package/@confighub/react-auth).
+It deploys as a static SPA (see [deploy/README.md](deploy/README.md)). Point it
+at an org seeded with
 [`../promotion-demo-data`](../promotion-demo-data) for a realistic catalog.
 
 ## Concepts → ConfigHub mapping
@@ -81,8 +85,8 @@ no status. The read side is a pluggable `StatusProvider`
 
 ## Develop
 
-See [app/README.md](app/README.md): `npm install && npm run dev`
-(http://localhost:5181), paste a `cub auth get-token` token when prompted.
+See [app/README.md](app/README.md): register a dev OAuth client, then
+`npm install && npm run dev` (http://localhost:5181) and click **Log in**.
 
 ## Boundaries
 

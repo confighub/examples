@@ -6,17 +6,24 @@ UI state.
 
 ## Development
 
+The app talks browser-direct to the ConfigHub instance and signs in with
+`@confighub/react-auth`'s OIDC PKCE flow, so it needs its own registered OAuth
+client for the dev origin (port 5181):
+
 ```bash
-npm install
-npm run dev          # http://localhost:5181, proxies /api and /auth to ConfigHub
+cub oauthclient create promoter-dev --redirect-uri http://localhost:5181/
 ```
 
-The dev proxy targets `https://hub.confighub.com` by default; override with
-`CONFIGHUB_URL=http://localhost:9090 npm run dev` for a local server.
+```bash
+npm install
+cp .env.example .env.local     # then set VITE_OAUTH_CLIENT_ID to the id above
+npm run dev                    # http://localhost:5181
+```
 
-Authentication in dev: paste a token from `cub auth get-token` when prompted
-(kept in sessionStorage). In a same-origin deployment the standard ConfigHub
-session-cookie login is used automatically and no token is needed.
+`VITE_CONFIGHUB_BASE_URL` (default `https://hub.confighub.com`) selects the
+instance. Click **Log in** to run the browser-direct auth flow — no token
+paste, no proxy. Clean up the client later with
+`cub oauthclient delete promoter-dev`.
 
 For realistic component/variant data, seed an org with the
 `../../promotion-demo-data` example first (its Spaces carry the `Component`
@@ -29,12 +36,19 @@ npm run lint         # tsc --noEmit
 npm run build        # typecheck + production bundle in dist/
 ```
 
-## SDK client
+## SDK
 
-`src/sdk/confighubapi.gen.ts` and `src/sdk/validation.gen.ts` are vendored
-from the [ConfigHub SDK](https://github.com/confighub/sdk) (MIT); refresh with
-`npm run vendor-sdk`. `src/sdk/confighubapi.ts` is a deliberate fork of the
-SDK's base client — see the header comment there and `src/sdk/VENDORED_FROM.md`.
+Data and auth come from the published ConfigHub JS SDK
+([confighub/js-sdk](https://github.com/confighub/js-sdk)):
+
+- [`@confighub/rtk-query`](https://www.npmjs.com/package/@confighub/rtk-query) —
+  RTK Query hooks (`useListSpacesQuery`, `usePatchUnitMutation`, …). Configured
+  once in `src/main.tsx` via `configureConfigHub({ baseUrl, getToken })` and
+  mounted in `src/api/store.ts`.
+- [`@confighub/react-auth`](https://www.npmjs.com/package/@confighub/react-auth) —
+  the `<ConfigHubAuthProvider>` + `useAuth()` OIDC PKCE flow driving
+  `src/auth/AuthGate.tsx`; its `getAccessToken()` is the token source for both
+  the RTK client and the raw `/data` fetch in `src/api/raw.ts`.
 
 ## Layout
 

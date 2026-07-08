@@ -1,9 +1,9 @@
 import { configureStore } from '@reduxjs/toolkit';
+import { confighubApi } from '@confighub/rtk-query';
 
-import { confighubApi } from '../sdk/confighubapi';
-// Importing the generated module registers all endpoints on confighubApi.
-import '../sdk/confighubapi.gen';
-
+// Standard RTK Query store wiring: mount the ConfigHub api's reducer and
+// middleware. Endpoints ship injected in the package; the base URL and token
+// source are set once via configureConfigHub() in main.tsx.
 export const store = configureStore({
   reducer: {
     [confighubApi.reducerPath]: confighubApi.reducer,

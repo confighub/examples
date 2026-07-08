@@ -18,7 +18,7 @@ import {
   useLazyListAllUnitsQuery,
   useLazyListSpacesQuery,
   usePatchUnitMutation,
-} from '../sdk/confighubapi.gen';
+} from '@confighub/rtk-query';
 
 /** Slug of the Space that holds this app's workflow units. */
 export const STORAGE_SPACE_SLUG = 'promoter';

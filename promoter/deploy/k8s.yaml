@@ -46,9 +46,8 @@ spec:
         # Public package — no imagePullSecrets needed.
         image: ghcr.io/confighub/promoter:latest
         imagePullPolicy: Always
-        env:
-        - name: API_BACKEND_URL
-          value: "http://confighub-api.confighub.svc.cluster.local:9090"
+        # Static SPA — the ConfigHub instance URL and OAuth client id are baked
+        # into the bundle at build time, so no runtime env is needed here.
         ports:
         - containerPort: 8080
           name: http
