@@ -1,0 +1,106 @@
+{
+  "app": {
+    "component": "cost-management-app",
+    "description": "The generated operational app is itself managed by ConfigHub.",
+    "name": "Cost Management App",
+    "slug": "cost-management-app"
+  },
+  "auth": {
+    "mode": "browser-oauth",
+    "oauthClient": "ConfigHub browser OAuth client required for live app mode."
+  },
+  "configHub": {
+    "configUnits": [
+      "app-config",
+      "oauth-client",
+      "deployment-policy",
+      "runtime-proof-policy"
+    ],
+    "org": "required-for-live-app",
+    "variantMechanics": "Use ConfigHub Variant spaces for dev, stage, prod, and any customer or fleet overlays."
+  },
+  "delivery": {
+    "controller": "Argo",
+    "deploymentManifests": [
+      "confighub/k8s/deployment.yaml",
+      "confighub/k8s/service.yaml",
+      "confighub/k8s/networkpolicy.yaml"
+    ],
+    "kubernetesNamespace": "cost-management-app",
+    "publicationCommand": "cub release publish",
+    "route": "ConfigHub app config -> OCI artifact -> Argo -> Kubernetes",
+    "strategy": "confighub-database-app",
+    "targetProvider": "OCI"
+  },
+  "fleet": {
+    "model": "Repeat the same app component across orgs, clusters, or customer Variants with per-Variant config overlays.",
+    "supported": true
+  },
+  "lifecycle": {
+    "commands": [
+      "install",
+      "upgrade",
+      "migrate",
+      "rollback",
+      "rotate-auth",
+      "decommission"
+    ],
+    "entrypoint": "lifecycle.mjs",
+    "note": "The domain loop (preflight through receipt) is the app's job; these commands are the app's own life."
+  },
+  "promotion": {
+    "defaultPath": "dev -> stage -> prod",
+    "requires": [
+      "source and destination Variant comparison",
+      "approved app version or config change",
+      "controller proof",
+      "runtime proof",
+      "receipt"
+    ]
+  },
+  "proofRequired": [
+    "ConfigHub app config revision",
+    "Variant promotion or explicit Variant config revision",
+    "OCI artifact or target proof",
+    "controller reconciliation",
+    "Kubernetes deployment runtime state",
+    "browser OAuth /api/me",
+    "app receipt"
+  ],
+  "schema": "confighub.generated-operational-app.self-management.v0",
+  "security": [
+    "browser OAuth",
+    "least-privilege ConfigHub scope",
+    "NetworkPolicy",
+    "mutation gate",
+    "runtime proof gate"
+  ],
+  "status": "WATCH",
+  "stopRule": "Repo-local app code is not live proof. Keep this app in WATCH until ConfigHub, controller, runtime, URL, and receipt evidence exist for the app itself.",
+  "variants": [
+    {
+      "configUnit": "app-config",
+      "id": "dev",
+      "promotionSource": "base",
+      "purpose": "Developer review and local-live smoke.",
+      "replicas": 1,
+      "space": "cost-management-app-dev"
+    },
+    {
+      "configUnit": "app-config",
+      "id": "stage",
+      "promotionSource": "dev",
+      "purpose": "Pre-production proof with browser OAuth and ConfigHub read paths.",
+      "replicas": 1,
+      "space": "cost-management-app-stage"
+    },
+    {
+      "configUnit": "app-config",
+      "id": "prod",
+      "promotionSource": "stage",
+      "purpose": "Approved production operation.",
+      "replicas": 2,
+      "space": "cost-management-app-prod"
+    }
+  ]
+}

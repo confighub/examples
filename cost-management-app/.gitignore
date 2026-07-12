@@ -1,0 +1,8 @@
+node_modules/
+.DS_Store
+data/live-bindings.json
+data/cost-findings.json
+data/previews/
+data/reviews/
+data/receipts/
+.lifecycle/

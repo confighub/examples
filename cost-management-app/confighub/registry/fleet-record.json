@@ -1,0 +1,79 @@
+{
+  "app": {
+    "id": "cost-management-app",
+    "name": "Cost Management App",
+    "scenario": "cost-management-opencost",
+    "version": "0.1.0"
+  },
+  "bindings": {
+    "checkedAt": "2026-07-12T22:56:40+00:00",
+    "status": "LIVE_BINDINGS_MISSING"
+  },
+  "deregistration": null,
+  "destination": {
+    "ci": "github-actions",
+    "deployTarget": "argo-oci",
+    "license": "apache-2.0",
+    "mode": "existing",
+    "org": "confighub",
+    "repo": "https://github.com/confighub/examples.git",
+    "status": "DECLARED",
+    "visibility": "public"
+  },
+  "fleetIndex": {
+    "decisionNote": "Default pending team ratification (generated-operational-app contract draft, open question 3): one fleet-record Unit per app inside the org fleet Space, so revisions, gates, and decommission stay scoped to a single app. The org-level index is the Space-level view over those Units. The alternative under review is a single per-org index Unit.",
+    "model": "one-unit-per-app",
+    "space": "confighub-app-fleet",
+    "unit": "cost-management-app-fleet-record",
+    "unitRef": "confighub-app-fleet/cost-management-app-fleet-record"
+  },
+  "generator": {
+    "commit": "92f10c8",
+    "exportSchema": "confighub.operational-app-export.v0",
+    "name": "confighub-operational-app-export",
+    "version": "0.1.7"
+  },
+  "oauthClient": {
+    "clientId": "",
+    "clientName": "cost-management-app-local",
+    "createdAt": "",
+    "externalOrganizationId": "",
+    "lastRotatedAt": "",
+    "mutations": [],
+    "org": "",
+    "organizationId": "",
+    "redirectUris": [],
+    "requiredRedirectUris": [
+      "http://localhost:5173/"
+    ],
+    "state": "unregistered",
+    "stateMachine": [
+      "unregistered",
+      "registered",
+      "rotated",
+      "revoked"
+    ]
+  },
+  "onCall": "platform-oncall",
+  "owner": "platform-team",
+  "registeredAt": "2026-07-12T22:56:40+00:00",
+  "schema": "confighub.app-fleet-record.v0",
+  "state": "WATCH",
+  "stateMachine": [
+    "WATCH",
+    "LIVE",
+    "DEPRECATED",
+    "RETIRED"
+  ],
+  "transitions": [
+    {
+      "actor": "platform-team",
+      "configHubUrl": "",
+      "evidence": "export manifest and generated-app test result",
+      "from": null,
+      "generatorVersion": "0.1.7",
+      "timestamp": "2026-07-12T22:56:40+00:00",
+      "to": "WATCH"
+    }
+  ]
+}

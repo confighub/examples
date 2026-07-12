@@ -1,0 +1,80 @@
+{
+  "action": {
+    "contract": {
+      "kind": "ConfigHub-governed-action.v0",
+      "mutationPolicy": "Execution requires exact review plus explicit confirmation; delivery and live claims remain disabled until their proof bindings are verified.",
+      "operation": "cost-management-app",
+      "proofRequires": [
+        "approval object when the workflow uses one",
+        "controller proof",
+        "runtime proof"
+      ],
+      "requires": [
+        "authenticated Cub user",
+        "ConfigHub object URL",
+        "Variant and Unit scope",
+        "finding-owned exact dry-run preview",
+        "short-lived local review evidence",
+        "explicit execution confirmation",
+        "governed action executor"
+      ],
+      "scopeFields": [
+        "org",
+        "space",
+        "variant",
+        "unit",
+        "action",
+        "revision",
+        "target",
+        "strategy",
+        "cost finding",
+        "field"
+      ],
+      "trigger": "user-approved-scope"
+    },
+    "description": "The governed reviewer ships with this app (src/executor.mjs): finding-owned dry-run previews, authenticated expiring local review records, explicit execution confirmation, exact revision verification, and a closed function whitelist. Provider-native atomic expected-revision enforcement remains a visible gap.",
+    "endpoint": "<configHub-action-endpoint-or-function>",
+    "method": "POST"
+  },
+  "approval": {
+    "mode": "explicit approval before mutation",
+    "objectId": "<approval-object-id>",
+    "scope": [
+      "org",
+      "space",
+      "variant",
+      "unit",
+      "action",
+      "revision",
+      "target",
+      "strategy",
+      "cost finding",
+      "field"
+    ]
+  },
+  "configHub": {
+    "externalOrganizationId": "<external-organization-id>",
+    "objectUrl": "https://<confighub-server>/<verified-object-url>",
+    "organizationId": "<internal-organization-id>",
+    "server": "https://<confighub-server>",
+    "space": "not-yet-bound-dev-space",
+    "spaceId": "<space-id>",
+    "unit": "cost-management-app-dev",
+    "variant": "dev"
+  },
+  "proof": {
+    "proofTabs": [
+      "config_hub_revision",
+      "approval_record",
+      "gate_verdict",
+      "receipt"
+    ],
+    "receiptObjectId": "<receipt-object-id>"
+  },
+  "runtime": {
+    "evidenceSource": "<controller-or-runtime-proof-source>",
+    "readback": "Use blocked:no-controller-or-runtime-target-bound until controller and runtime proof are available."
+  },
+  "schema": "confighub.live-bindings.v1",
+  "status": "template"
+}
