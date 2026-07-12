@@ -63,7 +63,7 @@ export function App() {
   const [selectedId, setSelectedId] = useState(workflow.variants[0]?.id ?? '');
   const [apiStatus, setApiStatus] = useState('not checked');
   const [costReport, setCostReport] = useState<CostReport | null>(null);
-  const [costStatus, setCostStatus] = useState('loading cost findings...');
+  const [costStatus, setCostStatus] = useState('loading findings...');
 
   useEffect(() => {
     if (status !== 'authenticated') return;
@@ -152,7 +152,7 @@ export function App() {
       </header>
 
       <section className="panel">
-        <h2>Cost findings</h2>
+        <h2>Findings</h2>
         {costReport ? (
           <>
             <p>
@@ -230,7 +230,7 @@ export function App() {
               </dl>
               <div className="actions">
                 <button type="button">Preview change</button>
-                <button type="button">Prepare approval</button>
+                <button type="button">Prepare review</button>
                 <button type="button" disabled>Run allowed action</button>
               </div>
             </>

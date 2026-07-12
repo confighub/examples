@@ -27,9 +27,10 @@
       "confighub/k8s/networkpolicy.yaml"
     ],
     "kubernetesNamespace": "cost-management-app",
+    "publicationCommand": "cub release publish",
     "route": "ConfigHub app config -> OCI artifact -> Argo -> Kubernetes",
     "strategy": "confighub-database-app",
-    "targetProvider": "ArgoCDOCI"
+    "targetProvider": "OCI"
   },
   "fleet": {
     "model": "Repeat the same app component across orgs, clusters, or customer Variants with per-Variant config overlays.",

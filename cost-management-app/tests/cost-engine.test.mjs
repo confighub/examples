@@ -38,6 +38,10 @@ test('missing requests is found and never priced as savings', () => {
   const finding = report.findings.find(f => f.rule === 'MISSING_REQUESTS');
   assert.ok(finding);
   assert.deepEqual(finding.evidence.missing, ['cpu', 'memory']);
+  assert.ok(finding.id);
+  assert.deepEqual(finding.recommendation.action, {
+    space: 's-dev', unit: 'u1', function: 'set-container-resources-defaults', args: [],
+  });
   assert.equal(finding.priced.claim, 'exposure-at-limits-not-savings');
   assert.equal(report.totals.claimedMonthlySavings, 0);
 });
@@ -54,6 +58,10 @@ test('non-prod replicas priced from requests only when the unit is bound', () =>
   const unboundFinding = rows.find(f => f.unit === 'u2');
   // per replica: 0.1cpu*20 + 0.25GiB*4 = 3; two removable replicas = 6
   assert.equal(boundFinding.priced.monthly, 6);
+  assert.ok(boundFinding.id);
+  assert.deepEqual(boundFinding.recommendation.action, {
+    space: 's-dev', unit: 'u1', function: 'set-replicas', args: ['1'],
+  });
   assert.equal(boundFinding.priced.claim, 'monthly-savings-if-scaled-to-1');
   assert.equal(unboundFinding.priced.claim, 'configured-cost-only-unit-not-bound');
   assert.equal(report.totals.claimedMonthlySavings, 6);

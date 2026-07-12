@@ -112,9 +112,10 @@
     "org": "confighub",
     "repo": "https://github.com/confighub/examples.git",
     "status": "DECLARED",
-    "visibility": "private"
+    "visibility": "public"
   },
-  "generatedAt": "2026-07-11T17:47:40+00:00",
+  "domainEngine": null,
+  "generatedAt": "2026-07-12T22:56:40+00:00",
   "generator": {
     "name": "confighub-operational-app-export",
     "regenerationPolicy": "Regenerate with the same or a newer generator version, then run node lifecycle.mjs upgrade --from <regenerated-dir> to diff the regeneration against local modifications.",
@@ -122,16 +123,21 @@
   },
   "governedAction": {
     "kind": "ConfigHub-governed-action.v0",
-    "mutationPolicy": "Apply remains disabled unless every binding is real and non-placeholder.",
+    "mutationPolicy": "Execution requires exact review plus explicit confirmation; delivery and live claims remain disabled until their proof bindings are verified.",
     "operation": "cost-management-app",
-    "requires": [
-      "browser OAuth user",
-      "ConfigHub object URL",
-      "Variant and Unit scope",
-      "approval object",
-      "governed action executor",
+    "proofRequires": [
+      "approval object when the workflow uses one",
       "controller proof",
       "runtime proof"
+    ],
+    "requires": [
+      "authenticated Cub user",
+      "ConfigHub object URL",
+      "Variant and Unit scope",
+      "finding-owned exact dry-run preview",
+      "short-lived local review evidence",
+      "explicit execution confirmation",
+      "governed action executor"
     ],
     "scopeFields": [
       "org",
@@ -147,8 +153,9 @@
     ],
     "trigger": "user-approved-scope"
   },
+  "ideaId": "cost-management-opencost",
   "intent": {
-    "raw": "cost optimisation across our Kubernetes fleet"
+    "raw": "cost-management-opencost"
   },
   "lifecycle": [
     "install",
@@ -184,10 +191,10 @@
       "purpose": "Preview the scoped change without mutating ConfigHub, Git, a controller, or runtime."
     },
     {
-      "command": "approve/commit",
-      "harnessStep": "Run after approval",
+      "command": "review/commit",
+      "harnessStep": "Review / Run gate",
       "productStep": "Operate",
-      "purpose": "Commit only means an approved scoped ConfigHub mutation through the governed action path."
+      "purpose": "Local review records one exact, expiring packet but grants no permission; a separate explicit confirmation requests the ConfigHub write, whose revision and mutation parity are then verified."
     },
     {
       "command": "verify",
@@ -249,8 +256,10 @@
   },
   "schema": "confighub.operational-workflow.v0",
   "schemas": {
-    "liveBindings": "confighub.live-bindings.v0",
-    "migrations": [],
+    "liveBindings": "confighub.live-bindings.v1",
+    "migrations": [
+      "confighub.live-bindings.v0 -> confighub.live-bindings.v1"
+    ],
     "operationalWorkflow": "confighub.operational-workflow.v0",
     "selfManagement": "confighub.generated-operational-app.self-management.v0"
   },
@@ -294,9 +303,10 @@
         "confighub/k8s/networkpolicy.yaml"
       ],
       "kubernetesNamespace": "cost-management-app",
+      "publicationCommand": "cub release publish",
       "route": "ConfigHub app config -> OCI artifact -> Argo -> Kubernetes",
       "strategy": "confighub-database-app",
-      "targetProvider": "ArgoCDOCI"
+      "targetProvider": "OCI"
     },
     "fleet": {
       "model": "Repeat the same app component across orgs, clusters, or customer Variants with per-Variant config overlays.",

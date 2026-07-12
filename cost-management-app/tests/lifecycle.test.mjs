@@ -8,7 +8,7 @@ import { basename, join } from 'node:path';
 const OAUTH = true;
 // Deployment-local live files are excluded like the gitignore excludes them:
 // the lifecycle contract under test is the shipped app, not this deployment.
-const SKIP = new Set(['.git', 'node_modules', '.lifecycle', 'live-bindings.json', 'cost-findings.json', 'package-lock.json', 'approvals', 'receipts']);
+const SKIP = new Set(['.git', 'node_modules', '.lifecycle', 'live-bindings.json', 'cost-findings.json', 'package-lock.json', 'previews', 'reviews', 'receipts']);
 
 const workRoot = mkdtempSync(join(tmpdir(), 'app-lifecycle-test-'));
 const appDir = join(workRoot, 'app');
@@ -68,6 +68,7 @@ try {
   assert.ok(record.onCall, 'fleet record must carry an on-call');
   assert.ok(record.generator.version, 'fleet record must pin the generator version');
 
+  // The fleet record owns the app's browser client identity from export time.
   // The fleet record owns the app's browser client identity for its whole
   // lifecycle. The record legitimately advances (register, rotate, revoke),
   // so the test pins state-machine consistency, not one frozen stage.
@@ -76,14 +77,19 @@ try {
   assert.deepEqual(exportedClient.stateMachine, ['unregistered', 'registered', 'rotated', 'revoked']);
   assert.ok(exportedClient.stateMachine.includes(exportedClient.state), `unknown client state ${exportedClient.state}`);
   assert.ok(exportedClient.clientName, 'the client name must be pre-declared');
-  assert.ok(exportedClient.org, 'the owning org must be recorded');
   assert.ok(exportedClient.requiredRedirectUris.length >= 1, 'the serving origin must be declared');
   if (exportedClient.state === 'unregistered') {
     assert.equal(exportedClient.clientId, '');
+    assert.equal(exportedClient.org, '');
+    assert.equal(exportedClient.organizationId, '');
+    assert.equal(exportedClient.externalOrganizationId, '');
     assert.deepEqual(exportedClient.redirectUris, []);
     assert.deepEqual(exportedClient.mutations, []);
   } else {
     assert.ok(exportedClient.clientId, 'a non-unregistered client must carry its client id');
+    assert.ok(exportedClient.org, 'a registered client must carry its verified ConfigHub org');
+    assert.ok(exportedClient.organizationId, 'a registered client must carry its internal org id');
+    assert.ok(exportedClient.externalOrganizationId, 'a registered client must carry its external org id');
     assert.ok(exportedClient.redirectUris.length >= 1, 'a registered client must record its redirect URIs');
     assert.ok(exportedClient.mutations.length >= 1, 'every state advance must be a recorded mutation');
     for (const mutation of exportedClient.mutations) {
@@ -107,6 +113,21 @@ try {
   const migrate = runJson(appDir, ['migrate'], 0);
   assert.equal(migrate.status, 'MIGRATE_CURRENT');
   assert.ok(migrate.results.every(row => row.state === 'current' || row.state === 'absent-optional'));
+
+  writeFileSync(join(appDir, 'data/live-bindings.json'), JSON.stringify({
+    schema: 'confighub.live-bindings.v0',
+    configHub: {objectUrl: 'https://confighub.example.test/unit', server: 'https://confighub.example.test'},
+    action: {endpoint: 'blocked:legacy-action', contract: {kind: 'ConfigHub-governed-action.v0', operation: 'set'}},
+  }, null, 2) + '\n');
+  const legacyMigrate = runJson(appDir, ['migrate'], 0);
+  assert.equal(legacyMigrate.status, 'MIGRATED');
+  const migratedBindings = readJson(join(appDir, 'data/live-bindings.json'));
+  assert.equal(migratedBindings.schema, 'confighub.live-bindings.v1');
+  assert.match(migratedBindings.configHub.organizationId, /^blocked:migration-requires/);
+  assert.match(migratedBindings.configHub.externalOrganizationId, /^blocked:migration-requires/);
+  assert.deepEqual(migratedBindings.action.contract.scopeFields, []);
+  assert.deepEqual(migratedBindings.action.contract.requires, []);
+  rmSync(join(appDir, 'data/live-bindings.json'));
 
   const report = runJson(appDir, ['upgrade'], 0);
   assert.equal(report.status, 'UPGRADE_LOCAL_STATE_REPORT');
@@ -252,7 +273,7 @@ try {
 
   const workflow = readJson(join(appDir, 'data/operational-workflow.json'));
   writeFileSync(join(appDir, 'data/live-bindings.json'), JSON.stringify({
-    schema: 'confighub.live-bindings.v0',
+    schema: 'confighub.live-bindings.v1',
     status: 'live-values-bound',
     configHub: {
       objectUrl: 'https://confighub.example.test/org/space/unit',
@@ -265,12 +286,12 @@ try {
       variant: 'stage',
     },
     approval: {
-      objectId: 'blocked:approval-record-not-bound',
+      objectId: 'changeset-review-123',
       mode: 'explicit approval before mutation',
       scope: workflow.approval.scopeFields,
     },
     action: {
-      endpoint: 'https://confighub.example.test/api/actions/apply',
+      endpoint: 'blocked:governed-write-executor-not-installed',
       method: 'POST',
       description: 'Governed action endpoint for this workflow.',
       contract: workflow.governedAction,
@@ -288,7 +309,7 @@ try {
   assert.equal(bindingBlocked.status, 0, bindingBlocked.stderr || bindingBlocked.stdout);
   const bindingBlockedJson = JSON.parse(bindingBlocked.stdout);
   assert.equal(bindingBlockedJson.status, 'LIVE_BINDINGS_BLOCKED');
-  assert.match(bindingBlockedJson.blocked.join(' '), /blocked:approval-record-not-bound/);
+  assert.match(bindingBlockedJson.blocked.join(' '), /blocked:governed-write-executor-not-installed/);
   const liveBlocked = runJson(appDir, [
     'registry', '--to', 'LIVE',
     '--actor', 'operator-a',
@@ -301,7 +322,7 @@ try {
   assert.equal(readJson(join(appDir, 'confighub/registry/fleet-record.json')).state, 'WATCH');
 
   writeFileSync(join(appDir, 'data/live-bindings.json'), JSON.stringify({
-    schema: 'confighub.live-bindings.v0',
+    schema: 'confighub.live-bindings.v1',
     status: 'live-values-bound',
     configHub: {
       objectUrl: 'https://confighub.example.test/org/space/unit',
@@ -335,7 +356,13 @@ try {
   }, null, 2) + '\n');
   const bindingReady = spawnSync(process.execPath, ['scripts/binding-check.mjs'], {cwd: appDir, encoding: 'utf8'});
   assert.equal(bindingReady.status, 0, bindingReady.stderr || bindingReady.stdout);
-  assert.equal(JSON.parse(bindingReady.stdout).status, 'LIVE_BINDINGS_READY');
+  const bindingReview = JSON.parse(bindingReady.stdout);
+  assert.equal(bindingReview.status, 'LIVE_BINDINGS_REVIEW_READY');
+  assert.equal(bindingReview.reason, 'LIVE_BINDINGS_REVIEW_READY');
+  assert.equal(bindingReview.reviewReady, true);
+  assert.equal(bindingReview.executionReadyWithConfirmation, true);
+  assert.equal(bindingReview.commitReady, false);
+  assert.equal(bindingReview.atomicity.reason, 'PROVIDER_ATOMIC_EXPECTED_REVISION_UNAVAILABLE');
 
   const live = runJson(appDir, [
     'registry', '--to', 'LIVE',
@@ -343,12 +370,30 @@ try {
     '--evidence', 'proof-receipt-2026-07-02',
     '--confighub-url', 'https://confighub.example.test/org/space/unit',
   ], 0, env);
-  assert.equal(live.status, 'REGISTRY_TRANSITION_RECORDED');
-  assert.equal(live.state, 'LIVE');
-  assert.equal(live.fleetIndex, 'updated');
-  const liveRecord = readJson(join(appDir, 'confighub/registry/fleet-record.json'));
-  assert.equal(liveRecord.bindings.status, 'LIVE_BINDINGS_READY');
-  assert.equal(readJson(indexPath).orgs[orgSlug].apps[record.app.id].state, 'LIVE');
+  assert.equal(live.verdict, 'BLOCK');
+  assert.equal(live.reason, 'PROVIDER_ATOMIC_EXPECTED_REVISION_UNAVAILABLE');
+  assert.equal(live.liveBindings.status, 'LIVE_BINDINGS_REVIEW_READY');
+  assert.match(live.nextGate, /confighub[/]issues[/]4714/);
+  assert.equal(readJson(join(appDir, 'confighub/registry/fleet-record.json')).state, 'WATCH');
+
+  // Lifecycle transitions after LIVE still need deterministic coverage. Seed
+  // a historical LIVE record explicitly; this is test setup, not a claim that
+  // the current generated executor can cross the atomic platform gate.
+  const historicalLive = readJson(join(appDir, 'confighub/registry/fleet-record.json'));
+  historicalLive.state = 'LIVE';
+  historicalLive.transitions.push({
+    from: 'WATCH',
+    to: 'LIVE',
+    actor: 'test-fixture',
+    evidence: 'fixture:historical-live-before-atomic-gate',
+    timestamp: new Date().toISOString(),
+    generatorVersion: historicalLive.generator?.version || 'test-fixture',
+    configHubUrl: 'https://confighub.example.test/org/space/unit',
+  });
+  writeFileSync(join(appDir, 'confighub/registry/fleet-record.json'), JSON.stringify(historicalLive, null, 2) + '\n');
+  const historicalIndex = readJson(indexPath);
+  historicalIndex.orgs[orgSlug].apps[record.app.id].state = 'LIVE';
+  writeFileSync(indexPath, JSON.stringify(historicalIndex, null, 2) + '\n');
 
   const deprecated = runJson(appDir, [
     'registry', '--to', 'DEPRECATED',
@@ -392,8 +437,11 @@ try {
     assert.equal(revokeMutation.clientId, 'client_rotated');
     assert.match(revokeMutation.evidence, /decommission receipt/);
   } else {
-    assert.equal(done.oauthClientState, 'unregistered');
-    assert.equal(retiredRecord.oauthClient.state, 'unregistered');
+    // Fixture-only apps normally never register a client, but a deployment
+    // that did register one still gets a real revocation on decommission.
+    const endState = retiredRecord.oauthClient.state;
+    assert.ok(['unregistered', 'revoked'].includes(endState), endState);
+    assert.equal(done.oauthClientState, endState);
   }
   const retiredIndexEntry = readJson(indexPath).orgs[orgSlug].apps[record.app.id];
   assert.equal(retiredIndexEntry.state, 'RETIRED');

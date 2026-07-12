@@ -43,32 +43,65 @@ against.
   configured-cost-only and excluded from claimed savings; every priced figure
   carries the rate-card basis string
 
-### `node cli.mjs approve --grant ...` / `node cli.mjs commit --approval <id>`
+### `node cli.mjs preview --finding <id> --json`
 
-- approve --grant mutates: local only (writes a single-use approval under
-  `data/approvals/`, pinned to the Unit's head revision at grant time)
-- commit mutates: yes (ConfigHub) — exactly the approved scope, nothing else
-- stable refusal reasons, all `BLOCK` at exit 0: `APPROVAL_REQUIRED`,
-  `APPROVAL_NOT_FOUND`, `APPROVAL_ALREADY_CONSUMED`, `FUNCTION_NOT_ALLOWED`,
-  `FUNCTION_ARGS_INVALID`, `APPROVAL_REVISION_DRIFT`, `MUTATION_SILENT_SKIP`
-- stable success: `MUTATION_COMMITTED` with `revisionBefore`,
-  `revisionAfter`, and a receipt path under `data/receipts/`
-- proves: the write path exists and functions, and every unsafe shape is a
-  typed refusal — including the silent-skip class, where a mutation that
-  reports success without creating a new revision is treated as a failure
+- ConfigHub mutation: no; runs the finding-owned function with `--dry-run`
+- local mutation: writes an exact preview under `data/previews/`
+- binds: finding id, authenticated Cub context, internal and external org ids,
+  server, Space, Unit id, Unit revision, function, arguments, expected mutation,
+  and integrity digest
+- stable success: `PASS` / `PREVIEW_CREATED`
+- stable refusals: `FINDING_REQUIRED`, `FINDING_NOT_FOUND`,
+  `FINDING_NOT_ACTIONABLE`, `FUNCTION_NOT_ALLOWED`, `FUNCTION_ARGS_INVALID`,
+  `LIVE_AUTHORITY_REQUIRED`, `ORG_MISMATCH`, `PREVIEW_EMPTY`
+
+### `node cli.mjs review --record --preview <id> --reason <why> --json`
+
+- ConfigHub mutation: no
+- local mutation: writes short-lived review evidence under `data/reviews/`
+- stable success: `WATCH` / `LOCAL_REVIEW_RECORDED`
+- semantics: the reviewer comes from authenticated Cub, the preview revision is
+  re-read, the record expires after 15 minutes, and duplicate reviews share one
+  deterministic execution idempotency key
+- non-claim: this local JSON is unsigned evidence, not a ConfigHub approval
+  object, authorization token, or mutation permission
+- stable refusals: `PREVIEW_REQUIRED`, `PREVIEW_NOT_FOUND`, `PREVIEW_TAMPERED`,
+  `AUTH_REQUIRED`, `ORG_MISMATCH`, `PREVIEW_REVISION_DRIFT`
+
+### `node cli.mjs commit --review <id> --confirm-execute --json`
+
+- without `--confirm-execute`: no mutation; returns `ASK` /
+  `EXECUTION_CONFIRMATION_REQUIRED`
+- with confirmation: mutates ConfigHub through the finding-owned, whitelisted
+  function only; no hand-entered target, function, or arguments are accepted
+- stable success: `PASS` / `CONFIG_REVISION_COMMITTED`, with `revisionBefore`,
+  `revisionAfter`, mutation parity, and a receipt under `data/receipts/`
+- local receipt class: `local-unsigned-execution-receipt`; a later local reload
+  reports `WATCH` / `LOCAL_UNSIGNED_RECEIPT_RECORDED`, never signed/live proof
+- stable refusals: `LOCAL_REVIEW_REQUIRED`, `REVIEW_NOT_FOUND`,
+  `REVIEW_EXPIRED`, `REVIEW_ALREADY_USED`, `REVIEWER_IDENTITY_MISMATCH`,
+  `REVIEW_REVISION_DRIFT`, `REVIEW_TARGET_REPLACED`,
+  `REVIEW_EXECUTION_ALREADY_CLAIMED`, `CONCURRENT_REVISION_DETECTED`,
+  `MUTATION_DIFF_MISMATCH`, `MUTATION_FAILED`
+- proof boundary: success proves the ConfigHub revision and reviewed mutation;
+  the local receipt is not a signed approval or fresh server attestation,
+  provider-native expected-revision atomicity remains `WATCH`, and controller
+  or runtime delivery is not claimed without separate evidence
 - whitelist: `set-replicas`, `set-container-resources-defaults` — closed;
-  entries are earned by receipted live executions, never added by
-  configuration
+  entries are earned by receipted live executions, never added by configuration
 
 ### `npm run binding:check`
 
 - mutates: no
 - output shape: JSON with `verdict` and `reason`
-- stable states: `WATCH` / `LIVE_BINDINGS_MISSING` on a cold clone; `WATCH` /
-  `LIVE_BINDINGS_BLOCKED` when read surfaces are bound but write-side
-  bindings carry explicit `blocked:` reasons; `PASS` only when every binding
-  is real
-- proves: read surfaces and write gates are tracked separately and honestly
+- stable states: `WATCH` / `LIVE_BINDINGS_MISSING` on a cold clone;
+  `LIVE_BINDINGS_MIGRATION_REQUIRED`, `LIVE_BINDINGS_PLACEHOLDER`, or
+  `LIVE_BINDINGS_BLOCKED` for unusable authority; and `WATCH` /
+  `LIVE_BINDINGS_REVIEW_READY` when exact review plus explicitly confirmed
+  execution are bound but provider-native atomicity or delivery proof is open
+- proves: review authority, execution confirmation, ConfigHub revision proof,
+  and controller/runtime delivery are tracked separately; binding values alone
+  never create a universal live claim
 
 ### `npm run verify`
 

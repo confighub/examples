@@ -29,11 +29,15 @@ receipts, and URLs.
 
 ## Commit Semantics
 
-`commit` is intentionally strict. It means an approved, scoped ConfigHub
-mutation using the governed action path. Until the live ConfigHub object,
-approval object, governed action executor, proof receipt, and runtime evidence
-are bound, the generated CLI must block commit instead of pretending the action
-ran.
+`commit` is intentionally strict. A finding owns the action, a dry-run preview
+owns the exact diff and revision, and the authenticated ConfigHub user records
+a short-lived review. That record is evidence, not permission. A separate
+explicit confirmation requests the write. The generated CLI rechecks identity,
+freshness, and head revision, runs only the finding-owned function, and proves
+the resulting revision and mutation parity. Provider-native atomic
+expected-revision enforcement remains `WATCH` until ConfigHub exposes it.
+Controller and runtime proof remain later gates; a committed ConfigHub revision
+must not be called delivered or live without that evidence.
 
 ## Guardrail Semantics
 

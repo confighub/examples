@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { copyFile, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+import { classifyLiveBindings } from './src/live-bindings.mjs';
 
 const args = process.argv.slice(2);
 const command = args.find(arg => !arg.startsWith('--')) || 'help';
@@ -31,7 +32,7 @@ const STATE_PATH = '.lifecycle/state.json';
 const AUTH_PATH = '.lifecycle/auth.json';
 const BACKUP_ROOT = '.lifecycle/backups';
 const FLEET_RECORD_PATH = 'confighub/registry/fleet-record.json';
-const SKIP_DIRS = new Set(['.git', 'node_modules', '.lifecycle']);
+const SKIP_DIRS = new Set(['.git', 'node_modules', '.lifecycle', 'previews', 'reviews', 'receipts']);
 // State files advance by their own state machines (install transitions,
 // client registration); diffing them against a regeneration is a category
 // error, so they sit outside the regeneration contract entirely.
@@ -50,7 +51,7 @@ async function writeJsonFile(path, value) {
   await writeFile(path, JSON.stringify(value, null, 2) + '\n', 'utf8');
 }
 
-function output(value, exitCode = 0) {
+function output(value, exitCode = value?.verdict === 'ERROR' ? 1 : 0) {
   if (json) {
     console.log(JSON.stringify(value, null, 2));
   } else {
@@ -125,110 +126,14 @@ async function localDiff() {
   return {modified, missing, added};
 }
 
-function hasPlaceholder(value) {
-  if (typeof value === 'string') return value.includes('<') || value.includes('>') || value.includes('example-fill');
-  if (Array.isArray(value)) return value.some(hasPlaceholder);
-  if (value && typeof value === 'object') return Object.values(value).some(hasPlaceholder);
-  return false;
-}
-
 async function bindingProbe() {
   const bindings = await loadJsonFile('data/live-bindings.json');
-  if (!bindings) return 'LIVE_BINDINGS_MISSING';
-  if (hasPlaceholder(bindings)) return 'LIVE_BINDINGS_PLACEHOLDER';
-  return 'LIVE_BINDINGS_PRESENT';
-}
-
-function liveBindingMissingFields(bindings) {
-  const required = [
-    ['configHub.objectUrl', bindings && bindings.configHub ? bindings.configHub.objectUrl : undefined],
-    ['approval.objectId', bindings && bindings.approval ? bindings.approval.objectId : undefined],
-    ['action.endpoint', bindings && bindings.action ? bindings.action.endpoint : undefined],
-    ['action.contract.kind', bindings && bindings.action && bindings.action.contract ? bindings.action.contract.kind : undefined],
-    ['proof.receiptObjectId', bindings && bindings.proof ? bindings.proof.receiptObjectId : undefined],
-    ['runtime.evidenceSource', bindings && bindings.runtime ? bindings.runtime.evidenceSource : undefined],
-  ];
-  return required.filter(([, value]) => !value).map(([field]) => field);
-}
-
-function isBlockedValue(value) {
-  return typeof value === 'string' && value.startsWith('blocked:');
-}
-
-function liveBindingBlockedFields(bindings) {
-  const required = [
-    ['configHub.objectUrl', bindings && bindings.configHub ? bindings.configHub.objectUrl : undefined],
-    ['approval.objectId', bindings && bindings.approval ? bindings.approval.objectId : undefined],
-    ['action.endpoint', bindings && bindings.action ? bindings.action.endpoint : undefined],
-    ['action.contract.kind', bindings && bindings.action && bindings.action.contract ? bindings.action.contract.kind : undefined],
-    ['proof.receiptObjectId', bindings && bindings.proof ? bindings.proof.receiptObjectId : undefined],
-    ['runtime.evidenceSource', bindings && bindings.runtime ? bindings.runtime.evidenceSource : undefined],
-  ];
-  return required.filter(([, value]) => isBlockedValue(value)).map(([field, value]) => `${field}=${value}`);
-}
-
-function liveBindingContractProblems(bindings) {
-  const contract = bindings && bindings.action ? bindings.action.contract : null;
-  if (!contract) return [];
-  const problems = [];
-  if (contract.kind !== 'ConfigHub-governed-action.v0') problems.push('action.contract.kind must be ConfigHub-governed-action.v0');
-  if (!contract.operation) problems.push('action.contract.operation is required');
-  if (!Array.isArray(contract.scopeFields)) problems.push('action.contract.scopeFields must be an array');
-  if (!Array.isArray(contract.requires)) problems.push('action.contract.requires must be an array');
-  return problems;
+  return classifyLiveBindings(bindings).status;
 }
 
 async function liveBindingReadiness() {
   const bindings = await loadJsonFile('data/live-bindings.json');
-  if (!bindings) {
-    return {
-      status: 'LIVE_BINDINGS_MISSING',
-      verdict: 'WATCH',
-      reason: 'LIVE_BINDINGS_MISSING',
-      message: 'data/live-bindings.json is not present.',
-    };
-  }
-  const missing = liveBindingMissingFields(bindings);
-  if (missing.length) {
-    return {
-      status: 'LIVE_BINDINGS_INCOMPLETE',
-      verdict: 'WATCH',
-      reason: 'LIVE_BINDINGS_INCOMPLETE',
-      missing,
-    };
-  }
-  const blocked = liveBindingBlockedFields(bindings);
-  if (blocked.length) {
-    return {
-      status: 'LIVE_BINDINGS_BLOCKED',
-      verdict: 'WATCH',
-      reason: 'LIVE_BINDINGS_BLOCKED',
-      blocked,
-      message: 'Live read surfaces exist, but at least one required binding is explicitly blocked.',
-    };
-  }
-  const problems = liveBindingContractProblems(bindings);
-  if (problems.length) {
-    return {
-      status: 'LIVE_BINDINGS_CONTRACT_INVALID',
-      verdict: 'WATCH',
-      reason: 'LIVE_BINDINGS_CONTRACT_INVALID',
-      problems,
-    };
-  }
-  if (hasPlaceholder(bindings)) {
-    return {
-      status: 'LIVE_BINDINGS_PLACEHOLDER',
-      verdict: 'WATCH',
-      reason: 'LIVE_BINDINGS_PLACEHOLDER',
-      message: 'data/live-bindings.json still contains example placeholder values.',
-    };
-  }
-  return {
-    status: 'LIVE_BINDINGS_READY',
-    verdict: 'PASS',
-    reason: 'LIVE_BINDINGS_READY',
-  };
+  return classifyLiveBindings(bindings);
 }
 
 async function backupFiles(paths, label) {
@@ -392,7 +297,24 @@ async function upgrade() {
 
 // Schema-version migrations for the shared contract files. Keyed by the schema
 // id found on disk; each step carries the target schema id and a transform.
-const MIGRATIONS = {};
+const MIGRATIONS = {
+  'confighub.live-bindings.v0': {
+    to: 'confighub.live-bindings.v1',
+    transform(value) {
+      const migrated = JSON.parse(JSON.stringify(value || {}));
+      migrated.configHub = migrated.configHub || {};
+      migrated.configHub.organizationId = migrated.configHub.organizationId
+        || 'blocked:migration-requires-verified-internal-org-id';
+      migrated.configHub.externalOrganizationId = migrated.configHub.externalOrganizationId
+        || 'blocked:migration-requires-verified-external-org-id';
+      migrated.action = migrated.action || {};
+      migrated.action.contract = migrated.action.contract || {};
+      if (!Array.isArray(migrated.action.contract.scopeFields)) migrated.action.contract.scopeFields = [];
+      if (!Array.isArray(migrated.action.contract.requires)) migrated.action.contract.requires = [];
+      return migrated;
+    },
+  },
+};
 
 async function migrate() {
   const targets = [
@@ -719,7 +641,7 @@ async function registry() {
       status: 'REGISTRY_TRANSITION_BLOCKED',
       missing,
       message: to === 'LIVE'
-        ? 'LIVE requires the stage-12 proof layers green: pass --actor, --evidence <proof-receipt-ref>, --confighub-url <unit-url>, and npm run binding:check must return LIVE_BINDINGS_READY.'
+        ? 'LIVE requires the stage-12 proof layers green: pass --actor, --evidence <proof-receipt-ref>, --confighub-url <unit-url>, and wire a typed validator for controller/runtime proof. Raw references remain LIVE_BINDINGS_EVIDENCE_UNVERIFIED and cannot promote LIVE.'
         : 'Every transition records actor, evidence, timestamp, generatorVersion, and configHubUrl.',
     }, 0);
   }
@@ -733,11 +655,15 @@ async function registry() {
       });
       return output({
         verdict: 'BLOCK',
-        reason: 'LIVE_BINDINGS_NOT_READY',
+        reason: liveBindings.atomicity?.reason === 'PROVIDER_ATOMIC_EXPECTED_REVISION_UNAVAILABLE'
+          ? 'PROVIDER_ATOMIC_EXPECTED_REVISION_UNAVAILABLE'
+          : 'LIVE_BINDINGS_NOT_READY',
         status: 'REGISTRY_TRANSITION_BLOCKED',
         liveBindings,
-        message: 'The fleet record cannot move to LIVE until deployment-local live bindings pass npm run binding:check.',
-        nextGate: 'Create data/live-bindings.json with real ConfigHub object, approval, action, proof receipt, and runtime evidence, then rerun npm run binding:check and the registry transition.',
+        message: liveBindings.message || 'The fleet record cannot move to LIVE until deployment-local live bindings pass npm run binding:check.',
+        nextGate: liveBindings.atomicity?.reason === 'PROVIDER_ATOMIC_EXPECTED_REVISION_UNAVAILABLE'
+          ? 'Config writes may proceed through exact review, explicit confirmation, mutation parity, and revision verification. Track https://github.com/confighubai/confighub/issues/4714 before promoting the app itself to LIVE.'
+          : (liveBindings.nextGate || 'Create data/live-bindings.json with verified review and delivery fields, then rerun npm run binding:check.'),
       }, 0);
     }
   }

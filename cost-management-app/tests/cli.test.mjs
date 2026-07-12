@@ -30,7 +30,7 @@ assert.equal(preflight.verdict, preflight.status);
 assert.equal(preflight.reason, preflight.liveBindings);
 assert.equal(preflight.sharedContract, 'data/operational-workflow.json');
 assert.ok(preflight.commandLoop.some(row => row.command === 'preflight'));
-assert.ok(preflight.commandLoop.some(row => row.command === 'approve/commit'));
+assert.ok(preflight.commandLoop.some(row => row.command === 'review/commit'));
 assert.ok(preflight.commandLoop.every(row => row.harnessStep));
 
 const mapped = run(['map', '--json']);
@@ -45,19 +45,30 @@ assert.equal(findings.verdict, 'WATCH');
 assert.equal(findings.reason, 'LIVE_BINDINGS_MISSING');
 assert.ok(findings.findings.some(row => row.code === 'LIVE_BINDINGS_MISSING'));
 assert.ok(findings.findings.some(row => row.code === 'COST_SWEEP_NOT_RUN'));
+if (workflow.domainEngine?.kind === 'cost') {
+  assert.match(findings.nextGate, /cost sweep/);
+} else {
+  assert.match(findings.nextGate, /preview --variant/);
+  assert.doesNotMatch(findings.nextGate, /cost sweep/);
+}
 
-const preview = run(['preview', '--variant', workflow.variants[0].id, '--json']);
-assert.equal(preview.status, 'PREVIEW_READY');
-assert.equal(preview.variant.id, workflow.variants[0].id);
-assert.equal(preview.mutation, 'none');
+const preview = run(['preview', '--json']);
+assert.equal(preview.verdict, 'BLOCK');
+assert.equal(preview.reason, 'FINDING_REQUIRED');
+assert.equal(preview.status, 'PREVIEW_BLOCKED');
+
+const scopePreview = run(['preview', '--variant', workflow.variants[0].id, '--json']);
+assert.equal(scopePreview.verdict, 'WATCH');
+assert.equal(scopePreview.reason, 'VARIANT_SCOPE_PREVIEW_ONLY');
+assert.equal(scopePreview.mutation, 'none');
 
 // Expected operational blocker: typed BLOCK at exit 0, not a shell failure.
 const commit = run(['commit', '--variant', workflow.variants[0].id, '--json'], 0);
 assert.equal(commit.verdict, 'BLOCK');
-assert.equal(commit.reason, 'APPROVED_CONFIGHUB_MUTATION_REQUIRED');
+assert.equal(commit.reason, 'LIVE_BINDINGS_REQUIRED');
 assert.equal(commit.status, 'COMMIT_BLOCKED');
-assert.equal(commit.error, 'APPROVED_CONFIGHUB_MUTATION_REQUIRED');
-assert.match(commit.message, /approved scoped ConfigHub mutation/);
+assert.equal(commit.error, 'LIVE_BINDINGS_REQUIRED');
+assert.match(commit.message, /exact preview plus its local review record/);
 
 const verify = run(['verify', '--json']);
 assert.equal(verify.status, 'WATCH');

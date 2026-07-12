@@ -1,23 +1,36 @@
 # Cost Management App
 
-An example of the full governed loop: find config-derived waste across an
-org, price it against a declared rate card, and turn one finding at a time
-into an approved, revision-verified, receipted ConfigHub change. The
-neighbouring [`cost-estimator`](../cost-estimator) example is the enforcement
-plane for the same problem (price book, budget verdicts, apply gate); this
-app is the reduction plane. Start with [AI_START_HERE.md](AI_START_HERE.md)
-for a staged walkthrough and [contracts.md](contracts.md) for the stable
-outputs automation can assert against.
+An example of the full governed loop: find config-derived waste across an org,
+price it against a declared rate card, and turn one finding at a time into an
+exactly reviewed, revision-verified, receipted ConfigHub change. The neighbouring
+[`cost-estimator`](../cost-estimator) example is the enforcement plane for the
+same problem (price book, budget verdicts, apply gate); this app is the reduction
+plane. Start with [AI_START_HERE.md](AI_START_HERE.md) for a staged walkthrough
+and [contracts.md](contracts.md) for stable outputs automation can assert against.
 
 This is a standalone ConfigHub operational app. It helps an operator review
-affected Variants, preview a proposed change, approve the exact scope, run the
-allowed action, and read the proof receipt.
+affected Variants, generate an exact dry-run diff, and record an inspectable
+review packet. After a short-lived exact review and explicit confirmation, its
+CLI can run the finding-owned function through ConfigHub and prove the resulting
+revision. Provider-native atomicity and controller/runtime delivery remain
+separate, visible proof layers.
 
 Original request:
 
 ```text
-cost optimisation across our Kubernetes fleet
+cost-management-opencost
 ```
+
+## Prerequisites
+
+- Node.js 18 or newer and npm.
+- Git when the destination is a repository rather than a local review folder.
+- A current `cub` binary with `cub auth status`, `cub oauthclient`, and
+  `cub function set --revision`.
+- Permission to read the target Units and, for browser mode, create or reuse an
+  OAuth client in the chosen ConfigHub org.
+- Any mutation function named by a finding must already exist in that org. The
+  app never installs a missing function or widens its own function whitelist.
 
 ## Run Locally
 
@@ -60,12 +73,13 @@ Create a browser OAuth client for this app, install the UI dependencies, then st
 
 ```bash
 cub auth status
-npm run oauth:register
+CONFIGHUB_ORG=<org-slug-or-id> npm run oauth:register
+CONFIGHUB_ORG=<org-slug-or-id> npm run oauth:register -- --confirm
 npm install
 VITE_CONFIGHUB_BASE_URL=https://hub.confighub.com VITE_OAUTH_CLIENT_ID=<client-id> npm run ui:dev
 ```
 
-`npm run oauth:register` prints the exact SDK UI command with the generated client ID. It creates or reuses the local OAuth client with the redirect URI `http://localhost:5173/`, and records the registration (client id, redirect URIs, timestamps, state) in `confighub/registry/fleet-record.json`.
+The first `npm run oauth:register` is a read-only confirmation card: it verifies the authenticated Cub context matches `CONFIGHUB_ORG` and shows the exact org, client name, and redirect URI. Only the repeated command with `--confirm` creates or reuses the OAuth client. It then prints the exact SDK UI command and records the internal and external org ids, client id, redirect URIs, timestamps, and state in `confighub/registry/fleet-record.json`. The default redirect URI is `http://localhost:5173/`.
 
 The SDK discovers ConfigHub auth settings from `{{baseUrl}}/api/info`, runs OIDC Authorization Code with PKCE, exchanges the IdP token for a ConfigHub-minted token, keeps that token in memory, and calls ConfigHub with `Authorization: Bearer <token>`.
 
@@ -99,7 +113,9 @@ node cli.mjs preflight --json
 node cli.mjs map --json
 node cli.mjs findings --json
 node cli.mjs preview --variant <variant-id> --json
-node cli.mjs commit --variant <variant-id> --json
+node cli.mjs preview --finding <finding-id> --json
+node cli.mjs review --record --preview <preview-id> --reason '<why>' --json
+node cli.mjs commit --review <review-id> --confirm-execute --json
 node cli.mjs verify --json
 node cli.mjs receipt --json
 ```
@@ -107,16 +123,33 @@ node cli.mjs receipt --json
 The loop is:
 
 ```text
-preflight -> map/list -> findings -> preview -> approve/commit -> verify -> receipt
+preflight -> map/list -> findings -> preview -> review/commit -> verify -> receipt
 ```
 
-`commit` means an approved scoped ConfigHub mutation. In this starter package it
-stays blocked until the live ConfigHub object, approval object, governed action
-executor, proof receipt, and runtime evidence are bound. That blocker is a typed
+`commit` checks one exact review packet derived from a finding, dry-run at a
+specific Unit revision, saved as a preview, and reviewed by the authenticated
+Cub user. `commit --review <id> --confirm-execute` is the explicit write request.
+It rechecks the Unit, runs only the finding-owned whitelisted function, requires
+the head to advance by exactly one, and requires the actual mutations to equal
+the reviewed dry run before writing a successful ConfigHub-revision receipt.
+Provider-native atomic expected-revision enforcement is still recorded as
+`WATCH`; controller and runtime evidence remain a separate proof gate. A blocker is a typed
 `{"verdict": "BLOCK"}` at exit 0, not a shell failure — every CLI, lifecycle,
 and binding-check result follows the same rule. See **Result Contract** in
 `SPECIFICATION.md` for the full `verdict`/`reason` table; branch on those fields,
 not on shell success.
+
+The saved review JSON records which authenticated Cub user inspected which
+preview. It stays at `WATCH`: it is not a signed ConfigHub approval object and
+does not grant permission by itself. The separate `--confirm-execute` action
+requests the write; the receipt then proves the ConfigHub revision while
+keeping atomicity and delivery limitations visible.
+
+That receipt is a `local-unsigned-execution-receipt`. The commit response can
+pass the ConfigHub-revision layer after readback and mutation parity succeed,
+but reloading the local receipt reports `WATCH` /
+`LOCAL_UNSIGNED_RECEIPT_RECORDED`. It is not a signed approval, fresh server
+attestation, controller result, or live runtime proof.
 
 ## Live Proof Checks
 
@@ -127,9 +160,10 @@ npm run binding:check
 
 `oauth:smoke` checks ConfigHub browser-auth discovery and, when
 `CONFIGHUB_ACCESS_TOKEN` is present, `/api/me`. `binding:check` requires
-`data/live-bindings.json` to name the live ConfigHub object, approval object,
+`data/live-bindings.json` to name the live ConfigHub object and org identity,
 governed action contract, action endpoint, proof receipt, and runtime evidence
-source. The check rejects copied placeholder values from
+source. Action authority can be ready while delivery proof remains open; the
+check reports review readiness as `LIVE_BINDINGS_REVIEW_READY`. It rejects copied placeholder values from
 `data/live-bindings.example.json`.
 
 On a fresh clone, `npm run binding:check` classifies the state as
@@ -141,12 +175,13 @@ blocker follows the same rule — expected `BLOCK`/`ASK`/`WATCH` outcomes are
 typed JSON at exit 0; non-zero is reserved for malformed input, missing core
 files, or a runtime refusal (a decommissioned `npm start`).
 
-If the ConfigHub org is live but the scenario-specific write path is not ready
-yet, bind the app to the verified read surface and make the missing pieces
-explicit. For example, the action endpoint can be
-`blocked:governed-write-executor-not-installed` and runtime evidence can be
-`blocked:no-controller-or-runtime-target-bound`. That makes the GUI useful
-without pretending apply is ready.
+If the ConfigHub org is live but the action executor is not ready, bind the app
+to the verified read surface and set the action endpoint to
+`blocked:governed-write-executor-not-installed`; preview and commit remain
+blocked. Runtime evidence may remain
+`blocked:no-controller-or-runtime-target-bound` while a ConfigHub mutation is
+reviewed, but the app cannot call the result live until that delivery proof is
+filled.
 
 ## ConfigHub Self-Management
 
@@ -164,9 +199,13 @@ The starter self-management pack lives under `confighub/`:
   ConfigHub OCI GitOps.
 
 The live app is not complete until those app-self-management artifacts are
-created as ConfigHub Units, promoted through real Variants, delivered through
-`ArgoCDOCI` or `FluxOCI`, reconciled by the controller, and proven running on
-Kubernetes.
+created as ConfigHub Units, promoted through real Variants, published as an
+immutable Release with `cub release publish` through a
+server-worker `OCI` Target, consumed by the declared Argo or Flux controller,
+and proven running on Kubernetes.
+If the platform cannot atomically bind the expected Unit-revision manifest,
+Release publication remains blocked and the app stays `WATCH` rather than
+claiming live delivery.
 
 ## App Lifecycle
 
@@ -231,7 +270,8 @@ record owns this app's client lifecycle so the client never becomes an
 untracked side effect:
 
 - **One client per app per org.** `npm run oauth:register` creates or reuses
-  this app's client and records the registration in the `oauthClient` block of
+  this app's client only after its read-only confirmation result is repeated
+  with `--confirm`, then records the registration in the `oauthClient` block of
   `confighub/registry/fleet-record.json`.
 - **Client ids are public identifiers, but registrations are inventory.** The
   record tracks the client id, owning org, registered redirect URIs, creation
@@ -275,13 +315,13 @@ The app is live only when a user signs in through ConfigHub browser OAuth, the
 app can call ConfigHub successfully, the affected Variants are bound to real
 ConfigHub objects, and the proof receipt reflects the action that ran.
 
-## Cost engine
+## Cost Engine
 
-`npm run cost:sweep` runs two read-only, org-wide ConfigHub queries (a CEL
+`npm run cost:sweep` runs two read-only, org-wide ConfigHub queries: a CEL
 extraction of every Deployment/StatefulSet container's replicas and resources,
-and a Unit listing with Target bindings), then writes priced findings to
-`data/cost-findings.json` (deployment-local, gitignored). The rules live in
-`src/cost-engine.mjs` and hold three honesty lines that the tests enforce:
+and a Unit listing with Target bindings. It writes priced findings to
+`data/cost-findings.json`, which is deployment-local and gitignored. The rules
+live in `src/cost-engine.mjs`, with three honesty constraints enforced by tests:
 
 - Requests drive node provisioning, so only request-backed numbers are priced.
   Limits are exposure, never savings.
@@ -290,6 +330,9 @@ and a Unit listing with Target bindings), then writes priced findings to
 - Every priced figure carries the rate-card basis from `data/rate-card.json`.
 
 Findings surface in `cli.mjs findings`, `/api/cost-findings`, and the signed-in
-GUI. Every recommendation is a governed dry-run diff
-(`cub function set ... --dry-run -o mutations`); nothing mutates without the
-approval gate.
+GUI. Each actionable finding owns its function, target, and arguments. The CLI
+stores the exact dry-run diff before review; the local review remains unsigned
+`WATCH` evidence, and only a separate `--confirm-execute` request can reach the
+governed ConfigHub write. Its local execution receipt also reloads as `WATCH`,
+not signed/live proof. Controller and runtime delivery stay unclaimed until
+their own proof is attached.

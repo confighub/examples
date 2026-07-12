@@ -2,7 +2,7 @@
   "app_name": "Cost Management App",
   "auth_mode": "browser-oauth",
   "config_hub_browser_oauth_default": true,
-  "created_at": "2026-07-11T17:47:40+00:00",
+  "created_at": "2026-07-12T22:56:40+00:00",
   "destination": {
     "ci": "github-actions",
     "deploy_target": "argo-oci",
@@ -11,58 +11,69 @@
     "org": "confighub",
     "repo": "https://github.com/confighub/examples.git",
     "status": "DECLARED",
-    "visibility": "private"
+    "visibility": "public"
+  },
+  "engine": {
+    "files": [
+      "src/cost-engine.mjs",
+      "scripts/cost-sweep.mjs",
+      "data/rate-card.json",
+      "tests/cost-engine.test.mjs"
+    ],
+    "kind": "cost",
+    "note": "Findings are computed from org-wide read-only sweeps; savings claims follow the engine's honesty rules (requests-only pricing, bound-units-only claims, rate basis on every figure).",
+    "status": "ENGINE_READY"
   },
   "file_hashes": {
-    ".gitignore": "8f8df2a3a54b3cdc7d8ba6e402a989fd86baba6aeca7726ec759a55be1127d9b",
-    "AI_START_HERE.md": "025deb75aeb73d682221a62d64298b4dcbfac8b47d28651bd1c7efa89a419dbc",
-    "JUSTIFICATION.md": "f6fb26cbab99e0433791488cb4eeaf94a3ed2977a624ce8646e0630691c4f25e",
-    "README.md": "0ffa638b4135bdb612125a367dcb38d1bba48d1bdc3d147df85721b66c695984",
-    "SPECIFICATION.md": "4b3006660d17dc4c5bdce616cc97c9fe4014742d00d52047a8f26bbc7b992fdd",
-    "cli.mjs": "20671fc2e9453f2dddf8c53ba66b31f099f6df82b2facebda7f86eb5f51cd67c",
-    "confighub/README.md": "bc203c533083b76291f12e2dc7bfbad813acd572ba5fb4b90a75a49625baeb98",
+    ".gitignore": "d30c92c303d88bd836f849cd2f3f03e80834d8d9d0b1381b7b4e88c7a691c0f9",
+    "JUSTIFICATION.md": "74ded2266e92556374204740cc950df30c9b717b2fab7b7a5c4d3049735885ab",
+    "README.md": "2f2494f16d49f8dbe8a05cbbcbf769a2ec56f3d1e37ae3c9bacf834a76683c50",
+    "SPECIFICATION.md": "a6f8dfdbb38fc570d72465efeeb34570d192993be061e26c13be813a0514cf01",
+    "cli.mjs": "4463384d8da4adf903e48dc649af7c1c044a84f16aef1479ba28dea8f55ea2a6",
+    "confighub/README.md": "793d763ce61bd7c2d490ba03ed6dac39c1b4edf0a2460bfdd74abb1bcf62e440",
     "confighub/k8s/deployment.yaml": "b359ff3f478fa03f527f796e34ac07e9f185862cd8fe3356da2733d1f6cb49a9",
     "confighub/k8s/networkpolicy.yaml": "8dbd568a25d5ac23ffdaa3a48cac213e4ecabf3d00d27dfe6fee93063e8b6ac2",
     "confighub/k8s/service.yaml": "288de6f665320e56aed1b71b019bbf55dafdb140659bea119ddcb25bdf6eae64",
-    "confighub/registry/README.md": "233895baf76cc0424ec095095844556ea4a0d278131ab111a1007f2548054dcd",
-    "confighub/registry/fleet-record.unit.yaml": "42d055bbd471bcdb78ac42e9d8f7024f7e926fbf7a6d5118d0980b8ffef3b162",
-    "confighub/self-management.json": "e2b71d60af695e3f55ec6806de182db0c5ea8e2b4c89000fcf82ce19044d008a",
+    "confighub/registry/README.md": "5173d612186a355e397cfd7055e49ccb202fb1c120f6e3560b6921b689068f78",
+    "confighub/registry/fleet-record.unit.yaml": "29bc1a7c32b7ac9f882800e8ba081b0ecfb1276ffb54cf3ed1d35448d41cf865",
+    "confighub/self-management.json": "2e8c283cb321804d0b32b28c9c1b9a13c5bdd7c81e14cdacb0f5b6c98c002cb0",
     "confighub/variants/dev.json": "f225a830d9dd320c7a2052a075a5eb6dfebb5d8a09e28db2b597a600b36c8aa3",
     "confighub/variants/prod.json": "3313ab89a154033a4bd89ad4bf96d43cc387f937e4d625fd93bbe55f769f3138",
     "confighub/variants/stage.json": "061b4f09db05c98fc82e4c1085286ab32c315deab4e4cb4ec912939c2053190d",
-    "contracts.md": "a6a42313d6f0fa0039b95d83acbf9f53f7b4a5b8ceb2858a795e502cfe7f69b7",
-    "data/live-bindings.example.json": "39007ec09eef51ae11c4896f1694a7a5d928070d17b13cd0110b9fce953ed143",
-    "data/operational-workflow.json": "365ac37c648484711257ae3893617d137fb76ec372a7bc3247fed9a9032e7df8",
+    "data/live-bindings.example.json": "0d1aede8922b3739dfe5adee14c38349b9c314ae854d715796a1a1a55bae1583",
+    "data/operational-workflow.json": "e91aed15ed2cc34a8cecd0d50edca36c2cb3a8ce90e23c6e176f4b993e7f2de1",
     "data/rate-card.json": "2a4c11c2878eaee5fc6defe14042fe6e36b32761b4ce73b68c54c8d083aa33e9",
     "index.html": "8affb90411b451b6850cc25cc0c36226fa4146efae07883bd59afabb0e93b780",
-    "lifecycle.mjs": "43944d30d5f1159cdba2a9338cf50bf7db84b5a47c3cefabf93238eca0b880d8",
-    "package.json": "8155589eeea2b0000866081d1836efb1eadd5c1852c36737a389a38687fda126",
-    "public/app.js": "c11af2cfa149c534f04ae2de8a35c99573b026654b8b3e824614405e26af1cee",
+    "lifecycle.mjs": "a9cff4e01a80cb7cd89788fc20f6fb3d2064789c73d85f06c0f89d42e5f361e5",
+    "package.json": "dacc2a26b8d78ced0ac36d18b2906ec7c4dc4bb9d540bb7e1d4e1b49e647a2e4",
+    "public/app.js": "51d3f11b40257f570a851955938e634b38bb2b12614fa24018ecc728317cae42",
     "public/auth.js": "bea5f7edd4e4010a74170a5f9588ef31f29fde37227de075825e7489695acc7f",
-    "public/index.html": "0274631338c4e714cebf6d128c20769fceafedf62c19fedda2c390382ac07cdf",
+    "public/index.html": "d0d35624b66e04af83336500013d0d508cf2a6a81c00e45f2291a79f8d2e346d",
     "public/styles.css": "8878b600994c33dc928f8758276ac1ee7372d0605b06e7807176237da537584b",
-    "scripts/binding-check.mjs": "fc8d7d4dc92a57fad05b7104f3dd6bcda11b0f15740e2e7487f9667af1104c6a",
+    "scripts/binding-check.mjs": "6062807c2db88aa5f1033e947d5c32c2643d001552fdeb51f5a5b95c05ac0cb4",
     "scripts/cost-sweep.mjs": "2b196015cbf45b81c6ba5b7073a1e2b23a75e86a4183ebb38fcf6ef0845d75fd",
     "scripts/oauth-smoke.mjs": "fee70ca08a301214cf4a05ea250961c2588ef120a3c8653ac007c2967058c109",
-    "scripts/register-oauth-client.mjs": "3e9afbebf345980d361642ca191695dee17db73ecd3483675535df786f0f1ba5",
-    "scripts/verify.mjs": "f42d09d245cc999dc9cbb68be5b41c03046cdfdfc238aa212f048b49f9307bb9",
+    "scripts/register-oauth-client.mjs": "8a896101345dce9a30d998c24da3b72ad099fe59535348b885d0159ca3d85aad",
+    "scripts/verify.mjs": "3faca13a3461e5e2f3c403de5550b4b659730c3c2a195cafa6b64620ceefeb7a",
     "server.mjs": "a17c4e492f406a382c99bc878ebe8950de76f7e64dfde3b8125265dc77f422de",
-    "skills/cost-management-app-operator/SKILL.md": "0a4e3868adfd471a77bf9c681a894dd3e7de3059dfb9fdf449182dca4169dbb2",
+    "skills/cost-management-app-operator/SKILL.md": "80ae1c43213fc94963b8e900243852c707833cca8cf2a576b2d15249ffadbf31",
     "skills/cost-management-app-operator/evals/trigger_evals.json": "2f6d18110d1bee47566825ad8c638473414ccd5f9edd4c256d22683b1c2ffe1c",
     "src/config.mjs": "808c80121d167f2521f66c66e6445a49f02f185a2c0311b81325349ab06c72b5",
-    "src/cost-engine.mjs": "4244cbc7ca8c55329caa5998d6902e74743d221b462ebe4693c13031fd5b7d72",
-    "src/executor.mjs": "e1a7bb81eb48f9cfd5bb4c5169ba30f87162a7f0a479181566e52dc4dd5d501b",
-    "src/server.mjs": "6f87e43f48204718377e799a61b0c1969390b9079ecf2c55c1eea68c01c3072b",
+    "src/cost-engine.mjs": "1cf43749a7af07b70fc0157ba1f1bd53dbf7e95ac738203959f93eaeb134183d",
+    "src/executor.mjs": "df76ce43af4301b71199d568fc7647a8a4284fd309efef6684872506fa911326",
+    "src/live-bindings.mjs": "db2420ee3854ea189936777c371cca5352ea2b05ac564316b9bda277f13191cb",
+    "src/server.mjs": "ae0b37a8dc8a309ce57b13fea1c107a09e0efd6a5582203553f56c52bb3da466",
     "src/workflow.mjs": "b4a4fcfcebab21979f3abae0914ce99ec31128d7eda552934c0571a5be69b5c7",
-    "tests/app.test.mjs": "22b717761ae141f552ee5d0a20443630a5ce3f2e4d5d888b257134567cc26115",
+    "tests/app.test.mjs": "179f188db1ee60b5effbb6e7d7fd13e93facbf1851edd9374bff550c934a9ea1",
     "tests/auth-surface.test.mjs": "91c58bdc7ab51caae7bd1f5431fcf9b4f14dc246ec590373f42e235abfe36078",
-    "tests/cli.test.mjs": "272b1e24c54098e41789d80f9014eb4de96dec70c37c4fe27587b6d8a95c91ac",
-    "tests/cost-engine.test.mjs": "77a20b0a2b43844c8b4a87e75b82dec2b434f9de2b3b2b7b9483c1fe523eaf69",
-    "tests/executor.test.mjs": "4c284b4aa0ea59fa1e05b4d1c54a4646f8c4e443f3a9e7cb4fd7b9c66eca60e6",
-    "tests/lifecycle.test.mjs": "320e907fdebbca7bdbacf09f412462da9f2a0367b81c4d68206b227bdb13336c",
-    "tests/ui-tool.test.mjs": "75aeb632118a22f195a1b4c5963b195c899c8362bdeaad77c71bb44e6a11c36f",
+    "tests/cli.test.mjs": "7f4dfbf5547e899a2deff0680f09036724dfdbd81c1670f06fc098d4d10d0e51",
+    "tests/cost-engine.test.mjs": "418da0714c7406059d993703e0eedbc5d8aa999413de9858c683bd2b0480d481",
+    "tests/executor.test.mjs": "a565c4c4f58611498a728eb45f2ab4024ecd453fd322228ce8cc4be4b8cccb96",
+    "tests/lifecycle.test.mjs": "b94998a4a7a69656f1fa9a0540eec26e3c03c72a0e2ad4caa0e4cfb085feb060",
+    "tests/live-bindings.test.mjs": "f297a61f6ca795452a2ba07021e669bc285a077856c64d8977e12436754b9fbb",
+    "tests/ui-tool.test.mjs": "0f47709c7ee23cc14b3ad37c92b8b06e7437b86f8346149d3d0b335bdb9ae252",
     "tsconfig.json": "3d1888b990356721fe73d78af880aa6941bf51182ca2dec2c7032df7b6e7d2dd",
-    "ui/src/App.tsx": "5e4e1c31cd0b98de98e912bda9443de209ac70297ef6242ac127bb42ebdc4ed1",
+    "ui/src/App.tsx": "ecaa2fde3d0c6dbbfdaa20f5952c78a05771227d09b4f575ac95b18a19f7abba",
     "ui/src/index.css": "00066050eeadc9d792ebb2c388b8c39c676f2402b00d118839924bec8964e880",
     "ui/src/main.tsx": "e8a3d4cfe3d8b3595e19808cdd6193aad6336b16c261b58db7bbcc4b3ed9284a",
     "vite.config.ts": "607c7849680658c8028cdeafdf177ecbf5e3e0407aac2e6436bf30ea42f4be8f"
@@ -87,6 +98,7 @@
     "confighub/variants/stage.json",
     "data/live-bindings.example.json",
     "data/operational-workflow.json",
+    "data/rate-card.json",
     "index.html",
     "lifecycle.mjs",
     "package.json",
@@ -95,6 +107,7 @@
     "public/index.html",
     "public/styles.css",
     "scripts/binding-check.mjs",
+    "scripts/cost-sweep.mjs",
     "scripts/oauth-smoke.mjs",
     "scripts/register-oauth-client.mjs",
     "scripts/verify.mjs",
@@ -102,12 +115,18 @@
     "skills/cost-management-app-operator/SKILL.md",
     "skills/cost-management-app-operator/evals/trigger_evals.json",
     "src/config.mjs",
+    "src/cost-engine.mjs",
+    "src/executor.mjs",
+    "src/live-bindings.mjs",
     "src/server.mjs",
     "src/workflow.mjs",
     "tests/app.test.mjs",
     "tests/auth-surface.test.mjs",
     "tests/cli.test.mjs",
+    "tests/cost-engine.test.mjs",
+    "tests/executor.test.mjs",
     "tests/lifecycle.test.mjs",
+    "tests/live-bindings.test.mjs",
     "tests/ui-tool.test.mjs",
     "tsconfig.json",
     "ui/src/App.tsx",
@@ -116,13 +135,13 @@
     "vite.config.ts"
   ],
   "generator": {
-    "commit": "2b393c6",
+    "commit": "92f10c8",
     "name": "confighub-operational-app-export",
     "regeneration_policy": "Regenerate with the same or a newer generator version, then run node lifecycle.mjs upgrade --from <regenerated-dir> to diff the regeneration against local modifications.",
     "version": "0.1.7"
   },
   "intent": {
-    "raw": "cost optimisation across our Kubernetes fleet"
+    "raw": "cost-management-opencost"
   },
   "lifecycle": {
     "commands": [
@@ -135,17 +154,19 @@
     ],
     "entrypoint": "lifecycle.mjs"
   },
-  "next_gate": "Register a ConfigHub browser OAuth client, start this app, run oauth:smoke, sign in, verify /api/me, create deployment-local live-bindings.json from verified ConfigHub read objects or explicit blocked: reasons, run binding:check, then bind the scenario-specific live action executor and runtime proof.",
+  "next_gate": "Set CONFIGHUB_ORG, register the browser OAuth client, run oauth:smoke, sign in, verify /api/me, bind the ConfigHub action authority, run the domain finder, create and inspect preview --finding <id>, record the short-lived review with the authenticated Cub identity, then explicitly confirm commit for that review id; controller and runtime proof remain separate.",
   "non_claims": [
     "The export did not mutate ConfigHub, a controller, or Kubernetes.",
-    "The export wrote files only under this app directory; any Git commit or push is a delivery step, not live operational proof.",
-    "The generic apply endpoint is blocked until the live ConfigHub action, approval object, proof receipt, and runtime evidence source are bound.",
+    "The export wrote the app under the declared destination and updated workflow assistant's user-scoped fleet inventory; any Git commit or push is a delivery step, not live operational proof.",
+    "The generic browser apply endpoint remains blocked; the CLI can execute one finding-owned action after an authenticated short-lived review and separate explicit confirmation, but provider-native atomic expected-revision enforcement is not yet available and remains visible in the receipt.",
     "Fleet registration recorded the app in the org-level index shape; the fleet-record Unit itself is created through the governed path, not by this export."
   ],
   "oauth_client": {
     "client_id": "",
     "client_name": "cost-management-app-local",
-    "org": "confighub",
+    "external_organization_id": "",
+    "org": "",
+    "organization_id": "",
     "policy": "One browser client per app per org; the client id is public, the registration is fleet inventory. Registration, redirect-URI changes, rotation, and revocation are recorded in the fleet record; cross-org access is out of scope for this client.",
     "record": "confighub/registry/fleet-record.json",
     "redirect_uris": [],
@@ -180,8 +201,10 @@
   "scenario_id": "cost-management-opencost",
   "schema": "confighub.operational-app-export.v0",
   "schemas": {
-    "live_bindings": "confighub.live-bindings.v0",
-    "migrations": [],
+    "live_bindings": "confighub.live-bindings.v1",
+    "migrations": [
+      "confighub.live-bindings.v0 -> confighub.live-bindings.v1"
+    ],
     "operational_workflow": "confighub.operational-workflow.v0",
     "self_management": "confighub.generated-operational-app.self-management.v0"
   },
@@ -191,7 +214,7 @@
     "returncode": 0,
     "status": "PASS",
     "stderr": "",
-    "stdout": "\n> cost-management-app@0.1.0 verify\n> node scripts/verify.mjs && npm test\n\n\n> cost-management-app@0.1.0 test\n> node tests/app.test.mjs && node tests/auth-surface.test.mjs && node tests/ui-tool.test.mjs && node tests/cli.test.mjs && node tests/lifecycle.test.mjs\n\n"
+    "stdout": "\n> cost-management-app@0.1.0 verify\n> node scripts/verify.mjs && npm test\n\n\n> cost-management-app@0.1.0 test\n> node tests/app.test.mjs && node tests/auth-surface.test.mjs && node tests/ui-tool.test.mjs && node tests/cli.test.mjs && node tests/live-bindings.test.mjs && node tests/lifecycle.test.mjs && node tests/executor.test.mjs && node tests/cost-engine.test.mjs\n\n\u2714 one classifier owns missing, migration, placeholder, and blocked states (0.618917ms)\n\u2714 contract values must be resolved, not merely non-empty (0.1065ms)\n\u2714 review, commit, and live readiness remain distinct states (0.139708ms)\n\u2139 tests 3\n\u2139 suites 0\n\u2139 pass 3\n\u2139 fail 0\n\u2139 cancelled 0\n\u2139 skipped 0\n\u2139 todo 0\n\u2139 duration_ms 3.577166\n\u2714 preview accepts only a finding-owned whitelisted action (0.840917ms)\n\u2714 preview binds the finding, authority, exact revision, and dry-run diff (1.765625ms)\n\u2714 preview resolves and pins the active Cub context before authority reads or dry-run (0.347791ms)\n\u2714 preview refuses a target outside the bound organization (0.112917ms)\n\u2714 a missing cub executable is an ERROR rather than an operational blocker (0.134ms)\n\u2714 local review identity comes from authenticated Cub and stays on the preview revision (0.641375ms)\n\u2714 duplicate reviews stay uniquely addressable but share one execution idempotency key (0.505ms)\n\u2714 local review refuses auth, org, revision, and preview-integrity failures (1.054ms)\n\u2714 local review alone cannot trigger a write (0.793584ms)\n\u2714 explicit commit writes one revision only when actual mutations match the reviewed dry run (1.188625ms)\n\u2714 commit refuses an expired exact review before calling the mutation (0.413625ms)\n\u2714 commit rechecks expiry immediately before claiming execution (0.512417ms)\n\u2714 an existing execution claim prevents a second local process from writing (0.67475ms)\n\u2714 commit refuses when the unit moved after local review (0.478167ms)\n\u2714 commit refuses a deleted or recreated Unit even when its slug and revision match (0.618084ms)\n\u2714 commit requires the same authenticated identity that recorded the review (0.494708ms)\n\u2714 unexpected revision sequencing creates an unverified receipt, never a false PASS (0.87625ms)\n\u2714 actual mutation output must match the reviewed dry run (0.726166ms)\n\u2714 a failed mutation attempt consumes the review into an unverified receipt (0.974375ms)\n\u2714 status never hides a newer invalid review behind an older valid result (0.471ms)\n\u2714 artifact ids and review-preview linkage cannot traverse or be tampered (0.412375ms)\n\u2714 whitelist stays closed (0.026041ms)\n\u2139 tests 22\n\u2139 suites 0\n\u2139 pass 22\n\u2139 fail 0\n\u2139 cancelled 0\n\u2139 skipped 0\n\u2139 todo 0\n\u2139 duration_ms 17.748625\n\u2714 quantity parsing (0.665458ms)\n\u2714 splitJsonObjects handles a pretty-printed stream with braces in strings (0.513ms)\n\u2714 missing requests is found and never priced as savings (0.363708ms)\n\u2714 non-prod replicas priced from requests only when the unit is bound (0.164ms)\n\u2714 prod-named spaces are exempt from the replica rule (0.062292ms)\n\u2714 leftover space detected with honest bound/unbound claims (0.116542ms)\n\u2714 limit headroom is hygiene, never priced (0.076625ms)\n\u2714 stack copies surface as evidence-only from three copies up (0.088042ms)\n\u2714 every priced figure carries the rate-card basis (0.082166ms)\n\u2139 tests 9\n\u2139 suites 0\n\u2139 pass 9\n\u2139 fail 0\n\u2139 cancelled 0\n\u2139 skipped 0\n\u2139 todo 0\n\u2139 duration_ms 5.399792\n"
   },
   "ui_tool": {
     "apiClientPackage": "@confighub/api",
@@ -219,61 +242,5 @@
       "requiresPackageVersion": "@confighub/react-auth >=0.2.0"
     },
     "tokenPosture": "The SDK keeps the minted ConfigHub token in memory; browser storage only ever holds non-credential state (transient PKCE state and a returning-login marker)."
-  },
-  "local_amendments": [
-    {
-      "at": "2026-07-11T21:00:00+00:00",
-      "summary": "Cost engine added in-repo: org-wide read sweep, priced findings, governed dry-run recommendations. Tests made stage-agnostic for deployment-local state.",
-      "files_changed": [
-        ".gitignore",
-        "cli.mjs",
-        "confighub/registry/fleet-record.json",
-        "package.json",
-        "scripts/verify.mjs",
-        "src/server.mjs",
-        "tests/app.test.mjs",
-        "tests/cli.test.mjs",
-        "tests/lifecycle.test.mjs",
-        "ui/src/App.tsx",
-        "ui/src/index.css"
-      ],
-      "files_added": [
-        "data/rate-card.json",
-        "scripts/cost-sweep.mjs",
-        "src/cost-engine.mjs",
-        "tests/cost-engine.test.mjs"
-      ]
-    },
-    {
-      "at": "2026-07-11T21:30:00+00:00",
-      "summary": "Governed write executor installed: single-use revision-pinned approvals, closed function whitelist, post-mutation revision verification (silent-skip = typed BLOCK), per-change receipts. commit --approval executes; approve --grant grants.",
-      "files_changed": [
-        ".gitignore",
-        "cli.mjs",
-        "package.json",
-        "scripts/verify.mjs",
-        "tests/lifecycle.test.mjs"
-      ],
-      "files_added": [
-        "src/executor.mjs",
-        "tests/executor.test.mjs"
-      ]
-    },
-    {
-      "at": "2026-07-12T13:30:00+00:00",
-      "summary": "Published as the cost-management-app example in the examples repository: destination fields point at this repository, the OAuth client is reset to unregistered so users register their own, and the fleet record leaves the hash contract as a state file per current generator doctrine.",
-      "files_changed": [
-        "app-export-manifest.json",
-        "confighub/registry/fleet-record.json",
-        "confighub/registry/fleet-record.unit.yaml",
-        "confighub/registry/README.md",
-        "lifecycle.mjs",
-        "README.md"
-      ],
-      "files_added": [
-        "AI_START_HERE.md",
-        "contracts.md"
-      ]
-    }
-  ]
+  }
 }

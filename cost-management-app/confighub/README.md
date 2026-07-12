@@ -14,8 +14,9 @@ The app has two governed planes:
 
 - Component: `cost-management-app`
 - Status: `WATCH`
-- Target provider: `ArgoCDOCI`
+- Target provider: `OCI`
 - Controller: `Argo`
+- Publication: `cub release publish`
 - Route: `ConfigHub app config -> OCI artifact -> Argo -> Kubernetes`
 - Kubernetes namespace: `cost-management-app`
 
@@ -28,8 +29,10 @@ promote between Variants, and record proof.
 ## Kubernetes Delivery
 
 The `k8s/` files are starter workload manifests for ConfigHub OCI GitOps. In a
-live install, govern these manifests in ConfigHub, bind them to `ArgoCDOCI`,
-approve/apply, then prove the controller and runtime state.
+live install, govern these manifests in ConfigHub, bind them to `OCI`,
+review the exact Unit-revision manifest, publish it through `cub release publish`,
+then prove the controller and runtime state. Publication must remain blocked if
+the platform cannot atomically bind the expected manifest.
 
 ## Stop Rule
 

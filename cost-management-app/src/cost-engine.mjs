@@ -119,6 +119,12 @@ export function analyze({containers = [], units = []}, rateCard = defaultRateCar
         summary: `Set explicit ${missing.join(' and ')} requests so capacity is scheduled, priced, and governable.`,
         preview: `cub function set --space ${row.space} --unit ${row.unit} set-container-resources-defaults --dry-run -o mutations`,
         gate: 'Review the dry-run diff, then rerun without --dry-run behind an approved scope.',
+        action: {
+          space: row.space,
+          unit: row.unit,
+          function: 'set-container-resources-defaults',
+          args: [],
+        },
       },
     });
   }
@@ -145,6 +151,12 @@ export function analyze({containers = [], units = []}, rateCard = defaultRateCar
         summary: `Scale ${row.workload} to 1 replica in this non-prod space, or label the space prod if that is wrong.`,
         preview: `cub function set --space ${row.space} --unit ${row.unit} set-replicas 1 --dry-run -o mutations`,
         gate: 'Approval scoped to this exact Unit and revision before any live change.',
+        action: {
+          space: row.space,
+          unit: row.unit,
+          function: 'set-replicas',
+          args: ['1'],
+        },
       },
     });
   }
@@ -246,6 +258,19 @@ export function analyze({containers = [], units = []}, rateCard = defaultRateCar
   findings.sort((a, b) =>
     (severityOrder[a.severity] - severityOrder[b.severity])
     || ((b.priced?.monthly || 0) - (a.priced?.monthly || 0)));
+  const findingIds = new Map();
+  for (const finding of findings) {
+    const identity = [finding.rule, finding.space, finding.unit, finding.workload]
+      .filter(Boolean)
+      .join(':')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+    const baseId = identity || 'finding';
+    const occurrence = (findingIds.get(baseId) || 0) + 1;
+    findingIds.set(baseId, occurrence);
+    finding.id = occurrence === 1 ? baseId : `${baseId}-${occurrence}`;
+  }
 
   const boundUnits = units.filter(isBound);
   const configuredMonthly = enriched.reduce(

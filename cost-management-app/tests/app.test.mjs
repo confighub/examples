@@ -70,7 +70,19 @@ try {
     body: JSON.stringify({variantId: variants.data.variants[0].id}),
   });
   assert.equal(preview.response.status, 200);
-  assert.equal(preview.data.status, 'PREVIEW_READY');
+  assert.equal(preview.data.verdict, 'WATCH');
+  assert.equal(preview.data.status, 'PREVIEW_HANDOFF_REQUIRED');
+  assert.equal(preview.data.reason, 'EXACT_FINDING_REQUIRED');
+
+  const review = await json('/api/review', {
+    method: 'POST',
+    headers: {'content-type': 'application/json', authorization: 'Bearer test-token'},
+    body: JSON.stringify({variantId: variants.data.variants[0].id}),
+  });
+  assert.equal(review.response.status, 200);
+  assert.equal(review.data.verdict, 'BLOCK');
+  assert.equal(review.data.status, 'REVIEW_HANDOFF_REQUIRED');
+  assert.equal(review.data.reason, 'STORED_PREVIEW_REQUIRED');
 
   const apply = await json('/api/apply', {
     method: 'POST',
@@ -79,8 +91,8 @@ try {
   });
   assert.equal(apply.response.status, 409);
   // Apply must always be refused with a typed reason: missing bindings on a
-  // fresh deployment, missing executor on a bound one. Never a success.
-  assert.ok(['LIVE_BINDINGS_REQUIRED', 'LIVE_ACTION_EXECUTOR_REQUIRED'].includes(apply.data.error), apply.data.error);
+  // fresh deployment, missing atomic execution on a bound one. Never success.
+  assert.ok(['LIVE_BINDINGS_REQUIRED', 'BROWSER_EXACT_REVIEW_REQUIRED'].includes(apply.data.error), apply.data.error);
 } finally {
   await new Promise(resolve => server.close(resolve));
 }

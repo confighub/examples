@@ -22,7 +22,7 @@ If you are not logged in yet, run `cub auth login` before the `cub` commands.
 - [`initiatives-demo`](./initiatives-demo/README.md): 5 compliance initiatives backed by Kyverno CEL policies, with sample Kubernetes units to evaluate.
 - [`custom-workers`](./custom-workers/): worker extension examples, including bridge, function, and policy workers.
 - [`pilot-example-addons-manager`](./pilot-example-addons-manager/README.md): standalone generated operational app with Variant-first GUI, CLI sibling, production ConfigHub browser OAuth registration, and live-binding proof gates.
-- [`cost-management-app`](./cost-management-app/README.md): generated operational app with a real cost engine: org-wide waste findings priced from config data, and a governed write path (single-use approvals, closed whitelist, revision-verified mutations, receipts). The reduction plane beside [`cost-estimator`](./cost-estimator/README.md)'s enforcement plane.
+- [`cost-management-app`](./cost-management-app/README.md): generated operational app with a real cost engine: org-wide waste findings priced from config data, then a finding-owned dry run, short-lived exact review, explicit execution confirmation, revision-verified mutation, and receipt. The reduction plane beside [`cost-estimator`](./cost-estimator/README.md)'s enforcement plane.
 - [`global-app`](./global-app/README.md): classic multi-service app example.
 - [`helm-platform-components`](./helm-platform-components/README.md): platform component example for Helm-managed infrastructure.
 - [`vm-fleet`](./vm-fleet/README.md): VM fleet operations example.

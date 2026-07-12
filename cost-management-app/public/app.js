@@ -64,7 +64,7 @@ function renderReadiness() {
     '#ready-scope',
     state.selected ? 'ok' : 'watch',
     state.selected ? `${state.selected.variant} / ${state.selected.unit}` : 'not selected',
-    state.selected ? state.selected.space : 'Select one Variant before preparing approval.',
+    state.selected ? state.selected.space : 'Select one Variant before preparing review.',
   );
   setReadinessCard(
     '#ready-operation',
@@ -149,12 +149,12 @@ function isBlockedValue(value) {
   return typeof value === 'string' && value.startsWith('blocked:');
 }
 
-function cleanBlockedReason(value) {
-  return isBlockedValue(value) ? value.slice('blocked:'.length).replaceAll('-', ' ') : value;
-}
-
 function bindingValueReady(value) {
-  return Boolean(value) && !isBlockedValue(value);
+  return typeof value === 'string'
+    && Boolean(value.trim())
+    && !isBlockedValue(value)
+    && !value.includes('<')
+    && !value.includes('>');
 }
 
 function actionContract() {
@@ -168,7 +168,7 @@ function actionContract() {
 function contractSteps(bindings = state.liveBindings) {
   const body = bindings?.bindings || {};
   const contract = actionContract();
-  const hasBinding = bindings?.status === 'LIVE_BINDINGS_PRESENT';
+  const hasBinding = Boolean(bindings?.reviewReady);
   const selectedScope = state.selected ? `${state.selected.space} / ${state.selected.unit}` : '';
   const boundScope = [body.configHub?.space, body.configHub?.unit].filter(Boolean).join(' / ');
   return [
@@ -181,7 +181,7 @@ function contractSteps(bindings = state.liveBindings) {
     {
       label: 'Scope',
       title: state.selected ? 'Variant and Unit selected' : 'Select a Variant Unit',
-      detail: selectedScope || boundScope || 'Pick a live Variant and Unit before preparing approval.',
+      detail: selectedScope || boundScope || 'Pick a live Variant and Unit before preparing review.',
       ready: Boolean(state.selected || boundScope),
     },
     {
@@ -198,14 +198,16 @@ function contractSteps(bindings = state.liveBindings) {
     },
     {
       label: 'Action',
-      title: hasBinding && bindingValueReady(body.action?.endpoint) ? 'Action executor bound' : 'Action executor required',
-      detail: body.action?.endpoint || contract.description || 'Bind the approved operation endpoint or invocation.',
+      title: hasBinding && bindingValueReady(body.action?.endpoint) ? 'Review route bound' : 'Review route required',
+      detail: body.action?.endpoint || contract.description || 'Bind the operation metadata used to prepare an exact review packet.',
       ready: hasBinding && bindingValueReady(body.action?.endpoint),
     },
     {
       label: 'Proof',
       title: hasBinding && bindingValueReady(body.runtime?.evidenceSource) ? 'Runtime proof bound' : 'Controller/runtime proof required',
-      detail: body.runtime?.evidenceSource || 'Bind controller delivery and runtime readback before claiming success.',
+      detail: typeof body.runtime?.evidenceSource === 'string'
+        ? body.runtime.evidenceSource
+        : 'Bind a typed controller/runtime proof reference before claiming success.',
       ready: hasBinding && bindingValueReady(body.runtime?.evidenceSource),
     },
   ];
@@ -228,44 +230,28 @@ function renderActionContract(bindings = state.liveBindings) {
 
 function bindingReadiness(bindings = state.liveBindings) {
   const status = bindings?.status || 'LIVE_BINDINGS_UNKNOWN';
-  const body = bindings?.bindings || {};
-  if (status !== 'LIVE_BINDINGS_PRESENT') {
-    return {
-      label: status === 'LIVE_BINDINGS_PLACEHOLDER' ? 'replace placeholders' : 'bindings missing',
-      applyReady: false,
-      note: status === 'LIVE_BINDINGS_PLACEHOLDER'
-        ? 'The live binding file still contains placeholder values. Replace them with verified ConfigHub objects or explicit blocked: reasons.'
-        : 'Live bindings are missing. Copy data/live-bindings.example.json to data/live-bindings.json and fill in the real ConfigHub objects before live operation.',
-    };
-  }
-  const blockers = [
-    body.configHub?.objectUrl,
-    body.approval?.objectId,
-    body.action?.contract?.kind === 'ConfigHub-governed-action.v0' ? '' : 'blocked:governed-action-contract-missing',
-    body.action?.endpoint,
-    body.runtime?.evidenceSource,
-  ].filter(isBlockedValue);
-  if (blockers.length) {
-    return {
-      label: 'read-only live surface',
-      applyReady: false,
-      note: `ConfigHub read proof is connected. Apply remains blocked: ${blockers.map(cleanBlockedReason).join('; ')}.`,
-    };
-  }
+  if (bindings?.reviewReady) return {
+    label: bindings.commitReady ? 'execution bound' : 'review ready; CLI confirmation available',
+    applyReady: Boolean(bindings.commitReady),
+    note: bindings.message || 'The exact review inputs are bound.',
+  };
+  const labels = {
+    LIVE_BINDINGS_PLACEHOLDER: 'replace placeholders',
+    LIVE_BINDINGS_MIGRATION_REQUIRED: 'migration required',
+    LIVE_BINDINGS_CONTRACT_INVALID: 'contract needs repair',
+    LIVE_BINDINGS_BLOCKED: 'read-only live surface',
+  };
   return {
-    label: 'live operation bound',
-    applyReady: true,
-    note: 'ConfigHub object, approval, action, proof, and runtime bindings are present.',
+    label: labels[status] || 'bindings missing',
+    applyReady: false,
+    note: bindings?.message || bindings?.nextGate || 'Live bindings are not ready for exact review. Use the binding-check result for the next step.',
   };
 }
 
 function renderBindings(bindings) {
   state.liveBindings = bindings;
-  const status = bindings?.status || 'LIVE_BINDINGS_UNKNOWN';
   const readiness = bindingReadiness(bindings);
-  $('#bindings-status').textContent = status === 'LIVE_BINDINGS_PRESENT'
-    ? readiness.note
-    : readiness.note;
+  $('#bindings-status').textContent = readiness.note;
   renderActionContract(bindings);
   renderReadiness();
   refreshButtons();
@@ -282,14 +268,12 @@ function refreshButtons() {
   const allowed = liveActionAllowed();
   const readiness = bindingReadiness();
   $('#preview').disabled = !state.selected || !allowed;
-  $('#approve').disabled = !state.selected || !allowed;
+  $('#review').disabled = !state.selected || !allowed;
   $('#apply').disabled = true;
-  $('#apply').title = readiness.applyReady
-    ? 'Apply is still disabled in this starter app until a scenario-specific executor is implemented.'
-    : readiness.note;
+  $('#apply').title = readiness.note;
   $('#sign-in').style.display = state.workflow.authMode === 'browser-oauth' ? 'inline-flex' : 'none';
   if (state.workflow.authMode === 'browser-oauth' && !state.token) {
-    setNote('Sign in to ConfigHub before preview, approval, or apply.');
+    setNote('Sign in to ConfigHub before opening the exact-review handoff.');
   } else if (state.selected) {
     setNote(readiness.note);
   }
@@ -370,7 +354,7 @@ $('#refresh').addEventListener('click', refresh);
 $('#proof-refresh').addEventListener('click', async () => renderProof(await loadJson('/api/receipt')));
 $('#bindings-refresh').addEventListener('click', async () => renderBindings(await loadJson('/api/bindings')));
 $('#preview').addEventListener('click', () => postAction('/api/preview'));
-$('#approve').addEventListener('click', () => postAction('/api/approval'));
+$('#review').addEventListener('click', () => postAction('/api/review'));
 $('#apply').addEventListener('click', () => postAction('/api/apply'));
 
 const startup = await Promise.allSettled([setupAuth(), refresh()]);

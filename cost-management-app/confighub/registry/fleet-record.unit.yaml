@@ -10,7 +10,7 @@ app:
   scenario: cost-management-opencost
   version: 0.1.0
 bindings:
-  checkedAt: '2026-07-11T17:47:40+00:00'
+  checkedAt: '2026-07-12T22:56:40+00:00'
   status: LIVE_BINDINGS_MISSING
 deregistration: null
 destination:
@@ -21,7 +21,7 @@ destination:
   org: confighub
   repo: https://github.com/confighub/examples.git
   status: DECLARED
-  visibility: private
+  visibility: public
 fleetIndex:
   decisionNote: 'Default pending team ratification (generated-operational-app contract
     draft, open question 3): one fleet-record Unit per app inside the org fleet Space,
@@ -33,7 +33,7 @@ fleetIndex:
   unit: cost-management-app-fleet-record
   unitRef: confighub-app-fleet/cost-management-app-fleet-record
 generator:
-  commit: 2b393c6
+  commit: 92f10c8
   exportSchema: confighub.operational-app-export.v0
   name: confighub-operational-app-export
   version: 0.1.7
@@ -41,9 +41,11 @@ oauthClient:
   clientId: ''
   clientName: cost-management-app-local
   createdAt: ''
+  externalOrganizationId: ''
   lastRotatedAt: ''
   mutations: []
-  org: confighub
+  org: ''
+  organizationId: ''
   redirectUris: []
   requiredRedirectUris:
   - http://localhost:5173/
@@ -55,7 +57,7 @@ oauthClient:
   - revoked
 onCall: platform-oncall
 owner: platform-team
-registeredAt: '2026-07-11T17:47:40+00:00'
+registeredAt: '2026-07-12T22:56:40+00:00'
 schema: confighub.app-fleet-record.v0
 state: WATCH
 stateMachine:
@@ -69,5 +71,5 @@ transitions:
   evidence: export manifest and generated-app test result
   from: null
   generatorVersion: 0.1.7
-  timestamp: '2026-07-11T17:47:40+00:00'
+  timestamp: '2026-07-12T22:56:40+00:00'
   to: WATCH

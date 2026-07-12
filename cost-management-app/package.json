@@ -8,7 +8,7 @@
   },
   "scripts": {
     "start": "node server.mjs",
-    "test": "node tests/app.test.mjs && node tests/auth-surface.test.mjs && node tests/ui-tool.test.mjs && node tests/cli.test.mjs && node tests/lifecycle.test.mjs && node tests/cost-engine.test.mjs && node tests/executor.test.mjs",
+    "test": "node tests/app.test.mjs && node tests/auth-surface.test.mjs && node tests/ui-tool.test.mjs && node tests/cli.test.mjs && node tests/live-bindings.test.mjs && node tests/lifecycle.test.mjs && node tests/executor.test.mjs && node tests/cost-engine.test.mjs",
     "ui:dev": "vite --host 127.0.0.1 --port 5173 --config vite.config.ts",
     "ui:build": "vite build --config vite.config.ts",
     "ui:preview": "vite preview --host 127.0.0.1 --port 5173 --config vite.config.ts",

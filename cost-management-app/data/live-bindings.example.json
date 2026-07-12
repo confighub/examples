@@ -2,16 +2,21 @@
   "action": {
     "contract": {
       "kind": "ConfigHub-governed-action.v0",
-      "mutationPolicy": "Apply remains disabled unless every binding is real and non-placeholder.",
+      "mutationPolicy": "Execution requires exact review plus explicit confirmation; delivery and live claims remain disabled until their proof bindings are verified.",
       "operation": "cost-management-app",
-      "requires": [
-        "browser OAuth user",
-        "ConfigHub object URL",
-        "Variant and Unit scope",
-        "approval object",
-        "governed action executor",
+      "proofRequires": [
+        "approval object when the workflow uses one",
         "controller proof",
         "runtime proof"
+      ],
+      "requires": [
+        "authenticated Cub user",
+        "ConfigHub object URL",
+        "Variant and Unit scope",
+        "finding-owned exact dry-run preview",
+        "short-lived local review evidence",
+        "explicit execution confirmation",
+        "governed action executor"
       ],
       "scopeFields": [
         "org",
@@ -27,7 +32,7 @@
       ],
       "trigger": "user-approved-scope"
     },
-    "description": "Use blocked:governed-write-executor-not-installed until the scenario-specific executor exists.",
+    "description": "The governed reviewer ships with this app (src/executor.mjs): finding-owned dry-run previews, authenticated expiring local review records, explicit execution confirmation, exact revision verification, and a closed function whitelist. Provider-native atomic expected-revision enforcement remains a visible gap.",
     "endpoint": "<configHub-action-endpoint-or-function>",
     "method": "POST"
   },
@@ -70,6 +75,6 @@
     "evidenceSource": "<controller-or-runtime-proof-source>",
     "readback": "Use blocked:no-controller-or-runtime-target-bound until controller and runtime proof are available."
   },
-  "schema": "confighub.live-bindings.v0",
-  "status": "example-fill-with-live-values"
+  "schema": "confighub.live-bindings.v1",
+  "status": "template"
 }

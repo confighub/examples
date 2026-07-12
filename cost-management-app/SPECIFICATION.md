@@ -11,7 +11,7 @@ action, and verify the receipt.
 ## Original Request
 
 ```text
-cost optimisation across our Kubernetes fleet
+cost-management-opencost
 ```
 
 ## User-Facing Scope
@@ -29,7 +29,7 @@ All surfaces read the same files:
 - `data/operational-workflow.json`: scenario, Variant scope, controls, approval
   fields, proof tabs, stop rules, and the CLI loop.
 - `data/live-bindings.json`: deployment-local live ConfigHub object,
-  approval, action, proof, and runtime bindings.
+  organization identity, action authority, proof, and runtime bindings.
 
 The browser GUI, CLI, local server, tests, and assistant skill stubs must not
 invent their own scope, findings, approval path, or proof state.
@@ -45,7 +45,7 @@ proof gaps, and receipt path.
 ## CLI Loop
 
 ```text
-preflight -> map/list -> findings -> preview -> approve/commit -> verify -> receipt
+preflight -> map/list -> findings -> preview -> review/commit -> verify -> receipt
 ```
 
 | CLI command | Harness step | Product step | Purpose |
@@ -54,9 +54,34 @@ preflight -> map/list -> findings -> preview -> approve/commit -> verify -> rece
 | `map/list` | Intake | Map | Show affected Variants and their ConfigHub spaces, Units, URLs, risk, and next action. |
 | `findings` | Route | Recommend | Show proof gaps, blockers, and the next safe action. |
 | `preview` | Gate | Preview | Preview the scoped change without mutating ConfigHub, Git, a controller, or runtime. |
-| `approve/commit` | Run after approval | Operate | Commit only means an approved scoped ConfigHub mutation through the governed action path. |
+| `review/commit` | Review / Run gate | Operate | Local review records one exact, expiring packet but grants no permission; a separate explicit confirmation requests the ConfigHub write, whose revision and mutation parity are then verified. |
 | `verify` | Prove | Verify | Check ConfigHub, approval, action, controller/runtime evidence, URL proof, and omissions. |
 | `receipt` | Prove / Learn | Receipt | Leave a compact result that a human or automation can review and rerun. |
+
+## Exact Review Rule
+
+The review path does not approve a hand-entered function call. An actionable
+finder row owns the target, function, and arguments. `preview --finding <id>`
+reads the target Unit, checks its organization, runs the function in dry-run
+mode against the exact head revision, and stores the resulting diff and digest.
+`review --record --preview <id>` derives the reviewer from the authenticated Cub
+context and refuses a changed revision. `commit --review <id> --confirm-execute`
+re-authenticates the same user, checks the head again, executes only the
+finding-owned function, and verifies an exact one-revision advance plus mutation
+parity with the reviewed dry run. A successful receipt proves the ConfigHub
+revision. It does not claim provider-native atomic enforcement or controller
+delivery; those remain explicit proof layers.
+
+The local review file is inspectable evidence, not a signed
+ConfigHub approval or an authorization token. It cannot widen the finding's
+scope and cannot unlock mutation without the separate explicit execution
+confirmation.
+
+Blocked action authority, a stale or tampered preview, an org mismatch, or a
+changed Unit is a typed non-PASS result. Missing provider-native atomicity is
+an explicit receipt caveat, while a mismatched actual diff or unexpected
+revision sequence makes the execution receipt non-PASS. Controller and runtime evidence are a
+separate delivery gate; a reviewed ConfigHub change is not a live rollout.
 
 ## App Lifecycle Commands
 
@@ -109,8 +134,12 @@ An expected blocker is a successful, scriptable classification: `PASS`, `WATCH`,
 - cost finding
 - field
 
-`commit` means an approved scoped ConfigHub mutation. The CLI accepting a
-command is not proof that a live operation happened.
+`commit` means an explicit execution request for one short-lived stored review,
+recorded by the authenticated ConfigHub user and still bound to the same Unit
+identity and revision. The executor can write the finding-owned function, but
+it must then prove one ConfigHub revision and exact mutation parity. Provider
+atomicity remains `WATCH`; the CLI accepting a command is not proof that a
+mutation, controller delivery, or live rollout happened.
 
 ## Stop Rules
 

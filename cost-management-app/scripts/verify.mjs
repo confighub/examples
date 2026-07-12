@@ -8,7 +8,7 @@ const skipDirs = new Set(['.git', 'node_modules', '.lifecycle']);
 // naming in space and unit slugs; the vocabulary fence covers shipped app
 // content, not the customer's data about itself.
 const skipFiles = new Set(['data/live-bindings.json', 'data/cost-findings.json', 'package-lock.json']);
-const skipPrefixes = ['data/approvals/', 'data/receipts/'];
+const skipPrefixes = ['data/reviews/', 'data/receipts/'];
 
 async function files(dir) {
   const entries = await readdir(dir, {withFileTypes: true});

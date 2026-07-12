@@ -9,6 +9,7 @@ const vite = await readFile('vite.config.ts', 'utf8');
 const tsconfig = await readFile('tsconfig.json', 'utf8');
 const main = await readFile('ui/src/main.tsx', 'utf8');
 const app = await readFile('ui/src/App.tsx', 'utf8');
+const browserApp = await readFile('public/app.js', 'utf8');
 
 assert.equal(workflow.uiTool.name, 'ConfigHub Custom UI Apps JavaScript SDK');
 assert.equal(workflow.uiTool.reactProvider, 'ConfigHubAuthProvider');
@@ -45,6 +46,8 @@ assert.match(app, /useConfigHub/);
 assert.match(app, /api\.GET\('\/me'\)/);
 assert.match(app, /operational-workflow\.json/);
 assert.match(app, /workflow\.variants/);
+assert.match(browserApp, /typeof body\.runtime\?\.evidenceSource === 'string'/);
+assert.match(browserApp, /Bind a typed controller\/runtime proof reference/);
 
 // Session lifecycle: the auth provider owns silent re-auth and every piece of
 // browser-storage state behind it. App code must not fight the provider by

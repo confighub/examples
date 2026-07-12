@@ -2,9 +2,10 @@
 
 A generated ConfigHub operational app that finds config-derived waste across
 an org, prices it against a declared rate card, and turns each finding into a
-governed change: single-use approval, whitelisted mutation, revision
-verification, receipt. Like the neighbouring
-add-on manager example in this repository, it is a UI app with a
+governed change: finding-owned dry run, exact local review, explicit execution
+confirmation, whitelisted mutation, revision verification, and receipt. The
+local review is unsigned `WATCH` evidence, not approval or permission. Like the
+neighbouring add-on manager example in this repository, it is a UI app with a
 zero-dependency CLI sibling and no `setup.sh` — the early stages run on a
 cold clone with no install and no ConfigHub account.
 
@@ -43,8 +44,9 @@ binding exists. Two suites matter most here: `tests/cost-engine.test.mjs`
 proves the pricing honesty rules (limits are exposure and never savings; an
 unbound Unit gets no runtime cost claim; every figure carries its rate basis),
 and `tests/executor.test.mjs` proves the write-path refusals (revision drift,
-approval reuse, whitelist bypass, and the silent-skip guard: a mutation that
-reports success without a new revision is a typed BLOCK).
+expired or reused reviews, identity or org mismatch, whitelist bypass, and
+mutation-diff mismatch). A write is successful only when the Unit advances by
+exactly one revision and the actual mutations equal the reviewed dry run.
 
 **PAUSE.** Wait for the human.
 
@@ -79,45 +81,70 @@ was priced on.
 
 **PAUSE.** Wait for the human.
 
-## Stage 4: Walk the write path to its refusals
+## Stage 4: Inspect the exact-review refusals
 
 ```bash
-node cli.mjs approve --json
+node cli.mjs preview --json
+node cli.mjs review --json
 node cli.mjs commit --json
 ```
 
-Expected: approve without `--grant` previews the scope model; commit without
-an approval returns `BLOCK` / `APPROVAL_REQUIRED`. Granting against a made-up
-Unit fails on the head-revision read. The whitelist is closed: only
-`set-replicas` and `set-container-resources-defaults` can ever be granted,
-because those are the functions proven by receipted live executions.
+Expected: preview without a finding returns `BLOCK` / `FINDING_REQUIRED`;
+review reports `WATCH` / `LOCAL_REVIEW_NOT_RECORDED` and says plainly that a
+local review grants no permission; commit without live bindings returns
+`BLOCK` / `LIVE_BINDINGS_REQUIRED`. The whitelist is closed: only
+`set-replicas` and `set-container-resources-defaults` can be selected, and the
+selection must come from an actionable finding rather than hand-entered scope.
 
 **PAUSE.** Wait for the human.
 
-## Stage 5: Execute one approved change (mutates ConfigHub)
+## Stage 5: Review and execute one finding (mutates ConfigHub)
 
-Only with the human's explicit go, against a finding they chose:
+First create deployment-local `data/live-bindings.json` from
+`data/live-bindings.example.json`, replacing every review-authority placeholder
+with the verified ConfigHub server, org identities, object URL, and action
+endpoint. Runtime/controller fields may remain explicit `blocked:` gaps; they
+do not become universal claims and they do not erase the real governed
+ConfigHub write path.
+
+Choose one actionable finding, preview it, and record who inspected that exact
+diff:
 
 ```bash
-node cli.mjs approve --grant --space <space> --unit <unit> \
-  --function set-replicas --args 1 --actor <who> --reason "<finding>" --json
-node cli.mjs commit --approval <id> --json
+node cli.mjs preview --finding <finding-id> --json
+node cli.mjs review --record --preview <preview-id> --reason "<why>" --json
+node cli.mjs commit --review <review-id> --json
 ```
 
-Expected: `MUTATION_COMMITTED` with the revision pair, a receipt under
-`data/receipts/`, and an honest `deliveryEvidence` field that stays
-`blocked:` until a runtime controller is bound — a config revision is never
-presented as a delivered change. Re-run the sweep and watch the totals
-reconcile: the claimed savings drop by exactly the executed finding.
+Expected: review returns `WATCH` / `LOCAL_REVIEW_RECORDED`; it derives the
+reviewer from the authenticated Cub context, expires after 15 minutes, and
+still grants no mutation permission. Commit without confirmation returns
+`ASK` / `EXECUTION_CONFIRMATION_REQUIRED` and names the exact scope.
 
-**PAUSE.** This is the end of the loop: found, priced, approved, executed,
+Only after the human explicitly approves that review id and scope, run:
+
+```bash
+node cli.mjs commit --review <review-id> --confirm-execute --json
+```
+
+Expected: `PASS` / `CONFIG_REVISION_COMMITTED` only after the finding-owned
+function runs, the Unit advances by exactly one revision, and the actual
+mutation equals the reviewed dry run. The receipt under `data/receipts/` keeps
+provider atomicity at `WATCH` and delivery evidence explicit until separately
+verified. Reloading this local unsigned receipt reports `WATCH` /
+`LOCAL_UNSIGNED_RECEIPT_RECORDED`; it is not a signed approval, fresh server
+attestation, controller result, or live runtime proof. Re-run the sweep and
+confirm the claimed savings reconcile with the executed finding.
+
+**PAUSE.** This is the end of the loop: found, priced, reviewed, executed,
 verified, receipted, reconciled.
 
 ## GUI
 
-`npm run oauth:register` creates a browser OAuth client for your org and
-records it in the fleet record (`confighub/registry/fleet-record.json` ships
-unregistered; registration is a recorded state transition). Then
+`CONFIGHUB_ORG=<org> npm run oauth:register` shows a read-only registration
+confirmation card. Repeat it with `-- --confirm` to create or reuse the browser
+OAuth client and record it in the fleet record
+(`confighub/registry/fleet-record.json` ships unregistered). Then
 `VITE_CONFIGHUB_BASE_URL=... VITE_OAUTH_CLIENT_ID=... npm run ui:dev` and open
 the printed localhost address — serve on the exact origin you registered;
 redirect URIs are matched exactly. The signed-in first panel is the findings

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { readFile } from 'node:fs/promises';
-import { grantApproval, executeApproved, ALLOWED_FUNCTIONS } from './src/executor.mjs';
+import { createPreview, recordReview, commitReviewed, reviewPacketStatus, ALLOWED_FUNCTIONS } from './src/executor.mjs';
+import { classifyLiveBindings } from './src/live-bindings.mjs';
 
 const args = process.argv.slice(2);
 const command = normalizeCommand(args.find(arg => !arg.startsWith('--')) || 'help');
@@ -35,68 +36,8 @@ if (!workflow) {
 }
 const liveBindings = await loadJsonFile('data/live-bindings.json');
 
-function hasPlaceholder(value) {
-  if (typeof value === 'string') return value.includes('<') || value.includes('>') || value.includes('example-fill');
-  if (Array.isArray(value)) return value.some(hasPlaceholder);
-  if (value && typeof value === 'object') return Object.values(value).some(hasPlaceholder);
-  return false;
-}
-
-function isBlockedValue(value) {
-  return typeof value === 'string' && value.startsWith('blocked:');
-}
-
 function bindingStatus() {
-  if (!liveBindings) {
-    return {
-      status: 'LIVE_BINDINGS_MISSING',
-      readyForCommit: false,
-      reason: 'data/live-bindings.json is not present.',
-    };
-  }
-  if (hasPlaceholder(liveBindings)) {
-    return {
-      status: 'LIVE_BINDINGS_PLACEHOLDER',
-      readyForCommit: false,
-      reason: 'data/live-bindings.json still contains placeholder values.',
-    };
-  }
-  const required = [
-    ['configHub.objectUrl', liveBindings.configHub?.objectUrl],
-    ['approval.objectId', liveBindings.approval?.objectId],
-    ['action.endpoint', liveBindings.action?.endpoint],
-    ['action.contract.kind', liveBindings.action?.contract?.kind],
-    ['proof.receiptObjectId', liveBindings.proof?.receiptObjectId],
-    ['runtime.evidenceSource', liveBindings.runtime?.evidenceSource],
-  ];
-  const missing = required.filter(([, value]) => !value).map(([field]) => field);
-  if (missing.length) {
-    return {
-      status: 'LIVE_BINDINGS_INCOMPLETE',
-      readyForCommit: false,
-      reason: `Missing live binding fields: ${missing.join(', ')}`,
-    };
-  }
-  const blocked = required.filter(([, value]) => isBlockedValue(value)).map(([field, value]) => `${field}=${value}`);
-  if (blocked.length) {
-    return {
-      status: 'LIVE_BINDINGS_BLOCKED',
-      readyForCommit: false,
-      reason: `Live read surface exists, but commit remains blocked: ${blocked.join(', ')}`,
-    };
-  }
-  if (liveBindings.action.contract.kind !== 'ConfigHub-governed-action.v0') {
-    return {
-      status: 'LIVE_BINDINGS_INCOMPLETE',
-      readyForCommit: false,
-      reason: 'action.contract.kind must be ConfigHub-governed-action.v0',
-    };
-  }
-  return {
-    status: 'LIVE_BINDINGS_READY',
-    readyForCommit: true,
-    reason: 'Live ConfigHub object, approval, action, receipt, and runtime bindings are present.',
-  };
+  return classifyLiveBindings(liveBindings);
 }
 
 function selectedVariant() {
@@ -106,13 +47,13 @@ function selectedVariant() {
   return workflow.variants[0];
 }
 
-function output(value, exitCode = 0) {
+function output(value, exitCode = null) {
   if (json) {
     console.log(JSON.stringify(value, null, 2));
   } else {
     printHuman(value);
   }
-  return exitCode;
+  return exitCode === null ? (value?.verdict === 'ERROR' ? 1 : 0) : exitCode;
 }
 
 function printHuman(value) {
@@ -135,9 +76,9 @@ function printHuman(value) {
 function preflight() {
   const bindings = bindingStatus();
   return {
-    verdict: bindings.readyForCommit ? 'PASS' : 'WATCH',
+    verdict: bindings.readyForLive ? 'PASS' : 'WATCH',
     reason: bindings.status,
-    status: bindings.readyForCommit ? 'PASS' : 'WATCH',
+    status: bindings.readyForLive ? 'PASS' : 'WATCH',
     app: workflow.app.name,
     commandLoop: workflow.operationalLoop,
     sharedContract: 'data/operational-workflow.json',
@@ -146,7 +87,8 @@ function preflight() {
     checks: [
       {id: 'workflow-contract', status: 'PASS'},
       {id: 'variant-scope', status: workflow.variants.length ? 'PASS' : 'BLOCK'},
-      {id: 'live-bindings', status: bindings.readyForCommit ? 'PASS' : 'WATCH', reason: bindings.reason},
+      {id: 'action-authority', status: bindings.readyForReview ? 'PASS' : 'WATCH', reason: bindings.reason},
+      {id: 'delivery-proof', status: bindings.readyForLive ? 'PASS' : 'WATCH', reason: bindings.reason},
     ],
     nextGate: 'Run map/list, then findings, before previewing any change.',
   };
@@ -171,6 +113,7 @@ async function findings() {
   if (cost && Array.isArray(cost.findings)) {
     for (const finding of cost.findings) {
       rows.push({
+        id: finding.id,
         severity: finding.severity,
         code: finding.rule,
         where: finding.space
@@ -179,6 +122,7 @@ async function findings() {
         message: finding.recommendation?.summary || finding.rule,
         monthly: finding.priced ? `${finding.priced.monthly} ${finding.priced.currency} (${finding.priced.claim})` : null,
         nextAction: finding.recommendation?.preview || 'Review the finding in data/cost-findings.json.',
+        actionable: Boolean(finding.recommendation?.action),
       });
     }
   } else {
@@ -189,12 +133,19 @@ async function findings() {
       nextAction: 'Run npm run cost:sweep with a ConfigHub session that can read the org.',
     });
   }
-  if (!bindings.readyForCommit) {
+  if (!bindings.readyForReview) {
     rows.push({
       severity: 'high',
       code: bindings.status,
       message: bindings.reason,
-      nextAction: 'Bind live ConfigHub object, approval, action, proof, and runtime evidence before commit.',
+      nextAction: 'Bind the ConfigHub object, org identity, and action authority before preview.',
+    });
+  } else if (!bindings.readyForLive) {
+    rows.push({
+      severity: 'medium',
+      code: bindings.status,
+      message: bindings.reason,
+      nextAction: 'Review the exact dry-run diff. After explicit confirmation, the CLI can execute and verify one ConfigHub revision; controller delivery remains a separate gate.',
     });
   }
   for (const rule of workflow.stopRules || []) {
@@ -206,158 +157,211 @@ async function findings() {
     });
   }
   const blocked = rows.some(row => row.severity === 'high');
-  const reason = !bindings.readyForCommit
+  const watch = blocked || !bindings.readyForLive;
+  const reason = !bindings.readyForReview
     ? bindings.status
-    : (blocked ? 'COST_FINDINGS_NEED_ACTION' : 'NO_BLOCKING_FINDINGS');
+    : (!bindings.readyForLive ? bindings.status : (blocked ? 'COST_FINDINGS_NEED_ACTION' : 'NO_BLOCKING_FINDINGS'));
   return {
-    verdict: blocked ? 'WATCH' : 'PASS',
+    verdict: watch ? 'WATCH' : 'PASS',
     reason,
-    status: blocked ? 'WATCH' : 'PASS',
+    status: watch ? 'WATCH' : 'PASS',
     app: workflow.app.name,
     costTotals: cost ? cost.totals : null,
     costGeneratedAt: cost ? cost.generatedAt : null,
     findings: rows,
     nextGate: cost
       ? 'Preview a governed dry-run diff for a finding, or bind missing live proof first.'
-      : 'Run the cost sweep, then preview a governed dry-run diff for a finding.',
+      : (workflow.domainEngine?.kind === 'cost'
+        ? 'Run the read-only cost sweep, then inspect its findings.'
+        : 'Use preview --variant <variant-id> to inspect scope. This app will not invent a mutation until its domain engine produces an actionable finding.'),
   };
 }
 
-function preview() {
-  const variant = selectedVariant();
-  if (!variant) {
+async function preview() {
+  const findingId = valueAfter('--finding');
+  if (!findingId) {
+    const variant = selectedVariant();
+    if (variantArg && variant) {
+      return {
+        verdict: 'WATCH',
+        reason: 'VARIANT_SCOPE_PREVIEW_ONLY',
+        status: 'SCOPE_PREVIEW_READY',
+        app: workflow.app.name,
+        variant,
+        mutation: 'none',
+        message: 'This is a read-only Variant scope preview. Choose an actionable finding for an exact function dry-run.',
+        nextGate: 'Run findings --json. If a finding has no governed action, keep it as guidance rather than inventing a mutation.',
+      };
+    }
     return {
-      status: 'BLOCK',
-      error: 'VARIANT_REQUIRED',
-      message: 'No Variant is available to preview.',
+      verdict: 'BLOCK',
+      reason: 'FINDING_REQUIRED',
+      status: 'PREVIEW_BLOCKED',
+      message: 'Choose one actionable finding from `findings --json`, then pass --finding <id>.',
     };
   }
-  return {
-    status: 'PREVIEW_READY',
-    app: workflow.app.name,
-    variant,
-    approvalScope: workflow.approval.scopeFields,
-    mutation: 'none',
-    message: 'Preview only. No ConfigHub, Git, controller, or runtime mutation has been performed.',
-    nextGate: 'Record approval against this exact scope before commit.',
-  };
+  const bindings = bindingStatus();
+  if (!bindings.readyForReview) {
+    return {
+      verdict: 'BLOCK',
+      reason: bindings.status,
+      status: 'PREVIEW_BLOCKED',
+      detail: bindings.reason,
+      nextGate: 'Bind and verify the ConfigHub action authority before previewing a mutation.',
+    };
+  }
+  const cost = await loadJsonFile('data/cost-findings.json');
+  const finding = cost?.findings?.find(row => row.id === findingId);
+  if (!finding) {
+    return {
+      verdict: 'BLOCK',
+      reason: 'FINDING_NOT_FOUND',
+      status: 'PREVIEW_BLOCKED',
+      findingId,
+      message: 'The finding is not present in the current findings file. Rerun findings and choose an exact id.',
+    };
+  }
+  const created = createPreview({finding, boundAuthority: liveBindings.configHub});
+  created.app = workflow.app.name;
+  created.nextGate = created.verdict === 'PASS'
+    ? `Inspect ${created.path}, then record that exact local review with review --record --preview ${created.preview.id}.`
+    : 'Resolve the typed refusal, refresh findings, and preview again.';
+  return created;
 }
 
-function approve() {
-  if (args.includes('--grant')) {
-    const argsFlag = valueAfter('--args');
-    const granted = grantApproval({
-      space: valueAfter('--space'),
-      unit: valueAfter('--unit'),
-      functionName: valueAfter('--function'),
-      args: argsFlag === '' ? [] : argsFlag.split(','),
-      actor: valueAfter('--actor'),
+function review() {
+  if (args.includes('--record')) {
+    const recorded = recordReview({
+      previewId: valueAfter('--preview'),
       reason: valueAfter('--reason'),
     });
-    granted.app = workflow.app.name;
-    granted.nextGate = granted.verdict === 'PASS'
-      ? `Run commit --approval ${granted.approval.id} to execute exactly this scope.`
-      : 'Fix the refusal and grant again.';
-    return granted;
+    recorded.app = workflow.app.name;
+    recorded.nextGate = recorded.reason === 'LOCAL_REVIEW_RECORDED'
+      ? `Ask for explicit approval of this exact scope, then run commit --review ${recorded.review.id} --confirm-execute before the review expires.`
+      : 'Fix the refusal and record the review again.';
+    return recorded;
   }
-  const variant = selectedVariant();
   return {
-    status: 'APPROVAL_SCOPE_PREVIEW',
+    verdict: 'WATCH',
+    reason: 'LOCAL_REVIEW_NOT_RECORDED',
+    status: 'LOCAL_REVIEW_SCOPE',
     app: workflow.app.name,
-    variant,
     scopeFields: workflow.approval.scopeFields,
     allowedFunctions: Object.keys(ALLOWED_FUNCTIONS),
     mutation: 'none',
-    message: 'Preview only. Grant a real single-use approval with: approve --grant --space <s> --unit <u> --function <fn> --args <a[,b]> --actor <who> --reason <why>.',
-    nextGate: 'Grant an approval, then run commit --approval <id>.',
+    message: 'A local review record is evidence, not ConfigHub approval or mutation permission. Create and inspect an exact preview first.',
+    nextGate: 'Run review --record --preview <id>, inspect the expiring review, then explicitly confirm commit for that review id.',
   };
 }
 
 function commit() {
   const bindings = bindingStatus();
   const variant = selectedVariant();
-  const approvalId = valueAfter('--approval');
-  if (approvalId) {
-    // The write path: one approved, scoped, revision-verified mutation.
-    // It needs the live read surface and approval/action bindings; runtime
-    // evidence gates the delivery claim on the receipt, not the mutation.
-    if (bindings.status === 'LIVE_BINDINGS_MISSING' || bindings.status === 'LIVE_BINDINGS_PLACEHOLDER' || bindings.status === 'LIVE_BINDINGS_INCOMPLETE') {
+  const reviewId = valueAfter('--review');
+  if (reviewId) {
+            // The executor validates the stored preview and local review, then
+            // requires explicit confirmation before one governed ConfigHub write.
+    if (!bindings.readyForReview) {
       return output({
         verdict: 'BLOCK',
         reason: bindings.status,
         status: 'COMMIT_BLOCKED',
         app: workflow.app.name,
         detail: bindings.reason,
-        nextGate: 'Create data/live-bindings.json from verified reads before executing approvals.',
+        nextGate: 'Create data/live-bindings.json from verified reads before recording a local review.',
       }, 0);
     }
-    const executed = executeApproved({approvalId});
+    const executed = commitReviewed({reviewId, confirmed: args.includes('--confirm-execute')});
     executed.app = workflow.app.name;
     if (!executed.nextGate) {
       executed.nextGate = executed.verdict === 'PASS'
-        ? 'Read the receipt, then verify and receipt close the loop; delivery needs its own apply step.'
-        : 'Resolve the typed refusal, re-grant if needed, and run commit again.';
+        ? 'Read the receipt, then prove controller delivery and runtime state.'
+        : (executed.verdict === 'ASK'
+          ? `Inspect the review packet, then rerun commit --review ${reviewId} --confirm-execute.`
+          : 'Resolve the typed refusal or unverified execution receipt before another action.');
     }
-    return output(executed, 0);
+    return output(executed);
   }
-  if (!bindings.readyForCommit) {
+  if (!bindings.readyForReview) {
     // Expected operational blocker, not a shell failure: typed BLOCK at exit 0.
     return output({
       verdict: 'BLOCK',
-      reason: 'APPROVED_CONFIGHUB_MUTATION_REQUIRED',
+      reason: 'LIVE_BINDINGS_REQUIRED',
       status: 'COMMIT_BLOCKED',
-      error: 'APPROVED_CONFIGHUB_MUTATION_REQUIRED',
+      error: 'LIVE_BINDINGS_REQUIRED',
       app: workflow.app.name,
       variant,
       liveBindings: bindings.status,
       detail: bindings.reason,
-      message: 'commit means an approved scoped ConfigHub mutation, not a local CLI flag being accepted.',
-      nextGate: 'Create real live bindings and rerun findings, preview, approval, verify, and receipt.',
+      message: 'commit means checking one exact preview plus its local review record, not accepting a local mutation flag.',
+      nextGate: 'Create real live bindings and rerun findings, preview, review, verify, and receipt.',
     }, 0);
   }
   return output({
     verdict: 'BLOCK',
-    reason: 'APPROVAL_REQUIRED',
+    reason: 'LOCAL_REVIEW_REQUIRED',
     status: 'COMMIT_BLOCKED',
-    error: 'APPROVAL_REQUIRED',
+    error: 'LOCAL_REVIEW_REQUIRED',
     app: workflow.app.name,
     variant,
-    detail: 'The executor runs only a granted single-use approval. Grant one with approve --grant, then commit --approval <id>.',
-    nextGate: 'approve --grant --space <s> --unit <u> --function <fn> --args <a> --actor <who>, then commit --approval <id>.',
+    detail: 'The executor checks only a local review record tied to a stored dry-run preview. That record is not ConfigHub approval.',
+    nextGate: 'preview --finding <id>, inspect the saved diff, review --record --preview <preview-id>, then commit --review <id>.',
   }, 0);
 }
 
 function verify() {
   const bindings = bindingStatus();
+  const reviewPacket = reviewPacketStatus();
+  const configRevisionRecorded = reviewPacket.reason === 'CONFIG_REVISION_COMMITTED'
+    || reviewPacket.recordedOutcome?.reason === 'CONFIG_REVISION_COMMITTED';
+  const reason = !bindings.readyForReview
+    ? bindings.status
+    : (reviewPacket.reason === 'LOCAL_REVIEW_RECORDED'
+      ? 'EXECUTION_CONFIRMATION_REQUIRED'
+      : (configRevisionRecorded ? 'CONFIG_REVISION_COMMITTED_DELIVERY_PENDING' : reviewPacket.reason));
   return {
     verdict: 'WATCH',
-    reason: bindings.readyForCommit ? 'RUNTIME_PROOF_PENDING' : bindings.status,
+    reason,
     status: 'WATCH',
     app: workflow.app.name,
     liveBindings: bindings.status,
+    reviewPacket,
     proofTabs: workflow.proofTabs,
-    message: bindings.readyForCommit
-      ? 'Bindings are present. Runtime and receipt proof still need a scenario executor run.'
-      : bindings.reason,
-    nextGate: 'Run receipt after proof evidence is connected.',
+    message: !bindings.readyForReview ? bindings.reason : reviewPacket.message,
+    nextGate: configRevisionRecorded
+      ? 'Verify controller delivery and the exact runtime field before calling the operation live.'
+      : (bindings.readyForReview && reviewPacket.reason === 'LOCAL_REVIEW_RECORDED'
+        ? `Run commit --review ${reviewPacket.reviewId} --confirm-execute after explicit approval.`
+        : (!bindings.readyForReview ? 'Resolve the live authority gaps, then create an exact preview.' : 'Create and inspect an exact preview, then record the local review.')),
   };
 }
 
 function receipt() {
   const bindings = bindingStatus();
+  const reviewPacket = reviewPacketStatus();
+  const configRevisionRecorded = reviewPacket.reason === 'CONFIG_REVISION_COMMITTED'
+    || reviewPacket.recordedOutcome?.reason === 'CONFIG_REVISION_COMMITTED';
+  const reason = !bindings.readyForReview
+    ? bindings.status
+    : (reviewPacket.reason === 'LOCAL_REVIEW_RECORDED'
+      ? 'EXECUTION_CONFIRMATION_REQUIRED'
+      : (configRevisionRecorded ? 'CONFIG_REVISION_COMMITTED_DELIVERY_PENDING' : reviewPacket.reason));
   return {
     verdict: 'WATCH',
-    reason: bindings.readyForCommit ? 'SCENARIO_EXECUTOR_NOT_RUN' : bindings.status,
+    reason,
     status: 'WAITING_FOR_LIVE_PROOF',
     app: workflow.app.name,
     scenario: workflow.scenario,
     strategy: workflow.strategy,
     liveBindings: bindings.status,
+    reviewPacket,
     proofTabs: workflow.proofTabs,
-    omissions: bindings.readyForCommit
-      ? ['No scenario-specific action has been executed by this generated starter.']
-      : [bindings.reason],
-    nextGate: bindings.readyForCommit ? 'Wire and run the scenario-specific executor.' : 'Resolve live binding findings.',
+    omissions: [bindings.reason, reviewPacket.message].filter(Boolean),
+    nextGate: configRevisionRecorded
+      ? 'Attach controller and runtime evidence to close the delivery receipt.'
+      : (bindings.readyForReview && reviewPacket.reason === 'LOCAL_REVIEW_RECORDED'
+        ? `Run commit --review ${reviewPacket.reviewId} --confirm-execute after explicit approval.`
+        : (!bindings.readyForReview ? 'Resolve live binding findings.' : 'Record a valid local review packet after binding exact-review authority.')),
   };
 }
 
@@ -375,8 +379,8 @@ function help() {
   return {
     status: 'OK',
     app: workflow.app.name,
-    commands: ['preflight', 'map', 'list', 'snapshot', 'findings', 'preview', 'approve', 'commit', 'verify', 'receipt', 'guardrails'],
-    loop: 'preflight -> map/list -> findings -> preview -> approve/commit -> verify -> receipt',
+    commands: ['preflight', 'map', 'list', 'snapshot', 'findings', 'preview --variant <variant-id>', 'preview --finding <id>', 'review --record --preview <id>', 'commit --review <id> --confirm-execute', 'verify', 'receipt', 'guardrails'],
+    loop: 'preflight -> map/list -> findings -> preview -> review/commit -> verify -> receipt',
   };
 }
 
@@ -389,9 +393,9 @@ async function main() {
     case 'findings':
       return output(await findings());
     case 'preview':
-      return output(preview(), selectedVariant() ? 0 : 2);
-    case 'approve':
-      return output(approve());
+      return output(await preview());
+    case 'review':
+      return output(review());
     case 'commit':
       return commit();
     case 'verify':

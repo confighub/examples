@@ -4,6 +4,8 @@ import { extname, join, normalize } from 'node:path';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readRuntimeConfig } from './config.mjs';
+import { reviewPacketStatus } from './executor.mjs';
+import { classifyLiveBindings } from './live-bindings.mjs';
 import { readWorkflow } from './workflow.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -47,60 +49,27 @@ function hasBearer(req) {
 }
 
 async function readLiveBindings() {
+  let raw;
   try {
-    const raw = await readFile(join(root, 'data', 'live-bindings.json'), 'utf8');
-    const bindings = JSON.parse(raw);
-    if (hasPlaceholder(bindings)) {
-      return {
-        status: 'LIVE_BINDINGS_PLACEHOLDER',
-        bindings,
-        requiredFile: 'data/live-bindings.json',
-        exampleFile: 'data/live-bindings.example.json',
-        reason: 'The live binding file still contains example placeholder values.',
-      };
+    raw = await readFile(join(root, 'data', 'live-bindings.json'), 'utf8');
+  } catch (error) {
+    if (error && error.code !== 'ENOENT') {
+      return {status: 'LIVE_BINDINGS_UNREADABLE', verdict: 'ERROR', reason: 'LIVE_BINDINGS_UNREADABLE', bindings: null};
     }
-    const contractError = bindingContractError(bindings);
-    if (contractError) {
-      return {
-        status: 'LIVE_BINDINGS_INCOMPLETE',
-        bindings,
-        requiredFile: 'data/live-bindings.json',
-        exampleFile: 'data/live-bindings.example.json',
-        reason: contractError,
-      };
-    }
-    return {status: 'LIVE_BINDINGS_PRESENT', bindings};
-  } catch {
     return {
-      status: 'LIVE_BINDINGS_MISSING',
+      ...classifyLiveBindings(null),
       bindings: null,
       requiredFile: 'data/live-bindings.json',
       exampleFile: 'data/live-bindings.example.json',
     };
   }
-}
-
-function hasPlaceholder(value) {
-  if (typeof value === 'string') {
-    return value.includes('<') || value.includes('>') || value.includes('example-fill');
+  let bindings;
+  try {
+    bindings = JSON.parse(raw);
+  } catch {
+    return {status: 'LIVE_BINDINGS_UNPARSEABLE', verdict: 'ERROR', reason: 'LIVE_BINDINGS_UNPARSEABLE', bindings: null};
   }
-  if (Array.isArray(value)) {
-    return value.some(hasPlaceholder);
-  }
-  if (value && typeof value === 'object') {
-    return Object.values(value).some(hasPlaceholder);
-  }
-  return false;
-}
-
-function bindingContractError(bindings) {
-  const contract = bindings?.action?.contract;
-  if (!contract) return 'action.contract is required';
-  if (contract.kind !== 'ConfigHub-governed-action.v0') return 'action.contract.kind must be ConfigHub-governed-action.v0';
-  if (!contract.operation) return 'action.contract.operation is required';
-  if (!Array.isArray(contract.scopeFields)) return 'action.contract.scopeFields must be an array';
-  if (!Array.isArray(contract.requires)) return 'action.contract.requires must be an array';
-  return '';
+  return {...classifyLiveBindings(bindings), bindings};
 }
 
 async function serveStatic(req, res, url) {
@@ -157,7 +126,7 @@ export function createAppServer() {
         } catch {
           sendJson(res, 404, {
             error: 'COST_SWEEP_NOT_RUN',
-            message: 'No cost findings exist for this deployment yet. Run npm run cost:sweep with a ConfigHub session that can read the org.',
+            message: 'No findings exist for this deployment yet.',
           });
         }
         return;
@@ -177,11 +146,21 @@ export function createAppServer() {
 
       if (req.method === 'GET' && url.pathname === '/api/receipt') {
         const liveBindings = await readLiveBindings();
+        const reviewPacket = reviewPacketStatus();
         sendJson(res, 200, {
+          verdict: 'WATCH',
+          reason: !liveBindings.reviewReady
+            ? liveBindings.reason
+            : (reviewPacket.reason === 'LOCAL_REVIEW_RECORDED'
+              ? 'EXECUTION_CONFIRMATION_REQUIRED'
+              : (reviewPacket.reason === 'CONFIG_REVISION_COMMITTED' || reviewPacket.recordedOutcome?.reason === 'CONFIG_REVISION_COMMITTED'
+                ? 'CONFIG_REVISION_COMMITTED_DELIVERY_PENDING'
+                : reviewPacket.reason)),
           status: 'WAITING_FOR_LIVE_PROOF',
           app: workflow.app.name,
           checks: workflow.proofTabs.map(tab => ({id: tab.id, label: tab.label, status: tab.status})),
           liveBindings,
+          reviewPacket,
           stopRules: workflow.stopRules,
         });
         return;
@@ -197,26 +176,29 @@ export function createAppServer() {
           sendJson(res, 401, {error: 'SIGN_IN_REQUIRED'});
           return;
         }
-        const body = await readBody(req);
+        await readBody(req);
         sendJson(res, 200, {
-          status: 'PREVIEW_READY',
-          variantId: body.variantId || workflow.variants[0]?.id,
-          message: 'Scope preview ready. Review approval before any live operation.',
+          verdict: 'WATCH',
+          reason: 'EXACT_FINDING_REQUIRED',
+          status: 'PREVIEW_HANDOFF_REQUIRED',
+          message: 'The browser cannot create a mutation preview from Variant scope alone. Use the CLI findings route to select one exact finding and generate its dry-run diff.',
+          nextCommand: 'node cli.mjs findings --json',
         });
         return;
       }
 
-      if (req.method === 'POST' && url.pathname === '/api/approval') {
+      if (req.method === 'POST' && url.pathname === '/api/review') {
         if (authBlocked(req, workflow)) {
           sendJson(res, 401, {error: 'SIGN_IN_REQUIRED'});
           return;
         }
-        const body = await readBody(req);
+        await readBody(req);
         sendJson(res, 200, {
-          status: 'APPROVAL_RECORDED_LOCALLY',
-          variantId: body.variantId || workflow.variants[0]?.id,
-          scopeFields: workflow.approval.scopeFields,
-          nextGate: 'Bind this approval to the live ConfigHub action before apply.',
+          verdict: 'BLOCK',
+          reason: 'STORED_PREVIEW_REQUIRED',
+          status: 'REVIEW_HANDOFF_REQUIRED',
+          message: 'The browser does not record local review evidence from Variant scope. Create and inspect an exact CLI preview first.',
+          nextCommand: 'node cli.mjs preview --finding <finding-id> --json',
         });
         return;
       }
@@ -227,17 +209,19 @@ export function createAppServer() {
           return;
         }
         const liveBindings = await readLiveBindings();
-        if (liveBindings.status !== 'LIVE_BINDINGS_PRESENT') {
+        if (!liveBindings.reviewReady) {
           sendJson(res, 409, {
             error: 'LIVE_BINDINGS_REQUIRED',
-            message: 'Create data/live-bindings.json before running a live operation.',
+            reason: liveBindings.reason,
+            message: 'Resolve the exact-review authority gaps before checking the commit gate.',
             liveBindings,
           });
           return;
         }
         sendJson(res, 409, {
-          error: 'LIVE_ACTION_EXECUTOR_REQUIRED',
-          message: 'Bindings are present, but the scenario-specific ConfigHub action executor is not implemented in this export.',
+          error: 'BROWSER_EXACT_REVIEW_REQUIRED',
+          message: 'The browser does not yet hand an exact finding-owned review packet to the shared executor. Use the CLI review and explicitly confirmed commit path; do not substitute a Variant-only browser action.',
+          nextCommand: 'node cli.mjs findings --json',
         });
         return;
       }
