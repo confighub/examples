@@ -1,0 +1,17 @@
+[
+  {
+    "note": "App-specific operational workflow.",
+    "query": "Use the Cost Management App app to show what needs attention.",
+    "should_trigger": true
+  },
+  {
+    "note": "Preview and approval-scope route.",
+    "query": "Preview the Cost Management App change for prod before approving it.",
+    "should_trigger": true
+  },
+  {
+    "note": "Generic ConfigHub query, not this app route.",
+    "query": "Show generic ConfigHub CLI help.",
+    "should_trigger": false
+  }
+]

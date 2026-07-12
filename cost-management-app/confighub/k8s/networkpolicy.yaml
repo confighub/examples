@@ -1,0 +1,20 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cost-management-app-default
+  labels:
+    app.kubernetes.io/name: cost-management-app
+    confighub.com/component: cost-management-app
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: cost-management-app
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 5173
+  egress:
+    - {}

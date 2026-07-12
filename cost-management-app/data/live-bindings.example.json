@@ -1,0 +1,75 @@
+{
+  "action": {
+    "contract": {
+      "kind": "ConfigHub-governed-action.v0",
+      "mutationPolicy": "Apply remains disabled unless every binding is real and non-placeholder.",
+      "operation": "cost-management-app",
+      "requires": [
+        "browser OAuth user",
+        "ConfigHub object URL",
+        "Variant and Unit scope",
+        "approval object",
+        "governed action executor",
+        "controller proof",
+        "runtime proof"
+      ],
+      "scopeFields": [
+        "org",
+        "space",
+        "variant",
+        "unit",
+        "action",
+        "revision",
+        "target",
+        "strategy",
+        "cost finding",
+        "field"
+      ],
+      "trigger": "user-approved-scope"
+    },
+    "description": "Use blocked:governed-write-executor-not-installed until the scenario-specific executor exists.",
+    "endpoint": "<configHub-action-endpoint-or-function>",
+    "method": "POST"
+  },
+  "approval": {
+    "mode": "explicit approval before mutation",
+    "objectId": "<approval-object-id>",
+    "scope": [
+      "org",
+      "space",
+      "variant",
+      "unit",
+      "action",
+      "revision",
+      "target",
+      "strategy",
+      "cost finding",
+      "field"
+    ]
+  },
+  "configHub": {
+    "externalOrganizationId": "<external-organization-id>",
+    "objectUrl": "https://<confighub-server>/<verified-object-url>",
+    "organizationId": "<internal-organization-id>",
+    "server": "https://<confighub-server>",
+    "space": "not-yet-bound-dev-space",
+    "spaceId": "<space-id>",
+    "unit": "cost-management-app-dev",
+    "variant": "dev"
+  },
+  "proof": {
+    "proofTabs": [
+      "config_hub_revision",
+      "approval_record",
+      "gate_verdict",
+      "receipt"
+    ],
+    "receiptObjectId": "<receipt-object-id>"
+  },
+  "runtime": {
+    "evidenceSource": "<controller-or-runtime-proof-source>",
+    "readback": "Use blocked:no-controller-or-runtime-target-bound until controller and runtime proof are available."
+  },
+  "schema": "confighub.live-bindings.v0",
+  "status": "example-fill-with-live-values"
+}

@@ -1,0 +1,279 @@
+{
+  "app_name": "Cost Management App",
+  "auth_mode": "browser-oauth",
+  "config_hub_browser_oauth_default": true,
+  "created_at": "2026-07-11T17:47:40+00:00",
+  "destination": {
+    "ci": "github-actions",
+    "deploy_target": "argo-oci",
+    "license": "apache-2.0",
+    "mode": "existing",
+    "org": "confighub",
+    "repo": "https://github.com/confighub/examples.git",
+    "status": "DECLARED",
+    "visibility": "private"
+  },
+  "file_hashes": {
+    ".gitignore": "8f8df2a3a54b3cdc7d8ba6e402a989fd86baba6aeca7726ec759a55be1127d9b",
+    "AI_START_HERE.md": "025deb75aeb73d682221a62d64298b4dcbfac8b47d28651bd1c7efa89a419dbc",
+    "JUSTIFICATION.md": "f6fb26cbab99e0433791488cb4eeaf94a3ed2977a624ce8646e0630691c4f25e",
+    "README.md": "0ffa638b4135bdb612125a367dcb38d1bba48d1bdc3d147df85721b66c695984",
+    "SPECIFICATION.md": "4b3006660d17dc4c5bdce616cc97c9fe4014742d00d52047a8f26bbc7b992fdd",
+    "cli.mjs": "20671fc2e9453f2dddf8c53ba66b31f099f6df82b2facebda7f86eb5f51cd67c",
+    "confighub/README.md": "bc203c533083b76291f12e2dc7bfbad813acd572ba5fb4b90a75a49625baeb98",
+    "confighub/k8s/deployment.yaml": "b359ff3f478fa03f527f796e34ac07e9f185862cd8fe3356da2733d1f6cb49a9",
+    "confighub/k8s/networkpolicy.yaml": "8dbd568a25d5ac23ffdaa3a48cac213e4ecabf3d00d27dfe6fee93063e8b6ac2",
+    "confighub/k8s/service.yaml": "288de6f665320e56aed1b71b019bbf55dafdb140659bea119ddcb25bdf6eae64",
+    "confighub/registry/README.md": "233895baf76cc0424ec095095844556ea4a0d278131ab111a1007f2548054dcd",
+    "confighub/registry/fleet-record.unit.yaml": "42d055bbd471bcdb78ac42e9d8f7024f7e926fbf7a6d5118d0980b8ffef3b162",
+    "confighub/self-management.json": "e2b71d60af695e3f55ec6806de182db0c5ea8e2b4c89000fcf82ce19044d008a",
+    "confighub/variants/dev.json": "f225a830d9dd320c7a2052a075a5eb6dfebb5d8a09e28db2b597a600b36c8aa3",
+    "confighub/variants/prod.json": "3313ab89a154033a4bd89ad4bf96d43cc387f937e4d625fd93bbe55f769f3138",
+    "confighub/variants/stage.json": "061b4f09db05c98fc82e4c1085286ab32c315deab4e4cb4ec912939c2053190d",
+    "contracts.md": "a6a42313d6f0fa0039b95d83acbf9f53f7b4a5b8ceb2858a795e502cfe7f69b7",
+    "data/live-bindings.example.json": "39007ec09eef51ae11c4896f1694a7a5d928070d17b13cd0110b9fce953ed143",
+    "data/operational-workflow.json": "365ac37c648484711257ae3893617d137fb76ec372a7bc3247fed9a9032e7df8",
+    "data/rate-card.json": "2a4c11c2878eaee5fc6defe14042fe6e36b32761b4ce73b68c54c8d083aa33e9",
+    "index.html": "8affb90411b451b6850cc25cc0c36226fa4146efae07883bd59afabb0e93b780",
+    "lifecycle.mjs": "43944d30d5f1159cdba2a9338cf50bf7db84b5a47c3cefabf93238eca0b880d8",
+    "package.json": "8155589eeea2b0000866081d1836efb1eadd5c1852c36737a389a38687fda126",
+    "public/app.js": "c11af2cfa149c534f04ae2de8a35c99573b026654b8b3e824614405e26af1cee",
+    "public/auth.js": "bea5f7edd4e4010a74170a5f9588ef31f29fde37227de075825e7489695acc7f",
+    "public/index.html": "0274631338c4e714cebf6d128c20769fceafedf62c19fedda2c390382ac07cdf",
+    "public/styles.css": "8878b600994c33dc928f8758276ac1ee7372d0605b06e7807176237da537584b",
+    "scripts/binding-check.mjs": "fc8d7d4dc92a57fad05b7104f3dd6bcda11b0f15740e2e7487f9667af1104c6a",
+    "scripts/cost-sweep.mjs": "2b196015cbf45b81c6ba5b7073a1e2b23a75e86a4183ebb38fcf6ef0845d75fd",
+    "scripts/oauth-smoke.mjs": "fee70ca08a301214cf4a05ea250961c2588ef120a3c8653ac007c2967058c109",
+    "scripts/register-oauth-client.mjs": "3e9afbebf345980d361642ca191695dee17db73ecd3483675535df786f0f1ba5",
+    "scripts/verify.mjs": "f42d09d245cc999dc9cbb68be5b41c03046cdfdfc238aa212f048b49f9307bb9",
+    "server.mjs": "a17c4e492f406a382c99bc878ebe8950de76f7e64dfde3b8125265dc77f422de",
+    "skills/cost-management-app-operator/SKILL.md": "0a4e3868adfd471a77bf9c681a894dd3e7de3059dfb9fdf449182dca4169dbb2",
+    "skills/cost-management-app-operator/evals/trigger_evals.json": "2f6d18110d1bee47566825ad8c638473414ccd5f9edd4c256d22683b1c2ffe1c",
+    "src/config.mjs": "808c80121d167f2521f66c66e6445a49f02f185a2c0311b81325349ab06c72b5",
+    "src/cost-engine.mjs": "4244cbc7ca8c55329caa5998d6902e74743d221b462ebe4693c13031fd5b7d72",
+    "src/executor.mjs": "e1a7bb81eb48f9cfd5bb4c5169ba30f87162a7f0a479181566e52dc4dd5d501b",
+    "src/server.mjs": "6f87e43f48204718377e799a61b0c1969390b9079ecf2c55c1eea68c01c3072b",
+    "src/workflow.mjs": "b4a4fcfcebab21979f3abae0914ce99ec31128d7eda552934c0571a5be69b5c7",
+    "tests/app.test.mjs": "22b717761ae141f552ee5d0a20443630a5ce3f2e4d5d888b257134567cc26115",
+    "tests/auth-surface.test.mjs": "91c58bdc7ab51caae7bd1f5431fcf9b4f14dc246ec590373f42e235abfe36078",
+    "tests/cli.test.mjs": "272b1e24c54098e41789d80f9014eb4de96dec70c37c4fe27587b6d8a95c91ac",
+    "tests/cost-engine.test.mjs": "77a20b0a2b43844c8b4a87e75b82dec2b434f9de2b3b2b7b9483c1fe523eaf69",
+    "tests/executor.test.mjs": "4c284b4aa0ea59fa1e05b4d1c54a4646f8c4e443f3a9e7cb4fd7b9c66eca60e6",
+    "tests/lifecycle.test.mjs": "320e907fdebbca7bdbacf09f412462da9f2a0367b81c4d68206b227bdb13336c",
+    "tests/ui-tool.test.mjs": "75aeb632118a22f195a1b4c5963b195c899c8362bdeaad77c71bb44e6a11c36f",
+    "tsconfig.json": "3d1888b990356721fe73d78af880aa6941bf51182ca2dec2c7032df7b6e7d2dd",
+    "ui/src/App.tsx": "5e4e1c31cd0b98de98e912bda9443de209ac70297ef6242ac127bb42ebdc4ed1",
+    "ui/src/index.css": "00066050eeadc9d792ebb2c388b8c39c676f2402b00d118839924bec8964e880",
+    "ui/src/main.tsx": "e8a3d4cfe3d8b3595e19808cdd6193aad6336b16c261b58db7bbcc4b3ed9284a",
+    "vite.config.ts": "607c7849680658c8028cdeafdf177ecbf5e3e0407aac2e6436bf30ea42f4be8f"
+  },
+  "files": [
+    ".gitignore",
+    "JUSTIFICATION.md",
+    "README.md",
+    "SPECIFICATION.md",
+    "app-export-manifest.json",
+    "cli.mjs",
+    "confighub/README.md",
+    "confighub/k8s/deployment.yaml",
+    "confighub/k8s/networkpolicy.yaml",
+    "confighub/k8s/service.yaml",
+    "confighub/registry/README.md",
+    "confighub/registry/fleet-record.json",
+    "confighub/registry/fleet-record.unit.yaml",
+    "confighub/self-management.json",
+    "confighub/variants/dev.json",
+    "confighub/variants/prod.json",
+    "confighub/variants/stage.json",
+    "data/live-bindings.example.json",
+    "data/operational-workflow.json",
+    "index.html",
+    "lifecycle.mjs",
+    "package.json",
+    "public/app.js",
+    "public/auth.js",
+    "public/index.html",
+    "public/styles.css",
+    "scripts/binding-check.mjs",
+    "scripts/oauth-smoke.mjs",
+    "scripts/register-oauth-client.mjs",
+    "scripts/verify.mjs",
+    "server.mjs",
+    "skills/cost-management-app-operator/SKILL.md",
+    "skills/cost-management-app-operator/evals/trigger_evals.json",
+    "src/config.mjs",
+    "src/server.mjs",
+    "src/workflow.mjs",
+    "tests/app.test.mjs",
+    "tests/auth-surface.test.mjs",
+    "tests/cli.test.mjs",
+    "tests/lifecycle.test.mjs",
+    "tests/ui-tool.test.mjs",
+    "tsconfig.json",
+    "ui/src/App.tsx",
+    "ui/src/index.css",
+    "ui/src/main.tsx",
+    "vite.config.ts"
+  ],
+  "generator": {
+    "commit": "2b393c6",
+    "name": "confighub-operational-app-export",
+    "regeneration_policy": "Regenerate with the same or a newer generator version, then run node lifecycle.mjs upgrade --from <regenerated-dir> to diff the regeneration against local modifications.",
+    "version": "0.1.7"
+  },
+  "intent": {
+    "raw": "cost optimisation across our Kubernetes fleet"
+  },
+  "lifecycle": {
+    "commands": [
+      "install",
+      "upgrade",
+      "migrate",
+      "rollback",
+      "rotate-auth",
+      "decommission"
+    ],
+    "entrypoint": "lifecycle.mjs"
+  },
+  "next_gate": "Register a ConfigHub browser OAuth client, start this app, run oauth:smoke, sign in, verify /api/me, create deployment-local live-bindings.json from verified ConfigHub read objects or explicit blocked: reasons, run binding:check, then bind the scenario-specific live action executor and runtime proof.",
+  "non_claims": [
+    "The export did not mutate ConfigHub, a controller, or Kubernetes.",
+    "The export wrote files only under this app directory; any Git commit or push is a delivery step, not live operational proof.",
+    "The generic apply endpoint is blocked until the live ConfigHub action, approval object, proof receipt, and runtime evidence source are bound.",
+    "Fleet registration recorded the app in the org-level index shape; the fleet-record Unit itself is created through the governed path, not by this export."
+  ],
+  "oauth_client": {
+    "client_id": "",
+    "client_name": "cost-management-app-local",
+    "org": "confighub",
+    "policy": "One browser client per app per org; the client id is public, the registration is fleet inventory. Registration, redirect-URI changes, rotation, and revocation are recorded in the fleet record; cross-org access is out of scope for this client.",
+    "record": "confighub/registry/fleet-record.json",
+    "redirect_uris": [],
+    "required_redirect_uris": [
+      "http://localhost:5173/"
+    ],
+    "state": "unregistered",
+    "state_machine": [
+      "unregistered",
+      "registered",
+      "rotated",
+      "revoked"
+    ]
+  },
+  "opt_out": false,
+  "registry": {
+    "fleet_index_unit": "confighub-app-fleet/cost-management-app-fleet-record",
+    "model": "one-unit-per-app",
+    "on_call": "platform-oncall",
+    "owner": "platform-team",
+    "record": "confighub/registry/fleet-record.json",
+    "state": "WATCH",
+    "state_machine": [
+      "WATCH",
+      "LIVE",
+      "DEPRECATED",
+      "RETIRED"
+    ],
+    "status": "REGISTERED",
+    "unit_yaml": "confighub/registry/fleet-record.unit.yaml"
+  },
+  "scenario_id": "cost-management-opencost",
+  "schema": "confighub.operational-app-export.v0",
+  "schemas": {
+    "live_bindings": "confighub.live-bindings.v0",
+    "migrations": [],
+    "operational_workflow": "confighub.operational-workflow.v0",
+    "self_management": "confighub.generated-operational-app.self-management.v0"
+  },
+  "status": "APP_EXPORT_READY_BROWSER_OAUTH",
+  "test_result": {
+    "command": "npm run verify",
+    "returncode": 0,
+    "status": "PASS",
+    "stderr": "",
+    "stdout": "\n> cost-management-app@0.1.0 verify\n> node scripts/verify.mjs && npm test\n\n\n> cost-management-app@0.1.0 test\n> node tests/app.test.mjs && node tests/auth-surface.test.mjs && node tests/ui-tool.test.mjs && node tests/cli.test.mjs && node tests/lifecycle.test.mjs\n\n"
+  },
+  "ui_tool": {
+    "apiClientPackage": "@confighub/api",
+    "apiHook": "useConfigHub",
+    "authHook": "useAuth",
+    "docsUrl": "https://docs.confighub.com/developer/custom-ui-apps/",
+    "env": {
+      "baseUrl": "VITE_CONFIGHUB_BASE_URL",
+      "clientId": "VITE_OAUTH_CLIENT_ID"
+    },
+    "flow": "OIDC Authorization Code with PKCE, followed by ConfigHub token exchange discovered from /api/info.",
+    "name": "ConfigHub Custom UI Apps JavaScript SDK",
+    "packages": {
+      "@confighub/api": "^0.1.0",
+      "@confighub/react-auth": "^0.1.0"
+    },
+    "reactProvider": "ConfigHubAuthProvider",
+    "redirectUri": "http://localhost:5173/",
+    "repoUrl": "https://github.com/confighub/js-sdk",
+    "sessionLifecycle": {
+      "appRule": "App code never stores tokens and never clears browser storage on load; the auth provider owns all session state.",
+      "pinNote": "0.1.1 is the newest @confighub/react-auth on npm; raise the pin to ^0.2.0 once it is published. The provider owns the whole lifecycle, so the raise needs no app changes.",
+      "pinnedPackageVersion": "^0.1.0",
+      "refresh": "The auth provider re-authenticates silently on a fresh page load (an OIDC prompt=none redirect against the identity provider session); a failed silent attempt degrades to the sign-in screen, never an error.",
+      "requiresPackageVersion": "@confighub/react-auth >=0.2.0"
+    },
+    "tokenPosture": "The SDK keeps the minted ConfigHub token in memory; browser storage only ever holds non-credential state (transient PKCE state and a returning-login marker)."
+  },
+  "local_amendments": [
+    {
+      "at": "2026-07-11T21:00:00+00:00",
+      "summary": "Cost engine added in-repo: org-wide read sweep, priced findings, governed dry-run recommendations. Tests made stage-agnostic for deployment-local state.",
+      "files_changed": [
+        ".gitignore",
+        "cli.mjs",
+        "confighub/registry/fleet-record.json",
+        "package.json",
+        "scripts/verify.mjs",
+        "src/server.mjs",
+        "tests/app.test.mjs",
+        "tests/cli.test.mjs",
+        "tests/lifecycle.test.mjs",
+        "ui/src/App.tsx",
+        "ui/src/index.css"
+      ],
+      "files_added": [
+        "data/rate-card.json",
+        "scripts/cost-sweep.mjs",
+        "src/cost-engine.mjs",
+        "tests/cost-engine.test.mjs"
+      ]
+    },
+    {
+      "at": "2026-07-11T21:30:00+00:00",
+      "summary": "Governed write executor installed: single-use revision-pinned approvals, closed function whitelist, post-mutation revision verification (silent-skip = typed BLOCK), per-change receipts. commit --approval executes; approve --grant grants.",
+      "files_changed": [
+        ".gitignore",
+        "cli.mjs",
+        "package.json",
+        "scripts/verify.mjs",
+        "tests/lifecycle.test.mjs"
+      ],
+      "files_added": [
+        "src/executor.mjs",
+        "tests/executor.test.mjs"
+      ]
+    },
+    {
+      "at": "2026-07-12T13:30:00+00:00",
+      "summary": "Published as the cost-management-app example in the examples repository: destination fields point at this repository, the OAuth client is reset to unregistered so users register their own, and the fleet record leaves the hash contract as a state file per current generator doctrine.",
+      "files_changed": [
+        "app-export-manifest.json",
+        "confighub/registry/fleet-record.json",
+        "confighub/registry/fleet-record.unit.yaml",
+        "confighub/registry/README.md",
+        "lifecycle.mjs",
+        "README.md"
+      ],
+      "files_added": [
+        "AI_START_HERE.md",
+        "contracts.md"
+      ]
+    }
+  ]
+}

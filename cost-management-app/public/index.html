@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ConfigHub Operational App</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="topbar">
+        <div>
+          <p class="eyebrow">ConfigHub operational app</p>
+          <h1 id="app-title">Loading...</h1>
+        </div>
+        <div class="auth-panel">
+          <span id="auth-state" class="chip">checking</span>
+          <button id="sign-in" type="button">Sign in</button>
+        </div>
+      </section>
+
+      <section class="explain">
+        <div>
+          <h2>What this app does</h2>
+          <p id="job"></p>
+        </div>
+        <ol id="workflow-steps"></ol>
+      </section>
+
+      <section class="readiness" aria-label="Operational readiness">
+        <div class="readiness-card" id="ready-auth">
+          <span>Auth</span>
+          <strong>checking</strong>
+          <p>ConfigHub user session.</p>
+        </div>
+        <div class="readiness-card" id="ready-inventory">
+          <span>Inventory</span>
+          <strong>loading</strong>
+          <p>Variants available to review.</p>
+        </div>
+        <div class="readiness-card" id="ready-scope">
+          <span>Scope</span>
+          <strong>not selected</strong>
+          <p>Variant and Unit under review.</p>
+        </div>
+        <div class="readiness-card" id="ready-operation">
+          <span>Operation</span>
+          <strong>blocked</strong>
+          <p>Approval, action, and proof path.</p>
+        </div>
+      </section>
+
+      <section class="analysis">
+        <div class="section-heading">
+          <h2>How this became an operational app</h2>
+          <span class="chip">review before action</span>
+        </div>
+        <div id="analysis-cards" class="analysis-cards"></div>
+      </section>
+
+      <section class="layout">
+        <aside class="variants">
+          <div class="section-heading">
+            <h2>Variants</h2>
+            <button id="refresh" type="button">Refresh</button>
+          </div>
+          <div id="variant-list" class="variant-list"></div>
+        </aside>
+
+        <section class="detail">
+          <div class="section-heading">
+            <h2 id="variant-title">Select a Variant</h2>
+            <span id="variant-status" class="chip">waiting</span>
+          </div>
+          <dl id="variant-fields" class="fields"></dl>
+          <div class="actions">
+            <button id="preview" type="button">Preview change</button>
+            <button id="approve" type="button">Approve scope</button>
+            <button id="apply" type="button">Run allowed action</button>
+          </div>
+          <p id="action-note" class="note"></p>
+        </section>
+      </section>
+
+      <section class="proof">
+        <div class="section-heading">
+          <h2>Proof</h2>
+          <button id="proof-refresh" type="button">Check proof</button>
+        </div>
+        <div id="proof-tabs" class="proof-tabs"></div>
+      </section>
+
+      <section class="contract">
+        <div class="section-heading">
+          <h2>Governed action contract</h2>
+          <span id="contract-state" class="chip">waiting</span>
+        </div>
+        <div id="action-contract" class="contract-grid"></div>
+      </section>
+
+      <section class="bindings">
+        <div class="section-heading">
+          <h2>Live bindings</h2>
+          <button id="bindings-refresh" type="button">Check bindings</button>
+        </div>
+        <p id="bindings-status" class="note"></p>
+        <ul id="binding-requirements" class="requirements"></ul>
+      </section>
+    </main>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

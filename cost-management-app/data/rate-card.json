@@ -1,0 +1,6 @@
+{
+  "currency": "USD",
+  "cpuPerCoreMonth": 23.0,
+  "memPerGiBMonth": 3.1,
+  "basis": "Ballpark on-demand x86 rates. Replace with your blended rates; every priced finding carries this string so no number travels without its assumptions."
+}

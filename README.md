@@ -22,6 +22,7 @@ If you are not logged in yet, run `cub auth login` before the `cub` commands.
 - [`initiatives-demo`](./initiatives-demo/README.md): 5 compliance initiatives backed by Kyverno CEL policies, with sample Kubernetes units to evaluate.
 - [`custom-workers`](./custom-workers/): worker extension examples, including bridge, function, and policy workers.
 - [`pilot-example-addons-manager`](./pilot-example-addons-manager/README.md): standalone generated operational app with Variant-first GUI, CLI sibling, production ConfigHub browser OAuth registration, and live-binding proof gates.
+- [`cost-management-app`](./cost-management-app/README.md): generated operational app with a real cost engine: org-wide waste findings priced from config data, and a governed write path (single-use approvals, closed whitelist, revision-verified mutations, receipts). The reduction plane beside [`cost-estimator`](./cost-estimator/README.md)'s enforcement plane.
 - [`global-app`](./global-app/README.md): classic multi-service app example.
 - [`helm-platform-components`](./helm-platform-components/README.md): platform component example for Helm-managed infrastructure.
 - [`vm-fleet`](./vm-fleet/README.md): VM fleet operations example.
@@ -47,7 +48,9 @@ Some other examples
 - Fleet guardrails that analyze config, record a verdict as data, and gate apply
   on it: [`sec-scanner`](./sec-scanner/README.md) (container CVEs),
   [`rbac-manager`](./rbac-manager/README.md) (RBAC hygiene), and
-  [`cost-estimator`](./cost-estimator/README.md) (workload cloud cost).
+  [`cost-estimator`](./cost-estimator/README.md) (workload cloud cost); the
+  cost reduction counterpart is
+  [`cost-management-app`](./cost-management-app/README.md).
 - Agentic RBAC companion patterns:
   [`rbac-manager-for-agents`](./rbac-manager-for-agents/README.md),
   [`rbac-manager-over-redis`](./rbac-manager-over-redis/README.md), and

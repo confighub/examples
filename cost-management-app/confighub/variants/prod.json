@@ -1,0 +1,36 @@
+{
+  "app": "cost-management-app",
+  "authMode": "browser-oauth",
+  "component": "cost-management-app",
+  "config": {
+    "configHubBaseUrlEnv": "CONFIGHUB_BASE_URL",
+    "liveBindings": "data/live-bindings.json",
+    "mutationDefault": "blocked-until-approval-and-proof",
+    "oauthClientIdEnv": "OAUTH_CLIENT_ID",
+    "replicas": 2,
+    "workflowContract": "data/operational-workflow.json"
+  },
+  "promotion": {
+    "requires": [
+      "source and destination Variant comparison",
+      "approved app version or config change",
+      "controller proof",
+      "runtime proof",
+      "receipt"
+    ],
+    "source": "stage"
+  },
+  "proofRequired": [
+    "ConfigHub app config revision",
+    "Variant promotion or explicit Variant config revision",
+    "OCI artifact or target proof",
+    "controller reconciliation",
+    "Kubernetes deployment runtime state",
+    "browser OAuth /api/me",
+    "app receipt"
+  ],
+  "purpose": "Approved production operation.",
+  "schema": "confighub.generated-operational-app.config-unit.v0",
+  "space": "cost-management-app-prod",
+  "variant": "prod"
+}
