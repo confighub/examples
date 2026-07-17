@@ -94,5 +94,7 @@ jobs:
             set-image-reference promoter ":${{ github.sha }}" \
             --change-desc "Deploy ${{ github.sha }}"
 
-          echo "Applying unit $UNIT (no-op under OCI; Argo selfHeals it)..."
-          cub unit apply "$UNIT" --space "$SPACE"
+          # $SPACE is served as a space-scoped OCI Release; publishing the Release is the
+          # deploy action (replaces `cub unit apply`, a no-op under this delivery model).
+          echo "Publishing release for $SPACE..."
+          cub release publish "$SPACE"
