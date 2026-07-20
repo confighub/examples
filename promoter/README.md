@@ -15,9 +15,6 @@ and browser-direct login via
 It deploys as a static SPA (see [deploy/README.md](deploy/README.md)). Point it
 at an org seeded with
 [`../promotion-demo-data`](../promotion-demo-data) for a realistic catalog.
-For the governed operational-app shape on the same SDK — CLI sibling,
-lifecycle commands, receipts — see
-[`../pilot-example-addons-manager`](../pilot-example-addons-manager).
 
 ## Concepts → ConfigHub mapping
 
