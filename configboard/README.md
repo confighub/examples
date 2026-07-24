@@ -18,9 +18,17 @@ Like [`promoter`](../promoter/README.md), configboard **seeds nothing**. It is a
 over whatever organization you point it at. See [DESIGN.md](DESIGN.md) for the full
 design, including the milestones beyond what is built.
 
-## Status: M0
+## Status: M0 + M1
 
 Working now:
+
+- **Dashboards stored as ConfigHub Units.** Each dashboard is one `AppConfig/YAML` unit
+  in a `configboard` Space, labelled `app=configboard`. Seed the bundled four with one
+  click, duplicate them, edit the document in the app, delete what you don't want —
+  every save is a new revision with a change description, visible in
+  `cub revision list`.
+- **Cross-filtering.** Click any bar or slice to narrow the whole dashboard; chips show
+  what's active and remove it.
 
 - Browser-direct OIDC PKCE login, read-only against one organization.
 - Four bundled dashboards: Fleet Overview, **Resource Inventory**, Fleet Posture,
@@ -35,9 +43,13 @@ Working now:
 - Tier-0 dimensions: Unit / Space / Target / Revision metadata, Space labels,
   Target facts, and the per-Space summary counts.
 
-Not built yet: the dashboard builder UI, dashboards stored as Units, saved-View
-dimensions (`DataPath` columns), and pinned dimensions (Attribute + Trigger). See
-DESIGN.md §9.
+Not built yet: the visual query builder, saved-View dimensions (`DataPath` columns for
+arbitrary config paths), and pinned dimensions (Attribute + Trigger). See DESIGN.md §9.
+
+**What it writes.** Nothing, until you ask. Reading never creates the storage Space.
+When you seed, duplicate, save, or delete, it writes only its own dashboard documents in
+the `configboard` Space — never a Unit it did not create, and never anything in a Space
+it does not own. Clean up with `cub space delete configboard --recursive`.
 
 ## Prerequisites
 

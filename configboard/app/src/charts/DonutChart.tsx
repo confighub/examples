@@ -11,6 +11,7 @@ export interface DonutChartProps {
   frame: Frame;
   spec: ChartSpec;
   height?: number;
+  onSelect?: (category: string) => void;
 }
 
 /**
@@ -18,7 +19,7 @@ export interface DonutChartProps {
  * chart instead — the panel author picks, but the legend below carries every label so
  * the reading never depends on distinguishing two arcs by hue.
  */
-export function DonutChart({ frame, spec, height = 260 }: DonutChartProps) {
+export function DonutChart({ frame, spec, height = 260, onSelect }: DonutChartProps) {
   const mode = useMode();
   const series = frame.series[0];
   const points = (series?.points ?? []).filter((p) => p.value > 0);
@@ -43,6 +44,11 @@ export function DonutChart({ frame, spec, height = 260 }: DonutChartProps) {
               stroke={SURFACE[mode]}
               strokeWidth={2}
               isAnimationActive={false}
+              cursor={onSelect ? 'pointer' : undefined}
+              onClick={(datum: unknown) => {
+                const key = (datum as { key?: string } | undefined)?.key;
+                if (key && onSelect) onSelect(key);
+              }}
             >
               {data.map((datum, i) => (
                 <Cell key={datum.key} fill={colorOf(datum.key, i)} />

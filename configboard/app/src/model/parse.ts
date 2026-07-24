@@ -2,7 +2,7 @@
 // actually produces. Parsing never throws: a bad document reports its problems so the
 // app can show them next to the dashboard rather than blanking the page.
 
-import { parse as parseYaml } from 'yaml';
+import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 
 import type { ChartForm, Dashboard, Panel, SourceName, Variable } from './types';
 
@@ -98,7 +98,7 @@ export function parseDashboard(text: string): ParseResult {
 
   return {
     dashboard: {
-      apiVersion: typeof raw.apiVersion === 'string' ? raw.apiVersion : 'configboard.confighub.com/v1',
+      apiVersion: typeof raw.apiVersion === 'string' ? raw.apiVersion : API_VERSION,
       kind: 'Dashboard',
       slug,
       title: typeof raw.title === 'string' ? raw.title : slug,
@@ -108,4 +108,27 @@ export function parseDashboard(text: string): ParseResult {
     },
     errors,
   };
+}
+
+export const API_VERSION = 'configboard.confighub.com/v1';
+
+/**
+ * Dashboard -> YAML. The round trip is lossy by design: it emits the fields the model
+ * knows about, so a saved document is normalized rather than byte-preserved. Comments
+ * in a hand-edited document do not survive a save — which is why the source editor
+ * writes back what the user typed, and only serialization of *app-built* dashboards
+ * goes through here.
+ */
+export function serializeDashboard(dashboard: Dashboard): string {
+  const doc: Record<string, unknown> = {
+    apiVersion: dashboard.apiVersion || API_VERSION,
+    kind: 'Dashboard',
+    slug: dashboard.slug,
+    title: dashboard.title,
+  };
+  if (dashboard.description) doc.description = dashboard.description;
+  if (dashboard.variables && dashboard.variables.length > 0) doc.variables = dashboard.variables;
+  doc.panels = dashboard.panels;
+
+  return stringifyYaml(doc, { lineWidth: 0 });
 }

@@ -83,8 +83,13 @@ export function formatValue(value: number, unit?: string): string {
   let text: string;
   if (abs >= 1_000_000) text = `${(value / 1_000_000).toFixed(1)}M`;
   else if (abs >= 1_000) text = `${(value / 1_000).toFixed(1)}k`;
-  else if (!Number.isInteger(value)) text = value.toFixed(1);
-  else text = String(value);
+  else if (Number.isInteger(value)) text = String(value);
+  // Sub-unit values need real precision: a lead-time axis of small fractions rendered
+  // at one decimal place becomes "0.0, 0.0, 0.0" — three identical ticks on a scale
+  // that is actually varying.
+  else if (abs < 0.1) text = value.toPrecision(2);
+  else if (abs < 10) text = value.toFixed(2);
+  else text = value.toFixed(1);
   return unit ? `${text} ${unit}` : text;
 }
 

@@ -1,6 +1,6 @@
 # configboard — a BI-style dashboard builder over ConfigHub
 
-**Status:** M0 in progress.
+**Status:** M0 and M1 built. M2 (the visual builder) is next.
 **Location:** `examples/configboard/`.
 
 ## 1. What this is
@@ -584,11 +584,34 @@ which is worth saying out loud before the user opens an empty dashboard.
 
 ## 9. Build phases
 
-- **M0 — read-only viewer.** Auth, the four starter dashboards hardcoded as
-  bundled YAML, Tier-0 dimensions only, five chart forms (stat tile, bar, stacked
-  bar, line, donut), table view for each. Proves the query→aggregate→render spine.
-- **M1 — dashboards as data.** Dashboards stored as Units in the `configboard`
-  Space; list/create/duplicate; variables and the filter row; cross-filtering.
+- **M0 — read-only viewer. Built.** Auth, four starter dashboards as bundled YAML,
+  Tier-0 dimensions plus resource grain, six chart forms, table view on every panel,
+  the equivalent `cub` command on every panel.
+- **M1 — dashboards as data. Built.** Dashboards stored as `AppConfig/YAML` Units in
+  the `configboard` Space; seed / duplicate / delete; a source editor that validates
+  before it saves; cross-filtering.
+
+  Three things worth recording from building it:
+
+  - **Reading must not write.** `list()` looks the Space up without creating it, so
+    opening the app against an org that has never used it mutates nothing. Seeding is
+    an explicit button with the write spelled out.
+  - **A dashboard title is prose; `DisplayName` is not.** DisplayName must match
+    `^[A-Za-z0-9]([\-_ .|A-Za-z0-9]*[A-Za-z0-9.!?])?$`, so a legal title like
+    `Fleet Posture (consistency & safety)` fails the save with a raw regex in the error
+    body. The title stays authoritative in the document; DisplayName gets a sanitized
+    best effort, omitted entirely when nothing legal survives.
+  - **Dialogs that hold document text must be keyed to the entity they edit.** The
+    source editor keeps the YAML in `useState`; unkeyed, React kept one dashboard's text
+    while the props moved to another, and a save wrote the wrong unit. Same failure class
+    as the dashboard-scope bug in §7 — any component initializing state from props needs
+    a `key`.
+- **Cross-filter design:** filters apply **client-side**, after the fetch. Many chart
+  dimensions are derived rather than stored (`Unit.ApplyState`, every `Resource.*`), so
+  no `where` clause could express them; pushing only some clicks down would make the
+  same gesture mean different things. A filter on a dimension a panel's source lacks is
+  ignored *for that panel*, and the panel says so — clicking a resource kind must not
+  blank the Space-grain panels beside it.
 - **M2 — the builder.** Query builder with live preview, dimension picker across
   Tiers 0–2, "show me the query", "save as Filter/View", heatmap and histogram.
 - **M3 — pinned dimensions.** Attribute + Trigger creation from the UI, with the

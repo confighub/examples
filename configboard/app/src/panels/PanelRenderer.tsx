@@ -8,8 +8,13 @@ import { DonutChart } from '../charts/DonutChart';
 import { LineChart } from '../charts/LineChart';
 import { Meter, StatTile } from '../charts/StatTile';
 import type { Frame, Panel, Row } from '../model/types';
-import { aggregate } from '../query/aggregate';
+import { NONE, OTHER, aggregate } from '../query/aggregate';
 import { ALL_VALUE, type Scope, compilePanel, cubCommand, unknownDimensions } from '../query/compile';
+import {
+  type CrossFilter,
+  applicableFilters,
+  applyCrossFilters,
+} from '../query/crossFilter';
 import { lookupDimension } from '../query/dimensions';
 import { HARD_ROW_LIMIT, SOFT_ROW_LIMIT, useQueryResult } from '../query/execute';
 import { PanelFrame } from './PanelFrame';
@@ -18,6 +23,8 @@ export interface PanelRendererProps {
   panel: Panel;
   scope: Scope;
   baseUrl: string;
+  crossFilters?: CrossFilter[];
+  onCrossFilter?: (filter: CrossFilter) => void;
 }
 
 /** Below this, a whole-org resource scan is fast enough not to nag about. */
@@ -81,7 +88,7 @@ function drillColumns(panel: Panel): { id: string; label: string }[] {
   return [...identity, ...extra];
 }
 
-function renderChart(panel: Panel, frame: Frame) {
+function renderChart(panel: Panel, frame: Frame, onSelect?: (c: string, s?: string) => void) {
   const { chart } = panel;
   switch (chart.form) {
     case 'statTile': {
@@ -97,13 +104,15 @@ function renderChart(panel: Panel, frame: Frame) {
       return <Meter value={frame.total} total={total} invert={chart.invert} />;
     }
     case 'donut':
-      return <DonutChart frame={frame} spec={chart} />;
+      return <DonutChart frame={frame} spec={chart} onSelect={onSelect} />;
     case 'line':
+      // A time axis is a scale, not a set of categories — clicking one day to filter the
+      // dashboard to that day is rarely what anyone means, so lines do not cross-filter.
       return <LineChart frame={frame} spec={chart} />;
     case 'stackedBar':
-      return <BarChart frame={frame} spec={chart} stacked />;
+      return <BarChart frame={frame} spec={chart} stacked onSelect={onSelect} />;
     case 'bar':
-      return <BarChart frame={frame} spec={chart} />;
+      return <BarChart frame={frame} spec={chart} onSelect={onSelect} />;
     case 'table':
       return null;
     default:
@@ -111,15 +120,50 @@ function renderChart(panel: Panel, frame: Frame) {
   }
 }
 
-export function PanelRenderer({ panel, scope, baseUrl }: PanelRendererProps) {
+export function PanelRenderer({
+  panel,
+  scope,
+  baseUrl,
+  crossFilters = [],
+  onCrossFilter,
+}: PanelRendererProps) {
   const spec = useMemo(() => compilePanel(panel, scope), [panel, scope]);
   const result = useQueryResult(spec, baseUrl);
 
-  const { kept, note: excludeNote } = useMemo(
+  const { kept: afterExcludes, note: excludeNote } = useMemo(
     () => applyExcludes(panel, result.rows),
     [panel, result.rows],
   );
+
+  // Only filters on dimensions this source actually has: a resource-kind chip must not
+  // blank the Space-grain panels beside it.
+  const active = useMemo(
+    () => applicableFilters(crossFilters, panel.query.source),
+    [crossFilters, panel.query.source],
+  );
+  const kept = useMemo(() => applyCrossFilters(afterExcludes, active), [afterExcludes, active]);
+
   const frame = useMemo(() => aggregate(kept, panel.transform), [kept, panel.transform]);
+
+  const groupKeys = panel.transform?.groupBy;
+  const primaryKey = typeof groupKeys === 'string' ? groupKeys : groupKeys?.[0];
+  const secondaryKey = Array.isArray(groupKeys) ? groupKeys[1] : undefined;
+
+  const onSelect = useMemo(() => {
+    if (!onCrossFilter || !primaryKey) return undefined;
+    return (category: string, series?: string) => {
+      // Clicking a stack segment filters on the series dimension when there is one:
+      // the segment's identity is the series, and the category is already the axis.
+      const field = series && secondaryKey ? secondaryKey : primaryKey;
+      const value = series && secondaryKey ? series : category;
+      if (value === OTHER || value === NONE) return; // a residue bucket is not a value
+      onCrossFilter({
+        field,
+        value,
+        label: `${lookupDimension(panel.query.source, field)?.label ?? field}: ${value}`,
+      });
+    };
+  }, [onCrossFilter, primaryKey, secondaryKey, panel.query.source]);
 
   const notes: string[] = [];
   if (excludeNote) notes.push(`Excluded: ${excludeNote}.`);
@@ -140,6 +184,15 @@ export function PanelRenderer({ panel, scope, baseUrl }: PanelRendererProps) {
 
   const unknown = unknownDimensions(panel);
   if (unknown.length > 0) notes.push(`Unknown dimension(s): ${unknown.join(', ')}.`);
+
+  // A chip that this panel cannot honour is stated, so a panel showing unfiltered
+  // numbers next to filtered ones is never a mystery.
+  const ignored = crossFilters.length - active.length;
+  if (ignored > 0) {
+    notes.push(
+      `${ignored} dashboard filter${ignored === 1 ? '' : 's'} not applicable to ${panel.query.source} rows.`,
+    );
+  }
 
   // Resource counting invokes a function per Unit, and the invoke response carries each
   // Unit's config data whether or not the function asked for it — org-wide that is tens
@@ -165,7 +218,7 @@ export function PanelRenderer({ panel, scope, baseUrl }: PanelRendererProps) {
       </Typography>
     </Box>
   ) : (
-    renderChart(panel, frame)
+    renderChart(panel, frame, onSelect)
   );
 
   const table =

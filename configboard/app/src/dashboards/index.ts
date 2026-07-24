@@ -12,6 +12,8 @@ import type { Dashboard } from '../model/types';
 export interface LoadedDashboard {
   dashboard: Dashboard;
   errors: string[];
+  /** The document text, so it can be seeded into ConfigHub verbatim. */
+  yaml: string;
 }
 
 const SOURCES = [fleetOverview, resourceInventory, fleetPosture, deliveryHealth];
@@ -20,7 +22,7 @@ export function bundledDashboards(): LoadedDashboard[] {
   const loaded: LoadedDashboard[] = [];
   for (const text of SOURCES) {
     const { dashboard, errors } = parseDashboard(text);
-    if (dashboard) loaded.push({ dashboard, errors });
+    if (dashboard) loaded.push({ dashboard, errors, yaml: text });
   }
   return loaded;
 }

@@ -63,6 +63,17 @@ tests catch one without the other.
 | `app/src/panels/` | panel chrome and form dispatch |
 | `app/src/dev/` | the chart gallery (dev only) |
 
+## Storage (M1)
+
+Dashboards are `AppConfig/YAML` Units in a `configboard` Space, labelled
+`app=configboard`. `src/storage/dashboards.ts` is the only code that writes anything.
+
+```bash
+cub unit list --space configboard --where "Labels.app = 'configboard'"
+cub revision list <slug> --space configboard      # every save is a revision
+cub space delete configboard --recursive           # clean up
+```
+
 ## Rules that are easy to break
 
 - **`GET /unit` has no pagination.** Never add a unit query without `select`, and never
@@ -76,3 +87,11 @@ tests catch one without the other.
   say so in the footer.
 - **Never cycle categorical hues.** Past the slot ceiling, fold into "Other"
   (`transform.topN`). `palette.test.ts` pins this.
+- **Reading must not write.** `list()` must not create the storage Space. Opening the app
+  against an untouched org has to mutate nothing.
+- **Key any component that seeds state from props.** The source editor and the dashboard
+  view both hold state initialized from an entity; unkeyed, React keeps the old state
+  when the entity changes. This has produced two real bugs — an unbounded query and a
+  save that wrote the wrong unit.
+- **Never copy a document `title` straight into `DisplayName`** — the charsets differ.
+  Use `toDisplayName()`.

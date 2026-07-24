@@ -26,10 +26,29 @@ dashboard document schema, and the API requests it issues.
   `Cluster dimension (a Target reference, not a label)`
 - proves: the same, human-readable, plus the exact `cub` commands to fill each gap
 
+### Storage Space
+
+- slug: `configboard`
+- created **only** on the first write (seed / duplicate / save); reading never creates it
+- labels: `app=configboard`
+- mutates live infra: no
+
+### Dashboard unit
+
+- one Unit per dashboard in the `configboard` Space
+- `ToolchainType`: `AppConfig/YAML`
+- labels: `app=configboard`
+- `Data`: the dashboard document (YAML), stored verbatim including comments
+- `DisplayName`: a sanitized form of the document `title` — omitted when the title
+  contains nothing matching `^[A-Za-z0-9]([\-_ .|A-Za-z0-9]*[A-Za-z0-9.!?])?$`. The
+  document `title` is authoritative for display; DisplayName is a convenience label.
+- every save is a merge-patch producing a new revision with a `LastChangeDescription`
+- discoverable via: `cub unit list --space configboard --where "Labels.app = 'configboard'"`
+
 ### Dashboard document
 
-- location: `dashboards/*.yaml` (M0 bundles them into the build; M1 stores them as
-  Units in a `configboard` Space)
+- location: `dashboards/*.yaml` bundled as seed material; the stored Units are the
+  source of truth once seeded
 - `apiVersion`: `configboard.confighub.com/v1`
 - `kind`: `Dashboard`
 - required: `slug` (lowercase, `[a-z0-9-]+`), `title`, `panels` (non-empty)
@@ -56,9 +75,12 @@ dashboard document schema, and the API requests it issues.
 
 ### API requests issued
 
-- read-only: `GET /unit`, `GET /space`, `GET /revision`, `GET /target`, and
-  `POST /function/invoke` with the non-mutating `get-resources` function. No PATCH, PUT,
-  or DELETE in M0; the one POST invokes a read-only function and writes nothing.
+- charting is read-only: `GET /unit`, `GET /space`, `GET /revision`, `GET /target`, and
+  `POST /function/invoke` with the non-mutating `get-resources` function
+- writes happen only on explicit dashboard actions: `POST /space` (seed, first write
+  only), `POST /space/{id}/unit` (seed, duplicate), `PATCH /space/{id}/unit/{id}` (save),
+  `DELETE /space/{id}/unit/{id}` (delete)
+- cross-filters are applied client-side and never change the request
 - resource panels invoke `get-resources` with `body=none` (metadata only, never the
   resource bodies) and read `Outputs.ResourceList`
 - unit queries always pass `select` and never request `Data`, `LiveData`, or

@@ -29,13 +29,15 @@ export interface BarChartProps {
   spec: ChartSpec;
   stacked?: boolean;
   height?: number;
+  /** Cross-filter: called with the clicked category, and the series when stacked. */
+  onSelect?: (category: string, series?: string) => void;
 }
 
 /**
  * Bar and stacked bar. Horizontal is the default for long category names, which is
  * most fleet dimensions (space slugs, image references, resource types).
  */
-export function BarChart({ frame, spec, stacked, height = 260 }: BarChartProps) {
+export function BarChart({ frame, spec, stacked, height = 260, onSelect }: BarChartProps) {
   const mode = useMode();
   const axis = useAxisProps();
   const grid = useGridStroke();
@@ -58,6 +60,9 @@ export function BarChart({ frame, spec, stacked, height = 260 }: BarChartProps) 
         layout={horizontal ? 'vertical' : 'horizontal'}
         margin={{ top: 4, right: 16, bottom: 4, left: 4 }}
         barCategoryGap="20%"
+        // Without a cap, a chart with one or two categories renders bars as thick as
+        // their band — a slab that reads as a filled panel rather than a measurement.
+        maxBarSize={34}
       >
         <CartesianGrid
           stroke={grid}
@@ -91,7 +96,16 @@ export function BarChart({ frame, spec, stacked, height = 260 }: BarChartProps) 
         {!singleSeries && <Legend iconType="square" iconSize={10} formatter={legendFormatter} />}
 
         {singleSeries ? (
-          <Bar dataKey="value" radius={horizontal ? [0, 4, 4, 0] : [4, 4, 0, 0]} isAnimationActive={false}>
+          <Bar
+            dataKey="value"
+            radius={horizontal ? [0, 4, 4, 0] : [4, 4, 0, 0]}
+            isAnimationActive={false}
+            cursor={onSelect ? 'pointer' : undefined}
+            onClick={(datum: unknown) => {
+              const key = (datum as { key?: string } | undefined)?.key;
+              if (key && onSelect) onSelect(key);
+            }}
+          >
             {data.map((datum, i) => (
               <Cell key={datum.key} fill={colorOf(datum.key, i, data.length)} />
             ))}
@@ -102,6 +116,11 @@ export function BarChart({ frame, spec, stacked, height = 260 }: BarChartProps) 
               key={name}
               dataKey={name}
               stackId={stacked ? 'stack' : undefined}
+              cursor={onSelect ? 'pointer' : undefined}
+              onClick={(datum: unknown) => {
+                const key = (datum as { key?: string } | undefined)?.key;
+                if (key && onSelect) onSelect(key, name);
+              }}
               fill={colorOf(name, i, seriesNames.length)}
               // A 2px surface-coloured edge keeps adjacent stack segments from
               // reading as one block.

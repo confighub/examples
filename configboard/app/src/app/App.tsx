@@ -1,20 +1,27 @@
 import { useAuth } from '@confighub/react-auth';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import DataObjectIcon from '@mui/icons-material/DataObject';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import Alert from '@mui/material/Alert';
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import Container from '@mui/material/Container';
+import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import Toolbar from '@mui/material/Toolbar';
+import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 
-import { bundledDashboards } from '../dashboards';
+import { ConfirmDialog, DuplicateDialog } from './Dialogs';
 import { DashboardView } from './DashboardView';
+import { SourceDialog } from './SourceDialog';
 import { BASE_URL, isConfigured } from './config';
+import { type DashboardEntry, useDashboards } from './useDashboards';
 
 /**
  * The most common setup failure, by a wide margin: an app can only sign in members of
@@ -46,8 +53,17 @@ function Centered({ children }: { children: React.ReactNode }) {
 
 export function App() {
   const { status, login, logout, error } = useAuth();
-  const dashboards = useMemo(() => bundledDashboards(), []);
+  // Dashboards load from ConfigHub once authenticated; before that there is no session
+  // to read them with, and the bundled documents stand in.
+  const store = useDashboards(status === 'authenticated');
+  const dashboards = store.entries;
+
   const [active, setActive] = useState(0);
+  // The dashboard the source dialog is editing, pinned when it opens. Deriving it from
+  // the active tab at save time let the target drift from the document on screen.
+  const [sourceEntry, setSourceEntry] = useState<DashboardEntry | null>(null);
+  const [duplicating, setDuplicating] = useState<DashboardEntry | null>(null);
+  const [deleting, setDeleting] = useState<DashboardEntry | null>(null);
 
   if (!isConfigured) {
     return (
@@ -107,7 +123,7 @@ export function App() {
     );
   }
 
-  const current = dashboards[active];
+  const current = dashboards[Math.min(active, Math.max(0, dashboards.length - 1))];
 
   return (
     <Box sx={{ minHeight: '100vh' }}>
@@ -117,15 +133,38 @@ export function App() {
             configboard
           </Typography>
           <Tabs
-            value={active}
+            value={Math.min(active, Math.max(0, dashboards.length - 1))}
             onChange={(_, v: number) => setActive(v)}
+            variant="scrollable"
+            scrollButtons="auto"
             sx={{ flex: 1, minHeight: 40 }}
           >
             {dashboards.map((d) => (
               <Tab key={d.dashboard.slug} label={d.dashboard.title} sx={{ minHeight: 40 }} />
             ))}
           </Tabs>
-          <Stack direction="row" spacing={1} alignItems="center">
+          <Stack direction="row" spacing={0.5} alignItems="center">
+            {current && (
+              <>
+                <Tooltip title="View and edit the dashboard document">
+                  <IconButton size="small" onClick={() => setSourceEntry(current)}>
+                    <DataObjectIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Duplicate this dashboard">
+                  <IconButton size="small" onClick={() => setDuplicating(current)}>
+                    <ContentCopyIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+                {current.stored && (
+                  <Tooltip title="Delete this dashboard">
+                    <IconButton size="small" onClick={() => setDeleting(current)}>
+                      <DeleteOutlineIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                )}
+              </>
+            )}
             <Button size="small" onClick={logout}>
               Log out
             </Button>
@@ -134,7 +173,34 @@ export function App() {
       </AppBar>
 
       <Container maxWidth="xl" sx={{ py: 3 }}>
-        {current ? (
+        {store.error && (
+          <Alert severity="error" variant="outlined" sx={{ mb: 2 }}>
+            {store.error}
+          </Alert>
+        )}
+
+        {store.isEmpty && (
+          <Alert
+            severity="info"
+            variant="outlined"
+            sx={{ mb: 2 }}
+            action={
+              <Button size="small" onClick={() => void store.seedBundled()} disabled={store.isLoading}>
+                Save to ConfigHub
+              </Button>
+            }
+          >
+            These four dashboards are bundled with the app. Saving them writes one
+            <code> AppConfig/YAML </code> unit each to the <code>configboard</code> Space, after
+            which they are editable, versioned config like anything else.
+          </Alert>
+        )}
+
+        {store.isLoading && dashboards.length === 0 ? (
+          <Centered>
+            <CircularProgress size={22} />
+          </Centered>
+        ) : current ? (
           // Keyed by slug so switching dashboards remounts the view. Without this,
           // React keeps the previous dashboard's scope state — and a variable the new
           // dashboard declares but the old one didn't (a time window, say) stays
@@ -148,6 +214,45 @@ export function App() {
           <Alert severity="error">No dashboards loaded.</Alert>
         )}
       </Container>
+
+      {sourceEntry && (
+        <SourceDialog
+          // Keyed by the unit being edited: the dialog holds the document text in state,
+          // and without a key React would keep one entry's text while the props pointed
+          // at another — which is how an edit to one dashboard overwrote a different one.
+          key={sourceEntry.stored?.unitId ?? sourceEntry.dashboard.slug}
+          entry={sourceEntry}
+          open
+          onClose={() => setSourceEntry(null)}
+          onSave={(yaml) => store.saveSource(sourceEntry, yaml)}
+        />
+      )}
+
+      {duplicating && (
+        <DuplicateDialog
+          entry={duplicating}
+          existingSlugs={dashboards.map((d) => d.dashboard.slug)}
+          onClose={() => setDuplicating(null)}
+          onConfirm={async (slug, title) => {
+            await store.duplicate(duplicating, slug, title);
+            setDuplicating(null);
+          }}
+        />
+      )}
+
+      {deleting && (
+        <ConfirmDialog
+          title={`Delete “${deleting.dashboard.title}”?`}
+          body={`This deletes the ${deleting.stored?.slug} unit from the configboard Space. The configuration it charts is untouched.`}
+          confirmLabel="Delete"
+          onClose={() => setDeleting(null)}
+          onConfirm={async () => {
+            await store.remove(deleting);
+            setDeleting(null);
+            setActive(0);
+          }}
+        />
+      )}
     </Box>
   );
 }
