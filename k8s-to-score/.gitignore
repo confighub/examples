@@ -1,0 +1,4 @@
+bin/
+k8s-to-score
+k8s-to-score-*-*
+score/

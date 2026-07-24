@@ -55,6 +55,29 @@ Some other examples
   [`rbac-manager-for-agents`](./rbac-manager-for-agents/README.md),
   [`rbac-manager-over-redis`](./rbac-manager-over-redis/README.md), and
   [`redis-platform-with-rbac-guardrails`](./redis-platform-with-rbac-guardrails/README.md)
+- Agent-driven fleet managers — each a `cub-*` CLI that manages one domain of
+  Kubernetes config as data across a fleet of cluster-Spaces, siblings of
+  [`rbac-manager-for-agents`](./rbac-manager-for-agents/README.md):
+  [`workload-manager`](./workload-manager/README.md) (workload security and
+  reliability posture: security context, resources, probes, PDBs),
+  [`namespace-manager`](./namespace-manager/README.md) (namespaces and their
+  policy envelope: pod-security labels, default-deny NetworkPolicy, baseline
+  RBAC),
+  [`network-policy-manager`](./network-policy-manager/README.md) (NetworkPolicy,
+  reasoned about with the Namespaces, workloads, and Services it covers),
+  [`scheduling-manager`](./scheduling-manager/README.md) (workload placement:
+  `nodeSelector`, tolerations, node affinity),
+  [`autoscale-manager`](./autoscale-manager/README.md) (autoscaling:
+  HorizontalPodAutoscalers and KEDA ScaledObjects),
+  [`observability-manager`](./observability-manager/README.md) (observability
+  posture: Prometheus ServiceMonitor coverage and telemetry sidecar injection),
+  and [`eks-manager`](./eks-manager/README.md) (AWS EKS clusters as Crossplane
+  managed resources)
+- Platform view builders — read the config data in a Space and project it into a
+  different platform representation:
+  [`k8s-to-score`](./k8s-to-score/README.md) reads the Kubernetes resources in a
+  Space and emits a [Score](https://score.dev) workload spec per Deployment or
+  StatefulSet (the inverse of `score-k8s`; read-only)
 - Incubator and experimental paths: [`incubator/README.md`](./incubator/README.md)
 - App mutation and platform flow: [`spring-platform/springboot-platform-app-centric`](./spring-platform/springboot-platform-app-centric/README.md)
 - Standalone operational app shape: [`pilot-example-addons-manager`](./pilot-example-addons-manager/README.md)
