@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ledger
+  namespace: shop
+spec:
+  serviceName: ledger
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ledger
+  template:
+    metadata:
+      labels:
+        app: ledger
+    spec:
+      containers:
+        - name: ledger
+          image: ghcr.io/example/ledger:2.0.0
+          ports:
+            - name: grpc
+              containerPort: 9090
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/ledger
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ledger
+  namespace: shop
+spec:
+  selector:
+    app: ledger
+  ports:
+    - name: grpc
+      port: 9090
