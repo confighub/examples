@@ -1,0 +1,82 @@
+apiVersion: configboard.confighub.com/v1
+kind: Dashboard
+slug: fleet-posture
+title: Fleet Posture
+description: Is the fleet consistent, current, and unblocked?
+
+variables:
+  - name: env
+    label: Environment
+    from: { spaceLabel: Environment }
+    allValue: true
+
+panels:
+  - id: k8s-versions
+    title: Kubernetes versions across clusters
+    description: Collected as Target facts, so this cannot drift from reality.
+    span: 6
+    query:
+      source: Target
+      excludes: { field: Target.KubernetesVersion, isNull: true, label: Targets with no collected facts }
+    transform:
+      groupBy: Target.KubernetesVersion
+      aggregate: { fn: count }
+      sort: key-desc
+    chart: { form: bar, orientation: horizontal, color: sequential }
+
+  - id: workloads-per-cluster
+    title: Workloads per cluster
+    description: Units bound to each Target.
+    span: 6
+    query:
+      source: Unit
+      where: "Space.Labels.Environment = '${env}'"
+      excludes: { field: Target.Slug, isNull: true, label: base or non-deployable Units }
+    transform:
+      groupBy: Target.Slug
+      aggregate: { fn: count }
+      topN: 10
+      tail: drop
+      sort: value-desc
+    chart: { form: bar, orientation: horizontal, color: sequential }
+
+  - id: posture-by-space
+    title: Posture by Space
+    description: Gated, unapproved, and unapplied counts from the server-side rollup.
+    span: 12
+    query:
+      source: Space
+      where: "Labels.Environment = '${env}'"
+    transform:
+      groupBy: Space.Slug
+      aggregate: { fn: sum, field: Space.GatedUnitCount }
+      topN: 12
+      tail: drop
+      sort: value-desc
+    chart: { form: bar, orientation: horizontal, color: status }
+
+  - id: gates-by-component
+    title: Gated Units by component
+    span: 6
+    query:
+      source: Unit
+      where: "Space.Labels.Environment = '${env}'"
+      excludes: { field: Space.Labels.Component, isNull: true, label: Units in Spaces with no Component label }
+    transform:
+      groupBy: Space.Labels.Component
+      aggregate: { fn: sum, field: Unit.GateCount }
+      topN: 10
+      tail: drop
+      sort: value-desc
+    chart: { form: bar, orientation: horizontal, color: status }
+
+  - id: state-by-environment
+    title: Apply state by environment
+    span: 6
+    query:
+      source: Unit
+    transform:
+      groupBy: [Space.Labels.Environment, Unit.ApplyState]
+      aggregate: { fn: count }
+      topN: 6
+    chart: { form: stackedBar, orientation: horizontal, color: status }

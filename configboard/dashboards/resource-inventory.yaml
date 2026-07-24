@@ -1,0 +1,168 @@
+apiVersion: configboard.confighub.com/v1
+kind: Dashboard
+slug: resource-inventory
+title: Resource Inventory
+description: >-
+  What resources exist across the fleet, counted at resource grain rather than Unit
+  grain — one Unit can hold dozens of resources.
+
+variables:
+  - name: env
+    label: Environment
+    from: { spaceLabel: Environment }
+    allValue: true
+  - name: cluster
+    label: Cluster
+    from: { target: Slug }
+    allValue: true
+
+panels:
+  - id: resource-count
+    title: Resources under management
+    description: Every resource inside every selected Unit.
+    span: 3
+    query:
+      source: Resource
+      where: "Space.Labels.Environment = '${env}' AND Target.Slug = '${cluster}'"
+    transform:
+      aggregate: { fn: count }
+    chart: { form: statTile }
+
+  - id: distinct-types
+    title: Distinct resource types
+    span: 3
+    query:
+      source: Resource
+      where: "Space.Labels.Environment = '${env}' AND Target.Slug = '${cluster}'"
+    transform:
+      aggregate: { fn: distinctCount, field: Resource.Type }
+    chart: { form: statTile }
+
+  - id: distinct-scopes
+    title: Namespaces in use
+    span: 3
+    query:
+      source: Resource
+      where: "Space.Labels.Environment = '${env}' AND Target.Slug = '${cluster}'"
+    transform:
+      aggregate: { fn: distinctCount, field: Resource.Scope }
+    chart: { form: statTile }
+
+  # Not "Resource vs AppConfig": get-resources runs on the Kubernetes toolchain, so
+  # that split can only ever have one side. Cluster-scoped vs namespaced is the split
+  # that actually has two.
+  - id: scope-kind
+    title: Cluster-scoped vs namespaced
+    span: 3
+    query:
+      source: Resource
+      where: "Space.Labels.Environment = '${env}' AND Target.Slug = '${cluster}'"
+    transform:
+      groupBy: Resource.Scoped
+      aggregate: { fn: count }
+    chart: { form: bar, orientation: horizontal, color: sequential }
+
+  - id: by-kind
+    title: Resources by kind
+    description: The fleet's shape — what you actually run, not how it is packaged.
+    span: 6
+    query:
+      source: Resource
+      where: "Space.Labels.Environment = '${env}' AND Target.Slug = '${cluster}'"
+    transform:
+      groupBy: Resource.Kind
+      aggregate: { fn: count }
+      topN: 15
+      tail: drop
+      sort: value-desc
+    chart: { form: bar, orientation: horizontal, color: sequential }
+
+  # The group dimension separates core Kubernetes from ACK, Crossplane, and every
+  # other CRD family without configboard knowing any of them by name.
+  - id: by-family
+    title: Provider families
+    description: Core Kubernetes versus ACK, Crossplane, and other CRD families.
+    span: 6
+    query:
+      source: Resource
+      where: "Space.Labels.Environment = '${env}' AND Target.Slug = '${cluster}'"
+    transform:
+      groupBy: Resource.Family
+      aggregate: { fn: count }
+      topN: 6
+    chart: { form: bar, orientation: horizontal, color: categorical }
+
+  - id: by-group
+    title: API groups
+    description: Every CRD group in the fleet, including managed-resource providers.
+    span: 6
+    query:
+      source: Resource
+      where: "Space.Labels.Environment = '${env}' AND Target.Slug = '${cluster}'"
+    transform:
+      groupBy: Resource.Group
+      aggregate: { fn: count }
+      topN: 12
+      tail: drop
+      sort: value-desc
+    chart: { form: bar, orientation: horizontal, color: sequential }
+
+  - id: by-target
+    title: Resources per cluster
+    description: Resource count by the Target its Unit is bound to.
+    span: 6
+    query:
+      source: Resource
+      where: "Space.Labels.Environment = '${env}'"
+      excludes: { field: Target.Slug, isNull: true, label: resources in base or non-deployable Units }
+    transform:
+      groupBy: Target.Slug
+      aggregate: { fn: count }
+      topN: 10
+      tail: drop
+      sort: value-desc
+    chart: { form: bar, orientation: horizontal, color: sequential }
+
+  - id: kind-by-family
+    title: Kind by provider family
+    span: 12
+    query:
+      source: Resource
+      where: "Space.Labels.Environment = '${env}' AND Target.Slug = '${cluster}'"
+    transform:
+      groupBy: [Resource.Kind, Resource.Family]
+      aggregate: { fn: count }
+      topN: 12
+      tail: drop
+      sort: value-desc
+    chart: { form: stackedBar, orientation: horizontal, color: categorical }
+
+  - id: densest-units
+    title: Units holding the most resources
+    description: Usually rendered charts — a signal for what to split.
+    span: 6
+    query:
+      source: Resource
+      where: "Space.Labels.Environment = '${env}' AND Target.Slug = '${cluster}'"
+    transform:
+      groupBy: Unit.Slug
+      aggregate: { fn: count }
+      topN: 10
+      tail: drop
+      sort: value-desc
+    chart: { form: bar, orientation: horizontal, color: sequential }
+
+  - id: busiest-namespaces
+    title: Busiest namespaces
+    span: 6
+    query:
+      source: Resource
+      where: "Space.Labels.Environment = '${env}' AND Target.Slug = '${cluster}'"
+      excludes: { field: Resource.Scope, isNull: true, label: cluster-scoped resources }
+    transform:
+      groupBy: Resource.Scope
+      aggregate: { fn: count }
+      topN: 10
+      tail: drop
+      sort: value-desc
+    chart: { form: bar, orientation: horizontal, color: sequential }

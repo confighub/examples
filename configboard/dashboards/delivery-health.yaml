@@ -1,0 +1,99 @@
+apiVersion: configboard.confighub.com/v1
+kind: Dashboard
+slug: delivery-health
+title: Delivery Health
+description: How fast config changes, and how long it takes to land.
+
+variables:
+  - name: env
+    label: Environment
+    from: { spaceLabel: Environment }
+    allValue: true
+  - name: window
+    label: Time range
+    type: timeRange
+    default: 30d
+
+panels:
+  - id: velocity
+    title: Changes per day by environment
+    description: One line per environment; every revision is one config change.
+    span: 8
+    query:
+      source: Revision
+      where: "CreatedAt > '${window.start}' AND Space.Labels.Environment = '${env}'"
+    transform:
+      bin: { field: Revision.CreatedAt, unit: day }
+      groupBy: [Revision.CreatedAt, Space.Labels.Environment]
+      aggregate: { fn: count }
+    chart: { form: line, color: categorical }
+
+  - id: change-source
+    title: What makes changes
+    description: Human edits versus functions, upgrades, and clones.
+    span: 4
+    query:
+      source: Revision
+      where: "CreatedAt > '${window.start}'"
+    transform:
+      groupBy: Revision.Source
+      aggregate: { fn: count }
+      topN: 7
+      tail: drop
+      sort: value-desc
+    chart: { form: bar, orientation: horizontal, color: sequential }
+
+  - id: lead-time
+    title: Deploy lead time (p50, hours)
+    description: Time from a revision being created to it going live.
+    span: 6
+    query:
+      source: Revision
+      where: "CreatedAt > '${window.start}'"
+      excludes: { field: Revision.LiveAt, isNull: true, label: revisions that never went live }
+    transform:
+      bin: { field: Revision.CreatedAt, unit: day }
+      groupBy: Revision.CreatedAt
+      aggregate: { fn: p50, field: Revision.LeadTimeHours }
+    chart: { form: line, unit: h }
+
+  - id: landed
+    title: Applies landed per day
+    span: 6
+    query:
+      source: Revision
+      where: "LiveAt > '${window.start}'"
+    transform:
+      bin: { field: Revision.LiveAt, unit: day }
+      groupBy: Revision.LiveAt
+      aggregate: { fn: count }
+      dropEmpty: true
+    chart: { form: bar, orientation: vertical, color: sequential }
+
+  - id: churn
+    title: Churniest config
+    description: Units with the most revisions in the window.
+    span: 6
+    query:
+      source: Revision
+      where: "CreatedAt > '${window.start}'"
+    transform:
+      groupBy: Unit.Slug
+      aggregate: { fn: count }
+      topN: 10
+      tail: drop
+      sort: value-desc
+    chart: { form: bar, orientation: horizontal, color: sequential }
+
+  - id: rollbacks
+    title: Rollbacks
+    description: Revisions created by restoring an earlier one.
+    span: 6
+    query:
+      source: Revision
+      where: "CreatedAt > '${window.start}' AND Source = 'RestoreRevision'"
+    transform:
+      bin: { field: Revision.CreatedAt, unit: day }
+      groupBy: Revision.CreatedAt
+      aggregate: { fn: count }
+    chart: { form: bar, orientation: vertical, color: status }
