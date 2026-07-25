@@ -1,0 +1,115 @@
+// Live validation harness: runs the REAL app transport (fqlTransport) against a
+// live ConfigHub over its REST API, so the full stack — planner pushdown,
+// endpoint shapes, materializers — is exercised end to end, not mocked.
+//
+//   npx vite-node scripts/live.ts            # uses `cub auth get-token`
+//   CONFIGHUB_TOKEN=… CONFIGHUB_URL=… npx vite-node scripts/live.ts
+//
+// It shims the two browser globals the transport uses (window.sessionStorage for
+// the bearer token, and a fetch that rewrites same-origin /api paths to the real
+// server) so the unmodified transport runs under Node. All queries are read-only.
+
+import { execSync } from 'node:child_process';
+
+const BASE = process.env.CONFIGHUB_URL ?? 'https://hub.confighub.com';
+const TOKEN = (
+  process.env.CONFIGHUB_TOKEN ?? execSync('cub auth get-token').toString()
+).trim();
+
+const store = new Map<string, string>([['confighub-token', TOKEN]]);
+const sessionStorage = {
+  getItem: (k: string) => store.get(k) ?? null,
+  setItem: (k: string, v: string) => void store.set(k, v),
+  removeItem: (k: string) => void store.delete(k),
+};
+(globalThis as unknown as { window: unknown }).window = { sessionStorage };
+(globalThis as unknown as { sessionStorage: unknown }).sessionStorage = sessionStorage;
+
+// The openapi-fetch client builds an absolute Request, so it needs a real base
+// URL outside the browser. Set it before importing the transport (which creates
+// the client at module load). Node's native fetch then talks to the live server.
+(globalThis as { __CUB_API_BASE__?: string }).__CUB_API_BASE__ = `${BASE}/api`;
+
+const { runQuery, planStatement } = await import('../src/fql/index');
+const { fqlTransport } = await import('../src/api/fqlTransport');
+
+const QUERIES: string[] = [
+  // ── fleet (real sec-demo data) ─────────────────────────────────────────────
+  'SELECT slug, headRevisionNum, liveRevisionNum, lastAppliedRevisionNum FROM units WHERE space = ' + "'sec-demo-dev'",
+  'SELECT slug, space FROM units WHERE headRevisionNum > liveRevisionNum',
+  'SELECT cluster, COUNT(*) AS units FROM units GROUP BY cluster ORDER BY units DESC',
+  // cluster dimension, both paths: bound units -> Target.Slug, unbound -> Space fallback
+  "SELECT slug, target, cluster FROM units WHERE space = 'sec-demo-dev' ORDER BY cluster, slug",
+  // fleet view: units and images per cluster (cluster spans bound + fallback)
+  "SELECT cluster, COUNT(*) AS units FROM units WHERE space = 'sec-demo-dev' GROUP BY cluster ORDER BY cluster",
+  "SELECT cluster, unit, `spec.template.spec.containers.*.image` AS image FROM resources WHERE space = 'sec-demo-dev' ORDER BY cluster",
+  "SELECT slug FROM spaces WHERE slug LIKE 'sec-demo-%'",
+  // ── gates (the applyGates verification, live) ───────────────────────────────
+  "SELECT slug, space FROM units WHERE gate['no-critical-cves'] = true",
+  "SELECT slug FROM units WHERE applyGates['sec-demo-policy/no-critical-cves/vet-celexpr'] = true",
+  // ── resources: kinds, raw paths, scanner annotation ─────────────────────────
+  "SELECT unit, kind, name FROM resources WHERE space = 'sec-demo-dev' AND kind = 'Deployment'",
+  "SELECT unit, `spec.template.spec.containers.*.image` AS image FROM resources WHERE space = 'sec-demo-dev'",
+  "SELECT unit, metadata.annotations['sec-scanner.confighub.com/max-severity'] AS sev FROM resources WHERE space = 'sec-demo-dev' AND metadata.annotations['sec-scanner.confighub.com/max-severity'] = 'CRITICAL'",
+  "SELECT unit, `spec.template.spec.containers.*.image` AS image FROM resources WHERE space = 'sec-demo-dev' AND `spec.template.spec.containers.*.image` LIKE '%:latest'",
+  // ── revisions + time-travel ────────────────────────────────────────────────
+  "SELECT unit, revisionNum, source, description FROM revisions WHERE space = 'sec-demo-dev' ORDER BY revisionNum DESC LIMIT 5",
+  "SELECT unit, kind, name, `spec.template.spec.containers.*.image` AS image FROM resources WHERE space = 'sec-demo-dev' AND revision = 'live'",
+  // numeric time-travel: legacy-frontend's first revision (proves the data-blob fetch)
+  "SELECT unit, revision, `spec.template.spec.containers.*.image` AS image FROM resources WHERE unit = 'legacy-frontend' AND revision = 1",
+  "SELECT unit, revision, `spec.template.spec.containers.*.image` AS image FROM resources WHERE unit = 'legacy-frontend' AND revision = 'head'",
+  // ── RBAC (no rbac-demo data here → expect 0 rows, proves the pipeline runs) ──
+  "SELECT subject, cluster, role FROM grants WHERE space = 'sec-demo-dev' AND verb = 'get' AND resource = 'secrets'",
+  "SELECT cluster, name FROM roles WHERE space = 'sec-demo-dev'",
+  "SELECT cluster, name, orphaned FROM bindings WHERE space = 'sec-demo-dev'",
+  "SELECT analyzer, COUNT(*) AS n FROM rbac_findings WHERE space = 'sec-demo-dev' GROUP BY analyzer",
+  // ── acme fleet: dev/staging/prod across 3 components + promotion ────────────
+  // 1. fleet inventory matrix — every workload's version + replicas across envs
+  "SELECT component, environment, `spec.template.spec.containers.*.image` AS image, replicas FROM resources WHERE space LIKE 'acme-%' AND kind = 'Deployment' ORDER BY component, environment",
+  // 2. promotion gap — storefront dev is ahead of staging/prod (awaiting promotion)
+  "SELECT environment, `spec.template.spec.containers.*.image` AS image FROM resources WHERE space LIKE 'acme-storefront-%' AND kind = 'Deployment' ORDER BY environment",
+  // 3. per-cluster posture — env clusters span all components
+  "SELECT cluster, COUNT(*) AS units FROM units WHERE space LIKE 'acme-%' GROUP BY cluster ORDER BY cluster",
+  // 4. per-environment rollup with the new first-class column
+  "SELECT environment, COUNT(*) AS units FROM units WHERE space LIKE 'acme-%' GROUP BY environment ORDER BY environment",
+  // 5. ownership / region view (well-known labels as columns)
+  "SELECT component, environment, region, replicas FROM resources WHERE space LIKE 'acme-%' AND environment = 'Prod' AND kind = 'Deployment' ORDER BY component",
+  // 6. JOIN — dev vs prod image per component (self-join across environments)
+  "SELECT d.component AS component, `d.spec.template.spec.containers.*.image` AS dev, `p.spec.template.spec.containers.*.image` AS prod FROM resources d JOIN resources p ON d.name = p.name AND d.kind = p.kind WHERE d.space LIKE 'acme-%' AND p.space LIKE 'acme-%' AND d.environment = 'Dev' AND p.environment = 'Prod' AND d.kind = 'Deployment' ORDER BY component",
+  // 7. JOIN drift — only the components whose dev image differs from prod
+  "SELECT d.component AS component, `d.spec.template.spec.containers.*.image` AS dev, `p.spec.template.spec.containers.*.image` AS prod FROM resources d JOIN resources p ON d.name = p.name AND d.kind = p.kind WHERE d.space LIKE 'acme-%' AND p.space LIKE 'acme-%' AND d.environment = 'Dev' AND p.environment = 'Prod' AND d.kind = 'Deployment' AND `d.spec.template.spec.containers.*.image` != `p.spec.template.spec.containers.*.image` ORDER BY component",
+  // ── UNION: combine rows from two different tables into one list ──────────────
+  "SELECT slug, environment FROM units WHERE space LIKE 'acme-%' UNION SELECT slug, environment FROM spaces WHERE slug LIKE 'acme-%' ORDER BY slug",
+  // UNION ALL across two WHEREs on the same table (keeps duplicates)
+  "SELECT slug, space FROM units WHERE space = 'sec-demo-dev' UNION ALL SELECT slug, space FROM units WHERE space LIKE 'acme-storefront-%' ORDER BY space, slug",
+];
+
+let ok = 0;
+let err = 0;
+for (const q of QUERIES) {
+  const oneLine = q.replace(/\s+/g, ' ');
+  try {
+    const plan = planStatement(q);
+    const fetchSummary =
+      'kind' in plan
+        ? `union · ${plan.branches.length} branches`
+        : plan.fetches
+            .map(
+              (f) =>
+                Object.entries(f)
+                  .map(([k, v]) => `${k}=${typeof v === 'object' ? JSON.stringify(v) : v}`)
+                  .join(' ') || '(no-pushdown)',
+            )
+            .join(' || ');
+    const res = await runQuery(q, fqlTransport);
+    ok++;
+    console.log(
+      `\n✅ ${oneLine}\n   plan: [${fetchSummary}]\n   rows=${res.stats.resultRows} fetched=${res.stats.fetchedRows} calls=${res.stats.fetches}`,
+    );
+    for (const r of res.rows.slice(0, 4)) console.log('      ', JSON.stringify(r));
+  } catch (e) {
+    err++;
+    console.log(`\n❌ ${oneLine}\n   ${(e as Error).message ?? e}`);
+  }
+}
+console.log(`\n──────\n${ok} ok, ${err} failed (of ${QUERIES.length})`);
