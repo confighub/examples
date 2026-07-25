@@ -18,6 +18,11 @@ Like [`promoter`](../promoter/README.md), configboard **seeds nothing**. It is a
 over whatever organization you point it at. See [DESIGN.md](DESIGN.md) for the full
 design, including the milestones beyond what is built.
 
+**See it working:** [`demo/configboard-demo.mp4`](demo/configboard-demo.mp4) — a 3-minute
+silent walkthrough of all six bundled dashboards and of building a new one, recorded
+against a real organization. [`demo/TRANSCRIPT.md`](demo/TRANSCRIPT.md) is the same
+walkthrough as timestamped text.
+
 ## Status: M0–M3
 
 Working now:
