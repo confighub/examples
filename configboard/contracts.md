@@ -158,4 +158,11 @@ query layer rests on:
   meaningfully reduce that, because the validator sweep dominates
 - `where_trigger=FunctionName LIKE 'vet-%'` did not return at all
 - `LEN(ApplyGates) > 0` and `LEN(ApplyWarnings) > 0` need no validator run: those are
-  recorded on the Unit already
+  recorded on the Unit already, keyed `<policy-space>/<trigger>/<function>`
+- recorded findings are **state**, recomputed by a data revision. Attaching a Filter to a
+  Space that had no selection re-evaluates its Units; so does any data revision
+  (`UpdateUnit`, `set-annotation`, a function). At the time of writing
+  `--refresh-triggers` re-lists a Space's Triggers without re-evaluating — a known server
+  bug being fixed — so after demoting, disabling, or widening, findings can lag until
+  something writes data. An on-demand run of the same check confirms whether a zero is
+  current.

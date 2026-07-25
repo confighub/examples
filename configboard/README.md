@@ -32,6 +32,10 @@ Working now:
   dashboard; chips show what's active and remove it.
 - Six bundled dashboards: Fleet Overview, Version Skew, Resource Inventory, Fleet
   Posture, Delivery Health, **Compliance**.
+- **A findings view.** The `Finding` source explodes each Unit's gate/warning maps into
+  one row per failing check, so "which guardrail fires most, and is it live?" is a chart
+  costing one unit query. Findings are recorded state, recomputed when a Unit's data
+  changes; the on-demand panels let you confirm a zero is current.
 - **Compliance panels** that run a named validator server-side and group the failures.
   These are opt-in per panel — a validator sweep costs about 20 seconds regardless of
   scope, so the panel states that and waits to be asked rather than spending it on a tab

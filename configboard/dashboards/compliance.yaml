@@ -3,8 +3,10 @@ kind: Dashboard
 slug: compliance
 title: Compliance
 description: >-
-  Which Units fail which validator. Each check runs the validator server-side against
-  every candidate Unit, so these panels wait to be asked rather than running on open.
+  Which checks are failing, where. The guardrail packs the fleet managers install (rbac,
+  network-policy, namespace, workload) create Warn=true Triggers, and their failures are
+  recorded on each Unit as ApplyWarnings — so most of these panels are ordinary metadata
+  queries, not validator sweeps.
 
 variables:
   - name: env
@@ -13,21 +15,68 @@ variables:
     allValue: true
 
 panels:
-  # Name one validator per panel. `FunctionName LIKE 'vet-%'` runs every validator
-  # against every Unit and does not return on a real fleet — measured, not guessed.
-  - id: placeholders-by-space
-    title: Unfilled placeholders, by Space
+  # One row per failing check rather than per Unit: a Unit failing three guardrails is
+  # three findings. The gate/warning maps are already on the Unit, so the whole dashboard
+  # costs one unit query.
+  - id: findings-total
+    title: Open findings
+    description: Every gate and warning recorded across the fleet.
+    span: 3
+    query:
+      source: Finding
+      where: "Space.Labels.Environment = '${env}'"
+    transform:
+      aggregate: { fn: count }
+    chart: { form: statTile }
+
+  - id: findings-units
+    title: Units affected
+    span: 3
+    query:
+      source: Finding
+      where: "Space.Labels.Environment = '${env}'"
+    transform:
+      aggregate: { fn: distinctCount, field: Unit.Slug }
+    chart: { form: statTile }
+
+  - id: findings-kind
+    title: Blocking vs advisory
     description: >-
-      Units failing vet-placeholders. Expect base/template Spaces to dominate — a
-      placeholder there is waiting for a variant to fill it. The panel below, split by
-      apply state, is the one that separates by-design from unfinished.
+      A gate stops apply; a warning is recorded and does not. Guardrail packs install
+      warnings by default, so a fleet can adopt policy without blocking anyone.
     span: 6
     query:
-      source: Unit
+      source: Finding
       where: "Space.Labels.Environment = '${env}'"
-      triggerWhere: "FunctionName = 'vet-placeholders'"
-      triggersPassed: false
-      manual: true
+    transform:
+      groupBy: Finding.Kind
+      aggregate: { fn: count }
+    chart: { form: bar, orientation: horizontal, color: status }
+
+  # The panel that answers "what is actually wrong with our config".
+  - id: findings-by-check
+    title: Findings by check
+    description: >-
+      Which guardrail fires most — RBAC wildcards, cluster-admin bindings, missing pod
+      security, workloads without limits, allow-all ingress.
+    span: 12
+    query:
+      source: Finding
+      where: "Space.Labels.Environment = '${env}'"
+    transform:
+      groupBy: Finding.Trigger
+      aggregate: { fn: count }
+      topN: 15
+      tail: drop
+      sort: value-desc
+    chart: { form: bar, orientation: horizontal, color: sequential }
+
+  - id: findings-by-space
+    title: Findings by Space
+    span: 6
+    query:
+      source: Finding
+      where: "Space.Labels.Environment = '${env}'"
     transform:
       groupBy: Space.Slug
       aggregate: { fn: count }
@@ -36,84 +85,65 @@ panels:
       sort: value-desc
     chart: { form: bar, orientation: horizontal, color: sequential }
 
-  - id: placeholders-by-component
-    title: Unfilled placeholders, by component
-    span: 6
-    query:
-      source: Unit
-      where: "Space.Labels.Environment = '${env}'"
-      triggerWhere: "FunctionName = 'vet-placeholders'"
-      triggersPassed: false
-      manual: true
-      excludes: { field: Space.Labels.Component, isNull: true, label: Units in Spaces with no Component label }
-    transform:
-      groupBy: Space.Labels.Component
-      aggregate: { fn: count }
-      topN: 12
-      tail: drop
-      sort: value-desc
-    chart: { form: bar, orientation: horizontal, color: sequential }
-
-  - id: schema-failures
-    title: Units failing schema validation
-    description: Units failing vet-schemas — config that is not valid Kubernetes.
-    span: 6
-    query:
-      source: Unit
-      where: "Space.Labels.Environment = '${env}'"
-      triggerWhere: "FunctionName = 'vet-schemas'"
-      triggersPassed: false
-      manual: true
-    transform:
-      groupBy: Space.Slug
-      aggregate: { fn: count }
-      topN: 12
-      tail: drop
-      sort: value-desc
-    chart: { form: bar, orientation: horizontal, color: sequential }
-
-  - id: placeholder-state
-    title: Placeholder failures by apply state
+  - id: findings-by-state
+    title: Findings by apply state
     description: >-
-      A failing Unit that is already live matters more than one that was never applied.
+      A failing Unit that is already live is a live problem. One never applied is a
+      backlog item.
     span: 6
     query:
-      source: Unit
+      source: Finding
       where: "Space.Labels.Environment = '${env}'"
-      triggerWhere: "FunctionName = 'vet-placeholders'"
-      triggersPassed: false
-      manual: true
     transform:
       groupBy: Unit.ApplyState
       aggregate: { fn: count }
       sort: value-desc
     chart: { form: bar, orientation: horizontal, color: status }
 
-  # These two need no validator run: gates and warnings are already recorded on the Unit
-  # by whichever Trigger produced them, so they are ordinary metadata queries.
-  - id: gated
-    title: Units blocked by apply gates
-    description: Recorded on the Unit — no validator run needed.
-    span: 6
+  - id: check-by-space
+    title: Check by Space
+    description: Where each guardrail is failing.
+    span: 12
     query:
-      source: Unit
-      where: "Space.Labels.Environment = '${env}' AND LEN(ApplyGates) > 0"
+      source: Finding
+      where: "Space.Labels.Environment = '${env}'"
     transform:
-      groupBy: Space.Slug
+      groupBy: [Finding.Trigger, Space.Slug]
       aggregate: { fn: count }
       topN: 12
       tail: drop
       sort: value-desc
+    chart: { form: heatmap }
+
+  - id: findings-by-cluster
+    title: Findings by cluster
+    span: 6
+    query:
+      source: Finding
+      where: "Space.Labels.Environment = '${env}'"
+      excludes: { field: Target.Slug, isNull: true, label: findings on base or non-deployable Units }
+    transform:
+      groupBy: Target.Slug
+      aggregate: { fn: count }
+      topN: 10
+      tail: drop
+      sort: value-desc
     chart: { form: bar, orientation: horizontal, color: sequential }
 
-  - id: warned
-    title: Units carrying apply warnings
+  # A validator with no Trigger installed has recorded nothing, so it must be run on
+  # demand: ~20 seconds regardless of scope, because the sweep dominates.
+  - id: placeholders-on-demand
+    title: Unfilled placeholders (on demand)
     description: >-
-      The advisory tier: recorded, not blocking. Fixed on your own schedule.
+      Runs vet-placeholders now rather than reading recorded findings. Expect base and
+      template Spaces to dominate — a placeholder there is waiting for a variant.
     span: 6
     query:
       source: Unit
-      where: "Space.Labels.Environment = '${env}' AND LEN(ApplyWarnings) > 0"
+      where: "Space.Labels.Environment = '${env}'"
+      triggerWhere: "FunctionName = 'vet-placeholders'"
+      triggersPassed: false
+      manual: true
     transform:
       groupBy: Space.Slug
       aggregate: { fn: count }

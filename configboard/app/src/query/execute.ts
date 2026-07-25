@@ -14,7 +14,7 @@ import { useMemo } from 'react';
 import type { Row } from '../model/types';
 import type { RequestSpec } from './compile';
 import { resourceRows, useResourceListQuery } from './resources';
-import { revisionRow, spaceRow, targetRow, unitRow } from './rows';
+import { findingRows, revisionRow, spaceRow, targetRow, unitRow } from './rows';
 
 /** Config changes on human timescales — a minute of staleness is not a lie. */
 export const STALE_SECONDS = 60;
@@ -92,7 +92,7 @@ export function useQueryResult(
     },
     // Running the unit query before the View resolves would return unprojected rows and
     // the panel would render an empty dimension rather than waiting.
-    { skip: spec.source !== 'Unit' || viewPending || held },
+    { skip: (spec.source !== 'Unit' && spec.source !== 'Finding') || viewPending || held },
   );
   const spaces = useListSpacesQuery(
     { ...common, summary: spec.summary },
@@ -111,7 +111,7 @@ export function useQueryResult(
   const targetsForNames = useListAllTargetsQuery({}, { skip: !isResource });
 
   const active =
-    spec.source === 'Unit'
+    spec.source === 'Unit' || spec.source === 'Finding'
       ? units
       : spec.source === 'Space'
         ? spaces
@@ -139,6 +139,8 @@ export function useQueryResult(
         return (revisions.data ?? []).map(revisionRow);
       case 'Target':
         return (targets.data ?? []).map(targetRow);
+      case 'Finding':
+        return (units.data ?? []).flatMap((u) => findingRows(u, baseUrl));
       case 'Resource':
         return resourceRows(resources.data ?? [], targetSlugs, baseUrl);
       default:

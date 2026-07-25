@@ -155,3 +155,40 @@ export function targetRow(e: ExtendedTargetRead): Row {
   putMap(values, 'Target.Facts.', t?.Facts);
   return { id: t?.TargetID ?? t?.Slug ?? '', values };
 }
+
+/**
+ * One row per failing check on a Unit. The map key is
+ * `<policy-space>/<trigger-slug>/<function>`, which is what lets a findings chart group
+ * by the guardrail that fired rather than by the Unit that failed it.
+ */
+export function findingRows(e: ExtendedUnitRead, baseUrl: string): Row[] {
+  const base = unitRow(e, baseUrl);
+  const out: Row[] = [];
+
+  const add = (kind: 'Gate' | 'Warning', key: string) => {
+    // Older or hand-set entries may not carry all three segments; keep whatever is there
+    // rather than dropping the finding.
+    const parts = key.split('/');
+    const [policySpace, trigger, fn] =
+      parts.length >= 3
+        ? [parts[0], parts.slice(1, -1).join('/'), parts[parts.length - 1]]
+        : ['', parts[0] ?? key, parts[1] ?? ''];
+
+    out.push({
+      id: `${base.id}#${kind}#${key}`,
+      href: base.href,
+      values: {
+        ...base.values,
+        'Finding.Kind': kind,
+        'Finding.Key': key,
+        'Finding.Trigger': trigger || key,
+        'Finding.PolicySpace': policySpace || null,
+        'Finding.Function': fn || null,
+      },
+    });
+  };
+
+  for (const key of Object.keys(e.Unit?.ApplyGates ?? {})) add('Gate', key);
+  for (const key of Object.keys(e.Unit?.ApplyWarnings ?? {})) add('Warning', key);
+  return out;
+}

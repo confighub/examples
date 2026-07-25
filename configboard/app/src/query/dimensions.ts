@@ -170,12 +170,30 @@ export const RESOURCE_DIMENSIONS: Dimension[] = [
   dim({ id: 'Target.Slug', label: 'Cluster (Target)', kind: 'string', source: 'Resource' }),
 ];
 
+/**
+ * Finding-grain dimensions: one row per failing check. `Finding.*` values are derived
+ * from the Unit's gate/warning maps client-side, so they are not filterable in `where` —
+ * scope a findings panel at the Unit level.
+ */
+export const FINDING_DIMENSIONS: Dimension[] = [
+  dim({ id: 'Finding.Kind', label: 'Gate or warning', kind: 'string', source: 'Finding' }),
+  dim({ id: 'Finding.Trigger', label: 'Check', kind: 'string', source: 'Finding' }),
+  dim({ id: 'Finding.PolicySpace', label: 'Policy Space', kind: 'string', source: 'Finding' }),
+  dim({ id: 'Finding.Function', label: 'Validator', kind: 'string', source: 'Finding' }),
+  dim({ id: 'Finding.Key', label: 'Full key', kind: 'string', source: 'Finding' }),
+  dim({ id: 'Unit.Slug', label: 'Unit', kind: 'string', source: 'Finding' }),
+  dim({ id: 'Unit.ApplyState', label: 'Apply state', kind: 'string', source: 'Finding' }),
+  dim({ id: 'Space.Slug', label: 'Space', kind: 'string', source: 'Finding', include: 'SpaceID' }),
+  dim({ id: 'Target.Slug', label: 'Cluster (Target)', kind: 'string', source: 'Finding', include: 'TargetID' }),
+];
+
 const BY_SOURCE: Record<SourceName, Dimension[]> = {
   Unit: UNIT_DIMENSIONS,
   Space: SPACE_DIMENSIONS,
   Revision: REVISION_DIMENSIONS,
   Target: TARGET_DIMENSIONS,
   Resource: RESOURCE_DIMENSIONS,
+  Finding: FINDING_DIMENSIONS,
 };
 
 /**

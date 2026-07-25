@@ -673,6 +673,37 @@ which is worth saying out loud before the user opens an empty dashboard.
   - **Gates and warnings need no sweep.** `LEN(ApplyGates) > 0` and
     `LEN(ApplyWarnings) > 0` are already recorded on the Unit by whichever Trigger
     produced them, so those panels are ordinary metadata queries and run immediately.
+    The `Finding` source explodes those maps into one row per failing check, keyed
+    `<policy-space>/<trigger>/<function>` — so "which guardrail fires most, and is it
+    live?" costs one unit query.
+  - **Recorded findings are state, and a data revision is what recomputes them.** What
+    was observed on a real org while wiring the manager guardrail packs:
+
+    | action | re-lists a Space's Triggers | re-evaluates its Units |
+    | --- | --- | --- |
+    | attach a Filter to a Space with no prior selection | yes | yes |
+    | `--refresh-triggers` after demoting / disabling / widening | yes | not yet |
+    | any data revision (`UpdateUnit`, `set-annotation`, a function) | — | yes |
+
+    The middle row is a **known server bug being fixed**, not a design property: a
+    refresh is meant to re-evaluate, and while it doesn't, a Space can report its full
+    Trigger set while carrying findings computed against the old set. One prod Space
+    showed 20 Triggers selected and zero findings while an on-demand run of the same
+    check found 10 failing Units; a `set-annotation` across those Units recomputed them
+    and recorded matched on-demand exactly. Once the bug is fixed this row becomes "yes"
+    and nothing in configboard needs to change.
+
+    Two things worth keeping regardless of the fix. First, `set-annotation` recomputes
+    because it writes into the **config data**, so a Mutation Trigger fires; a Unit-level
+    `--label` patch touches ConfigHub entity metadata and does not — a useful distinction
+    when you want to force a re-evaluation deliberately. Second, an on-demand run of the
+    same check is a cheap way to confirm a zero is real, which is part of why the
+    `manual: true` panels exist alongside the recorded ones.
+  - **One `TriggerFilterID` per Space, so multi-pack adoption needs one combined
+    Filter.** Five guardrail packs each ship their own Filter, and a Space can point at
+    exactly one — so `Labels.Pack IN (…)` across packs is the only way to adopt more than
+    one. Whether that Filter also carries `AND Warn = true` is load-bearing: with it, a
+    Space's *blocking* baseline Triggers stop matching and it silently loses enforcement.
   - **`color: status` is only for categories that are states.** A by-Space bar chart with
     the status role renders every bar neutral, because a Space slug matches no state word
     — a chart with no magnitude at all.

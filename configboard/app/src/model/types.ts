@@ -4,12 +4,16 @@
 /**
  * Where a panel's rows come from.
  *
- * The first four are list endpoints, one row per entity. `Resource` is different: it
- * invokes the read-only `get-resources` function across the selected Units and emits
- * one row per *resource inside* them. A Unit can hold many resources — a rendered Helm
- * chart holds dozens — so resource counts and Unit counts are different questions.
+ * The first four are list endpoints, one row per entity. `Resource` invokes the
+ * read-only `get-resources` function across the selected Units and emits one row per
+ * *resource inside* them.
+ *
+ * `Finding` explodes each Unit's `ApplyGates` and `ApplyWarnings` maps into one row per
+ * failing check. Those maps are already on the Unit — recorded by whichever Trigger
+ * produced them — so a findings panel costs the same as any other unit query and needs
+ * no validator run. A Unit failing three guardrails is three findings.
  */
-export type SourceName = 'Unit' | 'Space' | 'Revision' | 'Target' | 'Resource';
+export type SourceName = 'Unit' | 'Space' | 'Revision' | 'Target' | 'Resource' | 'Finding';
 
 /** A value in a result row: a dimension string, a measure number, or missing. */
 export type RowValue = string | number | null;

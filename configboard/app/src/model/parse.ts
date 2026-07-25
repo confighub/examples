@@ -6,7 +6,7 @@ import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 
 import type { ChartForm, Dashboard, Panel, SourceName, Variable } from './types';
 
-const SOURCES: SourceName[] = ['Unit', 'Space', 'Revision', 'Target', 'Resource'];
+const SOURCES: SourceName[] = ['Unit', 'Space', 'Revision', 'Target', 'Resource', 'Finding'];
 const FORMS: ChartForm[] = [
   'statTile',
   'meter',

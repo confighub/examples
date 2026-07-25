@@ -189,6 +189,15 @@ export function compilePanel(panel: Panel, scope: Scope, now = Date.now()): Requ
   };
   if (whereIncludes.size > 0) spec.include = [...whereIncludes].join(',');
 
+  // A findings panel reads the Unit list and explodes its gate/warning maps, so it needs
+  // those two fields and the joined entities its dimensions name.
+  if (source === 'Finding') {
+    spec.select = `${UNIT_SELECT},ApplyGates,ApplyWarnings`;
+    whereIncludes.add('SpaceID');
+    whereIncludes.add('TargetID');
+    spec.include = [...whereIncludes].join(',');
+  }
+
   if (source === 'Unit') {
     // `select` and `view` are alternatives: a view already dictates the projection,
     // and narrowing the selection under it drops the fields the columns read from.
@@ -225,6 +234,9 @@ export function cubCommand(spec: RequestSpec): string {
       break;
     case 'Resource':
       parts.push('cub function do --space "*" -o json -- get-resources --body=none');
+      break;
+    case 'Finding':
+      parts.push('cub unit list --space "*" --select "Slug,ApplyGates,ApplyWarnings"');
       break;
   }
   if (spec.where) parts.push(`--where "${spec.where}"`);

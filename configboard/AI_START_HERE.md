@@ -108,6 +108,10 @@ cub space delete configboard --recursive           # clean up
   a hand-edited dashboard carries.
 - **Never widen the write footprint beyond the `configboard` Space.** Attaching a Trigger
   to a workload Space is an operator action; generate the command, do not run it.
+- **Findings are recorded state, recomputed by a data revision.** While the
+  `--refresh-triggers` re-evaluation bug is open, findings can lag after a Trigger is
+  demoted, disabled, or newly matched; `set-annotation` (a data write) recomputes them, a
+  Unit `--label` patch does not. An on-demand run of the same check confirms a zero.
 - **A `where_trigger` must name one validator.** `FunctionName LIKE 'vet-%'` runs every
   validator over every Unit and does not return. Panels that use it are `manual: true`.
 - **`color: status` is only for categories that are states.** On Space slugs every bar
