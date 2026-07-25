@@ -13,6 +13,10 @@ export interface RequestSpec {
   view?: string;
   filter?: string;
   resourceType?: string;
+  triggerWhere?: string;
+  triggersPassed?: boolean;
+  /** True when the panel must not fetch until the user asks. */
+  manual?: boolean;
   summary?: boolean;
 }
 
@@ -143,7 +147,8 @@ export function referencedDimensions(transform: Transform | undefined): string[]
 }
 
 export function compilePanel(panel: Panel, scope: Scope, now = Date.now()): RequestSpec {
-  const { source, where, view, filter, resourceType } = panel.query;
+  const { source, where, view, filter, resourceType, triggerWhere, triggersPassed, manual } =
+    panel.query;
 
   const dimensionIds = referencedDimensions(panel.transform);
   if (panel.query.excludes?.field) dimensionIds.push(panel.query.excludes.field);
@@ -178,6 +183,9 @@ export function compilePanel(panel: Panel, scope: Scope, now = Date.now()): Requ
     view,
     filter,
     resourceType,
+    triggerWhere,
+    triggersPassed,
+    manual,
   };
   if (whereIncludes.size > 0) spec.include = [...whereIncludes].join(',');
 
@@ -222,6 +230,10 @@ export function cubCommand(spec: RequestSpec): string {
   if (spec.where) parts.push(`--where "${spec.where}"`);
   if (spec.view) parts.push(`--view ${spec.view}`);
   if (spec.resourceType) parts.push(`--resource-type ${spec.resourceType}`);
+  if (spec.triggerWhere) {
+    parts.push(`--where-trigger "${spec.triggerWhere}"`);
+    if (spec.triggersPassed) parts.push('--triggers-passed');
+  }
   if (spec.filter) parts.push(`--filter ${spec.filter}`);
   return parts.join(' ');
 }
@@ -236,6 +248,8 @@ export function requestKey(spec: RequestSpec): string {
     spec.view ?? '',
     spec.filter ?? '',
     spec.resourceType ?? '',
+    spec.triggerWhere ?? '',
+    spec.triggersPassed ?? false,
     spec.summary ?? false,
   ]);
 }

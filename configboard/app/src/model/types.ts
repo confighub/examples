@@ -124,6 +124,22 @@ export interface PanelQuery {
   resourceType?: string;
   /** Saved Filter (`space/slug`), ANDed with `where`. */
   filter?: string;
+  /**
+   * Run matching Triggers as part of the query and keep the Units that fail (or pass).
+   * The expression selects Triggers, e.g. `FunctionName = 'vet-placeholders'`.
+   *
+   * Name **one** validator. A pattern like `FunctionName LIKE 'vet-%'` runs every
+   * validator against every candidate Unit and does not return on a real fleet.
+   */
+  triggerWhere?: string;
+  /** Keep Units that pass validation instead of the default (those that fail). */
+  triggersPassed?: boolean;
+  /**
+   * Do not fetch until the user asks. For a query whose cost is measured in seconds —
+   * a validator sweep, an org-wide resource scan — auto-running on dashboard open
+   * spends someone's time without being asked.
+   */
+  manual?: boolean;
   /** Rows the panel deliberately excludes, reported in the panel footer. */
   excludes?: { field: string; isNull?: boolean; label: string };
 }

@@ -45,6 +45,24 @@ dashboard document schema, and the API requests it issues.
 - every save is a merge-patch producing a new revision with a `LastChangeDescription`
 - discoverable via: `cub unit list --space configboard --where "Labels.app = 'configboard'"`
 
+### Recording Triggers and Filters (M3)
+
+- a value-recording Trigger is created **in the `configboard` Space only**, on request:
+  `Event = Mutation`, `ToolchainType = Kubernetes/YAML`, a readonly function
+  (`get-image`, `get-replicas`), producing `Unit.Values["<trigger-slug>/<attribute>"]`
+- `cb-recorded-values` Filter (`From = Trigger`) is created alongside it, so the generated
+  `--trigger-filter` reference resolves
+- configboard **never** attaches a Trigger to a Space it does not own. It generates:
+  `cub space update --patch <space> --trigger-filter configboard/cb-recorded-values --where-trigger "-"`,
+  the backfill patch, and the verification query
+- recording requires **selection**: a Space selects Triggers via `WhereTrigger` /
+  `TriggerFilterID`, and by default selects only its own. A Trigger no unit-holding Space
+  selects records nothing, silently
+- values are recorded on the **next** mutation of each Unit; existing Units need a no-op
+  patch to backfill
+- "save as Filter" writes a Filter into the `configboard` Space named `cb-<panel-id>`,
+  usable as `cub unit list --filter configboard/cb-<panel-id>`
+
 ### Seeded Views
 
 - created **only** when the user asks, in the `configboard` Space
@@ -68,7 +86,13 @@ dashboard document schema, and the API requests it issues.
 - required: `slug` (lowercase, `[a-z0-9-]+`), `title`, `panels` (non-empty)
 - `variables[]`: `{ name, label, type?: select|timeRange, from?: {spaceLabel|target}, default?, allValue? }`
 - `panels[]`: `{ id, title, description?, span?, query, transform?, chart }`
-- `query`: `{ source: Unit|Space|Revision|Target|Resource, where?, view?, filter?, excludes? }`
+- `query`: `{ source: Unit|Space|Revision|Target|Resource, where?, view?, filter?, resourceType?, triggerWhere?, triggersPassed?, manual?, excludes? }`
+- `query.triggerWhere`: selects Triggers to run as part of the query; name **one**
+  validator (`FunctionName = 'vet-placeholders'`). A pattern runs every validator against
+  every candidate Unit and does not return.
+- `query.triggersPassed`: keep passing Units instead of failing ones (default: failing)
+- `query.manual`: the panel does not fetch until the user clicks Run — for queries whose
+  cost is seconds of server time
 - `transform`: `{ derive?, bin?, numericBin?, groupBy?, aggregate?, topN?, tail?, sort?, dropEmpty? }`
 - `transform.derive`: `[{ name: 'Derived.X', coalesce: [dimA, dimB] }]` — first non-empty
   source wins; derived names must start with `Derived.` and are never pushed into `where`
@@ -129,3 +153,9 @@ query layer rests on:
   on `GET /unit`, with or without the matching `include`
 - `where=<field> IS NOT NULL` tests presence; `where=<field> != ''` does **not** —
   it matches rows where the field is absent
+- `where_trigger=FunctionName = '<one-validator>'` with `triggers_passed=false` returns
+  the failing Units in ~22s on a 398-Unit org; narrowing with `where` does not
+  meaningfully reduce that, because the validator sweep dominates
+- `where_trigger=FunctionName LIKE 'vet-%'` did not return at all
+- `LEN(ApplyGates) > 0` and `LEN(ApplyWarnings) > 0` need no validator run: those are
+  recorded on the Unit already

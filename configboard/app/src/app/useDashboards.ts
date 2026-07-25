@@ -4,6 +4,7 @@
 // Seeding is a write, so it never happens implicitly on load — the user is shown that
 // the Space is empty and asked. Everything else here is read-only until called.
 
+import { useListSpacesQuery } from '@confighub/rtk-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { bundledDashboards } from '../dashboards';
@@ -36,6 +37,8 @@ export interface DashboardsState {
    * the new work.
    */
   missingBundled: string[];
+  /** Space slugs in the org, for the pinned-dimensions attach-command generator. */
+  spaceSlugs: string[];
   reload: () => Promise<void>;
   seedBundled: () => Promise<void>;
   seedViews: () => Promise<void>;
@@ -60,6 +63,8 @@ function message(e: unknown): string {
 
 export function useDashboards(enabled: boolean): DashboardsState {
   const storage = useDashboardStorage();
+  // The Space list is already fetched for the scope bar, so this is a cache read.
+  const spaces = useListSpacesQuery({ select: 'SpaceID,Slug' }, { skip: !enabled });
   const views = useViewStorage();
   const [stored, setStored] = useState<StoredDashboard[] | null>(null);
   const [viewSlugs, setViewSlugs] = useState<string[] | null>(null);
@@ -204,8 +209,18 @@ export function useDashboards(enabled: boolean): DashboardsState {
       .map((e) => e.dashboard.title);
   }, [stored]);
 
+  const spaceSlugs = useMemo(
+    () =>
+      (spaces.data ?? [])
+        .map((s) => s.Space?.Slug)
+        .filter((slug): slug is string => Boolean(slug))
+        .sort(),
+    [spaces.data],
+  );
+
   return {
     entries,
+    spaceSlugs,
     isLoading,
     isEmpty: stored !== null && stored.length === 0,
     viewsMissing: viewSlugs !== null && viewSlugs.length < VIEW_SEEDS.length,

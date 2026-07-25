@@ -18,7 +18,7 @@ Like [`promoter`](../promoter/README.md), configboard **seeds nothing**. It is a
 over whatever organization you point it at. See [DESIGN.md](DESIGN.md) for the full
 design, including the milestones beyond what is built.
 
-## Status: M0 + M1 + M2
+## Status: M0–M3
 
 Working now:
 
@@ -30,8 +30,20 @@ Working now:
   `cub revision list`.
 - **Cross-filtering.** Click any bar, slice, or heatmap cell to narrow the whole
   dashboard; chips show what's active and remove it.
-- Five bundled dashboards: Fleet Overview, **Version Skew**, Resource Inventory,
-  Fleet Posture, Delivery Health.
+- Six bundled dashboards: Fleet Overview, Version Skew, Resource Inventory, Fleet
+  Posture, Delivery Health, **Compliance**.
+- **Compliance panels** that run a named validator server-side and group the failures.
+  These are opt-in per panel — a validator sweep costs about 20 seconds regardless of
+  scope, so the panel states that and waits to be asked rather than spending it on a tab
+  you happened to open. Gates and warnings, already recorded on the Unit, need no sweep
+  and load immediately.
+- **Pinned dimensions.** Record a config value into `Unit.Values` with a Mutation
+  Trigger, where it becomes *filterable* in `where` instead of projection-only. The
+  dialog reports which recording Triggers exist in the org and — the part that actually
+  matters — how many Spaces **select** each one and how many units those Spaces hold. A
+  Trigger nothing selects records nothing and looks exactly like a broken feature.
+- **Save as Filter.** Promote a panel's query to a real ConfigHub Filter, usable from
+  `cub unit list --filter configboard/<slug>`, a bulk patch, or a Trigger's scope.
 - **A panel builder.** Pick a source, dimensions, a measure, and a form; see it
   rendered against your real data before saving. What it saves is the same panel stanza
   a hand-editor would write, appended to the document with comments intact.
@@ -52,13 +64,15 @@ Working now:
 - Tier-0 dimensions: Unit / Space / Target / Revision metadata, Space labels,
   Target facts, and the per-Space summary counts.
 
-Not built yet: pinned dimensions (Attribute + Trigger, so a data-path value becomes
-filterable in `where`) and "save as Filter/View" from the builder. See DESIGN.md §9.
+Not built: custom Attributes (a `get-<slug>` for a path outside the built-in functions),
+and "save as View" — only Filters are promotable today. See DESIGN.md §9.
 
 **What it writes.** Nothing, until you ask. Reading never creates the storage Space.
-When you seed, duplicate, save, or delete, it writes only its own dashboard documents in
-the `configboard` Space — never a Unit it did not create, and never anything in a Space
-it does not own. Clean up with `cub space delete configboard --recursive`.
+When you seed, duplicate, save, delete, create a View or Trigger, or save a Filter, it
+writes only in the `configboard` Space — never a Unit it did not create, and never
+anything in a Space it does not own. Making a recording Trigger apply to *your* Spaces
+edits those Spaces, so configboard prints those commands rather than running them. Clean
+up with `cub space delete configboard --recursive`.
 
 ## Prerequisites
 

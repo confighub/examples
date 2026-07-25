@@ -1,0 +1,123 @@
+apiVersion: configboard.confighub.com/v1
+kind: Dashboard
+slug: compliance
+title: Compliance
+description: >-
+  Which Units fail which validator. Each check runs the validator server-side against
+  every candidate Unit, so these panels wait to be asked rather than running on open.
+
+variables:
+  - name: env
+    label: Environment
+    from: { spaceLabel: Environment }
+    allValue: true
+
+panels:
+  # Name one validator per panel. `FunctionName LIKE 'vet-%'` runs every validator
+  # against every Unit and does not return on a real fleet — measured, not guessed.
+  - id: placeholders-by-space
+    title: Unfilled placeholders, by Space
+    description: >-
+      Units failing vet-placeholders. Expect base/template Spaces to dominate — a
+      placeholder there is waiting for a variant to fill it. The panel below, split by
+      apply state, is the one that separates by-design from unfinished.
+    span: 6
+    query:
+      source: Unit
+      where: "Space.Labels.Environment = '${env}'"
+      triggerWhere: "FunctionName = 'vet-placeholders'"
+      triggersPassed: false
+      manual: true
+    transform:
+      groupBy: Space.Slug
+      aggregate: { fn: count }
+      topN: 12
+      tail: drop
+      sort: value-desc
+    chart: { form: bar, orientation: horizontal, color: sequential }
+
+  - id: placeholders-by-component
+    title: Unfilled placeholders, by component
+    span: 6
+    query:
+      source: Unit
+      where: "Space.Labels.Environment = '${env}'"
+      triggerWhere: "FunctionName = 'vet-placeholders'"
+      triggersPassed: false
+      manual: true
+      excludes: { field: Space.Labels.Component, isNull: true, label: Units in Spaces with no Component label }
+    transform:
+      groupBy: Space.Labels.Component
+      aggregate: { fn: count }
+      topN: 12
+      tail: drop
+      sort: value-desc
+    chart: { form: bar, orientation: horizontal, color: sequential }
+
+  - id: schema-failures
+    title: Units failing schema validation
+    description: Units failing vet-schemas — config that is not valid Kubernetes.
+    span: 6
+    query:
+      source: Unit
+      where: "Space.Labels.Environment = '${env}'"
+      triggerWhere: "FunctionName = 'vet-schemas'"
+      triggersPassed: false
+      manual: true
+    transform:
+      groupBy: Space.Slug
+      aggregate: { fn: count }
+      topN: 12
+      tail: drop
+      sort: value-desc
+    chart: { form: bar, orientation: horizontal, color: sequential }
+
+  - id: placeholder-state
+    title: Placeholder failures by apply state
+    description: >-
+      A failing Unit that is already live matters more than one that was never applied.
+    span: 6
+    query:
+      source: Unit
+      where: "Space.Labels.Environment = '${env}'"
+      triggerWhere: "FunctionName = 'vet-placeholders'"
+      triggersPassed: false
+      manual: true
+    transform:
+      groupBy: Unit.ApplyState
+      aggregate: { fn: count }
+      sort: value-desc
+    chart: { form: bar, orientation: horizontal, color: status }
+
+  # These two need no validator run: gates and warnings are already recorded on the Unit
+  # by whichever Trigger produced them, so they are ordinary metadata queries.
+  - id: gated
+    title: Units blocked by apply gates
+    description: Recorded on the Unit — no validator run needed.
+    span: 6
+    query:
+      source: Unit
+      where: "Space.Labels.Environment = '${env}' AND LEN(ApplyGates) > 0"
+    transform:
+      groupBy: Space.Slug
+      aggregate: { fn: count }
+      topN: 12
+      tail: drop
+      sort: value-desc
+    chart: { form: bar, orientation: horizontal, color: sequential }
+
+  - id: warned
+    title: Units carrying apply warnings
+    description: >-
+      The advisory tier: recorded, not blocking. Fixed on your own schedule.
+    span: 6
+    query:
+      source: Unit
+      where: "Space.Labels.Environment = '${env}' AND LEN(ApplyWarnings) > 0"
+    transform:
+      groupBy: Space.Slug
+      aggregate: { fn: count }
+      topN: 12
+      tail: drop
+      sort: value-desc
+    chart: { form: bar, orientation: horizontal, color: sequential }

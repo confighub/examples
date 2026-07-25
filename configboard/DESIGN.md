@@ -1,6 +1,6 @@
 # configboard — a BI-style dashboard builder over ConfigHub
 
-**Status:** M0, M1, and M2 built. M3 (pinned dimensions) is next.
+**Status:** M0–M3 built.
 **Location:** `examples/configboard/`.
 
 ## 1. What this is
@@ -20,9 +20,12 @@ What it is **not**:
   state + ConfigHub's own delivery history), not CPU or request rates. Live
   cluster state appears only where ConfigHub already tracks it (`LiveState`,
   Target facts).
-- Not a mutation surface. Every panel is read-only; the only writes are (a) the
-  dashboard documents themselves and (b) optional Filter/View/Attribute/Trigger
-  entities the builder offers to create, each behind an explicit confirm.
+- Not a mutation surface for *your* configuration. Every panel is read-only, and every
+  write goes into configboard's own Space: its dashboard documents, and the
+  View / Trigger / Filter entities it offers to create. It never writes a Unit it did not
+  create and never edits a Space it does not own — making a recording Trigger apply to a
+  workload Space is an operator action, so configboard prints the commands instead
+  (§9, M3).
 - Not a replacement for the ConfigHub UI's unit list. Panels drill _into_ it —
   every mark deep-links to `{serverURL}/units/{spaceID}/{unitID}`.
 
@@ -641,9 +644,38 @@ which is worth saying out loud before the user opens an empty dashboard.
     exist — the reader has to hover to learn that. Cells now render `tag +N`.
   - **Integer data must not get fractional buckets.** Auto-binning replica counts at
     0.2 produces `1.0–1.2`: an edge nothing can fall in.
-- **M3 — pinned dimensions.** Attribute + Trigger creation from the UI, with the
-  backfill caveat surfaced; compliance panels via `trigger_filter`; "save as
-  Filter/View" from the builder.
+- **M3 — pinned dimensions, compliance, and save-as-Filter. Built.** Value-recording
+  Trigger creation, compliance panels that run validators server-side, and promoting a
+  panel's query to a real ConfigHub Filter.
+
+  What building it settled:
+
+  - **Recording depends on *selection*, not existence.** A Space selects Triggers through
+    `WhereTrigger` / `TriggerFilterID`, and by default selects only the Triggers defined
+    in itself. The org tested had a `get-image` recording Trigger in `confighub-system`
+    that produced nothing, because the only Space selecting it was `confighub-system` —
+    which holds **0 units**. Nothing errors; it reads as a broken feature. The dialog
+    therefore reports, per Trigger, how many Spaces select it and how many units those
+    Spaces hold, and flags the dead case.
+  - **So configboard does not attach Triggers itself.** Attaching means editing Spaces
+    the app does not own, which would break the property that it writes only its own
+    entities. It creates the Trigger and the Filter in its own Space and *generates* the
+    `cub space update --patch … --trigger-filter … --where-trigger "-"` commands, plus the
+    backfill patch — because values are recorded on the next mutation, so a new Trigger
+    changes nothing until something touches the data.
+  - **A wildcard `where_trigger` does not return.** `FunctionName LIKE 'vet-%'` runs every
+    validator against every candidate Unit; it never completed on a 403-Unit org. One
+    named validator returns in ~22 seconds — and scoping with `where` barely helps,
+    because the validator sweep dominates, not the candidate count.
+  - **Which makes auto-running wrong.** Compliance panels are `manual: true`: they state
+    the cost and wait to be asked. Spending 20 seconds of someone's server time because a
+    tab was opened is not a thing to do silently.
+  - **Gates and warnings need no sweep.** `LEN(ApplyGates) > 0` and
+    `LEN(ApplyWarnings) > 0` are already recorded on the Unit by whichever Trigger
+    produced them, so those panels are ordinary metadata queries and run immediately.
+  - **`color: status` is only for categories that are states.** A by-Space bar chart with
+    the status role renders every bar neutral, because a Space slug matches no state word
+    — a chart with no magnitude at all.
 
 Each milestone is independently demoable; M0 alone is a credible example.
 

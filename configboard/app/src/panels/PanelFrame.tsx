@@ -1,7 +1,10 @@
+import BookmarkAddIcon from '@mui/icons-material/BookmarkAdd';
 import CodeIcon from '@mui/icons-material/Code';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import TableChartIcon from '@mui/icons-material/TableChart';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CircularProgress from '@mui/material/CircularProgress';
 import Collapse from '@mui/material/Collapse';
@@ -24,6 +27,10 @@ export interface PanelFrameProps {
   notes?: string[];
   chart: ReactNode;
   table: ReactNode;
+  /** Set when the panel is waiting to be run; renders a run affordance instead. */
+  held?: { label: string; onRun: () => void };
+  /** Present when the panel's query can be promoted to a ConfigHub Filter. */
+  onSaveAsFilter?: () => void;
 }
 
 /**
@@ -41,6 +48,8 @@ export function PanelFrame({
   notes,
   chart,
   table,
+  held,
+  onSaveAsFilter,
 }: PanelFrameProps) {
   const [showTable, setShowTable] = useState(false);
   const [showQuery, setShowQuery] = useState(false);
@@ -65,6 +74,13 @@ export function PanelFrame({
               <CodeIcon fontSize="small" />
             </IconButton>
           </Tooltip>
+          {onSaveAsFilter && (
+            <Tooltip title="Save this query as a ConfigHub Filter">
+              <IconButton size="small" onClick={onSaveAsFilter}>
+                <BookmarkAddIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
           <Tooltip title={showTable ? 'Show chart' : 'Show table'}>
             <IconButton size="small" onClick={() => setShowTable((v) => !v)}>
               <TableChartIcon fontSize="small" />
@@ -95,6 +111,15 @@ export function PanelFrame({
           <Alert severity="error" variant="outlined">
             {error}
           </Alert>
+        ) : held ? (
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, py: 5 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center' }}>
+              {held.label}
+            </Typography>
+            <Button size="small" variant="outlined" startIcon={<PlayArrowIcon />} onClick={held.onRun}>
+              Run check
+            </Button>
+          </Box>
         ) : isLoading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
             <CircularProgress size={22} />

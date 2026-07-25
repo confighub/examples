@@ -1,5 +1,6 @@
 import { useAuth } from '@confighub/react-auth';
 import AddChartIcon from '@mui/icons-material/AddChart';
+import PushPinIcon from '@mui/icons-material/PushPin';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DataObjectIcon from '@mui/icons-material/DataObject';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
@@ -21,6 +22,7 @@ import { useState } from 'react';
 import { PanelBuilderDialog } from '../builder/PanelBuilderDialog';
 import { ConfirmDialog, DuplicateDialog } from './Dialogs';
 import { DashboardView } from './DashboardView';
+import { PinnedDimensionsDialog } from './PinnedDimensionsDialog';
 import { SourceDialog } from './SourceDialog';
 import { BASE_URL, isConfigured } from './config';
 import { type DashboardEntry, useDashboards } from './useDashboards';
@@ -67,6 +69,7 @@ export function App() {
   const [duplicating, setDuplicating] = useState<DashboardEntry | null>(null);
   const [deleting, setDeleting] = useState<DashboardEntry | null>(null);
   const [building, setBuilding] = useState<DashboardEntry | null>(null);
+  const [pinning, setPinning] = useState(false);
 
   if (!isConfigured) {
     return (
@@ -175,6 +178,11 @@ export function App() {
                 )}
               </>
             )}
+            <Tooltip title="Pinned dimensions — record config values into Unit.Values">
+              <IconButton size="small" onClick={() => setPinning(true)}>
+                <PushPinIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
             <Button size="small" onClick={logout}>
               Log out
             </Button>
@@ -273,6 +281,10 @@ export function App() {
           onClose={() => setSourceEntry(null)}
           onSave={(yaml) => store.saveSource(sourceEntry, yaml)}
         />
+      )}
+
+      {pinning && (
+        <PinnedDimensionsDialog spaceSlugs={store.spaceSlugs} onClose={() => setPinning(false)} />
       )}
 
       {building && (

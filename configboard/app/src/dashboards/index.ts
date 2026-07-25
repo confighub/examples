@@ -2,6 +2,7 @@
 // M1 will store as Units in the configboard Space — the loader changes, the document
 // does not.
 
+import compliance from '../../../dashboards/compliance.yaml?raw';
 import deliveryHealth from '../../../dashboards/delivery-health.yaml?raw';
 import fleetOverview from '../../../dashboards/fleet-overview.yaml?raw';
 import fleetPosture from '../../../dashboards/fleet-posture.yaml?raw';
@@ -17,7 +18,14 @@ export interface LoadedDashboard {
   yaml: string;
 }
 
-const SOURCES = [fleetOverview, versionSkew, resourceInventory, fleetPosture, deliveryHealth];
+const SOURCES = [
+  fleetOverview,
+  versionSkew,
+  resourceInventory,
+  fleetPosture,
+  deliveryHealth,
+  compliance,
+];
 
 export function bundledDashboards(): LoadedDashboard[] {
   const loaded: LoadedDashboard[] = [];

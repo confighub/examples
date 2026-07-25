@@ -1,6 +1,6 @@
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import { BarChart } from '../charts/BarChart';
 import { FrameTable, RowTable } from '../charts/DataTable';
@@ -18,6 +18,8 @@ import {
 } from '../query/crossFilter';
 import { lookupDimension } from '../query/dimensions';
 import { HARD_ROW_LIMIT, SOFT_ROW_LIMIT, useQueryResult } from '../query/execute';
+import { useDashboardStorage } from '../storage/dashboards';
+import { canSaveAsFilter, useFilterStorage } from '../storage/filters';
 import { PanelFrame } from './PanelFrame';
 
 export interface PanelRendererProps {
@@ -142,7 +144,11 @@ export function PanelRenderer({
   onCrossFilter,
 }: PanelRendererProps) {
   const spec = useMemo(() => compilePanel(panel, scope), [panel, scope]);
-  const result = useQueryResult(spec, baseUrl);
+  const [runRequested, setRunRequested] = useState(false);
+  const [savedFilter, setSavedFilter] = useState<string | undefined>();
+  const filters = useFilterStorage();
+  const storage = useDashboardStorage();
+  const result = useQueryResult(spec, baseUrl, runRequested);
 
   const { kept: afterExcludes, note: excludeNote } = useMemo(
     () => applyExcludes(panel, result.rows),
@@ -179,7 +185,36 @@ export function PanelRenderer({
     };
   }, [onCrossFilter, primaryKey, secondaryKey, panel.query.source]);
 
+  // Promoting a panel's `where` to a Filter makes the query an org entity: usable from
+  // `cub unit list --filter`, a bulk patch, or a Trigger's scope.
+  const saveAsFilter =
+    canSaveAsFilter(panel.query.source, spec.where) && !savedFilter
+      ? async () => {
+          try {
+            const spaceId = await storage.ensureSpace();
+            const slug = `cb-${panel.id}`.slice(0, 60);
+            await filters.save({
+              spaceId,
+              slug,
+              source: panel.query.source,
+              where: spec.where!,
+              resourceType: spec.resourceType,
+            });
+            setSavedFilter(slug);
+          } catch (e) {
+            setSavedFilter(`error: ${e instanceof Error ? e.message : String(e)}`);
+          }
+        }
+      : undefined;
+
   const notes: string[] = [];
+  if (savedFilter) {
+    notes.push(
+      savedFilter.startsWith('error:')
+        ? `Save as Filter ${savedFilter}`
+        : `Saved as Filter configboard/${savedFilter} — usable with cub unit list --filter.`,
+    );
+  }
   if (excludeNote) notes.push(`Excluded: ${excludeNote}.`);
   if (frame.excluded > 0) notes.push(`${frame.excluded} rows had no value for this dimension.`);
   if (frame.omittedCategories > 0) {
@@ -253,6 +288,18 @@ export function PanelRenderer({
       notes={notes}
       chart={chart}
       table={table}
+      onSaveAsFilter={saveAsFilter ? () => void saveAsFilter() : undefined}
+      held={
+        result.held
+          ? {
+              label:
+                panel.query.triggerWhere
+                  ? 'This runs a validator against every candidate Unit on the server — about 20 seconds.'
+                  : 'This query is expensive enough to be worth asking for.',
+              onRun: () => setRunRequested(true),
+            }
+          : undefined
+      }
     />
   );
 }

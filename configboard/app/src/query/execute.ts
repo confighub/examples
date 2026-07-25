@@ -28,6 +28,8 @@ export const HARD_ROW_LIMIT = 25_000;
 
 export interface QueryResult {
   rows: Row[];
+  /** True when the panel is waiting to be run rather than loading. */
+  held: boolean;
   isLoading: boolean;
   isFetching: boolean;
   error?: string;
@@ -56,7 +58,15 @@ function errorMessage(error: unknown): string | undefined {
  * hooks cannot be called conditionally, and `skip` is RTK Query's supported way to
  * express "not this one".
  */
-export function useQueryResult(spec: RequestSpec, baseUrl: string): QueryResult {
+export function useQueryResult(
+  spec: RequestSpec,
+  baseUrl: string,
+  /** True once the user has asked a `manual` panel to run. */
+  runRequested = false,
+): QueryResult {
+  // A manual panel stays idle until asked. Its cost is seconds of someone else's
+  // server time, which is not a thing to spend on a tab someone happened to open.
+  const held = Boolean(spec.manual) && !runRequested;
   const common = { where: spec.where, include: spec.include, filter: spec.filter };
 
   // A panel names a View as `space/slug`, but the org-wide unit list resolves `view`
@@ -72,22 +82,29 @@ export function useQueryResult(spec: RequestSpec, baseUrl: string): QueryResult 
   const viewMissing = Boolean(viewSlug) && !viewLookup.isFetching && !viewId && viewLookup.isSuccess;
 
   const units = useListAllUnitsQuery(
-    { ...common, select: spec.select, view: viewId, resourceType: spec.resourceType },
+    {
+      ...common,
+      select: spec.select,
+      view: viewId,
+      resourceType: spec.resourceType,
+      whereTrigger: spec.triggerWhere,
+      triggersPassed: spec.triggersPassed,
+    },
     // Running the unit query before the View resolves would return unprojected rows and
     // the panel would render an empty dimension rather than waiting.
-    { skip: spec.source !== 'Unit' || viewPending },
+    { skip: spec.source !== 'Unit' || viewPending || held },
   );
   const spaces = useListSpacesQuery(
     { ...common, summary: spec.summary },
-    { skip: spec.source !== 'Space' },
+    { skip: spec.source !== 'Space' || held },
   );
-  const revisions = useListAllRevisionsQuery({ ...common }, { skip: spec.source !== 'Revision' });
-  const targets = useListAllTargetsQuery({ ...common }, { skip: spec.source !== 'Target' });
+  const revisions = useListAllRevisionsQuery({ ...common }, { skip: spec.source !== 'Revision' || held });
+  const targets = useListAllTargetsQuery({ ...common }, { skip: spec.source !== 'Target' || held });
 
   const isResource = spec.source === 'Resource';
   const resources = useResourceListQuery(
     { where: spec.where, filter: spec.filter, resourceType: spec.resourceType },
-    { skip: !isResource },
+    { skip: !isResource || held },
   );
   // A resource row knows its TargetID but not the Target's slug; the Target list is
   // small and already cached for the scope bar, so the lookup is nearly free.
@@ -141,6 +158,7 @@ export function useQueryResult(spec: RequestSpec, baseUrl: string): QueryResult 
   const overHardLimit = rows.length > HARD_ROW_LIMIT;
   return {
     rows: overHardLimit ? [] : rows,
+    held,
     isLoading: active.isLoading || (viewPending && !viewMissing),
     isFetching: active.isFetching || viewLookup.isFetching,
     error:

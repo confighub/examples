@@ -63,6 +63,8 @@ tests catch one without the other.
 | `app/src/panels/` | panel chrome and form dispatch |
 | `app/src/builder/` | the panel builder (live preview, appends a stanza) |
 | `app/src/storage/views.ts` | the seeded Views that provide data-path dimensions |
+| `app/src/storage/pinnedDimensions.ts` | recording Triggers + the attach commands |
+| `app/src/storage/filters.ts` | save a panel query as a ConfigHub Filter |
 | `app/src/dev/` | the chart gallery (dev only) |
 
 ## Storage (M1)
@@ -104,3 +106,9 @@ cub space delete configboard --recursive           # clean up
   `metadata.annotations.services~1k8s~1aws/region`.
 - **Appending a panel appends text.** Re-serializing the document would drop the comments
   a hand-edited dashboard carries.
+- **Never widen the write footprint beyond the `configboard` Space.** Attaching a Trigger
+  to a workload Space is an operator action; generate the command, do not run it.
+- **A `where_trigger` must name one validator.** `FunctionName LIKE 'vet-%'` runs every
+  validator over every Unit and does not return. Panels that use it are `manual: true`.
+- **`color: status` is only for categories that are states.** On Space slugs every bar
+  renders neutral and the chart carries no magnitude.
