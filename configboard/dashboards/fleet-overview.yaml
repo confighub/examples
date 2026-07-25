@@ -1,0 +1,118 @@
+apiVersion: configboard.confighub.com/v1
+kind: Dashboard
+slug: fleet-overview
+title: Fleet Overview
+description: What is under management, and is it current?
+
+variables:
+  - name: env
+    label: Environment
+    from: { spaceLabel: Environment }
+    allValue: true
+  - name: cluster
+    label: Cluster
+    from: { target: Slug }
+    allValue: true
+
+panels:
+  # The KPI row reads the per-Space summary counts the server computes, so all four
+  # tiles come out of one request rather than a pull of every Unit.
+  - id: total-units
+    title: Units under management
+    span: 3
+    query:
+      source: Space
+      where: "Labels.Environment = '${env}'"
+    transform:
+      aggregate: { fn: sum, field: Space.TotalUnitCount }
+    chart: { form: statTile }
+
+  - id: current
+    title: Applied and current
+    span: 3
+    query:
+      source: Space
+      where: "Labels.Environment = '${env}'"
+    transform:
+      aggregate: { fn: sum, field: Space.CurrentUnitCount }
+    chart: { form: meter, totalField: Space.TotalUnitCount }
+
+  - id: gated
+    title: Blocked by apply gates
+    span: 3
+    query:
+      source: Space
+      where: "Labels.Environment = '${env}'"
+    transform:
+      aggregate: { fn: sum, field: Space.GatedUnitCount }
+    chart: { form: statTile, color: status }
+
+  - id: behind
+    title: Behind upstream
+    span: 3
+    query:
+      source: Space
+      where: "Labels.Environment = '${env}'"
+    transform:
+      aggregate: { fn: sum, field: Space.UpgradableUnitCount }
+    chart: { form: statTile }
+
+  - id: apply-state
+    title: Apply state
+    description: Where every Unit stands against its Target.
+    span: 6
+    query:
+      source: Unit
+      where: "Space.Labels.Environment = '${env}' AND Target.Slug = '${cluster}'"
+    transform:
+      groupBy: Unit.ApplyState
+      aggregate: { fn: count }
+      sort: value-desc
+    chart: { form: bar, orientation: horizontal, color: status }
+
+  # A bar, not a donut: real orgs are overwhelmingly one toolchain, and a 99%-vs-1%
+  # donut reads as a solid ring with two invisible slivers. The bar keeps the small
+  # counts legible next to the dominant one.
+  - id: toolchain
+    title: Toolchain mix
+    description: Kubernetes manifests versus app-config and other toolchains.
+    span: 6
+    query:
+      source: Unit
+      where: "Space.Labels.Environment = '${env}'"
+    transform:
+      groupBy: Unit.ToolchainType
+      aggregate: { fn: count }
+      topN: 6
+    chart: { form: bar, orientation: horizontal, color: sequential }
+
+  # tail: drop, not fold. Summing 46 remaining Spaces into "Other" makes Other the
+  # largest bar on a "top 10" chart and flattens the ten you asked to see.
+  - id: units-per-space
+    title: Largest Spaces
+    description: Unit count per Space, from the server-side rollup.
+    span: 6
+    query:
+      source: Space
+      where: "Labels.Environment = '${env}'"
+    transform:
+      groupBy: Space.Slug
+      aggregate: { fn: sum, field: Space.TotalUnitCount }
+      topN: 10
+      tail: drop
+      sort: value-desc
+    chart: { form: bar, orientation: horizontal, color: sequential }
+
+  - id: deployable
+    title: Deployable versus base config
+    description: >-
+      Units with no Target are normally base units held for cloning, or config that is
+      not deployable on its own.
+    span: 6
+    query:
+      source: Unit
+      where: "Space.Labels.Environment = '${env}'"
+    transform:
+      groupBy: Unit.Deployable
+      aggregate: { fn: count }
+    chart: { form: donut, color: categorical }

@@ -1,0 +1,128 @@
+apiVersion: configboard.confighub.com/v1
+kind: Dashboard
+slug: version-skew
+title: Version Skew
+description: >-
+  What version of what is where. Every panel here reads values out of the configuration
+  data through a saved View, so it works for any resource type — including Crossplane and
+  ACK managed resources the app has never heard of.
+
+variables:
+  - name: env
+    label: Environment
+    from: { spaceLabel: Environment }
+    allValue: true
+
+panels:
+  # The matrix the whole dashboard exists for: component down the side, environment
+  # across, image tag in the cell. A cell holding more than one tag is coloured, because
+  # that component disagrees with itself inside one environment.
+  - id: skew-matrix
+    title: Image tag by component and environment
+    description: >-
+      Read across a row: that is where an environment being behind shows up. A coloured
+      cell holds several distinct tags — normal for a component with several workloads,
+      so the count matters more than the colour.
+    span: 12
+    query:
+      source: Unit
+      view: configboard/cb-workload
+      resourceType: apps/v1/Deployment
+      excludes: { field: View.Image, isNull: true, label: units with no container image }
+    transform:
+      groupBy: [View.Component, View.Environment]
+      aggregate: { fn: value, field: View.Image }
+      topN: 20
+      tail: drop
+    chart: { form: heatmap }
+
+  - id: image-tags
+    title: Image tags in use
+    description: Distinct tags across the fleet — a long tail is drift.
+    span: 6
+    query:
+      source: Unit
+      view: configboard/cb-workload
+      resourceType: apps/v1/Deployment
+      excludes: { field: View.Image, isNull: true, label: units with no container image }
+    transform:
+      groupBy: View.Image
+      aggregate: { fn: count }
+      topN: 12
+      tail: drop
+      sort: value-desc
+    chart: { form: bar, orientation: horizontal, color: sequential }
+
+  - id: replica-distribution
+    title: Replica count distribution
+    description: How workloads are sized across the fleet.
+    span: 6
+    query:
+      source: Unit
+      view: configboard/cb-workload
+      resourceType: apps/v1/Deployment
+      excludes: { field: View.Replicas, isNull: true, label: units with no replica count }
+    transform:
+      numericBin: { field: View.Replicas, size: 1 }
+      groupBy: View.Replicas
+      aggregate: { fn: count }
+    chart: { form: histogram, color: sequential }
+
+  # One dimension, three provider spellings. Crossplane writes spec.forProvider.region;
+  # ACK writes spec.region on some types and a services.k8s.aws/region annotation on
+  # adopted ones. `derive.coalesce` takes the first that is present, so the panel does
+  # not have to care which provider produced the resource.
+  - id: cloud-regions
+    title: Cloud resources by region
+    description: >-
+      Coalesced across Crossplane and ACK, which put the region in different places.
+    span: 6
+    query:
+      source: Unit
+      view: configboard/cb-cloud-resource
+    transform:
+      derive:
+        - name: Derived.Region
+          coalesce: [View.Region, View.AckRegion, View.AckAnnotationRegion]
+      groupBy: Derived.Region
+      aggregate: { fn: count }
+      dropEmpty: true
+      topN: 10
+      tail: drop
+      sort: value-desc
+    chart: { form: bar, orientation: horizontal, color: sequential }
+
+  - id: instance-sizes
+    title: Instance types and classes in use
+    description: A cost proxy that needs no pricing data.
+    span: 6
+    query:
+      source: Unit
+      view: configboard/cb-cloud-resource
+    transform:
+      derive:
+        - name: Derived.Size
+          coalesce: [View.InstanceType, View.AckInstanceType, View.InstanceClass]
+      groupBy: Derived.Size
+      aggregate: { fn: count }
+      dropEmpty: true
+      topN: 10
+      tail: drop
+      sort: value-desc
+    chart: { form: bar, orientation: horizontal, color: sequential }
+
+  - id: replicas-by-component
+    title: Replicas by component and environment
+    description: Total replica count, to see where capacity actually sits.
+    span: 12
+    query:
+      source: Unit
+      view: configboard/cb-workload
+      resourceType: apps/v1/Deployment
+      excludes: { field: View.Replicas, isNull: true, label: units with no replica count }
+    transform:
+      groupBy: [View.Component, View.Environment]
+      aggregate: { fn: sum, field: View.Replicas }
+      topN: 20
+      tail: drop
+    chart: { form: heatmap, unit: replicas }

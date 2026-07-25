@@ -5,3 +5,4 @@
 var/
 **/target/
 **/.memsearch/
+.DS_Store

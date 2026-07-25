@@ -1,0 +1,33 @@
+frame-01-fleet-overview.png	6.0	configboard — BI-style dashboards over ConfigHub configuration data.\nFleet Overview: 85 Units under management, 25% applied and current, nothing blocked by an apply gate.
+frame-02-show-the-query.png	6.0	Every panel can show its query. The code icon reveals the equivalent cub command —\nhere `cub space list`, which uses the one server-side rollup ConfigHub offers.
+frame-03-cross-filter.png	5.5	Clicking a bar cross-filters the whole dashboard. A chip records the scope, and Clear all removes it.
+frame-04-compliance-findings.png	6.5	Compliance: 36 open findings across 17 Units. These come from the guardrail Triggers the fleet\nmanagers already install — configboard reads recorded findings rather than running its own scan.
+frame-05-findings-by-check.png	5.5	Findings by check. One row per failing check, so a Unit failing three guardrails counts three times.
+frame-06-check-by-space-heatmap.png	6.0	Check × Space heatmap — where each guardrail is actually failing.\nworkload-termination-message-policy dominates, and apptique-prod carries most of it.
+frame-07-on-demand-panel.png	6.0	A panel marked `manual: true` never runs on load. This one invokes vet-placeholders\nacross the fleet only when asked — expensive queries stay opt-in.
+frame-08-version-skew.png	6.0	Version Skew reads values out of the configuration data through a saved View,\nso it works for resource types the app has never heard of — Crossplane, ACK, anything.
+frame-09-variable-dropdown.png	5.5	Dashboard variables are populated from live data. These Environment values come from Space labels.
+frame-10-version-skew-prod.png	5.0	Choosing prod rewrites every panel's where clause and re-queries server-side.
+frame-11-image-tag-heatmap.png	6.0	Image tag × environment. Read across a row: that is where an environment being behind shows up.\nA coloured cell holding several tags is labelled rather than silently collapsed.
+frame-12-empty-state-and-replicas.png	6.5	This org runs no Crossplane or ACK resources, so those panels say so —\n"85 rows had no value for this dimension" instead of an empty chart that looks broken.
+frame-13-resource-inventory.png	6.0	Resource Inventory counts at resource grain, not Unit grain: 154 resources, 16 distinct types,\n5 namespaces — inside the same 85 Units. The counts come from the get-resources function.
+frame-14-resources-by-kind.png	5.5	Resources by kind: 38 Services, 37 Deployments, 30 NetworkPolicies. The fleet's real shape.
+frame-15-kind-by-provider-family.png	5.0	Kind by provider family separates Kubernetes core objects from installer CRDs.
+frame-16-table-view.png	5.0	Every chart has a table view — the same frame, read exactly, for accessibility and for copying.
+frame-17-source-editor.png	6.0	A dashboard is a Unit. The source editor edits its YAML document in place\nand saves the result as a new ConfigHub revision.
+frame-18-panel-builder-empty.png	5.5	Add a panel: choose a source, a grouping, a second grouping for series, a measure, and a chart form.
+frame-19-panel-builder-preview.png	5.5	The preview renders live against real data while you build, so a bad grouping is visible immediately.
+frame-20-panel-builder-stanza.png	6.0	It also shows the YAML stanza it will append. The builder teaches the document format\nrather than hiding it, so the next panel can be hand-written.
+frame-21-duplicate-dashboard.png	5.5	Creating a new dashboard: duplicate an existing one, then give it a title and a slug.
+frame-22-new-dashboard-created.png	5.5	The new dashboard appears as its own tab, backed by a new Unit in the configboard Space.
+frame-23-panel-builder-on-new-dashboard.png	5.5	Building a panel on the new dashboard: source Resource, grouped by namespace, series by kind, stacked bar.
+frame-24-new-panel-saved.png	5.5	Saved, and rendering — workloads per namespace, stacked by kind.
+frame-25-document-revision-2.png	6.0	The save is a ConfigHub revision. The dashboard is now at revision 2,\nso a dashboard's history is just a Unit's history — diffable and revertible.
+frame-26-pinned-dimensions.png	7.0	Pinned dimensions. A View's data-path dimension can be grouped and charted but never filtered\nserver-side. Recording that value into Unit.Values makes it indexed metadata a where clause can use.
+frame-27-pinned-dimensions-commands.png	7.0	Attaching a recording Trigger means editing Spaces this app does not own,\nso configboard generates the cub commands instead of running them.
+frame-28-delivery-health-timeseries.png	5.5	Delivery Health: changes per day by environment, read from Revision history.
+frame-29-lead-time-and-churn.png	6.0	Lead time reports its own exclusions — 51 revisions never went live, so they cannot have one.\nAn honest empty panel beats a misleading number.
+frame-30-fleet-posture.png	5.5	Fleet Posture: Kubernetes versions across clusters, read from Target facts.
+frame-31-posture-by-space.png	5.5	Gated, unapproved, and unapplied counts per Space, from the server-side rollup.
+frame-32-delete-dashboard.png	5.5	Deleting a dashboard deletes a Unit in the configboard Space. The configuration it charts is untouched.
+frame-33-back-to-six.png	6.0	Back to the six bundled dashboards. Everything shown here is a YAML document\nyou can edit, review, version, and promote like any other ConfigHub configuration.

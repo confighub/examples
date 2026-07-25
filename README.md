@@ -23,6 +23,7 @@ If you are not logged in yet, run `cub auth login` before the `cub` commands.
 - [`custom-workers`](./custom-workers/): worker extension examples, including bridge, function, and policy workers.
 - [`pilot-example-addons-manager`](./pilot-example-addons-manager/README.md): standalone generated operational app with Variant-first GUI, CLI sibling, production ConfigHub browser OAuth registration, and live-binding proof gates.
 - [`cost-management-app`](./cost-management-app/README.md): generated operational app with a real cost engine: org-wide waste findings priced from config data, then a finding-owned dry run, short-lived exact review, explicit execution confirmation, revision-verified mutation, and receipt. The reduction plane beside [`cost-estimator`](./cost-estimator/README.md)'s enforcement plane.
+- [`configboard`](./configboard/README.md): BI-style dashboards over the configuration in your organization — what version of what is where, which guardrails are failing, how many resources you manage, how long changes take to land. Read-only and seeds nothing. Dashboards are `AppConfig/YAML` units, so they carry revision history and promote like any other config, and every panel prints its equivalent `cub` command. Includes a 3-minute silent [demo video](./configboard/demo/configboard-demo.mp4) and [transcript](./configboard/demo/TRANSCRIPT.md).
 - [`global-app`](./global-app/README.md): classic multi-service app example.
 - [`helm-platform-components`](./helm-platform-components/README.md): platform component example for Helm-managed infrastructure.
 - [`vm-fleet`](./vm-fleet/README.md): VM fleet operations example.
@@ -36,6 +37,10 @@ If you are not logged in yet, run `cub auth login` before the `cub` commands.
   [`cub-gen/examples/springboot-paas`](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas)
   for the product path, including the Spring ConfigHub Initiative GUI proof.
 - If you want GitOps import, start with [`gitops-import`](./gitops-import/README.md) and the [Official GitOps Import docs](https://docs.confighub.com/get-started/examples/gitops-import/).
+- If you want to see the state of an existing organization at a glance, start with
+  [`configboard`](./configboard/README.md) — it seeds nothing, and its
+  [demo video](./configboard/demo/configboard-demo.mp4) covers the six bundled
+  dashboards in three minutes.
 - If you want worker extensibility, start with [`custom-workers`](./custom-workers/).
 - If you want a classic multi-service example, use [`global-app`](./global-app/README.md).
 
