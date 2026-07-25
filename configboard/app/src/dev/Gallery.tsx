@@ -79,6 +79,12 @@ const frames: { title: string; note: string; frame: Frame; node: (f: Frame) => J
     node: (f) => <BarChart frame={f} spec={{ form: 'bar', color: 'sequential' }} />,
   },
   {
+    title: 'bar — many categories, every band labelled',
+    note: 'no topN fold: the plot grows so no category tick is thinned out and mislabels a bar',
+    frame: aggregate(kindRows, { groupBy: 'kind', aggregate: { fn: 'count' } }),
+    node: (f) => <BarChart frame={f} spec={{ form: 'bar', color: 'sequential' }} />,
+  },
+  {
     title: 'bar — status colors',
     note: 'reserved status palette; the label carries the state, not just the hue',
     frame: aggregate(stateRows, { groupBy: 'state', aggregate: { fn: 'count' } }),

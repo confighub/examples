@@ -53,8 +53,13 @@ export function BarChart({ frame, spec, stacked, height = 260, onSelect }: BarCh
   const colorOf = (key: string, index: number, count: number) =>
     colorFor(key, index, count, spec.color, mode, spec.emphasize, singleSeries);
 
+  // A horizontal bar chart must label every band. When Recharts thins the ticks out to
+  // fit, the surviving labels sit beside bars they do not belong to and the chart reads
+  // as a straightforwardly wrong ranking — so give each category room instead.
+  const plotHeight = horizontal ? Math.max(height, data.length * 26 + 44) : height;
+
   return (
-    <ResponsiveContainer width="100%" height={height}>
+    <ResponsiveContainer width="100%" height={plotHeight}>
       <ReBarChart
         data={data}
         layout={horizontal ? 'vertical' : 'horizontal'}
@@ -79,6 +84,7 @@ export function BarChart({ frame, spec, stacked, height = 260, onSelect }: BarCh
               // Wide enough for an elided 26-character label; formatCategory keeps
               // anything longer from being clipped by the plot edge.
               width={186}
+              interval={0}
               {...axis}
               tickFormatter={formatCategory}
             />
