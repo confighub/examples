@@ -30,7 +30,14 @@ export const STORAGE_SPACE_SLUG = 'configboard';
 export const APP_LABEL = 'configboard';
 
 const OWNED_WHERE = `Labels.app = '${APP_LABEL}'`;
-const UNIT_FIELDS = 'UnitID,Slug,SpaceID,Version,HeadRevisionNum,Labels,DisplayName,UpdatedAt';
+
+/**
+ * The dashboard's exact title, kept in an Annotation. Annotation values accept any
+ * character (up to 1024 bytes), unlike DisplayName — so the prose title survives
+ * verbatim in ConfigHub metadata even when DisplayName has to be reduced.
+ */
+export const TITLE_ANNOTATION = 'configboard.confighub.com/title';
+const UNIT_FIELDS = 'UnitID,Slug,SpaceID,Version,HeadRevisionNum,Labels,Annotations,DisplayName,UpdatedAt';
 
 export interface StoredDashboard {
   unitId: string;
@@ -172,6 +179,7 @@ export function useDashboardStorage(): DashboardStorage {
             ...(displayName ? { DisplayName: displayName } : {}),
             ToolchainType: 'AppConfig/YAML',
             Labels: { app: APP_LABEL },
+            Annotations: { [TITLE_ANNOTATION]: title },
             Data: b64encodeUtf8(yaml),
             LastChangeDescription: `Create dashboard ${title}`,
           },
@@ -196,6 +204,7 @@ export function useDashboardStorage(): DashboardStorage {
           unitId: entry.unitId,
           body: {
             ...(displayName ? { DisplayName: displayName } : {}),
+            ...(dashboard ? { Annotations: { [TITLE_ANNOTATION]: dashboard.title } } : {}),
             Data: b64encodeUtf8(yaml),
             LastChangeDescription: changeDesc,
           },

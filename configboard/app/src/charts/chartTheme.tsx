@@ -62,7 +62,16 @@ export function colorFor(
   role: ColorRole | undefined,
   mode: Mode,
   emphasize?: string,
+  /**
+   * True when the chart has a single series. Then the categories are the subject and
+   * colour should encode magnitude — cycling categorical hues across one series' bars
+   * asserts an identity that is not there, and repeats a hue once past the slot ceiling.
+   */
+  singleSeries?: boolean,
 ): string {
+  if (role === undefined && singleSeries) {
+    return keyColor(key, index, mode, 'sequential', count);
+  }
   switch (role) {
     case 'status':
       return statusColor(key, mode);

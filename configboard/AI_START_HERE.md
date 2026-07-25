@@ -61,6 +61,8 @@ tests catch one without the other.
 | `app/src/query/` | dimension registry, panel→request compiler, aggregation, fetch hooks |
 | `app/src/charts/` | chart components + the validated palette |
 | `app/src/panels/` | panel chrome and form dispatch |
+| `app/src/builder/` | the panel builder (live preview, appends a stanza) |
+| `app/src/storage/views.ts` | the seeded Views that provide data-path dimensions |
 | `app/src/dev/` | the chart gallery (dev only) |
 
 ## Storage (M1)
@@ -94,4 +96,11 @@ cub space delete configboard --recursive           # clean up
   when the entity changes. This has produced two real bugs — an unbounded query and a
   save that wrote the wrong unit.
 - **Never copy a document `title` straight into `DisplayName`** — the charsets differ.
-  Use `toDisplayName()`.
+  Use `toDisplayName()`; the exact title also goes into an Annotation, which accepts any
+  character.
+- **A View query must include the entities its metadata columns read.** Without
+  `include=SpaceID`, a `Space.Labels.*` column returns null with no error.
+- **A `.` inside a data-path map key escapes as `~1`** —
+  `metadata.annotations.services~1k8s~1aws/region`.
+- **Appending a panel appends text.** Re-serializing the document would drop the comments
+  a hand-edited dashboard carries.

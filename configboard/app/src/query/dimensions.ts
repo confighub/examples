@@ -194,6 +194,8 @@ const LABEL_PREFIXES: { prefix: string; include?: string; label: (k: string) => 
   { prefix: 'Target.Facts.', include: 'TargetID', label: (k) => k },
   { prefix: 'Unit.Values.', label: (k) => k },
   { prefix: 'View.', label: (k) => k },
+  // Computed by `transform.derive`, so never pushed into `where`.
+  { prefix: 'Derived.', label: (k) => k },
 ];
 
 export function lookupDimension(source: SourceName, id: string): Dimension | undefined {
@@ -204,7 +206,8 @@ export function lookupDimension(source: SourceName, id: string): Dimension | und
     if (!id.startsWith(prefix)) continue;
     const key = id.slice(prefix.length);
     // View columns are extracted from the response, never pushed into `where`.
-    const whereKey = prefix === 'View.' ? undefined : id.replace(/^Unit\./, '');
+    const computed = prefix === 'View.' || prefix === 'Derived.';
+    const whereKey = computed ? undefined : id.replace(/^Unit\./, '');
     return {
       id,
       label: label(key),

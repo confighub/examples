@@ -12,6 +12,7 @@ export interface RequestSpec {
   select?: string;
   view?: string;
   filter?: string;
+  resourceType?: string;
   summary?: boolean;
 }
 
@@ -134,12 +135,15 @@ export function referencedDimensions(transform: Transform | undefined): string[]
   if (typeof groupBy === 'string') ids.push(groupBy);
   else if (Array.isArray(groupBy)) ids.push(...groupBy);
   if (transform.bin?.field) ids.push(transform.bin.field);
+  if (transform.numericBin?.field) ids.push(transform.numericBin.field);
   if (transform.aggregate?.field) ids.push(transform.aggregate.field);
+  // A derived dimension is not fetched; its sources are.
+  for (const d of transform.derive ?? []) ids.push(...d.coalesce);
   return ids;
 }
 
 export function compilePanel(panel: Panel, scope: Scope, now = Date.now()): RequestSpec {
-  const { source, where, view, filter } = panel.query;
+  const { source, where, view, filter, resourceType } = panel.query;
 
   const dimensionIds = referencedDimensions(panel.transform);
   if (panel.query.excludes?.field) dimensionIds.push(panel.query.excludes.field);
@@ -159,11 +163,21 @@ export function compilePanel(panel: Panel, scope: Scope, now = Date.now()): Requ
 
   for (const inc of includesFor(source, dimensionIds)) whereIncludes.add(inc);
 
+  // A View's MetadataAttribute columns read related entities (`Space.Labels.Component`,
+  // `Target.Slug`), and those columns come back **null** unless the entity is included —
+  // silently, which reads as "our Spaces have no labels". The panel does not know the
+  // saved View's columns, so a view query always includes both.
+  if (view && source === 'Unit') {
+    whereIncludes.add('SpaceID');
+    whereIncludes.add('TargetID');
+  }
+
   const spec: RequestSpec = {
     source,
     where: resolvedWhere,
     view,
     filter,
+    resourceType,
   };
   if (whereIncludes.size > 0) spec.include = [...whereIncludes].join(',');
 
@@ -207,6 +221,7 @@ export function cubCommand(spec: RequestSpec): string {
   }
   if (spec.where) parts.push(`--where "${spec.where}"`);
   if (spec.view) parts.push(`--view ${spec.view}`);
+  if (spec.resourceType) parts.push(`--resource-type ${spec.resourceType}`);
   if (spec.filter) parts.push(`--filter ${spec.filter}`);
   return parts.join(' ');
 }
@@ -220,6 +235,7 @@ export function requestKey(spec: RequestSpec): string {
     spec.select ?? '',
     spec.view ?? '',
     spec.filter ?? '',
+    spec.resourceType ?? '',
     spec.summary ?? false,
   ]);
 }

@@ -47,6 +47,36 @@ function percentile(sorted: number[], p: number): number {
   return sorted[idx];
 }
 
+/**
+ * The dominant value in a group and how many distinct values it holds. A count above 1
+ * is the signal a skew matrix exists to show: this cell does not agree with itself.
+ */
+export function dominantValue(
+  rows: Row[],
+  field: string,
+): { label: string | undefined; distinct: number } {
+  const counts = new Map<string, number>();
+  for (const r of rows) {
+    const v = r.values[field];
+    if (v === null || v === undefined || v === '') continue;
+    const key = String(v);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  if (counts.size === 0) return { label: undefined, distinct: 0 };
+
+  let best = '';
+  let bestCount = -1;
+  for (const [value, count] of counts) {
+    // Ties break on the lexically smaller value so the same data always renders the
+    // same cell — a matrix that shuffles on refresh cannot be compared.
+    if (count > bestCount || (count === bestCount && value < best)) {
+      best = value;
+      bestCount = count;
+    }
+  }
+  return { label: best, distinct: counts.size };
+}
+
 export function applyAggregate(rows: Row[], fn: AggregateFn, field?: string): number {
   if (fn === 'count') return rows.length;
 
@@ -55,6 +85,10 @@ export function applyAggregate(rows: Row[], fn: AggregateFn, field?: string): nu
     for (const r of rows) seen.add(field ? r.values[field] : r.id);
     return seen.size;
   }
+
+  // The measure is "how many distinct values does this group hold"; the value itself
+  // rides along as the point's label.
+  if (fn === 'value') return field ? dominantValue(rows, field).distinct : 0;
 
   if (!field) return rows.length;
   const nums = rows.map((r) => numeric(r.values[field])).filter((n): n is number => n !== null);
@@ -78,10 +112,52 @@ export function applyAggregate(rows: Row[], fn: AggregateFn, field?: string): nu
   }
 }
 
-function keyOf(row: Row, field: string, bin?: Transform['bin']): string | null {
+/** A round bucket width for a numeric range, so histogram edges read as numbers. */
+export function bucketSize(values: number[]): number {
+  if (values.length === 0) return 1;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = max - min;
+  if (span <= 0) return 1;
+
+  // Aim for roughly a dozen buckets, then round up to 1/2/5 × a power of ten.
+  const rough = span / 12;
+  const magnitude = 10 ** Math.floor(Math.log10(rough));
+  let size = 10 * magnitude;
+  for (const step of [1, 2, 5, 10]) {
+    if (rough <= step * magnitude) {
+      size = step * magnitude;
+      break;
+    }
+  }
+
+  // Integer data never gets fractional buckets. Replica counts binned at 0.2 produce
+  // "1.0–1.2" — an edge that cannot contain anything and a label that reads as an error.
+  const allIntegers = values.every((v) => Number.isInteger(v));
+  return allIntegers ? Math.max(1, Math.round(size)) : size;
+}
+
+/** Label for the bucket a value falls in, e.g. `10–20`. */
+export function bucketLabel(value: number, size: number): string {
+  const lower = Math.floor(value / size) * size;
+  const upper = lower + size;
+  const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(2));
+  return `${fmt(lower)}–${fmt(upper)}`;
+}
+
+function keyOf(
+  row: Row,
+  field: string,
+  bin?: Transform['bin'],
+  numericBin?: { field: string; size: number },
+): string | null {
   const raw = row.values[field];
   if (raw === null || raw === undefined || raw === '') return null;
   if (bin && bin.field === field) return binTimestamp(String(raw), bin.unit);
+  if (numericBin && numericBin.field === field) {
+    const n = numeric(raw);
+    return n === null ? null : bucketLabel(n, numericBin.size);
+  }
   return String(raw);
 }
 
@@ -112,12 +188,36 @@ function sortCategories(
 }
 
 /**
+ * Adds derived dimensions to each row. `coalesce` picks the first non-empty source, so a
+ * concept that different providers spell differently becomes one dimension.
+ */
+export function applyDerive(rows: Row[], derive: Transform['derive']): Row[] {
+  if (!derive || derive.length === 0) return rows;
+  return rows.map((row) => {
+    const values = { ...row.values };
+    for (const { name, coalesce } of derive) {
+      let picked: RowValue = null;
+      for (const field of coalesce) {
+        const v = values[field];
+        if (v !== null && v !== undefined && v !== '') {
+          picked = v;
+          break;
+        }
+      }
+      values[name] = picked;
+    }
+    return { ...row, values };
+  });
+}
+
+/**
  * Rows -> Frame. With no `groupBy` the whole set is one point, which is what a stat
  * tile wants; with two keys the second becomes the series dimension (stacked bars,
  * multi-line).
  */
-export function aggregate(rows: Row[], transform: Transform | undefined): Frame {
+export function aggregate(inputRows: Row[], transform: Transform | undefined): Frame {
   const t = transform ?? {};
+  const rows = applyDerive(inputRows, t.derive);
   const fn = t.aggregate?.fn ?? 'count';
   const field = t.aggregate?.field;
 
@@ -133,11 +233,26 @@ export function aggregate(rows: Row[], transform: Transform | undefined): Frame 
   }
 
   const [primary, secondary] = groupKeys;
+
+  // Bucket width is derived from the data, once, so every row lands in the same grid.
+  const numericBin = t.numericBin
+    ? {
+        field: t.numericBin.field,
+        size:
+          t.numericBin.size ??
+          bucketSize(
+            rows
+              .map((r) => numeric(r.values[t.numericBin!.field]))
+              .filter((n): n is number => n !== null),
+          ),
+      }
+    : undefined;
+
   const buckets = new Map<string, Map<string, Row[]>>();
   let excluded = 0;
 
   for (const row of rows) {
-    const rawKey = keyOf(row, primary, t.bin);
+    const rawKey = keyOf(row, primary, t.bin, numericBin);
     if (rawKey === null) {
       if (t.dropEmpty) {
         excluded++;
@@ -145,7 +260,7 @@ export function aggregate(rows: Row[], transform: Transform | undefined): Frame 
       }
     }
     const key = rawKey ?? NONE;
-    const seriesKey = secondary ? (keyOf(row, secondary, t.bin) ?? NONE) : 'value';
+    const seriesKey = secondary ? (keyOf(row, secondary, t.bin, numericBin) ?? NONE) : 'value';
 
     let bySeries = buckets.get(key);
     if (!bySeries) {
@@ -194,6 +309,16 @@ export function aggregate(rows: Row[], transform: Transform | undefined): Frame 
 
   // A time axis is ordered by time, not by magnitude.
   if (t.bin) categories = [...categories].sort((a, b) => a.localeCompare(b));
+  // A histogram axis is ordered by bucket lower bound, numerically — string sort would
+  // put "100–200" before "20–30".
+  if (numericBin) {
+    const lower = (k: string) => Number.parseFloat(k.split('–')[0]);
+    categories = [...categories].sort((a, b) => {
+      if (a === NONE) return 1;
+      if (b === NONE) return -1;
+      return lower(a) - lower(b);
+    });
+  }
 
   const seriesNames = secondary
     ? [...new Set([...buckets.values()].flatMap((m) => [...m.keys()]))].sort((a, b) =>
@@ -205,7 +330,13 @@ export function aggregate(rows: Row[], transform: Transform | undefined): Frame 
     name,
     points: categories.map((category): Point => {
       const rowsFor = buckets.get(category)?.get(name) ?? [];
-      return { key: category, value: applyAggregate(rowsFor, fn, field), rows: rowsFor };
+      const point: Point = {
+        key: category,
+        value: applyAggregate(rowsFor, fn, field),
+        rows: rowsFor,
+      };
+      if (fn === 'value' && field) point.label = dominantValue(rowsFor, field).label;
+      return point;
     }),
   }));
 

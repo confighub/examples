@@ -51,7 +51,7 @@ export function BarChart({ frame, spec, stacked, height = 260, onSelect }: BarCh
   // With one series the identity lives on the category axis, so colour encodes
   // magnitude; with several, colour carries series identity.
   const colorOf = (key: string, index: number, count: number) =>
-    colorFor(key, index, count, spec.color, mode, spec.emphasize);
+    colorFor(key, index, count, spec.color, mode, spec.emphasize, singleSeries);
 
   return (
     <ResponsiveContainer width="100%" height={height}>

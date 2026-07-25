@@ -18,33 +18,42 @@ Like [`promoter`](../promoter/README.md), configboard **seeds nothing**. It is a
 over whatever organization you point it at. See [DESIGN.md](DESIGN.md) for the full
 design, including the milestones beyond what is built.
 
-## Status: M0 + M1
+## Status: M0 + M1 + M2
 
 Working now:
 
+- Browser-direct OIDC PKCE login against one organization.
 - **Dashboards stored as ConfigHub Units.** Each dashboard is one `AppConfig/YAML` unit
-  in a `configboard` Space, labelled `app=configboard`. Seed the bundled four with one
+  in a `configboard` Space, labelled `app=configboard`. Seed the bundled ones with one
   click, duplicate them, edit the document in the app, delete what you don't want —
   every save is a new revision with a change description, visible in
   `cub revision list`.
-- **Cross-filtering.** Click any bar or slice to narrow the whole dashboard; chips show
-  what's active and remove it.
-
-- Browser-direct OIDC PKCE login, read-only against one organization.
-- Four bundled dashboards: Fleet Overview, **Resource Inventory**, Fleet Posture,
-  Delivery Health.
+- **Cross-filtering.** Click any bar, slice, or heatmap cell to narrow the whole
+  dashboard; chips show what's active and remove it.
+- Five bundled dashboards: Fleet Overview, **Version Skew**, Resource Inventory,
+  Fleet Posture, Delivery Health.
+- **A panel builder.** Pick a source, dimensions, a measure, and a form; see it
+  rendered against your real data before saving. What it saves is the same panel stanza
+  a hand-editor would write, appended to the document with comments intact.
+- **Data-path dimensions.** Two ConfigHub **Views** (seeded on request) read values out
+  of the configuration itself — container image, replica count, cloud region, instance
+  class — so dimensions are not limited to metadata. A `derive`/`coalesce` transform
+  folds provider-specific spellings (`spec.forProvider.region` vs an ACK annotation)
+  into one dimension.
+- **Heatmap and histogram**, including the version-skew matrix: component × environment
+  with the image tag in the cell.
 - **Resource-grain counting** via the read-only `get-resources` function — resources by
   kind, by API group, by provider family (core Kubernetes vs ACK vs Crossplane vs any
   other CRD family), by cluster, and by namespace. A Unit can hold dozens of resources,
   so this is a different question from counting Units.
-- Chart forms: stat tile, meter, bar, stacked bar, line, donut, plus a table view
-  on every panel.
+- Chart forms: stat tile, meter, bar, stacked bar, line, donut, heatmap, histogram,
+  plus a table view on every panel.
 - Every panel shows the equivalent `cub` command for its query.
 - Tier-0 dimensions: Unit / Space / Target / Revision metadata, Space labels,
   Target facts, and the per-Space summary counts.
 
-Not built yet: the visual query builder, saved-View dimensions (`DataPath` columns for
-arbitrary config paths), and pinned dimensions (Attribute + Trigger). See DESIGN.md §9.
+Not built yet: pinned dimensions (Attribute + Trigger, so a data-path value becomes
+filterable in `where`) and "save as Filter/View" from the builder. See DESIGN.md §9.
 
 **What it writes.** Nothing, until you ask. Reading never creates the storage Space.
 When you seed, duplicate, save, or delete, it writes only its own dashboard documents in
@@ -116,9 +125,9 @@ or [`global-app`](../global-app/) (multi-service).
 
 ## Dashboards are data
 
-The three dashboards are YAML documents in [`dashboards/`](dashboards/), bundled into
-the build for M0. A panel names a source, a `where`, a dimension to group by, an
-aggregate, and a chart form:
+The dashboards are YAML documents in [`dashboards/`](dashboards/), bundled as seed
+material; once saved, the stored Units are the source of truth. A panel names a source,
+a `where`, a dimension to group by, an aggregate, and a chart form:
 
 ```yaml
 - id: apply-state

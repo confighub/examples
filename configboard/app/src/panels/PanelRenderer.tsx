@@ -5,6 +5,7 @@ import { useMemo } from 'react';
 import { BarChart } from '../charts/BarChart';
 import { FrameTable, RowTable } from '../charts/DataTable';
 import { DonutChart } from '../charts/DonutChart';
+import { Heatmap } from '../charts/Heatmap';
 import { LineChart } from '../charts/LineChart';
 import { Meter, StatTile } from '../charts/StatTile';
 import type { Frame, Panel, Row } from '../model/types';
@@ -113,6 +114,19 @@ function renderChart(panel: Panel, frame: Frame, onSelect?: (c: string, s?: stri
       return <BarChart frame={frame} spec={chart} stacked onSelect={onSelect} />;
     case 'bar':
       return <BarChart frame={frame} spec={chart} onSelect={onSelect} />;
+    case 'histogram':
+      // A histogram is a bar chart over ordered buckets: bars touch conceptually, and
+      // the axis is a scale, so it never reorders by magnitude.
+      return <BarChart frame={frame} spec={{ ...chart, orientation: 'vertical' }} />;
+    case 'heatmap':
+      return (
+        <Heatmap
+          frame={frame}
+          spec={chart}
+          dimensionLabel={dimensionLabel(panel)}
+          onSelect={onSelect}
+        />
+      );
     case 'table':
       return null;
     default:

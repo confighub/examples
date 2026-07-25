@@ -7,9 +7,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { bundledDashboards } from '../dashboards';
-import { parseDashboard } from '../model/parse';
-import type { Dashboard } from '../model/types';
+import { appendPanel, parseDashboard } from '../model/parse';
+import type { Dashboard, Panel } from '../model/types';
 import { type StoredDashboard, useDashboardStorage } from '../storage/dashboards';
+import { VIEW_SEEDS, useViewStorage } from '../storage/views';
 
 export interface DashboardEntry {
   dashboard: Dashboard;
@@ -27,9 +28,19 @@ export interface DashboardsState {
   /** True when the storage Space holds no dashboards yet. */
   isEmpty: boolean;
   error?: string;
+  /** True when the Views that Tier-1 dashboards reference are not all present. */
+  viewsMissing: boolean;
+  /**
+   * Bundled dashboards with no stored counterpart. A new starter dashboard shipped after
+   * someone seeded must still be reachable — otherwise upgrading the app silently hides
+   * the new work.
+   */
+  missingBundled: string[];
   reload: () => Promise<void>;
   seedBundled: () => Promise<void>;
+  seedViews: () => Promise<void>;
   duplicate: (entry: DashboardEntry, slug: string, title: string) => Promise<void>;
+  addPanel: (entry: DashboardEntry, panel: Panel) => Promise<void>;
   saveSource: (entry: DashboardEntry, yaml: string) => Promise<void>;
   remove: (entry: DashboardEntry) => Promise<void>;
 }
@@ -49,7 +60,9 @@ function message(e: unknown): string {
 
 export function useDashboards(enabled: boolean): DashboardsState {
   const storage = useDashboardStorage();
+  const views = useViewStorage();
   const [stored, setStored] = useState<StoredDashboard[] | null>(null);
+  const [viewSlugs, setViewSlugs] = useState<string[] | null>(null);
   const [isLoading, setLoading] = useState(false);
   const [error, setError] = useState<string | undefined>();
 
@@ -57,14 +70,31 @@ export function useDashboards(enabled: boolean): DashboardsState {
     setLoading(true);
     setError(undefined);
     try {
-      setStored(await storage.list());
+      const [dashboards, seeded] = await Promise.all([storage.list(), views.existing()]);
+      setStored(dashboards);
+      setViewSlugs(seeded);
     } catch (e) {
       setError(message(e));
       setStored([]);
+      setViewSlugs([]);
     } finally {
       setLoading(false);
     }
-  }, [storage]);
+  }, [storage, views]);
+
+  const seedViews = useCallback(async () => {
+    setLoading(true);
+    setError(undefined);
+    try {
+      const spaceId = await storage.ensureSpace();
+      await views.seed(spaceId);
+      setViewSlugs(await views.existing());
+    } catch (e) {
+      setError(message(e));
+    } finally {
+      setLoading(false);
+    }
+  }, [storage, views]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -73,11 +103,14 @@ export function useDashboards(enabled: boolean): DashboardsState {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled]);
 
+  /** Creates the bundled dashboards that are not stored yet. Existing ones are left alone. */
   const seedBundled = useCallback(async () => {
     setLoading(true);
     setError(undefined);
     try {
+      const have = new Set((stored ?? []).map((s) => s.slug));
       for (const entry of bundledEntries()) {
+        if (have.has(entry.dashboard.slug)) continue;
         await storage.create(entry.dashboard.slug, entry.yaml, entry.dashboard.title);
       }
       setStored(await storage.list());
@@ -86,7 +119,7 @@ export function useDashboards(enabled: boolean): DashboardsState {
     } finally {
       setLoading(false);
     }
-  }, [storage]);
+  }, [storage, stored]);
 
   const duplicate = useCallback(
     async (entry: DashboardEntry, slug: string, title: string) => {
@@ -103,6 +136,16 @@ export function useDashboards(enabled: boolean): DashboardsState {
       } catch (e) {
         setError(message(e));
       }
+    },
+    [storage],
+  );
+
+  /** Appends a panel to a stored dashboard, leaving the rest of the document intact. */
+  const addPanel = useCallback(
+    async (entry: DashboardEntry, panel: Panel) => {
+      if (!entry.stored) throw new Error('Save this dashboard to ConfigHub before adding panels.');
+      await storage.save(entry.stored, appendPanel(entry.yaml, panel), `Add panel ${panel.title}`);
+      setStored(await storage.list());
     },
     [storage],
   );
@@ -153,14 +196,26 @@ export function useDashboards(enabled: boolean): DashboardsState {
     }));
   }, [stored]);
 
+  const missingBundled = useMemo((): string[] => {
+    if (stored === null || stored.length === 0) return [];
+    const have = new Set(stored.map((s) => s.slug));
+    return bundledEntries()
+      .filter((e) => !have.has(e.dashboard.slug))
+      .map((e) => e.dashboard.title);
+  }, [stored]);
+
   return {
     entries,
     isLoading,
     isEmpty: stored !== null && stored.length === 0,
+    viewsMissing: viewSlugs !== null && viewSlugs.length < VIEW_SEEDS.length,
+    missingBundled,
     error,
     reload,
     seedBundled,
+    seedViews,
     duplicate,
+    addPanel,
     saveSource,
     remove,
   };

@@ -3,9 +3,9 @@
 // title straight into DisplayName means a perfectly legal title fails the save with a
 // regex in the error body.
 //
-// The document's `title` stays authoritative for what the app displays. DisplayName is
-// only the label ConfigHub shows in `cub unit list`, so it is fine to reduce it — and
-// far better than refusing to save.
+// Annotations have no such restriction — any character, up to 1024 bytes — so the exact
+// title goes there and nothing is lost. DisplayName gets a reduced form, which is the
+// right trade for a field whose job is to read well in `cub unit list`.
 
 /** Longest DisplayName worth sending; the server's own limit is larger. */
 const MAX_LENGTH = 120;

@@ -6,6 +6,7 @@ import {
   useListAllRevisionsQuery,
   useListAllTargetsQuery,
   useListAllUnitsQuery,
+  useListAllViewsQuery,
   useListSpacesQuery,
 } from '@confighub/rtk-query';
 import { useMemo } from 'react';
@@ -58,9 +59,23 @@ function errorMessage(error: unknown): string | undefined {
 export function useQueryResult(spec: RequestSpec, baseUrl: string): QueryResult {
   const common = { where: spec.where, include: spec.include, filter: spec.filter };
 
+  // A panel names a View as `space/slug`, but the org-wide unit list resolves `view`
+  // only as a UUID — a slug has no space to be resolved in. One cheap lookup, cached
+  // like everything else, and the unit query waits for it.
+  const viewSlug = spec.view?.includes('/') ? spec.view.split('/').pop() : spec.view;
+  const viewLookup = useListAllViewsQuery(
+    { where: `Slug = '${viewSlug ?? ''}'` },
+    { skip: !viewSlug },
+  );
+  const viewId = viewLookup.data?.[0]?.View?.ViewID;
+  const viewPending = Boolean(viewSlug) && !viewId;
+  const viewMissing = Boolean(viewSlug) && !viewLookup.isFetching && !viewId && viewLookup.isSuccess;
+
   const units = useListAllUnitsQuery(
-    { ...common, select: spec.select, view: spec.view },
-    { skip: spec.source !== 'Unit' },
+    { ...common, select: spec.select, view: viewId, resourceType: spec.resourceType },
+    // Running the unit query before the View resolves would return unprojected rows and
+    // the panel would render an empty dimension rather than waiting.
+    { skip: spec.source !== 'Unit' || viewPending },
   );
   const spaces = useListSpacesQuery(
     { ...common, summary: spec.summary },
@@ -71,7 +86,7 @@ export function useQueryResult(spec: RequestSpec, baseUrl: string): QueryResult 
 
   const isResource = spec.source === 'Resource';
   const resources = useResourceListQuery(
-    { where: spec.where, filter: spec.filter },
+    { where: spec.where, filter: spec.filter, resourceType: spec.resourceType },
     { skip: !isResource },
   );
   // A resource row knows its TargetID but not the Target's slug; the Target list is
@@ -126,9 +141,12 @@ export function useQueryResult(spec: RequestSpec, baseUrl: string): QueryResult 
   const overHardLimit = rows.length > HARD_ROW_LIMIT;
   return {
     rows: overHardLimit ? [] : rows,
-    isLoading: active.isLoading,
-    isFetching: active.isFetching,
-    error: errorMessage(active.error),
+    isLoading: active.isLoading || (viewPending && !viewMissing),
+    isFetching: active.isFetching || viewLookup.isFetching,
+    error:
+      viewMissing && spec.view
+        ? `View "${spec.view}" not found — seed the configboard Views, or fix the panel's view reference.`
+        : errorMessage(active.error) ?? errorMessage(viewLookup.error),
     overSoftLimit: rows.length > SOFT_ROW_LIMIT && !overHardLimit,
     overHardLimit,
   };

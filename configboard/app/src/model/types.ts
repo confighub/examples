@@ -33,13 +33,33 @@ export type AggregateFn =
   | 'max'
   | 'p50'
   | 'p95'
-  | 'distinctCount';
+  | 'distinctCount'
+  /**
+   * The dominant string value in the group, with the *number of distinct values* as the
+   * measure. This is what a version-skew matrix needs: the cell shows the image tag, and
+   * a value above 1 says the group disagrees with itself.
+   */
+  | 'value';
 
 export type BinUnit = 'day' | 'week' | 'month';
 
 export interface Transform {
+  /**
+   * Dimensions computed from other dimensions before grouping. `coalesce` takes the
+   * first non-empty value in order, which is how one panel covers the same concept
+   * across providers that spell it differently — a region lives at
+   * `spec.forProvider.region` in Crossplane and in an annotation in ACK.
+   *
+   * Derived names must start with `Derived.`.
+   */
+  derive?: { name: string; coalesce: string[] }[];
   /** Bucket a timestamp dimension before grouping. */
   bin?: { field: string; unit: BinUnit };
+  /**
+   * Bucket a numeric dimension into fixed-width buckets before grouping — a histogram.
+   * `size` defaults to a round number derived from the observed range.
+   */
+  numericBin?: { field: string; size?: number };
   /**
    * Grouping keys. One key produces a single series; two produce a series per
    * distinct value of the second key (stacked bars, multi-line).
@@ -71,6 +91,8 @@ export type ChartForm =
   | 'stackedBar'
   | 'line'
   | 'donut'
+  | 'heatmap'
+  | 'histogram'
   | 'table';
 
 export type ColorRole = 'sequential' | 'categorical' | 'status' | 'emphasis';
@@ -94,6 +116,12 @@ export interface PanelQuery {
   where?: string;
   /** Saved View (`space/slug`) whose columns become extra dimensions. */
   view?: string;
+  /**
+   * Narrow to Units containing a resource of this type, e.g. `apps/v1/Deployment`.
+   * Server-side, and the right way to scope a data-path projection: a View column that
+   * reads `spec.replicas` is meaningless on a Service.
+   */
+  resourceType?: string;
   /** Saved Filter (`space/slug`), ANDed with `where`. */
   filter?: string;
   /** Rows the panel deliberately excludes, reported in the panel footer. */
@@ -145,6 +173,11 @@ export interface Dashboard {
 export interface Point {
   key: string;
   value: number;
+  /**
+   * The string a cell displays, when the measure is a value rather than a count
+   * (`aggregate: value`). Heatmaps render this; other forms ignore it.
+   */
+  label?: string;
   /** Source rows behind this point, for drill-down. */
   rows: Row[];
 }

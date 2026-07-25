@@ -1,6 +1,6 @@
 # configboard — a BI-style dashboard builder over ConfigHub
 
-**Status:** M0 and M1 built. M2 (the visual builder) is next.
+**Status:** M0, M1, and M2 built. M3 (pinned dimensions) is next.
 **Location:** `examples/configboard/`.
 
 ## 1. What this is
@@ -612,11 +612,38 @@ which is worth saying out loud before the user opens an empty dashboard.
   same gesture mean different things. A filter on a dimension a panel's source lacks is
   ignored *for that panel*, and the panel says so — clicking a resource kind must not
   blank the Space-grain panels beside it.
-- **M2 — the builder.** Query builder with live preview, dimension picker across
-  Tiers 0–2, "show me the query", "save as Filter/View", heatmap and histogram.
+- **M2 — the builder and Tier-1 dimensions. Built.** A panel builder that previews
+  against live data and appends the stanza it produces to the document; Views seeded
+  from the app so data-path dimensions work; heatmap and histogram forms; the
+  Version Skew dashboard.
+
+  What building it settled:
+
+  - **A View's metadata columns silently return null without `include`.** A column
+    reading `Space.Labels.Component` came back empty for all 70 rows until the query
+    added `include=SpaceID` — at which point 68 of 70 had a value. Nothing errors; it
+    reads as "our Spaces have no labels". A view query now always includes `SpaceID`
+    and `TargetID`, because a panel cannot know a saved View's columns.
+  - **`view` on the org-wide unit list resolves only a UUID.** A slug has no Space to
+    be resolved in, so `view=cb-workload` is rejected. Panels still reference
+    `space/slug` (that is what a human writes); the app resolves it to an id first and
+    waits for the lookup rather than issuing an unprojected query.
+  - **A `.` inside a map key escapes as `~1` in a data path.** ACK writes region into a
+    `services.k8s.aws/region` annotation, addressed as
+    `metadata.annotations.services~1k8s~1aws/region`. Without that, the panel is empty
+    and the reason is invisible.
+  - **The same concept needs one dimension across providers.** Region lives at
+    `spec.forProvider.region` (Crossplane), `spec.region` (some ACK types), and that
+    annotation (adopted ACK resources). `transform.derive` with `coalesce` takes the
+    first present, so a panel does not branch on provider.
+  - **A skew matrix must show the count, not just the colour.** A cell coloured for
+    "holds several values" while displaying one of them shows a tag and implies others
+    exist — the reader has to hover to learn that. Cells now render `tag +N`.
+  - **Integer data must not get fractional buckets.** Auto-binning replica counts at
+    0.2 produces `1.0–1.2`: an edge nothing can fall in.
 - **M3 — pinned dimensions.** Attribute + Trigger creation from the UI, with the
-  backfill caveat surfaced; compliance panels via `trigger_filter`; deploy lead
-  time and unapplied-change aging.
+  backfill caveat surfaced; compliance panels via `trigger_filter`; "save as
+  Filter/View" from the builder.
 
 Each milestone is independently demoable; M0 alone is a credible example.
 

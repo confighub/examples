@@ -6,6 +6,7 @@ import deliveryHealth from '../../../dashboards/delivery-health.yaml?raw';
 import fleetOverview from '../../../dashboards/fleet-overview.yaml?raw';
 import fleetPosture from '../../../dashboards/fleet-posture.yaml?raw';
 import resourceInventory from '../../../dashboards/resource-inventory.yaml?raw';
+import versionSkew from '../../../dashboards/version-skew.yaml?raw';
 import { parseDashboard } from '../model/parse';
 import type { Dashboard } from '../model/types';
 
@@ -16,7 +17,7 @@ export interface LoadedDashboard {
   yaml: string;
 }
 
-const SOURCES = [fleetOverview, resourceInventory, fleetPosture, deliveryHealth];
+const SOURCES = [fleetOverview, versionSkew, resourceInventory, fleetPosture, deliveryHealth];
 
 export function bundledDashboards(): LoadedDashboard[] {
   const loaded: LoadedDashboard[] = [];

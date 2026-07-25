@@ -7,7 +7,17 @@ import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import type { ChartForm, Dashboard, Panel, SourceName, Variable } from './types';
 
 const SOURCES: SourceName[] = ['Unit', 'Space', 'Revision', 'Target', 'Resource'];
-const FORMS: ChartForm[] = ['statTile', 'meter', 'bar', 'stackedBar', 'line', 'donut', 'table'];
+const FORMS: ChartForm[] = [
+  'statTile',
+  'meter',
+  'bar',
+  'stackedBar',
+  'line',
+  'donut',
+  'heatmap',
+  'histogram',
+  'table',
+];
 
 export interface ParseResult {
   dashboard?: Dashboard;
@@ -131,4 +141,23 @@ export function serializeDashboard(dashboard: Dashboard): string {
   doc.panels = dashboard.panels;
 
   return stringifyYaml(doc, { lineWidth: 0 });
+}
+
+/**
+ * A single panel as a YAML list item, indented to sit under `panels:`.
+ *
+ * Appending text is deliberate: re-serializing the whole document would drop the
+ * comments a hand-edited dashboard carries, and those comments are often the only record
+ * of why a panel is shaped the way it is.
+ */
+export function serializePanelItem(panel: Panel): string {
+  const body = stringifyYaml(panel, { lineWidth: 0 }).trimEnd();
+  const lines = body.split('\n');
+  return lines.map((line, i) => (i === 0 ? `  - ${line}` : `    ${line}`)).join('\n');
+}
+
+/** Appends a panel to a dashboard document's text, preserving everything already there. */
+export function appendPanel(yaml: string, panel: Panel): string {
+  const trimmed = yaml.replace(/\s+$/, '');
+  return `${trimmed}\n\n${serializePanelItem(panel)}\n`;
 }

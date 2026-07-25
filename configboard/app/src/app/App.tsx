@@ -1,4 +1,5 @@
 import { useAuth } from '@confighub/react-auth';
+import AddChartIcon from '@mui/icons-material/AddChart';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DataObjectIcon from '@mui/icons-material/DataObject';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
@@ -17,6 +18,7 @@ import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { useState } from 'react';
 
+import { PanelBuilderDialog } from '../builder/PanelBuilderDialog';
 import { ConfirmDialog, DuplicateDialog } from './Dialogs';
 import { DashboardView } from './DashboardView';
 import { SourceDialog } from './SourceDialog';
@@ -64,6 +66,7 @@ export function App() {
   const [sourceEntry, setSourceEntry] = useState<DashboardEntry | null>(null);
   const [duplicating, setDuplicating] = useState<DashboardEntry | null>(null);
   const [deleting, setDeleting] = useState<DashboardEntry | null>(null);
+  const [building, setBuilding] = useState<DashboardEntry | null>(null);
 
   if (!isConfigured) {
     return (
@@ -146,6 +149,13 @@ export function App() {
           <Stack direction="row" spacing={0.5} alignItems="center">
             {current && (
               <>
+                {current.stored && (
+                  <Tooltip title="Add a panel">
+                    <IconButton size="small" onClick={() => setBuilding(current)}>
+                      <AddChartIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                )}
                 <Tooltip title="View and edit the dashboard document">
                   <IconButton size="small" onClick={() => setSourceEntry(current)}>
                     <DataObjectIcon fontSize="small" />
@@ -196,6 +206,43 @@ export function App() {
           </Alert>
         )}
 
+        {store.missingBundled.length > 0 && (
+          <Alert
+            severity="info"
+            variant="outlined"
+            sx={{ mb: 2 }}
+            action={
+              <Button size="small" onClick={() => void store.seedBundled()} disabled={store.isLoading}>
+                Add
+              </Button>
+            }
+          >
+            {store.missingBundled.length === 1
+              ? `A starter dashboard is not saved here yet: ${store.missingBundled[0]}.`
+              : `Starter dashboards not saved here yet: ${store.missingBundled.join(', ')}.`}{' '}
+            Adding them leaves your existing dashboards untouched.
+          </Alert>
+        )}
+
+        {store.viewsMissing && !store.isEmpty && (
+          <Alert
+            severity="info"
+            variant="outlined"
+            sx={{ mb: 2 }}
+            action={
+              <Button size="small" onClick={() => void store.seedViews()} disabled={store.isLoading}>
+                Create Views
+              </Button>
+            }
+          >
+            The Version Skew dashboard reads values out of configuration data through saved
+            ConfigHub <strong>Views</strong>. Creating them adds two Views to the{' '}
+            <code>configboard</code> Space — they work for any resource type, including
+            Crossplane and ACK resources, and are reusable from{' '}
+            <code>cub unit list --view</code>.
+          </Alert>
+        )}
+
         {store.isLoading && dashboards.length === 0 ? (
           <Centered>
             <CircularProgress size={22} />
@@ -225,6 +272,17 @@ export function App() {
           open
           onClose={() => setSourceEntry(null)}
           onSave={(yaml) => store.saveSource(sourceEntry, yaml)}
+        />
+      )}
+
+      {building && (
+        <PanelBuilderDialog
+          key={building.stored?.unitId ?? building.dashboard.slug}
+          dashboard={building.dashboard}
+          baseUrl={BASE_URL}
+          scope={{}}
+          onClose={() => setBuilding(null)}
+          onAdd={(panel) => store.addPanel(building, panel)}
         />
       )}
 

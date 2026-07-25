@@ -45,6 +45,20 @@ dashboard document schema, and the API requests it issues.
 - every save is a merge-patch producing a new revision with a `LastChangeDescription`
 - discoverable via: `cub unit list --space configboard --where "Labels.app = 'configboard'"`
 
+### Seeded Views
+
+- created **only** when the user asks, in the `configboard` Space
+- `cb-workload`: `Unit`, `Component`, `Environment` (metadata) + `Image`, `Replicas`
+  (data paths) for Kubernetes workloads
+- `cb-cloud-resource`: region and size across Crossplane and ACK, including the ACK
+  annotation path `metadata.annotations.services~1k8s~1aws/region` (a `.` inside a map
+  key escapes as `~1`)
+- reusable outside the app: `cub unit list --view configboard/cb-workload`
+- a panel references a View as `space/slug`; the app resolves it to a UUID because the
+  org-wide unit list accepts only a UUID for `view`
+- a view query always passes `include=SpaceID,TargetID`: a View's metadata columns
+  return **null**, silently, without the related entity included
+
 ### Dashboard document
 
 - location: `dashboards/*.yaml` bundled as seed material; the stored Units are the
@@ -55,11 +69,18 @@ dashboard document schema, and the API requests it issues.
 - `variables[]`: `{ name, label, type?: select|timeRange, from?: {spaceLabel|target}, default?, allValue? }`
 - `panels[]`: `{ id, title, description?, span?, query, transform?, chart }`
 - `query`: `{ source: Unit|Space|Revision|Target|Resource, where?, view?, filter?, excludes? }`
-- `transform`: `{ bin?, groupBy?, aggregate?, topN?, tail?, sort?, dropEmpty? }`
+- `transform`: `{ derive?, bin?, numericBin?, groupBy?, aggregate?, topN?, tail?, sort?, dropEmpty? }`
+- `transform.derive`: `[{ name: 'Derived.X', coalesce: [dimA, dimB] }]` — first non-empty
+  source wins; derived names must start with `Derived.` and are never pushed into `where`
+- `transform.numericBin`: `{ field, size? }` — histogram buckets; auto-sizing never
+  gives integer data a fractional width
+- `aggregate.fn`: `count | sum | avg | min | max | p50 | p95 | distinctCount | value`
+  (`value` measures how many distinct values a group holds and labels the point with the
+  dominant one — what a skew matrix needs)
 - `transform.tail`: `other` (default, fold the residue into an "Other" bucket) or
   `drop` (omit it and report the count) — `drop` for ranked top-N charts, where a folded
   residue would be the largest mark
-- `chart.form`: one of `statTile | meter | bar | stackedBar | line | donut | table`
+- `chart.form`: one of `statTile | meter | bar | stackedBar | line | donut | heatmap | histogram | table`
 - validated by: `cd app && npm test` — an unknown dimension, an unknown chart form, an
   undeclared variable reference, or a `meter` without `chart.totalField` fails the suite
 
