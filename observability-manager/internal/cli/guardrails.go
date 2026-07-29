@@ -32,7 +32,10 @@ const (
 	coverageAnnotation = "observability.confighub.com/coverage"
 )
 
-const celNoCoverageFinding = "!has(r.metadata.annotations) || !('" + coverageAnnotation + "' in r.metadata.annotations)"
+// The null check is required: a resource written with a bare `annotations:` key has
+// the key present with a null value, so has() is true but `in` against null raises
+// "no such overload" and the rule reports a spurious failure.
+const celNoCoverageFinding = "!has(r.metadata.annotations) || r.metadata.annotations == null || !('" + coverageAnnotation + "' in r.metadata.annotations)"
 
 type guardrailTrigger struct {
 	slug string
