@@ -38,7 +38,10 @@ const (
 	// No egress rule may permit the whole internet via 0.0.0.0/0.
 	celNoWideCidrEgress = "r.kind != 'NetworkPolicy' || !has(r.spec.egress) || r.spec.egress.all(rule, !has(rule.to) || rule.to.all(peer, !has(peer.ipBlock) || peer.ipBlock.cidr != '0.0.0.0/0'))"
 	// Annotate-then-validate (§3.3): warn while a finding annotation is present.
-	celNoCoverageFinding = "!has(r.metadata.annotations) || !('" + findingAnnotation + "' in r.metadata.annotations)"
+	// The null check is required: a resource written with a bare `annotations:` key
+	// has the key present with a null value, so has() is true but `in` against null
+	// raises "no such overload" and the rule reports a spurious failure.
+	celNoCoverageFinding = "!has(r.metadata.annotations) || r.metadata.annotations == null || !('" + findingAnnotation + "' in r.metadata.annotations)"
 )
 
 type guardrailTrigger struct {

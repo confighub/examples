@@ -37,7 +37,10 @@ const (
 	// A Namespace must carry the pod-security enforce label.
 	celHasPodSecurity = "r.kind != 'Namespace' || (has(r.metadata.labels) && 'pod-security.kubernetes.io/enforce' in r.metadata.labels)"
 	// Annotate-then-validate: warn while an envelope finding annotation is present.
-	celNoEnvelopeFinding = "!has(r.metadata.annotations) || !('" + findingAnnotation + "' in r.metadata.annotations)"
+	// The null check is required: a resource written with a bare `annotations:` key
+	// has the key present with a null value, so has() is true but `in` against null
+	// raises "no such overload" and the rule reports a spurious failure.
+	celNoEnvelopeFinding = "!has(r.metadata.annotations) || r.metadata.annotations == null || !('" + findingAnnotation + "' in r.metadata.annotations)"
 )
 
 type guardrailTrigger struct {
