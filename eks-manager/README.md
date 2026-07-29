@@ -274,11 +274,3 @@ session; run `cub auth login` first if you are not signed in, then check with:
 bin/cub-eks preflight
 ```
 
-## Prior art
-
-[`vm-fleet`](../vm-fleet) is the existing Crossplane-on-AWS example in this repo
-— upbound `ec2` / `autoscaling` / `iam` managed resources stored as Units and
-mutated with `cub run set-string-path --resource-type ...`. `cub-eks` follows its
-authoring conventions, with one deliberate difference: `vm-fleet` packs two
-managed resources into a single multi-document Unit, while `cub-eks` keeps one
-resource per Unit.
