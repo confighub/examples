@@ -88,8 +88,10 @@ func invocationSpec(spaceID goclientnew.UUID, spec rbac.EditInvocationSpec) gocl
 		SpaceID:       spaceID,
 		Slug:          spec.Slug,
 		ToolchainType: "Kubernetes/YAML",
-		FunctionName:  "set-yq",
-		Arguments:     cubapi.Arguments(args),
-		Parameters:    params,
+		FunctionInvocations: cubapi.FunctionInvocations(api.FunctionInvocation{
+			FunctionName: "set-yq",
+			Arguments:    args,
+		}),
+		Parameters: params,
 	}
 }

@@ -176,10 +176,12 @@ func buildInvocation(spaceID goclientnew.UUID, spec profileSpec) goclientnew.Inv
 		Slug:          spec.slug,
 		DisplayName:   spec.slug,
 		ToolchainType: "Kubernetes/YAML",
-		FunctionName:  spec.function,
-		Arguments:     cubapi.Arguments(spec.args),
-		Parameters:    params,
-		Annotations:   map[string]string{"workload.confighub.com/description": spec.description},
+		FunctionInvocations: cubapi.FunctionInvocations(api.FunctionInvocation{
+			FunctionName: spec.function,
+			Arguments:    spec.args,
+		}),
+		Parameters:  params,
+		Annotations: map[string]string{"workload.confighub.com/description": spec.description},
 	}
 }
 
@@ -211,7 +213,7 @@ func newProfileListCmd() *cobra.Command {
 			}
 			rows := make([]row, 0, len(invs))
 			for _, inv := range invs {
-				r := row{Slug: inv.Slug, Function: inv.FunctionName}
+				r := row{Slug: inv.Slug, Function: strings.Join(cubapi.InvocationFunctionNames(inv), ", ")}
 				for _, p := range inv.Parameters {
 					r.Parameters = append(r.Parameters, p.ParameterName)
 				}
