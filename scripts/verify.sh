@@ -6,6 +6,7 @@ repo_root="$(cd "${script_dir}/.." && pwd)"
 
 script_checks=(
   "${repo_root}/scripts/verify.sh"
+  "${repo_root}/scripts/update-sdk.sh"
   "${repo_root}/spring-platform/springboot-platform-app-centric/setup.sh"
   "${repo_root}/spring-platform/springboot-platform-app-centric/verify.sh"
   "${repo_root}/spring-platform/springboot-platform-app-centric/cleanup.sh"
