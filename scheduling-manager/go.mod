@@ -3,8 +3,8 @@ module github.com/confighub/examples/scheduling-manager
 go 1.25.0
 
 require (
-	github.com/confighub/sdk/cliutil v0.2.21
-	github.com/confighub/sdk/core v0.2.21
+	github.com/confighub/sdk/cliutil v0.2.32
+	github.com/confighub/sdk/core v0.2.32
 	github.com/spf13/cobra v1.10.2
 )
 
@@ -19,7 +19,7 @@ require (
 	github.com/cockroachdb/errors v1.11.3 // indirect
 	github.com/cockroachdb/logtags v0.0.0-20230118201751-21c54148d20b // indirect
 	github.com/cockroachdb/redact v1.1.5 // indirect
-	github.com/confighub/sdk/configkit/yqkit v0.2.21 // indirect
+	github.com/confighub/sdk/configkit/yqkit v0.2.32 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
 	github.com/elliotchance/orderedmap v1.8.0 // indirect

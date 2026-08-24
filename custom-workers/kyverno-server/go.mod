@@ -3,9 +3,9 @@ module github.com/confighub/examples/custom-workers/kyverno-server
 go 1.25.0
 
 require (
-	github.com/confighub/sdk/configkit/k8skit v0.2.21
-	github.com/confighub/sdk/core v0.2.21
-	github.com/confighub/sdk/worker-function-impl v0.2.21
+	github.com/confighub/sdk/configkit/k8skit v0.2.32
+	github.com/confighub/sdk/core v0.2.32
+	github.com/confighub/sdk/worker-function-impl v0.2.32
 )
 
 require (
