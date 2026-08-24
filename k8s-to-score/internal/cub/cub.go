@@ -12,12 +12,12 @@ package cub
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"sort"
 	"sync"
 
 	"github.com/confighub/sdk/core/cubapi"
+	goclientnew "github.com/confighub/sdk/core/openapi/goclient-new"
 )
 
 // Client returns a memoized, authenticated ConfigHub API client. Building the
@@ -67,25 +67,28 @@ func ListUnits(ctx context.Context, c *cubapi.Client, space, where string) ([]Un
 		return nil, fmt.Errorf("space %q: %w", space, err)
 	}
 
-	w := cubapi.NewWhere(where).SpaceID(sp.SpaceID)
-	// An empty Select asks for all fields, which is what carries Unit.Data —
-	// the default field set omits it.
-	extended, err := cubapi.ListUnits(ctx, c, w, cubapi.ListOpts{})
-	if err != nil {
-		return nil, fmt.Errorf("listing units in space %q: %w", space, err)
+	// Configuration is not a field of a Unit, so it does not come back on a Unit list.
+	// The bulk data endpoint takes the same where clause and returns the configuration
+	// of everything it selects in one request, which is what a whole Space needs.
+	w := cubapi.NewWhere(where).SpaceID(sp.SpaceID).String()
+	params := &goclientnew.SearchUnitDataParams{}
+	if w != "" {
+		params.Where = &w
+	}
+	res, err := c.API.SearchUnitDataWithResponse(ctx, params)
+	if cubapi.IsAPIError(err, res) {
+		return nil, fmt.Errorf("listing units in space %q: %w", space, cubapi.InterpretErrorGeneric(err, res))
+	}
+	if res.JSON200 == nil {
+		return nil, nil
 	}
 
-	units := make([]Unit, 0, len(extended))
-	for _, eu := range extended {
-		if eu == nil || eu.Unit == nil || eu.Unit.Data == "" {
+	units := make([]Unit, 0, len(*res.JSON200))
+	for _, row := range *res.JSON200 {
+		if row.Data == "" {
 			continue
 		}
-		// The API carries Unit config data base64-encoded on the wire.
-		data, err := base64.StdEncoding.DecodeString(eu.Unit.Data)
-		if err != nil {
-			return nil, fmt.Errorf("unit %s: decoding config data: %w", eu.Unit.Slug, err)
-		}
-		units = append(units, Unit{Slug: eu.Unit.Slug, Data: data})
+		units = append(units, Unit{Slug: row.Slug, Data: []byte(row.Data)})
 	}
 	sort.Slice(units, func(i, j int) bool { return units[i].Slug < units[j].Slug })
 	return units, nil

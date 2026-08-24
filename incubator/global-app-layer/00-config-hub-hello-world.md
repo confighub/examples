@@ -47,7 +47,7 @@ cub unit create \
   --label ExampleName=global-app-layer-hello
 
 # Inspect the stored config
-cub unit get --space "${SPACE}" --data-only hello-backend
+cub unit data --space "${SPACE}" hello-backend
 ```
 
 What happened:

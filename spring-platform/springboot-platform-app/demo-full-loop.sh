@@ -110,7 +110,7 @@ if [[ "$DRY_RUN" == "true" ]]; then
   echo "Commands that would be executed:"
   echo ""
   echo "  # 1. Check ConfigHub state"
-  echo "  cub unit get --space ${SPACE} --data-only --json ${UNIT}"
+  echo "  cub unit data --space ${SPACE} ${UNIT}"
   echo ""
   echo "  # 2. Show field routes"
   echo "  ./confighub-field-routes.sh prod"
@@ -201,12 +201,19 @@ echo ""
 
 echo "Step 1: Current ConfigHub state for ${SPACE}"
 echo "────────────────────────────────────────────"
-BEFORE_JSON=$(${CUB} unit get --space "${SPACE}" --data-only --json "${UNIT}" 2>/dev/null || echo "")
-if [[ -z "$BEFORE_JSON" || "$BEFORE_JSON" == "null" ]]; then
+# `cub unit data` prints the Unit's configuration as text: multi-document
+# Kubernetes YAML. Convert it to a JSON array of docs so jq can read it.
+BEFORE_DATA=$(${CUB} unit data --space "${SPACE}" "${UNIT}" 2>/dev/null || echo "")
+if [[ -z "$BEFORE_DATA" || "$BEFORE_DATA" == "null" ]]; then
   echo "  error: unit not found. Run ./confighub-setup.sh first." >&2
   exit 1
 fi
 echo "  Unit exists. Extracting current reservation mode..."
+BEFORE_JSON=$(printf '%s' "$BEFORE_DATA" | python3 -c "
+import sys, json, yaml
+docs = list(yaml.safe_load_all(sys.stdin))
+json.dump([d for d in docs if d], sys.stdout)
+" 2>/dev/null || echo "[]")
 before_mode=$(echo "$BEFORE_JSON" | jq -r '
   [.[] | select(.kind == "Deployment")
    | .spec.template.spec.containers[]?.env[]?

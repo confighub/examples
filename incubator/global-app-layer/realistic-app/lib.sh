@@ -336,7 +336,7 @@ unit_data_to_file() {
   local space="$1"
   local unit="$2"
   local output_path="$3"
-  cub unit get --space "${space}" --data-only "${unit}" >"${output_path}"
+  cub unit data --space "${space}" "${unit}" >"${output_path}"
 }
 
 get_unit_json() {
@@ -884,7 +884,7 @@ Next steps:
 1. ./verify.sh
 2. ./apply-live.sh                    # preflights target, refreshes deploy clones, then applies namespace + app units
 3. ./upgrade-chain.sh ${DEFAULT_BACKEND_TAG} ${DEFAULT_FRONTEND_TAG} ${DEFAULT_POSTGRES_TAG}
-4. Review recipe manifest: cub unit get --space $(recipe_space) --data-only ${RECIPE_MANIFEST_UNIT}
+4. Review recipe manifest: cub unit data --space $(recipe_space) ${RECIPE_MANIFEST_UNIT}
 EOF_SUMMARY
   else
     cat <<EOF_SUMMARY

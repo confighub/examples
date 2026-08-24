@@ -27,7 +27,6 @@ import {
 import { diffLines } from 'diff';
 import { useMemo, useState } from 'react';
 
-import { b64decodeUtf8 } from '../api/encoding';
 import { fetchUnitDataText } from '../api/raw';
 import { useSnapshot } from '../fleet/SnapshotContext';
 import { CompiledEdit, compileAddVerb, compileRemoveVerb } from '../rbac/edits';
@@ -204,7 +203,8 @@ export function FleetPage() {
       diffs.push({
         label: `${r.SpaceSlug}/${r.UnitSlug}`,
         before,
-        after: r.ConfigData !== undefined && r.ConfigData !== '' ? b64decodeUtf8(r.ConfigData) : '',
+        // ConfigData comes back only when the invocation changed the configuration.
+        after: r.ConfigData ?? '',
       });
     }
     if (diffs.length === 0) {

@@ -5,7 +5,7 @@ ConfigHub SDK (MIT):
 
 - Repo: https://github.com/confighub/sdk
 - Path: `core/openapi/rtkqueryclient/`
-- Vendored: 2026-06-11
+- Vendored: 2026-08-24 (ref: v0.2.33)
 
 Do not edit them; refresh with `npm run vendor-sdk` (see `scripts/vendor-sdk.sh`).
 

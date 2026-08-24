@@ -3,8 +3,9 @@ module github.com/confighub/examples/eks-manager
 go 1.25.0
 
 require (
-	github.com/confighub/sdk/cliutil v0.2.21
-	github.com/confighub/sdk/core v0.2.21
+	github.com/confighub/sdk/cliutil v0.2.33
+	github.com/confighub/sdk/core v0.2.33
+	github.com/google/uuid v1.6.0
 	github.com/spf13/cobra v1.10.2
 	sigs.k8s.io/yaml v1.4.0
 )
@@ -20,7 +21,7 @@ require (
 	github.com/cockroachdb/errors v1.11.3 // indirect
 	github.com/cockroachdb/logtags v0.0.0-20230118201751-21c54148d20b // indirect
 	github.com/cockroachdb/redact v1.1.5 // indirect
-	github.com/confighub/sdk/configkit/yqkit v0.2.21 // indirect
+	github.com/confighub/sdk/configkit/yqkit v0.2.33 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
 	github.com/elliotchance/orderedmap v1.8.0 // indirect
@@ -37,7 +38,6 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/google/gnostic-models v0.6.9 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/hcl/v2 v2.24.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/itchyny/gojq v0.12.17 // indirect

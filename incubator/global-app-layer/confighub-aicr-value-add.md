@@ -423,8 +423,8 @@ cub function do set-env-var \
 ./upgrade-chain.sh 1.1.9 1.1.9 16.2
 
 # Inspect both deployment variants
-cub unit get --space "${deploy_space_a}" --data-only backend-cluster-a
-cub unit get --space "${deploy_space_b}" --data-only backend-cluster-b
+cub unit data --space "${deploy_space_a}" backend-cluster-a
+cub unit data --space "${deploy_space_b}" backend-cluster-b
 cub unit tree --edge clone --where "Labels.ExampleName = 'global-app-layer-realistic-app'"
 ```
 

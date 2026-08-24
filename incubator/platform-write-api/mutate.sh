@@ -93,20 +93,18 @@ esac
 
 command -v "${CUB}" >/dev/null 2>&1 || { echo "error: cub CLI not found." >&2; exit 1; }
 
-# Decode unit data from cub JSON response (base64 Data → YAML docs array)
+# Decode unit data (`cub unit data` prints it as multi-document YAML text)
 decode_unit_data() {
   local raw="$1"
   if echo "$raw" | jq -e 'type == "array"' >/dev/null 2>&1; then
     echo "$raw"
     return
   fi
-  local b64
-  b64=$(echo "$raw" | jq -r '.Unit.Data // empty' 2>/dev/null)
-  if [[ -z "$b64" ]]; then
+  if [[ -z "$raw" ]]; then
     echo "[]"
     return
   fi
-  echo "$b64" | base64 -d 2>/dev/null | python3 -c "
+  printf '%s' "$raw" | python3 -c "
 import sys, json, yaml
 docs = list(yaml.safe_load_all(sys.stdin))
 json.dump([d for d in docs if d], sys.stdout)
@@ -138,7 +136,7 @@ echo ""
 
 # Show before
 echo "Before:"
-before_raw=$(${CUB} unit get --space "${SPACE}" --data-only --json "${UNIT}" 2>/dev/null || true)
+before_raw=$(${CUB} unit data --space "${SPACE}" "${UNIT}" 2>/dev/null || true)
 if [[ -n "$before_raw" && "$before_raw" != "null" ]]; then
   extract_reservation_mode "$before_raw" "(not set — using ConfigMap default: strict)"
 else
@@ -160,7 +158,7 @@ echo ""
 
 # Show after
 echo "After:"
-after_raw=$(${CUB} unit get --space "${SPACE}" --data-only --json "${UNIT}" 2>/dev/null || true)
+after_raw=$(${CUB} unit data --space "${SPACE}" "${UNIT}" 2>/dev/null || true)
 if [[ -n "$after_raw" && "$after_raw" != "null" ]]; then
   extract_reservation_mode "$after_raw" "(mutation queued — waiting for worker)"
 else

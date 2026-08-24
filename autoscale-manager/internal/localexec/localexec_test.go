@@ -37,14 +37,14 @@ spec:
 `
 
 func TestConvertHPAToKEDA(t *testing.T) {
-	out, changed, err := ConvertHPAToKEDA(context.Background(), []byte(hpaYAML))
+	out, changed, err := ConvertHPAToKEDA(context.Background(), hpaYAML)
 	if err != nil {
 		t.Fatalf("convert: %v", err)
 	}
 	if !changed {
 		t.Fatalf("expected a mutation")
 	}
-	s := string(out)
+	s := out
 	for _, want := range []string{
 		"kind: ScaledObject",
 		"apiVersion: keda.sh/v1alpha1",
@@ -73,14 +73,14 @@ func TestConvertHPAToKEDA(t *testing.T) {
 // A non-HPA document is passed through unchanged.
 func TestConvert_NonHPAUnchanged(t *testing.T) {
 	cm := "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: c\ndata:\n  k: v\n"
-	out, changed, err := ConvertHPAToKEDA(context.Background(), []byte(cm))
+	out, changed, err := ConvertHPAToKEDA(context.Background(), cm)
 	if err != nil {
 		t.Fatalf("convert: %v", err)
 	}
 	if changed {
 		t.Errorf("a ConfigMap should not be changed")
 	}
-	if !strings.Contains(string(out), "kind: ConfigMap") {
+	if !strings.Contains(out, "kind: ConfigMap") {
 		t.Errorf("ConfigMap should pass through: %s", out)
 	}
 }

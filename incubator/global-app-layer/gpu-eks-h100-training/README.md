@@ -283,16 +283,16 @@ The bundle belongs to the target. The recipe manifest records the full multi-com
 
 ```bash
 # Show one deployment unit
-cub unit get --space <prefix>-deploy-cluster-a --data-only gpu-operator-cluster-a
+cub unit data --space <prefix>-deploy-cluster-a gpu-operator-cluster-a
 
 # Show the Flux deployment variant
-cub unit get --space <prefix>-deploy-cluster-a-flux --data-only gpu-operator-cluster-a-flux
+cub unit data --space <prefix>-deploy-cluster-a-flux gpu-operator-cluster-a-flux
 
 # Show the Argo deployment variant
-cub unit get --space <prefix>-deploy-cluster-a-argo --data-only gpu-operator-cluster-a-argo
+cub unit data --space <prefix>-deploy-cluster-a-argo gpu-operator-cluster-a-argo
 
 # Show the explicit recipe manifest
-cub unit get --space <prefix>-recipe-eks-h100-ubuntu-training --data-only recipe-eks-h100-ubuntu-training-stack
+cub unit data --space <prefix>-recipe-eks-h100-ubuntu-training recipe-eks-h100-ubuntu-training-stack
 
 # Show variant ancestry (implemented with clone links)
 cub unit tree --edge clone --where "Labels.ExampleName = 'global-app-layer-gpu-eks-h100-training'"

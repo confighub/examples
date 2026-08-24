@@ -4,7 +4,6 @@
 package cli
 
 import (
-	"encoding/base64"
 	"fmt"
 	"sort"
 	"strings"
@@ -106,12 +105,11 @@ would cover the whole namespace). Dry-run unless --commit --change-desc.`,
 			created, err := cub.CreateUnit(cmd.Context(), client, goclientnew.Unit{
 				Slug:                  pdbSlug,
 				DisplayName:           pdbSlug,
-				Data:                  base64.StdEncoding.EncodeToString([]byte(manifest)),
 				ToolchainType:         "Kubernetes/YAML",
 				SpaceID:               ref.spaceID,
 				Labels:                map[string]string{"managed-by": unitManagedByLabel},
 				LastChangeDescription: changeDesc,
-			})
+			}, manifest)
 			if err != nil {
 				return err
 			}

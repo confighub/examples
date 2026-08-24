@@ -1,5 +1,5 @@
 // The promotion-workflow document. One Workflow is stored as the YAML body
-// (Unit.Data) of a single AppConfig/YAML unit in the `promoter` space. The
+// (the configuration) of a single AppConfig/YAML unit in the `promoter` space. The
 // document holds the pipeline shape — stage order and per-component variant
 // choices. It deliberately does NOT store promotion status: status belongs to
 // ConfigHub (which manages the live resources) and is read from a label on
@@ -46,7 +46,7 @@ export function emptyWorkflow(name: string): Workflow {
   };
 }
 
-/** Serialize a Workflow to the YAML stored in Unit.Data. */
+/** Serialize a Workflow to the YAML stored as the Unit's configuration. */
 export function serializeWorkflow(wf: Workflow): string {
   return stringify({
     apiVersion: wf.apiVersion || WORKFLOW_API_VERSION,
@@ -57,7 +57,7 @@ export function serializeWorkflow(wf: Workflow): string {
 }
 
 /**
- * Parse a Workflow from Unit.Data YAML. Tolerant of partially-formed or older
+ * Parse a Workflow from the Unit's configuration YAML. Tolerant of partially-formed or older
  * documents (missing stages, or a legacy `status` map which is ignored).
  * `fallbackName` is used when the document omits `name`.
  */

@@ -255,13 +255,14 @@ configboard classifies families by group suffix, so a new CRD family appears in 
 charts without configboard knowing it exists.
 
 **The cost is real and worth stating.** Measured org-wide on 393 Units / 1,423
-resources: **~31s and a 58 MB response, 32 MB of which is `ConfigData`** — every Unit's
+resources: **~31s and a 58 MB response, 32 MB of which was `ConfigData`** — every Unit's
 full config body, returned even though `get-resources` is non-mutating and `body=none`
-was requested. Mitigations in the app: all resource panels on a dashboard share one
-invocation (RTK Query cache), the panel footer states the resource count and suggests
-narrowing, and the scope variables push a `where` down so the common case invokes a
-fraction of the fleet. The underlying inefficiency is a platform-side opportunity: a
-read-only function invocation has no reason to return config bodies.
+was requested. The server no longer does that: `ConfigData` comes back only when the
+invocation changed the configuration, and `DataHash` says so when it did not, which
+takes that 32 MB out of this response. The rest of the cost stands, and the mitigations
+in the app remain: all resource panels on a dashboard share one invocation (RTK Query
+cache), the panel footer states the resource count and suggests narrowing, and the scope
+variables push a `where` down so the common case invokes a fraction of the fleet.
 
 ### Tier 0½ — Space summaries (server-side rollups, one request)
 

@@ -4,7 +4,6 @@
 package cli
 
 import (
-	"encoding/base64"
 	"fmt"
 	"sort"
 	"strings"
@@ -131,7 +130,7 @@ func runCreate(cmd *cobra.Command, client *cubapi.Client, dest createDest, slug,
 		return nil
 	}
 
-	created, err := cub.CreateUnit(cmd.Context(), client, buildUnit(dest, slug, manifest, changeDesc))
+	created, err := cub.CreateUnit(cmd.Context(), client, buildUnit(dest, slug, changeDesc), manifest)
 	if err != nil {
 		return err
 	}
@@ -145,13 +144,13 @@ func runCreate(cmd *cobra.Command, client *cubapi.Client, dest createDest, slug,
 	return nil
 }
 
-// buildUnit assembles the Unit body for creation. The API expects Unit.Data
-// base64-encoded (matching `cub unit create`).
-func buildUnit(dest createDest, slug, manifest, changeDesc string) goclientnew.Unit {
+// buildUnit assembles the Unit body for creation. The manifest is not part of it:
+// configuration is not a field of a Unit, and CreateUnit writes it through the Unit's
+// data endpoint.
+func buildUnit(dest createDest, slug, changeDesc string) goclientnew.Unit {
 	u := goclientnew.Unit{
 		Slug:                  slug,
 		DisplayName:           slug,
-		Data:                  base64.StdEncoding.EncodeToString([]byte(manifest)),
 		ToolchainType:         "Kubernetes/YAML",
 		SpaceID:               dest.spaceID,
 		Labels:                map[string]string{"managed-by": unitManagedByLabel},

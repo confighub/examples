@@ -45,7 +45,7 @@ mkdir -p "${stage_dir}"
 
 for unit in $(example_deploy_units); do
   echo "==> Exporting ${space}/${unit} -> ${stage_dir}/${unit}.yaml"
-  cub unit get --space "${space}" --data-only "${unit}" > "${stage_dir}/${unit}.yaml"
+  cub unit data --space "${space}" "${unit}" > "${stage_dir}/${unit}.yaml"
 done
 
 echo "==> Exported $(ls "${stage_dir}"/*.yaml | wc -l | tr -d ' ') manifests to ${stage_dir}"

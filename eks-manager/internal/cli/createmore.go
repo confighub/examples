@@ -5,7 +5,6 @@ package cli
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"strings"
 
@@ -99,12 +98,11 @@ func createResourceUnit(cmd *cobra.Command, client *cubapi.Client, cs *eks.Clust
 	created, err := cub.CreateUnit(cmd.Context(), client, goclientnew.Unit{
 		Slug:                  u.Slug,
 		DisplayName:           u.Slug,
-		Data:                  base64.StdEncoding.EncodeToString([]byte(u.YAML)),
 		ToolchainType:         "Kubernetes/YAML",
 		SpaceID:               sp.SpaceID,
 		Labels:                unitLabels(u),
 		LastChangeDescription: changeDesc,
-	})
+	}, u.YAML)
 	if err != nil {
 		return err
 	}
@@ -308,12 +306,12 @@ Dry-run by default; pass --commit --change-desc "..." to write.`,
 	return cmd
 }
 
-// newUnitFor builds the Unit payload for a generated resource.
+// newUnitFor builds the Unit payload for a generated resource. The configuration
+// itself is not part of it: CreateUnit writes u.YAML through the data endpoint.
 func newUnitFor(u eks.GeneratedUnit, spaceID goclientnew.UUID, changeDesc string) goclientnew.Unit {
 	return goclientnew.Unit{
 		Slug:                  u.Slug,
 		DisplayName:           u.Slug,
-		Data:                  base64.StdEncoding.EncodeToString([]byte(u.YAML)),
 		ToolchainType:         "Kubernetes/YAML",
 		SpaceID:               spaceID,
 		Labels:                unitLabels(u),

@@ -83,7 +83,7 @@ Dry run unless --commit --change-desc.`,
 					if items[i].Action != "create" {
 						continue
 					}
-					if _, err := cub.CreateUnit(cmd.Context(), client, buildUnit(items[i].dest, items[i].Unit, items[i].manifest, changeDesc)); err != nil {
+					if _, err := cub.CreateUnit(cmd.Context(), client, buildUnit(items[i].dest, items[i].Unit, changeDesc), items[i].manifest); err != nil {
 						items[i].Action, items[i].Error = "error", err.Error()
 					} else {
 						items[i].Action = "created"

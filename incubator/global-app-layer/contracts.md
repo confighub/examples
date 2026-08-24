@@ -175,7 +175,7 @@ To prove ArgoCDRenderer delivery, use **brownfield-imported Application units**,
 
 ```bash
 # These units contain Application CRDs and work with ArgoCDRenderer:
-cub unit get --space gitops-import-test --data-only argocd-cubbychat-Application-dry | head -5
+cub unit data --space gitops-import-test argocd-cubbychat-Application-dry | head -5
 # apiVersion: argoproj.io/v1alpha1
 # kind: Application
 

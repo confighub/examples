@@ -215,16 +215,16 @@ Supported live target provider types:
 
 ```bash
 # Show the direct deployment data
-cub unit get --space <prefix>-deploy-cluster-a --data-only backend-cluster-a
+cub unit data --space <prefix>-deploy-cluster-a backend-cluster-a
 
 # Show the Flux deployment data
-cub unit get --space <prefix>-deploy-cluster-a-flux --data-only backend-cluster-a-flux
+cub unit data --space <prefix>-deploy-cluster-a-flux backend-cluster-a-flux
 
 # Show the Argo deployment data
-cub unit get --space <prefix>-deploy-cluster-a-argo --data-only backend-cluster-a-argo
+cub unit data --space <prefix>-deploy-cluster-a-argo backend-cluster-a-argo
 
 # Show the explicit recipe manifest
-cub unit get --space <prefix>-recipe-us-staging --data-only recipe-us-staging
+cub unit data --space <prefix>-recipe-us-staging recipe-us-staging
 
 # Show variant ancestry (implemented with clone links)
 cub unit tree --edge clone --where "Labels.ExampleName = 'global-app-layer-single'"

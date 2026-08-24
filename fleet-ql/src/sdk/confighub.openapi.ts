@@ -97,46 +97,6 @@ export interface paths {
         patch: operations["BulkPatchBridgeWorkers"];
         trace?: never;
     };
-    "/bridge_worker/{bridge_worker_id}/action_result": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Create action result
-         * @description Records the status/result of an action executed by a bridge worker
-         */
-        post: operations["CreateActionResult"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/bridge_worker/{bridge_worker_id}/me": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Gets the current BridgeWorker from context
-         * @description Gets the current BridgeWorker from context
-         */
-        get: operations["GetSelf"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/bridge_worker/{bridge_worker_id}/queued_operation": {
         parameters: {
             query?: never;
@@ -177,26 +137,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/bridge_worker/{bridge_worker_id}/stream": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Stream events to bridge worker
-         * @description Establishes an SSE connection with a bridge worker for real-time event streaming
-         */
-        post: operations["StreamBridgeWorker"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/bridge_worker/{bridge_worker_id}/user_action_result": {
         parameters: {
             query?: never;
@@ -215,6 +155,38 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/change_order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List of ChangeOrders across spaces
+         * @description Retrieves a list of ChangeOrders across spaces in the Organization
+         */
+        get: operations["ListAllChangeOrders"];
+        put?: never;
+        /**
+         * Bulk create (clone) multiple changeorders
+         * @description Clone multiple changeorders selected by query parameters with optional name prefixes and destination spaces
+         */
+        post: operations["BulkCreateChangeOrders"];
+        /**
+         * Bulk delete multiple changeorders
+         * @description Delete multiple changeorders selected by query parameters
+         */
+        delete: operations["BulkDeleteChangeOrders"];
+        options?: never;
+        head?: never;
+        /**
+         * Bulk patch multiple changeorders
+         * @description Apply JSON merge patch to multiple changeorders selected by query parameters
+         */
+        patch: operations["BulkPatchChangeOrders"];
         trace?: never;
     };
     "/change_set": {
@@ -425,6 +397,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/oauth_client": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List OAuth clients
+         * @description List the OAuth clients owned by the caller's organization.
+         */
+        get: operations["ListOAuthClients"];
+        put?: never;
+        /**
+         * Register an OAuth client
+         * @description Register a per-app OAuth public client for the caller's organization (RFC 7591).
+         */
+        post: operations["CreateOAuthClient"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/oauth_client/{oauth_client}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get an OAuth client
+         * @description Get a single OAuth client owned by the caller's organization.
+         */
+        get: operations["GetOAuthClient"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete an OAuth client
+         * @description Delete an OAuth client owned by the caller's organization.
+         */
+        delete: operations["DeleteOAuthClient"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/organization": {
         parameters: {
             query?: never;
@@ -525,6 +545,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List of Releases across spaces
+         * @description Retrieves a list of Releases across spaces in the Organization
+         */
+        get: operations["ListAllReleases"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/resource": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List of Resources across spaces
+         * @description Retrieves a list of Resources of Units across spaces in the Organization
+         */
+        get: operations["ListAllResources"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/revision": {
         parameters: {
             query?: never;
@@ -534,9 +594,49 @@ export interface paths {
         };
         /**
          * List of Revisions across spaces
-         * @description Retrieves a list of Revisions across spaces in the Organization, returning at most one revision per unit
+         * @description Retrieves a list of Revisions across spaces in the Organization. By default, returns at most one revision per unit (the most recent). Set `distinct_on=Off` to receive every matching revision instead, undeduped -- paginate with `limit`/`offset` to walk the full result set (`distinct_on=Off` requires an explicit `limit` and a non-empty `where` or `filter`, since without deduplication or a filter there is nothing bounding the result set)
          */
         get: operations["ListAllRevisions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/revision_data": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the config data of many Revisions across spaces
+         * @description Returns the configuration of every Revision the where clause selects, across every Space in the organization, in one request, with each Revision's DataHash and DataSize. This is what a diff over many Units needs: fetching each Revision separately would be two requests per Unit.
+         */
+        get: operations["SearchRevisionData"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/revision_mutation_sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the mutation sources of many Revisions across spaces
+         * @description Returns what set each value in the configuration of every Revision the where clause selects, across every Space in the organization, in one request. The bulk counterpart of the per-Revision mutation-sources subresource.
+         */
+        get: operations["SearchRevisionMutationSources"];
         put?: never;
         post?: never;
         delete?: never;
@@ -771,6 +871,62 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/space/{space_id}/change_order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List ChangeOrders
+         * @description List ChangeOrders
+         */
+        get: operations["ListChangeOrders"];
+        put?: never;
+        /**
+         * Create ChangeOrder
+         * @description Create ChangeOrder
+         */
+        post: operations["CreateChangeOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/space/{space_id}/change_order/{change_order_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get ChangeOrder
+         * @description Get ChangeOrder
+         */
+        get: operations["GetChangeOrder"];
+        /**
+         * Update ChangeOrder
+         * @description Update ChangeOrder
+         */
+        put: operations["UpdateChangeOrder"];
+        post?: never;
+        /**
+         * Delete ChangeOrder
+         * @description Delete ChangeOrder
+         */
+        delete: operations["DeleteChangeOrder"];
+        options?: never;
+        head?: never;
+        /**
+         * Patch ChangeOrder
+         * @description Patch ChangeOrder
+         */
+        patch: operations["PatchChangeOrder"];
         trace?: never;
     };
     "/space/{space_id}/change_set": {
@@ -1037,6 +1193,102 @@ export interface paths {
         patch: operations["PatchLink"];
         trace?: never;
     };
+    "/space/{space_id}/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List ExtendedReleases
+         * @description List ExtendedReleases
+         */
+        get: operations["ListExtendedReleases"];
+        put?: never;
+        /**
+         * Publish a Release
+         * @description Publish a Release for the consuming Target, bundling the Units/Revisions of the Space in the path. Optionally pins each Unit to a tagged Revision via TagID.
+         */
+        post: operations["PublishRelease"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/space/{space_id}/release/{release_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get ExtendedRelease
+         * @description Get ExtendedRelease
+         */
+        get: operations["GetExtendedRelease"];
+        /**
+         * Update the selected Release
+         * @description Update the selected Release's Labels, Annotations, and DeleteGates. The bundled content of a Release is never updated, and neither are the read-only fields describing it: withdraw the Release to take it out of service, and publish a new one to change what is bundled or what the bundle is named.
+         */
+        put: operations["UpdateRelease"];
+        post?: never;
+        /**
+         * Delete the selected Release
+         * @description Delete the selected Release, removing it and its stored bundle
+         */
+        delete: operations["DeleteRelease"];
+        options?: never;
+        head?: never;
+        /**
+         * Patch the selected Release
+         * @description Apply a JSON merge patch to the selected Release's Labels, Annotations, and DeleteGates. Patching is how a Label, Annotation, or DeleteGate is removed: send null for its key. The read-only fields of a Release, including the bundled content, the name it is stored under, and the Published flag, cannot be patched.
+         */
+        patch: operations["PatchRelease"];
+        trace?: never;
+    };
+    "/space/{space_id}/release/{release_id}/data": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download the selected Release's bundle
+         * @description Download the gzip tarball a Release published. The bundle is not part of the Release entity -- a list of Releases should not carry a copy of every tarball -- and the response carries the Digest as an ETag.
+         */
+        get: operations["DownloadReleaseData"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/space/{space_id}/release/{release_id}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Withdraw the selected Release
+         * @description Withdraw the selected Release, clearing its Published flag so it is no longer available for download. The Release itself is retained; delete it to remove it entirely.
+         */
+        post: operations["WithdrawRelease"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/space/{space_id}/tag": {
         parameters: {
             query?: never;
@@ -1261,26 +1513,6 @@ export interface paths {
         patch: operations["PatchUnit"];
         trace?: never;
     };
-    "/space/{space_id}/unit/{unit_id}/apply": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Apply a unit configuration
-         * @description Triggers an apply operation using the config data to a Bridge Worker
-         */
-        post: operations["ApplyUnit"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/space/{space_id}/unit/{unit_id}/approve": {
         parameters: {
             query?: never;
@@ -1301,27 +1533,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/space/{space_id}/unit/{unit_id}/data": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Download config data
-         * @description Download the config data of a unit
-         */
-        get: operations["DownloadUnitData"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/space/{space_id}/unit/{unit_id}/destroy": {
+    "/space/{space_id}/unit/{unit_id}/conflicts": {
         parameters: {
             query?: never;
             header?: never;
@@ -1331,10 +1543,34 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Destroy a unit configuration
-         * @description Triggers a destroy operation using the config data to a Bridge Worker
+         * Apply or dismiss a unit's outstanding merge conflicts
+         * @description Act on the parts of the last merge's patch that were not applied. Apply replays the withheld change with every path eligible; Dismiss drops it without changing the configuration data. Either way the selected conflicts leave the Unit's outstanding set. Requires Edit permission.
          */
-        post: operations["DestroyUnit"];
+        post: operations["ResolveUnitConflicts"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/space/{space_id}/unit/{unit_id}/data": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download config data
+         * @description Download the config data of a unit. The response carries the DataHash as an ETag; send it back as If-None-Match to get a 304 when the configuration has not changed.
+         */
+        get: operations["DownloadUnitData"];
+        /**
+         * Upload config data
+         * @description Replace the config data of a unit. The request body is the configuration itself. This is the only way configuration reaches a Unit other than a clone, which copies it server-side: Data is not part of the Unit entity, so no metadata write can carry one or destroy one. Send If-Match with the DataHash a read served to make the write conditional on nobody having written first. Requires Edit permission.
+         */
+        put: operations["UploadUnitData"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1361,7 +1597,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/space/{space_id}/unit/{unit_id}/import": {
+    "/space/{space_id}/unit/{unit_id}/guard": {
         parameters: {
             query?: never;
             header?: never;
@@ -1371,50 +1607,10 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Import a configuration unit
-         * @description Triggers an import operation using the config data to a Bridge Worker
+         * Set path guards on a unit
+         * @description Set or remove guards on the unit's PathAnnotations. A guard names a reason a path's value is what it is, so a later operation can be required to know about that reason before overwriting it. Nothing enforces guards yet: setting one records the reason and changes no behavior. A guard may name a path or resource the unit does not have, since it is policy about the configuration rather than a statement about its current contents. Creates a new revision only if the guards actually change. Requires Edit permission.
          */
-        post: operations["ImportUnit"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/space/{space_id}/unit/{unit_id}/live_data": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Download live data
-         * @description Download the live data of a unit
-         */
-        get: operations["DownloadUnitLiveData"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/space/{space_id}/unit/{unit_id}/live_state": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Download live state
-         * @description Download the live state of a unit
-         */
-        get: operations["DownloadUnitLiveState"];
-        put?: never;
-        post?: never;
+        post: operations["SetUnitGuard"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1461,27 +1657,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/space/{space_id}/unit/{unit_id}/predicates": {
+    "/space/{space_id}/unit/{unit_id}/mutation_sources": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
-        put?: never;
         /**
-         * Set mutation predicates on a unit
-         * @description Set Predicate values on the unit's MutationSources, controlling which paths a merge may overwrite when subtraction is disabled or no WhereMutation is supplied. Creates a new revision only if the predicates actually change. Requires Edit permission.
+         * Get mutation sources
+         * @description Read what set each value in a Unit's configuration, by resource and path. MutationSources is the largest column on the table -- larger than the configuration itself -- so it is a subresource rather than a field.
          */
-        post: operations["SetUnitPredicates"];
+        get: operations["GetUnitMutationSources"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/space/{space_id}/unit/{unit_id}/refresh": {
+    "/space/{space_id}/unit/{unit_id}/protection": {
         parameters: {
             query?: never;
             header?: never;
@@ -1491,10 +1687,50 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Refresh a unit configuration
-         * @description Triggers a refresh operation using the config data to a Bridge Worker
+         * Set path protection on a unit
+         * @description Set Protected values on the unit's MutationSources, marking paths as local overrides a merge must not overwrite when subtraction is disabled and no WhereMutation is supplied. Creates a new revision only if the protection actually changes. Requires Edit permission.
          */
-        post: operations["RefreshUnit"];
+        post: operations["SetUnitProtection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/space/{space_id}/unit/{unit_id}/resource": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List ExtendedResources
+         * @description List ExtendedResources
+         */
+        get: operations["ListExtendedResources"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/space/{space_id}/unit/{unit_id}/resource/{resource_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get ExtendedResource
+         * @description Get ExtendedResource
+         */
+        get: operations["GetExtendedResource"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1553,6 +1789,26 @@ export interface paths {
          * @description Download the selected Revision's data
          */
         get: operations["DownloadRevisionData"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/space/{space_id}/unit/{unit_id}/revision/{revision_id}/mutation_sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the selected Revision's mutation sources
+         * @description Read what set each value in the Revision's configuration, by resource and path. A Revision snapshots its MutationSources so a restore can rewind them with the data.
+         */
+        get: operations["GetRevisionMutationSources"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1821,26 +2077,6 @@ export interface paths {
         patch: operations["BulkPatchUnits"];
         trace?: never;
     };
-    "/unit/apply": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Bulk apply units
-         * @description Executes apply operations for multiple units based on filter criteria across spaces
-         */
-        post: operations["BulkApplyUnits"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/unit/approve": {
         parameters: {
             query?: never;
@@ -1875,46 +2111,6 @@ export interface paths {
          * @description Cancels pending or in-progress operations for multiple units based on filter criteria
          */
         post: operations["BulkCancelUnits"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/unit/destroy": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Bulk destroy units
-         * @description Executes destroy operations for multiple units based on filter criteria across spaces
-         */
-        post: operations["BulkDestroyUnits"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/unit/refresh": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Bulk refresh units
-         * @description Executes refresh operations for multiple units based on filter criteria across spaces
-         */
-        post: operations["BulkRefreshUnits"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1961,6 +2157,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/unit_data": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the config data of many Units across spaces
+         * @description Returns the configuration of every Unit the where clause selects, across every Space in the organization, in one request, with each Unit's DataHash and DataSize. This is the bulk counterpart of the single-Unit data endpoint; it exists as an endpoint of its own rather than as a mode on the Unit list so that no query parameter changes the shape of a response. Scope it to one Space with a where clause.
+         */
+        get: operations["SearchUnitData"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/unit_event": {
         parameters: {
             query?: never;
@@ -1970,9 +2186,29 @@ export interface paths {
         };
         /**
          * List of UnitEvents across units
-         * @description Retrieves a list of UnitEvents across units in the Organization, returning at most one UnitEvent per unit
+         * @description Retrieves a list of UnitEvents across units in the Organization. By default, returns at most one UnitEvent per unit (the most recent). Set `distinct_on=Off` to receive every matching UnitEvent instead, undeduped -- paginate with `limit`/`offset` to walk the full result set (`distinct_on=Off` requires an explicit `limit` and a non-empty `where` or `filter`, since without deduplication or a filter there is nothing bounding the result set)
          */
         get: operations["ListAllUnitEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/unit_mutation_sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the mutation sources of many Units across spaces
+         * @description Returns what set each value in the configuration of every Unit the where clause selects, across every Space in the organization, in one request. This is the bulk counterpart of the single-Unit mutation-sources subresource, and the Unit-level counterpart of /revision_mutation_sources, which cannot answer for a Unit's head because "each Unit's head Revision" is not expressible as a where clause over Revisions. Scope it to one Space with a where clause.
+         */
+        get: operations["SearchUnitMutationSources"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2021,6 +2257,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/user/{user_id}/key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List an identity's public keys
+         * @description List the public keys registered against an identity. Keys are returned unredacted, deliberately: they are public material, and an operator noticing a key nobody registered is how an injected one is caught.
+         */
+        get: operations["ListUserKeys"];
+        put?: never;
+        /**
+         * Register a public key for an identity
+         * @description Register a public key against an identity. The holder of the matching private key then authenticates by signing a short-lived assertion (RFC 7523 private_key_jwt), so no secret is exchanged and none is stored. Requires the admin or manager role; registering a key for yourself is not permitted.
+         */
+        post: operations["CreateUserKey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/user/{user_id}/key/{kid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove a public key from an identity
+         * @description Remove one registered public key by its thumbprint. This is the second half of rotation, and the response to a compromised private key.
+         */
+        delete: operations["DeleteUserKey"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/view": {
         parameters: {
             query?: never;
@@ -2061,26 +2341,11 @@ export interface components {
             Action?: components["schemas"]["ActionType"];
             /**
              * Format: base64
-             * @description Additional state used by the Bridge
-             */
-            BridgeState?: string;
-            /**
-             * Format: base64
              * @description Updated configuration Data of the Unit (for refresh and import)
              */
             Data?: string;
             /** @description Warning or error messages to surface to the user */
             ErrorMessages?: string[];
-            /**
-             * Format: base64
-             * @description Live Data corresponding to the Unit (for inventory and drift detection)
-             */
-            LiveData?: string;
-            /**
-             * Format: base64
-             * @description Live State corresponding to the Unit (for status determination)
-             */
-            LiveState?: string;
             Message?: string;
             /**
              * Format: uuid
@@ -2114,13 +2379,14 @@ export interface components {
             UnitID?: string;
         };
         /** @enum {string} */
-        ActionResultType: "ApplyFailed" | "ApplyWaitFailed" | "ApplyCompleted" | "DestroyCompleted" | "DestroyWaitFailed" | "DestroyFailed" | "ImportCompleted" | "ImportFailed" | "RefreshAndDrifted" | "RefreshAndNoDrift" | "RefreshFailed" | "None";
+        ActionResultType: "None" | "FunctionInvocationCompleted" | "FunctionInvocationFailed";
         /** @enum {string} */
         ActionStatusType: "None" | "Pending" | "Submitted" | "Progressing" | "Completed" | "Failed" | "Canceled" | "Aborted";
         /** @enum {string} */
-        ActionType: "Apply" | "Destroy" | "Finalize" | "Heartbeat" | "Import" | "N/A" | "Refresh";
+        ActionType: "N/A" | "Cancel" | "InvokeFunctions" | "ListFunctions" | "Apply";
         /** @description Information provided to clients by the server. */
         ApiInfo: {
+            readonly AuthIssuer?: string;
             readonly AuthServer?: string;
             /** @description Build identifier for support cases. */
             readonly Build?: string;
@@ -2138,9 +2404,11 @@ export interface components {
             /** @description OCI registry port for pulling configuration artifacts. */
             readonly OCIPort?: string;
             readonly RedirectURI?: string;
+            readonly TokenExchangeAudience?: string;
+            readonly TokenExchangeEndpoint?: string;
             /** @description Semantic version of the server (e.g. v1.2.3), or 'dev' for development builds. */
             readonly Version?: string;
-            /** @description Port number for the worker to connect to the server. */
+            /** @description Deprecated and always empty. Workers connect over long polling on the main API port; there is no separate worker port. */
             readonly WorkerPort?: string;
         };
         ApproveResponse: {
@@ -2282,8 +2550,6 @@ export interface components {
             /** @description Data type if the attribute value. */
             DataType?: string;
             Details?: components["schemas"]["AttributeDetails"];
-            /** @description True if a path in the live state, false if a path in the configuration data */
-            InLiveState?: boolean;
             /** @description Path of the attribute */
             Path?: string;
             /** @description Category of configuration element represented in the configuration data; Kubernetes resources are of category Resource, and application configuration files are of category AppConfig */
@@ -2311,8 +2577,6 @@ export interface components {
             Details?: components["schemas"]["AttributeDetails"];
             /** @description Name of the function invocation corresponding to the output */
             FunctionName?: string;
-            /** @description True if a path in the live state, false if a path in the configuration data */
-            InLiveState?: boolean;
             /** @description Index of the function invocation corresponding to the output. Useful in the case that multiple function invocations in the same executor call return AttributeValueList output. */
             Index?: number;
             /** @description Issues found with the attribute */
@@ -2342,8 +2606,6 @@ export interface components {
             AutoUpdate?: boolean;
             /** @description DataType of the bound value */
             DataType?: string;
-            /** @description Whether the provided value comes from the upstream unit's LiveState rather than its Data */
-            InLiveState?: boolean;
             /** @description Resolved path within the needed resource */
             NeededPath?: string;
             NeededResource?: components["schemas"]["ResourceInfo"];
@@ -2521,6 +2783,149 @@ export interface components {
             /** @description Status indicates the current status of the bridge worker. Possible values include Connected, Disconnected, ActionSent, ActionResultReceived. */
             Status?: string;
         };
+        /** @description Defines a change's identity as it moves between Spaces. */
+        ChangeOrder: {
+            /** @description AbortedReason says why the ChangeOrder was given up on. Setting it is what aborts one: a ChangeOrder with a reason is Aborted whatever its Links say. */
+            AbortedReason?: string;
+            /** @description An optional map of Annotation key/value pairs for tools to attach information to entities. */
+            Annotations?: {
+                [key: string]: string;
+            };
+            /**
+             * Format: uuid
+             * @description ChangeOrderID uniquely identifies a change order within the system.
+             * @example 248df4b7-aa70-47b8-a036-33ac447e668d
+             */
+            ChangeOrderID?: string;
+            /**
+             * Format: date-time
+             * @description The timestamp when the entity was created in "2023-01-01T12:00:00Z" format.
+             * @example 2025-04-04T11:50:02.95102-07:00
+             */
+            readonly CreatedAt?: string;
+            /**
+             * Format: int64
+             * @description An auto-incrementing sequence number used for pagination.
+             */
+            readonly CursorID?: number;
+            /** @description An optional set of gates that, if any is present, will block deletion. */
+            DeleteGates?: {
+                [key: string]: boolean;
+            };
+            /** @description Description is a human-readable description of the change. */
+            Description?: string;
+            /** @description Friendly name for the entity. */
+            DisplayName?: string;
+            /**
+             * Format: uuid
+             * @description EndTagID is the identifier of the set of Revisions that end the ChangeOrder. Settable at creation to adopt an existing Tag as the boundary; the ChangeOrder creates one on each in-scope Unit's head Revision if it is not set.
+             * @example 248df4b7-aa70-47b8-a036-33ac447e668d
+             */
+            EndTagID?: string;
+            /** @description The type of entity. */
+            readonly EntityType?: string;
+            /** @description InScopeSpaceIDs is where the ChangeOrder is headed, recorded when its scope was last derived rather than worked out on each read: the Spaces its WhereSpace and/or SpaceFilterID selected, or, with no selection, the Spaces its Links reached. A Space that comes into scope later is taken in by an update or patch with refresh_spaces. ResolvedSpaceIDs and ReleasedSpaceIDs are measured against it. (readonly) */
+            readonly InScopeSpaceIDs?: components["schemas"]["UUID"][];
+            /** @description An optional map of Label key/value pairs to specify identifying attributes of entities for the purpose of grouping and filtering them. */
+            Labels?: {
+                [key: string]: string;
+            };
+            /**
+             * Format: uuid
+             * @description Unique identifier for an organization.
+             * @example 248df4b7-aa70-47b8-a036-33ac447e668d
+             */
+            OrganizationID?: string;
+            /** @description ReleasedSpaceIDs is where the ChangeOrder has been released: the Spaces in scope whose Units in the Space's release are applied at or past the Revision the end Tag marks. Derived when the ChangeOrder is read. */
+            readonly ReleasedSpaceIDs?: components["schemas"]["UUID"][];
+            /** @description ResolvedSpaceIDs is where the ChangeOrder has been fully propagated to: the Spaces in scope whose Links of its UpdateType have all merged it, plus the Space it resides in. Derived when the ChangeOrder is read. */
+            readonly ResolvedSpaceIDs?: components["schemas"]["UUID"][];
+            /** @description SkippedUnits names the Units of the ChangeOrder's Space that it covers nothing of, mapped to the reason. Written when the scope is derived. */
+            readonly SkippedUnits?: {
+                [key: string]: string;
+            };
+            /** @description Unique URL-safe identifier for the entity. */
+            Slug: string;
+            /**
+             * Format: uuid
+             * @description SpaceFilterID is a reference to a Filter over Spaces that selects the Spaces this ChangeOrder propagates into.
+             * @example 248df4b7-aa70-47b8-a036-33ac447e668d
+             */
+            SpaceFilterID?: string;
+            /**
+             * Format: uuid
+             * @description Unique identifier for a space.
+             * @example 248df4b7-aa70-47b8-a036-33ac447e668d
+             */
+            SpaceID?: string;
+            /** @description Slug of the Space this entity belongs to. (readonly) */
+            readonly SpaceSlug?: string;
+            /**
+             * Format: uuid
+             * @description StartTagID is the identifier of the set of Revisions immediately before the ChangeOrder, making it the half-open interval (start, end].
+             * @example 248df4b7-aa70-47b8-a036-33ac447e668d
+             */
+            readonly StartTagID?: string;
+            /** @description State is how far the ChangeOrder has got: New until a Space other than its own has taken it, InProgress while some have and some have not, Resolved once every Space in scope has, Released once every Space in scope has released what it took, and Aborted whenever AbortedReason is set. Derived when the ChangeOrder is read. */
+            readonly State?: string;
+            /** @description UpdateType is the Link UpdateType this ChangeOrder follows when propagating. UpgradeUnit, the clone lineage, is the default; MergeUnits is the other supported value. */
+            UpdateType?: string;
+            /**
+             * Format: date-time
+             * @description The timestamp when the entity was last updated in "2023-01-01T12:00:00Z" format.
+             * @example 2025-04-04T11:50:02.95102-07:00
+             */
+            readonly UpdatedAt?: string;
+            /**
+             * Format: int64
+             * @description An entity-specific sequence number used for optimistic concurrency control. The value read must be sent in calls to Update.
+             */
+            Version?: number;
+            /**
+             * @description Filter expression selecting the Spaces this ChangeOrder propagates into. ANDed with SpaceFilterID when both are set. The specified string is an expression for the purpose of filtering
+             *     the list of Spaces returned. The expression syntax was inspired by SQL.
+             *     It supports conjunctions using `AND` of relational expressions of the form *attribute*
+             *     *operator* *attribute_or_literal*. The attribute names are case-sensitive and PascalCase,
+             *     as in the JSON encoding.
+             *     Strings support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `LIKE`, `NOT LIKE`, `ILIKE`, `~~`, `!~~`, `~`, `~*`, `!~`, `!~*`, `IN`, `NOT IN`.
+             *     String pattern operators: `LIKE` and `~~` for pattern matching with `%` and `_` wildcards,
+             *     `ILIKE` for case-insensitive pattern matching, `NOT LIKE` and `!~~` for negated pattern matching.
+             *     String regex operators: `~` for regex matching, `~*` for case-insensitive regex,
+             *     `!~` and `!~*` for regex not matching (case-sensitive and insensitive).
+             *     Integers support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `IN`, `NOT IN`.
+             *     UUIDs and boolean attributes support equality and inequality only.
+             *     UUID and time literals must be quoted as string literals.
+             *     String literals are quoted with single quotes, such as `'string'`.
+             *     Time literals use the same form as when serialized as JSON,
+             *     such as: `CreatedAt > '2025-02-18T23:16:34'`.
+             *     Integer and boolean literals are also supported for attributes of those types.
+             *     Arrays support the `?` operator to to match any element of the array,
+             *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
+             *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+             *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+             *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+             *     Without the `*` such a reference is an error, since it names no single value to compare.
+             *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
+             *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
+             *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
+             *     Comparison results can be tested with `IS TRUE`, `IS FALSE`, `IS NOT TRUE`, and `IS NOT FALSE`.
+             *     These are useful for nullable columns: `MergeSourceID = '<uuid>' IS NOT FALSE` matches rows where MergeSourceID equals the value OR is NULL.
+             *     The `IN` and `NOT IN` operators accept a comma-separated list of values in parentheses,
+             *     such as `Slug IN ('slugone', 'slugtwo')` or `Labels.environment IN ('prod', 'staging')`.
+             *     Conjunctions are supported using the `AND` operator.
+             *     An example conjunction is:
+             *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
+             *
+             *     Supported attributes for filtering on Space: Annotations, AttributeFilterID, AttributeHash, AttributeIDs, CreatedAt, DeleteGates, DisplayName, Labels, OrganizationID, Permissions, ReleaseBridgeWorkerID, ReleaseTargetID, Slug, SpaceID, TriggerFilterID, TriggerHash, TriggerIDs, UpdatedAt.
+             *
+             *     The whole string must be query-encoded.
+             */
+            WhereSpace?: string;
+        };
+        ChangeOrderCreateOrUpdateResponse: {
+            ChangeOrder?: components["schemas"]["ChangeOrder"];
+            Error?: components["schemas"]["ResponseError"];
+        };
         /** @description Defines an entity changeset. */
         ChangeSet: {
             /** @description An optional map of Annotation key/value pairs for tools to attach information to entities. */
@@ -2586,6 +2991,8 @@ export interface components {
              * @example 248df4b7-aa70-47b8-a036-33ac447e668d
              */
             readonly StartTagID?: string;
+            /** @description StartTagIsPriorRevision reports whether the start Tag marks the Revision before the ChangeSet, making the ChangeSet the half-open interval (start, end]. False, the original meaning, means it marks the ChangeSet's first Revision. */
+            readonly StartTagIsPriorRevision?: boolean;
             /** @description State represents the current state of the ChangeSet. */
             readonly State?: string;
             /**
@@ -2595,6 +3002,12 @@ export interface components {
              */
             readonly UpdatedAt?: string;
             /**
+             * Format: uuid
+             * @description UpstreamChangeSetID is the ChangeSet this one mirrors, set when a promotion replays a change into this Space.
+             * @example 248df4b7-aa70-47b8-a036-33ac447e668d
+             */
+            UpstreamChangeSetID?: string;
+            /**
              * Format: int64
              * @description An entity-specific sequence number used for optimistic concurrency control. The value read must be sent in calls to Update.
              */
@@ -2603,6 +3016,15 @@ export interface components {
         ChangeSetCreateOrUpdateResponse: {
             ChangeSet?: components["schemas"]["ChangeSet"];
             Error?: components["schemas"]["ResponseError"];
+        };
+        Clearance: components["schemas"]["ClearanceRequirement"][];
+        ClearanceRequirement: {
+            /** @description The guard key this requirement is about */
+            Key?: string;
+            /** @description Exists, In, NotIn, or DoesNotExist */
+            Operator?: string;
+            /** @description The values In and NotIn compare against; unused by Exists and DoesNotExist */
+            Values?: string[];
         };
         Column: {
             ColumnSource?: components["schemas"]["ColumnSource"];
@@ -2617,6 +3039,10 @@ export interface components {
             DataPath?: components["schemas"]["AttributeSelector"];
             MetadataAttribute?: string;
             MetadataExpression?: string;
+        };
+        CreateUserKeyRequest: {
+            Description?: string;
+            PublicJWK?: unknown;
         };
         /** @description Response for successful delete operation */
         DeleteResponse: {
@@ -2640,11 +3066,6 @@ export interface components {
             /** @description Collection of error details */
             Items?: components["schemas"]["ErrorItem"][];
         };
-        EventMessage: {
-            /** Format: base64 */
-            Data?: string;
-            Event?: string;
-        };
         ExtendedAttribute: {
             Attribute?: components["schemas"]["Attribute"];
             Error?: components["schemas"]["ResponseError"];
@@ -2658,6 +3079,15 @@ export interface components {
             Space?: components["schemas"]["Space"];
             /** Format: int64 */
             TargetCount?: number;
+        };
+        ExtendedChangeOrder: {
+            ChangeOrder?: components["schemas"]["ChangeOrder"];
+            EndTag?: components["schemas"]["Tag"];
+            Error?: components["schemas"]["ResponseError"];
+            Organization?: components["schemas"]["Organization"];
+            Space?: components["schemas"]["Space"];
+            SpaceFilter?: components["schemas"]["Filter"];
+            StartTag?: components["schemas"]["Tag"];
         };
         ExtendedChangeSet: {
             ChangeSet?: components["schemas"]["ChangeSet"];
@@ -2703,10 +3133,34 @@ export interface components {
             Trigger?: components["schemas"]["Trigger"];
             Unit?: components["schemas"]["Unit"];
         };
+        /** @description Release with additional related entities expanded based on the request's include parameter. */
+        ExtendedRelease: {
+            Organization?: components["schemas"]["Organization"];
+            Release?: components["schemas"]["Release"];
+            Space?: components["schemas"]["Space"];
+            Tag?: components["schemas"]["Tag"];
+        };
+        ExtendedResource: {
+            Error?: components["schemas"]["ResponseError"];
+            Organization?: components["schemas"]["Organization"];
+            /**
+             * Format: base64
+             * @description The resource's configuration in its original toolchain-native form, present only when requested with the raw_data query parameter.
+             */
+            RawData?: string;
+            Resource?: components["schemas"]["Resource"];
+            Space?: components["schemas"]["Space"];
+            Target?: components["schemas"]["Target"];
+            Unit?: components["schemas"]["Unit"];
+            View?: components["schemas"]["View"];
+            ViewColumns?: components["schemas"]["ViewColumn"][];
+        };
         ExtendedRevision: {
+            ChangeOrders?: components["schemas"]["ChangeOrder"][];
             ChangeSet?: components["schemas"]["ChangeSet"];
             Error?: components["schemas"]["ResponseError"];
             Organization?: components["schemas"]["Organization"];
+            Releases?: components["schemas"]["Release"][];
             Revision?: components["schemas"]["Revision"];
             Space?: components["schemas"]["Space"];
             Tags?: components["schemas"]["Tag"][];
@@ -2722,6 +3176,7 @@ export interface components {
             /** Format: int64 */
             IncompleteApplyUnitCount?: number;
             Organization?: components["schemas"]["Organization"];
+            ReleaseTarget?: components["schemas"]["Target"];
             Space?: components["schemas"]["Space"];
             TargetCountByToolchainType?: {
                 [key: string]: number;
@@ -2731,6 +3186,8 @@ export interface components {
             /** Format: int64 */
             TotalBridgeWorkerCount?: number;
             /** Format: int64 */
+            TotalChangeOrderCount?: number;
+            /** Format: int64 */
             TotalChangeSetCount?: number;
             /** Format: int64 */
             TotalFilterCount?: number;
@@ -2738,6 +3195,8 @@ export interface components {
             TotalInvocationCount?: number;
             /** Format: int64 */
             TotalLinkCount?: number;
+            /** Format: int64 */
+            TotalReleaseCount?: number;
             /** Format: int64 */
             TotalTagCount?: number;
             /** Format: int64 */
@@ -2803,7 +3262,6 @@ export interface components {
             Space?: components["schemas"]["Space"];
             Target?: components["schemas"]["Target"];
             Unit?: components["schemas"]["Unit"];
-            UnitStatus?: components["schemas"]["UnitStatus"];
             UpstreamSpace?: components["schemas"]["Space"];
             UpstreamUnit?: components["schemas"]["Unit"];
             View?: components["schemas"]["View"];
@@ -2907,8 +3365,13 @@ export interface components {
         FunctionInvocation: {
             /** @description Function arguments */
             Arguments?: components["schemas"]["FunctionArgument"][] | null;
+            Clearance?: components["schemas"]["Clearance"];
             /** @description Function name */
             FunctionName?: string;
+            /** @description Caller-supplied parameter values for expanding templated argument Values; transient, not persisted */
+            Params?: {
+                [key: string]: unknown;
+            };
             /** @description Per-invocation resource filter. AND-combined with the request-level WhereResource. Same path syntax as the request-level field (see ParseAndValidateWhereResource). */
             WhereResource?: string;
         };
@@ -2924,15 +3387,16 @@ export interface components {
             /** @description ChangeDescription is a description of the change being made, if any. */
             ChangeDescription?: string;
             FunctionInvocations?: components["schemas"]["FunctionInvocationList"];
+            /** @description Put the Unit's outstanding merge conflicts in the FunctionContext, for functions that reason about them */
+            IncludeConflicts?: boolean;
             /** @description Invocations is a list of Invocation IDs to execute. The invocations must be within the same Organization. Invocations will be executed after the FunctionInvocations list. Functions are grouped by executor (built-in vs bridge worker) and executed in phases: general mutating functions first, then final mutating functions (like ensure-context), then validating functions. Functions that don't match the unit's toolchain type are ignored. */
             Invocations?: components["schemas"]["UUID"][];
             /** @description NumFilters is the number of validating functions from the FunctionInvocations to treat as filters for the remaining functions in the list. In the case that the validation function does not pass, stop and don't execute the remaining functions, but don't report an error. */
             NumFilters?: number;
-            /** @description OnLiveState indicates that the functions should be invoked on the LiveState rather than the Data. */
-            OnLiveState?: boolean;
+            ParameterizedInvocations?: components["schemas"]["ParameterizedInvocationRef"][];
             /** @description StopOnError indicates whether to stop executing functions from the FunctionInvocations list on the first error, or to execute all of the functions and return all of the errors. Note that this applies to each Unit or Revision individually rather than all of the entities on which the functions are being invoked. */
             StopOnError?: boolean;
-            /** @description ToolchainType specifies the type of toolchain for these function invocations. This determines which configuration formats the functions can process. If OnLiveState is false, it must match the ToolchainType of the Units. If OnLiveState is true, it must match the LiveStateType of the Targets of the Units. */
+            /** @description ToolchainType specifies the type of toolchain for these function invocations. This determines which configuration formats the functions can process. It must match the ToolchainType of the Units. */
             ToolchainType?: string;
             /** @description Triggers is a list of Trigger IDs to execute. The triggers must be within the same Organization. Triggers will be executed after the FunctionInvocations list. Functions are grouped by executor (built-in vs bridge worker) and executed in phases: general mutating functions first, then final mutating functions (like ensure-context), then validating functions. Functions that don't match the unit's toolchain type are ignored. */
             Triggers?: components["schemas"]["UUID"][];
@@ -2941,11 +3405,10 @@ export interface components {
             WhereResource?: string;
         };
         FunctionInvocationsResponse: {
-            /**
-             * Format: base64
-             * @description The resulting configuration data, potentially mutated
-             */
+            /** @description The resulting configuration data; present only when the invocation changed it */
             ConfigData?: string;
+            /** @description SHA256 of the resulting configuration data, whether or not ConfigData is present */
+            DataHash?: string;
             Error?: components["schemas"]["ResponseError"];
             /** @description Functions produced new mutations (of type other than None) */
             HasNewMutations?: boolean;
@@ -2978,6 +3441,12 @@ export interface components {
             SpaceSlug?: string;
             /** @description True if all functions executed successfully */
             Success?: boolean;
+            /**
+             * Format: uuid
+             * @description ID of the Unit's Target; optional
+             * @example 248df4b7-aa70-47b8-a036-33ac447e668d
+             */
+            TargetID?: string;
             /**
              * Format: uuid
              * @description ID of the Unit the configuration data is associated with
@@ -3039,6 +3508,8 @@ export interface components {
             OutputInfo?: components["schemas"]["FunctionOutput"];
             /** @description Function parameters, in order */
             Parameters?: components["schemas"]["FunctionParameter"][] | null;
+            /** @description Means the same thing run against a different Unit, so a merge may re-execute a stored invocation of it against a downstream variant */
+            Replayable?: boolean;
             /** @description Number of required parameters */
             RequiredParameters?: number;
             /** @description Toolchain under which the function is registered */
@@ -3058,36 +3529,25 @@ export interface components {
             /** @description Supported ToolchainTypes */
             ToolchainTypes?: string[] | null;
         };
-        ImportFilter: {
-            /** @description Operator specifies how to apply the filter (include, exclude, equals, contains, matches) */
-            Operator?: string;
-            /** @description Type specifies the filter type (namespace, label, resource_type, etc.) */
-            Type?: string;
-            /** @description Values specifies the filter values */
-            Values?: string[];
+        GuardDelta: {
+            /** @description The path whose guards changed; empty for the resource as a whole */
+            Path?: string;
+            /** @description Guard keys removed */
+            Remove?: string[];
+            /** @description Guard keys added or changed, with their new values */
+            Set?: {
+                [key: string]: string;
+            };
         };
-        ImportOptions: {
-            [key: string]: unknown;
-        };
-        ImportRequest: {
-            /** @description List of ImportFilter expression clauses. Mutually exclusive with Where. */
-            Filters?: components["schemas"]["ImportFilter"][];
-            Options?: components["schemas"]["ImportOptions"];
-            ResourceInfoList?: components["schemas"]["ResourceInfoList"];
-            /** @description Where specifies a unified resource filter expression for import resources and options. It uses SQL-inspired syntax, similar to the where-filter function. Supports conjunctions with AND. String operators: =, !=, <, >, <=, >=, LIKE, ILIKE, ~~, !~~, ~, ~*, !~, !~*. Pattern matching with LIKE/ILIKE uses % and _ wildcards. Regex operators (~, ~*, !~, !~*) support POSIX regular expressions. Kubernetes-specific filters include import.include_system for system namespaces like kube-system, import.include_cluster for cluster-scoped resources like ClusterRole, and import.include_custom for custom resource types. */
-            Where?: string;
-        };
-        /** @description Defines a function invocation. */
+        /** @description Defines a stored, reusable call to one or more functions, executed in the order they are listed. */
         Invocation: {
             /** @description An optional map of Annotation key/value pairs for tools to attach information to entities. */
             Annotations?: {
                 [key: string]: string;
             };
-            /** @description Function arguments */
-            Arguments?: components["schemas"]["FunctionArgument"][] | null;
             /**
              * Format: uuid
-             * @description Unique identifier for a Bridge Worker to execute the function specified by the Invocation. If unspecified, use the builtin function executor.
+             * @description Unique identifier for a Bridge Worker to execute the functions specified by the Invocation. If unspecified, use the builtin function executor.
              * @example 248df4b7-aa70-47b8-a036-33ac447e668d
              */
             BridgeWorkerID?: string;
@@ -3110,9 +3570,8 @@ export interface components {
             DisplayName?: string;
             /** @description The type of entity. */
             readonly EntityType?: string;
-            /** @description Function name */
-            FunctionName?: string;
-            /** @description SHA256 hash of the function name and arguments encoded as hexadecimal. */
+            FunctionInvocations: components["schemas"]["FunctionInvocationList"];
+            /** @description SHA256 hash of the functions and their arguments encoded as hexadecimal. */
             readonly Hash?: string;
             /**
              * Format: uuid
@@ -3130,6 +3589,7 @@ export interface components {
              * @example 248df4b7-aa70-47b8-a036-33ac447e668d
              */
             OrganizationID?: string;
+            Parameters?: components["schemas"]["FunctionParameter"][];
             /** @description Unique URL-safe identifier for the entity. */
             Slug: string;
             /**
@@ -3157,8 +3617,6 @@ export interface components {
              * @description An entity-specific sequence number used for optimistic concurrency control. The value read must be sent in calls to Update.
              */
             Version?: number;
-            /** @description Per-invocation resource filter. AND-combined with the request-level WhereResource. Same path syntax as the request-level field (see ParseAndValidateWhereResource). */
-            WhereResource?: string;
         };
         InvocationCreateOrUpdateResponse: {
             Error?: components["schemas"]["ResponseError"];
@@ -3175,16 +3633,16 @@ export interface components {
          *     A Link indicates that selected config data from the upstream To Unit (the producer)
          *     should be propagated to the downstream From Unit (the consumer).
          *     Links must be created in the same Space as the From Unit.
-         *     They also imply an ordering when Applied or Destroyed as a group.
          */
         Link: {
             /** @description An optional map of Annotation key/value pairs for tools to attach information to entities. */
             Annotations?: {
                 [key: string]: string;
             };
-            /** @description Automatically update the downstream Unit when the upstream Unit changes. Always treated as true for links with no UpdateType, for backward compatibility. */
+            /** @description Automatically update the downstream Unit when the upstream Unit changes. A Link created without an UpdateType is a NeedsProvides Link with AutoUpdate set, which is what such a Link has always done. */
             AutoUpdate?: boolean;
             Bindings?: components["schemas"]["BindingList"];
+            Clearance?: components["schemas"]["Clearance"];
             /**
              * Format: date-time
              * @description The timestamp when the entity was created in "2023-01-01T12:00:00Z" format.
@@ -3231,14 +3689,16 @@ export interface components {
              * @example 248df4b7-aa70-47b8-a036-33ac447e668d
              */
             LinkID?: string;
-            /** @description Disables the subtraction (override-preservation) step of the merge performed when resolving this Link. When false (the default), the merge subtracts the downstream Unit's local differences from the source patch so they survive the merge. When true, the source patch is applied without subtraction and downstream overrides are preserved only via stored Mutation Predicate values (and WhereMutation). Only meaningful for UpgradeUnit and MergeUnits Links. */
-            MergeDisableSubtraction?: boolean;
+            /** @description Enables the subtraction (override-preservation) step of the merge performed when resolving this Link. When false (the default), the source patch is applied without subtraction and the downstream Unit's local differences are preserved by the stored Mutation Protected values alone, narrowed further by WhereMutation if it is set. When true, the merge additionally subtracts the downstream Unit's local differences from the source patch. Only meaningful for UpgradeUnit and MergeUnits Links. */
+            MergeEnableSubtraction?: boolean;
             /**
              * Format: uuid
              * @description Unique identifier for an organization.
              * @example 248df4b7-aa70-47b8-a036-33ac447e668d
              */
             OrganizationID?: string;
+            /** @description Records the paths this Link's resolve writes as protected local overrides, so a later merge from upstream does not overwrite them. Without it the resolve claims nothing, as any other change does. Refused on UpgradeUnit and MergeUnits Links, where the upstream keeps updating what it delivered and protecting that content would freeze the downstream one merge in. */
+            Protect?: boolean;
             /** @description Unique URL-safe identifier for the entity. */
             Slug: string;
             /**
@@ -3249,6 +3709,10 @@ export interface components {
             SpaceID?: string;
             /** @description Slug of the Space this entity belongs to. (readonly) */
             readonly SpaceSlug?: string;
+            /** @description Merge this Link's range as one rebased diff in one Revision instead of walking it. By default a resolve replays the source's recorded function invocations against this Unit where they can be re-executed, and records each source Revision that has an effect as a Revision of its own. Only meaningful for UpgradeUnit and MergeUnits Links, which are the ones with a range to walk. */
+            Squash?: boolean;
+            /** @description The upstream Unit has finished a change this Link has not taken: its head Revision is past UpstreamLastMergedRevisionNum and it is not partway through a ChangeSet, whose Revisions are a prefix of a change nobody can take yet. Most useful on a Link with AutoUpdate false, which is otherwise unchanged by anything its upstream does; on an AutoUpdate Link it is transient, and stays set when a resolve fails. */
+            readonly Stale?: boolean;
             /**
              * Format: uuid
              * @description Unique identifier of the Space of the upstream Unit.
@@ -3263,11 +3727,11 @@ export interface components {
             ToUnitID: string;
             /**
              * Format: uuid
-             * @description Identifier of an Invocation whose function is executed on the upstream Unit's data before the result is upserted into the downstream Unit. Only valid when UpdateType is Upsert. The Invocation's ToolchainType must match the upstream Unit's ToolchainType, the function must be non-mutating, and its OutputType must match the downstream Unit's toolchain (currently only Kubernetes/YAML / YAML output).
+             * @description Identifier of an Invocation whose function is executed on the upstream Unit's data before the result is inserted into or upserted into the downstream Unit. Only valid when UpdateType is Insert or Upsert. The Invocation's ToolchainType must match the upstream Unit's ToolchainType, the function must be non-mutating, and its OutputType must be YAML. For Upsert the output must also match the downstream Unit's toolchain, which currently limits it to Kubernetes/YAML.
              * @example 248df4b7-aa70-47b8-a036-33ac447e668d
              */
             TransformInvocationID?: string;
-            /** @description The ConfigHub operation performed using this Link. Valid values are NeedsProvides, MergeUnits, UpgradeUnit, None, Insert, Upsert, and TransformPaths. If empty, then assumed to be NeedsProvides. UpgradeUnit is like MergeUnits but also keeps the downstream unit's UpstreamRevision fields in sync. Upsert pulls one or more resources produced by the upstream Unit (optionally through a TransformInvocation) and inserts or replaces them in the downstream Unit. TransformPaths reads values from the upstream Unit (UpstreamPaths) and writes expression-derived values to the downstream Unit (DownstreamPaths). */
+            /** @description The ConfigHub operation performed using this Link. Valid values are NeedsProvides, MergeUnits, UpgradeUnit, None, Insert, Upsert, and TransformPaths. A create that omits it gets NeedsProvides with AutoUpdate set, which is what omitting it has always produced. UpgradeUnit is like MergeUnits but also keeps the downstream unit's UpstreamRevision fields in sync. Upsert pulls one or more resources produced by the upstream Unit (optionally through a TransformInvocation) and inserts or replaces them in the downstream Unit. TransformPaths reads values from the upstream Unit (UpstreamPaths) and writes expression-derived values to the downstream Unit (DownstreamPaths). Immutable. */
             UpdateType?: string;
             /**
              * Format: date-time
@@ -3279,7 +3743,7 @@ export interface components {
             UpstreamGetters?: components["schemas"]["NamedFunctionResult"][];
             /**
              * Format: int64
-             * @description The sequence number of the last merged upstream change. When UseLiveState is false, this is the RevisionNum of the last merged revision. When UseLiveState is true, this is the UnitActionNum of the last merged Apply action, since applying the same revision multiple times can produce different LiveState.
+             * @description The RevisionNum of the last merged upstream revision.
              */
             UpstreamLastMergedRevisionNum?: number;
             /**
@@ -3288,12 +3752,6 @@ export interface components {
              * @example 248df4b7-aa70-47b8-a036-33ac447e668d
              */
             readonly UpstreamLinkID?: string;
-            /**
-             * Format: uuid
-             * @description Organization ID of the link this link was cloned from (if any).
-             * @example 248df4b7-aa70-47b8-a036-33ac447e668d
-             */
-            readonly UpstreamOrganizationID?: string;
             /** @description Values to read from the upstream Unit when resolving a TransformPaths Link. Each NamedPath is read via get-paths and made available to DownstreamPaths expressions by its Name. Only valid when UpdateType is TransformPaths. */
             UpstreamPaths?: components["schemas"]["NamedPath"][];
             /**
@@ -3302,8 +3760,6 @@ export interface components {
              * @example 248df4b7-aa70-47b8-a036-33ac447e668d
              */
             readonly UpstreamSpaceID?: string;
-            /** @description Take data from the LiveState of the upstream Unit rather than from Data. */
-            UseLiveState?: boolean;
             /**
              * Format: int64
              * @description An entity-specific sequence number used for optimistic concurrency control. The value read must be sent in calls to Update.
@@ -3320,6 +3776,11 @@ export interface components {
         };
         /** @description Mutation is a single source of mutation for a Revision. */
         Mutation: {
+            /**
+             * Format: uuid
+             * @example 248df4b7-aa70-47b8-a036-33ac447e668d
+             */
+            BridgeWorkerID?: string;
             /**
              * Format: date-time
              * @description The timestamp when the entity was created in "2023-01-01T12:00:00Z" format.
@@ -3340,6 +3801,9 @@ export interface components {
              * @example 248df4b7-aa70-47b8-a036-33ac447e668d
              */
             InvocationID?: string;
+            InvocationParams?: {
+                [key: string]: unknown;
+            };
             /**
              * Format: uuid
              * @description LinkID is the unique identifier of the link if the change was made due to resolving a link.
@@ -3382,6 +3846,8 @@ export interface components {
             /** @description ProvidedPath is the path of the provided value used to satisfy a needed value if the change was made due to resolving a link. */
             ProvidedPath?: string;
             ProvidedResource?: components["schemas"]["ResourceInfoType2"];
+            ReplayOutcome?: string;
+            ReplayReason?: string;
             /**
              * Format: int64
              * @description Sequence number of the restored revision, if the change was due to a restore operation.
@@ -3420,6 +3886,8 @@ export interface components {
              * @example 248df4b7-aa70-47b8-a036-33ac447e668d
              */
             UnitID?: string;
+            /** @description Slug of the Unit this entity belongs to. (readonly) */
+            readonly UnitSlug?: string;
             /**
              * Format: date-time
              * @description The timestamp when the entity was last updated in "2023-01-01T12:00:00Z" format.
@@ -3438,6 +3906,10 @@ export interface components {
             Version?: number;
         };
         MutationConflict: {
+            /** @description Explanation the Reason alone cannot carry, such as the error text of a failed replay */
+            Details?: string;
+            Guard?: components["schemas"]["WithheldGuard"];
+            GuardChange?: components["schemas"]["GuardDelta"];
             /** @description Path of the mutation; empty for resource-level conflicts */
             Path?: string;
             /** @description Why the mutation was dropped */
@@ -3462,13 +3934,16 @@ export interface components {
             MutationType?: components["schemas"]["MutationType"];
             /** @description Line-level patch for multi-line string updates, in unified diff format. When present on an Update, PatchMutations applies this to the target value instead of replacing with Value. Falls back to Value if the patch cannot be applied cleanly. */
             Patch?: string;
-            /** @description Used to decide how to use the mututation */
-            Predicate?: boolean;
+            /** @description True if this is a local override a merge must not overwrite; false if the value came from elsewhere and may be overwritten */
+            Protected?: boolean;
             /** @description Removed configuration data if MutationType is Delete and otherwise the new data */
             Value?: string;
         };
         MutationMap: {
             [key: string]: components["schemas"]["MutationInfo"];
+        };
+        MutationSourcesResponse: {
+            MutationSources?: components["schemas"]["ResourceMutationList"];
         };
         /** @enum {string} */
         MutationType: "Add" | "Delete" | "Update" | "Replace" | "None";
@@ -3483,6 +3958,19 @@ export interface components {
             /** @description Resolved path within Resource to read via get-paths */
             Path?: string;
             Resource?: components["schemas"]["ResourceInfo"];
+        };
+        /** @description A per-app OAuth public client used by a browser app to authenticate against the ConfigHub API. */
+        OAuthClient: {
+            /** @description Allow members of any organization to use the app (each gets their own org's session) instead of only the owning org. Permitted only for trusted organizations. */
+            AllowAllOrgs?: boolean;
+            /** @description Generated OAuth client_id used at login and to address this client in the API. */
+            readonly ClientID?: string;
+            /** @description Human-friendly name for the app. */
+            Name?: string;
+            /** @description External identifier of the owning organization. */
+            readonly OrganizationID?: string;
+            /** @description Exact redirect URIs permitted for the app's login (no wildcards). */
+            RedirectURIs?: string[] | null;
         };
         /** @description The top-level container for an organization using ConfigHub. */
         Organization: {
@@ -3569,6 +4057,22 @@ export interface components {
             /** @description Names of upstream values whose values are exposed to string-argument template expansion. Each entry must match a Name in UpstreamPaths or UpstreamGetters. */
             Parameters?: string[];
         };
+        ParameterizedInvocationRef: {
+            /**
+             * Format: uuid
+             * @example 248df4b7-aa70-47b8-a036-33ac447e668d
+             */
+            InvocationID?: string;
+            Parameters?: {
+                [key: string]: unknown;
+            };
+        };
+        PathAnnotationList: components["schemas"]["ResourcePathAnnotations"][];
+        PathAnnotations: {
+            [key: string]: {
+                [key: string]: string;
+            };
+        };
         PathExpression: {
             /** @description Data type of the resulting AttributeValue: string, int, or bool. The Expression result (a string) is coerced to this type. */
             DataType?: string;
@@ -3607,17 +4111,9 @@ export interface components {
         Permissions: {
             [key: string]: components["schemas"]["Subjects"];
         };
-        /**
-         * @description UnitAction is a record of an action to be performed by a Bridge Worker. They are queued and sent to the worker in creation order.
-         *     If the worker is temporarily disconnected the queued actions will be sent when the worker reconnects or responds.
-         *     If there are links between units applied or destroyed in a single API call, they will be sent to the appropriate
-         *     worker(s) in the appropriate order (reverse or forword topological order). One or more UnitEvents will correspond
-         *     to each UnitAction.
-         */
+        /** @description UnitAction is a record of an operation queued for a Worker, such as a function invocation on a unit. Operations are delivered to the worker in creation order; if the worker is disconnected, pending operations are delivered when it reconnects. One or more UnitEvents will correspond to each UnitAction. */
         QueuedOperation: {
             Action?: components["schemas"]["ActionType"];
-            /** Format: base64 */
-            BridgeState?: string;
             /**
              * Format: uuid
              * @description BridgeWorkerID is the unique identifier of the bridge worker that will process this operation.
@@ -3635,20 +4131,14 @@ export interface components {
              * @description The result of a dry-run Data-changing action like refresh and import, where the data is not stored in the Unit.
              */
             Data?: string;
-            /** @description Dependencies contains the list of operation IDs that this operation depends on. Operations will not be delivered until all dependencies are completed. */
+            /** @description Unused. No longer populated or consulted for delivery; retained for schema compatibility and scheduled for removal. */
             Dependencies?: components["schemas"]["UUID"][] | null;
-            /** @description The drift reconciliation mode for the unit at the time of the operation. */
-            DriftReconciliationMode?: string;
             /** @description DryRun indicates whether the action is a dry run. */
             DryRun?: boolean;
             /** @description Error details returned by the worker. */
             ErrorDetails?: components["schemas"]["ErrorItem"][];
             /** @description ExtraParams contains additional parameters for the operation in string format. */
             ExtraParams?: string;
-            /** Format: base64 */
-            LiveData?: string;
-            /** Format: base64 */
-            LiveState?: string;
             /**
              * Format: uuid
              * @description OrganizationID is the unique identifier of the organization this operation belongs to.
@@ -3713,6 +4203,203 @@ export interface components {
              */
             Version?: number;
         };
+        /** @description Release is a published bundle of the configuration of the Units in a Space that are assigned to a Target. It is created by publishing, taken out of service by withdrawing, and removed by deleting; its bundled content is never updated, though its Labels, Annotations, and DeleteGates can be. The bundle is stored as an OCI image (a tar.gz layer plus manifest) so it can be served to and consumed by the Target. */
+        Release: {
+            /** @description An optional map of Annotation key/value pairs for tools to attach information to entities. */
+            Annotations?: {
+                [key: string]: string;
+            };
+            /**
+             * Format: uuid
+             * @example 248df4b7-aa70-47b8-a036-33ac447e668d
+             */
+            readonly BridgeWorkerID?: string;
+            /** @description Base filename used for the Release's stored bundle, without the .tar.gz suffix. Set at publish time and recorded in the Release's OCI manifest, so it cannot be changed afterwards. (readonly) */
+            readonly BundleBaseName?: string;
+            /**
+             * Format: date-time
+             * @description The timestamp when the entity was created in "2023-01-01T12:00:00Z" format.
+             * @example 2025-04-04T11:50:02.95102-07:00
+             */
+            readonly CreatedAt?: string;
+            /**
+             * Format: int64
+             * @description An auto-incrementing sequence number used for pagination.
+             */
+            readonly CursorID?: number;
+            /** Format: int64 */
+            readonly DataSize?: number;
+            /** @description An optional set of gates that, if any is present, will block deletion. */
+            DeleteGates?: {
+                [key: string]: boolean;
+            };
+            /** @description OCI content digest (sha256:...) of the Release's stored tar.gz bundle. */
+            readonly Digest?: string;
+            /** @description The type of entity. */
+            readonly EntityType?: string;
+            /** @description An optional map of Label key/value pairs to specify identifying attributes of entities for the purpose of grouping and filtering them. */
+            Labels?: {
+                [key: string]: string;
+            };
+            /** @description OCI digest (sha256:...) of the Release's OCI image manifest. */
+            readonly ManifestDigest?: string;
+            /**
+             * Format: uuid
+             * @example 248df4b7-aa70-47b8-a036-33ac447e668d
+             */
+            OrganizationID?: string;
+            /** @description Whether the Release is currently served to its consuming Target. Set when the Release is published and cleared when it is withdrawn; a withdrawn Release is retained until deleted. */
+            readonly Published?: boolean;
+            /**
+             * Format: uuid
+             * @description Unique identifier for a Release.
+             * @example 248df4b7-aa70-47b8-a036-33ac447e668d
+             */
+            ReleaseID?: string;
+            /**
+             * Format: int64
+             * @description Monotonically increasing sequence number of the Release within its Target, assigned at publish time. The highest ReleaseNum is the latest Release for the Target.
+             */
+            readonly ReleaseNum?: number;
+            /**
+             * Format: uuid
+             * @example 248df4b7-aa70-47b8-a036-33ac447e668d
+             */
+            SpaceID?: string;
+            /** @description Slug of the Space this entity belongs to. */
+            readonly SpaceSlug?: string;
+            /**
+             * Format: uuid
+             * @description Tag identifying the bundled Revision of each Unit in the Release. When publishing supplied a TagID, this is that Tag. Otherwise publishing creates a Tag named release-<ReleaseNum> in the Release's Space, applies it to each bundled Revision, and sets it here.
+             * @example 248df4b7-aa70-47b8-a036-33ac447e668d
+             */
+            readonly TagID?: string;
+            /**
+             * Format: int64
+             * @description Number of Units bundled in the Release, captured at publish time.
+             */
+            readonly UnitCount?: number;
+            /**
+             * Format: date-time
+             * @description The timestamp when the entity was last updated in "2023-01-01T12:00:00Z" format.
+             * @example 2025-04-04T11:50:02.95102-07:00
+             */
+            readonly UpdatedAt?: string;
+            /**
+             * Format: int64
+             * @description An entity-specific sequence number used for optimistic concurrency control. The value read must be sent in calls to Update.
+             */
+            Version?: number;
+        };
+        ReleasePublishRequest: {
+            /** @description An optional map of Annotation key/value pairs for tools to attach information to entities. */
+            Annotations?: {
+                [key: string]: string;
+            };
+            /** @description Optional override of the name of the Release's tar.gz bundle. */
+            BundleBaseName?: string;
+            /** @description An optional set of gates that, if any is present, will block deletion */
+            DeleteGates?: {
+                [key: string]: boolean;
+            };
+            /** @description An optional map of Label key/value pairs to specify identifying attributes of entities for the purpose of grouping and filtering them. */
+            Labels?: {
+                [key: string]: string;
+            };
+            /**
+             * Format: uuid
+             * @description Optional Tag ID identifying the tagged Revision to bundle. For each Unit assigned to the Space's ReleaseTarget, the highest-numbered Revision carrying this Tag is bundled at that Revision instead of the Unit's head Revision. A Unit with no matching tagged Revision falls back to its head Revision. When omitted, each Unit is bundled at its head Revision and publishing creates a Tag named release-<ReleaseNum>, applies it to each bundled Revision, and sets it as the Release's TagID.
+             * @example 248df4b7-aa70-47b8-a036-33ac447e668d
+             */
+            TagID?: string;
+        };
+        /** @description Resource is a configuration element extracted from a Unit's configuration data. Resources are maintained automatically as Units change and are read-only. */
+        Resource: {
+            /**
+             * Format: date-time
+             * @description The timestamp when the entity was created in "2023-01-01T12:00:00Z" format.
+             * @example 2025-04-04T11:50:02.95102-07:00
+             */
+            readonly CreatedAt?: string;
+            /**
+             * Format: int64
+             * @description An auto-incrementing sequence number used for pagination.
+             */
+            readonly CursorID?: number;
+            /** @description Configuration data of the resource, represented as JSON. */
+            Data?: Record<string, never>;
+            /** @description The type of entity. */
+            readonly EntityType?: string;
+            /**
+             * Format: uuid
+             * @description Unique identifier for an Organization.
+             * @example 248df4b7-aa70-47b8-a036-33ac447e668d
+             */
+            OrganizationID?: string;
+            /**
+             * Format: uuid
+             * @description Unique identifier for a Resource.
+             * @example 248df4b7-aa70-47b8-a036-33ac447e668d
+             */
+            ResourceID?: string;
+            /**
+             * Format: int64
+             * @description Distinguishes resources within a Unit that share a ResourceType and ResourceName, as AppConfig documents that declare no configHub.configName do. 0 when the name is unique within the Unit.
+             */
+            ResourceIndex?: number;
+            /** @description Name of the resource; Kubernetes resources are represented in the form <metadata.namespace>/<metadata.name>. */
+            ResourceName?: string;
+            /** @description Type of the resource; Kubernetes resources are represented in the form <apiVersion>/<kind>. */
+            ResourceType?: string;
+            /**
+             * Format: uuid
+             * @description Unique identifier for a space.
+             * @example 248df4b7-aa70-47b8-a036-33ac447e668d
+             */
+            SpaceID?: string;
+            /** @description Slug of the Space this entity belongs to. (readonly) */
+            readonly SpaceSlug?: string;
+            /**
+             * Format: uuid
+             * @description Identifier of the Target the Unit containing this resource is associated with, which defines where the configuration will be applied. Mirrors the Unit's TargetID. (optional)
+             * @example 248df4b7-aa70-47b8-a036-33ac447e668d
+             */
+            TargetID?: string;
+            /** @description ToolchainType of the Unit the resource was extracted from. */
+            ToolchainType?: string;
+            /**
+             * Format: uuid
+             * @description Unique identifier for a Unit.
+             * @example 248df4b7-aa70-47b8-a036-33ac447e668d
+             */
+            UnitID?: string;
+            /** @description Slug of the Unit this entity belongs to. (readonly) */
+            readonly UnitSlug?: string;
+            /**
+             * Format: date-time
+             * @description The timestamp when the entity was last updated in "2023-01-01T12:00:00Z" format.
+             * @example 2025-04-04T11:50:02.95102-07:00
+             */
+            readonly UpdatedAt?: string;
+            /**
+             * Format: int64
+             * @description An entity-specific sequence number used for optimistic concurrency control. The value read must be sent in calls to Update.
+             */
+            Version?: number;
+        };
+        ResourceGuards: {
+            /** @description Guard keys to remove, by path. Removing a key that is not there is not an error */
+            Remove?: {
+                [key: string]: string[];
+            };
+            Resource?: components["schemas"]["ResourceInfo"];
+            /** @description Guard key/value pairs to add or overwrite, by path. The empty path addresses the resource as a whole */
+            Set?: {
+                [key: string]: {
+                    [key: string]: string;
+                };
+            };
+        };
         ResourceInfo: {
             /** @description Category of configuration element represented in the configuration data; Kubernetes resources are of category Resource, and application configuration files are of category AppConfig */
             ResourceCategory?: string;
@@ -3725,7 +4412,6 @@ export interface components {
             /** @description Type of a resource in the system under management represented in the configuration data; Kubernetes resources are represented in the form <apiVersion>/<kind> (aka group-version-kind) */
             ResourceType?: string;
         };
-        ResourceInfoList: components["schemas"]["ResourceInfo"][];
         ResourceInfoType2: {
             /** @description Category of configuration element represented in the configuration data; Kubernetes resources are of category Resource, and application configuration files are of category AppConfig */
             ResourceCategory?: string;
@@ -3751,10 +4437,26 @@ export interface components {
             Resource?: components["schemas"]["ResourceInfo"];
             ResourceMutationInfo?: components["schemas"]["MutationInfo"];
         };
-        ResourceMutationList: components["schemas"]["ResourceMutation"][] | null;
-        ResourcePredicates: {
-            /** @description Map of resolved path to its new Predicate value: true = eligible to be overwritten by a merge, false = protected local override */
-            Predicates?: {
+        ResourceMutationList: components["schemas"]["ResourceMutation"][];
+        ResourcePathAnnotations: {
+            /** @description Names (with scopes, if any) used in current and prior revisions of this resource */
+            Aliases?: {
+                [key: string]: Record<string, never>;
+            };
+            /** @description Names without scopes used in current and prior revisions of this resource */
+            AliasesWithoutScopes?: {
+                [key: string]: Record<string, never>;
+            };
+            /** @description Annotations by path. Paths are canonical: an associative segment names its element by merge key, with no positional fallback */
+            PathAnnotationMap?: {
+                [key: string]: components["schemas"]["PathAnnotations"];
+            };
+            Resource?: components["schemas"]["ResourceInfo"];
+            ResourceAnnotations?: components["schemas"]["PathAnnotations"];
+        };
+        ResourceProtection: {
+            /** @description Map of resolved path to its new Protected value: true = a local override a merge must not overwrite, false = the merge's to update */
+            Protected?: {
                 [key: string]: boolean;
             } | null;
             Resource?: components["schemas"]["ResourceInfo"];
@@ -3775,28 +4477,6 @@ export interface components {
         };
         ResourceStatusMap: {
             [key: string]: components["schemas"]["ResourceStatus"];
-        };
-        ResourceStatusSummary: {
-            /** @description Number of resources with Readiness=Failed */
-            Failed?: number;
-            /**
-             * Format: date-time
-             * @description Earliest UpdatedAt timestamp across all resources
-             */
-            FirstUpdatedAt?: string | null;
-            /**
-             * Format: date-time
-             * @description Most recent UpdatedAt timestamp across all resources
-             */
-            LastUpdatedAt?: string | null;
-            /** @description Number of resources with Readiness=InProgress */
-            Progressing?: number;
-            /** @description Number of resources with Readiness=Ready */
-            Ready?: number;
-            /** @description Number of resources with SyncStatus=Synced */
-            Synced?: number;
-            /** @description Total number of resources in the unit */
-            Total?: number;
         };
         ResourceTypePathsEntry: {
             /**
@@ -3855,14 +4535,16 @@ export interface components {
             };
             /** @description the users that have approved the latest version of the config data for the Unit. */
             ApprovedBy?: components["schemas"]["UUID"][];
+            readonly ChangeOrders?: {
+                [key: string]: string;
+            };
             /**
              * Format: uuid
              * @description Unique identifier for the ChangeSet to which this Revision belongs. Optional. Revisions are not required to belong to ChangeSets.
              * @example 248df4b7-aa70-47b8-a036-33ac447e668d
              */
             ChangeSetID?: string;
-            /** @description Deprecated: Use DataHash instead. The CRC32 hash of this revision's data. */
-            ContentHash?: number;
+            Conflicts?: components["schemas"]["MutationConflictList"];
             /**
              * Format: date-time
              * @description The timestamp when the entity was created in "2023-01-01T12:00:00Z" format.
@@ -3874,13 +4556,13 @@ export interface components {
              * @description An auto-incrementing sequence number used for pagination.
              */
             readonly CursorID?: number;
-            /**
-             * Format: base64
-             * @description The full configuration data for this unit at this revision.
-             */
-            Data?: string;
-            /** @description The SHA256 hash of this revision's data, encoded as hexadecimal. */
+            /** @description The SHA256 hash of this revision's data, encoded as hexadecimal. It is also the ETag the data endpoint serves. */
             DataHash?: string;
+            /**
+             * Format: int64
+             * @description The size of this revision's data in bytes. The data itself is not part of the Revision; read it from the data endpoint.
+             */
+            readonly DataSize?: number;
             /** @description User description of the change. It is copied from the LastChangeDescription field of the Unit at the time the change was made that created the Revision. */
             Description?: string;
             /** @description The type of entity. */
@@ -3891,13 +4573,17 @@ export interface components {
              * @example 2006-01-02T15:04:05Z07:00
              */
             LiveAt?: string;
-            MutationSources?: components["schemas"]["ResourceMutationList"];
             /**
              * Format: uuid
              * @description Unique identifier for an Organization.
              * @example 248df4b7-aa70-47b8-a036-33ac447e668d
              */
             OrganizationID?: string;
+            PathAnnotations?: components["schemas"]["PathAnnotationList"];
+            /** @description A set (map) of ReleaseIDs of any Releases that have bundled this Revision. The string values have no particular meaning for now. */
+            Releases?: {
+                [key: string]: string;
+            };
             /**
              * Format: uuid
              * @description Unique identifier for a Revision.
@@ -3929,6 +4615,8 @@ export interface components {
              * @example 248df4b7-aa70-47b8-a036-33ac447e668d
              */
             UnitID?: string;
+            /** @description Slug of the Unit this entity belongs to. (readonly) */
+            readonly UnitSlug?: string;
             /**
              * Format: date-time
              * @description The timestamp when the entity was last updated in "2023-01-01T12:00:00Z" format.
@@ -3948,6 +4636,60 @@ export interface components {
              * @description An entity-specific sequence number used for optimistic concurrency control. The value read must be sent in calls to Update.
              */
             Version?: number;
+        };
+        RevisionData: {
+            /** @description The configuration data at this Revision. */
+            Data?: string;
+            /** @description SHA256 of the configuration data, which is also the ETag the single-Revision data endpoint serves. */
+            DataHash?: string;
+            /**
+             * Format: int64
+             * @description Size of the configuration data in bytes.
+             */
+            DataSize?: number;
+            /**
+             * Format: uuid
+             * @description Unique identifier of the Revision.
+             * @example 248df4b7-aa70-47b8-a036-33ac447e668d
+             */
+            RevisionID?: string;
+            /**
+             * Format: int64
+             * @description Sequence number of the Revision within its Unit.
+             */
+            RevisionNum?: number;
+            /**
+             * Format: uuid
+             * @description Unique identifier of the Space the Unit belongs to.
+             * @example 248df4b7-aa70-47b8-a036-33ac447e668d
+             */
+            SpaceID?: string;
+            /**
+             * Format: uuid
+             * @description Unique identifier of the Unit the Revision belongs to.
+             * @example 248df4b7-aa70-47b8-a036-33ac447e668d
+             */
+            UnitID?: string;
+        };
+        RevisionMutationSources: {
+            MutationSources?: components["schemas"]["ResourceMutationList"];
+            /**
+             * Format: uuid
+             * @description Unique identifier of the Revision.
+             * @example 248df4b7-aa70-47b8-a036-33ac447e668d
+             */
+            RevisionID?: string;
+            /**
+             * Format: int64
+             * @description Sequence number of the Revision within its Unit.
+             */
+            RevisionNum?: number;
+            /**
+             * Format: uuid
+             * @description Unique identifier of the Unit the Revision belongs to.
+             * @example 248df4b7-aa70-47b8-a036-33ac447e668d
+             */
+            UnitID?: string;
         };
         Schema: unknown;
         /** @description The logical container for most entities in ConfigHub. Namespaces triggers, units, targets, workers, and other entities. */
@@ -3996,6 +4738,18 @@ export interface components {
              */
             OrganizationID?: string;
             Permissions?: components["schemas"]["Permissions"];
+            /**
+             * Format: uuid
+             * @description Reference to the BridgeWorker of this Space's ReleaseTarget, materialized from the Target's BridgeWorkerID when ReleaseTargetID is set. That Worker is automatically authorized for the Space so it can serve the Space's Releases. (readonly)
+             * @example 248df4b7-aa70-47b8-a036-33ac447e668d
+             */
+            readonly ReleaseBridgeWorkerID?: string;
+            /**
+             * Format: uuid
+             * @description Reference to a Target used as the default Target for all Units in this Space.
+             * @example 248df4b7-aa70-47b8-a036-33ac447e668d
+             */
+            ReleaseTargetID?: string;
             /** @description Unique URL-safe identifier for the entity. */
             Slug: string;
             /**
@@ -4045,6 +4799,9 @@ export interface components {
              *     Arrays support the `?` operator to to match any element of the array,
              *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
              *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+             *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+             *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+             *     Without the `*` such a reference is an error, since it names no single value to compare.
              *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
              *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
              *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -4082,6 +4839,9 @@ export interface components {
              *     Arrays support the `?` operator to to match any element of the array,
              *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
              *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+             *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+             *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+             *     Without the `*` such a reference is an error, since it names no single value to compare.
              *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
              *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
              *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -4093,7 +4853,7 @@ export interface components {
              *     An example conjunction is:
              *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
              *
-             *     Supported attributes for filtering on Trigger: Annotations, BridgeWorkerID, CreatedAt, DeleteGates, Description, Disabled, DisplayName, Event, FunctionName, Hash, InvocationID, Labels, OrganizationID, OtherDataSource, Slug, SpaceID, ToolchainType, TriggerID, UnitFilterID, UpdatedAt, Validating, Warn, WhereResource, WhereUnit.
+             *     Supported attributes for filtering on Trigger: Annotations, BridgeWorkerID, CreatedAt, DeleteGates, Description, Disabled, DisplayName, Event, FunctionName, Hash, InvocationID, Labels, OrganizationID, OtherDataSource, Protect, Slug, SpaceID, ToolchainType, TriggerID, UnitFilterID, UpdatedAt, Validating, Warn, WhereResource, WhereUnit.
              *
              *     The whole string must be query-encoded.
              */
@@ -4135,6 +4895,12 @@ export interface components {
             Annotations?: {
                 [key: string]: string;
             };
+            /**
+             * Format: uuid
+             * @description ChangeOrderID is the optional ID of the ChangeOrder this Tag is associated with.
+             * @example 248df4b7-aa70-47b8-a036-33ac447e668d
+             */
+            readonly ChangeOrderID?: string;
             /**
              * Format: uuid
              * @description ChangeSetID is the optional ID of the ChangeSet this Tag is associated with.
@@ -4327,6 +5093,9 @@ export interface components {
              *     Arrays support the `?` operator to to match any element of the array,
              *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
              *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+             *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+             *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+             *     Without the `*` such a reference is an error, since it names no single value to compare.
              *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
              *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
              *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -4338,7 +5107,7 @@ export interface components {
              *     An example conjunction is:
              *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
              *
-             *     Supported attributes for filtering on Trigger: Annotations, BridgeWorkerID, CreatedAt, DeleteGates, Description, Disabled, DisplayName, Event, FunctionName, Hash, InvocationID, Labels, OrganizationID, OtherDataSource, Slug, SpaceID, ToolchainType, TriggerID, UnitFilterID, UpdatedAt, Validating, Warn, WhereResource, WhereUnit.
+             *     Supported attributes for filtering on Trigger: Annotations, BridgeWorkerID, CreatedAt, DeleteGates, Description, Disabled, DisplayName, Event, FunctionName, Hash, InvocationID, Labels, OrganizationID, OtherDataSource, Protect, Slug, SpaceID, ToolchainType, TriggerID, UnitFilterID, UpdatedAt, Validating, Warn, WhereResource, WhereUnit.
              *
              *     The whole string must be query-encoded.
              */
@@ -4393,6 +5162,7 @@ export interface components {
              * @example 248df4b7-aa70-47b8-a036-33ac447e668d
              */
             BridgeWorkerID?: string;
+            Clearance?: components["schemas"]["Clearance"];
             /**
              * Format: date-time
              * @description The timestamp when the entity was created in "2023-01-01T12:00:00Z" format.
@@ -4446,6 +5216,15 @@ export interface components {
             OrganizationID?: string;
             /** @description Specifies the source of additional configuration data to pass to functions that need it (e.g., vet-immutable needs LiveRevisionNum data). Uses revision specifier format such as LiveRevisionNum or Before:HeadRevisionNum. */
             OtherDataSource?: string;
+            /** @description Caller-supplied parameter values for expanding templated argument Values; transient, not persisted */
+            Params?: {
+                [key: string]: unknown;
+            };
+            /**
+             * @description Protect indicates whether the paths this trigger's function writes are recorded as protected local overrides, so a later merge from upstream does not overwrite them. A change claims nothing by default and so does a trigger; set this for a trigger that decides a value on the Unit's behalf and will not be back to decide it again, such as a PostClone trigger customizing a variant. Only meaningful for a mutating trigger.
+             * @example false
+             */
+            Protect?: boolean;
             /** @description Unique URL-safe identifier for the entity. */
             Slug: string;
             /**
@@ -4540,12 +5319,7 @@ export interface components {
                 [key: string]: boolean;
             };
             /** @description The users that have approved the latest revision of the config data for the Unit. */
-            readonly ApprovedBy?: components["schemas"]["UUID"][] | null;
-            /**
-             * Format: base64
-             * @description Additional state used by the Bridge; content is ProviderType-specific.
-             */
-            readonly BridgeState?: string;
+            readonly ApprovedBy?: components["schemas"]["UUID"][];
             /**
              * Format: uuid
              * @description ID of the BridgeWorker from the Target assigned to this Unit.
@@ -4558,8 +5332,7 @@ export interface components {
              * @example 248df4b7-aa70-47b8-a036-33ac447e668d
              */
             ChangeSetID?: string;
-            /** @description Deprecated: Use DataHash instead. The CRC32 hash of the configuration data. */
-            readonly ContentHash?: number;
+            Conflicts?: components["schemas"]["MutationConflictList"];
             /**
              * Format: date-time
              * @description The timestamp when the entity was created in "2023-01-01T12:00:00Z" format.
@@ -4571,13 +5344,13 @@ export interface components {
              * @description An auto-incrementing sequence number used for pagination.
              */
             readonly CursorID?: number;
-            /**
-             * Format: base64
-             * @description The full configuration data for this unit. The maximum size is 67108864 bytes.
-             */
-            Data?: string;
-            /** @description The SHA256 hash of the configuration data, encoded as hexadecimal. */
+            /** @description The SHA256 hash of the configuration data, encoded as hexadecimal. It is also the ETag the data endpoint serves, so a caller that listed Units can ask for a body conditionally without fetching it first. */
             readonly DataHash?: string;
+            /**
+             * Format: int64
+             * @description The size of the configuration data in bytes. The configuration itself is not part of the Unit; read it from the data endpoint.
+             */
+            readonly DataSize?: number;
             /** @description An optional set of gates that, if any is present, will block deletion. */
             DeleteGates?: {
                 [key: string]: boolean;
@@ -4588,12 +5361,10 @@ export interface components {
             };
             /** @description Friendly name for the entity. */
             DisplayName?: string;
-            /** @description When the drift reconciliation mode is OnDemand, then the live state of the Target is updated only on Apply actions and the unit Data is updated only on Refresh actions. When the mode is ContinuousApply the live state is updated to match the last applied state when it has drifted from that state. When the mode is ContinuousRefresh, the unit Data is updated when it has drifted from the live state. The mode can be changed via the drift_mode parameter on Apply and Refresh operations. If the drift reconciliation mode is set in the opposing direction on the Unit (i.e., ContinuousApply when Refresh is invoked or ContinuousRefresh when Apply is invoked) and is not changed to a compatible value, then the operation will fail. */
-            readonly DriftReconciliationMode?: string;
             /** @description The type of entity. */
             readonly EntityType?: string;
             /** @description IDs of Links originating from this Unit. */
-            readonly FromLinkID?: components["schemas"]["UUID"][] | null;
+            readonly FromLinkID?: components["schemas"]["UUID"][];
             /**
              * Format: int64
              * @description Sequence number the head Mutation.
@@ -4626,21 +5397,10 @@ export interface components {
             /** @description LastChangeDescription is a human-readable description of the last change. This description is copied to the new Revision when the Data is changed. */
             LastChangeDescription?: string;
             /**
-             * Format: base64
-             * @description The live resources as of the most recent non-dry-run action in the same representation as Data.
-             */
-            readonly LiveData?: string;
-            /**
              * Format: int64
              * @description Sequence number the last Revision applied once apply has completed. 0 if no live revision.
              */
             readonly LiveRevisionNum?: number;
-            /**
-             * Format: base64
-             * @description The live state as of the most recent non-dry-run action; content is ProviderType-specific.
-             */
-            readonly LiveState?: string;
-            MutationSources?: components["schemas"]["ResourceMutationList"];
             /** @description Attribute paths that this Unit needs from upstream Units via NeedsProvides Links. Computed from get-needed and stored on data updates. */
             readonly NeededPaths?: components["schemas"]["AttributeValue"][];
             /**
@@ -4649,6 +5409,7 @@ export interface components {
              * @example 248df4b7-aa70-47b8-a036-33ac447e668d
              */
             OrganizationID?: string;
+            PathAnnotations?: components["schemas"]["PathAnnotationList"];
             /**
              * Format: int64
              * @description Sequence number the previous Revision applied. 0 if no live revision.
@@ -4670,7 +5431,7 @@ export interface components {
             readonly SpaceSlug?: string;
             /**
              * Format: uuid
-             * @description TargetID is the identifier of the target this unit is associated with. This defines where the configuration will be applied. It must be set to a valid Target within the same Space before the Unit can be Applied, Destroyed, Imported, or Refreshed.
+             * @description TargetID is the identifier of the target this unit is associated with. This defines where the configuration will be applied. It must be set to a valid Target before the Unit can be Applied, Destroyed, Imported, or Refreshed.
              * @example 248df4b7-aa70-47b8-a036-33ac447e668d
              */
             TargetID?: string;
@@ -4692,12 +5453,6 @@ export interface components {
              * @example 2025-04-04T11:50:02.95102-07:00
              */
             readonly UpdatedAt?: string;
-            /**
-             * Format: uuid
-             * @description Unique identifier for the Organization of the Unit this unit was cloned from, if any.
-             * @example 248df4b7-aa70-47b8-a036-33ac447e668d
-             */
-            readonly UpstreamOrganizationID?: string;
             /**
              * Format: int64
              * @description Sequence number for the Revision of the Unit this unit was cloned from, or 0. This is updated to the upstream Unit's head revision number when the Unit is upgraded. To change this revision number, change the UpstreamLastMergedRevisionNum of the corresponding Link of UpdateType UpgradeUnit from this Unit to the upstream Unit.
@@ -4729,17 +5484,9 @@ export interface components {
              */
             Version?: number;
         };
-        /**
-         * @description UnitAction is a record of an action to be performed by a Bridge Worker. They are queued and sent to the worker in creation order.
-         *     If the worker is temporarily disconnected the queued actions will be sent when the worker reconnects or responds.
-         *     If there are links between units applied or destroyed in a single API call, they will be sent to the appropriate
-         *     worker(s) in the appropriate order (reverse or forword topological order). One or more UnitEvents will correspond
-         *     to each UnitAction.
-         */
+        /** @description UnitAction is a record of an operation queued for a Worker, such as a function invocation on a unit. Operations are delivered to the worker in creation order; if the worker is disconnected, pending operations are delivered when it reconnects. One or more UnitEvents will correspond to each UnitAction. */
         UnitAction: {
             Action?: components["schemas"]["ActionType"];
-            /** Format: base64 */
-            BridgeState?: string;
             /**
              * Format: uuid
              * @description BridgeWorkerID is the unique identifier of the bridge worker that will process this operation.
@@ -4757,20 +5504,14 @@ export interface components {
              * @description The result of a dry-run Data-changing action like refresh and import, where the data is not stored in the Unit.
              */
             Data?: string;
-            /** @description Dependencies contains the list of operation IDs that this operation depends on. Operations will not be delivered until all dependencies are completed. */
+            /** @description Unused. No longer populated or consulted for delivery; retained for schema compatibility and scheduled for removal. */
             Dependencies?: components["schemas"]["UUID"][] | null;
-            /** @description The drift reconciliation mode for the unit at the time of the operation. */
-            DriftReconciliationMode?: string;
             /** @description DryRun indicates whether the action is a dry run. */
             DryRun?: boolean;
             /** @description Error details returned by the worker. */
             ErrorDetails?: components["schemas"]["ErrorItem"][];
             /** @description ExtraParams contains additional parameters for the operation in string format. */
             ExtraParams?: string;
-            /** Format: base64 */
-            LiveData?: string;
-            /** Format: base64 */
-            LiveState?: string;
             /**
              * Format: uuid
              * @description OrganizationID is the unique identifier of the organization this operation belongs to.
@@ -4839,11 +5580,66 @@ export interface components {
             Action?: components["schemas"]["QueuedOperation"];
             Error?: components["schemas"]["ResponseError"];
         };
+        UnitConflictSelector: {
+            /** @description Match conflicts at this path; empty matches any path, including resource-level conflicts */
+            Path?: string;
+            /** @description Match conflicts dropped for this reason: Subtracted, DeleteShadowed, ProtectedPath, or UnresolvedPath; empty matches any reason */
+            Reason?: string;
+            /** @description Match conflicts on this resource; empty matches any resource */
+            ResourceName?: string;
+        };
+        UnitConflictsRequest: {
+            /** @description Apply re-applies the withheld change; Dismiss drops the conflict without changing the configuration data */
+            Action?: string;
+            /** @description Report what the request would do without writing anything. The response carries the Unit as it would be. */
+            DryRun?: boolean;
+            /** @description Which outstanding conflicts to act on. Empty acts on all of them. */
+            Select?: components["schemas"]["UnitConflictSelector"][];
+        };
+        UnitConflictsResponse: {
+            /** @description Number of conflicts whose withheld change was applied */
+            Applied?: number;
+            Conflicts?: components["schemas"]["MutationConflictList"];
+            /** @description Number of conflicts dropped without changing the configuration data */
+            Dismissed?: number;
+            Error?: components["schemas"]["ResponseError"];
+            Unit?: components["schemas"]["Unit"];
+        };
         UnitCreateOrUpdateResponse: {
+            /** @description The configuration the operation produced; returned when include names ConfigData. */
+            ConfigData?: string;
             Conflicts?: components["schemas"]["MutationConflictList"];
             Error?: components["schemas"]["ResponseError"];
             Links?: components["schemas"]["LinkCreateOrUpdateResponse"][];
+            MutationSources?: components["schemas"]["ResourceMutationList"];
             Unit?: components["schemas"]["Unit"];
+        };
+        UnitData: {
+            /** @description The configuration data. */
+            Data?: string;
+            /** @description SHA256 of the configuration data, which is also the ETag the single-Unit data endpoint serves. */
+            DataHash?: string;
+            /**
+             * Format: int64
+             * @description Size of the configuration data in bytes.
+             */
+            DataSize?: number;
+            /** @description Slug of the Unit. */
+            Slug?: string;
+            /**
+             * Format: uuid
+             * @description Unique identifier of the Space the Unit belongs to.
+             * @example 248df4b7-aa70-47b8-a036-33ac447e668d
+             */
+            SpaceID?: string;
+            /** @description Slug of the Space the Unit belongs to. */
+            SpaceSlug?: string;
+            /**
+             * Format: uuid
+             * @description Unique identifier of the Unit.
+             * @example 248df4b7-aa70-47b8-a036-33ac447e668d
+             */
+            UnitID?: string;
         };
         /**
          * @description UnitEvent represents an event of action performed on a Unit's configuration. Each action tracks
@@ -4924,6 +5720,8 @@ export interface components {
              * @example 248df4b7-aa70-47b8-a036-33ac447e668d
              */
             UnitID?: string;
+            /** @description Slug of the Unit this entity belongs to. (readonly) */
+            readonly UnitSlug?: string;
             /**
              * Format: date-time
              * @description The timestamp when the entity was last updated in "2023-01-01T12:00:00Z" format.
@@ -4937,43 +5735,50 @@ export interface components {
             Version?: number;
         };
         UnitExtended: {
-            Action?: components["schemas"]["ActionType"];
-            ActionResult?: components["schemas"]["ActionResultType"];
-            /** Format: date-time */
-            ActionStartedAt?: string | null;
-            /** Format: date-time */
-            ActionTerminatedAt?: string | null;
             ApprovedByUsers?: string[] | null;
-            Drift?: string;
             FromLinks?: components["schemas"]["Link"][] | null;
-            ResourceStatusSummary?: components["schemas"]["ResourceStatusSummary"];
-            Status?: string;
-            SyncStatus?: string;
             ToLinks?: components["schemas"]["Link"][] | null;
             Unit?: components["schemas"]["Unit"];
         };
-        UnitPredicatesRequest: {
-            /** @description Per-resource Predicate edits to apply to the Unit's MutationSources */
-            ResourcePredicates?: components["schemas"]["ResourcePredicates"][] | null;
+        UnitGuardRequest: {
+            Clearance?: components["schemas"]["Clearance"];
+            /** @description Per-resource guard edits to apply to the Unit's PathAnnotations */
+            ResourceGuards?: components["schemas"]["ResourceGuards"][] | null;
         };
-        UnitPredicatesResponse: {
+        UnitGuardResponse: {
+            PathAnnotations?: components["schemas"]["PathAnnotationList"];
+        };
+        UnitMutationSources: {
+            /** @description SHA256 of the configuration data the MutationSources describe. */
+            DataHash?: string;
+            MutationSources?: components["schemas"]["ResourceMutationList"];
+            /** @description Slug of the Unit. */
+            Slug?: string;
+            /**
+             * Format: uuid
+             * @description Unique identifier of the Space the Unit belongs to.
+             * @example 248df4b7-aa70-47b8-a036-33ac447e668d
+             */
+            SpaceID?: string;
+            /** @description Slug of the Space the Unit belongs to. */
+            SpaceSlug?: string;
+            /**
+             * Format: uuid
+             * @description Unique identifier of the Unit.
+             * @example 248df4b7-aa70-47b8-a036-33ac447e668d
+             */
+            UnitID?: string;
+        };
+        UnitProtectionRequest: {
+            /** @description Per-resource Protected edits to apply to the Unit's MutationSources */
+            ResourceProtection?: components["schemas"]["ResourceProtection"][] | null;
+        };
+        UnitProtectionResponse: {
             Error?: components["schemas"]["ResponseError"];
             MutationSources?: components["schemas"]["ResourceMutationList"];
         };
-        UnitStatus: {
-            Action?: components["schemas"]["ActionType"];
-            ActionResult?: components["schemas"]["ActionResultType"];
-            /** Format: date-time */
-            ActionStartedAt?: string | null;
-            /** Format: date-time */
-            ActionTerminatedAt?: string | null;
-            Drift?: string;
-            ResourceStatusSummary?: components["schemas"]["ResourceStatusSummary"];
-            Status?: string;
-            SyncStatus?: string;
-        };
         UnitTagRequest: {
-            /** @description Which Unit revision to tag: 'HeadRevisionNum', 'LiveRevisionNum', 'LastAppliedRevisionNum', 'PreviousLiveRevisionNum', or 'Remove' to remove the tag from the unit */
+            /** @description Which Unit revision to tag: a named revision ('HeadRevisionNum', 'LiveRevisionNum', 'LastAppliedRevisionNum', 'PreviousLiveRevisionNum'), a revision number, an entity reference ('Tag:uuid', 'ChangeSet:uuid', 'Revision:uuid'), any of those prefixed with 'Before:', or 'Remove' to remove the tag from the unit */
             Revision?: string;
             /**
              * Format: uuid
@@ -5027,6 +5832,36 @@ export interface components {
              * @description An entity-specific sequence number used for optimistic concurrency control. The value read must be sent in calls to Update.
              */
             Version?: number;
+        };
+        UserKey: {
+            /**
+             * Format: date-time
+             * @example 2006-01-02T15:04:05Z07:00
+             */
+            CreatedAt?: string;
+            Description?: string;
+            /**
+             * Format: date-time
+             * @example 2006-01-02T15:04:05Z07:00
+             */
+            ExpiresAt?: string;
+            Kid?: string;
+            /**
+             * Format: date-time
+             * @example 2006-01-02T15:04:05Z07:00
+             */
+            LastUsedAt?: string;
+            PublicJWK?: unknown;
+            /**
+             * Format: uuid
+             * @example 248df4b7-aa70-47b8-a036-33ac447e668d
+             */
+            UserID?: string;
+            /**
+             * Format: uuid
+             * @example 248df4b7-aa70-47b8-a036-33ac447e668d
+             */
+            UserKeyID?: string;
         };
         ValidationResult: {
             /** @description Deprecated. Use Issues or FailedAttributes instead. Optional list of failure details when not associated with specific attributes/paths. */
@@ -5131,6 +5966,14 @@ export interface components {
             Error?: components["schemas"]["ResponseError"];
             View?: components["schemas"]["View"];
         };
+        WithheldGuard: {
+            /** @description The guard key the operation was not cleared for */
+            Key?: string;
+            /** @description True when the clearance forbade this key with DoesNotExist rather than simply not covering it */
+            Precondition?: boolean;
+            /** @description The guard value */
+            Value?: string;
+        };
         WorkerInfo: {
             BridgeWorkerInfo?: components["schemas"]["BridgeWorkerInfo"];
             FunctionWorkerInfo?: components["schemas"]["FunctionWorkerInfo"];
@@ -5168,21 +6011,28 @@ export type SchemaBridgeWorker = components['schemas']['BridgeWorker'];
 export type SchemaBridgeWorkerCreateOrUpdateResponse = components['schemas']['BridgeWorkerCreateOrUpdateResponse'];
 export type SchemaBridgeWorkerInfo = components['schemas']['BridgeWorkerInfo'];
 export type SchemaBridgeWorkerStatus = components['schemas']['BridgeWorkerStatus'];
+export type SchemaChangeOrder = components['schemas']['ChangeOrder'];
+export type SchemaChangeOrderCreateOrUpdateResponse = components['schemas']['ChangeOrderCreateOrUpdateResponse'];
 export type SchemaChangeSet = components['schemas']['ChangeSet'];
 export type SchemaChangeSetCreateOrUpdateResponse = components['schemas']['ChangeSetCreateOrUpdateResponse'];
+export type SchemaClearance = components['schemas']['Clearance'];
+export type SchemaClearanceRequirement = components['schemas']['ClearanceRequirement'];
 export type SchemaColumn = components['schemas']['Column'];
 export type SchemaColumnSource = components['schemas']['ColumnSource'];
+export type SchemaCreateUserKeyRequest = components['schemas']['CreateUserKeyRequest'];
 export type SchemaDeleteResponse = components['schemas']['DeleteResponse'];
 export type SchemaErrorItem = components['schemas']['ErrorItem'];
 export type SchemaErrorMetadata = components['schemas']['ErrorMetadata'];
-export type SchemaEventMessage = components['schemas']['EventMessage'];
 export type SchemaExtendedAttribute = components['schemas']['ExtendedAttribute'];
 export type SchemaExtendedBridgeWorker = components['schemas']['ExtendedBridgeWorker'];
+export type SchemaExtendedChangeOrder = components['schemas']['ExtendedChangeOrder'];
 export type SchemaExtendedChangeSet = components['schemas']['ExtendedChangeSet'];
 export type SchemaExtendedFilter = components['schemas']['ExtendedFilter'];
 export type SchemaExtendedInvocation = components['schemas']['ExtendedInvocation'];
 export type SchemaExtendedLink = components['schemas']['ExtendedLink'];
 export type SchemaExtendedMutation = components['schemas']['ExtendedMutation'];
+export type SchemaExtendedRelease = components['schemas']['ExtendedRelease'];
+export type SchemaExtendedResource = components['schemas']['ExtendedResource'];
 export type SchemaExtendedRevision = components['schemas']['ExtendedRevision'];
 export type SchemaExtendedSpace = components['schemas']['ExtendedSpace'];
 export type SchemaExtendedTag = components['schemas']['ExtendedTag'];
@@ -5201,9 +6051,7 @@ export type SchemaFunctionOutput = components['schemas']['FunctionOutput'];
 export type SchemaFunctionParameter = components['schemas']['FunctionParameter'];
 export type SchemaFunctionSignature = components['schemas']['FunctionSignature'];
 export type SchemaFunctionWorkerInfo = components['schemas']['FunctionWorkerInfo'];
-export type SchemaImportFilter = components['schemas']['ImportFilter'];
-export type SchemaImportOptions = components['schemas']['ImportOptions'];
-export type SchemaImportRequest = components['schemas']['ImportRequest'];
+export type SchemaGuardDelta = components['schemas']['GuardDelta'];
 export type SchemaInvocation = components['schemas']['Invocation'];
 export type SchemaInvocationCreateOrUpdateResponse = components['schemas']['InvocationCreateOrUpdateResponse'];
 export type SchemaIssue = components['schemas']['Issue'];
@@ -5214,29 +6062,39 @@ export type SchemaMutationConflict = components['schemas']['MutationConflict'];
 export type SchemaMutationConflictList = components['schemas']['MutationConflictList'];
 export type SchemaMutationInfo = components['schemas']['MutationInfo'];
 export type SchemaMutationMap = components['schemas']['MutationMap'];
+export type SchemaMutationSourcesResponse = components['schemas']['MutationSourcesResponse'];
 export type SchemaMutationType = components['schemas']['MutationType'];
 export type SchemaNamedFunctionResult = components['schemas']['NamedFunctionResult'];
 export type SchemaNamedPath = components['schemas']['NamedPath'];
+export type SchemaOAuthClient = components['schemas']['OAuthClient'];
 export type SchemaOrganization = components['schemas']['Organization'];
 export type SchemaOrganizationMember = components['schemas']['OrganizationMember'];
 export type SchemaParameterizedFunction = components['schemas']['ParameterizedFunction'];
+export type SchemaParameterizedInvocationRef = components['schemas']['ParameterizedInvocationRef'];
+export type SchemaPathAnnotationList = components['schemas']['PathAnnotationList'];
+export type SchemaPathAnnotations = components['schemas']['PathAnnotations'];
 export type SchemaPathExpression = components['schemas']['PathExpression'];
 export type SchemaPathToVisitorInfoType = components['schemas']['PathToVisitorInfoType'];
 export type SchemaPathVisitorInfo = components['schemas']['PathVisitorInfo'];
 export type SchemaPermissions = components['schemas']['Permissions'];
 export type SchemaQueuedOperation = components['schemas']['QueuedOperation'];
+export type SchemaRelease = components['schemas']['Release'];
+export type SchemaReleasePublishRequest = components['schemas']['ReleasePublishRequest'];
+export type SchemaResource = components['schemas']['Resource'];
+export type SchemaResourceGuards = components['schemas']['ResourceGuards'];
 export type SchemaResourceInfo = components['schemas']['ResourceInfo'];
-export type SchemaResourceInfoList = components['schemas']['ResourceInfoList'];
 export type SchemaResourceInfoType2 = components['schemas']['ResourceInfoType2'];
 export type SchemaResourceMutation = components['schemas']['ResourceMutation'];
 export type SchemaResourceMutationList = components['schemas']['ResourceMutationList'];
-export type SchemaResourcePredicates = components['schemas']['ResourcePredicates'];
+export type SchemaResourcePathAnnotations = components['schemas']['ResourcePathAnnotations'];
+export type SchemaResourceProtection = components['schemas']['ResourceProtection'];
 export type SchemaResourceStatus = components['schemas']['ResourceStatus'];
 export type SchemaResourceStatusMap = components['schemas']['ResourceStatusMap'];
-export type SchemaResourceStatusSummary = components['schemas']['ResourceStatusSummary'];
 export type SchemaResourceTypePathsEntry = components['schemas']['ResourceTypePathsEntry'];
 export type SchemaResponseError = components['schemas']['ResponseError'];
 export type SchemaRevision = components['schemas']['Revision'];
+export type SchemaRevisionData = components['schemas']['RevisionData'];
+export type SchemaRevisionMutationSources = components['schemas']['RevisionMutationSources'];
 export type SchemaSchema = components['schemas']['Schema'];
 export type SchemaSpace = components['schemas']['Space'];
 export type SchemaSpaceCreateOrUpdateResponse = components['schemas']['SpaceCreateOrUpdateResponse'];
@@ -5255,20 +6113,28 @@ export type SchemaUuid = components['schemas']['UUID'];
 export type SchemaUnit = components['schemas']['Unit'];
 export type SchemaUnitAction = components['schemas']['UnitAction'];
 export type SchemaUnitActionResponse = components['schemas']['UnitActionResponse'];
+export type SchemaUnitConflictSelector = components['schemas']['UnitConflictSelector'];
+export type SchemaUnitConflictsRequest = components['schemas']['UnitConflictsRequest'];
+export type SchemaUnitConflictsResponse = components['schemas']['UnitConflictsResponse'];
 export type SchemaUnitCreateOrUpdateResponse = components['schemas']['UnitCreateOrUpdateResponse'];
+export type SchemaUnitData = components['schemas']['UnitData'];
 export type SchemaUnitEvent = components['schemas']['UnitEvent'];
 export type SchemaUnitExtended = components['schemas']['UnitExtended'];
-export type SchemaUnitPredicatesRequest = components['schemas']['UnitPredicatesRequest'];
-export type SchemaUnitPredicatesResponse = components['schemas']['UnitPredicatesResponse'];
-export type SchemaUnitStatus = components['schemas']['UnitStatus'];
+export type SchemaUnitGuardRequest = components['schemas']['UnitGuardRequest'];
+export type SchemaUnitGuardResponse = components['schemas']['UnitGuardResponse'];
+export type SchemaUnitMutationSources = components['schemas']['UnitMutationSources'];
+export type SchemaUnitProtectionRequest = components['schemas']['UnitProtectionRequest'];
+export type SchemaUnitProtectionResponse = components['schemas']['UnitProtectionResponse'];
 export type SchemaUnitTagRequest = components['schemas']['UnitTagRequest'];
 export type SchemaUnitTagResponse = components['schemas']['UnitTagResponse'];
 export type SchemaUser = components['schemas']['User'];
+export type SchemaUserKey = components['schemas']['UserKey'];
 export type SchemaValidationResult = components['schemas']['ValidationResult'];
 export type SchemaValidationResultList = components['schemas']['ValidationResultList'];
 export type SchemaView = components['schemas']['View'];
 export type SchemaViewColumn = components['schemas']['ViewColumn'];
 export type SchemaViewCreateOrUpdateResponse = components['schemas']['ViewCreateOrUpdateResponse'];
+export type SchemaWithheldGuard = components['schemas']['WithheldGuard'];
 export type SchemaWorkerInfo = components['schemas']['WorkerInfo'];
 export type $defs = Record<string, never>;
 export interface operations {
@@ -5296,6 +6162,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -5307,7 +6176,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Space: Annotations, AttributeFilterID, AttributeHash, AttributeIDs, CreatedAt, DeleteGates, DisplayName, Labels, OrganizationID, Permissions, Slug, SpaceID, TriggerFilterID, TriggerHash, TriggerIDs, UpdatedAt.
+                 *     Supported attributes for filtering on Space: Annotations, AttributeFilterID, AttributeHash, AttributeIDs, CreatedAt, DeleteGates, DisplayName, Labels, OrganizationID, Permissions, ReleaseBridgeWorkerID, ReleaseTargetID, Slug, SpaceID, TriggerFilterID, TriggerHash, TriggerIDs, UpdatedAt.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -5349,7 +6218,7 @@ export interface operations {
                  *     The attribute names are case-sensitive, PascalCase, and
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *
-                 *     Supported attributes for Space are AttributeFilterID, AttributeIDs, OrganizationID, TriggerFilterID, TriggerIDs.
+                 *     Supported attributes for Space are AttributeFilterID, AttributeIDs, OrganizationID, ReleaseTargetID, TriggerFilterID, TriggerIDs.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -5389,6 +6258,8 @@ export interface operations {
                     Permissions?: {
                         [key: string]: Record<string, never> | null;
                     } | null;
+                    /** Format: uuid */
+                    ReleaseTargetID?: string | null;
                     /** @description Unique URL-safe identifier for the entity. */
                     Slug?: string | null;
                     /** Format: uuid */
@@ -5508,6 +6379,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -5519,7 +6393,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Space: Annotations, AttributeFilterID, AttributeHash, AttributeIDs, CreatedAt, DeleteGates, DisplayName, Labels, OrganizationID, Permissions, Slug, SpaceID, TriggerFilterID, TriggerHash, TriggerIDs, UpdatedAt.
+                 *     Supported attributes for filtering on Space: Annotations, AttributeFilterID, AttributeHash, AttributeIDs, CreatedAt, DeleteGates, DisplayName, Labels, OrganizationID, Permissions, ReleaseBridgeWorkerID, ReleaseTargetID, Slug, SpaceID, TriggerFilterID, TriggerHash, TriggerIDs, UpdatedAt.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -5561,7 +6435,7 @@ export interface operations {
                  *     The attribute names are case-sensitive, PascalCase, and
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *
-                 *     Supported attributes for Space are AttributeFilterID, AttributeIDs, OrganizationID, TriggerFilterID, TriggerIDs.
+                 *     Supported attributes for Space are AttributeFilterID, AttributeIDs, OrganizationID, ReleaseTargetID, TriggerFilterID, TriggerIDs.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -5693,6 +6567,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -5704,7 +6581,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Space: Annotations, AttributeFilterID, AttributeHash, AttributeIDs, CreatedAt, DeleteGates, DisplayName, Labels, OrganizationID, Permissions, Slug, SpaceID, TriggerFilterID, TriggerHash, TriggerIDs, UpdatedAt.
+                 *     Supported attributes for filtering on Space: Annotations, AttributeFilterID, AttributeHash, AttributeIDs, CreatedAt, DeleteGates, DisplayName, Labels, OrganizationID, Permissions, ReleaseBridgeWorkerID, ReleaseTargetID, Slug, SpaceID, TriggerFilterID, TriggerHash, TriggerIDs, UpdatedAt.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -5746,7 +6623,7 @@ export interface operations {
                  *     The attribute names are case-sensitive, PascalCase, and
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *
-                 *     Supported attributes for Space are AttributeFilterID, AttributeIDs, OrganizationID, TriggerFilterID, TriggerIDs.
+                 *     Supported attributes for Space are AttributeFilterID, AttributeIDs, OrganizationID, ReleaseTargetID, TriggerFilterID, TriggerIDs.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -5780,6 +6657,8 @@ export interface operations {
                     Permissions?: {
                         [key: string]: Record<string, never> | null;
                     } | null;
+                    /** Format: uuid */
+                    ReleaseTargetID?: string | null;
                     /** @description Unique URL-safe identifier for the entity. */
                     Slug?: string | null;
                     /** Format: uuid */
@@ -5899,6 +6778,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -5963,7 +6845,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, AttributeID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -6064,6 +6946,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -6145,6 +7030,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -6156,7 +7044,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Space: Annotations, AttributeFilterID, AttributeHash, AttributeIDs, CreatedAt, DeleteGates, DisplayName, Labels, OrganizationID, Permissions, Slug, SpaceID, TriggerFilterID, TriggerHash, TriggerIDs, UpdatedAt.
+                 *     Supported attributes for filtering on Space: Annotations, AttributeFilterID, AttributeHash, AttributeIDs, CreatedAt, DeleteGates, DisplayName, Labels, OrganizationID, Permissions, ReleaseBridgeWorkerID, ReleaseTargetID, Slug, SpaceID, TriggerFilterID, TriggerHash, TriggerIDs, UpdatedAt.
                  *
                  *     Where expression to select destination spaces for cloning attributes
                  *
@@ -6321,6 +7209,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -6502,6 +7393,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -6702,6 +7596,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -6718,6 +7615,20 @@ export interface operations {
                  *     The whole string must be query-encoded.
                  */
                 where?: string;
+                /**
+                 * @description UUID of a Filter entity to apply to the BridgeWorker list.
+                 *
+                 *     The Filter must be in the same Organization as the user credentials.
+                 *
+                 *     The Filter's From field must match the entity type being filtered (BridgeWorker).
+                 *
+                 *     For Space-resident entities, if the Filter has a FromSpaceID, it must match the operation's SpaceID.
+                 *
+                 *     The Filter's Where clause will be combined with any explicit 'where' parameter using AND logic.
+                 *
+                 *     If both 'filter' and 'where' parameters are specified, they are combined with AND logic.
+                 */
+                filter?: string;
                 /**
                  * @description Free text search that approximately matches the specified string against string fields and map keys/values.
                  *
@@ -6752,7 +7663,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, BridgeWorkerID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -6801,6 +7712,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -6982,6 +7896,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -7159,182 +8076,6 @@ export interface operations {
             };
         };
     };
-    CreateActionResult: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Unique identifier for a bridge_worker_id */
-                bridge_worker_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["ActionResult"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": string;
-                };
-            };
-            /** @description BridgeWorker request is invalid (Bad Request). */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Unauthorized access. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Forbidden access. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description BridgeWorker not found. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description BridgeWorker data conflict. Data has changed since last read. */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Something went wrong while processing BridgeWorker. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Unexpected error. */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-        };
-    };
-    GetSelf: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Unique identifier for a bridge_worker_id */
-                bridge_worker_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /**
-             * @description BridgeWorker represents a bridge worker in ConfigHub.
-             *     A bridge worker is a worker program that connects ConfigHub to external systems and targets.
-             *     It acts as a bridge between ConfigHub and the infrastructure where configurations need
-             *     to be applied. Bridge workers are responsible for executing configuration changes on
-             *     remote targets and reporting status back to ConfigHub.
-             *     When starting a bridge worker program, both the BridgeWorkerID and Secret are
-             *     required for authentication with the ConfigHub server. These credentials allow the
-             *     bridge worker to establish a secure connection and receive configuration actions.
-             */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BridgeWorker"];
-                };
-            };
-            /** @description BridgeWorker request is invalid (Bad Request). */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Unauthorized access. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Forbidden access. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description BridgeWorker not found. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Something went wrong while processing BridgeWorker. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Unexpected error. */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-        };
-    };
     ListQueuedOperations: {
         parameters: {
             query?: {
@@ -7359,6 +8100,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -7370,7 +8114,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on QueuedOperation: Action, BridgeWorkerID, CreatedAt, DriftReconciliationMode, DryRun, OrganizationID, QueuedOperationID, RevisionNum, SpaceID, Status, TargetID, UnitActionNum, UnitID.
+                 *     Supported attributes for filtering on QueuedOperation: Action, BridgeWorkerID, CreatedAt, DryRun, OrganizationID, QueuedOperationID, RevisionNum, SpaceID, Status, TargetID, UnitActionNum, UnitID.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -7496,13 +8240,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /**
-             * @description UnitAction is a record of an action to be performed by a Bridge Worker. They are queued and sent to the worker in creation order.
-             *     If the worker is temporarily disconnected the queued actions will be sent when the worker reconnects or responds.
-             *     If there are links between units applied or destroyed in a single API call, they will be sent to the appropriate
-             *     worker(s) in the appropriate order (reverse or forword topological order). One or more UnitEvents will correspond
-             *     to each UnitAction.
-             */
+            /** @description UnitAction is a record of an operation queued for a Worker, such as a function invocation on a unit. Operations are delivered to the worker in creation order; if the worker is disconnected, pending operations are delivered when it reconnects. One or more UnitEvents will correspond to each UnitAction. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -7548,92 +8286,6 @@ export interface operations {
                 };
             };
             /** @description Something went wrong while processing QueuedOperation. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Unexpected error. */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-        };
-    };
-    StreamBridgeWorker: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Unique identifier for a bridge_worker_id */
-                bridge_worker_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "text/event-stream": components["schemas"]["EventMessage"];
-                };
-            };
-            /** @description BridgeWorker request is invalid (Bad Request). */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Unauthorized access. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Forbidden access. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description BridgeWorker not found. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description BridgeWorker data conflict. Data has changed since last read. */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Something went wrong while processing BridgeWorker. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -7743,6 +8395,836 @@ export interface operations {
             };
         };
     };
+    ListAllChangeOrders: {
+        parameters: {
+            query?: {
+                /**
+                 * @description The specified string is an expression for the purpose of filtering
+                 *     the list of ChangeOrders returned. The expression syntax was inspired by SQL.
+                 *     It supports conjunctions using `AND` of relational expressions of the form *attribute*
+                 *     *operator* *attribute_or_literal*. The attribute names are case-sensitive and PascalCase,
+                 *     as in the JSON encoding.
+                 *     Strings support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `LIKE`, `NOT LIKE`, `ILIKE`, `~~`, `!~~`, `~`, `~*`, `!~`, `!~*`, `IN`, `NOT IN`.
+                 *     String pattern operators: `LIKE` and `~~` for pattern matching with `%` and `_` wildcards,
+                 *     `ILIKE` for case-insensitive pattern matching, `NOT LIKE` and `!~~` for negated pattern matching.
+                 *     String regex operators: `~` for regex matching, `~*` for case-insensitive regex,
+                 *     `!~` and `!~*` for regex not matching (case-sensitive and insensitive).
+                 *     Integers support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `IN`, `NOT IN`.
+                 *     UUIDs and boolean attributes support equality and inequality only.
+                 *     UUID and time literals must be quoted as string literals.
+                 *     String literals are quoted with single quotes, such as `'string'`.
+                 *     Time literals use the same form as when serialized as JSON,
+                 *     such as: `CreatedAt > '2025-02-18T23:16:34'`.
+                 *     Integer and boolean literals are also supported for attributes of those types.
+                 *     Arrays support the `?` operator to to match any element of the array,
+                 *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
+                 *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
+                 *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
+                 *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
+                 *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
+                 *     Comparison results can be tested with `IS TRUE`, `IS FALSE`, `IS NOT TRUE`, and `IS NOT FALSE`.
+                 *     These are useful for nullable columns: `MergeSourceID = '<uuid>' IS NOT FALSE` matches rows where MergeSourceID equals the value OR is NULL.
+                 *     The `IN` and `NOT IN` operators accept a comma-separated list of values in parentheses,
+                 *     such as `Slug IN ('slugone', 'slugtwo')` or `Labels.environment IN ('prod', 'staging')`.
+                 *     Conjunctions are supported using the `AND` operator.
+                 *     An example conjunction is:
+                 *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
+                 *
+                 *     Supported attributes for filtering on ChangeOrder: AbortedReason, Annotations, ChangeOrderID, CreatedAt, DeleteGates, Description, DisplayName, EndTagID, InScopeSpaceIDs, Labels, OrganizationID, ReleasedSpaceIDs, ResolvedSpaceIDs, SkippedUnits, Slug, SpaceFilterID, SpaceID, StartTagID, State, UpdateType, UpdatedAt.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                where?: string;
+                /**
+                 * @description UUID of a Filter entity to apply to the ChangeOrder list.
+                 *
+                 *     The Filter must be in the same Organization as the user credentials.
+                 *
+                 *     The Filter's From field must match the entity type being filtered (ChangeOrder).
+                 *
+                 *     For Space-resident entities, if the Filter has a FromSpaceID, it must match the operation's SpaceID.
+                 *
+                 *     The Filter's Where clause will be combined with any explicit 'where' parameter using AND logic.
+                 *
+                 *     If both 'filter' and 'where' parameters are specified, they are combined with AND logic.
+                 */
+                filter?: string;
+                /**
+                 * @description Free text search that approximately matches the specified string against string fields and map keys/values.
+                 *
+                 *     The search is case-insensitive and uses pattern matching to find entities containing the text.
+                 *
+                 *     Searchable string fields include attributes like Slug, DisplayName, and string-typed custom fields.
+                 *
+                 *     For map fields (like Labels and Annotations), the search matches both map keys and values.
+                 *
+                 *     The search uses OR logic across all searchable fields, so matching any field will return the entity.
+                 *
+                 *     If both 'where' and 'contains' parameters are specified, they are combined with AND logic.
+                 *
+                 *     Searchable fields for ChangeOrder include string and map-type attributes from the queryable attributes list.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                contains?: string;
+                /**
+                 * @description Include clause for expanding related entities in the response for ChangeOrder.
+                 *     The attribute names are case-sensitive, PascalCase, and
+                 *     expected in a comma-separated list format as in the JSON encoding.
+                 *
+                 *     Supported attributes for ChangeOrder are EndTagID, OrganizationID, SpaceFilterID, SpaceID, StartTagID.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                include?: string;
+                /**
+                 * @description Select clause for specifying which fields to include in the response for ChangeOrder.
+                 *     The attribute names are case-sensitive, PascalCase, and
+                 *     expected in a comma-separated list format as in the JSON encoding.
+                 *     If not specified, all fields are returned.
+                 *     Entity and parent IDs (like OrganizationID, SpaceID, ChangeOrderID) and Slug are always returned regardless of the select parameter.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
+                 *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
+                 *     The whole string must be query-encoded.
+                 */
+                select?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExtendedChangeOrder"][];
+                };
+            };
+            /** @description ChangeOrder request is invalid (Bad Request). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unauthorized access. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Forbidden access. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description ChangeOrder not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Something went wrong while processing ChangeOrder. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+        };
+    };
+    BulkCreateChangeOrders: {
+        parameters: {
+            query?: {
+                /**
+                 * @description The specified string is an expression for the purpose of filtering
+                 *     the list of ChangeOrders returned. The expression syntax was inspired by SQL.
+                 *     It supports conjunctions using `AND` of relational expressions of the form *attribute*
+                 *     *operator* *attribute_or_literal*. The attribute names are case-sensitive and PascalCase,
+                 *     as in the JSON encoding.
+                 *     Strings support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `LIKE`, `NOT LIKE`, `ILIKE`, `~~`, `!~~`, `~`, `~*`, `!~`, `!~*`, `IN`, `NOT IN`.
+                 *     String pattern operators: `LIKE` and `~~` for pattern matching with `%` and `_` wildcards,
+                 *     `ILIKE` for case-insensitive pattern matching, `NOT LIKE` and `!~~` for negated pattern matching.
+                 *     String regex operators: `~` for regex matching, `~*` for case-insensitive regex,
+                 *     `!~` and `!~*` for regex not matching (case-sensitive and insensitive).
+                 *     Integers support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `IN`, `NOT IN`.
+                 *     UUIDs and boolean attributes support equality and inequality only.
+                 *     UUID and time literals must be quoted as string literals.
+                 *     String literals are quoted with single quotes, such as `'string'`.
+                 *     Time literals use the same form as when serialized as JSON,
+                 *     such as: `CreatedAt > '2025-02-18T23:16:34'`.
+                 *     Integer and boolean literals are also supported for attributes of those types.
+                 *     Arrays support the `?` operator to to match any element of the array,
+                 *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
+                 *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
+                 *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
+                 *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
+                 *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
+                 *     Comparison results can be tested with `IS TRUE`, `IS FALSE`, `IS NOT TRUE`, and `IS NOT FALSE`.
+                 *     These are useful for nullable columns: `MergeSourceID = '<uuid>' IS NOT FALSE` matches rows where MergeSourceID equals the value OR is NULL.
+                 *     The `IN` and `NOT IN` operators accept a comma-separated list of values in parentheses,
+                 *     such as `Slug IN ('slugone', 'slugtwo')` or `Labels.environment IN ('prod', 'staging')`.
+                 *     Conjunctions are supported using the `AND` operator.
+                 *     An example conjunction is:
+                 *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
+                 *
+                 *     Supported attributes for filtering on ChangeOrder: AbortedReason, Annotations, ChangeOrderID, CreatedAt, DeleteGates, Description, DisplayName, EndTagID, InScopeSpaceIDs, Labels, OrganizationID, ReleasedSpaceIDs, ResolvedSpaceIDs, SkippedUnits, Slug, SpaceFilterID, SpaceID, StartTagID, State, UpdateType, UpdatedAt.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                where?: string;
+                /**
+                 * @description UUID of a Filter entity to apply to the ChangeOrder list.
+                 *
+                 *     The Filter must be in the same Organization as the user credentials.
+                 *
+                 *     The Filter's From field must match the entity type being filtered (ChangeOrder).
+                 *
+                 *     For Space-resident entities, if the Filter has a FromSpaceID, it must match the operation's SpaceID.
+                 *
+                 *     The Filter's Where clause will be combined with any explicit 'where' parameter using AND logic.
+                 *
+                 *     If both 'filter' and 'where' parameters are specified, they are combined with AND logic.
+                 */
+                filter?: string;
+                /**
+                 * @description Free text search that approximately matches the specified string against string fields and map keys/values.
+                 *
+                 *     The search is case-insensitive and uses pattern matching to find entities containing the text.
+                 *
+                 *     Searchable string fields include attributes like Slug, DisplayName, and string-typed custom fields.
+                 *
+                 *     For map fields (like Labels and Annotations), the search matches both map keys and values.
+                 *
+                 *     The search uses OR logic across all searchable fields, so matching any field will return the entity.
+                 *
+                 *     If both 'where' and 'contains' parameters are specified, they are combined with AND logic.
+                 *
+                 *     Searchable fields for ChangeOrder include string and map-type attributes from the queryable attributes list.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                contains?: string;
+                /**
+                 * @description Include clause for expanding related entities in the response for ChangeOrder.
+                 *     The attribute names are case-sensitive, PascalCase, and
+                 *     expected in a comma-separated list format as in the JSON encoding.
+                 *
+                 *     Supported attributes for ChangeOrder are EndTagID, OrganizationID, SpaceFilterID, SpaceID, StartTagID.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                include?: string;
+                /** @description Comma-separated list of prefixes to apply to cloned ChangeOrder names */
+                name_prefixes?: string;
+                /** @description Comma-separated list of labels with multiple values for cloned ChangeOrder labels, in the format of key1=value1|value2,key2=value1|value2|value3 */
+                variant_labels?: string;
+                /** @description A string for clone names, use the prefix 'template:' for a Go-template with .SourceEntitySlug to access the original entity's slug and .Labels to access variant labels, example: 'template:{{.SourceEntitySlug}}-{{.Labels.env}}' */
+                name_pattern?: string;
+                /**
+                 * @description The specified string is an expression for the purpose of filtering
+                 *     the list of Spaces returned. The expression syntax was inspired by SQL.
+                 *     It supports conjunctions using `AND` of relational expressions of the form *attribute*
+                 *     *operator* *attribute_or_literal*. The attribute names are case-sensitive and PascalCase,
+                 *     as in the JSON encoding.
+                 *     Strings support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `LIKE`, `NOT LIKE`, `ILIKE`, `~~`, `!~~`, `~`, `~*`, `!~`, `!~*`, `IN`, `NOT IN`.
+                 *     String pattern operators: `LIKE` and `~~` for pattern matching with `%` and `_` wildcards,
+                 *     `ILIKE` for case-insensitive pattern matching, `NOT LIKE` and `!~~` for negated pattern matching.
+                 *     String regex operators: `~` for regex matching, `~*` for case-insensitive regex,
+                 *     `!~` and `!~*` for regex not matching (case-sensitive and insensitive).
+                 *     Integers support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `IN`, `NOT IN`.
+                 *     UUIDs and boolean attributes support equality and inequality only.
+                 *     UUID and time literals must be quoted as string literals.
+                 *     String literals are quoted with single quotes, such as `'string'`.
+                 *     Time literals use the same form as when serialized as JSON,
+                 *     such as: `CreatedAt > '2025-02-18T23:16:34'`.
+                 *     Integer and boolean literals are also supported for attributes of those types.
+                 *     Arrays support the `?` operator to to match any element of the array,
+                 *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
+                 *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
+                 *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
+                 *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
+                 *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
+                 *     Comparison results can be tested with `IS TRUE`, `IS FALSE`, `IS NOT TRUE`, and `IS NOT FALSE`.
+                 *     These are useful for nullable columns: `MergeSourceID = '<uuid>' IS NOT FALSE` matches rows where MergeSourceID equals the value OR is NULL.
+                 *     The `IN` and `NOT IN` operators accept a comma-separated list of values in parentheses,
+                 *     such as `Slug IN ('slugone', 'slugtwo')` or `Labels.environment IN ('prod', 'staging')`.
+                 *     Conjunctions are supported using the `AND` operator.
+                 *     An example conjunction is:
+                 *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
+                 *
+                 *     Supported attributes for filtering on Space: Annotations, AttributeFilterID, AttributeHash, AttributeIDs, CreatedAt, DeleteGates, DisplayName, Labels, OrganizationID, Permissions, ReleaseBridgeWorkerID, ReleaseTargetID, Slug, SpaceID, TriggerFilterID, TriggerHash, TriggerIDs, UpdatedAt.
+                 *
+                 *     Where expression to select destination spaces for cloning changeorders
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                where_space?: string;
+                /**
+                 * @description UUID of a Filter entity to apply to the Space list.
+                 *
+                 *     The Filter must be in the same Organization as the user credentials.
+                 *
+                 *     The Filter's From field must match the entity type being filtered (Space).
+                 *
+                 *     For Space-resident entities, if the Filter has a FromSpaceID, it must match the operation's SpaceID.
+                 *
+                 *     The Filter's Where clause will be combined with any explicit 'where' parameter using AND logic.
+                 *
+                 *     If both 'filter' and 'where' parameters are specified, they are combined with AND logic.
+                 */
+                filter_space?: string;
+                /** @description Allowed values are true and false. Default is false. When true, reports success when an entity already exists and returns the existing entity */
+                allow_exists?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/merge-patch+json": {
+                    AbortedReason?: string | null;
+                    /** @description An optional map of Annotation key/value pairs for tools to attach information to entities. */
+                    Annotations?: {
+                        [key: string]: string | null;
+                    } | null;
+                    /** @description An optional set of gates that, if any is present, will block deletion */
+                    DeleteGates?: {
+                        [key: string]: boolean | null;
+                    } | null;
+                    Description?: string | null;
+                    /** @description Friendly name for the entity. */
+                    DisplayName?: string | null;
+                    /** Format: uuid */
+                    EndTagID?: string | null;
+                    /** @description An optional map of Label key/value pairs to specify identifying attributes of entities for the purpose of grouping and filtering them. */
+                    Labels?: {
+                        [key: string]: string | null;
+                    } | null;
+                    /** @description Unique URL-safe identifier for the entity. */
+                    Slug?: string | null;
+                    /** Format: uuid */
+                    SpaceFilterID?: string | null;
+                    UpdateType?: string | null;
+                    /** @description An entity-specific sequence number used for optimistic concurrency control. The value read must be sent in calls to Update. */
+                    Version?: number | null;
+                    WhereSpace?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeOrderCreateOrUpdateResponse"][];
+                };
+            };
+            /** @description Multi-Status (partial success) */
+            207: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeOrderCreateOrUpdateResponse"][];
+                };
+            };
+            /** @description ChangeOrder request is invalid (Bad Request). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unauthorized access. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Forbidden access. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description ChangeOrder not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description ChangeOrder data conflict. Data has changed since last read. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Something went wrong while processing ChangeOrder. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+        };
+    };
+    BulkDeleteChangeOrders: {
+        parameters: {
+            query?: {
+                /**
+                 * @description The specified string is an expression for the purpose of filtering
+                 *     the list of ChangeOrders returned. The expression syntax was inspired by SQL.
+                 *     It supports conjunctions using `AND` of relational expressions of the form *attribute*
+                 *     *operator* *attribute_or_literal*. The attribute names are case-sensitive and PascalCase,
+                 *     as in the JSON encoding.
+                 *     Strings support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `LIKE`, `NOT LIKE`, `ILIKE`, `~~`, `!~~`, `~`, `~*`, `!~`, `!~*`, `IN`, `NOT IN`.
+                 *     String pattern operators: `LIKE` and `~~` for pattern matching with `%` and `_` wildcards,
+                 *     `ILIKE` for case-insensitive pattern matching, `NOT LIKE` and `!~~` for negated pattern matching.
+                 *     String regex operators: `~` for regex matching, `~*` for case-insensitive regex,
+                 *     `!~` and `!~*` for regex not matching (case-sensitive and insensitive).
+                 *     Integers support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `IN`, `NOT IN`.
+                 *     UUIDs and boolean attributes support equality and inequality only.
+                 *     UUID and time literals must be quoted as string literals.
+                 *     String literals are quoted with single quotes, such as `'string'`.
+                 *     Time literals use the same form as when serialized as JSON,
+                 *     such as: `CreatedAt > '2025-02-18T23:16:34'`.
+                 *     Integer and boolean literals are also supported for attributes of those types.
+                 *     Arrays support the `?` operator to to match any element of the array,
+                 *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
+                 *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
+                 *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
+                 *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
+                 *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
+                 *     Comparison results can be tested with `IS TRUE`, `IS FALSE`, `IS NOT TRUE`, and `IS NOT FALSE`.
+                 *     These are useful for nullable columns: `MergeSourceID = '<uuid>' IS NOT FALSE` matches rows where MergeSourceID equals the value OR is NULL.
+                 *     The `IN` and `NOT IN` operators accept a comma-separated list of values in parentheses,
+                 *     such as `Slug IN ('slugone', 'slugtwo')` or `Labels.environment IN ('prod', 'staging')`.
+                 *     Conjunctions are supported using the `AND` operator.
+                 *     An example conjunction is:
+                 *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
+                 *
+                 *     Supported attributes for filtering on ChangeOrder: AbortedReason, Annotations, ChangeOrderID, CreatedAt, DeleteGates, Description, DisplayName, EndTagID, InScopeSpaceIDs, Labels, OrganizationID, ReleasedSpaceIDs, ResolvedSpaceIDs, SkippedUnits, Slug, SpaceFilterID, SpaceID, StartTagID, State, UpdateType, UpdatedAt.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                where?: string;
+                /**
+                 * @description UUID of a Filter entity to apply to the ChangeOrder list.
+                 *
+                 *     The Filter must be in the same Organization as the user credentials.
+                 *
+                 *     The Filter's From field must match the entity type being filtered (ChangeOrder).
+                 *
+                 *     For Space-resident entities, if the Filter has a FromSpaceID, it must match the operation's SpaceID.
+                 *
+                 *     The Filter's Where clause will be combined with any explicit 'where' parameter using AND logic.
+                 *
+                 *     If both 'filter' and 'where' parameters are specified, they are combined with AND logic.
+                 */
+                filter?: string;
+                /**
+                 * @description Free text search that approximately matches the specified string against string fields and map keys/values.
+                 *
+                 *     The search is case-insensitive and uses pattern matching to find entities containing the text.
+                 *
+                 *     Searchable string fields include attributes like Slug, DisplayName, and string-typed custom fields.
+                 *
+                 *     For map fields (like Labels and Annotations), the search matches both map keys and values.
+                 *
+                 *     The search uses OR logic across all searchable fields, so matching any field will return the entity.
+                 *
+                 *     If both 'where' and 'contains' parameters are specified, they are combined with AND logic.
+                 *
+                 *     Searchable fields for ChangeOrder include string and map-type attributes from the queryable attributes list.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                contains?: string;
+                /**
+                 * @description Include clause for expanding related entities in the response for ChangeOrder.
+                 *     The attribute names are case-sensitive, PascalCase, and
+                 *     expected in a comma-separated list format as in the JSON encoding.
+                 *
+                 *     Supported attributes for ChangeOrder are EndTagID, OrganizationID, SpaceFilterID, SpaceID, StartTagID.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                include?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeleteResponse"][];
+                };
+            };
+            /** @description Multi-Status: Mixed success and failure results */
+            207: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeleteResponse"][];
+                };
+            };
+            /** @description ChangeOrder request is invalid (Bad Request). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unauthorized access. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Forbidden access. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description ChangeOrder not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description ChangeOrder data conflict. Data has changed since last read. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unable to delete entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Something went wrong while processing ChangeOrder. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+        };
+    };
+    BulkPatchChangeOrders: {
+        parameters: {
+            query?: {
+                /**
+                 * @description The specified string is an expression for the purpose of filtering
+                 *     the list of ChangeOrders returned. The expression syntax was inspired by SQL.
+                 *     It supports conjunctions using `AND` of relational expressions of the form *attribute*
+                 *     *operator* *attribute_or_literal*. The attribute names are case-sensitive and PascalCase,
+                 *     as in the JSON encoding.
+                 *     Strings support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `LIKE`, `NOT LIKE`, `ILIKE`, `~~`, `!~~`, `~`, `~*`, `!~`, `!~*`, `IN`, `NOT IN`.
+                 *     String pattern operators: `LIKE` and `~~` for pattern matching with `%` and `_` wildcards,
+                 *     `ILIKE` for case-insensitive pattern matching, `NOT LIKE` and `!~~` for negated pattern matching.
+                 *     String regex operators: `~` for regex matching, `~*` for case-insensitive regex,
+                 *     `!~` and `!~*` for regex not matching (case-sensitive and insensitive).
+                 *     Integers support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `IN`, `NOT IN`.
+                 *     UUIDs and boolean attributes support equality and inequality only.
+                 *     UUID and time literals must be quoted as string literals.
+                 *     String literals are quoted with single quotes, such as `'string'`.
+                 *     Time literals use the same form as when serialized as JSON,
+                 *     such as: `CreatedAt > '2025-02-18T23:16:34'`.
+                 *     Integer and boolean literals are also supported for attributes of those types.
+                 *     Arrays support the `?` operator to to match any element of the array,
+                 *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
+                 *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
+                 *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
+                 *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
+                 *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
+                 *     Comparison results can be tested with `IS TRUE`, `IS FALSE`, `IS NOT TRUE`, and `IS NOT FALSE`.
+                 *     These are useful for nullable columns: `MergeSourceID = '<uuid>' IS NOT FALSE` matches rows where MergeSourceID equals the value OR is NULL.
+                 *     The `IN` and `NOT IN` operators accept a comma-separated list of values in parentheses,
+                 *     such as `Slug IN ('slugone', 'slugtwo')` or `Labels.environment IN ('prod', 'staging')`.
+                 *     Conjunctions are supported using the `AND` operator.
+                 *     An example conjunction is:
+                 *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
+                 *
+                 *     Supported attributes for filtering on ChangeOrder: AbortedReason, Annotations, ChangeOrderID, CreatedAt, DeleteGates, Description, DisplayName, EndTagID, InScopeSpaceIDs, Labels, OrganizationID, ReleasedSpaceIDs, ResolvedSpaceIDs, SkippedUnits, Slug, SpaceFilterID, SpaceID, StartTagID, State, UpdateType, UpdatedAt.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                where?: string;
+                /**
+                 * @description UUID of a Filter entity to apply to the ChangeOrder list.
+                 *
+                 *     The Filter must be in the same Organization as the user credentials.
+                 *
+                 *     The Filter's From field must match the entity type being filtered (ChangeOrder).
+                 *
+                 *     For Space-resident entities, if the Filter has a FromSpaceID, it must match the operation's SpaceID.
+                 *
+                 *     The Filter's Where clause will be combined with any explicit 'where' parameter using AND logic.
+                 *
+                 *     If both 'filter' and 'where' parameters are specified, they are combined with AND logic.
+                 */
+                filter?: string;
+                /**
+                 * @description Free text search that approximately matches the specified string against string fields and map keys/values.
+                 *
+                 *     The search is case-insensitive and uses pattern matching to find entities containing the text.
+                 *
+                 *     Searchable string fields include attributes like Slug, DisplayName, and string-typed custom fields.
+                 *
+                 *     For map fields (like Labels and Annotations), the search matches both map keys and values.
+                 *
+                 *     The search uses OR logic across all searchable fields, so matching any field will return the entity.
+                 *
+                 *     If both 'where' and 'contains' parameters are specified, they are combined with AND logic.
+                 *
+                 *     Searchable fields for ChangeOrder include string and map-type attributes from the queryable attributes list.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                contains?: string;
+                /**
+                 * @description Include clause for expanding related entities in the response for ChangeOrder.
+                 *     The attribute names are case-sensitive, PascalCase, and
+                 *     expected in a comma-separated list format as in the JSON encoding.
+                 *
+                 *     Supported attributes for ChangeOrder are EndTagID, OrganizationID, SpaceFilterID, SpaceID, StartTagID.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                include?: string;
+                /** @description If true, re-evaluate WhereSpace and/or SpaceFilterID into InScopeSpaceIDs, and re-derive what the ChangeOrder covers against the Spaces they now select, even if neither field has changed */
+                refresh_spaces?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/merge-patch+json": {
+                    AbortedReason?: string | null;
+                    /** @description An optional map of Annotation key/value pairs for tools to attach information to entities. */
+                    Annotations?: {
+                        [key: string]: string | null;
+                    } | null;
+                    /** @description An optional set of gates that, if any is present, will block deletion */
+                    DeleteGates?: {
+                        [key: string]: boolean | null;
+                    } | null;
+                    Description?: string | null;
+                    /** @description Friendly name for the entity. */
+                    DisplayName?: string | null;
+                    /** Format: uuid */
+                    EndTagID?: string | null;
+                    /** @description An optional map of Label key/value pairs to specify identifying attributes of entities for the purpose of grouping and filtering them. */
+                    Labels?: {
+                        [key: string]: string | null;
+                    } | null;
+                    /** @description Unique URL-safe identifier for the entity. */
+                    Slug?: string | null;
+                    /** Format: uuid */
+                    SpaceFilterID?: string | null;
+                    UpdateType?: string | null;
+                    /** @description An entity-specific sequence number used for optimistic concurrency control. The value read must be sent in calls to Update. */
+                    Version?: number | null;
+                    WhereSpace?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeOrderCreateOrUpdateResponse"][];
+                };
+            };
+            /** @description Multi-Status: Mixed success and failure results */
+            207: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeOrderCreateOrUpdateResponse"][];
+                };
+            };
+            /** @description ChangeOrder request is invalid (Bad Request). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unauthorized access. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Forbidden access. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description ChangeOrder not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description ChangeOrder data conflict. Data has changed since last read. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Something went wrong while processing ChangeOrder. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+        };
+    };
     ListAllChangeSets: {
         parameters: {
             query?: {
@@ -7767,6 +9249,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -7778,7 +9263,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on ChangeSet: Annotations, ChangeSetID, CreatedAt, DeleteGates, Description, DisplayName, EndTagID, Labels, OrganizationID, Slug, SpaceID, StartTagID, State, UpdatedAt.
+                 *     Supported attributes for filtering on ChangeSet: Annotations, ChangeSetID, CreatedAt, DeleteGates, Description, DisplayName, EndTagID, Labels, OrganizationID, Slug, SpaceID, StartTagID, StartTagIsPriorRevision, State, UpdatedAt, UpstreamChangeSetID.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -7831,7 +9316,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, ChangeSetID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -7932,6 +9417,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -7943,7 +9431,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on ChangeSet: Annotations, ChangeSetID, CreatedAt, DeleteGates, Description, DisplayName, EndTagID, Labels, OrganizationID, Slug, SpaceID, StartTagID, State, UpdatedAt.
+                 *     Supported attributes for filtering on ChangeSet: Annotations, ChangeSetID, CreatedAt, DeleteGates, Description, DisplayName, EndTagID, Labels, OrganizationID, Slug, SpaceID, StartTagID, StartTagIsPriorRevision, State, UpdatedAt, UpstreamChangeSetID.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -8017,6 +9505,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -8028,7 +9519,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Space: Annotations, AttributeFilterID, AttributeHash, AttributeIDs, CreatedAt, DeleteGates, DisplayName, Labels, OrganizationID, Permissions, Slug, SpaceID, TriggerFilterID, TriggerHash, TriggerIDs, UpdatedAt.
+                 *     Supported attributes for filtering on Space: Annotations, AttributeFilterID, AttributeHash, AttributeIDs, CreatedAt, DeleteGates, DisplayName, Labels, OrganizationID, Permissions, ReleaseBridgeWorkerID, ReleaseTargetID, Slug, SpaceID, TriggerFilterID, TriggerHash, TriggerIDs, UpdatedAt.
                  *
                  *     Where expression to select destination spaces for cloning changesets
                  *
@@ -8076,6 +9567,8 @@ export interface operations {
                     } | null;
                     /** @description Unique URL-safe identifier for the entity. */
                     Slug?: string | null;
+                    /** Format: uuid */
+                    UpstreamChangeSetID?: string | null;
                     /** @description An entity-specific sequence number used for optimistic concurrency control. The value read must be sent in calls to Update. */
                     Version?: number | null;
                 };
@@ -8189,6 +9682,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -8200,7 +9696,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on ChangeSet: Annotations, ChangeSetID, CreatedAt, DeleteGates, Description, DisplayName, EndTagID, Labels, OrganizationID, Slug, SpaceID, StartTagID, State, UpdatedAt.
+                 *     Supported attributes for filtering on ChangeSet: Annotations, ChangeSetID, CreatedAt, DeleteGates, Description, DisplayName, EndTagID, Labels, OrganizationID, Slug, SpaceID, StartTagID, StartTagIsPriorRevision, State, UpdatedAt, UpstreamChangeSetID.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -8370,6 +9866,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -8381,7 +9880,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on ChangeSet: Annotations, ChangeSetID, CreatedAt, DeleteGates, Description, DisplayName, EndTagID, Labels, OrganizationID, Slug, SpaceID, StartTagID, State, UpdatedAt.
+                 *     Supported attributes for filtering on ChangeSet: Annotations, ChangeSetID, CreatedAt, DeleteGates, Description, DisplayName, EndTagID, Labels, OrganizationID, Slug, SpaceID, StartTagID, StartTagIsPriorRevision, State, UpdatedAt, UpstreamChangeSetID.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -8453,6 +9952,8 @@ export interface operations {
                     } | null;
                     /** @description Unique URL-safe identifier for the entity. */
                     Slug?: string | null;
+                    /** Format: uuid */
+                    UpstreamChangeSetID?: string | null;
                     /** @description An entity-specific sequence number used for optimistic concurrency control. The value read must be sent in calls to Update. */
                     Version?: number | null;
                 };
@@ -8566,6 +10067,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -8630,7 +10134,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, FilterID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -8735,6 +10239,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -8820,6 +10327,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -8831,7 +10341,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Space: Annotations, AttributeFilterID, AttributeHash, AttributeIDs, CreatedAt, DeleteGates, DisplayName, Labels, OrganizationID, Permissions, Slug, SpaceID, TriggerFilterID, TriggerHash, TriggerIDs, UpdatedAt.
+                 *     Supported attributes for filtering on Space: Annotations, AttributeFilterID, AttributeHash, AttributeIDs, CreatedAt, DeleteGates, DisplayName, Labels, OrganizationID, Permissions, ReleaseBridgeWorkerID, ReleaseTargetID, Slug, SpaceID, TriggerFilterID, TriggerHash, TriggerIDs, UpdatedAt.
                  *
                  *     Where expression to select destination spaces for cloning filters
                  *
@@ -8997,6 +10507,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -9178,6 +10691,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -9381,6 +10897,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -9392,7 +10911,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on FunctionSignature: AttributeName, Description, FunctionName, FunctionType, Hermetic, Idempotent, Mutating, OutputInfo.Description, OutputInfo.OutputType, OutputInfo.ResultName, RequiredParameters, ToolchainType, Validating, VarArgs.
+                 *     Supported attributes for filtering on FunctionSignature: AttributeName, Description, FunctionName, FunctionType, Hermetic, Idempotent, Mutating, OutputInfo.Description, OutputInfo.OutputType, OutputInfo.ResultName, Replayable, RequiredParameters, ToolchainType, Validating, VarArgs.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -9480,6 +10999,10 @@ export interface operations {
                 executor_space?: string;
                 /** @description Dry run mode: when true, skip updating configuration data even if it changed */
                 dry_run?: string;
+                /** @description Record the paths this operation writes as protected local overrides, so a later merge from upstream does not overwrite them. Without it the operation claims nothing: each written path keeps whatever the Unit already has for it, and a path with no history is left unprotected. It only ever adds protection -- re-opening a path is the /protection API (cub unit set-protection --unprotect). */
+                protect?: boolean;
+                /** @description The classes of guarded reason this operation is cleared for, as a JSON Clearance -- a list of {Key, Operator, Values} requirements, where Operator is Exists, In, NotIn, or DoesNotExist. A path whose guards this does not cover is not written, and the withheld change is reported as a Guarded conflict. An absent or empty clearance clears nothing, which only matters for a Unit that has guards. */
+                clearance?: string;
                 /** @description Must match ChangeSetID of affected Units unless in dry run mode; not valid when invoked on Revisions */
                 change_set_id?: string;
                 /** @description User-defined category for the Mutation. Must be alphanumeric, at most 64 characters. The prefix 'ConfigHub' is reserved. */
@@ -9507,6 +11030,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -9518,7 +11044,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Unit: Annotations, ApplyGates, ApplyWarnings, ApprovedBy, BridgeWorkerID, ChangeSetID, CreatedAt, DataHash, DeleteGates, DestroyGates, DisplayName, DriftReconciliationMode, FromLinkID, HeadRevisionNum, HeadUnitActionNum, HeadUnitEventNum, Labels, LastActionAt, LastAppliedRevisionNum, LastChangeDescription, LiveRevisionNum, OrganizationID, PreviousLiveRevisionNum, ProviderType, Slug, SpaceID, TargetID, TargetOptions, ToolchainType, UnitID, UpdatedAt, UpstreamOrganizationID, UpstreamRevisionNum, UpstreamSpaceID, UpstreamUnitID, Values.
+                 *     Supported attributes for filtering on Unit: Annotations, ApplyGates, ApplyWarnings, ApprovedBy, BridgeWorkerID, ChangeSetID, Conflicts, CreatedAt, DataHash, DeleteGates, DestroyGates, DisplayName, FromLinkID, HeadRevisionNum, HeadUnitActionNum, HeadUnitEventNum, Labels, LastActionAt, LastAppliedRevisionNum, LastChangeDescription, LiveRevisionNum, OrganizationID, PreviousLiveRevisionNum, ProviderType, Slug, SpaceID, TargetID, TargetOptions, ToolchainType, UnitID, UpdatedAt, UpstreamRevisionNum, UpstreamSpaceID, UpstreamUnitID, Values.
                  *
                  *     Finding all units created by cloning can be done using the expression `UpstreamRevisionNum > 0`. Clones of a specific unit can be found by additionally filtering based on `UpstreamUnitID`. Unapplied units can be found using `LiveRevisionNum = 0`. Units with unapplied changes can be found with `HeadRevisionNum > LiveRevisionNum`.
                  *
@@ -9539,6 +11065,8 @@ export interface operations {
                  *     If both 'filter' and 'where' parameters are specified, they are combined with AND logic.
                  */
                 filter?: string;
+                /** @description Comma-separated parts of the result to return in addition to the default: ConfigData for the configuration the invocation produced, carried whether or not the invocation changed it. Without it, the configuration is present only when the invocation changed it, and an unchanged result is reported by DataHash alone. */
+                include?: string;
                 /** @description Resource type: Resource type to match for the desired ToolchainType, for example apps/v1/Deployment */
                 resource_type?: string;
                 /** @description Where data: The specified string is an expression for the purpose of evaluating whether the configuration data matches the filter. It supports conjunctions using `AND` of relational expressions of the form *path* *operator* *literal*. The path specifications are dot-separated, for both map fields and array indices, as in `spec.template.spec.containers.0.image = 'ghcr.io/headlamp-k8s/headlamp:latest' AND spec.replicas > 1`. Path expressions support `*` for wildcard array or map segments and `?key=value` syntax for associative matches of array elements containing objects with a `key` attribute. Strings support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `LIKE`, `ILIKE`, `~~`, `!~~`, `~`, `!~`, `~*`, `!~*`, `IN`, `NOT IN`. String pattern operators: `LIKE` and `~~` for pattern matching with `%` and `_` wildcards, `ILIKE` for case-insensitive pattern matching, `!~~` for NOT LIKE. String regex operators: `~` for regex matching, `~*` for case-insensitive regex, `!~` and `!~*` for regex not matching (case-sensitive and insensitive). Integers support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `IN`, `NOT IN`. Boolean values support equality and inequality only. The `IN` and `NOT IN` operators accept a comma-separated list of values in parentheses, such as `spec.template.spec.containers.0.image#reference IN (':latest', ':arm64-latest')`. The syntax `.|` requires the preceding path to exist; otherwise the relation `!=` will always return true regardless what it is compared with. String literals are quoted with single quotes, such as `'string'`. Integer and boolean literals are also supported for attributes of those types. The whole string must be query-encoded. */
@@ -9725,6 +11253,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -9736,7 +11267,9 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Invocation: Annotations, BridgeWorkerID, CreatedAt, DeleteGates, DisplayName, FunctionName, Hash, InvocationID, Labels, OrganizationID, Slug, SpaceID, ToolchainType, UpdatedAt.
+                 *     Supported attributes for filtering on Invocation: Annotations, BridgeWorkerID, CreatedAt, DeleteGates, DisplayName, FunctionInvocations, Hash, InvocationID, Labels, OrganizationID, Slug, SpaceID, ToolchainType, UpdatedAt.
+                 *
+                 *     The functions an Invocation calls are addressed with dot notation into `FunctionInvocations`: `FunctionInvocations.*.FunctionName = 'set-image'` matches an Invocation that calls set-image anywhere in its list, and `FunctionInvocations.0.FunctionName` addresses the first function it calls.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -9789,7 +11322,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, InvocationID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -9890,6 +11423,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -9901,7 +11437,9 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Invocation: Annotations, BridgeWorkerID, CreatedAt, DeleteGates, DisplayName, FunctionName, Hash, InvocationID, Labels, OrganizationID, Slug, SpaceID, ToolchainType, UpdatedAt.
+                 *     Supported attributes for filtering on Invocation: Annotations, BridgeWorkerID, CreatedAt, DeleteGates, DisplayName, FunctionInvocations, Hash, InvocationID, Labels, OrganizationID, Slug, SpaceID, ToolchainType, UpdatedAt.
+                 *
+                 *     The functions an Invocation calls are addressed with dot notation into `FunctionInvocations`: `FunctionInvocations.*.FunctionName = 'set-image'` matches an Invocation that calls set-image anywhere in its list, and `FunctionInvocations.0.FunctionName` addresses the first function it calls.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -9975,6 +11513,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -9986,7 +11527,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Space: Annotations, AttributeFilterID, AttributeHash, AttributeIDs, CreatedAt, DeleteGates, DisplayName, Labels, OrganizationID, Permissions, Slug, SpaceID, TriggerFilterID, TriggerHash, TriggerIDs, UpdatedAt.
+                 *     Supported attributes for filtering on Space: Annotations, AttributeFilterID, AttributeHash, AttributeIDs, CreatedAt, DeleteGates, DisplayName, Labels, OrganizationID, Permissions, ReleaseBridgeWorkerID, ReleaseTargetID, Slug, SpaceID, TriggerFilterID, TriggerHash, TriggerIDs, UpdatedAt.
                  *
                  *     Where expression to select destination spaces for cloning invocations
                  *
@@ -10021,8 +11562,6 @@ export interface operations {
                     Annotations?: {
                         [key: string]: string | null;
                     } | null;
-                    /** @description Function arguments */
-                    Arguments?: (Record<string, never> | null)[] | null;
                     /** Format: uuid */
                     BridgeWorkerID?: string | null;
                     /** @description An optional set of gates that, if any is present, will block deletion */
@@ -10031,19 +11570,17 @@ export interface operations {
                     } | null;
                     /** @description Friendly name for the entity. */
                     DisplayName?: string | null;
-                    /** @description Function name */
-                    FunctionName?: string | null;
+                    FunctionInvocations?: (Record<string, never> | null)[] | null;
                     /** @description An optional map of Label key/value pairs to specify identifying attributes of entities for the purpose of grouping and filtering them. */
                     Labels?: {
                         [key: string]: string | null;
                     } | null;
+                    Parameters?: (Record<string, never> | null)[] | null;
                     /** @description Unique URL-safe identifier for the entity. */
                     Slug?: string | null;
                     ToolchainType?: string | null;
                     /** @description An entity-specific sequence number used for optimistic concurrency control. The value read must be sent in calls to Update. */
                     Version?: number | null;
-                    /** @description Per-invocation resource filter. AND-combined with the request-level WhereResource. Same path syntax as the request-level field (see ParseAndValidateWhereResource). */
-                    WhereResource?: string | null;
                 };
             };
         };
@@ -10155,6 +11692,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -10166,7 +11706,9 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Invocation: Annotations, BridgeWorkerID, CreatedAt, DeleteGates, DisplayName, FunctionName, Hash, InvocationID, Labels, OrganizationID, Slug, SpaceID, ToolchainType, UpdatedAt.
+                 *     Supported attributes for filtering on Invocation: Annotations, BridgeWorkerID, CreatedAt, DeleteGates, DisplayName, FunctionInvocations, Hash, InvocationID, Labels, OrganizationID, Slug, SpaceID, ToolchainType, UpdatedAt.
+                 *
+                 *     The functions an Invocation calls are addressed with dot notation into `FunctionInvocations`: `FunctionInvocations.*.FunctionName = 'set-image'` matches an Invocation that calls set-image anywhere in its list, and `FunctionInvocations.0.FunctionName` addresses the first function it calls.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -10336,6 +11878,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -10347,7 +11892,9 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Invocation: Annotations, BridgeWorkerID, CreatedAt, DeleteGates, DisplayName, FunctionName, Hash, InvocationID, Labels, OrganizationID, Slug, SpaceID, ToolchainType, UpdatedAt.
+                 *     Supported attributes for filtering on Invocation: Annotations, BridgeWorkerID, CreatedAt, DeleteGates, DisplayName, FunctionInvocations, Hash, InvocationID, Labels, OrganizationID, Slug, SpaceID, ToolchainType, UpdatedAt.
+                 *
+                 *     The functions an Invocation calls are addressed with dot notation into `FunctionInvocations`: `FunctionInvocations.*.FunctionName = 'set-image'` matches an Invocation that calls set-image anywhere in its list, and `FunctionInvocations.0.FunctionName` addresses the first function it calls.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -10406,8 +11953,6 @@ export interface operations {
                     Annotations?: {
                         [key: string]: string | null;
                     } | null;
-                    /** @description Function arguments */
-                    Arguments?: (Record<string, never> | null)[] | null;
                     /** Format: uuid */
                     BridgeWorkerID?: string | null;
                     /** @description An optional set of gates that, if any is present, will block deletion */
@@ -10416,19 +11961,17 @@ export interface operations {
                     } | null;
                     /** @description Friendly name for the entity. */
                     DisplayName?: string | null;
-                    /** @description Function name */
-                    FunctionName?: string | null;
+                    FunctionInvocations?: (Record<string, never> | null)[] | null;
                     /** @description An optional map of Label key/value pairs to specify identifying attributes of entities for the purpose of grouping and filtering them. */
                     Labels?: {
                         [key: string]: string | null;
                     } | null;
+                    Parameters?: (Record<string, never> | null)[] | null;
                     /** @description Unique URL-safe identifier for the entity. */
                     Slug?: string | null;
                     ToolchainType?: string | null;
                     /** @description An entity-specific sequence number used for optimistic concurrency control. The value read must be sent in calls to Update. */
                     Version?: number | null;
-                    /** @description Per-invocation resource filter. AND-combined with the request-level WhereResource. Same path syntax as the request-level field (see ParseAndValidateWhereResource). */
-                    WhereResource?: string | null;
                 };
             };
         };
@@ -10540,6 +12083,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -10551,7 +12097,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Link: Annotations, AutoUpdate, CreatedAt, DeleteGates, DisplayName, DownstreamLastMergedRevisionNum, FromUnitID, Hash, Labels, LinkID, MergeDisableSubtraction, OrganizationID, Slug, SpaceID, ToSpaceID, ToUnitID, TransformInvocationID, UpdateType, UpdatedAt, UpstreamLastMergedRevisionNum, UpstreamLinkID, UpstreamOrganizationID, UpstreamSpaceID, UseLiveState.
+                 *     Supported attributes for filtering on Link: Annotations, AutoUpdate, CreatedAt, DeleteGates, DisplayName, DownstreamLastMergedRevisionNum, FromUnitID, Hash, Labels, LinkID, MergeEnableSubtraction, OrganizationID, Protect, Slug, SpaceID, Squash, Stale, ToSpaceID, ToUnitID, TransformInvocationID, UpdateType, UpdatedAt, UpstreamLastMergedRevisionNum, UpstreamLinkID, UpstreamSpaceID.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -10604,7 +12150,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, LinkID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -10705,6 +12251,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -10716,7 +12265,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Link: Annotations, AutoUpdate, CreatedAt, DeleteGates, DisplayName, DownstreamLastMergedRevisionNum, FromUnitID, Hash, Labels, LinkID, MergeDisableSubtraction, OrganizationID, Slug, SpaceID, ToSpaceID, ToUnitID, TransformInvocationID, UpdateType, UpdatedAt, UpstreamLastMergedRevisionNum, UpstreamLinkID, UpstreamOrganizationID, UpstreamSpaceID, UseLiveState.
+                 *     Supported attributes for filtering on Link: Annotations, AutoUpdate, CreatedAt, DeleteGates, DisplayName, DownstreamLastMergedRevisionNum, FromUnitID, Hash, Labels, LinkID, MergeEnableSubtraction, OrganizationID, Protect, Slug, SpaceID, Squash, Stale, ToSpaceID, ToUnitID, TransformInvocationID, UpdateType, UpdatedAt, UpstreamLastMergedRevisionNum, UpstreamLinkID, UpstreamSpaceID.
                  *
                  *     Where expression to select source links to copy
                  *
@@ -10760,6 +12309,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -10771,7 +12323,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Link: Annotations, AutoUpdate, CreatedAt, DeleteGates, DisplayName, DownstreamLastMergedRevisionNum, FromUnitID, Hash, Labels, LinkID, MergeDisableSubtraction, OrganizationID, Slug, SpaceID, ToSpaceID, ToUnitID, TransformInvocationID, UpdateType, UpdatedAt, UpstreamLastMergedRevisionNum, UpstreamLinkID, UpstreamOrganizationID, UpstreamSpaceID, UseLiveState.
+                 *     Supported attributes for filtering on Link: Annotations, AutoUpdate, CreatedAt, DeleteGates, DisplayName, DownstreamLastMergedRevisionNum, FromUnitID, Hash, Labels, LinkID, MergeEnableSubtraction, OrganizationID, Protect, Slug, SpaceID, Squash, Stale, ToSpaceID, ToUnitID, TransformInvocationID, UpdateType, UpdatedAt, UpstreamLastMergedRevisionNum, UpstreamLinkID, UpstreamSpaceID.
                  *
                  *     Where expression to find downstream UpgradeUnit links from each source link's FromUnit. Creates one copy per match. Required if reverse is not specified.
                  *
@@ -10799,6 +12351,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -10810,7 +12365,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Link: Annotations, AutoUpdate, CreatedAt, DeleteGates, DisplayName, DownstreamLastMergedRevisionNum, FromUnitID, Hash, Labels, LinkID, MergeDisableSubtraction, OrganizationID, Slug, SpaceID, ToSpaceID, ToUnitID, TransformInvocationID, UpdateType, UpdatedAt, UpstreamLastMergedRevisionNum, UpstreamLinkID, UpstreamOrganizationID, UpstreamSpaceID, UseLiveState.
+                 *     Supported attributes for filtering on Link: Annotations, AutoUpdate, CreatedAt, DeleteGates, DisplayName, DownstreamLastMergedRevisionNum, FromUnitID, Hash, Labels, LinkID, MergeEnableSubtraction, OrganizationID, Protect, Slug, SpaceID, Squash, Stale, ToSpaceID, ToUnitID, TransformInvocationID, UpdateType, UpdatedAt, UpstreamLastMergedRevisionNum, UpstreamLinkID, UpstreamSpaceID.
                  *
                  *     Where expression to find downstream UpgradeUnit link from each source link's ToUnit. Exactly one match required. If omitted, ToUnitID/ToSpaceID are unchanged.
                  *
@@ -10833,6 +12388,7 @@ export interface operations {
                     } | null;
                     AutoUpdate?: boolean | null;
                     Bindings?: (Record<string, never> | null)[] | null;
+                    Clearance?: (Record<string, never> | null)[] | null;
                     /** @description An optional set of gates that, if any is present, will block deletion */
                     DeleteGates?: {
                         [key: string]: boolean | null;
@@ -10848,9 +12404,11 @@ export interface operations {
                     Labels?: {
                         [key: string]: string | null;
                     } | null;
-                    MergeDisableSubtraction?: boolean | null;
+                    MergeEnableSubtraction?: boolean | null;
+                    Protect?: boolean | null;
                     /** @description Unique URL-safe identifier for the entity. */
                     Slug?: string | null;
+                    Squash?: boolean | null;
                     /** Format: uuid */
                     ToSpaceID?: string | null;
                     /** Format: uuid */
@@ -10861,7 +12419,6 @@ export interface operations {
                     UpstreamGetters?: (Record<string, never> | null)[] | null;
                     UpstreamLastMergedRevisionNum?: number | null;
                     UpstreamPaths?: (Record<string, never> | null)[] | null;
-                    UseLiveState?: boolean | null;
                     /** @description An entity-specific sequence number used for optimistic concurrency control. The value read must be sent in calls to Update. */
                     Version?: number | null;
                     WhereMutation?: string | null;
@@ -10977,6 +12534,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -10988,7 +12548,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Link: Annotations, AutoUpdate, CreatedAt, DeleteGates, DisplayName, DownstreamLastMergedRevisionNum, FromUnitID, Hash, Labels, LinkID, MergeDisableSubtraction, OrganizationID, Slug, SpaceID, ToSpaceID, ToUnitID, TransformInvocationID, UpdateType, UpdatedAt, UpstreamLastMergedRevisionNum, UpstreamLinkID, UpstreamOrganizationID, UpstreamSpaceID, UseLiveState.
+                 *     Supported attributes for filtering on Link: Annotations, AutoUpdate, CreatedAt, DeleteGates, DisplayName, DownstreamLastMergedRevisionNum, FromUnitID, Hash, Labels, LinkID, MergeEnableSubtraction, OrganizationID, Protect, Slug, SpaceID, Squash, Stale, ToSpaceID, ToUnitID, TransformInvocationID, UpdateType, UpdatedAt, UpstreamLastMergedRevisionNum, UpstreamLinkID, UpstreamSpaceID.
                  *
                  *     filter
                  *
@@ -11160,6 +12720,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -11171,7 +12734,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Link: Annotations, AutoUpdate, CreatedAt, DeleteGates, DisplayName, DownstreamLastMergedRevisionNum, FromUnitID, Hash, Labels, LinkID, MergeDisableSubtraction, OrganizationID, Slug, SpaceID, ToSpaceID, ToUnitID, TransformInvocationID, UpdateType, UpdatedAt, UpstreamLastMergedRevisionNum, UpstreamLinkID, UpstreamOrganizationID, UpstreamSpaceID, UseLiveState.
+                 *     Supported attributes for filtering on Link: Annotations, AutoUpdate, CreatedAt, DeleteGates, DisplayName, DownstreamLastMergedRevisionNum, FromUnitID, Hash, Labels, LinkID, MergeEnableSubtraction, OrganizationID, Protect, Slug, SpaceID, Squash, Stale, ToSpaceID, ToUnitID, TransformInvocationID, UpdateType, UpdatedAt, UpstreamLastMergedRevisionNum, UpstreamLinkID, UpstreamSpaceID.
                  *
                  *     filter
                  *
@@ -11236,6 +12799,7 @@ export interface operations {
                     } | null;
                     AutoUpdate?: boolean | null;
                     Bindings?: (Record<string, never> | null)[] | null;
+                    Clearance?: (Record<string, never> | null)[] | null;
                     /** @description An optional set of gates that, if any is present, will block deletion */
                     DeleteGates?: {
                         [key: string]: boolean | null;
@@ -11251,9 +12815,11 @@ export interface operations {
                     Labels?: {
                         [key: string]: string | null;
                     } | null;
-                    MergeDisableSubtraction?: boolean | null;
+                    MergeEnableSubtraction?: boolean | null;
+                    Protect?: boolean | null;
                     /** @description Unique URL-safe identifier for the entity. */
                     Slug?: string | null;
+                    Squash?: boolean | null;
                     /** Format: uuid */
                     ToSpaceID?: string | null;
                     /** Format: uuid */
@@ -11264,7 +12830,6 @@ export interface operations {
                     UpstreamGetters?: (Record<string, never> | null)[] | null;
                     UpstreamLastMergedRevisionNum?: number | null;
                     UpstreamPaths?: (Record<string, never> | null)[] | null;
-                    UseLiveState?: boolean | null;
                     /** @description An entity-specific sequence number used for optimistic concurrency control. The value read must be sent in calls to Update. */
                     Version?: number | null;
                     WhereMutation?: string | null;
@@ -11430,6 +12995,339 @@ export interface operations {
             };
         };
     };
+    ListOAuthClients: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OAuthClient"][];
+                };
+            };
+            /** @description OAuthClient request is invalid (Bad Request). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unauthorized access. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Forbidden access. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description OAuthClient not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Something went wrong while processing OAuthClient. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+        };
+    };
+    CreateOAuthClient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["OAuthClient"];
+            };
+        };
+        responses: {
+            /** @description A per-app OAuth public client used by a browser app to authenticate against the ConfigHub API. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OAuthClient"];
+                };
+            };
+            /** @description OAuthClient request is invalid (Bad Request). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unauthorized access. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Forbidden access. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description OAuthClient not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description OAuthClient data conflict. Data has changed since last read. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Something went wrong while processing OAuthClient. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+        };
+    };
+    GetOAuthClient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The OAuth client_id addressing a single registered app. */
+                oauth_client: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A per-app OAuth public client used by a browser app to authenticate against the ConfigHub API. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OAuthClient"];
+                };
+            };
+            /** @description OAuthClient request is invalid (Bad Request). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unauthorized access. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Forbidden access. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description OAuthClient not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Something went wrong while processing OAuthClient. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+        };
+    };
+    DeleteOAuthClient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The OAuth client_id addressing a single registered app. */
+                oauth_client: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Response for successful delete operation */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeleteResponse"];
+                };
+            };
+            /** @description OAuthClient request is invalid (Bad Request). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unauthorized access. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Forbidden access. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description OAuthClient not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description OAuthClient data conflict. Data has changed since last read. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description OAuthClient could not be deleted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Something went wrong while processing OAuthClient. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+        };
+    };
     ListOrganizations: {
         parameters: {
             query?: {
@@ -11454,6 +13352,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -11518,7 +13419,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, OrganizationID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -11704,7 +13605,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, OrganizationID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -11993,6 +13894,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -12382,6 +14286,366 @@ export interface operations {
             };
         };
     };
+    ListAllReleases: {
+        parameters: {
+            query?: {
+                /**
+                 * @description The specified string is an expression for the purpose of filtering
+                 *     the list of Releases returned. The expression syntax was inspired by SQL.
+                 *     It supports conjunctions using `AND` of relational expressions of the form *attribute*
+                 *     *operator* *attribute_or_literal*. The attribute names are case-sensitive and PascalCase,
+                 *     as in the JSON encoding.
+                 *     Strings support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `LIKE`, `NOT LIKE`, `ILIKE`, `~~`, `!~~`, `~`, `~*`, `!~`, `!~*`, `IN`, `NOT IN`.
+                 *     String pattern operators: `LIKE` and `~~` for pattern matching with `%` and `_` wildcards,
+                 *     `ILIKE` for case-insensitive pattern matching, `NOT LIKE` and `!~~` for negated pattern matching.
+                 *     String regex operators: `~` for regex matching, `~*` for case-insensitive regex,
+                 *     `!~` and `!~*` for regex not matching (case-sensitive and insensitive).
+                 *     Integers support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `IN`, `NOT IN`.
+                 *     UUIDs and boolean attributes support equality and inequality only.
+                 *     UUID and time literals must be quoted as string literals.
+                 *     String literals are quoted with single quotes, such as `'string'`.
+                 *     Time literals use the same form as when serialized as JSON,
+                 *     such as: `CreatedAt > '2025-02-18T23:16:34'`.
+                 *     Integer and boolean literals are also supported for attributes of those types.
+                 *     Arrays support the `?` operator to to match any element of the array,
+                 *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
+                 *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
+                 *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
+                 *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
+                 *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
+                 *     Comparison results can be tested with `IS TRUE`, `IS FALSE`, `IS NOT TRUE`, and `IS NOT FALSE`.
+                 *     These are useful for nullable columns: `MergeSourceID = '<uuid>' IS NOT FALSE` matches rows where MergeSourceID equals the value OR is NULL.
+                 *     The `IN` and `NOT IN` operators accept a comma-separated list of values in parentheses,
+                 *     such as `Slug IN ('slugone', 'slugtwo')` or `Labels.environment IN ('prod', 'staging')`.
+                 *     Conjunctions are supported using the `AND` operator.
+                 *     An example conjunction is:
+                 *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
+                 *
+                 *     Supported attributes for filtering on Release: Annotations, CreatedAt, DeleteGates, Digest, Labels, ManifestDigest, OrganizationID, Published, ReleaseID, SpaceID, TagID, UnitCount, UpdatedAt.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                where?: string;
+                /**
+                 * @description UUID of a Filter entity to apply to the Release list.
+                 *
+                 *     The Filter must be in the same Organization as the user credentials.
+                 *
+                 *     The Filter's From field must match the entity type being filtered (Release).
+                 *
+                 *     For Space-resident entities, if the Filter has a FromSpaceID, it must match the operation's SpaceID.
+                 *
+                 *     The Filter's Where clause will be combined with any explicit 'where' parameter using AND logic.
+                 *
+                 *     If both 'filter' and 'where' parameters are specified, they are combined with AND logic.
+                 */
+                filter?: string;
+                /**
+                 * @description Free text search that approximately matches the specified string against string fields and map keys/values.
+                 *
+                 *     The search is case-insensitive and uses pattern matching to find entities containing the text.
+                 *
+                 *     Searchable string fields include attributes like Slug, DisplayName, and string-typed custom fields.
+                 *
+                 *     For map fields (like Labels and Annotations), the search matches both map keys and values.
+                 *
+                 *     The search uses OR logic across all searchable fields, so matching any field will return the entity.
+                 *
+                 *     If both 'where' and 'contains' parameters are specified, they are combined with AND logic.
+                 *
+                 *     Searchable fields for Release include string and map-type attributes from the queryable attributes list.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                contains?: string;
+                /**
+                 * @description Include clause for expanding related entities in the response for Release.
+                 *     The attribute names are case-sensitive, PascalCase, and
+                 *     expected in a comma-separated list format as in the JSON encoding.
+                 *
+                 *     Supported attributes for Release are OrganizationID, SpaceID, TagID.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                include?: string;
+                /**
+                 * @description Select clause for specifying which fields to include in the response for Release.
+                 *     The attribute names are case-sensitive, PascalCase, and
+                 *     expected in a comma-separated list format as in the JSON encoding.
+                 *     If not specified, all fields are returned.
+                 *     Entity and parent IDs (like OrganizationID, SpaceID, ReleaseID) and Slug are always returned regardless of the select parameter.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
+                 *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
+                 *     The whole string must be query-encoded.
+                 */
+                select?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExtendedRelease"][];
+                };
+            };
+            /** @description Release request is invalid (Bad Request). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unauthorized access. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Forbidden access. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Release not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Something went wrong while processing Release. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+        };
+    };
+    ListAllResources: {
+        parameters: {
+            query?: {
+                /**
+                 * @description The specified string is an expression for the purpose of filtering
+                 *     the list of Resources returned. The expression syntax was inspired by SQL.
+                 *     It supports conjunctions using `AND` of relational expressions of the form *attribute*
+                 *     *operator* *attribute_or_literal*. The attribute names are case-sensitive and PascalCase,
+                 *     as in the JSON encoding.
+                 *     Strings support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `LIKE`, `NOT LIKE`, `ILIKE`, `~~`, `!~~`, `~`, `~*`, `!~`, `!~*`, `IN`, `NOT IN`.
+                 *     String pattern operators: `LIKE` and `~~` for pattern matching with `%` and `_` wildcards,
+                 *     `ILIKE` for case-insensitive pattern matching, `NOT LIKE` and `!~~` for negated pattern matching.
+                 *     String regex operators: `~` for regex matching, `~*` for case-insensitive regex,
+                 *     `!~` and `!~*` for regex not matching (case-sensitive and insensitive).
+                 *     Integers support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `IN`, `NOT IN`.
+                 *     UUIDs and boolean attributes support equality and inequality only.
+                 *     UUID and time literals must be quoted as string literals.
+                 *     String literals are quoted with single quotes, such as `'string'`.
+                 *     Time literals use the same form as when serialized as JSON,
+                 *     such as: `CreatedAt > '2025-02-18T23:16:34'`.
+                 *     Integer and boolean literals are also supported for attributes of those types.
+                 *     Arrays support the `?` operator to to match any element of the array,
+                 *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
+                 *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
+                 *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
+                 *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
+                 *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
+                 *     Comparison results can be tested with `IS TRUE`, `IS FALSE`, `IS NOT TRUE`, and `IS NOT FALSE`.
+                 *     These are useful for nullable columns: `MergeSourceID = '<uuid>' IS NOT FALSE` matches rows where MergeSourceID equals the value OR is NULL.
+                 *     The `IN` and `NOT IN` operators accept a comma-separated list of values in parentheses,
+                 *     such as `Slug IN ('slugone', 'slugtwo')` or `Labels.environment IN ('prod', 'staging')`.
+                 *     Conjunctions are supported using the `AND` operator.
+                 *     An example conjunction is:
+                 *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
+                 *
+                 *     Supported attributes for filtering on Resource: CreatedAt, Data, OrganizationID, ResourceID, ResourceIndex, ResourceName, ResourceType, SpaceID, TargetID, ToolchainType, UnitID, UpdatedAt.
+                 *
+                 *     Sub-paths of the JSON configuration data are addressed with dot notation, such as `Data.spec.replicas > 1`.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                where?: string;
+                /**
+                 * @description UUID of a Filter entity to apply to the Resource list.
+                 *
+                 *     The Filter must be in the same Organization as the user credentials.
+                 *
+                 *     The Filter's From field must match the entity type being filtered (Resource).
+                 *
+                 *     For Space-resident entities, if the Filter has a FromSpaceID, it must match the operation's SpaceID.
+                 *
+                 *     The Filter's Where clause will be combined with any explicit 'where' parameter using AND logic.
+                 *
+                 *     If both 'filter' and 'where' parameters are specified, they are combined with AND logic.
+                 */
+                filter?: string;
+                /**
+                 * @description Free text search that approximately matches the specified string against string fields and map keys/values.
+                 *
+                 *     The search is case-insensitive and uses pattern matching to find entities containing the text.
+                 *
+                 *     Searchable string fields include attributes like Slug, DisplayName, and string-typed custom fields.
+                 *
+                 *     For map fields (like Labels and Annotations), the search matches both map keys and values.
+                 *
+                 *     The search uses OR logic across all searchable fields, so matching any field will return the entity.
+                 *
+                 *     If both 'where' and 'contains' parameters are specified, they are combined with AND logic.
+                 *
+                 *     Searchable fields for Resource include string and map-type attributes from the queryable attributes list.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                contains?: string;
+                /**
+                 * @description Include clause for expanding related entities in the response for Resource.
+                 *     The attribute names are case-sensitive, PascalCase, and
+                 *     expected in a comma-separated list format as in the JSON encoding.
+                 *
+                 *     Supported attributes for Resource are OrganizationID, SpaceID, TargetID, UnitID.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                include?: string;
+                /**
+                 * @description Select clause for specifying which fields to include in the response for Resource.
+                 *     The attribute names are case-sensitive, PascalCase, and
+                 *     expected in a comma-separated list format as in the JSON encoding.
+                 *     If not specified, all fields are returned.
+                 *     Entity and parent IDs (like OrganizationID, SpaceID, ResourceID) and Slug are always returned regardless of the select parameter.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
+                 *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
+                 *     The whole string must be query-encoded.
+                 */
+                select?: string;
+                /** @description Maximum number of Resource entities to return. If not specified, all matching entities are returned. Values greater than 1000 are rejected with 400. */
+                limit?: number;
+                /** @description Number of Resource entities to skip before returning results. Typically used together with 'limit' for pagination. If not specified, no entities are skipped. */
+                offset?: number;
+                /**
+                 * @description Comma-separated list of fields to sort Resource results by, each in the form 'ASC|DESC:FieldName' or just 'FieldName'.
+                 *
+                 *     Field names are case-sensitive and PascalCase, as in the JSON encoding. Sort direction defaults to ASC when the 'DIRECTION:' prefix is omitted.
+                 *
+                 *     Supported attributes for ordering Resource: CreatedAt, Data, OrganizationID, ResourceID, ResourceIndex, ResourceName, ResourceType, SpaceID, TargetID, ToolchainType, UnitID, UpdatedAt.
+                 *
+                 *     Example: 'DESC:CreatedAt' or 'DisplayName,DESC:CreatedAt'.
+                 *
+                 *     If not specified, results are returned in the database's default order.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                order_by?: string;
+                /** @description UUID of a View whose columns to extract for each resource, returned as ViewColumns. DataPath columns are read from the stored JSON rather than by invoking a function. */
+                view?: string;
+                /** @description Return each resource's configuration in its original toolchain-native form, as RawData on the response envelope. Off by default: the bodies are bulk, and a table view needs only the queryable Data projection. */
+                raw_data?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExtendedResource"][];
+                };
+            };
+            /** @description Resource request is invalid (Bad Request). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unauthorized access. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Forbidden access. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Resource not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Something went wrong while processing Resource. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+        };
+    };
     ListAllRevisions: {
         parameters: {
             query?: {
@@ -12406,6 +14670,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -12417,7 +14684,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Revision: ApplyGates, ApplyWarnings, ApprovedBy, ChangeSetID, CreatedAt, DataHash, Description, LiveAt, OrganizationID, RevisionID, RevisionNum, Source, SpaceID, Tags, UnitID, UpdatedAt, UserAgent, UserID.
+                 *     Supported attributes for filtering on Revision: ApplyGates, ApplyWarnings, ApprovedBy, ChangeOrders, ChangeSetID, Conflicts, CreatedAt, DataHash, Description, LiveAt, OrganizationID, Releases, RevisionID, RevisionNum, Source, SpaceID, Tags, UnitID, UpdatedAt, UserAgent, UserID.
                  *
                  *     To list tagged Revisions use `Tags ? '<tag-id>'`.
                  *
@@ -12461,7 +14728,7 @@ export interface operations {
                  *     The attribute names are case-sensitive, PascalCase, and
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *
-                 *     Supported attributes for Revision are ChangeSetID, OrganizationID, SpaceID, Tags, UnitID, UserID.
+                 *     Supported attributes for Revision are ChangeOrders, ChangeSetID, OrganizationID, Releases, SpaceID, Tags, UnitID, UserID.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -12472,11 +14739,39 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, RevisionID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
                 select?: string;
+                /** @description Maximum number of Revision entities to return. If not specified, all matching entities are returned. Values greater than 1000 are rejected with 400. */
+                limit?: number;
+                /** @description Number of Revision entities to skip before returning results. Typically used together with 'limit' for pagination. If not specified, no entities are skipped. */
+                offset?: number;
+                /**
+                 * @description Comma-separated list of fields to sort Revision results by, each in the form 'ASC|DESC:FieldName' or just 'FieldName'.
+                 *
+                 *     Field names are case-sensitive and PascalCase, as in the JSON encoding. Sort direction defaults to ASC when the 'DIRECTION:' prefix is omitted.
+                 *
+                 *     Supported attributes for ordering Revision: ApplyGates, ApplyWarnings, ApprovedBy, ChangeOrders, ChangeSetID, Conflicts, CreatedAt, DataHash, Description, LiveAt, OrganizationID, Releases, RevisionID, RevisionNum, Source, SpaceID, Tags, UnitID, UpdatedAt, UserAgent, UserID.
+                 *
+                 *     Example: 'DESC:CreatedAt' or 'DisplayName,DESC:CreatedAt'.
+                 *
+                 *     If not specified, results are returned in the database's default order.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                order_by?: string;
+                /**
+                 * @description Entity to return at most one Revision per. The result set applies DISTINCT ON this key, keeping the most recent row for each.
+                 *
+                 *     Supported values: Unit, Off.
+                 *
+                 *     If not specified, results are restricted to at most one row per Unit.
+                 *
+                 *     Off disables the DISTINCT ON and returns every matching row, so it requires an explicit 'limit' and is rejected with 400 without one.
+                 */
+                distinct_on?: "Unit" | "Off";
             };
             header?: never;
             path?: never;
@@ -12491,6 +14786,402 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ExtendedRevision"][];
+                };
+            };
+            /** @description Revision request is invalid (Bad Request). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unauthorized access. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Forbidden access. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Revision not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Something went wrong while processing Revision. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+        };
+    };
+    SearchRevisionData: {
+        parameters: {
+            query?: {
+                /**
+                 * @description The specified string is an expression for the purpose of filtering
+                 *     the list of Revisions returned. The expression syntax was inspired by SQL.
+                 *     It supports conjunctions using `AND` of relational expressions of the form *attribute*
+                 *     *operator* *attribute_or_literal*. The attribute names are case-sensitive and PascalCase,
+                 *     as in the JSON encoding.
+                 *     Strings support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `LIKE`, `NOT LIKE`, `ILIKE`, `~~`, `!~~`, `~`, `~*`, `!~`, `!~*`, `IN`, `NOT IN`.
+                 *     String pattern operators: `LIKE` and `~~` for pattern matching with `%` and `_` wildcards,
+                 *     `ILIKE` for case-insensitive pattern matching, `NOT LIKE` and `!~~` for negated pattern matching.
+                 *     String regex operators: `~` for regex matching, `~*` for case-insensitive regex,
+                 *     `!~` and `!~*` for regex not matching (case-sensitive and insensitive).
+                 *     Integers support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `IN`, `NOT IN`.
+                 *     UUIDs and boolean attributes support equality and inequality only.
+                 *     UUID and time literals must be quoted as string literals.
+                 *     String literals are quoted with single quotes, such as `'string'`.
+                 *     Time literals use the same form as when serialized as JSON,
+                 *     such as: `CreatedAt > '2025-02-18T23:16:34'`.
+                 *     Integer and boolean literals are also supported for attributes of those types.
+                 *     Arrays support the `?` operator to to match any element of the array,
+                 *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
+                 *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
+                 *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
+                 *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
+                 *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
+                 *     Comparison results can be tested with `IS TRUE`, `IS FALSE`, `IS NOT TRUE`, and `IS NOT FALSE`.
+                 *     These are useful for nullable columns: `MergeSourceID = '<uuid>' IS NOT FALSE` matches rows where MergeSourceID equals the value OR is NULL.
+                 *     The `IN` and `NOT IN` operators accept a comma-separated list of values in parentheses,
+                 *     such as `Slug IN ('slugone', 'slugtwo')` or `Labels.environment IN ('prod', 'staging')`.
+                 *     Conjunctions are supported using the `AND` operator.
+                 *     An example conjunction is:
+                 *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
+                 *
+                 *     Supported attributes for filtering on Revision: ApplyGates, ApplyWarnings, ApprovedBy, ChangeOrders, ChangeSetID, Conflicts, CreatedAt, DataHash, Description, LiveAt, OrganizationID, Releases, RevisionID, RevisionNum, Source, SpaceID, Tags, UnitID, UpdatedAt, UserAgent, UserID.
+                 *
+                 *     To list tagged Revisions use `Tags ? '<tag-id>'`.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                where?: string;
+                /**
+                 * @description UUID of a Filter entity to apply to the Revision list.
+                 *
+                 *     The Filter must be in the same Organization as the user credentials.
+                 *
+                 *     The Filter's From field must match the entity type being filtered (Revision).
+                 *
+                 *     For Space-resident entities, if the Filter has a FromSpaceID, it must match the operation's SpaceID.
+                 *
+                 *     The Filter's Where clause will be combined with any explicit 'where' parameter using AND logic.
+                 *
+                 *     If both 'filter' and 'where' parameters are specified, they are combined with AND logic.
+                 */
+                filter?: string;
+                /**
+                 * @description Free text search that approximately matches the specified string against string fields and map keys/values.
+                 *
+                 *     The search is case-insensitive and uses pattern matching to find entities containing the text.
+                 *
+                 *     Searchable string fields include attributes like Slug, DisplayName, and string-typed custom fields.
+                 *
+                 *     For map fields (like Labels and Annotations), the search matches both map keys and values.
+                 *
+                 *     The search uses OR logic across all searchable fields, so matching any field will return the entity.
+                 *
+                 *     If both 'where' and 'contains' parameters are specified, they are combined with AND logic.
+                 *
+                 *     Searchable fields for Revision include string and map-type attributes from the queryable attributes list.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                contains?: string;
+                /**
+                 * @description Include clause for expanding related entities in the response for Revision.
+                 *     The attribute names are case-sensitive, PascalCase, and
+                 *     expected in a comma-separated list format as in the JSON encoding.
+                 *
+                 *     Supported attributes for Revision are ChangeOrders, ChangeSetID, OrganizationID, Releases, SpaceID, Tags, UnitID, UserID.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                include?: string;
+                /**
+                 * @description Select clause for specifying which fields to include in the response for Revision.
+                 *     The attribute names are case-sensitive, PascalCase, and
+                 *     expected in a comma-separated list format as in the JSON encoding.
+                 *     If not specified, all fields are returned.
+                 *     Entity and parent IDs (like OrganizationID, SpaceID, RevisionID) and Slug are always returned regardless of the select parameter.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
+                 *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
+                 *     The whole string must be query-encoded.
+                 */
+                select?: string;
+                /** @description Maximum number of Revision entities to return. If not specified, all matching entities are returned. Values greater than 1000 are rejected with 400. */
+                limit?: number;
+                /** @description Number of Revision entities to skip before returning results. Typically used together with 'limit' for pagination. If not specified, no entities are skipped. */
+                offset?: number;
+                /**
+                 * @description Comma-separated list of fields to sort Revision results by, each in the form 'ASC|DESC:FieldName' or just 'FieldName'.
+                 *
+                 *     Field names are case-sensitive and PascalCase, as in the JSON encoding. Sort direction defaults to ASC when the 'DIRECTION:' prefix is omitted.
+                 *
+                 *     Supported attributes for ordering Revision: ApplyGates, ApplyWarnings, ApprovedBy, ChangeOrders, ChangeSetID, Conflicts, CreatedAt, DataHash, Description, LiveAt, OrganizationID, Releases, RevisionID, RevisionNum, Source, SpaceID, Tags, UnitID, UpdatedAt, UserAgent, UserID.
+                 *
+                 *     Example: 'DESC:CreatedAt' or 'DisplayName,DESC:CreatedAt'.
+                 *
+                 *     If not specified, results are returned in the database's default order.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                order_by?: string;
+                /**
+                 * @description Entity to return at most one Revision per. The result set applies DISTINCT ON this key, keeping the most recent row for each.
+                 *
+                 *     Supported values: Unit, Off.
+                 *
+                 *     If not specified, results are restricted to at most one row per Unit.
+                 *
+                 *     Off disables the DISTINCT ON and returns every matching row, so it requires an explicit 'limit' and is rejected with 400 without one.
+                 */
+                distinct_on?: "Unit" | "Off";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionData"][];
+                };
+            };
+            /** @description Revision request is invalid (Bad Request). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unauthorized access. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Forbidden access. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Revision not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Something went wrong while processing Revision. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+        };
+    };
+    SearchRevisionMutationSources: {
+        parameters: {
+            query?: {
+                /**
+                 * @description The specified string is an expression for the purpose of filtering
+                 *     the list of Revisions returned. The expression syntax was inspired by SQL.
+                 *     It supports conjunctions using `AND` of relational expressions of the form *attribute*
+                 *     *operator* *attribute_or_literal*. The attribute names are case-sensitive and PascalCase,
+                 *     as in the JSON encoding.
+                 *     Strings support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `LIKE`, `NOT LIKE`, `ILIKE`, `~~`, `!~~`, `~`, `~*`, `!~`, `!~*`, `IN`, `NOT IN`.
+                 *     String pattern operators: `LIKE` and `~~` for pattern matching with `%` and `_` wildcards,
+                 *     `ILIKE` for case-insensitive pattern matching, `NOT LIKE` and `!~~` for negated pattern matching.
+                 *     String regex operators: `~` for regex matching, `~*` for case-insensitive regex,
+                 *     `!~` and `!~*` for regex not matching (case-sensitive and insensitive).
+                 *     Integers support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `IN`, `NOT IN`.
+                 *     UUIDs and boolean attributes support equality and inequality only.
+                 *     UUID and time literals must be quoted as string literals.
+                 *     String literals are quoted with single quotes, such as `'string'`.
+                 *     Time literals use the same form as when serialized as JSON,
+                 *     such as: `CreatedAt > '2025-02-18T23:16:34'`.
+                 *     Integer and boolean literals are also supported for attributes of those types.
+                 *     Arrays support the `?` operator to to match any element of the array,
+                 *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
+                 *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
+                 *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
+                 *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
+                 *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
+                 *     Comparison results can be tested with `IS TRUE`, `IS FALSE`, `IS NOT TRUE`, and `IS NOT FALSE`.
+                 *     These are useful for nullable columns: `MergeSourceID = '<uuid>' IS NOT FALSE` matches rows where MergeSourceID equals the value OR is NULL.
+                 *     The `IN` and `NOT IN` operators accept a comma-separated list of values in parentheses,
+                 *     such as `Slug IN ('slugone', 'slugtwo')` or `Labels.environment IN ('prod', 'staging')`.
+                 *     Conjunctions are supported using the `AND` operator.
+                 *     An example conjunction is:
+                 *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
+                 *
+                 *     Supported attributes for filtering on Revision: ApplyGates, ApplyWarnings, ApprovedBy, ChangeOrders, ChangeSetID, Conflicts, CreatedAt, DataHash, Description, LiveAt, OrganizationID, Releases, RevisionID, RevisionNum, Source, SpaceID, Tags, UnitID, UpdatedAt, UserAgent, UserID.
+                 *
+                 *     To list tagged Revisions use `Tags ? '<tag-id>'`.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                where?: string;
+                /**
+                 * @description UUID of a Filter entity to apply to the Revision list.
+                 *
+                 *     The Filter must be in the same Organization as the user credentials.
+                 *
+                 *     The Filter's From field must match the entity type being filtered (Revision).
+                 *
+                 *     For Space-resident entities, if the Filter has a FromSpaceID, it must match the operation's SpaceID.
+                 *
+                 *     The Filter's Where clause will be combined with any explicit 'where' parameter using AND logic.
+                 *
+                 *     If both 'filter' and 'where' parameters are specified, they are combined with AND logic.
+                 */
+                filter?: string;
+                /**
+                 * @description Free text search that approximately matches the specified string against string fields and map keys/values.
+                 *
+                 *     The search is case-insensitive and uses pattern matching to find entities containing the text.
+                 *
+                 *     Searchable string fields include attributes like Slug, DisplayName, and string-typed custom fields.
+                 *
+                 *     For map fields (like Labels and Annotations), the search matches both map keys and values.
+                 *
+                 *     The search uses OR logic across all searchable fields, so matching any field will return the entity.
+                 *
+                 *     If both 'where' and 'contains' parameters are specified, they are combined with AND logic.
+                 *
+                 *     Searchable fields for Revision include string and map-type attributes from the queryable attributes list.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                contains?: string;
+                /**
+                 * @description Include clause for expanding related entities in the response for Revision.
+                 *     The attribute names are case-sensitive, PascalCase, and
+                 *     expected in a comma-separated list format as in the JSON encoding.
+                 *
+                 *     Supported attributes for Revision are ChangeOrders, ChangeSetID, OrganizationID, Releases, SpaceID, Tags, UnitID, UserID.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                include?: string;
+                /**
+                 * @description Select clause for specifying which fields to include in the response for Revision.
+                 *     The attribute names are case-sensitive, PascalCase, and
+                 *     expected in a comma-separated list format as in the JSON encoding.
+                 *     If not specified, all fields are returned.
+                 *     Entity and parent IDs (like OrganizationID, SpaceID, RevisionID) and Slug are always returned regardless of the select parameter.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
+                 *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
+                 *     The whole string must be query-encoded.
+                 */
+                select?: string;
+                /** @description Maximum number of Revision entities to return. If not specified, all matching entities are returned. Values greater than 1000 are rejected with 400. */
+                limit?: number;
+                /** @description Number of Revision entities to skip before returning results. Typically used together with 'limit' for pagination. If not specified, no entities are skipped. */
+                offset?: number;
+                /**
+                 * @description Comma-separated list of fields to sort Revision results by, each in the form 'ASC|DESC:FieldName' or just 'FieldName'.
+                 *
+                 *     Field names are case-sensitive and PascalCase, as in the JSON encoding. Sort direction defaults to ASC when the 'DIRECTION:' prefix is omitted.
+                 *
+                 *     Supported attributes for ordering Revision: ApplyGates, ApplyWarnings, ApprovedBy, ChangeOrders, ChangeSetID, Conflicts, CreatedAt, DataHash, Description, LiveAt, OrganizationID, Releases, RevisionID, RevisionNum, Source, SpaceID, Tags, UnitID, UpdatedAt, UserAgent, UserID.
+                 *
+                 *     Example: 'DESC:CreatedAt' or 'DisplayName,DESC:CreatedAt'.
+                 *
+                 *     If not specified, results are returned in the database's default order.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                order_by?: string;
+                /**
+                 * @description Entity to return at most one Revision per. The result set applies DISTINCT ON this key, keeping the most recent row for each.
+                 *
+                 *     Supported values: Unit, Off.
+                 *
+                 *     If not specified, results are restricted to at most one row per Unit.
+                 *
+                 *     Off disables the DISTINCT ON and returns every matching row, so it requires an explicit 'limit' and is rejected with 400 without one.
+                 */
+                distinct_on?: "Unit" | "Off";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionMutationSources"][];
                 };
             };
             /** @description Revision request is invalid (Bad Request). */
@@ -12573,6 +15264,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -12584,7 +15278,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Space: Annotations, AttributeFilterID, AttributeHash, AttributeIDs, CreatedAt, DeleteGates, DisplayName, Labels, OrganizationID, Permissions, Slug, SpaceID, TriggerFilterID, TriggerHash, TriggerIDs, UpdatedAt.
+                 *     Supported attributes for filtering on Space: Annotations, AttributeFilterID, AttributeHash, AttributeIDs, CreatedAt, DeleteGates, DisplayName, Labels, OrganizationID, Permissions, ReleaseBridgeWorkerID, ReleaseTargetID, Slug, SpaceID, TriggerFilterID, TriggerHash, TriggerIDs, UpdatedAt.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -12626,7 +15320,7 @@ export interface operations {
                  *     The attribute names are case-sensitive, PascalCase, and
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *
-                 *     Supported attributes for Space are AttributeFilterID, AttributeIDs, OrganizationID, TriggerFilterID, TriggerIDs.
+                 *     Supported attributes for Space are AttributeFilterID, AttributeIDs, OrganizationID, ReleaseTargetID, TriggerFilterID, TriggerIDs.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -12637,7 +15331,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, SpaceID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -12814,7 +15508,7 @@ export interface operations {
                  *     The attribute names are case-sensitive, PascalCase, and
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *
-                 *     Supported attributes for Space are AttributeFilterID, AttributeIDs, OrganizationID, TriggerFilterID, TriggerIDs.
+                 *     Supported attributes for Space are AttributeFilterID, AttributeIDs, OrganizationID, ReleaseTargetID, TriggerFilterID, TriggerIDs.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -12825,7 +15519,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, SpaceID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -13135,6 +15829,8 @@ export interface operations {
                     Permissions?: {
                         [key: string]: Record<string, never> | null;
                     } | null;
+                    /** Format: uuid */
+                    ReleaseTargetID?: string | null;
                     /** @description Unique URL-safe identifier for the entity. */
                     Slug?: string | null;
                     /** Format: uuid */
@@ -13245,6 +15941,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -13309,7 +16008,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, AttributeID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -13506,7 +16205,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, AttributeID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -13927,6 +16626,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -13991,7 +16693,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, BridgeWorkerID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -14192,7 +16894,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, BridgeWorkerID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -14787,6 +17489,685 @@ export interface operations {
             };
         };
     };
+    ListChangeOrders: {
+        parameters: {
+            query?: {
+                /**
+                 * @description The specified string is an expression for the purpose of filtering
+                 *     the list of ChangeOrders returned. The expression syntax was inspired by SQL.
+                 *     It supports conjunctions using `AND` of relational expressions of the form *attribute*
+                 *     *operator* *attribute_or_literal*. The attribute names are case-sensitive and PascalCase,
+                 *     as in the JSON encoding.
+                 *     Strings support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `LIKE`, `NOT LIKE`, `ILIKE`, `~~`, `!~~`, `~`, `~*`, `!~`, `!~*`, `IN`, `NOT IN`.
+                 *     String pattern operators: `LIKE` and `~~` for pattern matching with `%` and `_` wildcards,
+                 *     `ILIKE` for case-insensitive pattern matching, `NOT LIKE` and `!~~` for negated pattern matching.
+                 *     String regex operators: `~` for regex matching, `~*` for case-insensitive regex,
+                 *     `!~` and `!~*` for regex not matching (case-sensitive and insensitive).
+                 *     Integers support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `IN`, `NOT IN`.
+                 *     UUIDs and boolean attributes support equality and inequality only.
+                 *     UUID and time literals must be quoted as string literals.
+                 *     String literals are quoted with single quotes, such as `'string'`.
+                 *     Time literals use the same form as when serialized as JSON,
+                 *     such as: `CreatedAt > '2025-02-18T23:16:34'`.
+                 *     Integer and boolean literals are also supported for attributes of those types.
+                 *     Arrays support the `?` operator to to match any element of the array,
+                 *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
+                 *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
+                 *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
+                 *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
+                 *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
+                 *     Comparison results can be tested with `IS TRUE`, `IS FALSE`, `IS NOT TRUE`, and `IS NOT FALSE`.
+                 *     These are useful for nullable columns: `MergeSourceID = '<uuid>' IS NOT FALSE` matches rows where MergeSourceID equals the value OR is NULL.
+                 *     The `IN` and `NOT IN` operators accept a comma-separated list of values in parentheses,
+                 *     such as `Slug IN ('slugone', 'slugtwo')` or `Labels.environment IN ('prod', 'staging')`.
+                 *     Conjunctions are supported using the `AND` operator.
+                 *     An example conjunction is:
+                 *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
+                 *
+                 *     Supported attributes for filtering on ChangeOrder: AbortedReason, Annotations, ChangeOrderID, CreatedAt, DeleteGates, Description, DisplayName, EndTagID, InScopeSpaceIDs, Labels, OrganizationID, ReleasedSpaceIDs, ResolvedSpaceIDs, SkippedUnits, Slug, SpaceFilterID, SpaceID, StartTagID, State, UpdateType, UpdatedAt.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                where?: string;
+                /**
+                 * @description UUID of a Filter entity to apply to the ChangeOrder list.
+                 *
+                 *     The Filter must be in the same Organization as the user credentials.
+                 *
+                 *     The Filter's From field must match the entity type being filtered (ChangeOrder).
+                 *
+                 *     For Space-resident entities, if the Filter has a FromSpaceID, it must match the operation's SpaceID.
+                 *
+                 *     The Filter's Where clause will be combined with any explicit 'where' parameter using AND logic.
+                 *
+                 *     If both 'filter' and 'where' parameters are specified, they are combined with AND logic.
+                 */
+                filter?: string;
+                /**
+                 * @description Free text search that approximately matches the specified string against string fields and map keys/values.
+                 *
+                 *     The search is case-insensitive and uses pattern matching to find entities containing the text.
+                 *
+                 *     Searchable string fields include attributes like Slug, DisplayName, and string-typed custom fields.
+                 *
+                 *     For map fields (like Labels and Annotations), the search matches both map keys and values.
+                 *
+                 *     The search uses OR logic across all searchable fields, so matching any field will return the entity.
+                 *
+                 *     If both 'where' and 'contains' parameters are specified, they are combined with AND logic.
+                 *
+                 *     Searchable fields for ChangeOrder include string and map-type attributes from the queryable attributes list.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                contains?: string;
+                /**
+                 * @description Include clause for expanding related entities in the response for ChangeOrder.
+                 *     The attribute names are case-sensitive, PascalCase, and
+                 *     expected in a comma-separated list format as in the JSON encoding.
+                 *
+                 *     Supported attributes for ChangeOrder are EndTagID, OrganizationID, SpaceFilterID, SpaceID, StartTagID.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                include?: string;
+                /**
+                 * @description Select clause for specifying which fields to include in the response for ChangeOrder.
+                 *     The attribute names are case-sensitive, PascalCase, and
+                 *     expected in a comma-separated list format as in the JSON encoding.
+                 *     If not specified, all fields are returned.
+                 *     Entity and parent IDs (like OrganizationID, SpaceID, ChangeOrderID) and Slug are always returned regardless of the select parameter.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
+                 *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
+                 *     The whole string must be query-encoded.
+                 */
+                select?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Unique identifier for a space_id */
+                space_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExtendedChangeOrder"][];
+                };
+            };
+            /** @description ChangeOrder request is invalid (Bad Request). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unauthorized access. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Forbidden access. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description ChangeOrder not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Something went wrong while processing ChangeOrder. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+        };
+    };
+    CreateChangeOrder: {
+        parameters: {
+            query?: {
+                /** @description Allowed values are true and false. Default is false. When true, reports success when an entity already exists and returns the existing entity */
+                allow_exists?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Unique identifier for a space_id */
+                space_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ChangeOrder"];
+            };
+        };
+        responses: {
+            /** @description Defines a change's identity as it moves between Spaces. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeOrder"];
+                };
+            };
+            /** @description ChangeOrder request is invalid (Bad Request). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unauthorized access. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Forbidden access. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description ChangeOrder not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description ChangeOrder data conflict. Data has changed since last read. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Something went wrong while processing ChangeOrder. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+        };
+    };
+    GetChangeOrder: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Include clause for expanding related entities in the response for ChangeOrder.
+                 *     The attribute names are case-sensitive, PascalCase, and
+                 *     expected in a comma-separated list format as in the JSON encoding.
+                 *
+                 *     Supported attributes for ChangeOrder are EndTagID, OrganizationID, SpaceFilterID, SpaceID, StartTagID.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                include?: string;
+                /**
+                 * @description Select clause for specifying which fields to include in the response for ChangeOrder.
+                 *     The attribute names are case-sensitive, PascalCase, and
+                 *     expected in a comma-separated list format as in the JSON encoding.
+                 *     If not specified, all fields are returned.
+                 *     Entity and parent IDs (like OrganizationID, SpaceID, ChangeOrderID) and Slug are always returned regardless of the select parameter.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
+                 *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
+                 *     The whole string must be query-encoded.
+                 */
+                select?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Unique identifier for a space_id */
+                space_id: string;
+                /** @description Unique identifier for a change_order_id */
+                change_order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExtendedChangeOrder"];
+                };
+            };
+            /** @description ChangeOrder request is invalid (Bad Request). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unauthorized access. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Forbidden access. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description ChangeOrder not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Something went wrong while processing ChangeOrder. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+        };
+    };
+    UpdateChangeOrder: {
+        parameters: {
+            query?: {
+                /** @description If true, re-evaluate WhereSpace and/or SpaceFilterID into InScopeSpaceIDs, and re-derive what the ChangeOrder covers against the Spaces they now select, even if neither field has changed */
+                refresh_spaces?: boolean;
+            };
+            header?: never;
+            path: {
+                /** @description Unique identifier for a space_id */
+                space_id: string;
+                /** @description Unique identifier for a change_order_id */
+                change_order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ChangeOrder"];
+            };
+        };
+        responses: {
+            /** @description Defines a change's identity as it moves between Spaces. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeOrder"];
+                };
+            };
+            /** @description ChangeOrder request is invalid (Bad Request). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unauthorized access. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Forbidden access. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description ChangeOrder not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description ChangeOrder data conflict. Data has changed since last read. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Something went wrong while processing ChangeOrder. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+        };
+    };
+    DeleteChangeOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Unique identifier for a space_id */
+                space_id: string;
+                /** @description Unique identifier for a change_order_id */
+                change_order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Response for successful delete operation */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeleteResponse"];
+                };
+            };
+            /** @description ChangeOrder request is invalid (Bad Request). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unauthorized access. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Forbidden access. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description ChangeOrder not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description ChangeOrder data conflict. Data has changed since last read. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description ChangeOrder could not be deleted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Something went wrong while processing ChangeOrder. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+        };
+    };
+    PatchChangeOrder: {
+        parameters: {
+            query?: {
+                /** @description If true, re-evaluate WhereSpace and/or SpaceFilterID into InScopeSpaceIDs, and re-derive what the ChangeOrder covers against the Spaces they now select, even if neither field has changed */
+                refresh_spaces?: boolean;
+            };
+            header?: never;
+            path: {
+                /** @description Unique identifier for a space_id */
+                space_id: string;
+                /** @description Unique identifier for a change_order_id */
+                change_order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/merge-patch+json": {
+                    AbortedReason?: string | null;
+                    /** @description An optional map of Annotation key/value pairs for tools to attach information to entities. */
+                    Annotations?: {
+                        [key: string]: string | null;
+                    } | null;
+                    /** @description An optional set of gates that, if any is present, will block deletion */
+                    DeleteGates?: {
+                        [key: string]: boolean | null;
+                    } | null;
+                    Description?: string | null;
+                    /** @description Friendly name for the entity. */
+                    DisplayName?: string | null;
+                    /** Format: uuid */
+                    EndTagID?: string | null;
+                    /** @description An optional map of Label key/value pairs to specify identifying attributes of entities for the purpose of grouping and filtering them. */
+                    Labels?: {
+                        [key: string]: string | null;
+                    } | null;
+                    /** @description Unique URL-safe identifier for the entity. */
+                    Slug?: string | null;
+                    /** Format: uuid */
+                    SpaceFilterID?: string | null;
+                    UpdateType?: string | null;
+                    /** @description An entity-specific sequence number used for optimistic concurrency control. The value read must be sent in calls to Update. */
+                    Version?: number | null;
+                    WhereSpace?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Defines a change's identity as it moves between Spaces. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeOrder"];
+                };
+            };
+            /** @description ChangeOrder request is invalid (Bad Request). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unauthorized access. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Forbidden access. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description ChangeOrder not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description ChangeOrder data conflict. Data has changed since last read. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Something went wrong while processing ChangeOrder. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+        };
+    };
     ListChangeSets: {
         parameters: {
             query?: {
@@ -14811,6 +18192,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -14822,7 +18206,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on ChangeSet: Annotations, ChangeSetID, CreatedAt, DeleteGates, Description, DisplayName, EndTagID, Labels, OrganizationID, Slug, SpaceID, StartTagID, State, UpdatedAt.
+                 *     Supported attributes for filtering on ChangeSet: Annotations, ChangeSetID, CreatedAt, DeleteGates, Description, DisplayName, EndTagID, Labels, OrganizationID, Slug, SpaceID, StartTagID, StartTagIsPriorRevision, State, UpdatedAt, UpstreamChangeSetID.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -14875,7 +18259,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, ChangeSetID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -15067,7 +18451,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, ChangeSetID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -15370,6 +18754,8 @@ export interface operations {
                     } | null;
                     /** @description Unique URL-safe identifier for the entity. */
                     Slug?: string | null;
+                    /** Format: uuid */
+                    UpstreamChangeSetID?: string | null;
                     /** @description An entity-specific sequence number used for optimistic concurrency control. The value read must be sent in calls to Update. */
                     Version?: number | null;
                 };
@@ -15474,6 +18860,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -15538,7 +18927,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, FilterID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -15734,7 +19123,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, FilterID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -16150,6 +19539,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -16161,7 +19553,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on FunctionSignature: AttributeName, Description, FunctionName, FunctionType, Hermetic, Idempotent, Mutating, OutputInfo.Description, OutputInfo.OutputType, OutputInfo.ResultName, RequiredParameters, ToolchainType, Validating, VarArgs.
+                 *     Supported attributes for filtering on FunctionSignature: AttributeName, Description, FunctionName, FunctionType, Hermetic, Idempotent, Mutating, OutputInfo.Description, OutputInfo.OutputType, OutputInfo.ResultName, Replayable, RequiredParameters, ToolchainType, Validating, VarArgs.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -16254,6 +19646,10 @@ export interface operations {
                 revision_id?: string;
                 /** @description Dry run mode: when true, skip updating configuration data even if it changed */
                 dry_run?: string;
+                /** @description Record the paths this operation writes as protected local overrides, so a later merge from upstream does not overwrite them. Without it the operation claims nothing: each written path keeps whatever the Unit already has for it, and a path with no history is left unprotected. It only ever adds protection -- re-opening a path is the /protection API (cub unit set-protection --unprotect). */
+                protect?: boolean;
+                /** @description The classes of guarded reason this operation is cleared for, as a JSON Clearance -- a list of {Key, Operator, Values} requirements, where Operator is Exists, In, NotIn, or DoesNotExist. A path whose guards this does not cover is not written, and the withheld change is reported as a Guarded conflict. An absent or empty clearance clears nothing, which only matters for a Unit that has guards. */
+                clearance?: string;
                 /** @description Must match ChangeSetID of affected Units unless in dry run mode; not valid when invoked on Revisions */
                 change_set_id?: string;
                 /** @description User-defined category for the Mutation. Must be alphanumeric, at most 64 characters. The prefix 'ConfigHub' is reserved. */
@@ -16281,6 +19677,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -16292,7 +19691,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Unit: Annotations, ApplyGates, ApplyWarnings, ApprovedBy, BridgeWorkerID, ChangeSetID, CreatedAt, DataHash, DeleteGates, DestroyGates, DisplayName, DriftReconciliationMode, FromLinkID, HeadRevisionNum, HeadUnitActionNum, HeadUnitEventNum, Labels, LastActionAt, LastAppliedRevisionNum, LastChangeDescription, LiveRevisionNum, OrganizationID, PreviousLiveRevisionNum, ProviderType, Slug, SpaceID, TargetID, TargetOptions, ToolchainType, UnitID, UpdatedAt, UpstreamOrganizationID, UpstreamRevisionNum, UpstreamSpaceID, UpstreamUnitID, Values.
+                 *     Supported attributes for filtering on Unit: Annotations, ApplyGates, ApplyWarnings, ApprovedBy, BridgeWorkerID, ChangeSetID, Conflicts, CreatedAt, DataHash, DeleteGates, DestroyGates, DisplayName, FromLinkID, HeadRevisionNum, HeadUnitActionNum, HeadUnitEventNum, Labels, LastActionAt, LastAppliedRevisionNum, LastChangeDescription, LiveRevisionNum, OrganizationID, PreviousLiveRevisionNum, ProviderType, Slug, SpaceID, TargetID, TargetOptions, ToolchainType, UnitID, UpdatedAt, UpstreamRevisionNum, UpstreamSpaceID, UpstreamUnitID, Values.
                  *
                  *     Finding all units created by cloning can be done using the expression `UpstreamRevisionNum > 0`. Clones of a specific unit can be found by additionally filtering based on `UpstreamUnitID`. Unapplied units can be found using `LiveRevisionNum = 0`. Units with unapplied changes can be found with `HeadRevisionNum > LiveRevisionNum`.
                  *
@@ -16313,6 +19712,8 @@ export interface operations {
                  *     If both 'filter' and 'where' parameters are specified, they are combined with AND logic.
                  */
                 filter?: string;
+                /** @description Comma-separated parts of the result to return in addition to the default: ConfigData for the configuration the invocation produced, carried whether or not the invocation changed it. Without it, the configuration is present only when the invocation changed it, and an unchanged result is reported by DataHash alone. */
+                include?: string;
                 /** @description Resource type: Resource type to match for the desired ToolchainType, for example apps/v1/Deployment */
                 resource_type?: string;
                 /** @description Where data: The specified string is an expression for the purpose of evaluating whether the configuration data matches the filter. It supports conjunctions using `AND` of relational expressions of the form *path* *operator* *literal*. The path specifications are dot-separated, for both map fields and array indices, as in `spec.template.spec.containers.0.image = 'ghcr.io/headlamp-k8s/headlamp:latest' AND spec.replicas > 1`. Path expressions support `*` for wildcard array or map segments and `?key=value` syntax for associative matches of array elements containing objects with a `key` attribute. Strings support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `LIKE`, `ILIKE`, `~~`, `!~~`, `~`, `!~`, `~*`, `!~*`, `IN`, `NOT IN`. String pattern operators: `LIKE` and `~~` for pattern matching with `%` and `_` wildcards, `ILIKE` for case-insensitive pattern matching, `!~~` for NOT LIKE. String regex operators: `~` for regex matching, `~*` for case-insensitive regex, `!~` and `!~*` for regex not matching (case-sensitive and insensitive). Integers support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `IN`, `NOT IN`. Boolean values support equality and inequality only. The `IN` and `NOT IN` operators accept a comma-separated list of values in parentheses, such as `spec.template.spec.containers.0.image#reference IN (':latest', ':arm64-latest')`. The syntax `.|` requires the preceding path to exist; otherwise the relation `!=` will always return true regardless what it is compared with. String literals are quoted with single quotes, such as `'string'`. Integer and boolean literals are also supported for attributes of those types. The whole string must be query-encoded. */
@@ -16482,6 +19883,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -16493,7 +19897,9 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Invocation: Annotations, BridgeWorkerID, CreatedAt, DeleteGates, DisplayName, FunctionName, Hash, InvocationID, Labels, OrganizationID, Slug, SpaceID, ToolchainType, UpdatedAt.
+                 *     Supported attributes for filtering on Invocation: Annotations, BridgeWorkerID, CreatedAt, DeleteGates, DisplayName, FunctionInvocations, Hash, InvocationID, Labels, OrganizationID, Slug, SpaceID, ToolchainType, UpdatedAt.
+                 *
+                 *     The functions an Invocation calls are addressed with dot notation into `FunctionInvocations`: `FunctionInvocations.*.FunctionName = 'set-image'` matches an Invocation that calls set-image anywhere in its list, and `FunctionInvocations.0.FunctionName` addresses the first function it calls.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -16546,7 +19952,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, InvocationID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -16645,7 +20051,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Defines a function invocation. */
+            /** @description Defines a stored, reusable call to one or more functions, executed in the order they are listed. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -16738,7 +20144,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, InvocationID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -16838,7 +20244,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Defines a function invocation. */
+            /** @description Defines a stored, reusable call to one or more functions, executed in the order they are listed. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -17028,8 +20434,6 @@ export interface operations {
                     Annotations?: {
                         [key: string]: string | null;
                     } | null;
-                    /** @description Function arguments */
-                    Arguments?: (Record<string, never> | null)[] | null;
                     /** Format: uuid */
                     BridgeWorkerID?: string | null;
                     /** @description An optional set of gates that, if any is present, will block deletion */
@@ -17038,24 +20442,22 @@ export interface operations {
                     } | null;
                     /** @description Friendly name for the entity. */
                     DisplayName?: string | null;
-                    /** @description Function name */
-                    FunctionName?: string | null;
+                    FunctionInvocations?: (Record<string, never> | null)[] | null;
                     /** @description An optional map of Label key/value pairs to specify identifying attributes of entities for the purpose of grouping and filtering them. */
                     Labels?: {
                         [key: string]: string | null;
                     } | null;
+                    Parameters?: (Record<string, never> | null)[] | null;
                     /** @description Unique URL-safe identifier for the entity. */
                     Slug?: string | null;
                     ToolchainType?: string | null;
                     /** @description An entity-specific sequence number used for optimistic concurrency control. The value read must be sent in calls to Update. */
                     Version?: number | null;
-                    /** @description Per-invocation resource filter. AND-combined with the request-level WhereResource. Same path syntax as the request-level field (see ParseAndValidateWhereResource). */
-                    WhereResource?: string | null;
                 };
             };
         };
         responses: {
-            /** @description Defines a function invocation. */
+            /** @description Defines a stored, reusable call to one or more functions, executed in the order they are listed. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -17153,6 +20555,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -17164,7 +20569,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Link: Annotations, AutoUpdate, CreatedAt, DeleteGates, DisplayName, DownstreamLastMergedRevisionNum, FromUnitID, Hash, Labels, LinkID, MergeDisableSubtraction, OrganizationID, Slug, SpaceID, ToSpaceID, ToUnitID, TransformInvocationID, UpdateType, UpdatedAt, UpstreamLastMergedRevisionNum, UpstreamLinkID, UpstreamOrganizationID, UpstreamSpaceID, UseLiveState.
+                 *     Supported attributes for filtering on Link: Annotations, AutoUpdate, CreatedAt, DeleteGates, DisplayName, DownstreamLastMergedRevisionNum, FromUnitID, Hash, Labels, LinkID, MergeEnableSubtraction, OrganizationID, Protect, Slug, SpaceID, Squash, Stale, ToSpaceID, ToUnitID, TransformInvocationID, UpdateType, UpdatedAt, UpstreamLastMergedRevisionNum, UpstreamLinkID, UpstreamSpaceID.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -17217,7 +20622,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, LinkID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -17321,7 +20726,6 @@ export interface operations {
              *     A Link indicates that selected config data from the upstream To Unit (the producer)
              *     should be propagated to the downstream From Unit (the consumer).
              *     Links must be created in the same Space as the From Unit.
-             *     They also imply an ordering when Applied or Destroyed as a group.
              */
             200: {
                 headers: {
@@ -17415,7 +20819,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, LinkID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -17520,7 +20924,6 @@ export interface operations {
              *     A Link indicates that selected config data from the upstream To Unit (the producer)
              *     should be propagated to the downstream From Unit (the consumer).
              *     Links must be created in the same Space as the From Unit.
-             *     They also imply an ordering when Applied or Destroyed as a group.
              */
             200: {
                 headers: {
@@ -17716,6 +21119,7 @@ export interface operations {
                     } | null;
                     AutoUpdate?: boolean | null;
                     Bindings?: (Record<string, never> | null)[] | null;
+                    Clearance?: (Record<string, never> | null)[] | null;
                     /** @description An optional set of gates that, if any is present, will block deletion */
                     DeleteGates?: {
                         [key: string]: boolean | null;
@@ -17731,9 +21135,11 @@ export interface operations {
                     Labels?: {
                         [key: string]: string | null;
                     } | null;
-                    MergeDisableSubtraction?: boolean | null;
+                    MergeEnableSubtraction?: boolean | null;
+                    Protect?: boolean | null;
                     /** @description Unique URL-safe identifier for the entity. */
                     Slug?: string | null;
+                    Squash?: boolean | null;
                     /** Format: uuid */
                     ToSpaceID?: string | null;
                     /** Format: uuid */
@@ -17744,7 +21150,6 @@ export interface operations {
                     UpstreamGetters?: (Record<string, never> | null)[] | null;
                     UpstreamLastMergedRevisionNum?: number | null;
                     UpstreamPaths?: (Record<string, never> | null)[] | null;
-                    UseLiveState?: boolean | null;
                     /** @description An entity-specific sequence number used for optimistic concurrency control. The value read must be sent in calls to Update. */
                     Version?: number | null;
                     WhereMutation?: string | null;
@@ -17758,7 +21163,6 @@ export interface operations {
              *     A Link indicates that selected config data from the upstream To Unit (the producer)
              *     should be propagated to the downstream From Unit (the consumer).
              *     Links must be created in the same Space as the From Unit.
-             *     They also imply an ordering when Applied or Destroyed as a group.
              */
             200: {
                 headers: {
@@ -17833,6 +21237,849 @@ export interface operations {
             };
         };
     };
+    ListExtendedReleases: {
+        parameters: {
+            query?: {
+                /**
+                 * @description The specified string is an expression for the purpose of filtering
+                 *     the list of Releases returned. The expression syntax was inspired by SQL.
+                 *     It supports conjunctions using `AND` of relational expressions of the form *attribute*
+                 *     *operator* *attribute_or_literal*. The attribute names are case-sensitive and PascalCase,
+                 *     as in the JSON encoding.
+                 *     Strings support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `LIKE`, `NOT LIKE`, `ILIKE`, `~~`, `!~~`, `~`, `~*`, `!~`, `!~*`, `IN`, `NOT IN`.
+                 *     String pattern operators: `LIKE` and `~~` for pattern matching with `%` and `_` wildcards,
+                 *     `ILIKE` for case-insensitive pattern matching, `NOT LIKE` and `!~~` for negated pattern matching.
+                 *     String regex operators: `~` for regex matching, `~*` for case-insensitive regex,
+                 *     `!~` and `!~*` for regex not matching (case-sensitive and insensitive).
+                 *     Integers support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `IN`, `NOT IN`.
+                 *     UUIDs and boolean attributes support equality and inequality only.
+                 *     UUID and time literals must be quoted as string literals.
+                 *     String literals are quoted with single quotes, such as `'string'`.
+                 *     Time literals use the same form as when serialized as JSON,
+                 *     such as: `CreatedAt > '2025-02-18T23:16:34'`.
+                 *     Integer and boolean literals are also supported for attributes of those types.
+                 *     Arrays support the `?` operator to to match any element of the array,
+                 *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
+                 *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
+                 *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
+                 *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
+                 *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
+                 *     Comparison results can be tested with `IS TRUE`, `IS FALSE`, `IS NOT TRUE`, and `IS NOT FALSE`.
+                 *     These are useful for nullable columns: `MergeSourceID = '<uuid>' IS NOT FALSE` matches rows where MergeSourceID equals the value OR is NULL.
+                 *     The `IN` and `NOT IN` operators accept a comma-separated list of values in parentheses,
+                 *     such as `Slug IN ('slugone', 'slugtwo')` or `Labels.environment IN ('prod', 'staging')`.
+                 *     Conjunctions are supported using the `AND` operator.
+                 *     An example conjunction is:
+                 *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
+                 *
+                 *     Supported attributes for filtering on Release: Annotations, CreatedAt, DeleteGates, Digest, Labels, ManifestDigest, OrganizationID, Published, ReleaseID, SpaceID, TagID, UnitCount, UpdatedAt.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                where?: string;
+                /**
+                 * @description UUID of a Filter entity to apply to the Release list.
+                 *
+                 *     The Filter must be in the same Organization as the user credentials.
+                 *
+                 *     The Filter's From field must match the entity type being filtered (Release).
+                 *
+                 *     For Space-resident entities, if the Filter has a FromSpaceID, it must match the operation's SpaceID.
+                 *
+                 *     The Filter's Where clause will be combined with any explicit 'where' parameter using AND logic.
+                 *
+                 *     If both 'filter' and 'where' parameters are specified, they are combined with AND logic.
+                 */
+                filter?: string;
+                /**
+                 * @description Free text search that approximately matches the specified string against string fields and map keys/values.
+                 *
+                 *     The search is case-insensitive and uses pattern matching to find entities containing the text.
+                 *
+                 *     Searchable string fields include attributes like Slug, DisplayName, and string-typed custom fields.
+                 *
+                 *     For map fields (like Labels and Annotations), the search matches both map keys and values.
+                 *
+                 *     The search uses OR logic across all searchable fields, so matching any field will return the entity.
+                 *
+                 *     If both 'where' and 'contains' parameters are specified, they are combined with AND logic.
+                 *
+                 *     Searchable fields for Release include string and map-type attributes from the queryable attributes list.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                contains?: string;
+                /**
+                 * @description Include clause for expanding related entities in the response for Release.
+                 *     The attribute names are case-sensitive, PascalCase, and
+                 *     expected in a comma-separated list format as in the JSON encoding.
+                 *
+                 *     Supported attributes for Release are OrganizationID, SpaceID, TagID.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                include?: string;
+                /**
+                 * @description Select clause for specifying which fields to include in the response for Release.
+                 *     The attribute names are case-sensitive, PascalCase, and
+                 *     expected in a comma-separated list format as in the JSON encoding.
+                 *     If not specified, all fields are returned.
+                 *     Entity and parent IDs (like OrganizationID, SpaceID, ReleaseID) and Slug are always returned regardless of the select parameter.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
+                 *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
+                 *     The whole string must be query-encoded.
+                 */
+                select?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Unique identifier for a space_id */
+                space_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExtendedRelease"][];
+                };
+            };
+            /** @description ExtendedRelease request is invalid (Bad Request). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unauthorized access. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Forbidden access. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description ExtendedRelease not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Something went wrong while processing ExtendedRelease. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+        };
+    };
+    PublishRelease: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Unique identifier for a space_id */
+                space_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ReleasePublishRequest"];
+            };
+        };
+        responses: {
+            /** @description Release is a published bundle of the configuration of the Units in a Space that are assigned to a Target. It is created by publishing, taken out of service by withdrawing, and removed by deleting; its bundled content is never updated, though its Labels, Annotations, and DeleteGates can be. The bundle is stored as an OCI image (a tar.gz layer plus manifest) so it can be served to and consumed by the Target. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Release"];
+                };
+            };
+            /** @description Release request is invalid (Bad Request). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unauthorized access. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Forbidden access. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Release not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Release data conflict. Data has changed since last read. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description A Unit to be bundled has outstanding apply gates */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Something went wrong while processing Release. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+        };
+    };
+    GetExtendedRelease: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Include clause for expanding related entities in the response for Release.
+                 *     The attribute names are case-sensitive, PascalCase, and
+                 *     expected in a comma-separated list format as in the JSON encoding.
+                 *
+                 *     Supported attributes for Release are OrganizationID, SpaceID, TagID.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                include?: string;
+                /**
+                 * @description Select clause for specifying which fields to include in the response for Release.
+                 *     The attribute names are case-sensitive, PascalCase, and
+                 *     expected in a comma-separated list format as in the JSON encoding.
+                 *     If not specified, all fields are returned.
+                 *     Entity and parent IDs (like OrganizationID, SpaceID, ReleaseID) and Slug are always returned regardless of the select parameter.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
+                 *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
+                 *     The whole string must be query-encoded.
+                 */
+                select?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Unique identifier for a space_id */
+                space_id: string;
+                /** @description Unique identifier for a release_id */
+                release_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Release with additional related entities expanded based on the request's include parameter. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExtendedRelease"];
+                };
+            };
+            /** @description ExtendedRelease request is invalid (Bad Request). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unauthorized access. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Forbidden access. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description ExtendedRelease not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Something went wrong while processing ExtendedRelease. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+        };
+    };
+    UpdateRelease: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Unique identifier for a space_id */
+                space_id: string;
+                /** @description Unique identifier for a release_id */
+                release_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["Release"];
+            };
+        };
+        responses: {
+            /** @description Release is a published bundle of the configuration of the Units in a Space that are assigned to a Target. It is created by publishing, taken out of service by withdrawing, and removed by deleting; its bundled content is never updated, though its Labels, Annotations, and DeleteGates can be. The bundle is stored as an OCI image (a tar.gz layer plus manifest) so it can be served to and consumed by the Target. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Release"];
+                };
+            };
+            /** @description Release request is invalid (Bad Request). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unauthorized access. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Forbidden access. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Release not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Release data conflict. Data has changed since last read. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Something went wrong while processing Release. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+        };
+    };
+    DeleteRelease: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Unique identifier for a space_id */
+                space_id: string;
+                /** @description Unique identifier for a release_id */
+                release_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Response for successful delete operation */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeleteResponse"];
+                };
+            };
+            /** @description Release request is invalid (Bad Request). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unauthorized access. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Forbidden access. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Release not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Release data conflict. Data has changed since last read. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Release could not be deleted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Something went wrong while processing Release. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+        };
+    };
+    PatchRelease: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Unique identifier for a space_id */
+                space_id: string;
+                /** @description Unique identifier for a release_id */
+                release_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/merge-patch+json": {
+                    /** @description An optional map of Annotation key/value pairs for tools to attach information to entities. */
+                    Annotations?: {
+                        [key: string]: string | null;
+                    } | null;
+                    /** @description An optional set of gates that, if any is present, will block deletion */
+                    DeleteGates?: {
+                        [key: string]: boolean | null;
+                    } | null;
+                    /** @description An optional map of Label key/value pairs to specify identifying attributes of entities for the purpose of grouping and filtering them. */
+                    Labels?: {
+                        [key: string]: string | null;
+                    } | null;
+                    /** @description An entity-specific sequence number used for optimistic concurrency control. The value read must be sent in calls to Update. */
+                    Version?: number | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Release is a published bundle of the configuration of the Units in a Space that are assigned to a Target. It is created by publishing, taken out of service by withdrawing, and removed by deleting; its bundled content is never updated, though its Labels, Annotations, and DeleteGates can be. The bundle is stored as an OCI image (a tar.gz layer plus manifest) so it can be served to and consumed by the Target. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Release"];
+                };
+            };
+            /** @description Release request is invalid (Bad Request). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unauthorized access. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Forbidden access. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Release not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Release data conflict. Data has changed since last read. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Something went wrong while processing Release. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+        };
+    };
+    DownloadReleaseData: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Unique identifier for a space_id */
+                space_id: string;
+                /** @description Unique identifier for a release_id */
+                release_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/gzip": string;
+                };
+            };
+            /** @description Release request is invalid (Bad Request). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unauthorized access. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Forbidden access. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Release not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Something went wrong while processing Release. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+        };
+    };
+    WithdrawRelease: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Unique identifier for a space_id */
+                space_id: string;
+                /** @description Unique identifier for a release_id */
+                release_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Release is a published bundle of the configuration of the Units in a Space that are assigned to a Target. It is created by publishing, taken out of service by withdrawing, and removed by deleting; its bundled content is never updated, though its Labels, Annotations, and DeleteGates can be. The bundle is stored as an OCI image (a tar.gz layer plus manifest) so it can be served to and consumed by the Target. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Release"];
+                };
+            };
+            /** @description Release request is invalid (Bad Request). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unauthorized access. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Forbidden access. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Release not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Release data conflict. Data has changed since last read. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description A Unit in the Release's bundle has outstanding destroy gates */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Something went wrong while processing Release. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+        };
+    };
     ListTags: {
         parameters: {
             query?: {
@@ -17857,6 +22104,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -17868,7 +22118,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Tag: Annotations, ChangeSetID, CreatedAt, DeleteGates, DisplayName, Labels, OrganizationID, Slug, SpaceID, TagID, UpdatedAt.
+                 *     Supported attributes for filtering on Tag: Annotations, ChangeOrderID, ChangeSetID, CreatedAt, DeleteGates, DisplayName, Labels, OrganizationID, Slug, SpaceID, TagID, UpdatedAt.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -17921,7 +22171,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, TagID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -18113,7 +22363,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, TagID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -18519,6 +22769,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -18583,7 +22836,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, TargetID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -18775,7 +23028,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, TargetID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -19207,6 +23460,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -19218,7 +23474,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Trigger: Annotations, BridgeWorkerID, CreatedAt, DeleteGates, Description, Disabled, DisplayName, Event, FunctionName, Hash, InvocationID, Labels, OrganizationID, OtherDataSource, Slug, SpaceID, ToolchainType, TriggerID, UnitFilterID, UpdatedAt, Validating, Warn, WhereResource, WhereUnit.
+                 *     Supported attributes for filtering on Trigger: Annotations, BridgeWorkerID, CreatedAt, DeleteGates, Description, Disabled, DisplayName, Event, FunctionName, Hash, InvocationID, Labels, OrganizationID, OtherDataSource, Protect, Slug, SpaceID, ToolchainType, TriggerID, UnitFilterID, UpdatedAt, Validating, Warn, WhereResource, WhereUnit.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -19271,7 +23527,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, TriggerID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -19473,7 +23729,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, TriggerID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -19777,6 +24033,7 @@ export interface operations {
                     Arguments?: (Record<string, never> | null)[] | null;
                     /** Format: uuid */
                     BridgeWorkerID?: string | null;
+                    Clearance?: (Record<string, never> | null)[] | null;
                     /** @description An optional set of gates that, if any is present, will block deletion */
                     DeleteGates?: {
                         [key: string]: boolean | null;
@@ -19796,6 +24053,9 @@ export interface operations {
                         [key: string]: string | null;
                     } | null;
                     OtherDataSource?: string | null;
+                    /** @description Caller-supplied parameter values for expanding templated argument Values; transient, not persisted */
+                    Params?: Record<string, never> | null;
+                    Protect?: boolean | null;
                     /** @description Unique URL-safe identifier for the entity. */
                     Slug?: string | null;
                     ToolchainType?: string | null;
@@ -19919,6 +24179,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -19930,7 +24193,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Unit: Annotations, ApplyGates, ApplyWarnings, ApprovedBy, BridgeWorkerID, ChangeSetID, CreatedAt, DataHash, DeleteGates, DestroyGates, DisplayName, DriftReconciliationMode, FromLinkID, HeadRevisionNum, HeadUnitActionNum, HeadUnitEventNum, Labels, LastActionAt, LastAppliedRevisionNum, LastChangeDescription, LiveRevisionNum, OrganizationID, PreviousLiveRevisionNum, ProviderType, Slug, SpaceID, TargetID, TargetOptions, ToolchainType, UnitID, UpdatedAt, UpstreamOrganizationID, UpstreamRevisionNum, UpstreamSpaceID, UpstreamUnitID, Values.
+                 *     Supported attributes for filtering on Unit: Annotations, ApplyGates, ApplyWarnings, ApprovedBy, BridgeWorkerID, ChangeSetID, Conflicts, CreatedAt, DataHash, DeleteGates, DestroyGates, DisplayName, FromLinkID, HeadRevisionNum, HeadUnitActionNum, HeadUnitEventNum, Labels, LastActionAt, LastAppliedRevisionNum, LastChangeDescription, LiveRevisionNum, OrganizationID, PreviousLiveRevisionNum, ProviderType, Slug, SpaceID, TargetID, TargetOptions, ToolchainType, UnitID, UpdatedAt, UpstreamRevisionNum, UpstreamSpaceID, UpstreamUnitID, Values.
                  *
                  *     Finding all units created by cloning can be done using the expression `UpstreamRevisionNum > 0`. Clones of a specific unit can be found by additionally filtering based on `UpstreamUnitID`. Unapplied units can be found using `LiveRevisionNum = 0`. Units with unapplied changes can be found with `HeadRevisionNum > LiveRevisionNum`.
                  *
@@ -19985,7 +24248,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, UnitID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -20084,10 +24347,16 @@ export interface operations {
                 upstream_space_id?: string;
                 /** @description Unique identifier for a upstream_unit_id */
                 upstream_unit_id?: string;
+                /** @description Revision of the upstream Unit to copy. The default is its head, which is what a clone has always taken. Takes the same forms as merge_end and restore -- a revision number, a named revision, 'Tag:uuid', 'ChangeSet:uuid', 'ChangeOrder:uuid', 'Before:...' -- resolved against the Unit being cloned from, so a bulk clone lands on a different revision of each source Unit. 'Before:ChangeOrder:uuid' is what a promotion uses: it names the state the change starts from, which for a Unit no target has taken yet is its first revision, so the upgrade that follows replays the change into the clone rather than the clone arriving with the change already folded in. Requires upstream_unit_id (or, in bulk, a source Unit to clone). */
+                upstream_revision?: string;
+                /** @description Also create a MergeUnits Link from each upstream Unit back to its clone, alongside the UpgradeUnit Link a clone always gets. The upgrade Link carries changes from the upstream Unit into the clone; this one carries them the other way, which is what makes a clone usable as a draft: change it, review it, then resolve the Link (resolve=Link:...) on the upstream Unit to merge the change home. A Unit may be the source of several of these -- one per outstanding draft -- so each is named for the clone it takes changes from (syncback-<space>-<unit>) rather than for the Unit they all point at. The Link is created in the upstream Unit's Space, which the caller must be allowed to create Links in. Requires upstream_unit_id (or, in bulk, a source Unit to clone). */
+                syncback?: boolean;
                 /** @description Identifier of the external source. Sets the source type to MergeExternal and appends the source name to the change description. */
                 merge_external_source?: string;
                 /** @description Allowed values are true and false. Default is false. When true, reports success when an entity already exists and returns the existing entity */
                 allow_exists?: string;
+                /** @description Comma-separated parts of the result to return in addition to the Unit: ConfigData for the configuration the operation produced, and MutationSources for what set each value in it. Neither is a field of a Unit, and both cost something to return, so they are returned only when named. A dry run stores nothing, so this is the only way to see what it would have produced. */
+                include?: string;
             };
             header?: never;
             path: {
@@ -20102,26 +24371,13 @@ export interface operations {
             };
         };
         responses: {
-            /**
-             * @description Unit is the core unit of operation in ConfigHub. It contains a blob of configuration Data
-             *     of a single supported Toolchain Type (configuration format). This blob is typically a text document
-             *     that contains a collection of Kubernetes or infrastructure resources, or an application configuration
-             *     file. Applying / deploying or destroying the configuration happens as a single *transaction*
-             *     from ConfigHub's perspective. In reality, it is most often a multi-step workflow performed by
-             *     the underlying configuration / deployment tool. The resources must belong to a single
-             *     infrastructure provider and the actuation mechanism must be able to resolve references and
-             *     ordering dependencies among the resources within the document. For example, if one resource
-             *     needs to be fully provisioned to provide input to another resource, then the actuation code is
-             *     responsible for handling this. Revisions store historical copies of the configuration data.
-             *     Configuration data can be restored from prior Revisions. Units can also be cloned to create
-             *     new variants of a configuration.
-             */
+            /** @description OK */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Unit"];
+                    "application/json": components["schemas"]["UnitCreateOrUpdateResponse"];
                 };
             };
             /** @description Unit request is invalid (Bad Request). */
@@ -20217,7 +24473,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, UnitID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -20306,22 +24562,28 @@ export interface operations {
                 revision_id?: string;
                 /** @description Dry run mode: return changed unit(s) but don't update configuration data */
                 dry_run?: boolean;
+                /** @description Record the paths this operation writes as protected local overrides, so a later merge from upstream does not overwrite them. Without it the operation claims nothing: each written path keeps whatever the Unit already has for it, and a path with no history is left unprotected. It only ever adds protection -- re-opening a path is the /protection API (cub unit set-protection --unprotect). Has no effect with restore, which rewinds MutationSources to the restored Revision's stored values wholesale. */
+                protect?: boolean;
+                /** @description The classes of guarded reason this operation is cleared for, as a JSON Clearance -- a list of {Key, Operator, Values} requirements, where Operator is Exists, In, NotIn, or DoesNotExist. A path whose guards this does not cover is not written, and the withheld change is reported as a Guarded conflict. An absent or empty clearance clears nothing, which only matters for a Unit that has guards. */
+                clearance?: string;
+                /** @description Merge the range as one rebased diff and record it as one Revision, instead of walking it. By default a merge replays: it takes the source's Revisions in order and, where a Revision records function invocations that can be re-executed, runs them against this Unit rather than rebasing their recorded paths onto it -- so a change lands where this Unit's own structure puts it -- and records each source Revision that has an effect here as a Revision of its own, carrying that Revision's change description, its own conflicts, and one Mutation per source Mutation. Squashing gives up both: the range arrives as a single rebased patch in a single Revision, which is what a merge did before replay existed. Accepted with upgrade, merge_source, and resolve of an UpgradeUnit or MergeUnits Link, and refused elsewhere, since there is no range to walk. A Link can ask for it standingly with its Squash field. */
+                squash?: boolean;
                 /** @description Upgrade the unit to the latest version of its upstream unit */
                 upgrade?: boolean;
-                /** @description Restore revision source. Supports: Named revisions ('LiveRevisionNum', 'LastAppliedRevisionNum', 'PreviousLiveRevisionNum', 'HeadRevisionNum'), direct revision number (e.g., '42'), or entity references ('Tag:uuid', 'ChangeSet:uuid', 'Revision:uuid'). Can be prefixed with 'Before:' to select the revision immediately before the specified one (e.g., 'Before:LiveRevisionNum', 'Before:42'). When using Tag or ChangeSet references, the latest revision associated with that entity is selected. */
+                /** @description Restore revision source. Supports: Named revisions ('LiveRevisionNum', 'LastAppliedRevisionNum', 'PreviousLiveRevisionNum', 'HeadRevisionNum'), direct revision number (e.g., '42'), or entity references ('Tag:uuid', 'ChangeSet:uuid', 'ChangeOrder:uuid', 'Revision:uuid'). Can be prefixed with 'Before:' to select the revision immediately before the specified one (e.g., 'Before:LiveRevisionNum', 'Before:42'). When using Tag or ChangeSet references, the latest revision associated with that entity is selected. 'ChangeOrder:uuid' selects the revision the change order ended at on this Unit and 'Before:ChangeOrder:uuid' the one before it began, which is what undoes a promotion however many revisions it made. */
                 restore?: string;
-                /** @description Resolve specified non-automatically resolved link from this (downstream) Unit to another (upstream) Unit. Expects Link:uuid or Link:*. */
+                /** @description Resolve Links from this (downstream) Unit to another (upstream) Unit, propagating what each Link's UpdateType says to propagate. Expects Link:*, Link:<uuid>, or Link:<where expression>. Link:* selects every Link from this Unit that can resolve; a where expression selects among those, evaluated against the Links themselves (e.g. UpdateType = 'MergeUnits'), which is how to name one Link in a bulk operation, where a UUID cannot be. A Link with UpdateType None resolves nothing and is never selected. An AutoUpdate Link may be resolved by hand: it does what the queue would have done, and nothing when the Link is already level with its source. */
                 resolve?: string;
                 /** @description Merge source unit. Currently it must be a unit ID or 'Self'. */
                 merge_source?: string;
-                /** @description Merge base revision, which provides the base configuration data of the changes to merge. With merge_source, this is a revision of the merge source unit. With merge_external_source, this is a revision of the unit being updated and overrides the default selection of the latest MergeExternal revision. Supports: Named revisions ('LiveRevisionNum', 'LastAppliedRevisionNum', 'PreviousLiveRevisionNum', 'HeadRevisionNum'), direct revision number (e.g., '42'), or entity references ('Tag:uuid', 'ChangeSet:uuid', 'Revision:uuid'). Can be prefixed with 'Before:' to select the revision immediately before the specified one (e.g., 'Before:LiveRevisionNum', 'Before:42'). When using Tag or ChangeSet references, the latest revision associated with that entity is selected. */
+                /** @description Merge base revision, which provides the base configuration data of the changes to merge. With merge_source, this is a revision of the merge source unit. With merge_external_source, this is a revision of the unit being updated and overrides the default selection of the latest MergeExternal revision. Supports: Named revisions ('LiveRevisionNum', 'LastAppliedRevisionNum', 'PreviousLiveRevisionNum', 'HeadRevisionNum'), direct revision number (e.g., '42'), or entity references ('Tag:uuid', 'ChangeSet:uuid', 'ChangeOrder:uuid', 'Revision:uuid'). Can be prefixed with 'Before:' to select the revision immediately before the specified one (e.g., 'Before:LiveRevisionNum', 'Before:42'). When using Tag or ChangeSet references, the latest revision associated with that entity is selected. 'ChangeOrder:uuid' selects the revision the change order ended at on this Unit and 'Before:ChangeOrder:uuid' the one before it began, which is what undoes a promotion however many revisions it made. */
                 merge_base?: string;
-                /** @description Merge end revision of the merge source, which provides the final configuration of the changes to merge. Supports: Named revisions ('LiveRevisionNum', 'LastAppliedRevisionNum', 'PreviousLiveRevisionNum', 'HeadRevisionNum'), direct revision number (e.g., '42'), or entity references ('Tag:uuid', 'ChangeSet:uuid', 'Revision:uuid'). Can be prefixed with 'Before:' to select the revision immediately before the specified one (e.g., 'Before:LiveRevisionNum', 'Before:42'). When using Tag or ChangeSet references, the latest revision associated with that entity is selected. */
+                /** @description Merge end revision of the merge source, which provides the final configuration of the changes to merge. Also accepted with upgrade and with resolve, where it names how far along the source to take the propagation; the default there is the source's head. Naming a ChangeSet or Tag that ends a change is what leaves a change still being made at the source behind. Supports: Named revisions ('LiveRevisionNum', 'LastAppliedRevisionNum', 'PreviousLiveRevisionNum', 'HeadRevisionNum'), direct revision number (e.g., '42'), or entity references ('Tag:uuid', 'ChangeSet:uuid', 'ChangeOrder:uuid', 'Revision:uuid'). Can be prefixed with 'Before:' to select the revision immediately before the specified one (e.g., 'Before:LiveRevisionNum', 'Before:42'). When using Tag or ChangeSet references, the latest revision associated with that entity is selected. 'ChangeOrder:uuid' selects the revision the change order ended at on this Unit and 'Before:ChangeOrder:uuid' the one before it began, which is what undoes a promotion however many revisions it made. */
                 merge_end?: string;
                 /** @description Identifier of the external source for merge-on-update. When set, computes mutations between the last MergeExternal revision and the provided data, then patches the current unit data with those mutations. */
                 merge_external_source?: string;
-                /** @description Disable the subtraction (override-preservation) step of upgrade and merge_source. By default (false), a cross-unit merge subtracts the target's local differences from the source patch so they survive; set true to apply the source patch without subtraction, relying on stored Mutation Predicate values to preserve overrides. Has no effect on a self merge (merge_source=Self), where subtraction is always disabled. */
-                merge_disable_subtraction?: boolean;
+                /** @description Enable the subtraction (override-preservation) step of upgrade and merge_source. By default (false), the source patch is applied without subtraction and the target's local differences are preserved by the stored Mutation Protected values; set true to additionally subtract the target's local differences from the source patch. Has no effect on a self merge (merge_source=Self), where subtraction is always disabled. */
+                merge_enable_subtraction?: boolean;
                 /**
                  * @description The specified string is an expression for the purpose of filtering
                  *     the list of Mutations returned. The expression syntax was inspired by SQL.
@@ -20343,6 +24605,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -20354,7 +24619,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Mutation: CreatedAt, FunctionName, InvocationID, LinkID, MergeBaseRevisionNum, MergeEndRevisionNum, MergeSourceID, MutationID, MutationNum, OrganizationID, RestoredRevisionNum, RevisionID, RevisionNum, SpaceID, Subgroup, TriggerID, UnitID, UpdatedAt, UpgradedFromUpstreamRevisionNum.
+                 *     Supported attributes for filtering on Mutation: BridgeWorkerID, CreatedAt, FunctionName, InvocationID, InvocationParams, LinkID, MergeBaseRevisionNum, MergeEndRevisionNum, MergeSourceID, MutationID, MutationNum, OrganizationID, ReplayOutcome, ReplayReason, RestoredRevisionNum, RevisionID, RevisionNum, SpaceID, Subgroup, TriggerID, UnitID, UpdatedAt, UpgradedFromUpstreamRevisionNum.
                  *
                  *     Used to filter which mutations are affected during merge operations.
                  *
@@ -20379,8 +24644,12 @@ export interface operations {
                 tag?: string;
                 /** @description Must match ChangeSetID of affected Units if config Data is changed unless in dry run mode */
                 change_set_id?: string;
+                /** @description ChangeOrder to promote, with upgrade or resolve. The change order fixed the range when it was created -- the interval on each source Unit, marked with its Tags -- so it supplies both ends of the merge and merge_end is refused alongside it. A Unit whose source the change order does not cover is passed over rather than failed, which is what lets a bulk upgrade name a whole Space and take only the Units the change is in. A Unit whose last merged revision is not where the change order starts is an error, since merging anyway would replay what it already has or skip what it does not, and with resolve a selected Link whose UpdateType the change order does not follow is an error too. The revisions the promotion creates carry the ChangeOrder, and its start Tag is placed on the revision before them and its end Tag on the one it arrives at, so 'restore Before:ChangeOrder:uuid' undoes it whether it landed as one revision or as one per source revision. */
+                change_order?: string;
                 /** @description User-defined category for the Mutation. Must be alphanumeric, at most 64 characters. The prefix 'ConfigHub' is reserved. */
                 subgroup?: string;
+                /** @description Comma-separated parts of the result to return in addition to the Unit: ConfigData for the configuration the operation produced, and MutationSources for what set each value in it. Neither is a field of a Unit, and both cost something to return, so they are returned only when named. A dry run stores nothing, so this is the only way to see what it would have produced. */
+                include?: string;
             };
             header?: never;
             path: {
@@ -20397,26 +24666,13 @@ export interface operations {
             };
         };
         responses: {
-            /**
-             * @description Unit is the core unit of operation in ConfigHub. It contains a blob of configuration Data
-             *     of a single supported Toolchain Type (configuration format). This blob is typically a text document
-             *     that contains a collection of Kubernetes or infrastructure resources, or an application configuration
-             *     file. Applying / deploying or destroying the configuration happens as a single *transaction*
-             *     from ConfigHub's perspective. In reality, it is most often a multi-step workflow performed by
-             *     the underlying configuration / deployment tool. The resources must belong to a single
-             *     infrastructure provider and the actuation mechanism must be able to resolve references and
-             *     ordering dependencies among the resources within the document. For example, if one resource
-             *     needs to be fully provisioned to provide input to another resource, then the actuation code is
-             *     responsible for handling this. Revisions store historical copies of the configuration data.
-             *     Configuration data can be restored from prior Revisions. Units can also be cloned to create
-             *     new variants of a configuration.
-             */
+            /** @description OK */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Unit"];
+                    "application/json": components["schemas"]["UnitCreateOrUpdateResponse"];
                 };
             };
             /** @description Unit request is invalid (Bad Request). */
@@ -20606,22 +24862,28 @@ export interface operations {
                 revision_id?: string;
                 /** @description Dry run mode: return changed unit(s) but don't update configuration data */
                 dry_run?: boolean;
+                /** @description Record the paths this operation writes as protected local overrides, so a later merge from upstream does not overwrite them. Without it the operation claims nothing: each written path keeps whatever the Unit already has for it, and a path with no history is left unprotected. It only ever adds protection -- re-opening a path is the /protection API (cub unit set-protection --unprotect). Has no effect with restore, which rewinds MutationSources to the restored Revision's stored values wholesale. */
+                protect?: boolean;
+                /** @description The classes of guarded reason this operation is cleared for, as a JSON Clearance -- a list of {Key, Operator, Values} requirements, where Operator is Exists, In, NotIn, or DoesNotExist. A path whose guards this does not cover is not written, and the withheld change is reported as a Guarded conflict. An absent or empty clearance clears nothing, which only matters for a Unit that has guards. */
+                clearance?: string;
+                /** @description Merge the range as one rebased diff and record it as one Revision, instead of walking it. By default a merge replays: it takes the source's Revisions in order and, where a Revision records function invocations that can be re-executed, runs them against this Unit rather than rebasing their recorded paths onto it -- so a change lands where this Unit's own structure puts it -- and records each source Revision that has an effect here as a Revision of its own, carrying that Revision's change description, its own conflicts, and one Mutation per source Mutation. Squashing gives up both: the range arrives as a single rebased patch in a single Revision, which is what a merge did before replay existed. Accepted with upgrade, merge_source, and resolve of an UpgradeUnit or MergeUnits Link, and refused elsewhere, since there is no range to walk. A Link can ask for it standingly with its Squash field. */
+                squash?: boolean;
                 /** @description Upgrade the unit to the latest version of its upstream unit */
                 upgrade?: boolean;
-                /** @description Restore revision source. Supports: Named revisions ('LiveRevisionNum', 'LastAppliedRevisionNum', 'PreviousLiveRevisionNum', 'HeadRevisionNum'), direct revision number (e.g., '42'), or entity references ('Tag:uuid', 'ChangeSet:uuid', 'Revision:uuid'). Can be prefixed with 'Before:' to select the revision immediately before the specified one (e.g., 'Before:LiveRevisionNum', 'Before:42'). When using Tag or ChangeSet references, the latest revision associated with that entity is selected. */
+                /** @description Restore revision source. Supports: Named revisions ('LiveRevisionNum', 'LastAppliedRevisionNum', 'PreviousLiveRevisionNum', 'HeadRevisionNum'), direct revision number (e.g., '42'), or entity references ('Tag:uuid', 'ChangeSet:uuid', 'ChangeOrder:uuid', 'Revision:uuid'). Can be prefixed with 'Before:' to select the revision immediately before the specified one (e.g., 'Before:LiveRevisionNum', 'Before:42'). When using Tag or ChangeSet references, the latest revision associated with that entity is selected. 'ChangeOrder:uuid' selects the revision the change order ended at on this Unit and 'Before:ChangeOrder:uuid' the one before it began, which is what undoes a promotion however many revisions it made. */
                 restore?: string;
-                /** @description Resolve specified non-automatically resolved link from this (downstream) Unit to another (upstream) Unit. Expects Link:uuid or Link:*. */
+                /** @description Resolve Links from this (downstream) Unit to another (upstream) Unit, propagating what each Link's UpdateType says to propagate. Expects Link:*, Link:<uuid>, or Link:<where expression>. Link:* selects every Link from this Unit that can resolve; a where expression selects among those, evaluated against the Links themselves (e.g. UpdateType = 'MergeUnits'), which is how to name one Link in a bulk operation, where a UUID cannot be. A Link with UpdateType None resolves nothing and is never selected. An AutoUpdate Link may be resolved by hand: it does what the queue would have done, and nothing when the Link is already level with its source. */
                 resolve?: string;
                 /** @description Merge source unit. Currently it must be a unit ID or 'Self'. */
                 merge_source?: string;
-                /** @description Merge base revision, which provides the base configuration data of the changes to merge. With merge_source, this is a revision of the merge source unit. With merge_external_source, this is a revision of the unit being updated and overrides the default selection of the latest MergeExternal revision. Supports: Named revisions ('LiveRevisionNum', 'LastAppliedRevisionNum', 'PreviousLiveRevisionNum', 'HeadRevisionNum'), direct revision number (e.g., '42'), or entity references ('Tag:uuid', 'ChangeSet:uuid', 'Revision:uuid'). Can be prefixed with 'Before:' to select the revision immediately before the specified one (e.g., 'Before:LiveRevisionNum', 'Before:42'). When using Tag or ChangeSet references, the latest revision associated with that entity is selected. */
+                /** @description Merge base revision, which provides the base configuration data of the changes to merge. With merge_source, this is a revision of the merge source unit. With merge_external_source, this is a revision of the unit being updated and overrides the default selection of the latest MergeExternal revision. Supports: Named revisions ('LiveRevisionNum', 'LastAppliedRevisionNum', 'PreviousLiveRevisionNum', 'HeadRevisionNum'), direct revision number (e.g., '42'), or entity references ('Tag:uuid', 'ChangeSet:uuid', 'ChangeOrder:uuid', 'Revision:uuid'). Can be prefixed with 'Before:' to select the revision immediately before the specified one (e.g., 'Before:LiveRevisionNum', 'Before:42'). When using Tag or ChangeSet references, the latest revision associated with that entity is selected. 'ChangeOrder:uuid' selects the revision the change order ended at on this Unit and 'Before:ChangeOrder:uuid' the one before it began, which is what undoes a promotion however many revisions it made. */
                 merge_base?: string;
-                /** @description Merge end revision of the merge source, which provides the final configuration of the changes to merge. Supports: Named revisions ('LiveRevisionNum', 'LastAppliedRevisionNum', 'PreviousLiveRevisionNum', 'HeadRevisionNum'), direct revision number (e.g., '42'), or entity references ('Tag:uuid', 'ChangeSet:uuid', 'Revision:uuid'). Can be prefixed with 'Before:' to select the revision immediately before the specified one (e.g., 'Before:LiveRevisionNum', 'Before:42'). When using Tag or ChangeSet references, the latest revision associated with that entity is selected. */
+                /** @description Merge end revision of the merge source, which provides the final configuration of the changes to merge. Also accepted with upgrade and with resolve, where it names how far along the source to take the propagation; the default there is the source's head. Naming a ChangeSet or Tag that ends a change is what leaves a change still being made at the source behind. Supports: Named revisions ('LiveRevisionNum', 'LastAppliedRevisionNum', 'PreviousLiveRevisionNum', 'HeadRevisionNum'), direct revision number (e.g., '42'), or entity references ('Tag:uuid', 'ChangeSet:uuid', 'ChangeOrder:uuid', 'Revision:uuid'). Can be prefixed with 'Before:' to select the revision immediately before the specified one (e.g., 'Before:LiveRevisionNum', 'Before:42'). When using Tag or ChangeSet references, the latest revision associated with that entity is selected. 'ChangeOrder:uuid' selects the revision the change order ended at on this Unit and 'Before:ChangeOrder:uuid' the one before it began, which is what undoes a promotion however many revisions it made. */
                 merge_end?: string;
                 /** @description Identifier of the external source for merge-on-update. When set, computes mutations between the last MergeExternal revision and the provided data, then patches the current unit data with those mutations. */
                 merge_external_source?: string;
-                /** @description Disable the subtraction (override-preservation) step of upgrade and merge_source. By default (false), a cross-unit merge subtracts the target's local differences from the source patch so they survive; set true to apply the source patch without subtraction, relying on stored Mutation Predicate values to preserve overrides. Has no effect on a self merge (merge_source=Self), where subtraction is always disabled. */
-                merge_disable_subtraction?: boolean;
+                /** @description Enable the subtraction (override-preservation) step of upgrade and merge_source. By default (false), the source patch is applied without subtraction and the target's local differences are preserved by the stored Mutation Protected values; set true to additionally subtract the target's local differences from the source patch. Has no effect on a self merge (merge_source=Self), where subtraction is always disabled. */
+                merge_enable_subtraction?: boolean;
                 /**
                  * @description The specified string is an expression for the purpose of filtering
                  *     the list of Mutations returned. The expression syntax was inspired by SQL.
@@ -20643,6 +24905,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -20654,7 +24919,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Mutation: CreatedAt, FunctionName, InvocationID, LinkID, MergeBaseRevisionNum, MergeEndRevisionNum, MergeSourceID, MutationID, MutationNum, OrganizationID, RestoredRevisionNum, RevisionID, RevisionNum, SpaceID, Subgroup, TriggerID, UnitID, UpdatedAt, UpgradedFromUpstreamRevisionNum.
+                 *     Supported attributes for filtering on Mutation: BridgeWorkerID, CreatedAt, FunctionName, InvocationID, InvocationParams, LinkID, MergeBaseRevisionNum, MergeEndRevisionNum, MergeSourceID, MutationID, MutationNum, OrganizationID, ReplayOutcome, ReplayReason, RestoredRevisionNum, RevisionID, RevisionNum, SpaceID, Subgroup, TriggerID, UnitID, UpdatedAt, UpgradedFromUpstreamRevisionNum.
                  *
                  *     Used to filter which mutations are affected during merge operations.
                  *
@@ -20679,8 +24944,12 @@ export interface operations {
                 tag?: string;
                 /** @description Must match ChangeSetID of affected Units if config Data is changed unless in dry run mode */
                 change_set_id?: string;
+                /** @description ChangeOrder to promote, with upgrade or resolve. The change order fixed the range when it was created -- the interval on each source Unit, marked with its Tags -- so it supplies both ends of the merge and merge_end is refused alongside it. A Unit whose source the change order does not cover is passed over rather than failed, which is what lets a bulk upgrade name a whole Space and take only the Units the change is in. A Unit whose last merged revision is not where the change order starts is an error, since merging anyway would replay what it already has or skip what it does not, and with resolve a selected Link whose UpdateType the change order does not follow is an error too. The revisions the promotion creates carry the ChangeOrder, and its start Tag is placed on the revision before them and its end Tag on the one it arrives at, so 'restore Before:ChangeOrder:uuid' undoes it whether it landed as one revision or as one per source revision. */
+                change_order?: string;
                 /** @description User-defined category for the Mutation. Must be alphanumeric, at most 64 characters. The prefix 'ConfigHub' is reserved. */
                 subgroup?: string;
+                /** @description Comma-separated parts of the result to return in addition to the Unit: ConfigData for the configuration the operation produced, and MutationSources for what set each value in it. Neither is a field of a Unit, and both cost something to return, so they are returned only when named. A dry run stores nothing, so this is the only way to see what it would have produced. */
+                include?: string;
             };
             header?: never;
             path: {
@@ -20703,11 +24972,6 @@ export interface operations {
                      * @description Unique identifier for the ChangeSet to which the current Revision belongs. Optional. Units are not required to belong to ChangeSets.
                      */
                     ChangeSetID?: string | null;
-                    /**
-                     * Format: byte
-                     * @description The full configuration data for this unit.
-                     */
-                    Data?: string | null;
                     /** @description An optional set of gates that, if any is present, will block deletion */
                     DeleteGates?: {
                         [key: string]: boolean | null;
@@ -20729,7 +24993,7 @@ export interface operations {
                     Slug?: string | null;
                     /**
                      * Format: uuid
-                     * @description TargetID is the identifier of the target this unit is associated with. This defines where the configuration will be applied. It must be set to a valid Target within the same Space before the Unit can be Applied, Destroyed, Imported, or Refreshed.
+                     * @description TargetID is the identifier of the target this unit is associated with. This defines where the configuration will be applied. It must be set to a valid Target before the Unit can be Applied, Destroyed, Imported, or Refreshed.
                      */
                     TargetID?: string | null;
                     /** @description Bridge option values set per-Unit, merged with the Target's Options when sending to the bridge worker (Target's Options take precedence on overlap). The options must be predefined by the ConfigType in the BridgeWorker. */
@@ -20744,26 +25008,13 @@ export interface operations {
             };
         };
         responses: {
-            /**
-             * @description Unit is the core unit of operation in ConfigHub. It contains a blob of configuration Data
-             *     of a single supported Toolchain Type (configuration format). This blob is typically a text document
-             *     that contains a collection of Kubernetes or infrastructure resources, or an application configuration
-             *     file. Applying / deploying or destroying the configuration happens as a single *transaction*
-             *     from ConfigHub's perspective. In reality, it is most often a multi-step workflow performed by
-             *     the underlying configuration / deployment tool. The resources must belong to a single
-             *     infrastructure provider and the actuation mechanism must be able to resolve references and
-             *     ordering dependencies among the resources within the document. For example, if one resource
-             *     needs to be fully provisioned to provide input to another resource, then the actuation code is
-             *     responsible for handling this. Revisions store historical copies of the configuration data.
-             *     Configuration data can be restored from prior Revisions. Units can also be cloned to create
-             *     new variants of a configuration.
-             */
+            /** @description OK */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Unit"];
+                    "application/json": components["schemas"]["UnitCreateOrUpdateResponse"];
                 };
             };
             /** @description Unit request is invalid (Bad Request). */
@@ -20840,15 +25091,11 @@ export interface operations {
             };
         };
     };
-    ApplyUnit: {
+    ApproveUnit: {
         parameters: {
             query?: {
-                /** @description Revision to apply (defaults to HeadRevisionNum). Can be a revision number, 'LiveRevisionNum', 'LastAppliedRevisionNum', 'Tag:uuid', 'ChangeSet:uuid', etc. */
+                /** @description Revision to approve (defaults to HeadRevisionNum). Can be a revision number, 'LiveRevisionNum', 'LastAppliedRevisionNum', 'Tag:uuid', 'ChangeSet:uuid', etc. */
                 revision?: string;
-                /** @description Dry run mode - validates which units would be applied without executing */
-                dry_run?: boolean;
-                /** @description Drift reconciliation mode. Valid values: OnDemand, ContinuousApply, ContinuousRefresh. If not specified, the current value on the Unit is used. */
-                drift_mode?: string;
             };
             header?: never;
             path: {
@@ -20861,19 +25108,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /**
-             * @description UnitAction is a record of an action to be performed by a Bridge Worker. They are queued and sent to the worker in creation order.
-             *     If the worker is temporarily disconnected the queued actions will be sent when the worker reconnects or responds.
-             *     If there are links between units applied or destroyed in a single API call, they will be sent to the appropriate
-             *     worker(s) in the appropriate order (reverse or forword topological order). One or more UnitEvents will correspond
-             *     to each UnitAction.
-             */
+            /** @description OK */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["QueuedOperation"];
+                    "application/json": components["schemas"]["ApproveResponse"];
                 };
             };
             /** @description Unit request is invalid (Bad Request). */
@@ -20921,15 +25162,6 @@ export interface operations {
                     "application/json": components["schemas"]["StandardErrorResponse"];
                 };
             };
-            /** @description Bridge worker unavailable */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
             /** @description Something went wrong while processing Unit. */
             500: {
                 headers: {
@@ -20950,12 +25182,9 @@ export interface operations {
             };
         };
     };
-    ApproveUnit: {
+    ResolveUnitConflicts: {
         parameters: {
-            query?: {
-                /** @description Revision to approve (defaults to HeadRevisionNum). Can be a revision number, 'LiveRevisionNum', 'LastAppliedRevisionNum', 'Tag:uuid', 'ChangeSet:uuid', etc. */
-                revision?: string;
-            };
+            query?: never;
             header?: never;
             path: {
                 /** @description Unique identifier for a space_id */
@@ -20965,7 +25194,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["UnitConflictsRequest"];
+            };
+        };
         responses: {
             /** @description OK */
             200: {
@@ -20973,7 +25206,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ApproveResponse"];
+                    "application/json": components["schemas"]["UnitConflictsResponse"];
                 };
             };
             /** @description Unit request is invalid (Bad Request). */
@@ -21120,11 +25353,31 @@ export interface operations {
             };
         };
     };
-    DestroyUnit: {
+    UploadUnitData: {
         parameters: {
             query?: {
-                /** @description Dry run mode - validates which units would be destroyed without executing */
+                /** @description Human-readable description of this change, copied to the Revision it creates. */
+                last_change_description?: string;
+                /** @description Comma-separated parts of the result to return in addition to the Unit: ConfigData for the configuration the operation produced, and MutationSources for what set each value in it. Neither is a field of a Unit, and both cost something to return, so they are returned only when named. A dry run stores nothing, so this is the only way to see what it would have produced. */
+                include?: string;
+                /** @description Dry run mode: return changed unit(s) but don't update configuration data */
                 dry_run?: boolean;
+                /** @description Record the paths this operation writes as protected local overrides, so a later merge from upstream does not overwrite them. Without it the operation claims nothing: each written path keeps whatever the Unit already has for it, and a path with no history is left unprotected. It only ever adds protection -- re-opening a path is the /protection API (cub unit set-protection --unprotect). Has no effect with restore, which rewinds MutationSources to the restored Revision's stored values wholesale. */
+                protect?: boolean;
+                /** @description The classes of guarded reason this operation is cleared for, as a JSON Clearance -- a list of {Key, Operator, Values} requirements, where Operator is Exists, In, NotIn, or DoesNotExist. A path whose guards this does not cover is not written, and the withheld change is reported as a Guarded conflict. An absent or empty clearance clears nothing, which only matters for a Unit that has guards. */
+                clearance?: string;
+                /** @description Merge base revision, which provides the base configuration data of the changes to merge. With merge_source, this is a revision of the merge source unit. With merge_external_source, this is a revision of the unit being updated and overrides the default selection of the latest MergeExternal revision. Supports: Named revisions ('LiveRevisionNum', 'LastAppliedRevisionNum', 'PreviousLiveRevisionNum', 'HeadRevisionNum'), direct revision number (e.g., '42'), or entity references ('Tag:uuid', 'ChangeSet:uuid', 'ChangeOrder:uuid', 'Revision:uuid'). Can be prefixed with 'Before:' to select the revision immediately before the specified one (e.g., 'Before:LiveRevisionNum', 'Before:42'). When using Tag or ChangeSet references, the latest revision associated with that entity is selected. 'ChangeOrder:uuid' selects the revision the change order ended at on this Unit and 'Before:ChangeOrder:uuid' the one before it began, which is what undoes a promotion however many revisions it made. */
+                merge_base?: string;
+                /** @description Identifier of the external source for merge-on-update. When set, computes mutations between the last MergeExternal revision and the provided data, then patches the current unit data with those mutations. */
+                merge_external_source?: string;
+                /** @description Enable the subtraction (override-preservation) step of upgrade and merge_source. By default (false), the source patch is applied without subtraction and the target's local differences are preserved by the stored Mutation Protected values; set true to additionally subtract the target's local differences from the source patch. Has no effect on a self merge (merge_source=Self), where subtraction is always disabled. */
+                merge_enable_subtraction?: boolean;
+                /** @description Tag ID to add to the head revision */
+                tag?: string;
+                /** @description Must match ChangeSetID of affected Units if config Data is changed unless in dry run mode */
+                change_set_id?: string;
+                /** @description User-defined category for the Mutation. Must be alphanumeric, at most 64 characters. The prefix 'ConfigHub' is reserved. */
+                subgroup?: string;
             };
             header?: never;
             path: {
@@ -21135,21 +25388,19 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/octet-stream": string;
+            };
+        };
         responses: {
-            /**
-             * @description UnitAction is a record of an action to be performed by a Bridge Worker. They are queued and sent to the worker in creation order.
-             *     If the worker is temporarily disconnected the queued actions will be sent when the worker reconnects or responds.
-             *     If there are links between units applied or destroyed in a single API call, they will be sent to the appropriate
-             *     worker(s) in the appropriate order (reverse or forword topological order). One or more UnitEvents will correspond
-             *     to each UnitAction.
-             */
+            /** @description OK */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["QueuedOperation"];
+                    "application/json": components["schemas"]["UnitCreateOrUpdateResponse"];
                 };
             };
             /** @description Unit request is invalid (Bad Request). */
@@ -21190,15 +25441,6 @@ export interface operations {
             };
             /** @description Unit data conflict. Data has changed since last read. */
             409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Bridge worker unavailable */
-            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -21305,12 +25547,9 @@ export interface operations {
             };
         };
     };
-    ImportUnit: {
+    SetUnitGuard: {
         parameters: {
-            query?: {
-                /** @description Dry run mode - returns import data in the operation/action */
-                dry_run?: boolean;
-            };
+            query?: never;
             header?: never;
             path: {
                 /** @description Unique identifier for a space_id */
@@ -21322,23 +25561,17 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["ImportRequest"];
+                "application/json": components["schemas"]["UnitGuardRequest"];
             };
         };
         responses: {
-            /**
-             * @description UnitAction is a record of an action to be performed by a Bridge Worker. They are queued and sent to the worker in creation order.
-             *     If the worker is temporarily disconnected the queued actions will be sent when the worker reconnects or responds.
-             *     If there are links between units applied or destroyed in a single API call, they will be sent to the appropriate
-             *     worker(s) in the appropriate order (reverse or forword topological order). One or more UnitEvents will correspond
-             *     to each UnitAction.
-             */
+            /** @description OK */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["QueuedOperation"];
+                    "application/json": components["schemas"]["UnitGuardResponse"];
                 };
             };
             /** @description Unit request is invalid (Bad Request). */
@@ -21379,173 +25612,6 @@ export interface operations {
             };
             /** @description Unit data conflict. Data has changed since last read. */
             409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Bridge worker unavailable */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Something went wrong while processing Unit. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Unexpected error. */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-        };
-    };
-    DownloadUnitLiveData: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Unique identifier for a space_id */
-                space_id: string;
-                /** @description Unique identifier for a unit_id */
-                unit_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/octet-stream": string;
-                };
-            };
-            /** @description Unit request is invalid (Bad Request). */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Unauthorized access. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Forbidden access. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Unit not found. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Something went wrong while processing Unit. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Unexpected error. */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-        };
-    };
-    DownloadUnitLiveState: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Unique identifier for a space_id */
-                space_id: string;
-                /** @description Unique identifier for a unit_id */
-                unit_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/octet-stream": string;
-                };
-            };
-            /** @description Unit request is invalid (Bad Request). */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Unauthorized access. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Forbidden access. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Unit not found. */
-            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -21597,6 +25663,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -21608,7 +25677,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Mutation: CreatedAt, FunctionName, InvocationID, LinkID, MergeBaseRevisionNum, MergeEndRevisionNum, MergeSourceID, MutationID, MutationNum, OrganizationID, RestoredRevisionNum, RevisionID, RevisionNum, SpaceID, Subgroup, TriggerID, UnitID, UpdatedAt, UpgradedFromUpstreamRevisionNum.
+                 *     Supported attributes for filtering on Mutation: BridgeWorkerID, CreatedAt, FunctionName, InvocationID, InvocationParams, LinkID, MergeBaseRevisionNum, MergeEndRevisionNum, MergeSourceID, MutationID, MutationNum, OrganizationID, ReplayOutcome, ReplayReason, RestoredRevisionNum, RevisionID, RevisionNum, SpaceID, Subgroup, TriggerID, UnitID, UpdatedAt, UpgradedFromUpstreamRevisionNum.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -21661,7 +25730,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, MutationID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -21762,7 +25831,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, MutationID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -21846,7 +25915,86 @@ export interface operations {
             };
         };
     };
-    SetUnitPredicates: {
+    GetUnitMutationSources: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Unique identifier for a space_id */
+                space_id: string;
+                /** @description Unique identifier for a unit_id */
+                unit_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MutationSourcesResponse"];
+                };
+            };
+            /** @description Unit request is invalid (Bad Request). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unauthorized access. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Forbidden access. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unit not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Something went wrong while processing Unit. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+        };
+    };
+    SetUnitProtection: {
         parameters: {
             query?: never;
             header?: never;
@@ -21860,7 +26008,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["UnitPredicatesRequest"];
+                "application/json": components["schemas"]["UnitProtectionRequest"];
             };
         };
         responses: {
@@ -21870,7 +26018,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UnitPredicatesResponse"];
+                    "application/json": components["schemas"]["UnitProtectionResponse"];
                 };
             };
             /** @description Unit request is invalid (Bad Request). */
@@ -21938,13 +26086,126 @@ export interface operations {
             };
         };
     };
-    RefreshUnit: {
+    ListExtendedResources: {
         parameters: {
             query?: {
-                /** @description Dry run mode - returns refresh data in the operation/action and updates LiveData and LiveState in the unit */
-                dry_run?: boolean;
-                /** @description Drift reconciliation mode. Valid values: OnDemand, ContinuousApply, ContinuousRefresh. If not specified, the current value on the Unit is used. */
-                drift_mode?: string;
+                /**
+                 * @description The specified string is an expression for the purpose of filtering
+                 *     the list of Resources returned. The expression syntax was inspired by SQL.
+                 *     It supports conjunctions using `AND` of relational expressions of the form *attribute*
+                 *     *operator* *attribute_or_literal*. The attribute names are case-sensitive and PascalCase,
+                 *     as in the JSON encoding.
+                 *     Strings support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `LIKE`, `NOT LIKE`, `ILIKE`, `~~`, `!~~`, `~`, `~*`, `!~`, `!~*`, `IN`, `NOT IN`.
+                 *     String pattern operators: `LIKE` and `~~` for pattern matching with `%` and `_` wildcards,
+                 *     `ILIKE` for case-insensitive pattern matching, `NOT LIKE` and `!~~` for negated pattern matching.
+                 *     String regex operators: `~` for regex matching, `~*` for case-insensitive regex,
+                 *     `!~` and `!~*` for regex not matching (case-sensitive and insensitive).
+                 *     Integers support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `IN`, `NOT IN`.
+                 *     UUIDs and boolean attributes support equality and inequality only.
+                 *     UUID and time literals must be quoted as string literals.
+                 *     String literals are quoted with single quotes, such as `'string'`.
+                 *     Time literals use the same form as when serialized as JSON,
+                 *     such as: `CreatedAt > '2025-02-18T23:16:34'`.
+                 *     Integer and boolean literals are also supported for attributes of those types.
+                 *     Arrays support the `?` operator to to match any element of the array,
+                 *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
+                 *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
+                 *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
+                 *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
+                 *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
+                 *     Comparison results can be tested with `IS TRUE`, `IS FALSE`, `IS NOT TRUE`, and `IS NOT FALSE`.
+                 *     These are useful for nullable columns: `MergeSourceID = '<uuid>' IS NOT FALSE` matches rows where MergeSourceID equals the value OR is NULL.
+                 *     The `IN` and `NOT IN` operators accept a comma-separated list of values in parentheses,
+                 *     such as `Slug IN ('slugone', 'slugtwo')` or `Labels.environment IN ('prod', 'staging')`.
+                 *     Conjunctions are supported using the `AND` operator.
+                 *     An example conjunction is:
+                 *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
+                 *
+                 *     Supported attributes for filtering on Resource: CreatedAt, Data, OrganizationID, ResourceID, ResourceIndex, ResourceName, ResourceType, SpaceID, TargetID, ToolchainType, UnitID, UpdatedAt.
+                 *
+                 *     Sub-paths of the JSON configuration data are addressed with dot notation, such as `Data.spec.replicas > 1`.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                where?: string;
+                /**
+                 * @description UUID of a Filter entity to apply to the Resource list.
+                 *
+                 *     The Filter must be in the same Organization as the user credentials.
+                 *
+                 *     The Filter's From field must match the entity type being filtered (Resource).
+                 *
+                 *     For Space-resident entities, if the Filter has a FromSpaceID, it must match the operation's SpaceID.
+                 *
+                 *     The Filter's Where clause will be combined with any explicit 'where' parameter using AND logic.
+                 *
+                 *     If both 'filter' and 'where' parameters are specified, they are combined with AND logic.
+                 */
+                filter?: string;
+                /**
+                 * @description Free text search that approximately matches the specified string against string fields and map keys/values.
+                 *
+                 *     The search is case-insensitive and uses pattern matching to find entities containing the text.
+                 *
+                 *     Searchable string fields include attributes like Slug, DisplayName, and string-typed custom fields.
+                 *
+                 *     For map fields (like Labels and Annotations), the search matches both map keys and values.
+                 *
+                 *     The search uses OR logic across all searchable fields, so matching any field will return the entity.
+                 *
+                 *     If both 'where' and 'contains' parameters are specified, they are combined with AND logic.
+                 *
+                 *     Searchable fields for Resource include string and map-type attributes from the queryable attributes list.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                contains?: string;
+                /**
+                 * @description Include clause for expanding related entities in the response for Resource.
+                 *     The attribute names are case-sensitive, PascalCase, and
+                 *     expected in a comma-separated list format as in the JSON encoding.
+                 *
+                 *     Supported attributes for Resource are OrganizationID, SpaceID, TargetID, UnitID.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                include?: string;
+                /**
+                 * @description Select clause for specifying which fields to include in the response for Resource.
+                 *     The attribute names are case-sensitive, PascalCase, and
+                 *     expected in a comma-separated list format as in the JSON encoding.
+                 *     If not specified, all fields are returned.
+                 *     Entity and parent IDs (like OrganizationID, SpaceID, ResourceID) and Slug are always returned regardless of the select parameter.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
+                 *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
+                 *     The whole string must be query-encoded.
+                 */
+                select?: string;
+                /** @description Maximum number of Resource entities to return. If not specified, all matching entities are returned. Values greater than 1000 are rejected with 400. */
+                limit?: number;
+                /** @description Number of Resource entities to skip before returning results. Typically used together with 'limit' for pagination. If not specified, no entities are skipped. */
+                offset?: number;
+                /**
+                 * @description Comma-separated list of fields to sort Resource results by, each in the form 'ASC|DESC:FieldName' or just 'FieldName'.
+                 *
+                 *     Field names are case-sensitive and PascalCase, as in the JSON encoding. Sort direction defaults to ASC when the 'DIRECTION:' prefix is omitted.
+                 *
+                 *     Supported attributes for ordering Resource: CreatedAt, Data, OrganizationID, ResourceID, ResourceIndex, ResourceName, ResourceType, SpaceID, TargetID, ToolchainType, UnitID, UpdatedAt.
+                 *
+                 *     Example: 'DESC:CreatedAt' or 'DisplayName,DESC:CreatedAt'.
+                 *
+                 *     If not specified, results are returned in the database's default order.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                order_by?: string;
+                /** @description UUID of a View whose columns to extract for each resource, returned as ViewColumns. DataPath columns are read from the stored JSON rather than by invoking a function. */
+                view?: string;
+                /** @description Return each resource's configuration in its original toolchain-native form, as RawData on the response envelope. Off by default: the bodies are bulk, and a table view needs only the queryable Data projection. */
+                raw_data?: boolean;
             };
             header?: never;
             path: {
@@ -21957,22 +26218,16 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /**
-             * @description UnitAction is a record of an action to be performed by a Bridge Worker. They are queued and sent to the worker in creation order.
-             *     If the worker is temporarily disconnected the queued actions will be sent when the worker reconnects or responds.
-             *     If there are links between units applied or destroyed in a single API call, they will be sent to the appropriate
-             *     worker(s) in the appropriate order (reverse or forword topological order). One or more UnitEvents will correspond
-             *     to each UnitAction.
-             */
+            /** @description OK */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["QueuedOperation"];
+                    "application/json": components["schemas"]["ExtendedResource"][];
                 };
             };
-            /** @description Unit request is invalid (Bad Request). */
+            /** @description ExtendedResource request is invalid (Bad Request). */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -21999,7 +26254,7 @@ export interface operations {
                     "application/json": components["schemas"]["StandardErrorResponse"];
                 };
             };
-            /** @description Unit not found. */
+            /** @description ExtendedResource not found. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -22008,8 +26263,8 @@ export interface operations {
                     "application/json": components["schemas"]["StandardErrorResponse"];
                 };
             };
-            /** @description Unit data conflict. Data has changed since last read. */
-            409: {
+            /** @description Something went wrong while processing ExtendedResource. */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -22017,8 +26272,8 @@ export interface operations {
                     "application/json": components["schemas"]["StandardErrorResponse"];
                 };
             };
-            /** @description Bridge worker unavailable */
-            422: {
+            /** @description Unexpected error. */
+            default: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -22026,7 +26281,114 @@ export interface operations {
                     "application/json": components["schemas"]["StandardErrorResponse"];
                 };
             };
-            /** @description Something went wrong while processing Unit. */
+        };
+    };
+    GetExtendedResource: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Include clause for expanding related entities in the response for Resource.
+                 *     The attribute names are case-sensitive, PascalCase, and
+                 *     expected in a comma-separated list format as in the JSON encoding.
+                 *
+                 *     Supported attributes for Resource are OrganizationID, SpaceID, TargetID, UnitID.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                include?: string;
+                /**
+                 * @description Select clause for specifying which fields to include in the response for Resource.
+                 *     The attribute names are case-sensitive, PascalCase, and
+                 *     expected in a comma-separated list format as in the JSON encoding.
+                 *     If not specified, all fields are returned.
+                 *     Entity and parent IDs (like OrganizationID, SpaceID, ResourceID) and Slug are always returned regardless of the select parameter.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
+                 *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
+                 *     The whole string must be query-encoded.
+                 */
+                select?: string;
+                /** @description Maximum number of Resource entities to return. If not specified, all matching entities are returned. Values greater than 1000 are rejected with 400. */
+                limit?: number;
+                /** @description Number of Resource entities to skip before returning results. Typically used together with 'limit' for pagination. If not specified, no entities are skipped. */
+                offset?: number;
+                /**
+                 * @description Comma-separated list of fields to sort Resource results by, each in the form 'ASC|DESC:FieldName' or just 'FieldName'.
+                 *
+                 *     Field names are case-sensitive and PascalCase, as in the JSON encoding. Sort direction defaults to ASC when the 'DIRECTION:' prefix is omitted.
+                 *
+                 *     Supported attributes for ordering Resource: CreatedAt, Data, OrganizationID, ResourceID, ResourceIndex, ResourceName, ResourceType, SpaceID, TargetID, ToolchainType, UnitID, UpdatedAt.
+                 *
+                 *     Example: 'DESC:CreatedAt' or 'DisplayName,DESC:CreatedAt'.
+                 *
+                 *     If not specified, results are returned in the database's default order.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                order_by?: string;
+                /** @description UUID of a View whose columns to extract for each resource, returned as ViewColumns. DataPath columns are read from the stored JSON rather than by invoking a function. */
+                view?: string;
+                /** @description Return each resource's configuration in its original toolchain-native form, as RawData on the response envelope. Off by default: the bodies are bulk, and a table view needs only the queryable Data projection. */
+                raw_data?: boolean;
+            };
+            header?: never;
+            path: {
+                /** @description Unique identifier for a space_id */
+                space_id: string;
+                /** @description Unique identifier for a unit_id */
+                unit_id: string;
+                /** @description Unique identifier for a resource_id */
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExtendedResource"];
+                };
+            };
+            /** @description ExtendedResource request is invalid (Bad Request). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unauthorized access. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Forbidden access. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description ExtendedResource not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Something went wrong while processing ExtendedResource. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -22070,6 +26432,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -22081,7 +26446,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Revision: ApplyGates, ApplyWarnings, ApprovedBy, ChangeSetID, CreatedAt, DataHash, Description, LiveAt, OrganizationID, RevisionID, RevisionNum, Source, SpaceID, Tags, UnitID, UpdatedAt, UserAgent, UserID.
+                 *     Supported attributes for filtering on Revision: ApplyGates, ApplyWarnings, ApprovedBy, ChangeOrders, ChangeSetID, Conflicts, CreatedAt, DataHash, Description, LiveAt, OrganizationID, Releases, RevisionID, RevisionNum, Source, SpaceID, Tags, UnitID, UpdatedAt, UserAgent, UserID.
                  *
                  *     To list a tagged Revision use `Tags ? '<tag-id>'`.
                  *
@@ -22125,7 +26490,7 @@ export interface operations {
                  *     The attribute names are case-sensitive, PascalCase, and
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *
-                 *     Supported attributes for Revision are ChangeSetID, OrganizationID, SpaceID, Tags, UnitID, UserID.
+                 *     Supported attributes for Revision are ChangeOrders, ChangeSetID, OrganizationID, Releases, SpaceID, Tags, UnitID, UserID.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -22136,11 +26501,29 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, RevisionID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
                 select?: string;
+                /** @description Maximum number of Revision entities to return. If not specified, all matching entities are returned. Values greater than 1000 are rejected with 400. */
+                limit?: number;
+                /** @description Number of Revision entities to skip before returning results. Typically used together with 'limit' for pagination. If not specified, no entities are skipped. */
+                offset?: number;
+                /**
+                 * @description Comma-separated list of fields to sort Revision results by, each in the form 'ASC|DESC:FieldName' or just 'FieldName'.
+                 *
+                 *     Field names are case-sensitive and PascalCase, as in the JSON encoding. Sort direction defaults to ASC when the 'DIRECTION:' prefix is omitted.
+                 *
+                 *     Supported attributes for ordering Revision: ApplyGates, ApplyWarnings, ApprovedBy, ChangeOrders, ChangeSetID, Conflicts, CreatedAt, DataHash, Description, LiveAt, OrganizationID, Releases, RevisionID, RevisionNum, Source, SpaceID, Tags, UnitID, UpdatedAt, UserAgent, UserID.
+                 *
+                 *     Example: 'DESC:CreatedAt' or 'DisplayName,DESC:CreatedAt'.
+                 *
+                 *     If not specified, results are returned in the database's default order.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                order_by?: string;
             };
             header?: never;
             path: {
@@ -22226,7 +26609,7 @@ export interface operations {
                  *     The attribute names are case-sensitive, PascalCase, and
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *
-                 *     Supported attributes for Revision are ChangeSetID, OrganizationID, SpaceID, Tags, UnitID, UserID.
+                 *     Supported attributes for Revision are ChangeOrders, ChangeSetID, OrganizationID, Releases, SpaceID, Tags, UnitID, UserID.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -22237,11 +26620,29 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, RevisionID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
                 select?: string;
+                /** @description Maximum number of Revision entities to return. If not specified, all matching entities are returned. Values greater than 1000 are rejected with 400. */
+                limit?: number;
+                /** @description Number of Revision entities to skip before returning results. Typically used together with 'limit' for pagination. If not specified, no entities are skipped. */
+                offset?: number;
+                /**
+                 * @description Comma-separated list of fields to sort Revision results by, each in the form 'ASC|DESC:FieldName' or just 'FieldName'.
+                 *
+                 *     Field names are case-sensitive and PascalCase, as in the JSON encoding. Sort direction defaults to ASC when the 'DIRECTION:' prefix is omitted.
+                 *
+                 *     Supported attributes for ordering Revision: ApplyGates, ApplyWarnings, ApprovedBy, ChangeOrders, ChangeSetID, Conflicts, CreatedAt, DataHash, Description, LiveAt, OrganizationID, Releases, RevisionID, RevisionNum, Source, SpaceID, Tags, UnitID, UpdatedAt, UserAgent, UserID.
+                 *
+                 *     Example: 'DESC:CreatedAt' or 'DisplayName,DESC:CreatedAt'.
+                 *
+                 *     If not specified, results are returned in the database's default order.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                order_by?: string;
             };
             header?: never;
             path: {
@@ -22402,6 +26803,87 @@ export interface operations {
             };
         };
     };
+    GetRevisionMutationSources: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Unique identifier for a space_id */
+                space_id: string;
+                /** @description Unique identifier for a unit_id */
+                unit_id: string;
+                /** @description Unique identifier for a revision_id */
+                revision_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MutationSourcesResponse"];
+                };
+            };
+            /** @description Revision request is invalid (Bad Request). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unauthorized access. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Forbidden access. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Revision not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Something went wrong while processing Revision. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+        };
+    };
     ListUnitActions: {
         parameters: {
             query?: {
@@ -22426,6 +26908,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -22437,7 +26922,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on QueuedOperation: Action, BridgeWorkerID, CreatedAt, DriftReconciliationMode, DryRun, OrganizationID, QueuedOperationID, RevisionNum, SpaceID, Status, TargetID, UnitActionNum, UnitID.
+                 *     Supported attributes for filtering on QueuedOperation: Action, BridgeWorkerID, CreatedAt, DryRun, OrganizationID, QueuedOperationID, RevisionNum, SpaceID, Status, TargetID, UnitActionNum, UnitID.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -22567,13 +27052,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /**
-             * @description UnitAction is a record of an action to be performed by a Bridge Worker. They are queued and sent to the worker in creation order.
-             *     If the worker is temporarily disconnected the queued actions will be sent when the worker reconnects or responds.
-             *     If there are links between units applied or destroyed in a single API call, they will be sent to the appropriate
-             *     worker(s) in the appropriate order (reverse or forword topological order). One or more UnitEvents will correspond
-             *     to each UnitAction.
-             */
+            /** @description UnitAction is a record of an operation queued for a Worker, such as a function invocation on a unit. Operations are delivered to the worker in creation order; if the worker is disconnected, pending operations are delivered when it reconnects. One or more UnitEvents will correspond to each UnitAction. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -22662,6 +27141,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -22710,6 +27192,24 @@ export interface operations {
                  *     The whole string must be query-encoded.
                  */
                 contains?: string;
+                /** @description Maximum number of UnitEvent entities to return. If not specified, all matching entities are returned. Values greater than 1000 are rejected with 400. */
+                limit?: number;
+                /** @description Number of UnitEvent entities to skip before returning results. Typically used together with 'limit' for pagination. If not specified, no entities are skipped. */
+                offset?: number;
+                /**
+                 * @description Comma-separated list of fields to sort UnitEvent results by, each in the form 'ASC|DESC:FieldName' or just 'FieldName'.
+                 *
+                 *     Field names are case-sensitive and PascalCase, as in the JSON encoding. Sort direction defaults to ASC when the 'DIRECTION:' prefix is omitted.
+                 *
+                 *     Supported attributes for ordering UnitEvent: Action, BridgeWorkerID, CreatedAt, OrganizationID, QueuedOperationID, Result, RevisionNum, SpaceID, StartedAt, Status, TerminatedAt, UnitEventID, UnitEventNum, UnitID, UpdatedAt.
+                 *
+                 *     Example: 'DESC:CreatedAt' or 'DisplayName,DESC:CreatedAt'.
+                 *
+                 *     If not specified, results are returned in the database's default order.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                order_by?: string;
             };
             header?: never;
             path: {
@@ -22789,7 +27289,26 @@ export interface operations {
     };
     GetUnitEvent: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Maximum number of UnitEvent entities to return. If not specified, all matching entities are returned. Values greater than 1000 are rejected with 400. */
+                limit?: number;
+                /** @description Number of UnitEvent entities to skip before returning results. Typically used together with 'limit' for pagination. If not specified, no entities are skipped. */
+                offset?: number;
+                /**
+                 * @description Comma-separated list of fields to sort UnitEvent results by, each in the form 'ASC|DESC:FieldName' or just 'FieldName'.
+                 *
+                 *     Field names are case-sensitive and PascalCase, as in the JSON encoding. Sort direction defaults to ASC when the 'DIRECTION:' prefix is omitted.
+                 *
+                 *     Supported attributes for ordering UnitEvent: Action, BridgeWorkerID, CreatedAt, OrganizationID, QueuedOperationID, Result, RevisionNum, SpaceID, StartedAt, Status, TerminatedAt, UnitEventID, UnitEventNum, UnitID, UpdatedAt.
+                 *
+                 *     Example: 'DESC:CreatedAt' or 'DisplayName,DESC:CreatedAt'.
+                 *
+                 *     If not specified, results are returned in the database's default order.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                order_by?: string;
+            };
             header?: never;
             path: {
                 /** @description Unique identifier for a space_id */
@@ -22900,6 +27419,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -22964,7 +27486,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, ViewID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -23156,7 +27678,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, ViewID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -23569,6 +28091,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -23580,7 +28105,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Tag: Annotations, ChangeSetID, CreatedAt, DeleteGates, DisplayName, Labels, OrganizationID, Slug, SpaceID, TagID, UpdatedAt.
+                 *     Supported attributes for filtering on Tag: Annotations, ChangeOrderID, ChangeSetID, CreatedAt, DeleteGates, DisplayName, Labels, OrganizationID, Slug, SpaceID, TagID, UpdatedAt.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -23633,7 +28158,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, TagID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -23734,6 +28259,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -23745,7 +28273,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Tag: Annotations, ChangeSetID, CreatedAt, DeleteGates, DisplayName, Labels, OrganizationID, Slug, SpaceID, TagID, UpdatedAt.
+                 *     Supported attributes for filtering on Tag: Annotations, ChangeOrderID, ChangeSetID, CreatedAt, DeleteGates, DisplayName, Labels, OrganizationID, Slug, SpaceID, TagID, UpdatedAt.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -23819,6 +28347,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -23830,7 +28361,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Space: Annotations, AttributeFilterID, AttributeHash, AttributeIDs, CreatedAt, DeleteGates, DisplayName, Labels, OrganizationID, Permissions, Slug, SpaceID, TriggerFilterID, TriggerHash, TriggerIDs, UpdatedAt.
+                 *     Supported attributes for filtering on Space: Annotations, AttributeFilterID, AttributeHash, AttributeIDs, CreatedAt, DeleteGates, DisplayName, Labels, OrganizationID, Permissions, ReleaseBridgeWorkerID, ReleaseTargetID, Slug, SpaceID, TriggerFilterID, TriggerHash, TriggerIDs, UpdatedAt.
                  *
                  *     Where expression to select destination spaces for cloning tags
                  *
@@ -23990,6 +28521,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -24001,7 +28535,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Tag: Annotations, ChangeSetID, CreatedAt, DeleteGates, DisplayName, Labels, OrganizationID, Slug, SpaceID, TagID, UpdatedAt.
+                 *     Supported attributes for filtering on Tag: Annotations, ChangeOrderID, ChangeSetID, CreatedAt, DeleteGates, DisplayName, Labels, OrganizationID, Slug, SpaceID, TagID, UpdatedAt.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -24171,6 +28705,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -24182,7 +28719,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Tag: Annotations, ChangeSetID, CreatedAt, DeleteGates, DisplayName, Labels, OrganizationID, Slug, SpaceID, TagID, UpdatedAt.
+                 *     Supported attributes for filtering on Tag: Annotations, ChangeOrderID, ChangeSetID, CreatedAt, DeleteGates, DisplayName, Labels, OrganizationID, Slug, SpaceID, TagID, UpdatedAt.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -24366,6 +28903,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -24430,7 +28970,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, TargetID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -24531,6 +29071,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -24712,6 +29255,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -24929,6 +29475,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -24940,7 +29489,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Trigger: Annotations, BridgeWorkerID, CreatedAt, DeleteGates, Description, Disabled, DisplayName, Event, FunctionName, Hash, InvocationID, Labels, OrganizationID, OtherDataSource, Slug, SpaceID, ToolchainType, TriggerID, UnitFilterID, UpdatedAt, Validating, Warn, WhereResource, WhereUnit.
+                 *     Supported attributes for filtering on Trigger: Annotations, BridgeWorkerID, CreatedAt, DeleteGates, Description, Disabled, DisplayName, Event, FunctionName, Hash, InvocationID, Labels, OrganizationID, OtherDataSource, Protect, Slug, SpaceID, ToolchainType, TriggerID, UnitFilterID, UpdatedAt, Validating, Warn, WhereResource, WhereUnit.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -24993,7 +29542,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, TriggerID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -25094,6 +29643,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -25105,7 +29657,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Trigger: Annotations, BridgeWorkerID, CreatedAt, DeleteGates, Description, Disabled, DisplayName, Event, FunctionName, Hash, InvocationID, Labels, OrganizationID, OtherDataSource, Slug, SpaceID, ToolchainType, TriggerID, UnitFilterID, UpdatedAt, Validating, Warn, WhereResource, WhereUnit.
+                 *     Supported attributes for filtering on Trigger: Annotations, BridgeWorkerID, CreatedAt, DeleteGates, Description, Disabled, DisplayName, Event, FunctionName, Hash, InvocationID, Labels, OrganizationID, OtherDataSource, Protect, Slug, SpaceID, ToolchainType, TriggerID, UnitFilterID, UpdatedAt, Validating, Warn, WhereResource, WhereUnit.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -25175,6 +29727,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -25186,7 +29741,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Space: Annotations, AttributeFilterID, AttributeHash, AttributeIDs, CreatedAt, DeleteGates, DisplayName, Labels, OrganizationID, Permissions, Slug, SpaceID, TriggerFilterID, TriggerHash, TriggerIDs, UpdatedAt.
+                 *     Supported attributes for filtering on Space: Annotations, AttributeFilterID, AttributeHash, AttributeIDs, CreatedAt, DeleteGates, DisplayName, Labels, OrganizationID, Permissions, ReleaseBridgeWorkerID, ReleaseTargetID, Slug, SpaceID, TriggerFilterID, TriggerHash, TriggerIDs, UpdatedAt.
                  *
                  *     Where expression to select destination spaces for cloning triggers
                  *
@@ -25225,6 +29780,7 @@ export interface operations {
                     Arguments?: (Record<string, never> | null)[] | null;
                     /** Format: uuid */
                     BridgeWorkerID?: string | null;
+                    Clearance?: (Record<string, never> | null)[] | null;
                     /** @description An optional set of gates that, if any is present, will block deletion */
                     DeleteGates?: {
                         [key: string]: boolean | null;
@@ -25244,6 +29800,9 @@ export interface operations {
                         [key: string]: string | null;
                     } | null;
                     OtherDataSource?: string | null;
+                    /** @description Caller-supplied parameter values for expanding templated argument Values; transient, not persisted */
+                    Params?: Record<string, never> | null;
+                    Protect?: boolean | null;
                     /** @description Unique URL-safe identifier for the entity. */
                     Slug?: string | null;
                     ToolchainType?: string | null;
@@ -25366,6 +29925,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -25377,7 +29939,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Trigger: Annotations, BridgeWorkerID, CreatedAt, DeleteGates, Description, Disabled, DisplayName, Event, FunctionName, Hash, InvocationID, Labels, OrganizationID, OtherDataSource, Slug, SpaceID, ToolchainType, TriggerID, UnitFilterID, UpdatedAt, Validating, Warn, WhereResource, WhereUnit.
+                 *     Supported attributes for filtering on Trigger: Annotations, BridgeWorkerID, CreatedAt, DeleteGates, Description, Disabled, DisplayName, Event, FunctionName, Hash, InvocationID, Labels, OrganizationID, OtherDataSource, Protect, Slug, SpaceID, ToolchainType, TriggerID, UnitFilterID, UpdatedAt, Validating, Warn, WhereResource, WhereUnit.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -25547,6 +30109,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -25558,7 +30123,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Trigger: Annotations, BridgeWorkerID, CreatedAt, DeleteGates, Description, Disabled, DisplayName, Event, FunctionName, Hash, InvocationID, Labels, OrganizationID, OtherDataSource, Slug, SpaceID, ToolchainType, TriggerID, UnitFilterID, UpdatedAt, Validating, Warn, WhereResource, WhereUnit.
+                 *     Supported attributes for filtering on Trigger: Annotations, BridgeWorkerID, CreatedAt, DeleteGates, Description, Disabled, DisplayName, Event, FunctionName, Hash, InvocationID, Labels, OrganizationID, OtherDataSource, Protect, Slug, SpaceID, ToolchainType, TriggerID, UnitFilterID, UpdatedAt, Validating, Warn, WhereResource, WhereUnit.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -25621,6 +30186,7 @@ export interface operations {
                     Arguments?: (Record<string, never> | null)[] | null;
                     /** Format: uuid */
                     BridgeWorkerID?: string | null;
+                    Clearance?: (Record<string, never> | null)[] | null;
                     /** @description An optional set of gates that, if any is present, will block deletion */
                     DeleteGates?: {
                         [key: string]: boolean | null;
@@ -25640,6 +30206,9 @@ export interface operations {
                         [key: string]: string | null;
                     } | null;
                     OtherDataSource?: string | null;
+                    /** @description Caller-supplied parameter values for expanding templated argument Values; transient, not persisted */
+                    Params?: Record<string, never> | null;
+                    Protect?: boolean | null;
                     /** @description Unique URL-safe identifier for the entity. */
                     Slug?: string | null;
                     ToolchainType?: string | null;
@@ -25762,6 +30331,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -25773,7 +30345,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Unit: Annotations, ApplyGates, ApplyWarnings, ApprovedBy, BridgeWorkerID, ChangeSetID, CreatedAt, DataHash, DeleteGates, DestroyGates, DisplayName, DriftReconciliationMode, FromLinkID, HeadRevisionNum, HeadUnitActionNum, HeadUnitEventNum, Labels, LastActionAt, LastAppliedRevisionNum, LastChangeDescription, LiveRevisionNum, OrganizationID, PreviousLiveRevisionNum, ProviderType, Slug, SpaceID, TargetID, TargetOptions, ToolchainType, UnitID, UpdatedAt, UpstreamOrganizationID, UpstreamRevisionNum, UpstreamSpaceID, UpstreamUnitID, Values.
+                 *     Supported attributes for filtering on Unit: Annotations, ApplyGates, ApplyWarnings, ApprovedBy, BridgeWorkerID, ChangeSetID, Conflicts, CreatedAt, DataHash, DeleteGates, DestroyGates, DisplayName, FromLinkID, HeadRevisionNum, HeadUnitActionNum, HeadUnitEventNum, Labels, LastActionAt, LastAppliedRevisionNum, LastChangeDescription, LiveRevisionNum, OrganizationID, PreviousLiveRevisionNum, ProviderType, Slug, SpaceID, TargetID, TargetOptions, ToolchainType, UnitID, UpdatedAt, UpstreamRevisionNum, UpstreamSpaceID, UpstreamUnitID, Values.
                  *
                  *     Finding all units created by cloning can be done using the expression `UpstreamRevisionNum > 0`. Clones of a specific unit can be found by additionally filtering based on `UpstreamUnitID`. Unapplied units can be found using `LiveRevisionNum = 0`. Units with unapplied changes can be found with `HeadRevisionNum > LiveRevisionNum`.
                  *
@@ -25828,7 +30400,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, UnitID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -25941,6 +30513,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -25952,7 +30527,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Unit: Annotations, ApplyGates, ApplyWarnings, ApprovedBy, BridgeWorkerID, ChangeSetID, CreatedAt, DataHash, DeleteGates, DestroyGates, DisplayName, DriftReconciliationMode, FromLinkID, HeadRevisionNum, HeadUnitActionNum, HeadUnitEventNum, Labels, LastActionAt, LastAppliedRevisionNum, LastChangeDescription, LiveRevisionNum, OrganizationID, PreviousLiveRevisionNum, ProviderType, Slug, SpaceID, TargetID, TargetOptions, ToolchainType, UnitID, UpdatedAt, UpstreamOrganizationID, UpstreamRevisionNum, UpstreamSpaceID, UpstreamUnitID, Values.
+                 *     Supported attributes for filtering on Unit: Annotations, ApplyGates, ApplyWarnings, ApprovedBy, BridgeWorkerID, ChangeSetID, Conflicts, CreatedAt, DataHash, DeleteGates, DestroyGates, DisplayName, FromLinkID, HeadRevisionNum, HeadUnitActionNum, HeadUnitEventNum, Labels, LastActionAt, LastAppliedRevisionNum, LastChangeDescription, LiveRevisionNum, OrganizationID, PreviousLiveRevisionNum, ProviderType, Slug, SpaceID, TargetID, TargetOptions, ToolchainType, UnitID, UpdatedAt, UpstreamRevisionNum, UpstreamSpaceID, UpstreamUnitID, Values.
                  *
                  *     Finding all units created by cloning can be done using the expression `UpstreamRevisionNum > 0`. Clones of a specific unit can be found by additionally filtering based on `UpstreamUnitID`. Unapplied units can be found using `LiveRevisionNum = 0`. Units with unapplied changes can be found with `HeadRevisionNum > LiveRevisionNum`.
                  *
@@ -26028,6 +30603,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -26039,7 +30617,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Space: Annotations, AttributeFilterID, AttributeHash, AttributeIDs, CreatedAt, DeleteGates, DisplayName, Labels, OrganizationID, Permissions, Slug, SpaceID, TriggerFilterID, TriggerHash, TriggerIDs, UpdatedAt.
+                 *     Supported attributes for filtering on Space: Annotations, AttributeFilterID, AttributeHash, AttributeIDs, CreatedAt, DeleteGates, DisplayName, Labels, OrganizationID, Permissions, ReleaseBridgeWorkerID, ReleaseTargetID, Slug, SpaceID, TriggerFilterID, TriggerHash, TriggerIDs, UpdatedAt.
                  *
                  *     Where expression to select destination spaces for cloning units
                  *
@@ -26083,6 +30661,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -26094,13 +30675,17 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Link: Annotations, AutoUpdate, CreatedAt, DeleteGates, DisplayName, DownstreamLastMergedRevisionNum, FromUnitID, Hash, Labels, LinkID, MergeDisableSubtraction, OrganizationID, Slug, SpaceID, ToSpaceID, ToUnitID, TransformInvocationID, UpdateType, UpdatedAt, UpstreamLastMergedRevisionNum, UpstreamLinkID, UpstreamOrganizationID, UpstreamSpaceID, UseLiveState.
+                 *     Supported attributes for filtering on Link: Annotations, AutoUpdate, CreatedAt, DeleteGates, DisplayName, DownstreamLastMergedRevisionNum, FromUnitID, Hash, Labels, LinkID, MergeEnableSubtraction, OrganizationID, Protect, Slug, SpaceID, Squash, Stale, ToSpaceID, ToUnitID, TransformInvocationID, UpdateType, UpdatedAt, UpstreamLastMergedRevisionNum, UpstreamLinkID, UpstreamSpaceID.
                  *
                  *     Where expression to filter outgoing links (links to units outside the cloned set) for copying. If non-empty, matching outgoing links are also copied with FromUnitID retargeted to the cloned unit.
                  *
                  *     The whole string must be query-encoded.
                  */
                 include_outgoing_links_where?: string;
+                /** @description Revision of the upstream Unit to copy. The default is its head, which is what a clone has always taken. Takes the same forms as merge_end and restore -- a revision number, a named revision, 'Tag:uuid', 'ChangeSet:uuid', 'ChangeOrder:uuid', 'Before:...' -- resolved against the Unit being cloned from, so a bulk clone lands on a different revision of each source Unit. 'Before:ChangeOrder:uuid' is what a promotion uses: it names the state the change starts from, which for a Unit no target has taken yet is its first revision, so the upgrade that follows replays the change into the clone rather than the clone arriving with the change already folded in. Requires upstream_unit_id (or, in bulk, a source Unit to clone). */
+                upstream_revision?: string;
+                /** @description Also create a MergeUnits Link from each upstream Unit back to its clone, alongside the UpgradeUnit Link a clone always gets. The upgrade Link carries changes from the upstream Unit into the clone; this one carries them the other way, which is what makes a clone usable as a draft: change it, review it, then resolve the Link (resolve=Link:...) on the upstream Unit to merge the change home. A Unit may be the source of several of these -- one per outstanding draft -- so each is named for the clone it takes changes from (syncback-<space>-<unit>) rather than for the Unit they all point at. The Link is created in the upstream Unit's Space, which the caller must be allowed to create Links in. Requires upstream_unit_id (or, in bulk, a source Unit to clone). */
+                syncback?: boolean;
             };
             header?: never;
             path?: never;
@@ -26118,11 +30703,6 @@ export interface operations {
                      * @description Unique identifier for the ChangeSet to which the current Revision belongs. Optional. Units are not required to belong to ChangeSets.
                      */
                     ChangeSetID?: string | null;
-                    /**
-                     * Format: byte
-                     * @description The full configuration data for this unit.
-                     */
-                    Data?: string | null;
                     /** @description An optional set of gates that, if any is present, will block deletion */
                     DeleteGates?: {
                         [key: string]: boolean | null;
@@ -26144,7 +30724,7 @@ export interface operations {
                     Slug?: string | null;
                     /**
                      * Format: uuid
-                     * @description TargetID is the identifier of the target this unit is associated with. This defines where the configuration will be applied. It must be set to a valid Target within the same Space before the Unit can be Applied, Destroyed, Imported, or Refreshed.
+                     * @description TargetID is the identifier of the target this unit is associated with. This defines where the configuration will be applied. It must be set to a valid Target before the Unit can be Applied, Destroyed, Imported, or Refreshed.
                      */
                     TargetID?: string | null;
                     /** @description Bridge option values set per-Unit, merged with the Target's Options when sending to the bridge worker (Target's Options take precedence on overlap). The options must be predefined by the ConfigType in the BridgeWorker. */
@@ -26275,6 +30855,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -26286,7 +30869,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Unit: Annotations, ApplyGates, ApplyWarnings, ApprovedBy, BridgeWorkerID, ChangeSetID, CreatedAt, DataHash, DeleteGates, DestroyGates, DisplayName, DriftReconciliationMode, FromLinkID, HeadRevisionNum, HeadUnitActionNum, HeadUnitEventNum, Labels, LastActionAt, LastAppliedRevisionNum, LastChangeDescription, LiveRevisionNum, OrganizationID, PreviousLiveRevisionNum, ProviderType, Slug, SpaceID, TargetID, TargetOptions, ToolchainType, UnitID, UpdatedAt, UpstreamOrganizationID, UpstreamRevisionNum, UpstreamSpaceID, UpstreamUnitID, Values.
+                 *     Supported attributes for filtering on Unit: Annotations, ApplyGates, ApplyWarnings, ApprovedBy, BridgeWorkerID, ChangeSetID, Conflicts, CreatedAt, DataHash, DeleteGates, DestroyGates, DisplayName, FromLinkID, HeadRevisionNum, HeadUnitActionNum, HeadUnitEventNum, Labels, LastActionAt, LastAppliedRevisionNum, LastChangeDescription, LiveRevisionNum, OrganizationID, PreviousLiveRevisionNum, ProviderType, Slug, SpaceID, TargetID, TargetOptions, ToolchainType, UnitID, UpdatedAt, UpstreamRevisionNum, UpstreamSpaceID, UpstreamUnitID, Values.
                  *
                  *     Finding all units created by cloning can be done using the expression `UpstreamRevisionNum > 0`. Clones of a specific unit can be found by additionally filtering based on `UpstreamUnitID`. Unapplied units can be found using `LiveRevisionNum = 0`. Units with unapplied changes can be found with `HeadRevisionNum > LiveRevisionNum`.
                  *
@@ -26467,6 +31050,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -26478,7 +31064,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Unit: Annotations, ApplyGates, ApplyWarnings, ApprovedBy, BridgeWorkerID, ChangeSetID, CreatedAt, DataHash, DeleteGates, DestroyGates, DisplayName, DriftReconciliationMode, FromLinkID, HeadRevisionNum, HeadUnitActionNum, HeadUnitEventNum, Labels, LastActionAt, LastAppliedRevisionNum, LastChangeDescription, LiveRevisionNum, OrganizationID, PreviousLiveRevisionNum, ProviderType, Slug, SpaceID, TargetID, TargetOptions, ToolchainType, UnitID, UpdatedAt, UpstreamOrganizationID, UpstreamRevisionNum, UpstreamSpaceID, UpstreamUnitID, Values.
+                 *     Supported attributes for filtering on Unit: Annotations, ApplyGates, ApplyWarnings, ApprovedBy, BridgeWorkerID, ChangeSetID, Conflicts, CreatedAt, DataHash, DeleteGates, DestroyGates, DisplayName, FromLinkID, HeadRevisionNum, HeadUnitActionNum, HeadUnitEventNum, Labels, LastActionAt, LastAppliedRevisionNum, LastChangeDescription, LiveRevisionNum, OrganizationID, PreviousLiveRevisionNum, ProviderType, Slug, SpaceID, TargetID, TargetOptions, ToolchainType, UnitID, UpdatedAt, UpstreamRevisionNum, UpstreamSpaceID, UpstreamUnitID, Values.
                  *
                  *     Finding all units created by cloning can be done using the expression `UpstreamRevisionNum > 0`. Clones of a specific unit can be found by additionally filtering based on `UpstreamUnitID`. Unapplied units can be found using `LiveRevisionNum = 0`. Units with unapplied changes can be found with `HeadRevisionNum > LiveRevisionNum`.
                  *
@@ -26529,22 +31115,28 @@ export interface operations {
                 include?: string;
                 /** @description Dry run mode: return changed unit(s) but don't update configuration data */
                 dry_run?: boolean;
+                /** @description Record the paths this operation writes as protected local overrides, so a later merge from upstream does not overwrite them. Without it the operation claims nothing: each written path keeps whatever the Unit already has for it, and a path with no history is left unprotected. It only ever adds protection -- re-opening a path is the /protection API (cub unit set-protection --unprotect). Has no effect with restore, which rewinds MutationSources to the restored Revision's stored values wholesale. */
+                protect?: boolean;
+                /** @description The classes of guarded reason this operation is cleared for, as a JSON Clearance -- a list of {Key, Operator, Values} requirements, where Operator is Exists, In, NotIn, or DoesNotExist. A path whose guards this does not cover is not written, and the withheld change is reported as a Guarded conflict. An absent or empty clearance clears nothing, which only matters for a Unit that has guards. */
+                clearance?: string;
+                /** @description Merge the range as one rebased diff and record it as one Revision, instead of walking it. By default a merge replays: it takes the source's Revisions in order and, where a Revision records function invocations that can be re-executed, runs them against this Unit rather than rebasing their recorded paths onto it -- so a change lands where this Unit's own structure puts it -- and records each source Revision that has an effect here as a Revision of its own, carrying that Revision's change description, its own conflicts, and one Mutation per source Mutation. Squashing gives up both: the range arrives as a single rebased patch in a single Revision, which is what a merge did before replay existed. Accepted with upgrade, merge_source, and resolve of an UpgradeUnit or MergeUnits Link, and refused elsewhere, since there is no range to walk. A Link can ask for it standingly with its Squash field. */
+                squash?: boolean;
                 /** @description Upgrade the unit to the latest version of its upstream unit */
                 upgrade?: boolean;
-                /** @description Restore revision source. Supports: Named revisions ('LiveRevisionNum', 'LastAppliedRevisionNum', 'PreviousLiveRevisionNum', 'HeadRevisionNum'), direct revision number (e.g., '42'), or entity references ('Tag:uuid', 'ChangeSet:uuid', 'Revision:uuid'). Can be prefixed with 'Before:' to select the revision immediately before the specified one (e.g., 'Before:LiveRevisionNum', 'Before:42'). When using Tag or ChangeSet references, the latest revision associated with that entity is selected. */
+                /** @description Restore revision source. Supports: Named revisions ('LiveRevisionNum', 'LastAppliedRevisionNum', 'PreviousLiveRevisionNum', 'HeadRevisionNum'), direct revision number (e.g., '42'), or entity references ('Tag:uuid', 'ChangeSet:uuid', 'ChangeOrder:uuid', 'Revision:uuid'). Can be prefixed with 'Before:' to select the revision immediately before the specified one (e.g., 'Before:LiveRevisionNum', 'Before:42'). When using Tag or ChangeSet references, the latest revision associated with that entity is selected. 'ChangeOrder:uuid' selects the revision the change order ended at on this Unit and 'Before:ChangeOrder:uuid' the one before it began, which is what undoes a promotion however many revisions it made. */
                 restore?: string;
-                /** @description Resolve specified non-automatically resolved link from this (downstream) Unit to another (upstream) Unit. Expects Link:uuid or Link:*. */
+                /** @description Resolve Links from this (downstream) Unit to another (upstream) Unit, propagating what each Link's UpdateType says to propagate. Expects Link:*, Link:<uuid>, or Link:<where expression>. Link:* selects every Link from this Unit that can resolve; a where expression selects among those, evaluated against the Links themselves (e.g. UpdateType = 'MergeUnits'), which is how to name one Link in a bulk operation, where a UUID cannot be. A Link with UpdateType None resolves nothing and is never selected. An AutoUpdate Link may be resolved by hand: it does what the queue would have done, and nothing when the Link is already level with its source. */
                 resolve?: string;
                 /** @description Merge source unit. Currently it must be a unit ID or 'Self'. */
                 merge_source?: string;
-                /** @description Merge base revision, which provides the base configuration data of the changes to merge. With merge_source, this is a revision of the merge source unit. With merge_external_source, this is a revision of the unit being updated and overrides the default selection of the latest MergeExternal revision. Supports: Named revisions ('LiveRevisionNum', 'LastAppliedRevisionNum', 'PreviousLiveRevisionNum', 'HeadRevisionNum'), direct revision number (e.g., '42'), or entity references ('Tag:uuid', 'ChangeSet:uuid', 'Revision:uuid'). Can be prefixed with 'Before:' to select the revision immediately before the specified one (e.g., 'Before:LiveRevisionNum', 'Before:42'). When using Tag or ChangeSet references, the latest revision associated with that entity is selected. */
+                /** @description Merge base revision, which provides the base configuration data of the changes to merge. With merge_source, this is a revision of the merge source unit. With merge_external_source, this is a revision of the unit being updated and overrides the default selection of the latest MergeExternal revision. Supports: Named revisions ('LiveRevisionNum', 'LastAppliedRevisionNum', 'PreviousLiveRevisionNum', 'HeadRevisionNum'), direct revision number (e.g., '42'), or entity references ('Tag:uuid', 'ChangeSet:uuid', 'ChangeOrder:uuid', 'Revision:uuid'). Can be prefixed with 'Before:' to select the revision immediately before the specified one (e.g., 'Before:LiveRevisionNum', 'Before:42'). When using Tag or ChangeSet references, the latest revision associated with that entity is selected. 'ChangeOrder:uuid' selects the revision the change order ended at on this Unit and 'Before:ChangeOrder:uuid' the one before it began, which is what undoes a promotion however many revisions it made. */
                 merge_base?: string;
-                /** @description Merge end revision of the merge source, which provides the final configuration of the changes to merge. Supports: Named revisions ('LiveRevisionNum', 'LastAppliedRevisionNum', 'PreviousLiveRevisionNum', 'HeadRevisionNum'), direct revision number (e.g., '42'), or entity references ('Tag:uuid', 'ChangeSet:uuid', 'Revision:uuid'). Can be prefixed with 'Before:' to select the revision immediately before the specified one (e.g., 'Before:LiveRevisionNum', 'Before:42'). When using Tag or ChangeSet references, the latest revision associated with that entity is selected. */
+                /** @description Merge end revision of the merge source, which provides the final configuration of the changes to merge. Also accepted with upgrade and with resolve, where it names how far along the source to take the propagation; the default there is the source's head. Naming a ChangeSet or Tag that ends a change is what leaves a change still being made at the source behind. Supports: Named revisions ('LiveRevisionNum', 'LastAppliedRevisionNum', 'PreviousLiveRevisionNum', 'HeadRevisionNum'), direct revision number (e.g., '42'), or entity references ('Tag:uuid', 'ChangeSet:uuid', 'ChangeOrder:uuid', 'Revision:uuid'). Can be prefixed with 'Before:' to select the revision immediately before the specified one (e.g., 'Before:LiveRevisionNum', 'Before:42'). When using Tag or ChangeSet references, the latest revision associated with that entity is selected. 'ChangeOrder:uuid' selects the revision the change order ended at on this Unit and 'Before:ChangeOrder:uuid' the one before it began, which is what undoes a promotion however many revisions it made. */
                 merge_end?: string;
                 /** @description Identifier of the external source for merge-on-update. When set, computes mutations between the last MergeExternal revision and the provided data, then patches the current unit data with those mutations. */
                 merge_external_source?: string;
-                /** @description Disable the subtraction (override-preservation) step of upgrade and merge_source. By default (false), a cross-unit merge subtracts the target's local differences from the source patch so they survive; set true to apply the source patch without subtraction, relying on stored Mutation Predicate values to preserve overrides. Has no effect on a self merge (merge_source=Self), where subtraction is always disabled. */
-                merge_disable_subtraction?: boolean;
+                /** @description Enable the subtraction (override-preservation) step of upgrade and merge_source. By default (false), the source patch is applied without subtraction and the target's local differences are preserved by the stored Mutation Protected values; set true to additionally subtract the target's local differences from the source patch. Has no effect on a self merge (merge_source=Self), where subtraction is always disabled. */
+                merge_enable_subtraction?: boolean;
                 /**
                  * @description The specified string is an expression for the purpose of filtering
                  *     the list of Mutations returned. The expression syntax was inspired by SQL.
@@ -26566,6 +31158,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -26577,7 +31172,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Mutation: CreatedAt, FunctionName, InvocationID, LinkID, MergeBaseRevisionNum, MergeEndRevisionNum, MergeSourceID, MutationID, MutationNum, OrganizationID, RestoredRevisionNum, RevisionID, RevisionNum, SpaceID, Subgroup, TriggerID, UnitID, UpdatedAt, UpgradedFromUpstreamRevisionNum.
+                 *     Supported attributes for filtering on Mutation: BridgeWorkerID, CreatedAt, FunctionName, InvocationID, InvocationParams, LinkID, MergeBaseRevisionNum, MergeEndRevisionNum, MergeSourceID, MutationID, MutationNum, OrganizationID, ReplayOutcome, ReplayReason, RestoredRevisionNum, RevisionID, RevisionNum, SpaceID, Subgroup, TriggerID, UnitID, UpdatedAt, UpgradedFromUpstreamRevisionNum.
                  *
                  *     Used to filter which mutations are affected during merge operations.
                  *
@@ -26602,6 +31197,8 @@ export interface operations {
                 tag?: string;
                 /** @description Must match ChangeSetID of affected Units if config Data is changed unless in dry run mode */
                 change_set_id?: string;
+                /** @description ChangeOrder to promote, with upgrade or resolve. The change order fixed the range when it was created -- the interval on each source Unit, marked with its Tags -- so it supplies both ends of the merge and merge_end is refused alongside it. A Unit whose source the change order does not cover is passed over rather than failed, which is what lets a bulk upgrade name a whole Space and take only the Units the change is in. A Unit whose last merged revision is not where the change order starts is an error, since merging anyway would replay what it already has or skip what it does not, and with resolve a selected Link whose UpdateType the change order does not follow is an error too. The revisions the promotion creates carry the ChangeOrder, and its start Tag is placed on the revision before them and its end Tag on the one it arrives at, so 'restore Before:ChangeOrder:uuid' undoes it whether it landed as one revision or as one per source revision. */
+                change_order?: string;
                 /** @description User-defined category for the Mutation. Must be alphanumeric, at most 64 characters. The prefix 'ConfigHub' is reserved. */
                 subgroup?: string;
             };
@@ -26621,11 +31218,6 @@ export interface operations {
                      * @description Unique identifier for the ChangeSet to which the current Revision belongs. Optional. Units are not required to belong to ChangeSets.
                      */
                     ChangeSetID?: string | null;
-                    /**
-                     * Format: byte
-                     * @description The full configuration data for this unit.
-                     */
-                    Data?: string | null;
                     /** @description An optional set of gates that, if any is present, will block deletion */
                     DeleteGates?: {
                         [key: string]: boolean | null;
@@ -26647,7 +31239,7 @@ export interface operations {
                     Slug?: string | null;
                     /**
                      * Format: uuid
-                     * @description TargetID is the identifier of the target this unit is associated with. This defines where the configuration will be applied. It must be set to a valid Target within the same Space before the Unit can be Applied, Destroyed, Imported, or Refreshed.
+                     * @description TargetID is the identifier of the target this unit is associated with. This defines where the configuration will be applied. It must be set to a valid Target before the Unit can be Applied, Destroyed, Imported, or Refreshed.
                      */
                     TargetID?: string | null;
                     /** @description Bridge option values set per-Unit, merged with the Target's Options when sending to the bridge worker (Target's Options take precedence on overlap). The options must be predefined by the ConfigType in the BridgeWorker. */
@@ -26754,195 +31346,6 @@ export interface operations {
             };
         };
     };
-    BulkApplyUnits: {
-        parameters: {
-            query: {
-                /**
-                 * @description The specified string is an expression for the purpose of filtering
-                 *     the list of Units returned. The expression syntax was inspired by SQL.
-                 *     It supports conjunctions using `AND` of relational expressions of the form *attribute*
-                 *     *operator* *attribute_or_literal*. The attribute names are case-sensitive and PascalCase,
-                 *     as in the JSON encoding.
-                 *     Strings support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `LIKE`, `NOT LIKE`, `ILIKE`, `~~`, `!~~`, `~`, `~*`, `!~`, `!~*`, `IN`, `NOT IN`.
-                 *     String pattern operators: `LIKE` and `~~` for pattern matching with `%` and `_` wildcards,
-                 *     `ILIKE` for case-insensitive pattern matching, `NOT LIKE` and `!~~` for negated pattern matching.
-                 *     String regex operators: `~` for regex matching, `~*` for case-insensitive regex,
-                 *     `!~` and `!~*` for regex not matching (case-sensitive and insensitive).
-                 *     Integers support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `IN`, `NOT IN`.
-                 *     UUIDs and boolean attributes support equality and inequality only.
-                 *     UUID and time literals must be quoted as string literals.
-                 *     String literals are quoted with single quotes, such as `'string'`.
-                 *     Time literals use the same form as when serialized as JSON,
-                 *     such as: `CreatedAt > '2025-02-18T23:16:34'`.
-                 *     Integer and boolean literals are also supported for attributes of those types.
-                 *     Arrays support the `?` operator to to match any element of the array,
-                 *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
-                 *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
-                 *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
-                 *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
-                 *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
-                 *     Comparison results can be tested with `IS TRUE`, `IS FALSE`, `IS NOT TRUE`, and `IS NOT FALSE`.
-                 *     These are useful for nullable columns: `MergeSourceID = '<uuid>' IS NOT FALSE` matches rows where MergeSourceID equals the value OR is NULL.
-                 *     The `IN` and `NOT IN` operators accept a comma-separated list of values in parentheses,
-                 *     such as `Slug IN ('slugone', 'slugtwo')` or `Labels.environment IN ('prod', 'staging')`.
-                 *     Conjunctions are supported using the `AND` operator.
-                 *     An example conjunction is:
-                 *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
-                 *
-                 *     Supported attributes for filtering on Unit: Annotations, ApplyGates, ApplyWarnings, ApprovedBy, BridgeWorkerID, ChangeSetID, CreatedAt, DataHash, DeleteGates, DestroyGates, DisplayName, DriftReconciliationMode, FromLinkID, HeadRevisionNum, HeadUnitActionNum, HeadUnitEventNum, Labels, LastActionAt, LastAppliedRevisionNum, LastChangeDescription, LiveRevisionNum, OrganizationID, PreviousLiveRevisionNum, ProviderType, Slug, SpaceID, TargetID, TargetOptions, ToolchainType, UnitID, UpdatedAt, UpstreamOrganizationID, UpstreamRevisionNum, UpstreamSpaceID, UpstreamUnitID, Values.
-                 *
-                 *     Finding all units created by cloning can be done using the expression `UpstreamRevisionNum > 0`. Clones of a specific unit can be found by additionally filtering based on `UpstreamUnitID`. Unapplied units can be found using `LiveRevisionNum = 0`. Units with unapplied changes can be found with `HeadRevisionNum > LiveRevisionNum`.
-                 *
-                 *     The whole string must be query-encoded.
-                 */
-                where: string;
-                /**
-                 * @description UUID of a Filter entity to apply to the Unit list.
-                 *
-                 *     The Filter must be in the same Organization as the user credentials.
-                 *
-                 *     The Filter's From field must match the entity type being filtered (Unit).
-                 *
-                 *     For Space-resident entities, if the Filter has a FromSpaceID, it must match the operation's SpaceID.
-                 *
-                 *     The Filter's Where clause will be combined with any explicit 'where' parameter using AND logic.
-                 *
-                 *     If both 'filter' and 'where' parameters are specified, they are combined with AND logic.
-                 */
-                filter?: string;
-                /**
-                 * @description Free text search that approximately matches the specified string against string fields and map keys/values.
-                 *
-                 *     The search is case-insensitive and uses pattern matching to find entities containing the text.
-                 *
-                 *     Searchable string fields include attributes like Slug, DisplayName, and string-typed custom fields.
-                 *
-                 *     For map fields (like Labels and Annotations), the search matches both map keys and values.
-                 *
-                 *     The search uses OR logic across all searchable fields, so matching any field will return the entity.
-                 *
-                 *     If both 'where' and 'contains' parameters are specified, they are combined with AND logic.
-                 *
-                 *     Searchable fields for Unit include string and map-type attributes from the queryable attributes list.
-                 *
-                 *     The whole string must be query-encoded.
-                 */
-                contains?: string;
-                /**
-                 * @description Include clause for expanding related entities in the response for Unit.
-                 *     The attribute names are case-sensitive, PascalCase, and
-                 *     expected in a comma-separated list format as in the JSON encoding.
-                 *
-                 *     Supported attributes for Unit are ApprovedBy, BridgeWorkerID, ChangeSetID, FromLinkID, HeadMutationNum, HeadRevisionNum, LastAppliedRevisionNum, LiveRevisionNum, OrganizationID, PreviousLiveRevisionNum, SpaceID, TargetID, UnitEventID, UpstreamSpaceID, UpstreamUnitID.
-                 *
-                 *     The whole string must be query-encoded.
-                 */
-                include?: string;
-                /** @description Dry run mode - validates which units would be applied without executing */
-                dry_run?: boolean;
-                /** @description Revision to apply (defaults to HeadRevisionNum). Can be a revision number, 'LiveRevisionNum', 'LastAppliedRevisionNum', 'Tag:uuid', 'ChangeSet:uuid', etc. */
-                revision?: string;
-                /** @description Drift reconciliation mode. Valid values: OnDemand, ContinuousApply, ContinuousRefresh. If not specified, the current value on the Unit is used. */
-                drift_mode?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnitActionResponse"][];
-                };
-            };
-            /** @description Multi-Status: Mixed success and failure results */
-            207: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnitActionResponse"][];
-                };
-            };
-            /** @description Unit request is invalid (Bad Request). */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Unauthorized access. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Forbidden access. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Unit not found. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Unit data conflict. Data has changed since last read. */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Unable to apply unit(s) */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Something went wrong while processing Unit. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Unexpected error. */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-        };
-    };
     BulkApproveUnits: {
         parameters: {
             query?: {
@@ -26967,6 +31370,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -26978,7 +31384,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Unit: Annotations, ApplyGates, ApplyWarnings, ApprovedBy, BridgeWorkerID, ChangeSetID, CreatedAt, DataHash, DeleteGates, DestroyGates, DisplayName, DriftReconciliationMode, FromLinkID, HeadRevisionNum, HeadUnitActionNum, HeadUnitEventNum, Labels, LastActionAt, LastAppliedRevisionNum, LastChangeDescription, LiveRevisionNum, OrganizationID, PreviousLiveRevisionNum, ProviderType, Slug, SpaceID, TargetID, TargetOptions, ToolchainType, UnitID, UpdatedAt, UpstreamOrganizationID, UpstreamRevisionNum, UpstreamSpaceID, UpstreamUnitID, Values.
+                 *     Supported attributes for filtering on Unit: Annotations, ApplyGates, ApplyWarnings, ApprovedBy, BridgeWorkerID, ChangeSetID, Conflicts, CreatedAt, DataHash, DeleteGates, DestroyGates, DisplayName, FromLinkID, HeadRevisionNum, HeadUnitActionNum, HeadUnitEventNum, Labels, LastActionAt, LastAppliedRevisionNum, LastChangeDescription, LiveRevisionNum, OrganizationID, PreviousLiveRevisionNum, ProviderType, Slug, SpaceID, TargetID, TargetOptions, ToolchainType, UnitID, UpdatedAt, UpstreamRevisionNum, UpstreamSpaceID, UpstreamUnitID, Values.
                  *
                  *     Finding all units created by cloning can be done using the expression `UpstreamRevisionNum > 0`. Clones of a specific unit can be found by additionally filtering based on `UpstreamUnitID`. Unapplied units can be found using `LiveRevisionNum = 0`. Units with unapplied changes can be found with `HeadRevisionNum > LiveRevisionNum`.
                  *
@@ -27143,6 +31549,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -27154,7 +31563,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Unit: Annotations, ApplyGates, ApplyWarnings, ApprovedBy, BridgeWorkerID, ChangeSetID, CreatedAt, DataHash, DeleteGates, DestroyGates, DisplayName, DriftReconciliationMode, FromLinkID, HeadRevisionNum, HeadUnitActionNum, HeadUnitEventNum, Labels, LastActionAt, LastAppliedRevisionNum, LastChangeDescription, LiveRevisionNum, OrganizationID, PreviousLiveRevisionNum, ProviderType, Slug, SpaceID, TargetID, TargetOptions, ToolchainType, UnitID, UpdatedAt, UpstreamOrganizationID, UpstreamRevisionNum, UpstreamSpaceID, UpstreamUnitID, Values.
+                 *     Supported attributes for filtering on Unit: Annotations, ApplyGates, ApplyWarnings, ApprovedBy, BridgeWorkerID, ChangeSetID, Conflicts, CreatedAt, DataHash, DeleteGates, DestroyGates, DisplayName, FromLinkID, HeadRevisionNum, HeadUnitActionNum, HeadUnitEventNum, Labels, LastActionAt, LastAppliedRevisionNum, LastChangeDescription, LiveRevisionNum, OrganizationID, PreviousLiveRevisionNum, ProviderType, Slug, SpaceID, TargetID, TargetOptions, ToolchainType, UnitID, UpdatedAt, UpstreamRevisionNum, UpstreamSpaceID, UpstreamUnitID, Values.
                  *
                  *     Finding all units created by cloning can be done using the expression `UpstreamRevisionNum > 0`. Clones of a specific unit can be found by additionally filtering based on `UpstreamUnitID`. Unapplied units can be found using `LiveRevisionNum = 0`. Units with unapplied changes can be found with `HeadRevisionNum > LiveRevisionNum`.
                  *
@@ -27302,378 +31711,6 @@ export interface operations {
             };
         };
     };
-    BulkDestroyUnits: {
-        parameters: {
-            query: {
-                /**
-                 * @description The specified string is an expression for the purpose of filtering
-                 *     the list of Units returned. The expression syntax was inspired by SQL.
-                 *     It supports conjunctions using `AND` of relational expressions of the form *attribute*
-                 *     *operator* *attribute_or_literal*. The attribute names are case-sensitive and PascalCase,
-                 *     as in the JSON encoding.
-                 *     Strings support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `LIKE`, `NOT LIKE`, `ILIKE`, `~~`, `!~~`, `~`, `~*`, `!~`, `!~*`, `IN`, `NOT IN`.
-                 *     String pattern operators: `LIKE` and `~~` for pattern matching with `%` and `_` wildcards,
-                 *     `ILIKE` for case-insensitive pattern matching, `NOT LIKE` and `!~~` for negated pattern matching.
-                 *     String regex operators: `~` for regex matching, `~*` for case-insensitive regex,
-                 *     `!~` and `!~*` for regex not matching (case-sensitive and insensitive).
-                 *     Integers support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `IN`, `NOT IN`.
-                 *     UUIDs and boolean attributes support equality and inequality only.
-                 *     UUID and time literals must be quoted as string literals.
-                 *     String literals are quoted with single quotes, such as `'string'`.
-                 *     Time literals use the same form as when serialized as JSON,
-                 *     such as: `CreatedAt > '2025-02-18T23:16:34'`.
-                 *     Integer and boolean literals are also supported for attributes of those types.
-                 *     Arrays support the `?` operator to to match any element of the array,
-                 *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
-                 *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
-                 *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
-                 *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
-                 *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
-                 *     Comparison results can be tested with `IS TRUE`, `IS FALSE`, `IS NOT TRUE`, and `IS NOT FALSE`.
-                 *     These are useful for nullable columns: `MergeSourceID = '<uuid>' IS NOT FALSE` matches rows where MergeSourceID equals the value OR is NULL.
-                 *     The `IN` and `NOT IN` operators accept a comma-separated list of values in parentheses,
-                 *     such as `Slug IN ('slugone', 'slugtwo')` or `Labels.environment IN ('prod', 'staging')`.
-                 *     Conjunctions are supported using the `AND` operator.
-                 *     An example conjunction is:
-                 *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
-                 *
-                 *     Supported attributes for filtering on Unit: Annotations, ApplyGates, ApplyWarnings, ApprovedBy, BridgeWorkerID, ChangeSetID, CreatedAt, DataHash, DeleteGates, DestroyGates, DisplayName, DriftReconciliationMode, FromLinkID, HeadRevisionNum, HeadUnitActionNum, HeadUnitEventNum, Labels, LastActionAt, LastAppliedRevisionNum, LastChangeDescription, LiveRevisionNum, OrganizationID, PreviousLiveRevisionNum, ProviderType, Slug, SpaceID, TargetID, TargetOptions, ToolchainType, UnitID, UpdatedAt, UpstreamOrganizationID, UpstreamRevisionNum, UpstreamSpaceID, UpstreamUnitID, Values.
-                 *
-                 *     Finding all units created by cloning can be done using the expression `UpstreamRevisionNum > 0`. Clones of a specific unit can be found by additionally filtering based on `UpstreamUnitID`. Unapplied units can be found using `LiveRevisionNum = 0`. Units with unapplied changes can be found with `HeadRevisionNum > LiveRevisionNum`.
-                 *
-                 *     The whole string must be query-encoded.
-                 */
-                where: string;
-                /**
-                 * @description UUID of a Filter entity to apply to the Unit list.
-                 *
-                 *     The Filter must be in the same Organization as the user credentials.
-                 *
-                 *     The Filter's From field must match the entity type being filtered (Unit).
-                 *
-                 *     For Space-resident entities, if the Filter has a FromSpaceID, it must match the operation's SpaceID.
-                 *
-                 *     The Filter's Where clause will be combined with any explicit 'where' parameter using AND logic.
-                 *
-                 *     If both 'filter' and 'where' parameters are specified, they are combined with AND logic.
-                 */
-                filter?: string;
-                /**
-                 * @description Free text search that approximately matches the specified string against string fields and map keys/values.
-                 *
-                 *     The search is case-insensitive and uses pattern matching to find entities containing the text.
-                 *
-                 *     Searchable string fields include attributes like Slug, DisplayName, and string-typed custom fields.
-                 *
-                 *     For map fields (like Labels and Annotations), the search matches both map keys and values.
-                 *
-                 *     The search uses OR logic across all searchable fields, so matching any field will return the entity.
-                 *
-                 *     If both 'where' and 'contains' parameters are specified, they are combined with AND logic.
-                 *
-                 *     Searchable fields for Unit include string and map-type attributes from the queryable attributes list.
-                 *
-                 *     The whole string must be query-encoded.
-                 */
-                contains?: string;
-                /**
-                 * @description Include clause for expanding related entities in the response for Unit.
-                 *     The attribute names are case-sensitive, PascalCase, and
-                 *     expected in a comma-separated list format as in the JSON encoding.
-                 *
-                 *     Supported attributes for Unit are ApprovedBy, BridgeWorkerID, ChangeSetID, FromLinkID, HeadMutationNum, HeadRevisionNum, LastAppliedRevisionNum, LiveRevisionNum, OrganizationID, PreviousLiveRevisionNum, SpaceID, TargetID, UnitEventID, UpstreamSpaceID, UpstreamUnitID.
-                 *
-                 *     The whole string must be query-encoded.
-                 */
-                include?: string;
-                /** @description Dry run mode - validates which units would be destroyed without executing */
-                dry_run?: boolean;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnitActionResponse"][];
-                };
-            };
-            /** @description Multi-Status: Mixed success and failure results */
-            207: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnitActionResponse"][];
-                };
-            };
-            /** @description Unit request is invalid (Bad Request). */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Unauthorized access. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Forbidden access. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Unit not found. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Unit data conflict. Data has changed since last read. */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Unable to destroy unit(s) */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Something went wrong while processing Unit. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Unexpected error. */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-        };
-    };
-    BulkRefreshUnits: {
-        parameters: {
-            query: {
-                /**
-                 * @description The specified string is an expression for the purpose of filtering
-                 *     the list of Units returned. The expression syntax was inspired by SQL.
-                 *     It supports conjunctions using `AND` of relational expressions of the form *attribute*
-                 *     *operator* *attribute_or_literal*. The attribute names are case-sensitive and PascalCase,
-                 *     as in the JSON encoding.
-                 *     Strings support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `LIKE`, `NOT LIKE`, `ILIKE`, `~~`, `!~~`, `~`, `~*`, `!~`, `!~*`, `IN`, `NOT IN`.
-                 *     String pattern operators: `LIKE` and `~~` for pattern matching with `%` and `_` wildcards,
-                 *     `ILIKE` for case-insensitive pattern matching, `NOT LIKE` and `!~~` for negated pattern matching.
-                 *     String regex operators: `~` for regex matching, `~*` for case-insensitive regex,
-                 *     `!~` and `!~*` for regex not matching (case-sensitive and insensitive).
-                 *     Integers support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `IN`, `NOT IN`.
-                 *     UUIDs and boolean attributes support equality and inequality only.
-                 *     UUID and time literals must be quoted as string literals.
-                 *     String literals are quoted with single quotes, such as `'string'`.
-                 *     Time literals use the same form as when serialized as JSON,
-                 *     such as: `CreatedAt > '2025-02-18T23:16:34'`.
-                 *     Integer and boolean literals are also supported for attributes of those types.
-                 *     Arrays support the `?` operator to to match any element of the array,
-                 *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
-                 *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
-                 *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
-                 *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
-                 *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
-                 *     Comparison results can be tested with `IS TRUE`, `IS FALSE`, `IS NOT TRUE`, and `IS NOT FALSE`.
-                 *     These are useful for nullable columns: `MergeSourceID = '<uuid>' IS NOT FALSE` matches rows where MergeSourceID equals the value OR is NULL.
-                 *     The `IN` and `NOT IN` operators accept a comma-separated list of values in parentheses,
-                 *     such as `Slug IN ('slugone', 'slugtwo')` or `Labels.environment IN ('prod', 'staging')`.
-                 *     Conjunctions are supported using the `AND` operator.
-                 *     An example conjunction is:
-                 *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
-                 *
-                 *     Supported attributes for filtering on Unit: Annotations, ApplyGates, ApplyWarnings, ApprovedBy, BridgeWorkerID, ChangeSetID, CreatedAt, DataHash, DeleteGates, DestroyGates, DisplayName, DriftReconciliationMode, FromLinkID, HeadRevisionNum, HeadUnitActionNum, HeadUnitEventNum, Labels, LastActionAt, LastAppliedRevisionNum, LastChangeDescription, LiveRevisionNum, OrganizationID, PreviousLiveRevisionNum, ProviderType, Slug, SpaceID, TargetID, TargetOptions, ToolchainType, UnitID, UpdatedAt, UpstreamOrganizationID, UpstreamRevisionNum, UpstreamSpaceID, UpstreamUnitID, Values.
-                 *
-                 *     Finding all units created by cloning can be done using the expression `UpstreamRevisionNum > 0`. Clones of a specific unit can be found by additionally filtering based on `UpstreamUnitID`. Unapplied units can be found using `LiveRevisionNum = 0`. Units with unapplied changes can be found with `HeadRevisionNum > LiveRevisionNum`.
-                 *
-                 *     The whole string must be query-encoded.
-                 */
-                where: string;
-                /**
-                 * @description UUID of a Filter entity to apply to the Unit list.
-                 *
-                 *     The Filter must be in the same Organization as the user credentials.
-                 *
-                 *     The Filter's From field must match the entity type being filtered (Unit).
-                 *
-                 *     For Space-resident entities, if the Filter has a FromSpaceID, it must match the operation's SpaceID.
-                 *
-                 *     The Filter's Where clause will be combined with any explicit 'where' parameter using AND logic.
-                 *
-                 *     If both 'filter' and 'where' parameters are specified, they are combined with AND logic.
-                 */
-                filter?: string;
-                /**
-                 * @description Free text search that approximately matches the specified string against string fields and map keys/values.
-                 *
-                 *     The search is case-insensitive and uses pattern matching to find entities containing the text.
-                 *
-                 *     Searchable string fields include attributes like Slug, DisplayName, and string-typed custom fields.
-                 *
-                 *     For map fields (like Labels and Annotations), the search matches both map keys and values.
-                 *
-                 *     The search uses OR logic across all searchable fields, so matching any field will return the entity.
-                 *
-                 *     If both 'where' and 'contains' parameters are specified, they are combined with AND logic.
-                 *
-                 *     Searchable fields for Unit include string and map-type attributes from the queryable attributes list.
-                 *
-                 *     The whole string must be query-encoded.
-                 */
-                contains?: string;
-                /**
-                 * @description Include clause for expanding related entities in the response for Unit.
-                 *     The attribute names are case-sensitive, PascalCase, and
-                 *     expected in a comma-separated list format as in the JSON encoding.
-                 *
-                 *     Supported attributes for Unit are ApprovedBy, BridgeWorkerID, ChangeSetID, FromLinkID, HeadMutationNum, HeadRevisionNum, LastAppliedRevisionNum, LiveRevisionNum, OrganizationID, PreviousLiveRevisionNum, SpaceID, TargetID, UnitEventID, UpstreamSpaceID, UpstreamUnitID.
-                 *
-                 *     The whole string must be query-encoded.
-                 */
-                include?: string;
-                /** @description Dry run mode - returns refresh data in the operation/action and updates LiveData and LiveState in the unit */
-                dry_run?: boolean;
-                /** @description Drift reconciliation mode. Valid values: OnDemand, ContinuousApply, ContinuousRefresh. If not specified, the current value on the Unit is used. */
-                drift_mode?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnitActionResponse"][];
-                };
-            };
-            /** @description Multi-Status: Mixed success and failure results */
-            207: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnitActionResponse"][];
-                };
-            };
-            /** @description Unit request is invalid (Bad Request). */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Unauthorized access. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Forbidden access. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Unit not found. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Unit data conflict. Data has changed since last read. */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Unable to refresh unit(s) */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Something went wrong while processing Unit. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-            /** @description Unexpected error. */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StandardErrorResponse"];
-                };
-            };
-        };
-    };
     BulkTagUnits: {
         parameters: {
             query?: {
@@ -27698,6 +31735,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -27709,7 +31749,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Unit: Annotations, ApplyGates, ApplyWarnings, ApprovedBy, BridgeWorkerID, ChangeSetID, CreatedAt, DataHash, DeleteGates, DestroyGates, DisplayName, DriftReconciliationMode, FromLinkID, HeadRevisionNum, HeadUnitActionNum, HeadUnitEventNum, Labels, LastActionAt, LastAppliedRevisionNum, LastChangeDescription, LiveRevisionNum, OrganizationID, PreviousLiveRevisionNum, ProviderType, Slug, SpaceID, TargetID, TargetOptions, ToolchainType, UnitID, UpdatedAt, UpstreamOrganizationID, UpstreamRevisionNum, UpstreamSpaceID, UpstreamUnitID, Values.
+                 *     Supported attributes for filtering on Unit: Annotations, ApplyGates, ApplyWarnings, ApprovedBy, BridgeWorkerID, ChangeSetID, Conflicts, CreatedAt, DataHash, DeleteGates, DestroyGates, DisplayName, FromLinkID, HeadRevisionNum, HeadUnitActionNum, HeadUnitEventNum, Labels, LastActionAt, LastAppliedRevisionNum, LastChangeDescription, LiveRevisionNum, OrganizationID, PreviousLiveRevisionNum, ProviderType, Slug, SpaceID, TargetID, TargetOptions, ToolchainType, UnitID, UpdatedAt, UpstreamRevisionNum, UpstreamSpaceID, UpstreamUnitID, Values.
                  *
                  *     Finding all units created by cloning can be done using the expression `UpstreamRevisionNum > 0`. Clones of a specific unit can be found by additionally filtering based on `UpstreamUnitID`. Unapplied units can be found using `LiveRevisionNum = 0`. Units with unapplied changes can be found with `HeadRevisionNum > LiveRevisionNum`.
                  *
@@ -27876,6 +31916,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -27887,7 +31930,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on QueuedOperation: Action, BridgeWorkerID, CreatedAt, DriftReconciliationMode, DryRun, OrganizationID, QueuedOperationID, RevisionNum, SpaceID, Status, TargetID, UnitActionNum, UnitID.
+                 *     Supported attributes for filtering on QueuedOperation: Action, BridgeWorkerID, CreatedAt, DryRun, OrganizationID, QueuedOperationID, RevisionNum, SpaceID, Status, TargetID, UnitActionNum, UnitID.
                  *
                  *     The whole string must be query-encoded.
                  */
@@ -27996,6 +32039,188 @@ export interface operations {
             };
         };
     };
+    SearchUnitData: {
+        parameters: {
+            query?: {
+                /**
+                 * @description The specified string is an expression for the purpose of filtering
+                 *     the list of Units returned. The expression syntax was inspired by SQL.
+                 *     It supports conjunctions using `AND` of relational expressions of the form *attribute*
+                 *     *operator* *attribute_or_literal*. The attribute names are case-sensitive and PascalCase,
+                 *     as in the JSON encoding.
+                 *     Strings support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `LIKE`, `NOT LIKE`, `ILIKE`, `~~`, `!~~`, `~`, `~*`, `!~`, `!~*`, `IN`, `NOT IN`.
+                 *     String pattern operators: `LIKE` and `~~` for pattern matching with `%` and `_` wildcards,
+                 *     `ILIKE` for case-insensitive pattern matching, `NOT LIKE` and `!~~` for negated pattern matching.
+                 *     String regex operators: `~` for regex matching, `~*` for case-insensitive regex,
+                 *     `!~` and `!~*` for regex not matching (case-sensitive and insensitive).
+                 *     Integers support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `IN`, `NOT IN`.
+                 *     UUIDs and boolean attributes support equality and inequality only.
+                 *     UUID and time literals must be quoted as string literals.
+                 *     String literals are quoted with single quotes, such as `'string'`.
+                 *     Time literals use the same form as when serialized as JSON,
+                 *     such as: `CreatedAt > '2025-02-18T23:16:34'`.
+                 *     Integer and boolean literals are also supported for attributes of those types.
+                 *     Arrays support the `?` operator to to match any element of the array,
+                 *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
+                 *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
+                 *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
+                 *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
+                 *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
+                 *     Comparison results can be tested with `IS TRUE`, `IS FALSE`, `IS NOT TRUE`, and `IS NOT FALSE`.
+                 *     These are useful for nullable columns: `MergeSourceID = '<uuid>' IS NOT FALSE` matches rows where MergeSourceID equals the value OR is NULL.
+                 *     The `IN` and `NOT IN` operators accept a comma-separated list of values in parentheses,
+                 *     such as `Slug IN ('slugone', 'slugtwo')` or `Labels.environment IN ('prod', 'staging')`.
+                 *     Conjunctions are supported using the `AND` operator.
+                 *     An example conjunction is:
+                 *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
+                 *
+                 *     Supported attributes for filtering on Unit: Annotations, ApplyGates, ApplyWarnings, ApprovedBy, BridgeWorkerID, ChangeSetID, Conflicts, CreatedAt, DataHash, DeleteGates, DestroyGates, DisplayName, FromLinkID, HeadRevisionNum, HeadUnitActionNum, HeadUnitEventNum, Labels, LastActionAt, LastAppliedRevisionNum, LastChangeDescription, LiveRevisionNum, OrganizationID, PreviousLiveRevisionNum, ProviderType, Slug, SpaceID, TargetID, TargetOptions, ToolchainType, UnitID, UpdatedAt, UpstreamRevisionNum, UpstreamSpaceID, UpstreamUnitID, Values.
+                 *
+                 *     Finding all units created by cloning can be done using the expression `UpstreamRevisionNum > 0`. Clones of a specific unit can be found by additionally filtering based on `UpstreamUnitID`. Unapplied units can be found using `LiveRevisionNum = 0`. Units with unapplied changes can be found with `HeadRevisionNum > LiveRevisionNum`.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                where?: string;
+                /**
+                 * @description UUID of a Filter entity to apply to the Unit list.
+                 *
+                 *     The Filter must be in the same Organization as the user credentials.
+                 *
+                 *     The Filter's From field must match the entity type being filtered (Unit).
+                 *
+                 *     For Space-resident entities, if the Filter has a FromSpaceID, it must match the operation's SpaceID.
+                 *
+                 *     The Filter's Where clause will be combined with any explicit 'where' parameter using AND logic.
+                 *
+                 *     If both 'filter' and 'where' parameters are specified, they are combined with AND logic.
+                 */
+                filter?: string;
+                /**
+                 * @description Free text search that approximately matches the specified string against string fields and map keys/values.
+                 *
+                 *     The search is case-insensitive and uses pattern matching to find entities containing the text.
+                 *
+                 *     Searchable string fields include attributes like Slug, DisplayName, and string-typed custom fields.
+                 *
+                 *     For map fields (like Labels and Annotations), the search matches both map keys and values.
+                 *
+                 *     The search uses OR logic across all searchable fields, so matching any field will return the entity.
+                 *
+                 *     If both 'where' and 'contains' parameters are specified, they are combined with AND logic.
+                 *
+                 *     Searchable fields for Unit include string and map-type attributes from the queryable attributes list.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                contains?: string;
+                /**
+                 * @description Include clause for expanding related entities in the response for Unit.
+                 *     The attribute names are case-sensitive, PascalCase, and
+                 *     expected in a comma-separated list format as in the JSON encoding.
+                 *
+                 *     Supported attributes for Unit are ApprovedBy, BridgeWorkerID, ChangeSetID, FromLinkID, HeadMutationNum, HeadRevisionNum, LastAppliedRevisionNum, LiveRevisionNum, OrganizationID, PreviousLiveRevisionNum, SpaceID, TargetID, UnitEventID, UpstreamSpaceID, UpstreamUnitID.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                include?: string;
+                /**
+                 * @description Select clause for specifying which fields to include in the response for Unit.
+                 *     The attribute names are case-sensitive, PascalCase, and
+                 *     expected in a comma-separated list format as in the JSON encoding.
+                 *     If not specified, all fields are returned.
+                 *     Entity and parent IDs (like OrganizationID, SpaceID, UnitID) and Slug are always returned regardless of the select parameter.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
+                 *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
+                 *     The whole string must be query-encoded.
+                 */
+                select?: string;
+                /** @description Resource type: Resource type to match for the desired ToolchainType, for example apps/v1/Deployment */
+                resource_type?: string;
+                /** @description Where data: The specified string is an expression for the purpose of evaluating whether the configuration data matches the filter. It supports conjunctions using `AND` of relational expressions of the form *path* *operator* *literal*. The path specifications are dot-separated, for both map fields and array indices, as in `spec.template.spec.containers.0.image = 'ghcr.io/headlamp-k8s/headlamp:latest' AND spec.replicas > 1`. Path expressions support `*` for wildcard array or map segments and `?key=value` syntax for associative matches of array elements containing objects with a `key` attribute. Strings support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `LIKE`, `ILIKE`, `~~`, `!~~`, `~`, `!~`, `~*`, `!~*`, `IN`, `NOT IN`. String pattern operators: `LIKE` and `~~` for pattern matching with `%` and `_` wildcards, `ILIKE` for case-insensitive pattern matching, `!~~` for NOT LIKE. String regex operators: `~` for regex matching, `~*` for case-insensitive regex, `!~` and `!~*` for regex not matching (case-sensitive and insensitive). Integers support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `IN`, `NOT IN`. Boolean values support equality and inequality only. The `IN` and `NOT IN` operators accept a comma-separated list of values in parentheses, such as `spec.template.spec.containers.0.image#reference IN (':latest', ':arm64-latest')`. The syntax `.|` requires the preceding path to exist; otherwise the relation `!=` will always return true regardless what it is compared with. String literals are quoted with single quotes, such as `'string'`. Integer and boolean literals are also supported for attributes of those types. The whole string must be query-encoded. */
+                where_data?: string;
+                /** @description Where expression to match Triggers. Matched triggers are invoked on each unit to filter by validation results. Use with triggers_passed to control whether passing or failing units are returned (default: failing). */
+                where_trigger?: string;
+                /** @description Filter UUID (with From=Trigger). The filter's matching triggers are invoked on units to filter by validation results. Can be combined with where_trigger. */
+                trigger_filter?: string;
+                /** @description When true, return units that pass trigger validation; when false (default), return units that fail. Only applies when where_trigger or trigger_filter is specified. */
+                triggers_passed?: boolean;
+                /** @description View slug or UUID. Applies the View's column definitions to extract values for each unit. If the View has a FilterID, its filter is ANDed with other filters. The View must have Of=Unit or a Filter with From=Unit. */
+                view?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnitData"][];
+                };
+            };
+            /** @description Unit request is invalid (Bad Request). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unauthorized access. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Forbidden access. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unit not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Something went wrong while processing Unit. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+        };
+    };
     ListAllUnitEvents: {
         parameters: {
             query?: {
@@ -28020,6 +32245,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -28068,6 +32296,34 @@ export interface operations {
                  *     The whole string must be query-encoded.
                  */
                 contains?: string;
+                /** @description Maximum number of UnitEvent entities to return. If not specified, all matching entities are returned. Values greater than 1000 are rejected with 400. */
+                limit?: number;
+                /** @description Number of UnitEvent entities to skip before returning results. Typically used together with 'limit' for pagination. If not specified, no entities are skipped. */
+                offset?: number;
+                /**
+                 * @description Comma-separated list of fields to sort UnitEvent results by, each in the form 'ASC|DESC:FieldName' or just 'FieldName'.
+                 *
+                 *     Field names are case-sensitive and PascalCase, as in the JSON encoding. Sort direction defaults to ASC when the 'DIRECTION:' prefix is omitted.
+                 *
+                 *     Supported attributes for ordering UnitEvent: Action, BridgeWorkerID, CreatedAt, OrganizationID, QueuedOperationID, Result, RevisionNum, SpaceID, StartedAt, Status, TerminatedAt, UnitEventID, UnitEventNum, UnitID, UpdatedAt.
+                 *
+                 *     Example: 'DESC:CreatedAt' or 'DisplayName,DESC:CreatedAt'.
+                 *
+                 *     If not specified, results are returned in the database's default order.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                order_by?: string;
+                /**
+                 * @description Entity to return at most one UnitEvent per. The result set applies DISTINCT ON this key, keeping the most recent row for each.
+                 *
+                 *     Supported values: Unit, Off.
+                 *
+                 *     If not specified, results are restricted to at most one row per Unit.
+                 *
+                 *     Off disables the DISTINCT ON and returns every matching row, so it requires an explicit 'limit' and is rejected with 400 without one.
+                 */
+                distinct_on?: "Unit" | "Off";
             };
             header?: never;
             path?: never;
@@ -28140,6 +32396,188 @@ export interface operations {
             };
         };
     };
+    SearchUnitMutationSources: {
+        parameters: {
+            query?: {
+                /**
+                 * @description The specified string is an expression for the purpose of filtering
+                 *     the list of Units returned. The expression syntax was inspired by SQL.
+                 *     It supports conjunctions using `AND` of relational expressions of the form *attribute*
+                 *     *operator* *attribute_or_literal*. The attribute names are case-sensitive and PascalCase,
+                 *     as in the JSON encoding.
+                 *     Strings support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `LIKE`, `NOT LIKE`, `ILIKE`, `~~`, `!~~`, `~`, `~*`, `!~`, `!~*`, `IN`, `NOT IN`.
+                 *     String pattern operators: `LIKE` and `~~` for pattern matching with `%` and `_` wildcards,
+                 *     `ILIKE` for case-insensitive pattern matching, `NOT LIKE` and `!~~` for negated pattern matching.
+                 *     String regex operators: `~` for regex matching, `~*` for case-insensitive regex,
+                 *     `!~` and `!~*` for regex not matching (case-sensitive and insensitive).
+                 *     Integers support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `IN`, `NOT IN`.
+                 *     UUIDs and boolean attributes support equality and inequality only.
+                 *     UUID and time literals must be quoted as string literals.
+                 *     String literals are quoted with single quotes, such as `'string'`.
+                 *     Time literals use the same form as when serialized as JSON,
+                 *     such as: `CreatedAt > '2025-02-18T23:16:34'`.
+                 *     Integer and boolean literals are also supported for attributes of those types.
+                 *     Arrays support the `?` operator to to match any element of the array,
+                 *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
+                 *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
+                 *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
+                 *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
+                 *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
+                 *     Comparison results can be tested with `IS TRUE`, `IS FALSE`, `IS NOT TRUE`, and `IS NOT FALSE`.
+                 *     These are useful for nullable columns: `MergeSourceID = '<uuid>' IS NOT FALSE` matches rows where MergeSourceID equals the value OR is NULL.
+                 *     The `IN` and `NOT IN` operators accept a comma-separated list of values in parentheses,
+                 *     such as `Slug IN ('slugone', 'slugtwo')` or `Labels.environment IN ('prod', 'staging')`.
+                 *     Conjunctions are supported using the `AND` operator.
+                 *     An example conjunction is:
+                 *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
+                 *
+                 *     Supported attributes for filtering on Unit: Annotations, ApplyGates, ApplyWarnings, ApprovedBy, BridgeWorkerID, ChangeSetID, Conflicts, CreatedAt, DataHash, DeleteGates, DestroyGates, DisplayName, FromLinkID, HeadRevisionNum, HeadUnitActionNum, HeadUnitEventNum, Labels, LastActionAt, LastAppliedRevisionNum, LastChangeDescription, LiveRevisionNum, OrganizationID, PreviousLiveRevisionNum, ProviderType, Slug, SpaceID, TargetID, TargetOptions, ToolchainType, UnitID, UpdatedAt, UpstreamRevisionNum, UpstreamSpaceID, UpstreamUnitID, Values.
+                 *
+                 *     Finding all units created by cloning can be done using the expression `UpstreamRevisionNum > 0`. Clones of a specific unit can be found by additionally filtering based on `UpstreamUnitID`. Unapplied units can be found using `LiveRevisionNum = 0`. Units with unapplied changes can be found with `HeadRevisionNum > LiveRevisionNum`.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                where?: string;
+                /**
+                 * @description UUID of a Filter entity to apply to the Unit list.
+                 *
+                 *     The Filter must be in the same Organization as the user credentials.
+                 *
+                 *     The Filter's From field must match the entity type being filtered (Unit).
+                 *
+                 *     For Space-resident entities, if the Filter has a FromSpaceID, it must match the operation's SpaceID.
+                 *
+                 *     The Filter's Where clause will be combined with any explicit 'where' parameter using AND logic.
+                 *
+                 *     If both 'filter' and 'where' parameters are specified, they are combined with AND logic.
+                 */
+                filter?: string;
+                /**
+                 * @description Free text search that approximately matches the specified string against string fields and map keys/values.
+                 *
+                 *     The search is case-insensitive and uses pattern matching to find entities containing the text.
+                 *
+                 *     Searchable string fields include attributes like Slug, DisplayName, and string-typed custom fields.
+                 *
+                 *     For map fields (like Labels and Annotations), the search matches both map keys and values.
+                 *
+                 *     The search uses OR logic across all searchable fields, so matching any field will return the entity.
+                 *
+                 *     If both 'where' and 'contains' parameters are specified, they are combined with AND logic.
+                 *
+                 *     Searchable fields for Unit include string and map-type attributes from the queryable attributes list.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                contains?: string;
+                /**
+                 * @description Include clause for expanding related entities in the response for Unit.
+                 *     The attribute names are case-sensitive, PascalCase, and
+                 *     expected in a comma-separated list format as in the JSON encoding.
+                 *
+                 *     Supported attributes for Unit are ApprovedBy, BridgeWorkerID, ChangeSetID, FromLinkID, HeadMutationNum, HeadRevisionNum, LastAppliedRevisionNum, LiveRevisionNum, OrganizationID, PreviousLiveRevisionNum, SpaceID, TargetID, UnitEventID, UpstreamSpaceID, UpstreamUnitID.
+                 *
+                 *     The whole string must be query-encoded.
+                 */
+                include?: string;
+                /**
+                 * @description Select clause for specifying which fields to include in the response for Unit.
+                 *     The attribute names are case-sensitive, PascalCase, and
+                 *     expected in a comma-separated list format as in the JSON encoding.
+                 *     If not specified, all fields are returned.
+                 *     Entity and parent IDs (like OrganizationID, SpaceID, UnitID) and Slug are always returned regardless of the select parameter.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
+                 *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
+                 *     The whole string must be query-encoded.
+                 */
+                select?: string;
+                /** @description Resource type: Resource type to match for the desired ToolchainType, for example apps/v1/Deployment */
+                resource_type?: string;
+                /** @description Where data: The specified string is an expression for the purpose of evaluating whether the configuration data matches the filter. It supports conjunctions using `AND` of relational expressions of the form *path* *operator* *literal*. The path specifications are dot-separated, for both map fields and array indices, as in `spec.template.spec.containers.0.image = 'ghcr.io/headlamp-k8s/headlamp:latest' AND spec.replicas > 1`. Path expressions support `*` for wildcard array or map segments and `?key=value` syntax for associative matches of array elements containing objects with a `key` attribute. Strings support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `LIKE`, `ILIKE`, `~~`, `!~~`, `~`, `!~`, `~*`, `!~*`, `IN`, `NOT IN`. String pattern operators: `LIKE` and `~~` for pattern matching with `%` and `_` wildcards, `ILIKE` for case-insensitive pattern matching, `!~~` for NOT LIKE. String regex operators: `~` for regex matching, `~*` for case-insensitive regex, `!~` and `!~*` for regex not matching (case-sensitive and insensitive). Integers support the following operators: `<`, `>`, `<=`, `>=`, `=`, `!=`, `IN`, `NOT IN`. Boolean values support equality and inequality only. The `IN` and `NOT IN` operators accept a comma-separated list of values in parentheses, such as `spec.template.spec.containers.0.image#reference IN (':latest', ':arm64-latest')`. The syntax `.|` requires the preceding path to exist; otherwise the relation `!=` will always return true regardless what it is compared with. String literals are quoted with single quotes, such as `'string'`. Integer and boolean literals are also supported for attributes of those types. The whole string must be query-encoded. */
+                where_data?: string;
+                /** @description Where expression to match Triggers. Matched triggers are invoked on each unit to filter by validation results. Use with triggers_passed to control whether passing or failing units are returned (default: failing). */
+                where_trigger?: string;
+                /** @description Filter UUID (with From=Trigger). The filter's matching triggers are invoked on units to filter by validation results. Can be combined with where_trigger. */
+                trigger_filter?: string;
+                /** @description When true, return units that pass trigger validation; when false (default), return units that fail. Only applies when where_trigger or trigger_filter is specified. */
+                triggers_passed?: boolean;
+                /** @description View slug or UUID. Applies the View's column definitions to extract values for each unit. If the View has a FilterID, its filter is ANDed with other filters. The View must have Of=Unit or a Filter with From=Unit. */
+                view?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnitMutationSources"][];
+                };
+            };
+            /** @description Unit request is invalid (Bad Request). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unauthorized access. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Forbidden access. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unit not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Something went wrong while processing Unit. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+        };
+    };
     ListUsers: {
         parameters: {
             query?: {
@@ -28164,6 +32602,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -28361,6 +32802,270 @@ export interface operations {
             };
         };
     };
+    ListUserKeys: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description UUID of the identity whose keys are being managed. For a worker this is its bot user, BridgeWorker.UserID, not the worker's own id. */
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserKey"][];
+                };
+            };
+            /** @description User request is invalid (Bad Request). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unauthorized access. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Forbidden access. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description User not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Something went wrong while processing User. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+        };
+    };
+    CreateUserKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description UUID of the identity whose keys are being managed. For a worker this is its bot user, BridgeWorker.UserID, not the worker's own id. */
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CreateUserKeyRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserKey"];
+                };
+            };
+            /** @description User request is invalid (Bad Request). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unauthorized access. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Forbidden access. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description User not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description User data conflict. Data has changed since last read. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Something went wrong while processing User. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+        };
+    };
+    DeleteUserKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description UUID of the identity whose keys are being managed. For a worker this is its bot user, BridgeWorker.UserID, not the worker's own id. */
+                user_id: string;
+                /** @description RFC 7638 thumbprint of the key to remove. The key names itself, so a holder can address it without asking what it was called. */
+                kid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Response for successful delete operation */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeleteResponse"];
+                };
+            };
+            /** @description User request is invalid (Bad Request). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unauthorized access. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Forbidden access. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description User not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description User data conflict. Data has changed since last read. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description User could not be deleted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Something went wrong while processing User. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandardErrorResponse"];
+                };
+            };
+        };
+    };
     ListAllViews: {
         parameters: {
             query?: {
@@ -28385,6 +33090,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -28449,7 +33157,7 @@ export interface operations {
                  *     expected in a comma-separated list format as in the JSON encoding.
                  *     If not specified, all fields are returned.
                  *     Entity and parent IDs (like OrganizationID, SpaceID, ViewID) and Slug are always returned regardless of the select parameter.
-                 *     Fields used in where and contains filters are also automatically included.
+                 *     Fields used in where and contains filters, and fields named by order_by, are also automatically included.
                  *     Example: 'DisplayName,CreatedAt,Labels' will return only those fields plus the required ID and Slug fields.
                  *     The whole string must be query-encoded.
                  */
@@ -28550,6 +33258,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -28635,6 +33346,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -28646,7 +33360,7 @@ export interface operations {
                  *     An example conjunction is:
                  *     `CreatedAt >= '2025-01-07' AND Slug = 'test' AND Labels.mykey = 'myvalue'`.
                  *
-                 *     Supported attributes for filtering on Space: Annotations, AttributeFilterID, AttributeHash, AttributeIDs, CreatedAt, DeleteGates, DisplayName, Labels, OrganizationID, Permissions, Slug, SpaceID, TriggerFilterID, TriggerHash, TriggerIDs, UpdatedAt.
+                 *     Supported attributes for filtering on Space: Annotations, AttributeFilterID, AttributeHash, AttributeIDs, CreatedAt, DeleteGates, DisplayName, Labels, OrganizationID, Permissions, ReleaseBridgeWorkerID, ReleaseTargetID, Slug, SpaceID, TriggerFilterID, TriggerHash, TriggerIDs, UpdatedAt.
                  *
                  *     Where expression to select destination spaces for cloning views
                  *
@@ -28813,6 +33527,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).
@@ -28994,6 +33711,9 @@ export interface operations {
                  *     Arrays support the `?` operator to to match any element of the array,
                  *     as in `ApprovedBy ? '7c61626f-ddbe-41af-93f6-b69f4ab6d308'`.
                  *     Arrays can perform LEN() to check for length, as in `LEN(ApprovedBy) > 0`.
+                 *     An attribute naming a list of other entities can be filtered on their attributes with a `*` segment,
+                 *     as in `FromLink.*.Slug = 'upgrade-app'`, which holds when any element satisfies it.
+                 *     Without the `*` such a reference is an error, since it names no single value to compare.
                  *     Map support the dot notation to specify a particular map key, as in `Labels.tier = 'Backend'`.
                  *     Maps support `IS NULL` and `IS NOT NULL` with dot notation to check for key absence or presence,
                  *     as in `Labels.tier IS NULL` (key doesn't exist) or `Labels.tier IS NOT NULL` (key exists).

@@ -4,7 +4,6 @@
 package cli
 
 import (
-	"encoding/base64"
 	"fmt"
 	"sort"
 	"strings"
@@ -94,12 +93,11 @@ Refuses when the Service has no metrics port and no --port. Dry-run unless
 			created, err := cub.CreateUnit(cmd.Context(), client, goclientnew.Unit{
 				Slug:                  smSlug,
 				DisplayName:           smSlug,
-				Data:                  base64.StdEncoding.EncodeToString([]byte(manifest)),
 				ToolchainType:         "Kubernetes/YAML",
 				SpaceID:               ref.spaceID,
 				Labels:                map[string]string{"managed-by": unitManagedByLabel},
 				LastChangeDescription: changeDesc,
-			})
+			}, manifest)
 			if err != nil {
 				return err
 			}

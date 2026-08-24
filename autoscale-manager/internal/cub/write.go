@@ -4,10 +4,10 @@
 package cub
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
+	"net/http"
+	"strings"
 
 	"github.com/confighub/sdk/core/cubapi"
 	api "github.com/confighub/sdk/core/function/api"
@@ -53,33 +53,44 @@ func ResolveUnit(ctx context.Context, c *cubapi.Client, spaceSlug, unitSlug stri
 	return UnitRef{}, fmt.Errorf("unit %q not found in space %q", unitSlug, spaceSlug)
 }
 
-// GetUnitData returns a Unit's raw config data (base64-encoded YAML), fetched
-// with the single-Unit endpoint so Data is populated.
-func GetUnitData(ctx context.Context, c *cubapi.Client, ref UnitRef) (string, error) {
-	res, err := c.API.GetUnitWithResponse(ctx, ref.SpaceID, ref.UnitID, &goclientnew.GetUnitParams{})
-	if cubapi.IsAPIError(err, res) {
-		return "", cubapi.InterpretErrorGeneric(err, res)
-	}
-	if res.JSON200 == nil || res.JSON200.Unit == nil {
-		return "", fmt.Errorf("unit %s/%s not found", ref.SpaceSlug, ref.UnitSlug)
-	}
-	return res.JSON200.Unit.Data, nil
-}
-
-// PatchUnitData writes new config data (base64-encoded YAML) to a Unit via a JSON
-// merge-patch, recording changeDesc on the new revision. The Unit is edited, not
-// applied.
-func PatchUnitData(ctx context.Context, c *cubapi.Client, ref UnitRef, base64Data, changeDesc string) error {
-	patch := map[string]any{
-		"Data":                  base64Data,
-		"LastChangeDescription": changeDesc,
-	}
-	body, err := json.Marshal(patch)
+// rawBodyErr reports failure for an endpoint whose success body is the configuration
+// itself. cubapi.IsAPIError cannot be used for those: it treats a nil JSON200 field as a
+// failure, and a raw-body response has no JSON200 to be non-nil.
+func rawBodyErr(err error, resp interface {
+	StatusCode() int
+	Status() string
+}) error {
 	if err != nil {
 		return err
 	}
-	res, err := c.API.PatchUnitWithBodyWithResponse(ctx, ref.SpaceID, ref.UnitID,
-		&goclientnew.PatchUnitParams{}, "application/merge-patch+json", bytes.NewReader(body))
+	if resp == nil {
+		return fmt.Errorf("no response from server")
+	}
+	if resp.StatusCode() != http.StatusOK {
+		return fmt.Errorf("request failed: %s", resp.Status())
+	}
+	return nil
+}
+
+// GetUnitData returns a Unit's config data as text. Configuration is not a field of a
+// Unit — it is read through the Unit's own data endpoint.
+func GetUnitData(ctx context.Context, c *cubapi.Client, ref UnitRef) (string, error) {
+	res, err := c.API.DownloadUnitDataWithResponse(ctx, ref.SpaceID, ref.UnitID)
+	if err := rawBodyErr(err, res); err != nil {
+		return "", fmt.Errorf("get data for unit %s/%s: %w", ref.SpaceSlug, ref.UnitSlug, err)
+	}
+	return string(res.Body), nil
+}
+
+// PutUnitData writes new config data to a Unit through the Unit's data endpoint,
+// recording changeDesc on the new revision. The Unit is edited, not applied.
+func PutUnitData(ctx context.Context, c *cubapi.Client, ref UnitRef, data, changeDesc string) error {
+	params := &goclientnew.UploadUnitDataParams{}
+	if changeDesc != "" {
+		params.LastChangeDescription = &changeDesc
+	}
+	res, err := c.API.UploadUnitDataWithBodyWithResponse(ctx, ref.SpaceID, ref.UnitID, params,
+		"application/octet-stream", strings.NewReader(data))
 	if cubapi.IsAPIError(err, res) {
 		return cubapi.InterpretErrorGeneric(err, res)
 	}

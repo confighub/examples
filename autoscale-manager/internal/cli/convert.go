@@ -4,7 +4,6 @@
 package cli
 
 import (
-	"encoding/base64"
 	"fmt"
 	"strings"
 
@@ -68,16 +67,11 @@ trigger runs vet-schemas on every mutation, and keda.sh is in the schema catalog
 			if err != nil {
 				return err
 			}
-			encoded, err := cub.GetUnitData(ctx, client, ref)
+			unitData, err := cub.GetUnitData(ctx, client, ref)
 			if err != nil {
 				return err
 			}
-			yamlBytes, err := base64.StdEncoding.DecodeString(encoded)
-			if err != nil {
-				return fmt.Errorf("decode unit data: %w", err)
-			}
-
-			mutated, changed, err := localexec.ConvertHPAToKEDA(ctx, yamlBytes)
+			mutated, changed, err := localexec.ConvertHPAToKEDA(ctx, unitData)
 			if err != nil {
 				return err
 			}
@@ -85,26 +79,26 @@ trigger runs vet-schemas on every mutation, and keda.sh is in the schema catalog
 			plan := convertPlan{Action: "convert-hpa-to-keda", DryRun: dryRun, Space: space, Unit: unit, Changed: changed}
 			out := cmd.OutOrStdout()
 			if !changed {
-				plan.Manifest = string(yamlBytes)
+				plan.Manifest = unitData
 				if output == outputJSON {
 					return printJSON(out, plan)
 				}
 				fprintln(out, fmt.Sprintf("No HorizontalPodAutoscaler to convert in %s/%s — nothing to do.", space, unit))
 				return nil
 			}
-			plan.Manifest = string(mutated)
+			plan.Manifest = mutated
 			if dryRun {
 				if output == outputJSON {
 					return printJSON(out, plan)
 				}
 				fprintln(out, fmt.Sprintf("Dry run — would convert the HPA in %s/%s to a KEDA ScaledObject:", space, unit))
 				fprintln(out, "")
-				fprintln(out, string(mutated))
+				fprintln(out, mutated)
 				fprintln(out, "Re-run with --commit --change-desc \"…\" to write the revision. It is not applied until you apply it.")
 				return nil
 			}
 
-			if err := cub.PatchUnitData(ctx, client, ref, base64.StdEncoding.EncodeToString(mutated), changeDesc); err != nil {
+			if err := cub.PutUnitData(ctx, client, ref, mutated, changeDesc); err != nil {
 				return err
 			}
 			if output == outputJSON {

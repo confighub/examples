@@ -5,7 +5,7 @@ with [`openapi-typescript`](https://openapi-ts.dev):
 
 - Repo: https://github.com/confighub/sdk
 - Spec: `core/openapi/openapi.json`
-- Generated: 2026-06-24 (ref: main)
+- Generated: 2026-08-24 (ref: v0.2.33)
 
 It is a **types-only** `paths` map (no runtime). The transport
 (`src/api/fqlTransport.ts`) pairs it with [`openapi-fetch`](https://openapi-ts.dev/openapi-fetch/)

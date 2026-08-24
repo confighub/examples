@@ -36,7 +36,7 @@ What it shows:
 Read-only: this script fetches unit data but never mutates ConfigHub.
 
 Commands used:
-- cub unit get --space <space> --data-only --json inventory-api
+- cub unit data --space <space> inventory-api
 EOF
 }
 
@@ -53,10 +53,10 @@ fi
 
 command -v jq >/dev/null 2>&1 || { echo "error: jq not found." >&2; exit 1; }
 
-# ── decode unit data from cub JSON response ──────────────────────────
-# cub unit get --data-only --json returns {Space: ..., Unit: {Data: "<base64>"}}
-# We need a JSON array of K8s docs. This function decodes the base64 Data
-# field, splits on YAML document separators, and produces a JSON array.
+# ── decode unit data ─────────────────────────────────────────────────
+# `cub unit data` prints the Unit's configuration as text: multi-document
+# Kubernetes YAML. We need a JSON array of K8s docs, so split it on the
+# document separators and produce an array.
 decode_unit_data() {
   local raw="$1"
   # If the data is already a JSON array (e.g. from fixture fallback), pass through
@@ -64,14 +64,11 @@ decode_unit_data() {
     echo "$raw"
     return
   fi
-  # Extract base64 Data field from cub response and decode to YAML docs array
-  local b64
-  b64=$(echo "$raw" | jq -r '.Unit.Data // empty' 2>/dev/null)
-  if [[ -z "$b64" ]]; then
+  if [[ -z "$raw" ]]; then
     echo "[]"
     return
   fi
-  echo "$b64" | base64 -d 2>/dev/null | python3 -c "
+  printf '%s' "$raw" | python3 -c "
 import sys, json, yaml
 docs = list(yaml.safe_load_all(sys.stdin))
 json.dump([d for d in docs if d], sys.stdout)
@@ -189,7 +186,7 @@ RESULT="[]"
 for env in "${ENVS[@]}"; do
   raw=""
   if command -v "${CUB}" >/dev/null 2>&1; then
-    raw=$(${CUB} unit get --space "inventory-api-${env}" --data-only --json inventory-api 2>/dev/null || true)
+    raw=$(${CUB} unit data --space "inventory-api-${env}" inventory-api 2>/dev/null || true)
   fi
 
   if [[ -z "$raw" || "$raw" == "null" ]]; then

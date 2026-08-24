@@ -237,10 +237,10 @@ artifact by itself.
 
 ```bash
 # Show one deployment unit
-cub unit get --space <prefix>-deploy-cluster-a --data-only backend-cluster-a
+cub unit data --space <prefix>-deploy-cluster-a backend-cluster-a
 
 # Show the app-level recipe manifest
-cub unit get --space <prefix>-recipe-us-staging --data-only recipe-us-staging-realistic-app
+cub unit data --space <prefix>-recipe-us-staging recipe-us-staging-realistic-app
 
 # Show variant ancestry (implemented with clone links)
 cub unit tree --edge clone --where "Labels.ExampleName = 'global-app-layer-realistic-app'"

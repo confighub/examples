@@ -22,12 +22,11 @@ import {
   Typography,
 } from '@mui/material';
 import { diffLines } from 'diff';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { parseAllDocuments } from 'yaml';
 
-import { b64decodeUtf8, b64encodeUtf8 } from '../api/encoding';
-import { fetchRevisionDataText } from '../api/raw';
+import { fetchRevisionDataText, fetchUnitDataText, putUnitDataText } from '../api/raw';
 import { FriendlyResource } from '../components/friendly/RbacFriendly';
 import { StructuredEdit } from '../components/StructuredEdit';
 import type { CompiledEdit } from '../rbac/edits';
@@ -39,15 +38,11 @@ import {
 import { clusterContextFor } from '../fleet/enrichment';
 import { useSnapshot } from '../fleet/SnapshotContext';
 import {
-  Unit,
-  useApplyUnitMutation,
   useApproveUnitMutation,
   useGetUnitQuery,
   useInvokeFunctionsMutation,
-  useLazyGetUnitQuery,
   useListExtendedRevisionsQuery,
   usePatchUnitMutation,
-  useUpdateUnitMutation,
 } from '../sdk/confighubapi.gen';
 
 /** Simple line-level diff rendering (added/removed line backgrounds). */
@@ -125,16 +120,31 @@ export function UnitPage() {
   const { spaceId = '', unitId = '' } = useParams();
   const { data: extended, isLoading, isError, refetch } = useGetUnitQuery({ spaceId, unitId });
   const revisions = useListExtendedRevisionsQuery({ spaceId, unitId });
-  const [fetchLatest] = useLazyGetUnitQuery();
-  const [updateUnit, updateState] = useUpdateUnitMutation();
   const [patchUnit, patchState] = usePatchUnitMutation();
   const [invokeFunctions, invokeState] = useInvokeFunctionsMutation();
   const { idBySlug } = useEditInvocationIds();
-  const [applyUnit, applyState] = useApplyUnitMutation();
   const [approveUnit, approveState] = useApproveUnitMutation();
 
   const unit = extended?.Unit;
-  const originalText = useMemo(() => b64decodeUtf8(unit?.Data ?? ''), [unit?.Data]);
+  // The configuration is not part of the Unit: it comes from the Unit's data endpoint.
+  // DataHash changes whenever the configuration does, so it is what re-reads it.
+  const [originalText, setOriginalText] = useState('');
+  const [saving, setSaving] = useState(false);
+  const dataHash = unit?.DataHash;
+  useEffect(() => {
+    if (!spaceId || !unitId) return;
+    let cancelled = false;
+    fetchUnitDataText(spaceId, unitId)
+      .then((t) => {
+        if (!cancelled) setOriginalText(t);
+      })
+      .catch(() => {
+        if (!cancelled) setOriginalText('');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [spaceId, unitId, dataHash]);
   const [editedText, setEditedText] = useState<string | null>(null);
   const text = editedText ?? originalText;
   const dirty = editedText !== null && editedText !== originalText;
@@ -183,22 +193,20 @@ export function UnitPage() {
 
   const save = async (changeDescription: string) => {
     setActionError(null);
-    // Re-fetch latest before writing, to avoid clobbering a concurrent
-    // change with stale sibling fields.
-    const latest = await fetchLatest({ spaceId, unitId });
-    // UnitRead's nullable fields don't assign to the write model, so the
-    // read→write round-trip needs a cast.
-    const payload = {
-      ...latest.data?.Unit,
-      Data: b64encodeUtf8(text),
-      LastChangeDescription: changeDescription,
-    } as unknown as Unit;
-    const result = await updateUnit({ spaceId, unitId, unit: payload });
-    setSaveOpen(false);
-    if ('error' in result && result.error) {
+    // The configuration goes to the Unit's data endpoint, which writes it through the
+    // normal update path: it cuts a Revision and the gates and triggers still run. No
+    // sibling fields ride along, so there is nothing to re-fetch first.
+    setSaving(true);
+    try {
+      await putUnitDataText(spaceId, unitId, text, changeDescription);
+    } catch {
+      setSaveOpen(false);
       setActionError('Save failed — the guardrail triggers may have rejected the change.');
       return;
+    } finally {
+      setSaving(false);
     }
+    setSaveOpen(false);
     setEditedText(null);
     void refetch();
     void revisions.refetch();
@@ -257,7 +265,8 @@ export function UnitPage() {
       setActionError('Dry run did not succeed — check the inputs.');
       return;
     }
-    const after = response.ConfigData ? b64decodeUtf8(response.ConfigData) : originalText;
+    // ConfigData comes back only when the invocation changed the configuration.
+    const after = response.ConfigData ? response.ConfigData : originalText;
     if (after === originalText) {
       setActionInfo('No change: the edit is already in effect.');
       return;
@@ -289,18 +298,6 @@ export function UnitPage() {
     setEditedText(null);
     void refetch();
     void revisions.refetch();
-  };
-
-  const apply = async () => {
-    setActionError(null);
-    setActionInfo(null);
-    const result = await applyUnit({ spaceId, unitId });
-    if ('error' in result && result.error) {
-      setActionError('Apply rejected — check Apply Gates and Target.');
-      return;
-    }
-    setActionInfo('Apply submitted.');
-    void refetch();
   };
 
   const approve = async () => {
@@ -337,20 +334,6 @@ export function UnitPage() {
             Approve
           </Button>
         )}
-        <Button
-          variant='outlined'
-          disabled={!unit.TargetID || gates.length > 0 || applyState.isLoading}
-          title={
-            !unit.TargetID
-              ? 'No Target bound — this is a paper cluster'
-              : gates.length > 0
-                ? 'Blocked by Apply Gates'
-                : 'Apply head revision to the Target'
-          }
-          onClick={() => void apply()}
-        >
-          Apply
-        </Button>
       </Stack>
 
       {actionError !== null && (
@@ -464,7 +447,7 @@ export function UnitPage() {
         open={saveOpen}
         title={`Save ${unit.Slug}`}
         preview={<DiffView before={originalText} after={text} />}
-        busy={updateState.isLoading}
+        busy={saving}
         onCancel={() => setSaveOpen(false)}
         onConfirm={(d) => void save(d)}
       />

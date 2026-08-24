@@ -48,8 +48,9 @@ for env in "${ENVS[@]}"; do
     continue
   }
 
-  # Check unit has data content
-  data_len=$(echo "${unit_json}" | jq '.Unit.Data | length')
+  # Check unit has data content. The configuration is not part of the Unit any
+  # more; DataSize is the byte count the server reports for it.
+  data_len=$(echo "${unit_json}" | jq '.Unit.DataSize // 0')
   if [[ "${data_len}" -lt 1 ]]; then
     echo "FAIL: unit ${space}/inventory-api has no data" >&2
     errors=$((errors + 1))

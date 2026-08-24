@@ -4,7 +4,6 @@
 package cli
 
 import (
-	"encoding/base64"
 	"fmt"
 	"strings"
 	"text/tabwriter"
@@ -197,12 +196,11 @@ Dry-run by default; pass --commit --change-desc "..." to write.`,
 				created, err := cub.CreateUnit(cmd.Context(), client, goclientnew.Unit{
 					Slug:                  u.Slug,
 					DisplayName:           u.Slug,
-					Data:                  base64.StdEncoding.EncodeToString([]byte(u.YAML)),
 					ToolchainType:         "Kubernetes/YAML",
 					SpaceID:               sp.SpaceID,
 					Labels:                unitLabels(u),
 					LastChangeDescription: changeDesc,
-				})
+				}, u.YAML)
 				if err != nil {
 					plan.Units[i].Error = err.Error()
 					continue

@@ -5,10 +5,11 @@ package cub
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
+	"net/http"
 
 	"github.com/confighub/sdk/core/cubapi"
+	"github.com/google/uuid"
 	"sigs.k8s.io/yaml"
 )
 
@@ -28,12 +29,27 @@ func RevisionDocs(ctx context.Context, c *cubapi.Client, spaceID, unitID string,
 	if rev == nil || rev.Revision == nil {
 		return nil, fmt.Errorf("revision %d has no data", revisionNum)
 	}
-	raw, err := base64.StdEncoding.DecodeString(rev.Revision.Data)
+	sid, err := uuid.Parse(spaceID)
 	if err != nil {
-		// Data may already be plain text depending on the transport.
-		raw = []byte(rev.Revision.Data)
+		return nil, fmt.Errorf("parse space id %q: %w", spaceID, err)
 	}
-	return decodeDocs(raw)
+	uid, err := uuid.Parse(unitID)
+	if err != nil {
+		return nil, fmt.Errorf("parse unit id %q: %w", unitID, err)
+	}
+	// Configuration is not a field of a Revision: it is read through the Revision's
+	// own data endpoint, as text.
+	res, dlErr := c.API.DownloadRevisionDataWithResponse(ctx, sid, uid, rev.Revision.RevisionID)
+	if dlErr != nil {
+		return nil, dlErr
+	}
+	if res == nil {
+		return nil, fmt.Errorf("get data for revision %d: no response from server", revisionNum)
+	}
+	if res.StatusCode() != http.StatusOK {
+		return nil, fmt.Errorf("get data for revision %d: %s", revisionNum, res.Status())
+	}
+	return decodeDocs(res.Body)
 }
 
 // decodeDocs splits a multi-document YAML payload into resources keyed by

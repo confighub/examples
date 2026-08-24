@@ -318,7 +318,7 @@ func commitAllowPlans(cmd *cobra.Command, client *cubapi.Client, snap *snapshot.
 		r := result{Space: p.Space, Unit: p.Unit}
 		switch {
 		case existing == nil:
-			if _, err := cub.CreateUnit(cmd.Context(), client, buildUnit(p.dest, p.Unit, p.manifest, changeDesc)); err != nil {
+			if _, err := cub.CreateUnit(cmd.Context(), client, buildUnit(p.dest, p.Unit, changeDesc), p.manifest); err != nil {
 				r.Action, r.Error = "error", err.Error()
 			} else {
 				r.Action = "created"

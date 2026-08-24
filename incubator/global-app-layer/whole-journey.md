@@ -186,7 +186,7 @@ Verify the custom variant:
 ```bash
 cub unit list --space "${CUSTOM_SPACE}" --quiet --json | jq '.[] | {slug: .Unit.Slug, upstream: (.UpstreamUnit.Slug // null), status: .UnitStatus.Status}'
 
-cub unit get --space "${CUSTOM_SPACE}" --data-only backend-${CUSTOM_CLUSTER} | grep -E "(namespace:|CLUSTER|host:)"
+cub unit data --space "${CUSTOM_SPACE}" backend-${CUSTOM_CLUSTER} | grep -E "(namespace:|CLUSTER|host:)"
 ```
 
 If you have a second live target, you can bind and apply this custom variant too:

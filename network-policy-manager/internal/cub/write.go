@@ -6,6 +6,7 @@ package cub
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/confighub/sdk/core/cubapi"
 	api "github.com/confighub/sdk/core/function/api"
@@ -13,15 +14,47 @@ import (
 )
 
 // CreateUnit creates a new Unit (e.g. a generated NetworkPolicy) in the Space
-// identified by u.SpaceID. The unit is created but not applied — deploying it to
-// a cluster is a separate apply step. Set u.LastChangeDescription to record the
-// reason on the initial revision.
-func CreateUnit(ctx context.Context, c *cubapi.Client, u goclientnew.Unit) (*goclientnew.Unit, error) {
+// identified by u.SpaceID and writes data as its configuration. Configuration is not
+// a field of a Unit, so it goes in a second call to the Unit's data endpoint; the
+// returned Unit is the one that write produced, so its HeadRevisionNum names the
+// revision holding the configuration. The unit is created but not applied — deploying
+// it to a cluster is a separate apply step. Set u.LastChangeDescription to record the
+// reason on the revisions.
+func CreateUnit(ctx context.Context, c *cubapi.Client, u goclientnew.Unit, data string) (*goclientnew.Unit, error) {
 	res, err := c.API.CreateUnitWithResponse(ctx, u.SpaceID, &goclientnew.CreateUnitParams{}, u)
 	if cubapi.IsAPIError(err, res) {
 		return nil, cubapi.InterpretErrorGeneric(err, res)
 	}
-	return res.JSON200, nil
+	if res.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected response from create unit API")
+	}
+	// A write to a Unit answers with the operation's result; the Unit is inside it.
+	created := res.JSON200.Unit
+	if created == nil {
+		return nil, fmt.Errorf("create unit returned no unit")
+	}
+	if data == "" {
+		return created, nil
+	}
+	return PutUnitData(ctx, c, created.SpaceID, created.UnitID, data, u.LastChangeDescription)
+}
+
+// PutUnitData writes a Unit's configuration through the Unit's data endpoint,
+// recording changeDesc on the revision it cuts.
+func PutUnitData(ctx context.Context, c *cubapi.Client, spaceID, unitID goclientnew.UUID, data, changeDesc string) (*goclientnew.Unit, error) {
+	params := &goclientnew.UploadUnitDataParams{}
+	if changeDesc != "" {
+		params.LastChangeDescription = &changeDesc
+	}
+	res, err := c.API.UploadUnitDataWithBodyWithResponse(ctx, spaceID, unitID, params,
+		"application/octet-stream", strings.NewReader(data))
+	if cubapi.IsAPIError(err, res) {
+		return nil, cubapi.InterpretErrorGeneric(err, res)
+	}
+	if res.JSON200 == nil || res.JSON200.Unit == nil {
+		return nil, fmt.Errorf("unexpected response from unit data API")
+	}
+	return res.JSON200.Unit, nil
 }
 
 // MutateUnitYQ runs the mutating set-yq function over a single Unit (identified

@@ -251,7 +251,12 @@ Suggested structure:
 
 ### `cub unit get --space <space> --json <unit>`
 - mutates: no
-- stable fields: `Unit.Slug`, `Unit.Data`
+- stable fields: `Unit.Slug`, `Unit.DataHash`, `Unit.DataSize`
+- proves: unit metadata after setup
+
+### `cub unit data --space <space> <unit>`
+- mutates: no
+- stable output: the Unit's configuration, as text
 - proves: unit content after setup
 ```
 

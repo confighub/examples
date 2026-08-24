@@ -200,10 +200,10 @@ The bundle belongs to the target. The recipe manifest records the layered proven
 
 ```bash
 # Show the deployment data for one component
-cub unit get --space <prefix>-deploy-cluster-a --data-only frontend-cluster-a
+cub unit data --space <prefix>-deploy-cluster-a frontend-cluster-a
 
 # Show the app-level recipe manifest
-cub unit get --space <prefix>-recipe-us-staging --data-only recipe-us-staging-app
+cub unit data --space <prefix>-recipe-us-staging recipe-us-staging-app
 
 # Show variant ancestry (implemented with clone links)
 cub unit tree --edge clone --where "Labels.ExampleName = 'global-app-layer-frontend-postgres'"

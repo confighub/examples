@@ -285,7 +285,7 @@ unit_data_to_file() {
   local space="$1"
   local unit="$2"
   local output_path="$3"
-  cub unit get --space "${space}" --data-only "${unit}" >"${output_path}"
+  cub unit data --space "${space}" "${unit}" >"${output_path}"
 }
 
 get_unit_json() {
@@ -799,7 +799,7 @@ Next steps:
 6. cub unit approve --space $(deploy_space) ${DEPLOY_UNIT} && cub unit apply --space $(deploy_space) ${DEPLOY_UNIT}
 7. cub unit approve --space $(flux_deploy_space) ${DEPLOY_FLUX_UNIT} && cub unit apply --space $(flux_deploy_space) ${DEPLOY_FLUX_UNIT}
 8. cub unit approve --space $(argo_deploy_space) ${DEPLOY_ARGO_UNIT} && cub unit apply --space $(argo_deploy_space) ${DEPLOY_ARGO_UNIT}
-9. Review recipe manifest: cub unit get --space $(recipe_space) --data-only ${RECIPE_MANIFEST_UNIT}
+9. Review recipe manifest: cub unit data --space $(recipe_space) ${RECIPE_MANIFEST_UNIT}
 EOF_SUMMARY
 }
 

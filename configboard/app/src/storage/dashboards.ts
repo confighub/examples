@@ -5,8 +5,8 @@
 // This is the only part of configboard that writes anything, and it writes only its own
 // documents — never a Unit it did not create, never anything in a Space it does not own.
 //
-// Reads go through the raw /data text endpoint (Unit.Data is base64 over the JSON API;
-// /data returns the plain YAML). Writes set Unit.Data base64-encoded.
+// Configuration is not a field of a Unit: both reads and writes go through the raw
+// /data text endpoint, which carries the YAML verbatim.
 
 import {
   useCreateSpaceMutation,
@@ -18,8 +18,7 @@ import {
 } from '@confighub/rtk-query';
 import { useCallback } from 'react';
 
-import { b64encodeUtf8 } from '../api/encoding';
-import { fetchUnitDataText } from '../api/raw';
+import { fetchUnitDataText, putUnitDataText } from '../api/raw';
 import { parseDashboard } from '../model/parse';
 import type { Dashboard } from '../model/types';
 import { toDisplayName } from './displayName';
@@ -171,7 +170,8 @@ export function useDashboardStorage(): DashboardStorage {
     async (slug: string, yaml: string, title: string): Promise<void> => {
       const spaceId = await ensureSpace();
       const displayName = toDisplayName(title);
-      unwrap(
+      const changeDesc = `Create dashboard ${title}`;
+      const created = unwrap(
         await createUnit({
           spaceId,
           unit: {
@@ -180,12 +180,16 @@ export function useDashboardStorage(): DashboardStorage {
             ToolchainType: 'AppConfig/YAML',
             Labels: { app: APP_LABEL },
             Annotations: { [TITLE_ANNOTATION]: title },
-            Data: b64encodeUtf8(yaml),
-            LastChangeDescription: `Create dashboard ${title}`,
+            LastChangeDescription: changeDesc,
           },
         }),
         'create dashboard unit',
       );
+      if (!created.UnitID || !created.SpaceID) {
+        throw new Error('create dashboard unit returned no UnitID');
+      }
+      // The document itself is a second call: it is not part of the Unit entity.
+      await putUnitDataText(created.SpaceID, created.UnitID, yaml, changeDesc);
     },
     [ensureSpace, createUnit],
   );
@@ -196,21 +200,22 @@ export function useDashboardStorage(): DashboardStorage {
       // The title is the document's; DisplayName is ConfigHub's constrained label. Send
       // it only when something legal survives, so a prose title never blocks a save.
       const displayName = dashboard ? toDisplayName(dashboard.title) : undefined;
-      // Merge-patch (not PUT): PUT-updating Data runs an optimistic check on a revision
-      // UUID and 409s when it is not supplied; merge-patch applies to head directly.
-      unwrap(
-        await patchUnit({
-          spaceId: entry.spaceId,
-          unitId: entry.unitId,
-          body: {
-            ...(displayName ? { DisplayName: displayName } : {}),
-            ...(dashboard ? { Annotations: { [TITLE_ANNOTATION]: dashboard.title } } : {}),
-            Data: b64encodeUtf8(yaml),
-            LastChangeDescription: changeDesc,
-          },
-        }),
-        'patch dashboard unit',
-      );
+      // Metadata is a merge-patch against head; the document goes to the /data endpoint,
+      // which cuts the revision carrying changeDesc.
+      if (displayName || dashboard) {
+        unwrap(
+          await patchUnit({
+            spaceId: entry.spaceId,
+            unitId: entry.unitId,
+            body: {
+              ...(displayName ? { DisplayName: displayName } : {}),
+              ...(dashboard ? { Annotations: { [TITLE_ANNOTATION]: dashboard.title } } : {}),
+            },
+          }),
+          'patch dashboard unit',
+        );
+      }
+      await putUnitDataText(entry.spaceId, entry.unitId, yaml, changeDesc);
     },
     [patchUnit],
   );

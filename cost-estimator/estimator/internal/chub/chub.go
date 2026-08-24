@@ -10,7 +10,6 @@ package chub
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -44,8 +43,22 @@ func token() string { return os.Getenv("CONFIGHUB_TOKEN") }
 
 var httpClient = &http.Client{Timeout: 60 * time.Second}
 
-// do issues an authenticated request against the ConfigHub API.
+// do issues an authenticated request against the ConfigHub API, sending body as JSON
+// (or as ConfigHub's merge-patch content type for PATCH).
 func do(method, path string, query url.Values, body []byte) ([]byte, error) {
+	ct := ""
+	if body != nil {
+		ct = "application/json"
+		if method == http.MethodPatch {
+			ct = "application/merge-patch+json" // ConfigHub's patch content type
+		}
+	}
+	return doCT(method, path, query, body, ct)
+}
+
+// doCT is do with an explicit request content type, for the data endpoints, whose body
+// is the configuration itself rather than JSON.
+func doCT(method, path string, query url.Values, body []byte, contentType string) ([]byte, error) {
 	if token() == "" {
 		return nil, fmt.Errorf("CONFIGHUB_TOKEN is not set (get one with: cub auth get-token)")
 	}
@@ -63,12 +76,8 @@ func do(method, path string, query url.Values, body []byte) ([]byte, error) {
 	}
 	req.Header.Set("Authorization", "Bearer "+token())
 	req.Header.Set("Accept", "application/json")
-	if body != nil {
-		ct := "application/json"
-		if method == http.MethodPatch {
-			ct = "application/merge-patch+json" // ConfigHub's patch content type
-		}
-		req.Header.Set("Content-Type", ct)
+	if contentType != "" {
+		req.Header.Set("Content-Type", contentType)
 	}
 	resp, err := httpClient.Do(req)
 	if err != nil {
@@ -124,16 +133,17 @@ func Inventory(spaceGlob, where string) ([]Unit, error) {
 		return nil, fmt.Errorf("parse unit list: %w", err)
 	}
 
+	byUnitID, err := unitDataBulk(where)
+	if err != nil {
+		return nil, err
+	}
+
 	var units []Unit
 	for _, e := range entries {
-		data, err := unitData(e.Unit.SpaceID, e.Unit.UnitID)
-		if err != nil {
-			return nil, err
-		}
 		units = append(units, Unit{
 			Space: e.Space.Slug, SpaceID: e.Unit.SpaceID,
 			Unit: e.Unit.Slug, UnitID: e.Unit.UnitID,
-			YAML: data, Labels: e.Unit.Labels,
+			YAML: byUnitID[e.Unit.UnitID], Labels: e.Unit.Labels,
 		})
 	}
 	return units, nil
@@ -169,10 +179,30 @@ func spaceFilter(glob string) string {
 	return fmt.Sprintf("Space.Slug = '%s'", glob)
 }
 
-// unitData fetches a Unit's config as text (the /data endpoint returns YAML).
-func unitData(spaceID, unitID string) (string, error) {
-	b, err := do("GET", fmt.Sprintf("/space/%s/unit/%s/data", spaceID, unitID), nil, nil)
-	return string(b), err
+// unitDataBulk fetches the configuration of every Unit the where clause selects, keyed
+// by Unit ID, in one request. Configuration is not a field of a Unit, and a caller that
+// needs many Units' configuration must not make one request per Unit.
+func unitDataBulk(where string) (map[string]string, error) {
+	q := url.Values{}
+	if where != "" {
+		q.Set("where", where)
+	}
+	b, err := do("GET", "/unit-data", q, nil)
+	if err != nil {
+		return nil, err
+	}
+	var rows []struct {
+		UnitID string `json:"UnitID"`
+		Data   string `json:"Data"`
+	}
+	if err := json.Unmarshal(b, &rows); err != nil {
+		return nil, fmt.Errorf("parse unit data: %w", err)
+	}
+	out := make(map[string]string, len(rows))
+	for _, r := range rows {
+		out[r.UnitID] = r.Data
+	}
+	return out, nil
 }
 
 // SetAnnotations writes estimator annotations onto the workload (Deployment or
@@ -212,12 +242,25 @@ func SetAnnotations(u Unit, annos map[string]string, changeDesc string) error {
 	return nil
 }
 
+// putUnitData writes a Unit's configuration through the Unit's data endpoint. The body
+// is the configuration itself, as text; last_change_description names the Revision it
+// cuts.
+func putUnitData(spaceID, unitID string, data []byte, changeDesc string) error {
+	q := url.Values{}
+	if changeDesc != "" {
+		q.Set("last_change_description", changeDesc)
+	}
+	_, err := doCT("PUT", fmt.Sprintf("/space/%s/unit/%s/data", spaceID, unitID), q, data,
+		"application/octet-stream")
+	return err
+}
+
 // UpsertUnit creates or replaces a Unit's data in the given Space — used to
 // publish the AppConfig/YAML cost record and pricebook-status Units. Idempotent:
-// if a Unit with the slug already exists it is PATCHed, otherwise created.
+// if a Unit with the slug already exists its configuration is rewritten, otherwise
+// the Unit is created first. Configuration is not a field of a Unit: it is written
+// through the Unit's own data endpoint, as text.
 func UpsertUnit(spaceID, slug, toolchain, displayName string, labels map[string]string, data []byte, changeDesc string) error {
-	enc := base64.StdEncoding.EncodeToString(data)
-
 	q := url.Values{}
 	q.Set("where", fmt.Sprintf("Slug = '%s' AND SpaceID = '%s'", slug, spaceID))
 	q.Set("select", "Slug,UnitID")
@@ -229,9 +272,7 @@ func UpsertUnit(spaceID, slug, toolchain, displayName string, labels map[string]
 	_ = json.Unmarshal(b, &existing)
 
 	if len(existing) > 0 && existing[0].Unit.UnitID != "" {
-		patch, _ := json.Marshal(map[string]any{"Data": enc, "LastChangeDescription": changeDesc})
-		_, err := do("PATCH", fmt.Sprintf("/space/%s/unit/%s", spaceID, existing[0].Unit.UnitID), nil, patch)
-		return err
+		return putUnitData(spaceID, existing[0].Unit.UnitID, data, changeDesc)
 	}
 
 	create, _ := json.Marshal(map[string]any{
@@ -239,9 +280,17 @@ func UpsertUnit(spaceID, slug, toolchain, displayName string, labels map[string]
 		"ToolchainType":         toolchain,
 		"DisplayName":           displayName,
 		"Labels":                labels,
-		"Data":                  enc,
 		"LastChangeDescription": changeDesc,
 	})
-	_, err = do("POST", fmt.Sprintf("/space/%s/unit", spaceID), nil, create)
-	return err
+	b, err = do("POST", fmt.Sprintf("/space/%s/unit", spaceID), nil, create)
+	if err != nil {
+		return err
+	}
+	var created struct {
+		UnitID string `json:"UnitID"`
+	}
+	if err := json.Unmarshal(b, &created); err != nil || created.UnitID == "" {
+		return fmt.Errorf("create unit %s: no UnitID in response", slug)
+	}
+	return putUnitData(spaceID, created.UnitID, data, changeDesc)
 }

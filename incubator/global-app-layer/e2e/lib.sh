@@ -220,7 +220,7 @@ clean_space_contents() {
 unit_data() {
   local space="$1"
   local unit="$2"
-  cub unit get --space "${space}" --data-only "${unit}"
+  cub unit data --space "${space}" "${unit}"
 }
 
 section() {

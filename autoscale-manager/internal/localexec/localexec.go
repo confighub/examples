@@ -38,10 +38,10 @@ func newExecutor() (*executor.ConcreteFunctionExecutor, error) {
 
 // ConvertHPAToKEDA runs convert-hpa-to-keda over the given Kubernetes/YAML config
 // data and returns the (possibly rewritten) data plus whether anything changed.
-func ConvertHPAToKEDA(ctx context.Context, configYAML []byte) (out []byte, changed bool, err error) {
+func ConvertHPAToKEDA(ctx context.Context, configYAML string) (out string, changed bool, err error) {
 	exec, err := newExecutor()
 	if err != nil {
-		return nil, false, err
+		return "", false, err
 	}
 	req := &api.FunctionInvocationRequest{
 		FunctionContext:     api.FunctionContext{ToolchainType: workerapi.ToolchainKubernetesYAML},
@@ -50,10 +50,12 @@ func ConvertHPAToKEDA(ctx context.Context, configYAML []byte) (out []byte, chang
 	}
 	resp, err := exec.Invoke(ctx, req)
 	if err != nil {
-		return nil, false, err
+		return "", false, err
 	}
 	if !resp.Success {
-		return nil, false, fmt.Errorf("%s: %s", keda.FunctionName, strings.Join(resp.ErrorMessages, "; "))
+		return "", false, fmt.Errorf("%s: %s", keda.FunctionName, strings.Join(resp.ErrorMessages, "; "))
 	}
-	return resp.ConfigData, resp.HasNewMutations, nil
+	// ConfigData is populated only when the invocation changed the document; ResultData
+	// resolves that against what was sent.
+	return resp.ResultData(configYAML), resp.HasNewMutations, nil
 }

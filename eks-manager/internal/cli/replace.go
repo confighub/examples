@@ -222,7 +222,7 @@ Dry-run by default; pass --commit --change-desc "..." to write.`,
 			}
 
 			if !dryRun {
-				created, err := cub.CreateUnit(cmd.Context(), client, newUnitFor(u, ref.spaceID, changeDesc))
+				created, err := cub.CreateUnit(cmd.Context(), client, newUnitFor(u, ref.spaceID, changeDesc), u.YAML)
 				if err != nil {
 					return err
 				}

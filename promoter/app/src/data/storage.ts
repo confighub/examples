@@ -2,14 +2,12 @@
 // Unit in the app's own `promoter` Space; the YAML body is the Workflow
 // document (see model/workflow.ts). The Space is created on first use.
 //
-// Reads go through the raw /data text endpoint (Unit.Data is base64 over the
-// JSON API; the /data endpoint returns the plain YAML). Writes set Unit.Data
-// directly, base64-encoded.
+// Configuration is not a field of a Unit: both reads and writes go through the
+// raw /data text endpoint, which carries the YAML verbatim.
 
 import { useCallback } from 'react';
 
-import { fetchUnitDataText } from '../api/raw';
-import { b64encodeUtf8 } from '../api/encoding';
+import { fetchUnitDataText, putUnitDataText } from '../api/raw';
 import { parseWorkflow, serializeWorkflow, Workflow } from '../model/workflow';
 import {
   useCreateSpaceMutation,
@@ -135,7 +133,8 @@ export function useStorage(): Storage {
   const createWorkflow = useCallback(
     async (slug: string, wf: Workflow): Promise<void> => {
       const spaceId = await ensureSpace();
-      unwrap(
+      const changeDesc = `Create promotion workflow ${wf.name}`;
+      const created = unwrap(
         await createUnit({
           spaceId,
           unit: {
@@ -143,33 +142,33 @@ export function useStorage(): Storage {
             DisplayName: wf.name,
             ToolchainType: 'AppConfig/YAML',
             Labels: { app: APP_LABEL },
-            Data: b64encodeUtf8(serializeWorkflow(wf)),
-            LastChangeDescription: `Create promotion workflow ${wf.name}`,
+            LastChangeDescription: changeDesc,
           },
         }),
         'create workflow unit',
       );
+      if (!created.UnitID || !created.SpaceID) {
+        throw new Error('create workflow unit returned no UnitID');
+      }
+      // The document itself is a second call: it is not part of the Unit entity.
+      await putUnitDataText(created.SpaceID, created.UnitID, serializeWorkflow(wf), changeDesc);
     },
     [ensureSpace, createUnit],
   );
 
   const saveWorkflow = useCallback(
     async (entry: WorkflowEntry, wf: Workflow, changeDesc: string): Promise<void> => {
-      // Merge-patch (not PUT): PUT-updating Data runs an optimistic check on a
-      // revision UUID and 409s ("Config data changed") when not supplied; the
-      // merge-patch path applies the data change to head directly.
+      // Metadata is a merge-patch against head; the document goes to the /data
+      // endpoint, which cuts the revision carrying changeDesc.
       unwrap(
         await patchUnit({
           spaceId: entry.spaceId,
           unitId: entry.unitId,
-          body: {
-            DisplayName: wf.name,
-            Data: b64encodeUtf8(serializeWorkflow(wf)),
-            LastChangeDescription: changeDesc,
-          },
+          body: { DisplayName: wf.name },
         }),
         'patch workflow unit',
       );
+      await putUnitDataText(entry.spaceId, entry.unitId, serializeWorkflow(wf), changeDesc);
     },
     [patchUnit],
   );
