@@ -3,7 +3,7 @@ module github.com/confighub/examples/k8s-to-score
 go 1.26.3
 
 require (
-	github.com/confighub/sdk/core v0.2.33
+	github.com/confighub/sdk/core v0.3.0
 	github.com/score-spec/score-go v1.20.0
 	github.com/spf13/cobra v1.10.2
 	k8s.io/api v0.36.3
