@@ -67,7 +67,6 @@ are not signed in.`,
 		// Write (config-as-data fixes; dry-run unless --commit)
 		newApplyEnvelopeCmd(),
 		newBackfillCmd(),
-		newPromoteCmd(),
 		newGuardrailsCmd(),
 		// Diagnostics
 		newPreflightCmd(),

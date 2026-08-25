@@ -37,8 +37,8 @@ Runs standalone (`bin/cub-scheduling ...`) or as a cub plugin (`cub scheduling
 
 Read commands default to JSON (`-o json`); pass `-o table` for a human view. Write
 commands are **dry-run by default** and require `--commit --change-desc`; they edit
-Units but never apply to a cluster (that's a separate `cub unit apply`), and never
-bypass ApplyGates.
+Units but never publish them (that's a separate `cub release publish <space>`),
+and never bypass ApplyGates.
 
 | Command | Kind | What it does |
 |---|---|---|
@@ -52,7 +52,6 @@ bypass ApplyGates.
 | `set-node-affinity` | write | Set a required node affinity term |
 | `profile install\|list\|apply` | write | The placement profile library (parameterized Invocations) |
 | `fleet-edit` | write | Apply a placement profile across a `--where` selector |
-| `promote` | write | Override-preserving upgrade of downstream Units to upstream |
 | `guardrails install\|status` | write | Enforcement pack — a `vet-cel` "toleration needs placement" rule |
 
 ## Agent skills
@@ -63,5 +62,5 @@ The `skills/` directory holds ConfigHub agent skills (a `SKILL.md` plus `evals/`
 |---|---|---|
 | `scheduling-audit` | read | `snapshot`, `list`, `placement` |
 | `scheduling-findings` | read | `findings` |
-| `scheduling-place` | write | `set-node-selector`, `set-tolerations`, `set-node-affinity`, `profile`, `fleet-edit`, `promote` |
+| `scheduling-place` | write | `set-node-selector`, `set-tolerations`, `set-node-affinity`, `profile`, `fleet-edit` |
 | `scheduling-guardrails` | write | `guardrails install\|status` |

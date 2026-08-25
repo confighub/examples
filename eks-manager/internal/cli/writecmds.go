@@ -145,7 +145,7 @@ func printEditReport(cmd *cobra.Command, r editReport) {
 			r.Mutated, r.Space, r.Unit, " Re-run with --commit --change-desc \"…\" to write."))
 		return
 	}
-	fprintln(out, fmt.Sprintf("\nChanged %d resource(s) in %s/%s. Not applied — rolling out is a separate `cub unit apply`.",
+	fprintln(out, fmt.Sprintf("\nChanged %d resource(s) in %s/%s. Not published — rolling out is a separate `cub release publish`.",
 		r.Mutated, r.Space, r.Unit))
 }
 

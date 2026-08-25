@@ -17,24 +17,16 @@
     },
     {
       "id": 3,
-      "name": "promote-staging",
-      "prompt": "Propagate the latest base RBAC changes to all our staging clones.",
-      "expected_output": "Runs `cub-rbac promote --where \"Space.Labels.Environment = 'staging'\"` as a dry-run (listing downstream Units behind upstream), then commits with --commit and --change-desc. Notes overrides are preserved and that applying is a separate step (cub-apply).",
-      "files": []
-    },
-    {
-      "id": 4,
-      "name": "which-are-behind",
-      "prompt": "Which downstream RBAC units in prod are behind their base?",
-      "expected_output": "Runs `cub-rbac promote --where \"Space.Labels.Environment = 'prod'\"` as a DRY RUN and reports the listed Units (those that would upgrade) without committing.",
-      "files": []
-    },
-    {
-      "id": 5,
       "name": "single-unit-routes-to-edit",
       "prompt": "Add get on pods to the viewer role in just the prod-use2-argocd/argocd-rbac unit.",
       "expected_output": "Recognizes this targets a single Unit and routes to the rbac-edit skill (`cub-rbac edit add-verb prod-use2-argocd/argocd-rbac ...`) rather than a fleet-wide operation.",
       "files": []
+    },
+    {
+      "id": 4,
+      "name": "routes-promotion-elsewhere",
+      "prompt": "Propagate the latest base RBAC changes to all our staging clones.",
+      "expected_output": "Recognizes this is variant propagation, not a fleet edit: cub-rbac has no promote command, so it routes to the promote-release skill rather than inventing one, and does not run `cub-rbac fleet-edit`."
     }
   ]
 }

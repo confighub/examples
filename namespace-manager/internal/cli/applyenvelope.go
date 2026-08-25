@@ -26,9 +26,9 @@ v1/Namespace Unit(s) in a Space, adding the Pod Security Admission labels
 'missing-pod-security' finding — a hermetic, idempotent, comment-preserving edit
 that produces a clean revision (a no-op where the labels are already present).
 
-The Unit is edited, not applied — rolling it out to a cluster is a separate,
-deliberate 'cub unit apply'. Dry-run unless --commit --change-desc; never bypasses
-ApplyGates.`,
+The Unit is edited, not published — rolling it out to a cluster is a separate,
+deliberate 'cub release publish <space>'. Dry-run unless --commit --change-desc;
+never bypasses ApplyGates.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if spaceSlug == "" {

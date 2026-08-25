@@ -62,7 +62,6 @@ are not signed in.`,
 		newSetNodeAffinityCmd(),
 		newProfileCmd(),
 		newFleetEditCmd(),
-		newPromoteCmd(),
 		newGuardrailsCmd(),
 		// Diagnostics
 		newPreflightCmd(),

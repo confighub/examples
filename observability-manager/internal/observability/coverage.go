@@ -6,6 +6,8 @@ package observability
 import (
 	"fmt"
 	"sort"
+
+	api "github.com/confighub/sdk/core/function/api"
 )
 
 // Empty reports whether the selector has no terms. An empty ServiceMonitor
@@ -210,37 +212,17 @@ func AnalyzeSidecars(clusters map[string]*ClusterObservability, names []string) 
 	return out
 }
 
-// Severity ranks a finding for triage.
-type Severity string
-
-const (
-	SeverityHigh   Severity = "high"
-	SeverityMedium Severity = "medium"
-	SeverityLow    Severity = "low"
-)
-
-func severityRank(s Severity) int {
-	switch s {
-	case SeverityHigh:
-		return 2
-	case SeverityMedium:
-		return 1
-	default:
-		return 0
-	}
-}
-
 // Finding is one observability issue.
 type Finding struct {
-	Severity  Severity `json:"severity"`
-	Analyzer  string   `json:"analyzer"`
-	Cluster   string   `json:"cluster"`
-	Namespace string   `json:"namespace,omitempty"`
-	Kind      string   `json:"kind"`
-	Name      string   `json:"name"`
-	Space     string   `json:"space"`
-	UnitSlug  string   `json:"unitSlug"`
-	Message   string   `json:"message"`
+	Severity  api.Score `json:"severity"`
+	Analyzer  string    `json:"analyzer"`
+	Cluster   string    `json:"cluster"`
+	Namespace string    `json:"namespace,omitempty"`
+	Kind      string    `json:"kind"`
+	Name      string    `json:"name"`
+	Space     string    `json:"space"`
+	UnitSlug  string    `json:"unitSlug"`
+	Message   string    `json:"message"`
 }
 
 // Findings computes observability findings across the fleet, most-severe first:
@@ -253,7 +235,7 @@ func Findings(clusters map[string]*ClusterObservability) []Finding {
 			continue
 		}
 		out = append(out, Finding{
-			Severity: SeverityMedium, Analyzer: "coverage",
+			Severity: api.ScoreMedium, Analyzer: "coverage",
 			Cluster: r.Cluster, Namespace: r.Namespace, Kind: "Service", Name: r.Service,
 			Space: r.Space, UnitSlug: r.UnitSlug,
 			Message: fmt.Sprintf("Service exposes metrics (%s) but no ServiceMonitor selects it", r.MetricPort),
@@ -261,7 +243,7 @@ func Findings(clusters map[string]*ClusterObservability) []Finding {
 	}
 	for _, d := range DanglingMonitors(clusters) {
 		out = append(out, Finding{
-			Severity: SeverityLow, Analyzer: "dangling",
+			Severity: api.ScoreLow, Analyzer: "dangling",
 			Cluster: d.Cluster, Namespace: d.Namespace, Kind: "ServiceMonitor", Name: d.Name,
 			Space: d.Space, UnitSlug: d.UnitSlug,
 			Message: "ServiceMonitor selects no Service in its namespace",
@@ -269,7 +251,7 @@ func Findings(clusters map[string]*ClusterObservability) []Finding {
 	}
 	sort.SliceStable(out, func(i, j int) bool {
 		if out[i].Severity != out[j].Severity {
-			return severityRank(out[i].Severity) > severityRank(out[j].Severity)
+			return api.ScoreToNumber[out[i].Severity] > api.ScoreToNumber[out[j].Severity]
 		}
 		if out[i].Cluster != out[j].Cluster {
 			return out[i].Cluster < out[j].Cluster

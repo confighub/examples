@@ -1,21 +1,20 @@
 ---
 name: autoscale-edit
-description: 'Set Kubernetes autoscaling as config-as-data with the cub-autoscale CLI — edit a HorizontalPodAutoscaler''s min/max replicas and cpu/memory targets, convert an HPA to a KEDA ScaledObject, apply reusable autoscaling profiles to one Unit or across a whole selector, and promote changes downstream. Use for "raise the HPA max to 20", "set cpu target to 60%", "convert this HPA to KEDA", "make every prod HPA scale out earlier", "apply the hpa-range profile", "roll the autoscaling change downstream". Dry-run by default; requires --commit --change-desc. Not for read-only checks (use autoscale-audit / autoscale-findings) or enforcement Triggers (use autoscale-guardrails).'
+description: 'Set Kubernetes autoscaling as config-as-data with the cub-autoscale CLI — edit a HorizontalPodAutoscaler''s min/max replicas and cpu/memory targets, convert an HPA to a KEDA ScaledObject, and apply reusable autoscaling profiles to one Unit or across a whole selector. Use for "raise the HPA max to 20", "set cpu target to 60%", "convert this HPA to KEDA", "make every prod HPA scale out earlier", "apply the hpa-range profile". Dry-run by default; requires --commit --change-desc. Not for read-only checks (use autoscale-audit / autoscale-findings), enforcement Triggers (use autoscale-guardrails), or propagating a change to downstream variants (use promote-release).'
 phase: act
-allowed-tools: Bash(cub-autoscale --help) Bash(cub-autoscale * --help) Bash(cub auth status) Bash(cub-autoscale preflight) Bash(cub-autoscale list *) Bash(cub-autoscale findings *) Bash(cub-autoscale set-hpa *) Bash(cub-autoscale convert-keda *) Bash(cub-autoscale profile) Bash(cub-autoscale profile *) Bash(cub-autoscale fleet-edit *) Bash(cub-autoscale promote *)
+allowed-tools: Bash(cub-autoscale --help) Bash(cub-autoscale * --help) Bash(cub auth status) Bash(cub-autoscale preflight) Bash(cub-autoscale list *) Bash(cub-autoscale findings *) Bash(cub-autoscale set-hpa *) Bash(cub-autoscale convert-keda *) Bash(cub-autoscale profile) Bash(cub-autoscale profile *) Bash(cub-autoscale fleet-edit *)
 ---
 
 # autoscale-edit
 
-Set how workloads autoscale — as data, dry-run by default. One HPA, an HPA→KEDA conversion, a profile across a `--where` selector, or promoted downstream.
+Set how workloads autoscale — as data, dry-run by default. One HPA, an HPA→KEDA conversion, or a profile across a `--where` selector.
 
 - **`set-hpa <space>/<unit> [--min N] [--max N] [--cpu PCT] [--memory PCT]`** — edit an HPA's replica bounds and/or cpu/memory utilization targets.
 - **`convert-keda <space>/<unit>`** — rewrite an HPA as an equivalent KEDA ScaledObject (preserves min/max and cpu/memory metrics). Runs the `convert-hpa-to-keda` function in an **embedded executor in-process** — no server-side function, no worker.
 - **`profile install | list | apply`** — the autoscaling profile library (stored Invocations): `hpa-conservative` (cpu 60%), `hpa-aggressive` (cpu 85%), and parameterized `hpa-range` (`--param min=… --param max=…`).
 - **`fleet-edit --profile <slug> [--where …]`** — apply a profile across a selector of autoscaler Units in one operation.
-- **`promote`** — override-preserving upgrade of downstream Units.
 
-All **edit Units but do not apply them** to a cluster — rolling out is a separate `cub unit apply`.
+All **edit Units but do not publish them** — rolling out is a separate `cub release publish <space>`, which bundles the Space's Units for its release Target.
 
 ## Why this matters
 
@@ -27,13 +26,12 @@ All **edit Units but do not apply them** to a cluster — rolling out is a separ
 - "Convert this HPA to KEDA." → `convert-keda <space>/<unit>`.
 - "Set every prod HPA to scale out earlier." → `fleet-edit --profile hpa-conservative --environment prod`.
 - "Set explicit bounds via a profile." → `profile apply hpa-range <space>/<unit> --param min=3 --param max=15`.
-- "Roll the autoscaling change downstream." → `promote --component <c>`.
 
 ## Do not load for
 
 - Read-only checks — use **autoscale-audit** / **autoscale-findings**.
 - Enforcement Triggers (a pinned-autoscaler warning, schema validation) — use **autoscale-guardrails**.
-- Applying Units to a cluster — that is `cub unit apply`.
+- Publishing the Space's Release — that is `cub release publish <space>`.
 
 ## Preflight gates
 
@@ -52,7 +50,7 @@ All **edit Units but do not apply them** to a cluster — rolling out is a separ
    ```
 3. **Commit** with `--commit --change-desc` (summary + verbatim user prompt).
 4. **Verify**: `cub-autoscale list --where "Slug = '<unit>'"` shows the new bounds/kind; `findings` clears.
-5. **Roll out** is a separate step — hand off to `cub-apply`.
+5. **Roll out** is a separate step — hand off to `release-publish`.
 
 ## Safety
 
@@ -63,13 +61,13 @@ All **edit Units but do not apply them** to a cluster — rolling out is a separ
 ## Stop conditions
 
 - An ApplyGate attaches (a validating Trigger failed). **Do not bypass** — fix the data (or the rule), via **triggers-and-applygates**.
-- The user wants to apply to a cluster — hand off to `cub-apply`.
+- The user wants the change deployed — hand off to `release-publish`.
 
 ## Tool boundary
 
-Allowed: `set-hpa`, `convert-keda`, `profile`, `fleet-edit`, `promote` (dry-run by default; `--commit` passes `--change-desc`), and the read commands. Not allowed: bypassing gates, `kubectl` mutations, applying to clusters.
+Allowed: `set-hpa`, `convert-keda`, `profile`, `fleet-edit` (dry-run by default; `--commit` passes `--change-desc`), and the read commands. Not allowed: bypassing gates, `kubectl` mutations, publishing a Release.
 
 ## References
 
-- `cub-autoscale set-hpa --help`, `… convert-keda --help`, `… profile --help`, `… fleet-edit --help`, `… promote --help`.
-- Companion skills: **autoscale-audit**, **autoscale-findings**, **autoscale-guardrails**, `promote-release`, `triggers-and-applygates`, `cub-apply`.
+- `cub-autoscale set-hpa --help`, `… convert-keda --help`, `… profile --help`, `… fleet-edit --help`.
+- Companion skills: **autoscale-audit**, **autoscale-findings**, **autoscale-guardrails**, `promote-release`, `triggers-and-applygates`, `release-publish`.

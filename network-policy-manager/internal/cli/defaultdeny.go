@@ -33,7 +33,7 @@ DNS to kube-dns, since a bare egress default-deny breaks name resolution.
 
 The Space (and cluster Target) are inferred from the namespace's managed
 workloads; use --cluster / --space to disambiguate. The Unit is created but NOT
-applied — deploy it with 'cub unit apply' when ready.
+published — deploy it with 'cub release publish <space>' when ready.
 
 This is a dry run unless you pass --commit --change-desc "…".`,
 		Args: cobra.ExactArgs(1),
@@ -62,7 +62,7 @@ This is a dry run unless you pass --commit --change-desc "…".`,
 	}
 	addOutputFlag(cmd, &output)
 	addFilterFlags(cmd, &filter)
-	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "cluster (Target or Space slug) when the namespace exists in more than one")
+	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "cluster (Target slug, or None) when the namespace exists in more than one")
 	cmd.Flags().StringVar(&spaceOverride, "space", "", "Space slug to create the Unit in when the namespace spans more than one")
 	cmd.Flags().BoolVar(&egress, "egress", false, "also deny egress (allowing DNS egress to kube-dns)")
 	commit.Bind(cmd)

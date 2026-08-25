@@ -28,6 +28,12 @@ import (
 
 const k8sUnitsWhere = "ToolchainType = 'Kubernetes/YAML'"
 
+// ClusterNone is the cluster key for Units the fleet view cannot attribute to a
+// cluster. They group under one bucket rather than each Space standing in for a
+// cluster of its own, which inflated the cluster count with things that are not
+// clusters.
+const ClusterNone = "None"
+
 // SpaceLabelCluster is the Space label naming the EKS cluster a Space describes.
 // A cluster is a Space here (its Units describe a cluster rather than deploy to
 // one), so this label — not the Target — identifies the cluster.
@@ -124,17 +130,18 @@ func isCanonicalSpace(labels map[string]string) bool {
 }
 
 // clusterKey names the EKS cluster a Unit's resources belong to: the Space's
-// Cluster label when set, else the Space slug. Deliberately NOT the Target slug
+// Cluster label when set, else ClusterNone. Deliberately NOT the Target slug
 // — the Target is the Crossplane management cluster these resources are applied
 // to, which is a different cluster from the one they describe.
-func clusterKey(meta UnitMeta, spaceSlug string) string {
+//
+// A Space carrying no Cluster label describes no cluster this tool can name, so
+// its Units group under ClusterNone rather than the Space slug standing in for
+// a cluster of its own.
+func clusterKey(meta UnitMeta) string {
 	if v := meta.SpaceLabels[SpaceLabelCluster]; v != "" {
 		return v
 	}
-	if spaceSlug != "" {
-		return spaceSlug
-	}
-	return meta.SpaceSlug
+	return ClusterNone
 }
 
 // Load fetches and assembles the fleet snapshot using the given API client,
@@ -247,7 +254,7 @@ func Load(ctx context.Context, c *cubapi.Client, where string) (*Snapshot, error
 				seen[key] = true
 				resources = append(resources, eks.FleetResource{
 					Origin: eks.ResourceOrigin{
-						Cluster:      clusterKey(meta, space),
+						Cluster:      clusterKey(meta),
 						Space:        space,
 						SpaceID:      r.SpaceID,
 						SpaceLabels:  meta.SpaceLabels,

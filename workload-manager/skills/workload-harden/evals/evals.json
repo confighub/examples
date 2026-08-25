@@ -5,7 +5,7 @@
       "id": 1,
       "name": "harden-dry-run-then-commit",
       "prompt": "Harden the frontend deployment in apptique-prod.",
-      "expected_output": "Runs `cub-workload preflight`, previews `cub-workload harden apptique-prod/frontend` (dry-run), then on confirmation commits with --commit --change-desc. Does not apply to a cluster; does not bypass gates.",
+      "expected_output": "Runs `cub-workload preflight`, previews `cub-workload harden apptique-prod/frontend` (dry-run), then on confirmation commits with --commit --change-desc. Does not publish a Release; does not bypass gates.",
       "files": []
     },
     {
@@ -19,7 +19,7 @@
       "id": 3,
       "name": "ensure-pdb",
       "prompt": "Add a PodDisruptionBudget for the web deployment.",
-      "expected_output": "Runs `cub-workload ensure-pdb <space>/web` dry-run (shows the derived PDB manifest) then --commit --change-desc, creating a new PDB Unit (not applied).",
+      "expected_output": "Runs `cub-workload ensure-pdb <space>/web` dry-run (shows the derived PDB manifest) then --commit --change-desc, creating a new PDB Unit (not published).",
       "files": []
     },
     {

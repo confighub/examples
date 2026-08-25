@@ -8,6 +8,8 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	api "github.com/confighub/sdk/core/function/api"
+
 	"github.com/spf13/cobra"
 
 	"github.com/confighub/examples/scheduling-manager/internal/cub"
@@ -40,7 +42,7 @@ nodeSelector and no required node affinity), so they may schedule onto general
 nodes — usually not the intent of a toleration. Checks that need cluster
 node-pool / taint facts are deferred until those Target facts exist.
 
-Filter with --severity (high|medium|low), --cluster, and --namespace.`,
+Filter with --severity (Critical|High|Medium|Low), --cluster, and --namespace.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := cub.Preflight(cmd.Context())
@@ -51,7 +53,11 @@ Filter with --severity (high|medium|low), --cluster, and --namespace.`,
 			if err != nil {
 				return err
 			}
-			report := buildFindingsReport(snap, severityFilter, clusterFilter, namespaceFilter)
+			severity, err := parseScore(severityFilter)
+			if err != nil {
+				return err
+			}
+			report := buildFindingsReport(snap, severity, clusterFilter, namespaceFilter)
 			if output == outputTable {
 				printFindingsTable(cmd, report)
 				return nil
@@ -61,17 +67,17 @@ Filter with --severity (high|medium|low), --cluster, and --namespace.`,
 	}
 	addOutputFlag(cmd, &output)
 	addFilterFlags(cmd, &filter)
-	cmd.Flags().StringVar(&severityFilter, "severity", "", "only findings at this severity: high | medium | low")
-	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "restrict output to this cluster (Target or Space slug)")
+	cmd.Flags().StringVar(&severityFilter, "severity", "", "only findings at this severity: Critical | High | Medium | Low")
+	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "restrict output to this cluster (Target slug, or None for Units whose Space has no release Target)")
 	cmd.Flags().StringVar(&namespaceFilter, "namespace", "", "filter by namespace")
 	return cmd
 }
 
-func buildFindingsReport(snap *snapshot.Snapshot, severityFilter, clusterFilter, namespaceFilter string) findingsReport {
+func buildFindingsReport(snap *snapshot.Snapshot, severityFilter api.Score, clusterFilter, namespaceFilter string) findingsReport {
 	var report findingsReport
 	report.Filter = snap.Filter
 	for _, f := range scheduling.Findings(snap.Clusters) {
-		if severityFilter != "" && string(f.Severity) != severityFilter {
+		if severityFilter != api.ScoreNone && f.Severity != severityFilter {
 			continue
 		}
 		if clusterFilter != "" && f.Cluster != clusterFilter {
@@ -83,11 +89,11 @@ func buildFindingsReport(snap *snapshot.Snapshot, severityFilter, clusterFilter,
 		report.Findings = append(report.Findings, f)
 		report.Totals.Findings++
 		switch f.Severity {
-		case scheduling.SeverityHigh:
+		case api.ScoreHigh:
 			report.Totals.High++
-		case scheduling.SeverityMedium:
+		case api.ScoreMedium:
 			report.Totals.Medium++
-		case scheduling.SeverityLow:
+		case api.ScoreLow:
 			report.Totals.Low++
 		}
 	}

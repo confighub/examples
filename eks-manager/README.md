@@ -57,7 +57,6 @@ but not yet implemented; see the milestone list.
 | `create nodegroup` / `create addon` | write | Add a node group or addon to an existing cluster |
 | `replace-nodegroup` | write | Blue/green replacement for immutable-field changes |
 | `fleet-edit` | write | One field change across every EKS resource matching a selector |
-| `promote` | write | Carry upstream config downstream, preserving local overrides |
 | `guardrails install` / `status` | write | Validating-Trigger pack; show gates and warnings |
 | `attributes install` | write | *(planned)* Reference / disruption path registration |
 
@@ -68,8 +67,8 @@ guardrails ✅ · **M5** adoption of existing clusters.
 
 All read commands will default to JSON (`-o json`); pass `-o table` for a human
 view. Write commands are **dry-run by default** and require `--commit
---change-desc`; they create and edit Units but never apply to a cluster (that is
-a separate `cub unit apply`), and never bypass ApplyGates.
+--change-desc`; they create and edit Units but never publish them (that is a
+separate `cub release publish <space>`), and never bypass ApplyGates.
 
 ## Scoping the fleet
 
@@ -197,15 +196,15 @@ manual procedure.
 
 ```bash
 cub-eks fleet-edit --kind Cluster --path spec.forProvider.upgradePolicy.supportType --value EXTENDED
-cub-eks promote --environment prod
 cub-eks guardrails install
 cub-eks guardrails status
 ```
 
 `fleet-edit` grades the path before touching anything and **refuses** an
 immutable one outright — a fleet-wide immutable change is not a bulk edit, it is
-a bulk silent failure. `promote` is the override-preserving upgrade that makes a
-fleet-wide version bump a promotion rather than N independent edits.
+a bulk silent failure. Carrying a version bump on from a base Space to the
+Spaces cloned from it is variant promotion, which lives in `cub` and the
+**promote-release** skill rather than in this tool.
 
 `guardrails install` creates validating Triggers in a policy Space and wires them
 to every cluster Space, skipping any Space that already has its own Trigger
@@ -257,7 +256,7 @@ block when the cluster runs Auto Mode — a managed node group alongside Auto Mo
 is legal but rarely intended, and Auto Mode already provides `vpc-cni`,
 `coredns`, `kube-proxy`, and the EBS CSI driver.
 
-Nothing is applied to a cluster. Rolling out is a separate `cub unit apply`.
+Nothing is published. Rolling out is a separate `cub release publish <space>`.
 
 ## Build
 

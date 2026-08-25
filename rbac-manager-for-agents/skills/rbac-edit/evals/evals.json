@@ -26,7 +26,7 @@
       "id": 4,
       "name": "routes-apply-elsewhere",
       "prompt": "Add get on pods to the viewer role in prod/rbac and roll it out to the cluster.",
-      "expected_output": "Performs the edit (dry-run then --commit with --change-desc) but recognizes that rolling out is a separate step, and hands off applying to cub unit apply / the cub-apply skill rather than applying from this skill.",
+      "expected_output": "Performs the edit (dry-run then --commit with --change-desc) but recognizes that rolling out is a separate step, and hands off applying to cub release publish / the release-publish skill rather than applying from this skill.",
       "files": []
     },
     {

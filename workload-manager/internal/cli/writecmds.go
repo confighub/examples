@@ -38,8 +38,9 @@ workload Unit:
     RuntimeDefault, drop ALL, readOnlyRootFilesystem, no privilege escalation)
   - set-automount-service-account-token-false
 
-The Unit is edited, not applied — rolling it out is a separate 'cub unit apply'.
-Dry-run unless --commit --change-desc; never bypasses ApplyGates.
+The Unit is edited, not published — rolling it out is a separate
+'cub release publish <space>'. Dry-run unless --commit --change-desc; never
+bypasses ApplyGates.
 
 Note: if a container legitimately needs a writable root filesystem or the
 ServiceAccount token, record an exception rather than hardening it blindly.`,

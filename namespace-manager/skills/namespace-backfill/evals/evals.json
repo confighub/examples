@@ -5,7 +5,7 @@
       "id": 1,
       "name": "apply-pod-security-dry-run-then-commit",
       "prompt": "Add pod-security labels to the namespace in the apptique-prod space.",
-      "expected_output": "Runs preflight, previews `cub-namespace apply-envelope --space apptique-prod` (dry-run, shows the Namespace Unit that would change), then commits with --commit --change-desc. Notes the Unit is edited, not applied. Does not bypass gates.",
+      "expected_output": "Runs preflight, previews `cub-namespace apply-envelope --space apptique-prod` (dry-run, shows the Namespace Unit that would change), then commits with --commit --change-desc. Notes the Unit is edited, not published. Does not bypass gates.",
       "files": []
     },
     {

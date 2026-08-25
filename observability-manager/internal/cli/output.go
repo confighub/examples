@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/confighub/sdk/cliutil"
+	api "github.com/confighub/sdk/core/function/api"
 )
 
 const (
@@ -87,4 +88,15 @@ func dash(s string) string {
 		return "-"
 	}
 	return s
+}
+
+// parseScore resolves a --severity value to ConfigHub's Score vocabulary, which
+// findings are ranked in. Capitalization is not significant, so the lowercase
+// spellings that predate the shared vocabulary still work. An empty value means
+// no severity filter.
+func parseScore(s string) (api.Score, error) {
+	if s == "" {
+		return api.ScoreNone, nil
+	}
+	return api.ValidateScore(strings.ToUpper(s[:1]) + strings.ToLower(s[1:]))
 }

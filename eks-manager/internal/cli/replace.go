@@ -301,7 +301,7 @@ func printReplaceReport(cmd *cobra.Command, r replaceReport) {
 		fprintln(out, fmt.Sprintf("       cub unit update --space %s %s --restore <last-applied-revision>",
 			r.Space, r.OldUnit))
 	}
-	fprintln(out, fmt.Sprintf("  1. Apply the replacement:   cub unit apply --space %s %s", r.Space, r.NewUnit))
+	fprintln(out, fmt.Sprintf("  1. Publish the replacement: cub release publish %s", r.Space))
 	fprintln(out, "  2. Wait for it to report ACTIVE and its nodes to join the cluster.")
 	fprintln(out, fmt.Sprintf("  3. Drain %s and let workloads reschedule onto %s.", r.OldName, r.NewName))
 	fprintln(out, "     This is an in-cluster operation over live pod state (Eviction API,")

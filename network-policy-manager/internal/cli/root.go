@@ -70,7 +70,6 @@ are not signed in.`,
 		newAllowFromLinksCmd(),
 		newFixCmd(),
 		newFleetCmd(),
-		newPromoteCmd(),
 		newGuardrailsCmd(),
 		// Diagnostics
 		newPreflightCmd(),

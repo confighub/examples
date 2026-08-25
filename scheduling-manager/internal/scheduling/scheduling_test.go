@@ -6,6 +6,8 @@ package scheduling
 import (
 	"encoding/json"
 	"testing"
+
+	api "github.com/confighub/sdk/core/function/api"
 )
 
 func buildOne(t *testing.T, manifest string) *WorkloadPlacement {
@@ -89,7 +91,7 @@ func TestFindings_TolerationWithoutPlacement(t *testing.T) {
       }}}
     }`)
 	fs := Findings(unconstrained)
-	if len(fs) != 1 || fs[0].Analyzer != analyzerPlacement || fs[0].Severity != SeverityMedium {
+	if len(fs) != 1 || fs[0].Analyzer != analyzerPlacement || fs[0].Severity != api.ScoreMedium {
 		t.Fatalf("expected one medium placement finding, got %+v", fs)
 	}
 

@@ -80,7 +80,7 @@ This is a dry run unless you pass --commit --change-desc "…".`,
 	}
 	addOutputFlag(cmd, &output)
 	addFilterFlags(cmd, &filter)
-	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "cluster (Target or Space slug) to resolve both workloads in")
+	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "cluster (Target slug, or None) to resolve both workloads in")
 	cmd.Flags().StringVar(&srcNamespace, "src-namespace", "", "namespace of the source workload (disambiguation)")
 	cmd.Flags().StringVar(&dstNamespace, "dst-namespace", "", "namespace of the destination workload (disambiguation)")
 	cmd.Flags().StringVar(&port, "port", "", "restrict the rule to this port (numeric or named; protocol TCP)")

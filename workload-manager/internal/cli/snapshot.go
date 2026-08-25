@@ -97,7 +97,7 @@ func buildSnapshotReport(snap *snapshot.Snapshot) snapshotReport {
 	for _, u := range snap.Units {
 		key := u.TargetSlug
 		if key == "" {
-			key = u.SpaceSlug
+			key = snapshot.ClusterNone
 		}
 		if _, ok := snap.Clusters[key]; !ok {
 			continue

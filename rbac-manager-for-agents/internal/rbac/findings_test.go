@@ -7,6 +7,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	api "github.com/confighub/sdk/core/function/api"
 )
 
 func byAnalyzer(findings []Finding, analyzer string) []Finding {
@@ -27,7 +29,7 @@ func TestAnalyze_Wildcards(t *testing.T) {
 	if len(wild) != 1 {
 		t.Fatalf("got %d wildcard findings, want 1", len(wild))
 	}
-	if wild[0].Severity != SeverityHigh {
+	if wild[0].Severity != api.ScoreHigh {
 		t.Errorf("severity = %q, want high", wild[0].Severity)
 	}
 	if wild[0].ResourceName != "legacy-admin" {
@@ -139,10 +141,10 @@ func TestAnalyze_SortBySeverityThenCluster(t *testing.T) {
 	if len(findings) < 2 {
 		t.Fatalf("got %d findings, want >= 2", len(findings))
 	}
-	if findings[0].Severity != SeverityHigh {
+	if findings[0].Severity != api.ScoreHigh {
 		t.Errorf("first severity = %q, want high", findings[0].Severity)
 	}
-	if findings[len(findings)-1].Severity != SeverityLow {
+	if findings[len(findings)-1].Severity != api.ScoreLow {
 		t.Errorf("last severity = %q, want low", findings[len(findings)-1].Severity)
 	}
 }

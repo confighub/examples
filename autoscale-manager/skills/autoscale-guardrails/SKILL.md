@@ -49,7 +49,7 @@ Both rules are plain **per-resource** checks — a single Unit answers each, so 
 
 ## Tool boundary
 
-Allowed: `guardrails install` (dry-run unless `--commit`), `status`. Not allowed: bypassing gates, `kubectl` mutations, applying to clusters. Fixing flagged autoscalers is **autoscale-edit**.
+Allowed: `guardrails install` (dry-run unless `--commit`), `status`. Not allowed: bypassing gates, `kubectl` mutations, publishing a Release. Fixing flagged autoscalers is **autoscale-edit**.
 
 ## References
 

@@ -49,7 +49,7 @@ ServiceMonitor coverage is a **cross-Unit** property (the ServiceMonitor and the
 
 ## Tool boundary
 
-Allowed: `guardrails install` (dry-run unless `--commit`), `status`, `annotate` (dry-run unless `--commit --change-desc`). Not allowed: bypassing gates, `kubectl` mutations, applying to clusters. Fixing coverage is **observability-instrument**.
+Allowed: `guardrails install` (dry-run unless `--commit`), `status`, `annotate` (dry-run unless `--commit --change-desc`). Not allowed: bypassing gates, `kubectl` mutations, publishing a Release. Fixing coverage is **observability-instrument**.
 
 ## References
 

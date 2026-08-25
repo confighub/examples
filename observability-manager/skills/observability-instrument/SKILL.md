@@ -1,21 +1,20 @@
 ---
 name: observability-instrument
-description: 'Instrument Kubernetes workloads for observability as config-as-data with the cub-observability CLI — author a Prometheus ServiceMonitor for a Service (ensure-servicemonitor), inject an OpenTelemetry/telemetry sidecar container (inject-sidecar via set-path), one workload or across a selector via profiles. Use for "add a ServiceMonitor for the checkout service", "scrape this service", "inject an otel sidecar into web", "add the otel collector to every prod workload", "roll instrumentation downstream". Dry-run by default; requires --commit --change-desc. Not for read-only checks (use observability-audit / observability-findings), enforcement Triggers (use observability-guardrails), or applying to a cluster.'
+description: 'Instrument Kubernetes workloads for observability as config-as-data with the cub-observability CLI — author a Prometheus ServiceMonitor for a Service (ensure-servicemonitor), inject an OpenTelemetry/telemetry sidecar container (inject-sidecar via set-path), one workload or across a selector via profiles. Use for "add a ServiceMonitor for the checkout service", "scrape this service", "inject an otel sidecar into web", "add the otel collector to every prod workload", "roll instrumentation downstream". Dry-run by default; requires --commit --change-desc. Not for read-only checks (use observability-audit / observability-findings), enforcement Triggers (use observability-guardrails), or publishing a Release.'
 phase: act
-allowed-tools: Bash(cub-observability --help) Bash(cub-observability * --help) Bash(cub auth status) Bash(cub-observability preflight) Bash(cub-observability coverage *) Bash(cub-observability sidecars *) Bash(cub-observability findings *) Bash(cub-observability ensure-servicemonitor *) Bash(cub-observability inject-sidecar *) Bash(cub-observability profile) Bash(cub-observability profile *) Bash(cub-observability fleet-edit *) Bash(cub-observability promote *)
+allowed-tools: Bash(cub-observability --help) Bash(cub-observability * --help) Bash(cub auth status) Bash(cub-observability preflight) Bash(cub-observability coverage *) Bash(cub-observability sidecars *) Bash(cub-observability findings *) Bash(cub-observability ensure-servicemonitor *) Bash(cub-observability inject-sidecar *) Bash(cub-observability profile) Bash(cub-observability profile *) Bash(cub-observability fleet-edit *)
 ---
 
 # observability-instrument
 
-Instrument workloads — as data, dry-run by default. One workload, across a selector via a profile, or promoted downstream.
+Instrument workloads — as data, dry-run by default. One workload, or across a selector via a profile.
 
 - **`ensure-servicemonitor <space>/<service-unit>`** — author a ServiceMonitor Unit whose selector is derived from the Service's labels (fixes uncovered metrics Services).
 - **`inject-sidecar <space>/<unit> --image <img>`** — inject/replace an otel-collector sidecar via `set-path` (find-or-append the container by name).
 - **`profile install | list | apply`** — the profile library (e.g. `otel-sidecar`, a parameterized `set-path` Invocation, `--param image=…`).
 - **`fleet-edit --profile <slug> [--where …]`** — apply a profile across a selector in one operation.
-- **`promote`** — override-preserving upgrade of downstream Units.
 
-All **edit/create Units but do not apply them** to a cluster — rolling out is a separate `cub unit apply`.
+All **edit/create Units but do not publish them** — rolling out is a separate `cub release publish <space>`, which bundles the Space's Units for its release Target.
 
 ## Why this matters
 
@@ -26,13 +25,12 @@ ServiceMonitor coverage is a cross-Unit property, and a sidecar must be find-or-
 - "Add a ServiceMonitor for the checkout service." → `ensure-servicemonitor <space>/checkout`.
 - "Inject an otel sidecar into web." → `inject-sidecar <space>/web --image otel/opentelemetry-collector:0.100` (or `profile apply otel-sidecar … --param image=…`).
 - "Add the otel collector to every prod workload." → `fleet-edit --profile otel-sidecar --environment prod --param image=…`.
-- "Roll instrumentation downstream." → `promote --component <c>`.
 
 ## Do not load for
 
 - Read-only checks — use **observability-audit** / **observability-findings**.
 - Enforcement Triggers — use **observability-guardrails**.
-- Applying Units to a cluster — that is `cub unit apply`.
+- Publishing the Space's Release — that is `cub release publish <space>`.
 
 ## Preflight gates
 
@@ -50,19 +48,19 @@ ServiceMonitor coverage is a cross-Unit property, and a sidecar must be find-or-
    ```
 3. **Commit** with `--commit --change-desc` (summary + verbatim user prompt).
 4. **Verify**: `cub-observability coverage --namespace <ns>` / `sidecars --namespace <ns>`.
-5. **Roll out** is a separate step — hand off to `cub-apply`.
+5. **Roll out** is a separate step — hand off to `release-publish`.
 
 ## Stop conditions
 
 - `ensure-servicemonitor` refuses (Service has no labels, or no metrics port and no `--port`) — supply `--port`, or fix the Service.
 - An ApplyGate attaches. **Do not bypass** — fix via **triggers-and-applygates**.
-- The user wants to apply to a cluster — hand off to `cub-apply`.
+- The user wants the change deployed — hand off to `release-publish`.
 
 ## Tool boundary
 
-Allowed: `ensure-servicemonitor`, `inject-sidecar`, `profile`, `fleet-edit`, `promote` (dry-run by default; `--commit` passes `--change-desc`), and the read commands. Not allowed: bypassing gates, `kubectl` mutations, applying to clusters.
+Allowed: `ensure-servicemonitor`, `inject-sidecar`, `profile`, `fleet-edit` (dry-run by default; `--commit` passes `--change-desc`), and the read commands. Not allowed: bypassing gates, `kubectl` mutations, publishing a Release.
 
 ## References
 
-- `cub-observability ensure-servicemonitor --help`, `… inject-sidecar --help`, `… profile --help`, `… fleet-edit --help`, `… promote --help`.
-- Companion skills: **observability-audit**, **observability-findings**, `kubernetes-resources`, `triggers-and-applygates`, `cub-apply`.
+- `cub-observability ensure-servicemonitor --help`, `… inject-sidecar --help`, `… profile --help`, `… fleet-edit --help`.
+- Companion skills: **observability-audit**, **observability-findings**, `kubernetes-resources`, `triggers-and-applygates`, `release-publish`.

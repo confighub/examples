@@ -17,16 +17,16 @@ import (
 )
 
 type placementRow struct {
-	Cluster        string   `json:"cluster"`
-	Namespace      string   `json:"namespace,omitempty"`
-	Kind           string   `json:"kind"`
-	Name           string   `json:"name"`
-	Space          string   `json:"space"`
-	UnitSlug       string   `json:"unitSlug"`
-	NodeSelector   []string `json:"nodeSelector,omitempty"`
-	Tolerations    []string `json:"tolerations,omitempty"`
-	NodeAffinity   string   `json:"nodeAffinity"` // none | preferred | required
-	Constrained    bool     `json:"constrained"`
+	Cluster      string   `json:"cluster"`
+	Namespace    string   `json:"namespace,omitempty"`
+	Kind         string   `json:"kind"`
+	Name         string   `json:"name"`
+	Space        string   `json:"space"`
+	UnitSlug     string   `json:"unitSlug"`
+	NodeSelector []string `json:"nodeSelector,omitempty"`
+	Tolerations  []string `json:"tolerations,omitempty"`
+	NodeAffinity string   `json:"nodeAffinity"` // none | preferred | required
+	Constrained  bool     `json:"constrained"`
 }
 
 type placementReport struct {
@@ -78,7 +78,7 @@ pin nothing.`,
 	}
 	addOutputFlag(cmd, &output)
 	addFilterFlags(cmd, &filter)
-	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "restrict output to this cluster (Target or Space slug)")
+	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "restrict output to this cluster (Target slug, or None for Units whose Space has no release Target)")
 	cmd.Flags().StringVar(&namespaceFilter, "namespace", "", "filter by namespace")
 	cmd.Flags().BoolVar(&unconstrainedOnly, "unconstrained-only", false, "only workloads that don't constrain placement")
 	return cmd

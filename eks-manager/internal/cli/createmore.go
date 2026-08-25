@@ -144,7 +144,7 @@ func printAddResource(cmd *cobra.Command, r addResourceReport) {
 	}
 	fprintln(out, fmt.Sprintf("Created Unit %s/%s (%s, revision %d) for cluster %s.",
 		r.Space, r.Unit, r.Kind, r.Revision, r.Cluster))
-	fprintln(out, fmt.Sprintf("Not applied — roll it out with: cub unit apply --space %s %s", r.Space, r.Unit))
+	fprintln(out, fmt.Sprintf("Not published — roll it out with: cub release publish %s", r.Space))
 }
 
 func newCreateNodeGroupCmd() *cobra.Command {

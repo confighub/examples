@@ -27,8 +27,8 @@ server-side yq edit that modifies the literal YAML in place.
 
 Edits are dry-run by default: the diff is previewed and nothing is written.
 Re-run with --commit and a --change-desc to apply. Edits never bypass
-ApplyGates; gates and warnings are evaluated server-side as usual, and applying
-the resulting revision is a separate step (cub unit apply).`,
+ApplyGates; gates and warnings are evaluated server-side as usual, and
+publishing the resulting revision is a separate step (cub release publish).`,
 	}
 	cmd.AddCommand(
 		newEditInstallCmd(),

@@ -43,7 +43,6 @@ apply`), and never bypass ApplyGates.
 | `ensure-spread` | write | Add pod anti-affinity or topology spread |
 | `profile install\|list\|apply` | write | The profile library (parameterized Invocations) |
 | `fleet-edit` | write | Bulk remediation: apply a profile across a `--where` selector |
-| `promote` | write | Override-preserving upgrade of downstream Units to upstream |
 | `guardrails install\|status\|annotate` | write | Enforcement pack — `vet-cel` per-resource + annotate-then-validate for PDB coverage |
 
 ## Agent skills
@@ -57,7 +56,7 @@ that teach an agent when and how to drive the CLI:
 | `workload-availability` | read | `availability` — PDB coverage + anti-affinity/spread |
 | `workload-findings` | read | `findings` — severity-ranked triage |
 | `workload-harden` | write | per-workload fixes: `harden`, `set-resources`, `set-probes`, `ensure-pdb`, `ensure-spread` |
-| `workload-fleet` | write | `profile`, `fleet-edit`, `promote` — the library + bulk remediation + promotion |
+| `workload-fleet` | write | `profile`, `fleet-edit` — the profile library + bulk remediation |
 | `workload-guardrails` | write | `guardrails install\|status\|annotate` — enforcement |
 
 ## Tutorial

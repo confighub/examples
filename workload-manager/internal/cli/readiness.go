@@ -83,7 +83,7 @@ Restrict to one dimension with --dimension, and to a cluster / namespace with
 	addOutputFlag(cmd, &output)
 	addFilterFlags(cmd, &filter)
 	cmd.Flags().StringVar(&dimension, "dimension", "", "score only one dimension: security | resources | probes | hygiene | availability")
-	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "restrict output to this cluster (Target or Space slug)")
+	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "restrict output to this cluster (Target slug, or None for Units whose Space has no release Target)")
 	cmd.Flags().StringVar(&namespaceFilter, "namespace", "", "filter by namespace")
 	cmd.Flags().BoolVar(&failingOnly, "failing-only", false, "only workloads with a warn or fail dimension")
 	return cmd

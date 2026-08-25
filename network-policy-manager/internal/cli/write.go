@@ -139,8 +139,8 @@ func runCreate(cmd *cobra.Command, client *cubapi.Client, dest createDest, slug,
 	if output == outputJSON {
 		return printJSON(out, plan)
 	}
-	fprintln(out, fmt.Sprintf("Created Unit %s/%s (revision %d). Apply it to deploy: cub unit apply --space %s %s",
-		dest.spaceSlug, slug, created.HeadRevisionNum, dest.spaceSlug, slug))
+	fprintln(out, fmt.Sprintf("Created Unit %s/%s (revision %d). Publish the Space to deploy: cub release publish %s",
+		dest.spaceSlug, slug, created.HeadRevisionNum, dest.spaceSlug))
 	return nil
 }
 

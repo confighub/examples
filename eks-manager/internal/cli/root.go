@@ -82,7 +82,6 @@ are not signed in.`,
 		newReplaceNodeGroupCmd(),
 		// Fleet ops + enforcement
 		newFleetEditCmd(),
-		newPromoteCmd(),
 		newGuardrailsCmd(),
 		newAttributesCmd(),
 		// Diagnostics

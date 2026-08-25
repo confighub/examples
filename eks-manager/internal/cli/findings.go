@@ -8,6 +8,8 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	api "github.com/confighub/sdk/core/function/api"
+
 	"github.com/spf13/cobra"
 
 	"github.com/confighub/examples/eks-manager/internal/cub"
@@ -58,8 +60,9 @@ separately by 'plan', which compares head against last-applied.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Validate flags before any network call, so bad input fails fast.
-			if severity != "" && !eks.ValidSeverity(severity) {
-				return fmt.Errorf("unknown --severity %q (want critical | high | medium | low)", severity)
+			score, err := parseScore(severity)
+			if err != nil {
+				return err
 			}
 			if analyzer != "" && !validAnalyzer(analyzer) {
 				return fmt.Errorf("unknown --analyzer %q (want one of: %s)",
@@ -73,7 +76,7 @@ separately by 'plan', which compares head against last-applied.`,
 			if err != nil {
 				return err
 			}
-			report := buildFindingsReport(snap, severity, analyzer, clusterFilter)
+			report := buildFindingsReport(snap, score, analyzer, clusterFilter)
 			if output == outputTable {
 				printFindingsTable(cmd, report)
 				return nil
@@ -83,7 +86,7 @@ separately by 'plan', which compares head against last-applied.`,
 	}
 	addOutputFlag(cmd, &output)
 	addFilterFlags(cmd, &filter)
-	cmd.Flags().StringVar(&severity, "severity", "", "filter by severity: critical | high | medium | low")
+	cmd.Flags().StringVar(&severity, "severity", "", "filter by severity: Critical | High | Medium | Low")
 	cmd.Flags().StringVar(&analyzer, "analyzer", "", "filter by analyzer name")
 	cmd.Flags().StringVar(&clusterFilter, "cluster-name", "", "restrict output to this cluster (client-side)")
 	return cmd
@@ -98,10 +101,10 @@ func validAnalyzer(name string) bool {
 	return false
 }
 
-func buildFindingsReport(snap *snapshot.Snapshot, severity, analyzer, clusterFilter string) findingsReport {
+func buildFindingsReport(snap *snapshot.Snapshot, severity api.Score, analyzer, clusterFilter string) findingsReport {
 	var report findingsReport
 	for _, f := range eks.Findings(snap.Clusters) {
-		if severity != "" && string(f.Severity) != severity {
+		if severity != api.ScoreNone && f.Severity != severity {
 			continue
 		}
 		if analyzer != "" && f.Analyzer != analyzer {
@@ -112,11 +115,11 @@ func buildFindingsReport(snap *snapshot.Snapshot, severity, analyzer, clusterFil
 		}
 		report.Findings = append(report.Findings, f)
 		switch f.Severity {
-		case eks.SeverityCritical:
+		case api.ScoreCritical:
 			report.Totals.Critical++
-		case eks.SeverityHigh:
+		case api.ScoreHigh:
 			report.Totals.High++
-		case eks.SeverityMedium:
+		case api.ScoreMedium:
 			report.Totals.Medium++
 		default:
 			report.Totals.Low++

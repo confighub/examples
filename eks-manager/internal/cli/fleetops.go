@@ -153,81 +153,6 @@ Dry-run by default; pass --commit --change-desc "..." to write.`,
 	return cmd
 }
 
-func newPromoteCmd() *cobra.Command {
-	var (
-		output string
-		commit cliutil.CommitFlags
-		filter filterFlags
-	)
-	cmd := &cobra.Command{
-		Use:   "promote",
-		Short: "Carry upstream cluster config downstream, preserving local overrides",
-		Long: `promote upgrades downstream Units from their upstream, preserving whatever each
-downstream Space has deliberately customized.
-
-This is what makes a fleet-wide control-plane upgrade a *promotion* rather than
-N independent edits: raise the version in the upstream Space, verify it there,
-then carry it to staging and every prod region with one command. Region-specific
-divergence — different subnet CIDRs, a larger node group, an extra addon —
-survives, because the upgrade is a merge rather than an overwrite.
-
-Only Units with an upstream are considered; everything else is skipped.
-
-Dry-run by default; pass --commit --change-desc "..." to write.`,
-		Args: cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			changeDesc, dryRun, err := commit.Validate("promote EKS config from upstream")
-			if err != nil {
-				return err
-			}
-			client, err := cub.Preflight(cmd.Context())
-			if err != nil {
-				return err
-			}
-			where := joinWhere(
-				"ToolchainType = 'Kubernetes/YAML' AND UpstreamRevisionNum > 0",
-				filter.predicate())
-			ch := cubapi.Change{}
-			if !dryRun {
-				ch = cubapi.Change{Description: changeDesc}
-			}
-			res, err := cubapi.UpgradeUnits(cmd.Context(), client, where, ch)
-			if err != nil {
-				return err
-			}
-
-			r := fleetReport{Command: "promote", Filter: filter.predicate(), DryRun: dryRun}
-			for _, o := range res.Outcomes {
-				fo := fleetOutcome{Space: o.SpaceSlug, Unit: o.UnitSlug, Mutated: o.HasMutations}
-				if o.Error != "" {
-					fo.Error = o.Error
-				}
-				r.Outcomes = append(r.Outcomes, fo)
-				r.Total++
-				if o.HasMutations {
-					r.Mutated++
-				}
-			}
-			sort.Slice(r.Outcomes, func(i, j int) bool {
-				if r.Outcomes[i].Space != r.Outcomes[j].Space {
-					return r.Outcomes[i].Space < r.Outcomes[j].Space
-				}
-				return r.Outcomes[i].Unit < r.Outcomes[j].Unit
-			})
-
-			if output == outputTable {
-				printFleetReport(cmd, r, "upgrade from upstream")
-				return nil
-			}
-			return printJSON(cmd.OutOrStdout(), r)
-		},
-	}
-	addOutputFlag(cmd, &output)
-	addFilterFlags(cmd, &filter)
-	commit.Bind(cmd)
-	return cmd
-}
-
 func printFleetReport(cmd *cobra.Command, r fleetReport, what string) {
 	out := cmd.OutOrStdout()
 	if r.Total == 0 {
@@ -251,7 +176,7 @@ func printFleetReport(cmd *cobra.Command, r fleetReport, what string) {
 	fprintln(out, fmt.Sprintf("\n%s: %d of %d Unit(s) would change%s",
 		what, r.Mutated, r.Total, suffix))
 	if !r.DryRun {
-		fprintln(out, "Not applied — rolling out is a separate `cub unit apply`.")
+		fprintln(out, "Not published — rolling out is a separate `cub release publish`.")
 	}
 }
 

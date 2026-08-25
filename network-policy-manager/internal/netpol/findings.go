@@ -7,13 +7,8 @@ import (
 	"fmt"
 	"net"
 	"sort"
-)
 
-// Severity levels for findings.
-const (
-	SeverityHigh   = "high"
-	SeverityMedium = "medium"
-	SeverityLow    = "low"
+	api "github.com/confighub/sdk/core/function/api"
 )
 
 // metadataIP is the cloud instance-metadata endpoint that egress policies should
@@ -24,7 +19,7 @@ const metadataIP = "169.254.169.254"
 // namespace, when no single resource owns it).
 type Finding struct {
 	Analyzer  string         `json:"analyzer"`
-	Severity  string         `json:"severity"`
+	Severity  api.Score      `json:"severity"`
 	Cluster   string         `json:"cluster"`
 	Namespace string         `json:"namespace,omitempty"`
 	Kind      string         `json:"kind,omitempty"`
@@ -47,7 +42,7 @@ func AnalyzeFindings(c *ClusterNetpol) []Finding {
 	for _, nc := range namespaces {
 		if nc.Workloads > 0 && !nc.DefaultDenyIngress {
 			fs = append(fs, Finding{
-				Analyzer: "missing-default-deny-ingress", Severity: SeverityHigh,
+				Analyzer: "missing-default-deny-ingress", Severity: api.ScoreHigh,
 				Cluster: c.Cluster, Namespace: nc.Namespace,
 				Message: fmt.Sprintf("namespace %q has %d workload(s) but no default-deny ingress NetworkPolicy", nc.Namespace, nc.Workloads),
 			})
@@ -57,7 +52,7 @@ func AnalyzeFindings(c *ClusterNetpol) []Finding {
 	for _, wc := range workloads {
 		if !wc.IngressCovered {
 			fs = append(fs, Finding{
-				Analyzer: "uncovered-ingress", Severity: SeverityHigh,
+				Analyzer: "uncovered-ingress", Severity: api.ScoreHigh,
 				Cluster: c.Cluster, Namespace: wc.Namespace, Kind: wc.Kind, Resource: wc.Name, Origin: wc.Origin,
 				Message: fmt.Sprintf("%s %q in namespace %q is not selected by any ingress NetworkPolicy", wc.Kind, wc.Name, wc.Namespace),
 			})
@@ -67,14 +62,14 @@ func AnalyzeFindings(c *ClusterNetpol) []Finding {
 	for _, p := range c.NetworkPolicies {
 		if hasAllowAllRule(p.Ingress) {
 			fs = append(fs, Finding{
-				Analyzer: "allow-all", Severity: SeverityMedium,
+				Analyzer: "allow-all", Severity: api.ScoreMedium,
 				Cluster: c.Cluster, Namespace: NamespaceOf(p.Namespace), Kind: "NetworkPolicy", Resource: p.Name, Origin: p.Origin,
 				Message: fmt.Sprintf("NetworkPolicy %q has an allow-all ingress rule (empty `from`), permitting all sources", p.Name),
 			})
 		}
 		if hasAllowAllRule(p.Egress) {
 			fs = append(fs, Finding{
-				Analyzer: "allow-all", Severity: SeverityMedium,
+				Analyzer: "allow-all", Severity: api.ScoreMedium,
 				Cluster: c.Cluster, Namespace: NamespaceOf(p.Namespace), Kind: "NetworkPolicy", Resource: p.Name, Origin: p.Origin,
 				Message: fmt.Sprintf("NetworkPolicy %q has an allow-all egress rule (empty `to`), permitting all destinations", p.Name),
 			})
@@ -83,7 +78,7 @@ func AnalyzeFindings(c *ClusterNetpol) []Finding {
 			for _, peer := range rule.Peers {
 				if peer.IPBlock != nil && IPBlockExposesMetadata(peer.IPBlock) {
 					fs = append(fs, Finding{
-						Analyzer: "metadata-egress", Severity: SeverityHigh,
+						Analyzer: "metadata-egress", Severity: api.ScoreHigh,
 						Cluster: c.Cluster, Namespace: NamespaceOf(p.Namespace), Kind: "NetworkPolicy", Resource: p.Name, Origin: p.Origin,
 						Message: fmt.Sprintf("NetworkPolicy %q egress permits cloud metadata IP %s via CIDR %s (exclude it with an `except`)", p.Name, metadataIP, peer.IPBlock.CIDR),
 					})
@@ -95,8 +90,8 @@ func AnalyzeFindings(c *ClusterNetpol) []Finding {
 	fs = append(fs, idx.asymmetryFindings()...)
 
 	sort.SliceStable(fs, func(i, j int) bool {
-		if severityRank(fs[i].Severity) != severityRank(fs[j].Severity) {
-			return severityRank(fs[i].Severity) < severityRank(fs[j].Severity)
+		if fs[i].Severity != fs[j].Severity {
+			return api.ScoreToNumber[fs[i].Severity] > api.ScoreToNumber[fs[j].Severity]
 		}
 		if fs[i].Analyzer != fs[j].Analyzer {
 			return fs[i].Analyzer < fs[j].Analyzer
@@ -124,7 +119,7 @@ func (idx *clusterIndex) asymmetryFindings() []Finding {
 			// "Specific" intent only — an allow-all rule is not a per-peer intent.
 			if idx.egressAllowsSpecific(a, b) && idx.ingressIsolated(b) && !idx.ingressAllows(b, a) {
 				fs = append(fs, Finding{
-					Analyzer: "ingress-egress-asymmetry", Severity: SeverityMedium,
+					Analyzer: "ingress-egress-asymmetry", Severity: api.ScoreMedium,
 					Cluster: idx.cluster, Namespace: NamespaceOf(a.Namespace), Kind: a.Kind, Resource: a.Name, Origin: a.Origin,
 					Message: fmt.Sprintf("%s %q egress allows reaching %s %q, but %q's ingress does not admit it — traffic is dropped at the destination",
 						a.Kind, a.Name, b.Kind, b.Name, b.Name),
@@ -133,7 +128,7 @@ func (idx *clusterIndex) asymmetryFindings() []Finding {
 			// B's ingress explicitly allows A, but A's egress won't permit it.
 			if idx.ingressAllowsSpecific(b, a) && idx.egressIsolated(a) && !idx.egressAllows(a, b) {
 				fs = append(fs, Finding{
-					Analyzer: "ingress-egress-asymmetry", Severity: SeverityMedium,
+					Analyzer: "ingress-egress-asymmetry", Severity: api.ScoreMedium,
 					Cluster: idx.cluster, Namespace: NamespaceOf(b.Namespace), Kind: b.Kind, Resource: b.Name, Origin: b.Origin,
 					Message: fmt.Sprintf("%s %q ingress allows %s %q, but %q's egress does not permit it — traffic is dropped at the source",
 						b.Kind, b.Name, a.Kind, a.Name, a.Name),
@@ -172,16 +167,4 @@ func IPBlockExposesMetadata(ib *IPBlock) bool {
 		}
 	}
 	return true
-}
-
-func severityRank(s string) int {
-	switch s {
-	case SeverityHigh:
-		return 0
-	case SeverityMedium:
-		return 1
-	case SeverityLow:
-		return 2
-	}
-	return 3
 }

@@ -61,7 +61,7 @@ Filter with --kind, --cluster, and --namespace.`,
 	addOutputFlag(cmd, &output)
 	addFilterFlags(cmd, &filter)
 	cmd.Flags().StringVar(&kindFilter, "kind", "", "filter by kind (NetworkPolicy, Namespace, Deployment, ... , Service)")
-	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "filter by cluster (Target or Space slug)")
+	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "filter by cluster (Target slug, or None for Units whose Space has no release Target)")
 	cmd.Flags().StringVar(&namespaceFilter, "namespace", "", "filter by namespace")
 	return cmd
 }

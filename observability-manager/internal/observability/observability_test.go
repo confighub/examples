@@ -6,6 +6,8 @@ package observability
 import (
 	"encoding/json"
 	"testing"
+
+	api "github.com/confighub/sdk/core/function/api"
 )
 
 func fleet(t *testing.T, manifests ...string) map[string]*ClusterObservability {
@@ -86,10 +88,10 @@ func TestFindings_UncoveredAndDangling(t *testing.T) {
 	fs := Findings(fleet(t, metricsService, danglingMonitor))
 	var haveCoverage, haveDangling bool
 	for _, f := range fs {
-		if f.Analyzer == "coverage" && f.Severity == SeverityMedium {
+		if f.Analyzer == "coverage" && f.Severity == api.ScoreMedium {
 			haveCoverage = true
 		}
-		if f.Analyzer == "dangling" && f.Severity == SeverityLow {
+		if f.Analyzer == "dangling" && f.Severity == api.ScoreLow {
 			haveDangling = true
 		}
 	}
@@ -100,7 +102,7 @@ func TestFindings_UncoveredAndDangling(t *testing.T) {
 		t.Error("expected a dangling-servicemonitor finding")
 	}
 	// Most-severe first.
-	if len(fs) >= 2 && severityRank(fs[0].Severity) < severityRank(fs[1].Severity) {
+	if len(fs) >= 2 && api.ScoreToNumber[fs[0].Severity] < api.ScoreToNumber[fs[1].Severity] {
 		t.Error("findings not sorted most-severe first")
 	}
 }

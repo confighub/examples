@@ -7,7 +7,7 @@ output below is real.
 
 `cub-workload` **reads and writes ConfigHub Units** — it never touches a cluster.
 Its writes create new Unit revisions; rolling those out is a separate, deliberate
-`cub unit apply`. Read commands default to JSON; add `-o table` for the human view
+`cub release publish <space>`. Read commands default to JSON; add `-o table` for the human view
 used here.
 
 ## Prerequisites
@@ -32,8 +32,9 @@ If it fails, run `cub auth login` and retry.
 ## 2. See the fleet
 
 `snapshot` is the per-cluster inventory — workloads, PodDisruptionBudgets, and how
-many Units are gated or unapplied. Clusters are ConfigHub Targets (the Space slug
-stands in for unbound Units); canonical base/policy Spaces are excluded.
+many Units are gated or unapplied. Clusters are ConfigHub Targets; Units whose
+Space has no release Target group under a single `None` cluster, and canonical
+base/policy Spaces are excluded.
 
 ```console
 $ cub-workload snapshot -o table
@@ -87,7 +88,7 @@ to fix first" view. A failing security / resources / availability check is `high
 a failing probe is `medium`; warnings are one step down; hygiene is `low`.
 
 ```console
-$ cub-workload findings -o table --cluster dev-cluster --namespace appvote --severity high
+$ cub-workload findings -o table --cluster dev-cluster --namespace appvote --severity High
 SEVERITY  ANALYZER  CLUSTER      NAMESPACE  KIND        NAME    MESSAGE
 HIGH      security  dev-cluster  appvote    Deployment  db      container "postgres" allowPrivilegeEscalation is not false
 HIGH      security  dev-cluster  appvote    Deployment  db      container "postgres" does not set runAsNonRoot: true
@@ -236,18 +237,7 @@ $ cub-workload fleet-edit --profile resources-medium --environment dev --param c
     --commit --change-desc "Set medium resource tier across dev"
 ```
 
-## 8. Promote a fix downstream
-
-When a fix is authored in a base Space and cloned into environment/region variant
-Spaces, `promote` carries it forward with an override-preserving upgrade (keeping
-each Space's local customizations). Scope it with the same flags:
-
-```console
-$ cub-workload promote --component checkout            # dry-run
-$ cub-workload promote --component checkout --commit --change-desc "Promote checkout readiness fixes"
-```
-
-## 9. Enforce with guardrails
+## 8. Enforce with guardrails
 
 `guardrails install` stands up a policy pack — `Warn=true` `vet-cel` Triggers
 (memory limits, run-as-non-root, terminationMessagePolicy) plus an
@@ -292,8 +282,8 @@ Triggers install advisory (`Warn=true`); promote one to blocking later with
 
 - **Reads** default to JSON; add `-o table`.
 - **Writes** are dry-run until `--commit`, which requires `--change-desc`.
-- Nothing is applied to a cluster — writes create Unit revisions; roll out with
-  `cub unit apply` (or your ArgoCD/Flux pipeline) separately.
+- Nothing is published — writes create Unit revisions; roll out with
+  `cub release publish <space>` (which your ArgoCD/Flux pipeline consumes) separately.
 - Guardrail ApplyGates are never bypassed — fix the data (or the rule).
 
 ### Agent skills

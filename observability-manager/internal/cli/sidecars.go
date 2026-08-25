@@ -17,7 +17,7 @@ import (
 type sidecarsReport struct {
 	Workloads []observability.SidecarResult `json:"workloads"`
 	Totals    struct {
-		Workloads int `json:"workloads"`
+		Workloads   int `json:"workloads"`
 		WithSidecar int `json:"withSidecar"`
 		Without     int `json:"without"`
 	} `json:"totals"`
@@ -61,7 +61,7 @@ sidecar.`,
 	}
 	addOutputFlag(cmd, &output)
 	addFilterFlags(cmd, &filter)
-	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "restrict output to this cluster (Target or Space slug)")
+	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "restrict output to this cluster (Target slug, or None for Units whose Space has no release Target)")
 	cmd.Flags().StringVar(&namespaceFilter, "namespace", "", "filter by namespace")
 	cmd.Flags().StringArrayVar(&sidecarNames, "sidecar", nil, "sidecar container name(s) to look for (default: the otel names)")
 	cmd.Flags().BoolVar(&missingOnly, "missing-only", false, "only workloads without the sidecar")

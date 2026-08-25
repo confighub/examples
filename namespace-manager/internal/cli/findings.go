@@ -5,8 +5,9 @@ package cli
 
 import (
 	"fmt"
-	"strings"
 	"text/tabwriter"
+
+	api "github.com/confighub/sdk/core/function/api"
 
 	"github.com/spf13/cobra"
 
@@ -18,9 +19,9 @@ import (
 type findingsReport struct {
 	Findings []nsmanager.Finding `json:"findings"`
 	Totals   struct {
-		Total      int            `json:"total"`
-		BySeverity map[string]int `json:"bySeverity"`
-		ByAnalyzer map[string]int `json:"byAnalyzer"`
+		Total      int               `json:"total"`
+		BySeverity map[api.Score]int `json:"bySeverity"`
+		ByAnalyzer map[string]int    `json:"byAnalyzer"`
 	} `json:"totals"`
 	Filter string `json:"filter,omitempty"`
 }
@@ -45,9 +46,13 @@ func newFindingsCmd() *cobra.Command {
 These are properties of the whole set of resources across the fleet — the read a
 per-resource validator or a runtime tenancy controller cannot do.
 
-Filter with --severity (high|medium|low), --analyzer, --cluster, and --component.`,
+Filter with --severity (Critical|High|Medium|Low), --analyzer, --cluster, and --component.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			severity, err := parseScore(severityFilter)
+			if err != nil {
+				return err
+			}
 			client, err := cub.Preflight(cmd.Context())
 			if err != nil {
 				return err
@@ -56,7 +61,7 @@ Filter with --severity (high|medium|low), --analyzer, --cluster, and --component
 			if err != nil {
 				return err
 			}
-			report := buildFindingsReport(snap, severityFilter, analyzerFilter, clusterFilter)
+			report := buildFindingsReport(snap, severity, analyzerFilter, clusterFilter)
 			if output == outputTable {
 				printFindingsTable(cmd, report)
 				return nil
@@ -66,18 +71,18 @@ Filter with --severity (high|medium|low), --analyzer, --cluster, and --component
 	}
 	addOutputFlag(cmd, &output)
 	addFilterFlags(cmd, &filter)
-	cmd.Flags().StringVar(&severityFilter, "severity", "", "filter by severity: high | medium | low")
+	cmd.Flags().StringVar(&severityFilter, "severity", "", "filter by severity: Critical | High | Medium | Low")
 	cmd.Flags().StringVar(&analyzerFilter, "analyzer", "", "filter by analyzer name")
-	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "filter by cluster (Target or Space slug)")
+	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "filter by cluster (Target slug, or None for Units whose Space has no release Target)")
 	return cmd
 }
 
-func buildFindingsReport(snap *snapshot.Snapshot, severityFilter, analyzerFilter, clusterFilter string) findingsReport {
+func buildFindingsReport(snap *snapshot.Snapshot, severityFilter api.Score, analyzerFilter, clusterFilter string) findingsReport {
 	var report findingsReport
-	report.Totals.BySeverity = map[string]int{}
+	report.Totals.BySeverity = map[api.Score]int{}
 	report.Totals.ByAnalyzer = map[string]int{}
 	for _, f := range nsmanager.AnalyzeFindings(snap.Clusters) {
-		if severityFilter != "" && !strings.EqualFold(f.Severity, severityFilter) {
+		if severityFilter != api.ScoreNone && f.Severity != severityFilter {
 			continue
 		}
 		if analyzerFilter != "" && f.Analyzer != analyzerFilter {
@@ -104,8 +109,8 @@ func printFindingsTable(cmd *cobra.Command, r findingsReport) {
 	}
 	_ = tw.Flush()
 	fprintln(cmd.OutOrStdout(), fmt.Sprintf("\n%d findings (%d high, %d medium, %d low)",
-		r.Totals.Total, r.Totals.BySeverity[nsmanager.SeverityHigh],
-		r.Totals.BySeverity[nsmanager.SeverityMedium], r.Totals.BySeverity[nsmanager.SeverityLow]))
+		r.Totals.Total, r.Totals.BySeverity[api.ScoreHigh],
+		r.Totals.BySeverity[api.ScoreMedium], r.Totals.BySeverity[api.ScoreLow]))
 }
 
 func dash(s string) string {

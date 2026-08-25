@@ -8,6 +8,8 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	api "github.com/confighub/sdk/core/function/api"
+
 	"github.com/spf13/cobra"
 
 	"github.com/confighub/examples/observability-manager/internal/cub"
@@ -39,10 +41,14 @@ func newFindingsCmd() *cobra.Command {
                (the cross-Unit join) — medium
   - dangling : a ServiceMonitor that selects no Service in its namespace — low
 
-Filter with --severity (high|medium|low), --analyzer (coverage|dangling),
+Filter with --severity (Critical|High|Medium|Low), --analyzer (coverage|dangling),
 --cluster, and --namespace.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			severity, err := parseScore(severityFilter)
+			if err != nil {
+				return err
+			}
 			client, err := cub.Preflight(cmd.Context())
 			if err != nil {
 				return err
@@ -51,7 +57,7 @@ Filter with --severity (high|medium|low), --analyzer (coverage|dangling),
 			if err != nil {
 				return err
 			}
-			report := buildFindingsReport(snap, severityFilter, analyzerFilter, clusterFilter, namespaceFilter)
+			report := buildFindingsReport(snap, severity, analyzerFilter, clusterFilter, namespaceFilter)
 			if output == outputTable {
 				printFindingsTable(cmd, report)
 				return nil
@@ -61,18 +67,18 @@ Filter with --severity (high|medium|low), --analyzer (coverage|dangling),
 	}
 	addOutputFlag(cmd, &output)
 	addFilterFlags(cmd, &filter)
-	cmd.Flags().StringVar(&severityFilter, "severity", "", "only findings at this severity: high | medium | low")
+	cmd.Flags().StringVar(&severityFilter, "severity", "", "only findings at this severity: Critical | High | Medium | Low")
 	cmd.Flags().StringVar(&analyzerFilter, "analyzer", "", "only findings from this analyzer: coverage | dangling")
-	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "restrict output to this cluster (Target or Space slug)")
+	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "restrict output to this cluster (Target slug, or None for Units whose Space has no release Target)")
 	cmd.Flags().StringVar(&namespaceFilter, "namespace", "", "filter by namespace")
 	return cmd
 }
 
-func buildFindingsReport(snap *snapshot.Snapshot, severityFilter, analyzerFilter, clusterFilter, namespaceFilter string) findingsReport {
+func buildFindingsReport(snap *snapshot.Snapshot, severityFilter api.Score, analyzerFilter, clusterFilter, namespaceFilter string) findingsReport {
 	var report findingsReport
 	report.Filter = snap.Filter
 	for _, f := range observability.Findings(snap.Clusters) {
-		if severityFilter != "" && string(f.Severity) != severityFilter {
+		if severityFilter != api.ScoreNone && f.Severity != severityFilter {
 			continue
 		}
 		if analyzerFilter != "" && f.Analyzer != analyzerFilter {
@@ -87,11 +93,11 @@ func buildFindingsReport(snap *snapshot.Snapshot, severityFilter, analyzerFilter
 		report.Findings = append(report.Findings, f)
 		report.Totals.Findings++
 		switch f.Severity {
-		case observability.SeverityHigh:
+		case api.ScoreHigh:
 			report.Totals.High++
-		case observability.SeverityMedium:
+		case api.ScoreMedium:
 			report.Totals.Medium++
-		case observability.SeverityLow:
+		case api.ScoreLow:
 			report.Totals.Low++
 		}
 	}

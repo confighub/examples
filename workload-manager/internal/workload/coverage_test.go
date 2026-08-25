@@ -3,7 +3,11 @@
 
 package workload
 
-import "testing"
+import (
+	"testing"
+
+	api "github.com/confighub/sdk/core/function/api"
+)
 
 func TestSelectorMatches(t *testing.T) {
 	tests := []struct {
@@ -156,14 +160,14 @@ func TestFindings_Severity(t *testing.T) {
 	}
 	// Sorted most-severe first.
 	for i := 1; i < len(findings); i++ {
-		if severityRank(findings[i-1].Severity) < severityRank(findings[i].Severity) {
+		if api.ScoreToNumber[findings[i-1].Severity] < api.ScoreToNumber[findings[i].Severity] {
 			t.Errorf("findings not sorted by severity at %d: %s before %s", i, findings[i-1].Severity, findings[i].Severity)
 		}
 	}
 	// A no-memory-limit finding must be high severity from the resources analyzer.
 	var found bool
 	for _, f := range findings {
-		if f.Analyzer == DimResources && f.Severity == SeverityHigh {
+		if f.Analyzer == DimResources && f.Severity == api.ScoreHigh {
 			found = true
 		}
 	}

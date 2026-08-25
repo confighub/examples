@@ -72,7 +72,7 @@ Single-replica workloads and DaemonSet / Job / CronJob / Pod are out of scope
 	}
 	addOutputFlag(cmd, &output)
 	addFilterFlags(cmd, &filter)
-	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "restrict output to this cluster (Target or Space slug)")
+	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "restrict output to this cluster (Target slug, or None for Units whose Space has no release Target)")
 	cmd.Flags().StringVar(&namespaceFilter, "namespace", "", "filter by namespace")
 	cmd.Flags().BoolVar(&issuesOnly, "issues-only", false, "only workloads with an availability issue")
 	return cmd
