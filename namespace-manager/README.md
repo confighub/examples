@@ -127,9 +127,9 @@ them from deploying.
 ## How it works
 
 - **Snapshot** (`internal/snapshot`) — discovers every `Kubernetes/YAML` Unit you
-  can view, runs `get-resources` server-side in parallel over Namespaces,
-  NetworkPolicies, RBAC objects, and workloads, and joins with Unit / Space /
-  Target metadata. Canonical base/policy Spaces are excluded from cluster
+  can view, reads the Namespaces, NetworkPolicies, RBAC objects, and workloads
+  inside them from the Resource entity in one SQL-backed query, and joins with
+  Unit / Space / Target metadata. Canonical base/policy Spaces are excluded from cluster
   analysis. Clusters are ConfigHub Targets; Units whose Space has no release
   Target group under a single `None` cluster.
 - **Engine** (`internal/nsmanager`) — a deterministic, table-tested analysis

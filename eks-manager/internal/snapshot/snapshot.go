@@ -4,23 +4,23 @@
 // Package snapshot loads a fleet-wide view of the Crossplane managed resources
 // that make up EKS clusters from ConfigHub via the API. It discovers every
 // Kubernetes/YAML Unit the user can view (optionally narrowed by scope filters),
-// extracts the eks / ec2 / iam managed resources server-side via the
-// get-resources function, and joins them with Unit / Space / Target metadata
-// into the EKS analysis model.
+// reads the eks / ec2 / iam managed resources inside them from the Resource
+// entity, and joins them with Unit / Space / Target metadata into the EKS
+// analysis model.
 //
-// Several get-resources invocations run in parallel because a single
-// WhereResource conjunction can't express the union of API groups.
+// The groups arrive in one query: Resources are queried in SQL, so the API
+// group is a predicate the database evaluates rather than a function invoked
+// over every Unit, and each resource's configuration comes back as
+// already-parsed JSON.
 package snapshot
 
 import (
 	"context"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	"sync"
+	"regexp"
+	"strings"
 
 	"github.com/confighub/sdk/core/cubapi"
-	api "github.com/confighub/sdk/core/function/api"
 	goclientnew "github.com/confighub/sdk/core/openapi/goclient-new"
 
 	"github.com/confighub/examples/eks-manager/internal/eks"
@@ -39,31 +39,34 @@ const ClusterNone = "None"
 // one), so this label — not the Target — identifies the cluster.
 const SpaceLabelCluster = "Cluster"
 
-// resourceQuery is one (whereData, whereResource) pair driving a get-resources
-// invocation. whereData narrows Units server-side by what their config carries;
-// whereResource selects which resource types get returned.
-type resourceQuery struct {
-	name          string
-	whereData     string
-	whereResource string
-}
-
-// resourceQueries enumerate the Crossplane API groups the EKS model needs, one
-// per group, run as parallel get-resources invocations.
+// resourceTypePatterns match the ResourceTypes the EKS model needs, one per
+// Crossplane API group.
 //
-// Both clauses key off the API group rather than an enumeration of kinds. That
-// matters: a Crossplane provider ships hundreds of kinds per group and adds more
-// every release, so a `kind IN (...)` list would silently go stale — whereas
-// `apiVersion LIKE 'eks.aws.upbound.io/%'` picks up a new EKS kind for free.
-// The model buckets whatever comes back, and unrecognized kinds land in the
-// generic inventory rather than being dropped.
+// They key off the API group rather than an enumeration of kinds. That matters:
+// a Crossplane provider ships hundreds of kinds per group and adds more every
+// release, so a `kind IN (...)` list would silently go stale — whereas the group
+// prefix picks up a new EKS kind for free. The model buckets whatever comes
+// back, and unrecognized kinds land in the generic inventory rather than being
+// dropped.
 //
 // Adding a group (say rds, for a sibling tool) is one line here.
-var resourceQueries = []resourceQuery{
-	{"eks", "apiVersion LIKE 'eks.aws.upbound.io/%'", "ConfigHub.ResourceType LIKE 'eks.aws.upbound.io/%'"},
-	{"ec2", "apiVersion LIKE 'ec2.aws.upbound.io/%'", "ConfigHub.ResourceType LIKE 'ec2.aws.upbound.io/%'"},
-	{"iam", "apiVersion LIKE 'iam.aws.upbound.io/%'", "ConfigHub.ResourceType LIKE 'iam.aws.upbound.io/%'"},
+var resourceTypePatterns = []string{
+	`eks\.aws\.upbound\.io/.+`,
+	`ec2\.aws\.upbound\.io/.+`,
+	`iam\.aws\.upbound\.io/.+`,
 }
+
+// resourceTypeMatch is the exact test, applied to what comes back.
+var resourceTypeMatch = regexp.MustCompile(`(?i)^(` + strings.Join(resourceTypePatterns, "|") + `)$`)
+
+// resourceTypeWhere asks the server for the same union in one clause: the filter
+// language is flat AND-only, so a union of groups is one regular expression
+// rather than ORed prefixes. A filter literal cannot carry a backslash, so the
+// escapes are dropped — an unescaped `.` matches any character, which makes the
+// clause broader than the patterns, never narrower, and resourceTypeMatch
+// narrows it again on the way out.
+var resourceTypeWhere = "ResourceType ~* '^(" +
+	strings.ReplaceAll(strings.Join(resourceTypePatterns, "|"), `\`, "") + ")$'"
 
 // UnitMeta is the per-Unit metadata the snapshot joins onto resources.
 type UnitMeta struct {
@@ -108,12 +111,6 @@ type Snapshot struct {
 	Filter string `json:"filter,omitempty"`
 }
 
-type rawResource struct {
-	ResourceType string `json:"ResourceType"`
-	ResourceName string `json:"ResourceName"`
-	ResourceBody string `json:"ResourceBody"`
-}
-
 // Canonical Spaces hold definitions, not deployed config, so their Units stay out
 // of cluster analysis. The standard Variant=base label marks a base/template
 // Space; a `role` label of base/policy is also treated as canonical.
@@ -147,8 +144,8 @@ func clusterKey(meta UnitMeta) string {
 // Load fetches and assembles the fleet snapshot using the given API client,
 // scoped by a single ConfigHub Unit `where` predicate (empty = everything the
 // user can view). The predicate may reference Unit, Space, and Target metadata;
-// it is applied server-side to both the Unit list and the get-resources fetch,
-// so only matching Units' resources are pulled.
+// it scopes the Unit list server-side, and the resource query is narrowed to the
+// Units it returned.
 func Load(ctx context.Context, c *cubapi.Client, where string) (*Snapshot, error) {
 	// ConfigHub `where` is flat AND-only (no parentheses), so clauses are joined
 	// with a bare AND.
@@ -156,35 +153,15 @@ func Load(ctx context.Context, c *cubapi.Client, where string) (*Snapshot, error
 	if where != "" {
 		unitWhere = k8sUnitsWhere + " AND " + where
 	}
-	var (
-		wg       sync.WaitGroup
-		units    []*goclientnew.ExtendedUnit
-		unitsErr error
-		outcomes = make([][]cubapi.UnitOutcome, len(resourceQueries))
-		queryErr = make([]error, len(resourceQueries))
-	)
-	wg.Add(1 + len(resourceQueries))
-	go func() { defer wg.Done(); units, unitsErr = listUnits(ctx, c, unitWhere) }()
-	for i, q := range resourceQueries {
-		go func(i int, q resourceQuery) {
-			defer wg.Done()
-			outcomes[i], queryErr[i] = getResources(ctx, c, unitWhere, q.whereData, q.whereResource)
-		}(i, q)
-	}
-	wg.Wait()
-
-	if unitsErr != nil {
-		return nil, fmt.Errorf("list units: %w", unitsErr)
-	}
-	for i, err := range queryErr {
-		if err != nil {
-			return nil, fmt.Errorf("get resources (%s): %w", resourceQueries[i].name, err)
-		}
+	units, err := listUnits(ctx, c, unitWhere)
+	if err != nil {
+		return nil, fmt.Errorf("list units: %w", err)
 	}
 
 	// The server has already scoped the Units to the predicate; build metadata for
 	// every returned Unit and join resources onto it by UnitID.
 	inScope := make(map[string]UnitMeta, len(units))
+	unitIDs := make([]goclientnew.UUID, 0, len(units))
 	for _, eu := range units {
 		if eu.Unit == nil || isZeroUUID(eu.Unit.UnitID) {
 			continue
@@ -223,54 +200,49 @@ func Load(ctx context.Context, c *cubapi.Client, where string) (*Snapshot, error
 		}
 	}
 
-	var resources []eks.FleetResource
-	seen := map[string]bool{} // unitID|resourceName, in case groups overlap
-	collect := func(resps []cubapi.UnitOutcome) {
-		for _, r := range resps {
-			if !r.Success || r.UnitID == "" {
-				continue
-			}
-			meta, ok := inScope[r.UnitID]
-			if !ok {
-				continue // out of scope
-			}
-			space := r.SpaceSlug
-			if space == "" {
-				space = meta.SpaceSlug
-			}
-			canonical := isCanonicalSpace(meta.SpaceLabels)
-			for _, raw := range decodeResourceList(r.Outputs["ResourceList"]) {
-				if raw.ResourceBody == "" {
-					continue
-				}
-				key := r.UnitID + "|" + raw.ResourceName
-				if seen[key] {
-					continue
-				}
-				var doc any
-				if err := json.Unmarshal([]byte(raw.ResourceBody), &doc); err != nil {
-					continue
-				}
-				seen[key] = true
-				resources = append(resources, eks.FleetResource{
-					Origin: eks.ResourceOrigin{
-						Cluster:      clusterKey(meta),
-						Space:        space,
-						SpaceID:      r.SpaceID,
-						SpaceLabels:  meta.SpaceLabels,
-						Target:       meta.TargetSlug,
-						UnitID:       r.UnitID,
-						UnitSlug:     firstNonEmpty(r.UnitSlug, meta.Slug),
-						ResourceName: raw.ResourceName,
-						Canonical:    canonical,
-					},
-					Doc: doc,
-				})
-			}
-		}
+	extended, err := listResources(ctx, c, unitIDs)
+	if err != nil {
+		return nil, fmt.Errorf("list resources: %w", err)
 	}
-	for _, o := range outcomes {
-		collect(o)
+
+	// One query returns each resource once, so there is nothing to deduplicate.
+	// The per-group invocations it replaces could return the same resource twice
+	// when groups overlapped, and the guard against that keyed on
+	// unitID|resourceName -- which also dropped a second resource that merely
+	// shared a name with the first.
+	var resources []eks.FleetResource
+	for _, er := range extended {
+		if er.Resource == nil || er.Resource.Data == nil {
+			continue
+		}
+		r := er.Resource
+		// The clause is deliberately broader than the patterns where a filter
+		// literal cannot spell them exactly, so match again.
+		if !resourceTypeMatch.MatchString(r.ResourceType) {
+			continue
+		}
+		meta, ok := inScope[r.UnitID.String()]
+		if !ok {
+			continue // out of scope
+		}
+		space := r.SpaceSlug
+		if space == "" {
+			space = meta.SpaceSlug
+		}
+		resources = append(resources, eks.FleetResource{
+			Origin: eks.ResourceOrigin{
+				Cluster:      clusterKey(meta),
+				Space:        space,
+				SpaceID:      r.SpaceID.String(),
+				SpaceLabels:  meta.SpaceLabels,
+				Target:       meta.TargetSlug,
+				UnitID:       r.UnitID.String(),
+				UnitSlug:     firstNonEmpty(r.UnitSlug, meta.Slug),
+				ResourceName: r.ResourceName,
+				Canonical:    isCanonicalSpace(meta.SpaceLabels),
+			},
+			Doc: r.Data,
+		})
 	}
 
 	// Canonical definitions stay out of cluster analysis.
@@ -305,39 +277,6 @@ func listUnits(ctx context.Context, c *cubapi.Client, where string) ([]*goclient
 		cubapi.ListOpts{Include: "SpaceID,TargetID"})
 }
 
-// getResources runs the get-resources function over the matching Units and
-// returns the per-Unit outcomes (the resource list lands in Outputs). The same
-// where predicate that scopes the Unit list scopes the resource fetch.
-func getResources(ctx context.Context, c *cubapi.Client, where, whereData, whereResource string) ([]cubapi.UnitOutcome, error) {
-	res, err := cubapi.InvokeFunction(ctx, c,
-		api.FunctionInvocation{FunctionName: "get-resources", Arguments: []api.FunctionArgument{{Value: "json"}}},
-		cubapi.Selector{
-			Where:         where,
-			WhereData:     whereData,
-			WhereResource: whereResource,
-		},
-		cubapi.Change{}) // read-only: dry-run
-	if err != nil {
-		return nil, err
-	}
-	return res.Outcomes, nil
-}
-
-func decodeResourceList(encoded string) []rawResource {
-	if encoded == "" {
-		return nil
-	}
-	decoded, err := base64.StdEncoding.DecodeString(encoded)
-	if err != nil {
-		return nil
-	}
-	var list []rawResource
-	if err := json.Unmarshal(decoded, &list); err != nil {
-		return nil
-	}
-	return list
-}
-
 func isZeroUUID(id goclientnew.UUID) bool {
 	return id == goclientnew.UUID{}
 }
@@ -347,4 +286,24 @@ func firstNonEmpty(a, b string) string {
 		return a
 	}
 	return b
+}
+
+// listResources reads the resources inside the in-scope Units from the Resource
+// entity, which mirrors the configuration in each Unit's data and is queried in
+// SQL.
+//
+// The Units are named by ID rather than by re-sending the caller's predicate:
+// that predicate selects Units and is written against Unit attributes, which the
+// resource query would need re-spelled with a `Unit.` prefix, and the IDs are
+// already in hand from the Unit list the snapshot needs anyway.
+func listResources(ctx context.Context, c *cubapi.Client, unitIDs []goclientnew.UUID) ([]*goclientnew.ExtendedResource, error) {
+	if len(unitIDs) == 0 {
+		return nil, nil
+	}
+	// No Include: the Space and Unit slugs are columns on the row, and the
+	// Target slug comes from the Unit metadata already loaded. No RawData
+	// either: Data is the resource's configuration as parsed JSON, which is
+	// what the analyzers walk.
+	return cubapi.ListResources(ctx, c,
+		cubapi.NewWhere(resourceTypeWhere).In("UnitID", unitIDs), cubapi.ListOpts{})
 }

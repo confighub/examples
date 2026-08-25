@@ -4,18 +4,20 @@
 // Package snapshot loads a fleet-wide view of pod-bearing workloads from ConfigHub
 // via the API and joins them with Unit / Space / Target metadata into the
 // scheduling analysis model. Placement lives in the pod spec, so only workload
-// resources are pulled.
+// resources are pulled.//
+// They arrive in one query: Resources are queried in SQL, so the resource type
+// is a predicate the database evaluates rather than a function invoked over
+// every Unit, and each resource's configuration comes back as already-parsed
+// JSON.
 package snapshot
 
 import (
 	"context"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	"sync"
+	"regexp"
+	"strings"
 
 	"github.com/confighub/sdk/core/cubapi"
-	api "github.com/confighub/sdk/core/function/api"
 	goclientnew "github.com/confighub/sdk/core/openapi/goclient-new"
 
 	"github.com/confighub/examples/scheduling-manager/internal/scheduling"
@@ -29,18 +31,25 @@ const k8sUnitsWhere = "ToolchainType = 'Kubernetes/YAML'"
 // of its own, which inflated the cluster count with things that are not clusters.
 const ClusterNone = "None"
 
-type resourceQuery struct {
-	whereData     string
-	whereResource string
+// resourceTypePatterns match the ResourceTypes the placement model needs: everything that carries a pod
+// template, which is what a nodeSelector, toleration or affinity sits on.
+var resourceTypePatterns = []string{
+	`apps/v1/(Deployment|StatefulSet|DaemonSet|ReplicaSet)`,
+	`batch/[^/]+/(Job|CronJob)`,
+	`v1/Pod`,
 }
 
-// resourceQueries enumerate the pod-bearing workload families. They run as
-// parallel get-resources invocations.
-var resourceQueries = []resourceQuery{
-	{"kind IN ('Deployment', 'StatefulSet', 'DaemonSet', 'ReplicaSet')", "ConfigHub.ResourceType LIKE 'apps/v1/%'"},
-	{"kind IN ('Job', 'CronJob')", "ConfigHub.ResourceType LIKE 'batch/%'"},
-	{"kind = 'Pod'", "ConfigHub.ResourceType = 'v1/Pod'"},
-}
+// resourceTypeMatch is the exact test, applied to what comes back.
+var resourceTypeMatch = regexp.MustCompile(`(?i)^(` + strings.Join(resourceTypePatterns, "|") + `)$`)
+
+// resourceTypeWhere asks the server for the same union in one clause: the filter
+// language is flat AND-only, so a union of types is one regular expression
+// rather than ORed equalities. A filter literal cannot carry a backslash, so the
+// escapes are dropped — an unescaped `.` matches any character, which makes the
+// clause broader than the patterns, never narrower, and resourceTypeMatch
+// narrows it again on the way out.
+var resourceTypeWhere = "ResourceType ~* '^(" +
+	strings.ReplaceAll(strings.Join(resourceTypePatterns, "|"), `\`, "") + ")$'"
 
 // UnitMeta is the per-Unit metadata the snapshot joins onto resources.
 type UnitMeta struct {
@@ -72,12 +81,6 @@ type Snapshot struct {
 	Filter    string `json:"filter,omitempty"`
 }
 
-type rawResource struct {
-	ResourceType string `json:"ResourceType"`
-	ResourceName string `json:"ResourceName"`
-	ResourceBody string `json:"ResourceBody"`
-}
-
 func isCanonicalSpace(labels map[string]string) bool {
 	switch labels["Variant"] {
 	case "base":
@@ -97,33 +100,13 @@ func Load(ctx context.Context, c *cubapi.Client, where string) (*Snapshot, error
 	if where != "" {
 		unitWhere = k8sUnitsWhere + " AND " + where
 	}
-	var (
-		wg       sync.WaitGroup
-		units    []*goclientnew.ExtendedUnit
-		unitsErr error
-		outcomes = make([][]cubapi.UnitOutcome, len(resourceQueries))
-		queryErr = make([]error, len(resourceQueries))
-	)
-	wg.Add(1 + len(resourceQueries))
-	go func() { defer wg.Done(); units, unitsErr = listUnits(ctx, c, unitWhere) }()
-	for i, q := range resourceQueries {
-		go func(i int, q resourceQuery) {
-			defer wg.Done()
-			outcomes[i], queryErr[i] = getResources(ctx, c, unitWhere, q.whereData, q.whereResource)
-		}(i, q)
-	}
-	wg.Wait()
-
-	if unitsErr != nil {
-		return nil, fmt.Errorf("list units: %w", unitsErr)
-	}
-	for i, err := range queryErr {
-		if err != nil {
-			return nil, fmt.Errorf("get resources (%s): %w", resourceQueries[i].whereResource, err)
-		}
+	units, err := listUnits(ctx, c, unitWhere)
+	if err != nil {
+		return nil, fmt.Errorf("list units: %w", err)
 	}
 
 	inScope := make(map[string]UnitMeta, len(units))
+	unitIDs := make([]goclientnew.UUID, 0, len(units))
 	for _, eu := range units {
 		if eu.Unit == nil || isZeroUUID(eu.Unit.UnitID) {
 			continue
@@ -158,54 +141,51 @@ func Load(ctx context.Context, c *cubapi.Client, where string) (*Snapshot, error
 			UpstreamRevisionNum:   eu.Unit.UpstreamRevisionNum,
 			LastChangeDescription: eu.Unit.LastChangeDescription,
 		}
+		unitIDs = append(unitIDs, eu.Unit.UnitID)
+	}
+
+	extended, err := listResources(ctx, c, unitIDs)
+	if err != nil {
+		return nil, fmt.Errorf("list resources: %w", err)
 	}
 
 	var resources []scheduling.FleetResource
-	collect := func(resps []cubapi.UnitOutcome) {
-		for _, r := range resps {
-			if !r.Success || r.UnitID == "" {
-				continue
-			}
-			meta, ok := inScope[r.UnitID]
-			if !ok {
-				continue
-			}
-			space := r.SpaceSlug
-			if space == "" {
-				space = meta.SpaceSlug
-			}
-			cluster := meta.TargetSlug
-			if cluster == "" {
-				cluster = ClusterNone
-			}
-			canonical := isCanonicalSpace(meta.SpaceLabels)
-			for _, raw := range decodeResourceList(r.Outputs["ResourceList"]) {
-				if raw.ResourceBody == "" {
-					continue
-				}
-				var doc any
-				if err := json.Unmarshal([]byte(raw.ResourceBody), &doc); err != nil {
-					continue
-				}
-				resources = append(resources, scheduling.FleetResource{
-					Origin: scheduling.ResourceOrigin{
-						Cluster:      cluster,
-						Target:       meta.TargetSlug,
-						Space:        space,
-						SpaceID:      r.SpaceID,
-						SpaceLabels:  meta.SpaceLabels,
-						UnitID:       r.UnitID,
-						UnitSlug:     firstNonEmpty(r.UnitSlug, meta.Slug),
-						ResourceName: raw.ResourceName,
-						Canonical:    canonical,
-					},
-					Doc: doc,
-				})
-			}
+	for _, er := range extended {
+		if er.Resource == nil || er.Resource.Data == nil {
+			continue
 		}
-	}
-	for _, o := range outcomes {
-		collect(o)
+		r := er.Resource
+		// The clause is deliberately broader than the patterns where a filter
+		// literal cannot spell them exactly, so match again.
+		if !resourceTypeMatch.MatchString(r.ResourceType) {
+			continue
+		}
+		meta, ok := inScope[r.UnitID.String()]
+		if !ok {
+			continue // out of scope
+		}
+		space := r.SpaceSlug
+		if space == "" {
+			space = meta.SpaceSlug
+		}
+		cluster := meta.TargetSlug
+		if cluster == "" {
+			cluster = ClusterNone
+		}
+		resources = append(resources, scheduling.FleetResource{
+			Origin: scheduling.ResourceOrigin{
+				Cluster:      cluster,
+				Target:       meta.TargetSlug,
+				Space:        space,
+				SpaceID:      r.SpaceID.String(),
+				SpaceLabels:  meta.SpaceLabels,
+				UnitID:       r.UnitID.String(),
+				UnitSlug:     firstNonEmpty(r.UnitSlug, meta.Slug),
+				ResourceName: r.ResourceName,
+				Canonical:    isCanonicalSpace(meta.SpaceLabels),
+			},
+			Doc: r.Data,
+		})
 	}
 
 	var forAnalysis []scheduling.FleetResource
@@ -227,32 +207,6 @@ func listUnits(ctx context.Context, c *cubapi.Client, where string) ([]*goclient
 	return cubapi.ListUnits(ctx, c, cubapi.NewWhere(where), cubapi.ListOpts{Include: "SpaceID,TargetID"})
 }
 
-func getResources(ctx context.Context, c *cubapi.Client, where, whereData, whereResource string) ([]cubapi.UnitOutcome, error) {
-	res, err := cubapi.InvokeFunction(ctx, c,
-		api.FunctionInvocation{FunctionName: "get-resources", Arguments: []api.FunctionArgument{{Value: "json"}}},
-		cubapi.Selector{Where: where, WhereData: whereData, WhereResource: whereResource},
-		cubapi.Change{})
-	if err != nil {
-		return nil, err
-	}
-	return res.Outcomes, nil
-}
-
-func decodeResourceList(encoded string) []rawResource {
-	if encoded == "" {
-		return nil
-	}
-	decoded, err := base64.StdEncoding.DecodeString(encoded)
-	if err != nil {
-		return nil
-	}
-	var list []rawResource
-	if err := json.Unmarshal(decoded, &list); err != nil {
-		return nil
-	}
-	return list
-}
-
 func isZeroUUID(id goclientnew.UUID) bool { return id == goclientnew.UUID{} }
 
 func firstNonEmpty(a, b string) string {
@@ -260,4 +214,24 @@ func firstNonEmpty(a, b string) string {
 		return a
 	}
 	return b
+}
+
+// listResources reads the resources inside the in-scope Units from the Resource
+// entity, which mirrors the configuration in each Unit's data and is queried in
+// SQL.
+//
+// The Units are named by ID rather than by re-sending the caller's predicate:
+// that predicate selects Units and is written against Unit attributes, which the
+// resource query would need re-spelled with a `Unit.` prefix, and the IDs are
+// already in hand from the Unit list the snapshot needs anyway.
+func listResources(ctx context.Context, c *cubapi.Client, unitIDs []goclientnew.UUID) ([]*goclientnew.ExtendedResource, error) {
+	if len(unitIDs) == 0 {
+		return nil, nil
+	}
+	// No Include: the Space and Unit slugs are columns on the row, and the
+	// Target slug comes from the Unit metadata already loaded. No RawData
+	// either: Data is the resource's configuration as parsed JSON, which is
+	// what the analyzers walk.
+	return cubapi.ListResources(ctx, c,
+		cubapi.NewWhere(resourceTypeWhere).In("UnitID", unitIDs), cubapi.ListOpts{})
 }

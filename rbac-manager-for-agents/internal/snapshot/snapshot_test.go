@@ -4,8 +4,8 @@
 package snapshot
 
 import (
-	"encoding/base64"
-	"encoding/json"
+	"regexp"
+	"strings"
 	"testing"
 )
 
@@ -51,18 +51,49 @@ func TestUnitMetaState(t *testing.T) {
 	}
 }
 
-func TestDecodeResourceList(t *testing.T) {
-	if got := decodeResourceList(""); got != nil {
-		t.Errorf("empty input = %v, want nil", got)
+func TestResourceTypeMatch(t *testing.T) {
+	for _, rt := range []string{
+		"rbac.authorization.k8s.io/v1/Role",
+		"rbac.authorization.k8s.io/v1/ClusterRoleBinding",
+		"rbac.authorization.k8s.io/v1beta1/RoleBinding",
+		"v1/ServiceAccount",
+	} {
+		if !resourceTypeMatch.MatchString(rt) {
+			t.Errorf("%q rejected", rt)
+		}
 	}
-	if got := decodeResourceList("not base64!!!"); got != nil {
-		t.Errorf("bad base64 = %v, want nil", got)
+	for _, rt := range []string{
+		"v1/Pod",
+		"apps/v1/Deployment",
+		"rbac.authorization.k8s.io/v1/Role/extra",
+		"other.rbac.authorization.k8s.io/v1/Role",
+	} {
+		if resourceTypeMatch.MatchString(rt) {
+			t.Errorf("%q accepted", rt)
+		}
 	}
-	list := []rawResource{{ResourceType: "rbac.authorization.k8s.io/v1/Role", ResourceName: "ns/r", ResourceBody: "{}"}}
-	raw, _ := json.Marshal(list)
-	encoded := base64.StdEncoding.EncodeToString(raw)
-	got := decodeResourceList(encoded)
-	if len(got) != 1 || got[0].ResourceName != "ns/r" {
-		t.Errorf("decodeResourceList round-trip = %+v", got)
+}
+
+// The clause the server evaluates drops the escapes, because a filter literal
+// cannot carry a backslash. That makes it broader than the patterns; it must
+// never be narrower, or resources would go missing before anything local could
+// notice.
+func TestResourceTypeWhereIsBroaderNotNarrower(t *testing.T) {
+	if strings.Contains(resourceTypeWhere, `\`) {
+		t.Fatalf("a filter literal cannot carry a backslash: %s", resourceTypeWhere)
+	}
+	if !strings.HasPrefix(resourceTypeWhere, "ResourceType ~* '^(") {
+		t.Fatalf("not a ResourceType regex clause: %s", resourceTypeWhere)
+	}
+	pattern := strings.TrimSuffix(strings.TrimPrefix(resourceTypeWhere, "ResourceType ~* '"), "'")
+	wire := regexp.MustCompile("(?i)" + pattern)
+	for _, rt := range []string{
+		"rbac.authorization.k8s.io/v1/Role",
+		"rbac.authorization.k8s.io/v1beta1/ClusterRoleBinding",
+		"v1/ServiceAccount",
+	} {
+		if !wire.MatchString(rt) {
+			t.Errorf("%q would not survive the server-side clause", rt)
+		}
 	}
 }
