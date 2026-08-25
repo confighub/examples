@@ -58,7 +58,6 @@ your existing cub session — run 'cub auth login' first if you are not signed i
 		// Write
 		newEditCmd(),
 		newFleetEditCmd(),
-		newPromoteCmd(),
 		newGuardrailsCmd(),
 		// Diagnostics
 		newPreflightCmd(),

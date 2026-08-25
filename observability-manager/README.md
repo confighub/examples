@@ -38,8 +38,8 @@ Runs standalone (`bin/cub-observability ...`) or as a cub plugin
 
 Read commands default to JSON (`-o json`); pass `-o table`. Write commands are
 **dry-run by default** and require `--commit --change-desc`; they edit Units but
-never apply to a cluster (that's a separate `cub unit apply`), and never bypass
-ApplyGates.
+never publish them (that's a separate `cub release publish <space>`), and never
+bypass ApplyGates.
 
 | Command | Kind | What it does |
 |---|---|---|
@@ -53,7 +53,6 @@ ApplyGates.
 | `inject-sidecar` | write | Inject/replace an otel sidecar via `set-path` (find-or-append by name) |
 | `profile install\|list\|apply` | write | The profile library (parameterized Invocations, e.g. `otel-sidecar`) |
 | `fleet-edit` | write | Apply a profile across a `--where` selector |
-| `promote` | write | Override-preserving upgrade of downstream Units to upstream |
 | `guardrails install\|status\|annotate` | write | Enforcement — `vet-cel` + annotate-then-validate for ServiceMonitor coverage |
 
 ## Agent skills
@@ -64,5 +63,5 @@ The `skills/` directory holds ConfigHub agent skills (a `SKILL.md` plus `evals/`
 |---|---|---|
 | `observability-audit` | read | `snapshot`, `list`, `coverage`, `sidecars` |
 | `observability-findings` | read | `findings` |
-| `observability-instrument` | write | `ensure-servicemonitor`, `inject-sidecar`, `profile`, `fleet-edit`, `promote` |
+| `observability-instrument` | write | `ensure-servicemonitor`, `inject-sidecar`, `profile`, `fleet-edit` |
 | `observability-guardrails` | write | `guardrails install\|status\|annotate` |

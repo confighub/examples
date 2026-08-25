@@ -2,21 +2,20 @@
 name: scheduling-place
 description: 'Set Kubernetes workload placement as config-as-data with the cub-scheduling CLI — nodeSelector, tolerations, and node affinity — one workload or across a whole selector via reusable placement profiles. Use for "pin this workload to the gpu pool", "add a toleration for the spot taint", "put the ml deployments on the gpu nodes", "set node affinity to a zone", "apply the placement-gpu profile", "roll placement downstream". Dry-run by default; requires --commit --change-desc. Not for read-only checks (use scheduling-audit / scheduling-findings), enforcement Triggers (use scheduling-guardrails), or pod anti-affinity / topology spread (that is availability, owned by workload-manager).'
 phase: act
-allowed-tools: Bash(cub-scheduling --help) Bash(cub-scheduling * --help) Bash(cub auth status) Bash(cub-scheduling preflight) Bash(cub-scheduling placement *) Bash(cub-scheduling findings *) Bash(cub-scheduling set-node-selector *) Bash(cub-scheduling set-tolerations *) Bash(cub-scheduling set-node-affinity *) Bash(cub-scheduling profile) Bash(cub-scheduling profile *) Bash(cub-scheduling fleet-edit *) Bash(cub-scheduling promote *)
+allowed-tools: Bash(cub-scheduling --help) Bash(cub-scheduling * --help) Bash(cub auth status) Bash(cub-scheduling preflight) Bash(cub-scheduling placement *) Bash(cub-scheduling findings *) Bash(cub-scheduling set-node-selector *) Bash(cub-scheduling set-tolerations *) Bash(cub-scheduling set-node-affinity *) Bash(cub-scheduling profile) Bash(cub-scheduling profile *) Bash(cub-scheduling fleet-edit *)
 ---
 
 # scheduling-place
 
-Set where workloads land — as data, dry-run by default. One workload, across a `--where` selector via a placement profile, or promoted downstream.
+Set where workloads land — as data, dry-run by default. One workload, or across a `--where` selector via a placement profile.
 
 - **`set-node-selector <space>/<unit> --selector k=v`** — pin to matching nodes.
 - **`set-tolerations <space>/<unit> --toleration key[=value][:effect]`** — tolerate node taints.
 - **`set-node-affinity <space>/<unit> --required "key=v1,v2"`** — a required node affinity term (operator In).
 - **`profile install | list | apply`** — the placement profile library (stored Invocations): `placement-gpu`, `placement-spot`, and parameterized `node-pool` (`--param pool=…`).
 - **`fleet-edit --profile <slug> [--where …]`** — apply a profile across a selector in one operation.
-- **`promote`** — override-preserving upgrade of downstream Units.
 
-All **edit Units but do not apply them** to a cluster — rolling out is a separate `cub unit apply`.
+All **edit Units but do not publish them** — rolling out is a separate `cub release publish <space>`, which bundles the Space's Units for its release Target.
 
 ## Why this matters
 
@@ -29,14 +28,13 @@ A toleration only *permits* scheduling onto a tainted node — pair it with a no
 - "Put it on a specific zone." → `set-node-affinity … --required "topology.kubernetes.io/zone=us-east-1a,us-east-1b"`.
 - "Put every prod ml workload on gpu nodes." → `fleet-edit --profile placement-gpu --environment prod --component ml`.
 - "Pin to an arbitrary pool." → `profile apply node-pool <space>/<unit> --param pool=<name>`.
-- "Roll the placement change downstream." → `promote --component <c>`.
 
 ## Do not load for
 
 - Read-only checks — use **scheduling-audit** / **scheduling-findings**.
 - Enforcement Triggers — use **scheduling-guardrails**.
 - Pod anti-affinity / topology spread — use **workload-manager** (availability).
-- Applying Units to a cluster — that is `cub unit apply`.
+- Publishing the Space's Release — that is `cub release publish <space>`.
 
 ## Preflight gates
 
@@ -54,7 +52,7 @@ A toleration only *permits* scheduling onto a tainted node — pair it with a no
    ```
 3. **Commit** with `--commit --change-desc` (summary + verbatim user prompt).
 4. **Verify**: `cub-scheduling placement --cluster <c> --namespace <ns>` shows the workload constrained; `findings` clears.
-5. **Roll out** is a separate step — hand off to `cub-apply`.
+5. **Roll out** is a separate step — hand off to `release-publish`.
 
 ## Safety
 
@@ -64,13 +62,13 @@ A toleration only *permits* scheduling onto a tainted node — pair it with a no
 ## Stop conditions
 
 - An ApplyGate attaches (a validating Trigger failed). **Do not bypass** — fix the data (or the rule), via **triggers-and-applygates**.
-- The user wants to apply to a cluster — hand off to `cub-apply`.
+- The user wants the change deployed — hand off to `release-publish`.
 
 ## Tool boundary
 
-Allowed: `set-node-selector`, `set-tolerations`, `set-node-affinity`, `profile`, `fleet-edit`, `promote` (dry-run by default; `--commit` passes `--change-desc`), and the read commands. Not allowed: bypassing gates, `kubectl` mutations, applying to clusters.
+Allowed: `set-node-selector`, `set-tolerations`, `set-node-affinity`, `profile`, `fleet-edit` (dry-run by default; `--commit` passes `--change-desc`), and the read commands. Not allowed: bypassing gates, `kubectl` mutations, publishing a Release.
 
 ## References
 
-- `cub-scheduling set-node-selector --help`, `… set-tolerations --help`, `… set-node-affinity --help`, `… profile --help`, `… fleet-edit --help`, `… promote --help`.
-- Companion skills: **scheduling-audit**, **scheduling-findings**, `promote-release`, `triggers-and-applygates`, `cub-apply`.
+- `cub-scheduling set-node-selector --help`, `… set-tolerations --help`, `… set-node-affinity --help`, `… profile --help`, `… fleet-edit --help`.
+- Companion skills: **scheduling-audit**, **scheduling-findings**, `promote-release`, `triggers-and-applygates`, `release-publish`.

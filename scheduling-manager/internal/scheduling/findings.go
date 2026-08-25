@@ -7,39 +7,21 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	api "github.com/confighub/sdk/core/function/api"
 )
-
-// Severity ranks a finding for triage.
-type Severity string
-
-const (
-	SeverityHigh   Severity = "high"
-	SeverityMedium Severity = "medium"
-	SeverityLow    Severity = "low"
-)
-
-func severityRank(s Severity) int {
-	switch s {
-	case SeverityHigh:
-		return 2
-	case SeverityMedium:
-		return 1
-	default:
-		return 0
-	}
-}
 
 // Finding is one placement issue on one workload.
 type Finding struct {
-	Severity  Severity `json:"severity"`
-	Analyzer  string   `json:"analyzer"`
-	Cluster   string   `json:"cluster"`
-	Namespace string   `json:"namespace,omitempty"`
-	Kind      string   `json:"kind"`
-	Name      string   `json:"name"`
-	Space     string   `json:"space"`
-	UnitSlug  string   `json:"unitSlug"`
-	Message   string   `json:"message"`
+	Severity  api.Score `json:"severity"`
+	Analyzer  string    `json:"analyzer"`
+	Cluster   string    `json:"cluster"`
+	Namespace string    `json:"namespace,omitempty"`
+	Kind      string    `json:"kind"`
+	Name      string    `json:"name"`
+	Space     string    `json:"space"`
+	UnitSlug  string    `json:"unitSlug"`
+	Message   string    `json:"message"`
 }
 
 // Analyzers.
@@ -60,7 +42,7 @@ func Findings(clusters map[string]*ClusterWorkloads) []Finding {
 		for _, w := range c.Workloads {
 			if w.HasTolerations() && !w.Constrained() {
 				out = append(out, Finding{
-					Severity:  SeverityMedium,
+					Severity:  api.ScoreMedium,
 					Analyzer:  analyzerPlacement,
 					Cluster:   w.Origin.Cluster,
 					Namespace: w.Namespace,
@@ -76,7 +58,7 @@ func Findings(clusters map[string]*ClusterWorkloads) []Finding {
 	}
 	sort.SliceStable(out, func(i, j int) bool {
 		if out[i].Severity != out[j].Severity {
-			return severityRank(out[i].Severity) > severityRank(out[j].Severity)
+			return api.ScoreToNumber[out[i].Severity] > api.ScoreToNumber[out[j].Severity]
 		}
 		if out[i].Cluster != out[j].Cluster {
 			return out[i].Cluster < out[j].Cluster

@@ -36,12 +36,11 @@ All read commands default to JSON (`-o json`); pass `-o table` for a human view.
 | `findings` | read | Severity-ranked governance findings (envelope gaps + duplicates + cross-variant inconsistency) |
 | `apply-envelope` | write | Stamp pod-security defaults on a Space's Namespace Unit(s) (fixes `missing-pod-security`) |
 | `backfill` | write | Clone a base envelope's default-deny + baseline RBAC into an existing Space, re-homed via `set-namespace` |
-| `promote` | write | Override-preserving upgrade of downstream envelope Units to their upstream head |
 | `guardrails install\|status\|annotate` | write | The enforcement pack — `Warn=true` `vet-celexpr` Triggers + annotate-then-validate for envelope gaps |
 
 All write commands are **dry-run by default** and require `--commit` with a
-`--change-desc`; they create/edit Units but do **not** apply them to a cluster
-(rolling out is a separate, deliberate `cub unit apply`).
+`--change-desc`; they create/edit Units but do **not** publish them
+(rolling out is a separate, deliberate `cub release publish <space>`).
 
 This build ships **M0–M4**: read-only analysis, config-as-data envelope fixes,
 fleet promotion, and annotate-then-validate enforcement (guardrails). The
@@ -92,8 +91,9 @@ parenthesized clause fails with `invalid attribute name`). With no flag,
 everything you can view is in scope.
 
 Separately, `--cluster` and `--namespace` are **client-side** display filters
-that narrow the loaded results to one cluster (Target-or-Space slug) or
-namespace — a presentation concern, distinct from the server-side scoping above.
+that narrow the loaded results to one cluster (a Target slug, or `None` for
+Units whose Space has no release Target) or namespace — a presentation concern,
+distinct from the server-side scoping above.
 
 ## The envelope
 
@@ -113,7 +113,7 @@ them from deploying.
 
 ## Agent skills
 
-`skills/` holds six ConfigHub-format agent skills (read vs. write split, scoped
+`skills/` holds five ConfigHub-format agent skills (read vs. write split, scoped
 `allowed-tools`, preflight gates, evals):
 
 | Skill | Kind | Surface |
@@ -123,7 +123,6 @@ them from deploying.
 | `namespace-findings` | read | `findings` |
 | `namespace-backfill` | write | `apply-envelope`, `backfill` |
 | `namespace-enforce` | write | `guardrails install/status/annotate` |
-| `namespace-promote` | write | `promote` |
 
 ## How it works
 
@@ -131,7 +130,8 @@ them from deploying.
   can view, runs `get-resources` server-side in parallel over Namespaces,
   NetworkPolicies, RBAC objects, and workloads, and joins with Unit / Space /
   Target metadata. Canonical base/policy Spaces are excluded from cluster
-  analysis. Clusters are ConfigHub Targets (Space slug for unbound Units).
+  analysis. Clusters are ConfigHub Targets; Units whose Space has no release
+  Target group under a single `None` cluster.
 - **Engine** (`internal/nsmanager`) — a deterministic, table-tested analysis
   package: the typed model, per-namespace envelope completeness, and the
   duplicate-namespace check.

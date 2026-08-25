@@ -20,8 +20,8 @@ through the normal apply pipeline with no drift.
 
 All read commands default to JSON (`-o json`); pass `-o table` for a human view.
 All write commands are **dry-run by default** and require `--commit` with a
-`--change-desc`; they create/edit Units but do **not** apply them to a cluster
-(rolling out is a separate, deliberate `cub unit apply`).
+`--change-desc`; they create/edit Units but do **not** publish them
+(rolling out is a separate, deliberate `cub release publish <space>`).
 
 | Command | Kind | What it does |
 |---|---|---|
@@ -36,7 +36,6 @@ All write commands are **dry-run by default** and require `--commit` with a
 | `allow-from-links` | write | Derive allow policies from ConfigHub **Links** (the dependency graph); consolidates per destination, upserts on re-run |
 | `fix dns\|metadata <space>/<unit>` | write | Patch an existing policy (add DNS egress / except the cloud-metadata IP) via `set-yq` |
 | `fleet default-deny` | write | Bulk: a default-deny for **every** uncovered namespace (idempotent) |
-| `promote` | write | Override-preserving upgrade of Units behind their upstream baseline |
 | `guardrails install\|status\|annotate` | write | The enforcement pack — `Warn=true` `vet-celexpr` Triggers + annotate-then-validate for coverage |
 
 ## Build
@@ -56,7 +55,7 @@ plugin, as `cub netpol …`. ConfigHub I/O goes through the ConfigHub Go SDK
 ```bash
 # Audit
 bin/cub-netpol coverage -o table
-bin/cub-netpol findings --severity high -o table
+bin/cub-netpol findings --severity High -o table
 bin/cub-netpol who-can-reach cartservice --cluster prod-cluster -o table
 
 # Fix as data (dry-run, then --commit)
@@ -75,7 +74,7 @@ intended least-privilege graph → **`guardrails`** to keep it that way.
 
 ## Scoping the fleet
 
-The read commands (and `fleet default-deny` / `promote`) narrow the fleet with a
+The read commands (and `fleet default-deny`) narrow the fleet with a
 **single ConfigHub Unit `--where` predicate**. One Unit-level filter can already
 reference Unit, Space, and Target metadata, so there is no separate Space or
 Target filter — the server does the scoping and only the matching Units' config
@@ -105,9 +104,9 @@ as separate invocations rather than one OR expression.
 
 `--cluster` and `--namespace` are **client-side display filters** applied to the
 already-fetched snapshot (they match the cluster key, which is the Target slug,
-or the Space slug for unbound Units — a server-side `Target.Slug` predicate would
-wrongly miss clusters keyed by Space slug). Use them to focus output, not to
-scope the server-side fetch.
+or `None` for Units whose Space has no release Target — a server-side
+`Target.Slug` predicate would wrongly drop the unbound ones). Use them to focus
+output, not to scope the server-side fetch.
 
 > Tip: bind base/template Units to a **Noop-ProviderType** dummy Target — a
 > no-apply, server-hosted bridge that never touches a cluster — so every Unit is
@@ -124,7 +123,7 @@ scope the server-side fetch.
 | `netpol-connectivity` | read | `who-can-reach`, `reachable-from` |
 | `netpol-findings` | read | `findings` |
 | `netpol-fix` | write | `default-deny`, `allow`, `allow-from-links`, `fix` |
-| `netpol-fleet` | write | `fleet default-deny`, `promote` |
+| `netpol-fleet` | write | `fleet default-deny` |
 | `netpol-guardrails` | write | `guardrails install/status/annotate` |
 
 ## How it works
@@ -139,8 +138,8 @@ scope the server-side fetch.
   findings analyzers, and the policy-YAML generators.
 - **Writes** — new Units via the SDK's unit-create; in-place edits and upserts via
   the `set-yq` function; guardrails via Triggers/Filters. Dry-run/commit and
-  change descriptions throughout; nothing is applied to a cluster without a
-  separate `cub unit apply`.
+  change descriptions throughout; nothing reaches a cluster without a separate
+  `cub release publish <space>`.
 
 > Documented limitations (v1): ipBlock peers don't match pod-to-pod traffic;
 > ports aren't considered in the reachability boolean; the egress default-deny

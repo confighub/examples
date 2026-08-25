@@ -41,9 +41,10 @@ new Unit revision. cpu/memory Resource metrics become KEDA cpu/memory triggers;
 Pods/Object/External metrics are not converted (KEDA needs a matching scaler).
 
 Dry-run by default (prints the resulting ScaledObject); --commit --change-desc
-writes the revision. The Unit is edited, not applied — rolling it out is a
-separate 'cub unit apply'. Deploying KEDA ScaledObjects also requires the KEDA
-operator installed in the target cluster.
+writes the revision. The Unit is edited, not published — rolling it out is a
+separate 'cub release publish <space>', which bundles the Space's Units for its
+release Target. Deploying KEDA ScaledObjects also requires the KEDA operator
+installed in the target cluster.
 
 To schema-validate the generated ScaledObject automatically, install the
 guardrails pack ('cub-autoscale guardrails install --commit'): its schema-valid
@@ -104,7 +105,7 @@ trigger runs vet-schemas on every mutation, and keda.sh is in the schema catalog
 			if output == outputJSON {
 				return printJSON(out, plan)
 			}
-			fprintln(out, fmt.Sprintf("Converted %s/%s to a KEDA ScaledObject (new revision). Apply it to deploy: cub unit apply --space %s %s", space, unit, space, unit))
+			fprintln(out, fmt.Sprintf("Converted %s/%s to a KEDA ScaledObject (new revision). Publish the Space to deploy: cub release publish %s", space, unit, space))
 			return nil
 		},
 	}

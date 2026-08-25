@@ -63,7 +63,7 @@ The manager can't set ApplyWarnings directly — only a failed Trigger can. Thre
 
 ## Tool boundary
 
-Allowed: `guardrails install` (dry-run unless `--commit`), `status`, `annotate` (dry-run unless `--commit --change-desc`). Not allowed: bypassing gates, `kubectl` mutations, applying to clusters. Fixing flagged workloads is **workload-harden** / **workload-fleet**.
+Allowed: `guardrails install` (dry-run unless `--commit`), `status`, `annotate` (dry-run unless `--commit --change-desc`). Not allowed: bypassing gates, `kubectl` mutations, publishing a Release. Fixing flagged workloads is **workload-harden** / **workload-fleet**.
 
 ## References
 

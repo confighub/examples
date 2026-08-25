@@ -39,7 +39,7 @@ func newEnsurePDBCmd() *cobra.Command {
 		Long: `ensure-pdb reads a workload Unit's pod-template labels and namespace and authors
 a new PodDisruptionBudget Unit whose selector matches exactly. The PDB is created
 in the same Space as the workload (as its own Unit, per one-resource-per-Unit),
-but not applied — deploying it is a separate 'cub unit apply'.
+but not published — deploying it is a separate 'cub release publish <space>'.
 
 Set the policy with --min-available or --max-unavailable (default:
 maxUnavailable 1, i.e. at most one pod down during a voluntary disruption).
@@ -118,8 +118,8 @@ would cover the whole namespace). Dry-run unless --commit --change-desc.`,
 			if output == outputJSON {
 				return printJSON(out, plan)
 			}
-			fprintln(out, fmt.Sprintf("Created PDB Unit %s/%s (revision %d). Apply it to deploy: cub unit apply --space %s %s",
-				ref.spaceSlug, pdbSlug, created.HeadRevisionNum, ref.spaceSlug, pdbSlug))
+			fprintln(out, fmt.Sprintf("Created PDB Unit %s/%s (revision %d). Publish the Space to deploy: cub release publish %s",
+				ref.spaceSlug, pdbSlug, created.HeadRevisionNum, ref.spaceSlug))
 			return nil
 		},
 	}

@@ -6,24 +6,19 @@ package nsmanager
 import (
 	"fmt"
 	"sort"
-)
 
-// Severity levels for findings.
-const (
-	SeverityHigh   = "high"
-	SeverityMedium = "medium"
-	SeverityLow    = "low"
+	api "github.com/confighub/sdk/core/function/api"
 )
 
 // Finding is one namespace-governance result attributed to a namespace (and,
 // for consistency, a component).
 type Finding struct {
-	Analyzer  string `json:"analyzer"`
-	Severity  string `json:"severity"`
-	Cluster   string `json:"cluster,omitempty"`
-	Component string `json:"component,omitempty"`
-	Namespace string `json:"namespace,omitempty"`
-	Message   string `json:"message"`
+	Analyzer  string    `json:"analyzer"`
+	Severity  api.Score `json:"severity"`
+	Cluster   string    `json:"cluster,omitempty"`
+	Component string    `json:"component,omitempty"`
+	Namespace string    `json:"namespace,omitempty"`
+	Message   string    `json:"message"`
 }
 
 // AnalyzeFindings runs the v1 analyzer set over the fleet:
@@ -42,28 +37,28 @@ func AnalyzeFindings(clusters map[string]*ClusterNamespaces) []Finding {
 		for _, e := range AnalyzeCluster(c) {
 			if e.WorkloadCount > 0 && !e.HasNamespaceObject {
 				fs = append(fs, Finding{
-					Analyzer: "missing-namespace-object", Severity: SeverityMedium,
+					Analyzer: "missing-namespace-object", Severity: api.ScoreMedium,
 					Cluster: e.Cluster, Namespace: e.Namespace,
 					Message: fmt.Sprintf("namespace %q has %d workload(s) but no v1/Namespace Unit", e.Namespace, e.WorkloadCount),
 				})
 			}
 			if e.HasNamespaceObject && e.PodSecurityEnforce == "" {
 				fs = append(fs, Finding{
-					Analyzer: "missing-pod-security", Severity: SeverityMedium,
+					Analyzer: "missing-pod-security", Severity: api.ScoreMedium,
 					Cluster: e.Cluster, Namespace: e.Namespace,
 					Message: fmt.Sprintf("namespace %q has no pod-security.kubernetes.io/enforce label", e.Namespace),
 				})
 			}
 			if e.WorkloadCount > 0 && !e.HasDefaultDeny {
 				fs = append(fs, Finding{
-					Analyzer: "missing-default-deny", Severity: SeverityHigh,
+					Analyzer: "missing-default-deny", Severity: api.ScoreHigh,
 					Cluster: e.Cluster, Namespace: e.Namespace,
 					Message: fmt.Sprintf("namespace %q has %d workload(s) but no default-deny NetworkPolicy", e.Namespace, e.WorkloadCount),
 				})
 			}
 			if e.WorkloadCount > 0 && !e.HasBaselineRBAC {
 				fs = append(fs, Finding{
-					Analyzer: "missing-baseline-rbac", Severity: SeverityLow,
+					Analyzer: "missing-baseline-rbac", Severity: api.ScoreLow,
 					Cluster: e.Cluster, Namespace: e.Namespace,
 					Message: fmt.Sprintf("namespace %q has no baseline RBAC (RoleBinding)", e.Namespace),
 				})
@@ -74,7 +69,7 @@ func AnalyzeFindings(clusters map[string]*ClusterNamespaces) []Finding {
 	// Fleet-level: duplicate namespace name on the same Target.
 	for _, d := range DuplicateNamespaces(clusters) {
 		fs = append(fs, Finding{
-			Analyzer: "duplicate-namespace", Severity: SeverityHigh,
+			Analyzer: "duplicate-namespace", Severity: api.ScoreHigh,
 			Cluster: d.Target, Namespace: d.Namespace,
 			Message: fmt.Sprintf("namespace %q is defined by %d Units on target %q — a collision", d.Namespace, d.Count, d.Target),
 		})
@@ -84,14 +79,14 @@ func AnalyzeFindings(clusters map[string]*ClusterNamespaces) []Finding {
 	for _, cc := range AnalyzeConsistency(clusters) {
 		if !cc.NamespaceConsistent {
 			fs = append(fs, Finding{
-				Analyzer: "namespace-name-inconsistent", Severity: SeverityMedium,
+				Analyzer: "namespace-name-inconsistent", Severity: api.ScoreMedium,
 				Component: cc.Component,
 				Message:   fmt.Sprintf("component %q uses different namespace names across its variant Spaces: %s", cc.Component, joinQuoted(cc.Namespaces)),
 			})
 		}
 		if !cc.PodSecurityConsistent {
 			fs = append(fs, Finding{
-				Analyzer: "pod-security-inconsistent", Severity: SeverityLow,
+				Analyzer: "pod-security-inconsistent", Severity: api.ScoreLow,
 				Component: cc.Component,
 				Message:   fmt.Sprintf("component %q uses different pod-security levels across its variant Spaces: %s", cc.Component, joinQuoted(cc.PodSecurityLevels)),
 			})
@@ -99,8 +94,8 @@ func AnalyzeFindings(clusters map[string]*ClusterNamespaces) []Finding {
 	}
 
 	sort.SliceStable(fs, func(i, j int) bool {
-		if severityRank(fs[i].Severity) != severityRank(fs[j].Severity) {
-			return severityRank(fs[i].Severity) < severityRank(fs[j].Severity)
+		if fs[i].Severity != fs[j].Severity {
+			return api.ScoreToNumber[fs[i].Severity] > api.ScoreToNumber[fs[j].Severity]
 		}
 		if fs[i].Analyzer != fs[j].Analyzer {
 			return fs[i].Analyzer < fs[j].Analyzer
@@ -114,16 +109,4 @@ func AnalyzeFindings(clusters map[string]*ClusterNamespaces) []Finding {
 		return fs[i].Namespace < fs[j].Namespace
 	})
 	return fs
-}
-
-func severityRank(s string) int {
-	switch s {
-	case SeverityHigh:
-		return 0
-	case SeverityMedium:
-		return 1
-	case SeverityLow:
-		return 2
-	}
-	return 3
 }

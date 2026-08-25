@@ -8,6 +8,8 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	api "github.com/confighub/sdk/core/function/api"
+
 	"github.com/spf13/cobra"
 
 	"github.com/confighub/examples/rbac-manager-for-agents/internal/cub"
@@ -16,14 +18,14 @@ import (
 )
 
 type findingRow struct {
-	Severity  rbac.Severity `json:"severity"`
-	Analyzer  string        `json:"analyzer"`
-	Cluster   string        `json:"cluster"`
-	Kind      string        `json:"kind"`
-	Namespace string        `json:"namespace,omitempty"`
-	Name      string        `json:"name"`
-	Unit      string        `json:"unit"`
-	Message   string        `json:"message"`
+	Severity  api.Score `json:"severity"`
+	Analyzer  string    `json:"analyzer"`
+	Cluster   string    `json:"cluster"`
+	Kind      string    `json:"kind"`
+	Namespace string    `json:"namespace,omitempty"`
+	Name      string    `json:"name"`
+	Unit      string    `json:"unit"`
+	Message   string    `json:"message"`
 }
 
 func newFindingsCmd() *cobra.Command {
@@ -42,15 +44,12 @@ func newFindingsCmd() *cobra.Command {
   unbound-service-accounts   ServiceAccounts with no bindings
 
 These are analysis-only; enforcement is server-side via Triggers/ApplyGates.
-Filter with --severity (high|medium|low) and --analyzer.`,
+Filter with --severity (Critical|High|Medium|Low) and --analyzer.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if severityFilter != "" {
-				switch severityFilter {
-				case "high", "medium", "low":
-				default:
-					return fmt.Errorf("invalid --severity %q: use high, medium, or low", severityFilter)
-				}
+			severity, err := parseScore(severityFilter)
+			if err != nil {
+				return err
 			}
 			client, err := cub.Preflight(cmd.Context())
 			if err != nil {
@@ -60,7 +59,7 @@ Filter with --severity (high|medium|low) and --analyzer.`,
 			if err != nil {
 				return err
 			}
-			rows := findingRows(rbac.AnalyzeFleet(snap.Clusters), severityFilter, analyzerFilter)
+			rows := findingRows(rbac.AnalyzeFleet(snap.Clusters), severity, analyzerFilter)
 			if output == outputTable {
 				printFindingsTable(cmd, rows)
 				return nil
@@ -70,15 +69,15 @@ Filter with --severity (high|medium|low) and --analyzer.`,
 	}
 	addOutputFlag(cmd, &output)
 	addFilterFlags(cmd, &filter)
-	cmd.Flags().StringVar(&severityFilter, "severity", "", "filter by severity: high | medium | low")
+	cmd.Flags().StringVar(&severityFilter, "severity", "", "filter by severity: Critical | High | Medium | Low")
 	cmd.Flags().StringVar(&analyzerFilter, "analyzer", "", "filter by analyzer name (e.g. wildcard-rules)")
 	return cmd
 }
 
-func findingRows(findings []rbac.Finding, severityFilter, analyzerFilter string) []findingRow {
+func findingRows(findings []rbac.Finding, severityFilter api.Score, analyzerFilter string) []findingRow {
 	rows := make([]findingRow, 0, len(findings))
 	for _, f := range findings {
-		if severityFilter != "" && string(f.Severity) != severityFilter {
+		if severityFilter != api.ScoreNone && f.Severity != severityFilter {
 			continue
 		}
 		if analyzerFilter != "" && f.Analyzer != analyzerFilter {

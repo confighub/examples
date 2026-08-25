@@ -5,7 +5,6 @@ package cli
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -136,73 +135,6 @@ func runFleetEdit(cmd *cobra.Command, fl fleetFlags, edit rbac.EditInvocation) e
 
 // --- promote (variant propagation) ---
 
-func newPromoteCmd() *cobra.Command {
-	var fl fleetFlags
-	cmd := &cobra.Command{
-		Use:   "promote",
-		Short: "Upgrade downstream Units to their upstream (override-preserving)",
-		Long: `promote upgrades downstream (cloned) Units to the latest revision of their
-upstream Unit, preserving intentional local overrides — the way a base RBAC
-change is propagated to its per-environment variants.
-
-Only Units cloned from an upstream (UpstreamRevisionNum > 0) and matching --where
-are affected; Units already at their upstream head are no-ops. Dry-run by
-default; re-run with --commit and a --change-desc to apply. Applying the
-upgraded revisions to clusters is a separate step (cub unit apply).`,
-		Example: `  cub-rbac promote --where "Space.Labels.Environment = 'staging'"
-  cub-rbac promote --where "Space.Labels.Environment = 'prod'" --commit --change-desc "propagate base RBAC update (OPS-12)"`,
-		Args: cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			sel := fl.predicate()
-			if strings.TrimSpace(sel) == "" {
-				return fmt.Errorf("--where (or a label selector like --environment) is required to scope the promotion (e.g. \"Space.Labels.Environment = 'prod'\")")
-			}
-			client, err := cub.Preflight(cmd.Context())
-			if err != nil {
-				return err
-			}
-			ch, err := commitChange(fl.CommitFlags, "Upgrade downstream Units from upstream")
-			if err != nil {
-				return err
-			}
-			where := k8sWhere + " AND UpstreamRevisionNum > 0 AND " + sel
-			res, err := cubapi.UpgradeUnits(cmd.Context(), client, where, ch)
-			if err != nil {
-				return err
-			}
-			changed, err := promoteChanged(res)
-			if err != nil {
-				return err
-			}
-			return reportFleet(cmd, fl.CommitFlags, "Upgrade downstream Units from upstream — fleet: "+sel, changed)
-		},
-	}
-	fl.bind(cmd)
-	return cmd
-}
-
-// promoteChanged renders the affected Units of a bulk upgrade as space/unit
-// labels. The patch response carries each Unit's SpaceSlug; it falls back to the
-// raw SpaceID only if a slug is unexpectedly absent.
-func promoteChanged(res *cubapi.Result) ([]string, error) {
-	if failed := res.Failed(); len(failed) > 0 {
-		f := failed[0]
-		ref := strings.Trim(f.SpaceSlug+"/"+f.UnitSlug, "/")
-		return nil, fmt.Errorf("upgrade failed on %s: %s", ref, f.Error)
-	}
-	changed := make([]string, 0, len(res.Outcomes))
-	for _, o := range res.Outcomes {
-		space := o.SpaceSlug
-		if space == "" {
-			space = o.SpaceID
-		}
-		changed = append(changed, space+"/"+o.UnitSlug)
-	}
-	sort.Strings(changed)
-	return changed, nil
-}
-
-// reportFleet prints the dry-run or commit summary for a fleet mutation.
 func reportFleet(cmd *cobra.Command, c cliutil.CommitFlags, summary string, changed []string) error {
 	out := cmd.OutOrStdout()
 	if !c.Commit {

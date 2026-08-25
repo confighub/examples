@@ -41,8 +41,8 @@ Runs standalone (`bin/cub-autoscale ...`) or as a cub plugin (`cub autoscale
 
 Read commands default to JSON (`-o json`); pass `-o table` for a human view. Write
 commands are **dry-run by default** and require `--commit --change-desc`; they edit
-Units but never apply to a cluster (that's a separate `cub unit apply`), and never
-bypass ApplyGates.
+Units but never publish them (that's a separate `cub release publish <space>`),
+and never bypass ApplyGates.
 
 | Command | Kind | What it does |
 |---|---|---|
@@ -54,7 +54,6 @@ bypass ApplyGates.
 | `convert-keda` | write | Rewrite an HPA as a KEDA ScaledObject (embedded executor) |
 | `profile install\|list\|apply` | write | The autoscaling profile library (parameterized Invocations) |
 | `fleet-edit` | write | Apply an autoscaling profile across a `--where` selector |
-| `promote` | write | Override-preserving upgrade of downstream Units to upstream |
 | `guardrails install\|status` | write | Enforcement pack — `not-pinned` (vet-cel) + `schema-valid` (vet-schemas) |
 
 ## Agent skills
@@ -65,5 +64,5 @@ The `skills/` directory holds ConfigHub agent skills (a `SKILL.md` plus `evals/`
 |---|---|---|
 | `autoscale-audit` | read | `snapshot`, `list` |
 | `autoscale-findings` | read | `findings` |
-| `autoscale-edit` | write | `set-hpa`, `convert-keda`, `profile`, `fleet-edit`, `promote` |
+| `autoscale-edit` | write | `set-hpa`, `convert-keda`, `profile`, `fleet-edit` |
 | `autoscale-guardrails` | write | `guardrails install\|status` |

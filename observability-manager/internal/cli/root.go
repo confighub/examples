@@ -61,7 +61,6 @@ are not signed in.`,
 		newInjectSidecarCmd(),
 		newProfileCmd(),
 		newFleetEditCmd(),
-		newPromoteCmd(),
 		newGuardrailsCmd(),
 		// Diagnostics
 		newPreflightCmd(),

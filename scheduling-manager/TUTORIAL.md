@@ -118,8 +118,9 @@ $ cub-scheduling fleet-edit --profile placement-gpu --environment prod --compone
 fleet-edit placement-gpu: N of N Unit(s) would change (dry-run — pass --commit --change-desc to write)
 ```
 
-`promote --component ml` then carries a placement change from a base Space to its
-downstream environment/region variants (override-preserving).
+Carrying that change on to the Spaces cloned from a base is variant
+promotion, which lives in `cub` and the **promote-release** skill rather than in
+this tool.
 
 ## 7. Enforce with guardrails
 
@@ -144,7 +145,7 @@ Promote the rule to blocking later with
   `--owner` / `--layer` / `--variant`. `--cluster` / `--namespace` are client-side
   display filters.
 - **Discipline**: reads default to JSON (`-o table` for humans); writes are
-  dry-run until `--commit --change-desc`; nothing is applied to a cluster (roll
-  out with `cub unit apply` separately); ApplyGates are never bypassed.
+  dry-run until `--commit --change-desc`; nothing is published (roll it out with
+  `cub release publish <space>` separately); ApplyGates are never bypassed.
 - **Placement vs availability**: pod anti-affinity and topology spread live in
   [`workload-manager`](../workload-manager), not here.

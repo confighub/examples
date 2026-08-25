@@ -40,18 +40,17 @@ bin/cub-rbac snapshot                         # fleet RBAC inventory (JSON; add 
 bin/cub-rbac list --kind ClusterRoleBinding   # explorer (JSON; add -o table)
 bin/cub-rbac who-can get secrets              # effective access: who can do X
 bin/cub-rbac access ServiceAccount:apps/ci-deployer   # inverse: what can SUBJECT do
-bin/cub-rbac findings --severity high         # RBAC hygiene issues
+bin/cub-rbac findings --severity High         # RBAC hygiene issues
 
 # Guardrailed writes — dry-run by default; --commit to apply
 bin/cub-rbac edit add-verb prod/rbac --role-kind ClusterRole --role viewer --rule 0 --verb get
 bin/cub-rbac fleet-edit add-verb --where "Space.Labels.Environment = 'dev'" \
   --role-kind ClusterRole --role developer --rule 0 --verb deletecollection   # bulk edit
-bin/cub-rbac promote --where "Space.Labels.Environment = 'staging'"            # upgrade downstreams from upstream
 bin/cub-rbac guardrails install -o table      # plan the policy pack (add --commit to apply)
 bin/cub-rbac guardrails status                # Units with ApplyWarnings / ApplyGates
 ```
 
-All read commands (and the fleet write commands `fleet-edit` / `promote`) scope
+All read commands (and the fleet write command `fleet-edit`) scope
 the fleet with a single ConfigHub Unit `--where` filter, plus opinionated
 label shorthands — `--component`, `--environment`, `--region`, `--owner`,
 `--layer`, `--variant` — that expand to `Space.Labels.<Key> = '<value>'`. A
@@ -65,12 +64,12 @@ clause is rejected with `invalid attribute name`. To express a union, run the
 command once per branch.
 
 `list` and `who-can` additionally accept `--cluster` / `--namespace` as
-**client-side display filters** (the cluster key is the Target slug, or the
-Space slug for unbound Units); they narrow the printed rows, not the server
-query.
+**client-side display filters** (the cluster key is the Target slug, or `None`
+for Units whose Space has no release Target); they narrow the printed rows, not
+the server query.
 
 Reads also take `-o json` (default) or `-o table`. Write commands (`edit`,
-`fleet-edit`, `promote`, `guardrails install`) are **dry-run by default** and
+`fleet-edit`, `guardrails install`) are **dry-run by default** and
 require an explicit `--commit`; committing an `edit` also requires
 `--change-desc`.
 
@@ -88,7 +87,7 @@ and how to use these commands:
 - **rbac-whocan** — effective access (`who-can`, `access`). *(read)*
 - **rbac-findings** — RBAC hygiene (`findings`). *(read)*
 - **rbac-edit** — guardrailed structured edits (`edit`). *(write)*
-- **rbac-fleet** — bulk edits + variant propagation (`fleet-edit`, `promote`). *(write)*
+- **rbac-fleet** — bulk edits across many Units (`fleet-edit`). *(write)*
 - **rbac-guardrails** — policy pack install/status (`guardrails`). *(write)*
 
 ## Sister examples
@@ -119,8 +118,7 @@ Implemented (M0–M4):
 - Read commands: `snapshot`, `list`, `who-can`, `access`, `findings`.
 - Write commands: `edit` (add/remove verb & subject via server-side yq,
   dry-run→commit, `--change-desc`, never bypasses gates), `fleet-edit` (the same
-  edits across many Units via `--where`, one server request), `promote`
-  (override-preserving upstream→downstream upgrade), and `guardrails`
+  edits across many Units via `--where`, one server request), and `guardrails`
   install/status (Warn=true Trigger pack + shared Filter, dry-run plan→commit).
 - Agent Skills (read + write) with evals.
 

@@ -15,7 +15,7 @@ Fix the gaps `workload-findings` / `workload-audit` / `workload-availability` su
 - **`ensure-pdb`** — derives the PDB selector from the workload's pod labels and authors a new PDB Unit (fixes uncovered availability).
 - **`ensure-spread`** — adds pod anti-affinity (`--anti-affinity soft|hard`) or a topology spread constraint (fixes no-spread).
 
-All **create/edit Units but do not apply them** to a cluster — rolling out is a separate, deliberate `cub unit apply`.
+All **create/edit Units but do not publish them** — rolling out is a separate, deliberate `cub release publish <space>`, which bundles the Space's Units for its release Target.
 
 ## Why this matters
 
@@ -34,7 +34,7 @@ Per-object validators return pass/fail and a human then `kubectl edit`s the clus
 - Read-only checks — use **workload-audit** / **workload-availability** / **workload-findings**.
 - The same fix across *many* workloads, or the reusable profile library — use **workload-fleet**.
 - Enforcement Triggers / guardrails — use **workload-guardrails**.
-- Applying Units to a cluster — that is `cub unit apply` (a separate step).
+- Publishing the Space's Release — that is `cub release publish <space>` (a separate step).
 
 ## Preflight gates
 
@@ -59,7 +59,7 @@ Per-object validators return pass/fail and a human then `kubectl edit`s the clus
    ```
    Re-runs are idempotent.
 4. **Verify**: `cub-workload readiness --cluster <c> --namespace <ns>` / `availability` shows the dimension now passes.
-5. **Roll out** is a separate step — hand off to `cub-apply` (Units are created/edited, not applied).
+5. **Roll out** is a separate step — hand off to `release-publish` (Units are created/edited, not published).
 
 ## Safety
 
@@ -71,13 +71,13 @@ Per-object validators return pass/fail and a human then `kubectl edit`s the clus
 
 - An ApplyGate attaches (a validating Trigger failed). **Do not bypass** — diagnose and fix the data (or the Trigger), via **triggers-and-applygates**.
 - The fix would apply to many workloads — hand off to **workload-fleet**.
-- The user wants to apply to a cluster — hand off to `cub-apply`.
+- The user wants the change deployed — hand off to `release-publish`.
 
 ## Tool boundary
 
-Allowed: `harden`, `set-resources`, `set-probes`, `ensure-pdb`, `ensure-spread` (dry-run by default; `--commit` passes `--change-desc`), and the read commands. Not allowed: bypassing gates, `kubectl` mutations, applying to clusters.
+Allowed: `harden`, `set-resources`, `set-probes`, `ensure-pdb`, `ensure-spread` (dry-run by default; `--commit` passes `--change-desc`), and the read commands. Not allowed: bypassing gates, `kubectl` mutations, publishing a Release.
 
 ## References
 
 - `cub-workload harden --help`, `… set-resources --help`, `… set-probes --help`, `… ensure-pdb --help`, `… ensure-spread --help`.
-- Companion skills: **workload-audit**, **workload-availability**, **workload-findings**, **workload-fleet**, `kubernetes-resources`, `triggers-and-applygates`, `cub-apply`.
+- Companion skills: **workload-audit**, **workload-availability**, **workload-findings**, **workload-fleet**, `kubernetes-resources`, `triggers-and-applygates`, `release-publish`.

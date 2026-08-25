@@ -8,6 +8,8 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	api "github.com/confighub/sdk/core/function/api"
+
 	"github.com/spf13/cobra"
 
 	"github.com/confighub/examples/workload-manager/internal/cub"
@@ -40,12 +42,13 @@ resources, probes, hygiene, availability).
 Severity: a failing security / resources / availability check is high; a failing
 probe is medium; warnings are one step down; hygiene is low.
 
-Filter with --severity (high|medium|low), --analyzer (the dimension), --cluster,
+Filter with --severity (Critical|High|Medium|Low), --analyzer (the dimension), --cluster,
 and --namespace.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if severityFilter != "" && !isKnownSeverity(severityFilter) {
-				return fmt.Errorf("unknown --severity %q (want high | medium | low)", severityFilter)
+			severity, err := parseScore(severityFilter)
+			if err != nil {
+				return err
 			}
 			client, err := cub.Preflight(cmd.Context())
 			if err != nil {
@@ -55,7 +58,7 @@ and --namespace.`,
 			if err != nil {
 				return err
 			}
-			report := buildFindingsReport(snap, severityFilter, analyzerFilter, clusterFilter, namespaceFilter)
+			report := buildFindingsReport(snap, severity, analyzerFilter, clusterFilter, namespaceFilter)
 			if output == outputTable {
 				printFindingsTable(cmd, report)
 				return nil
@@ -65,26 +68,18 @@ and --namespace.`,
 	}
 	addOutputFlag(cmd, &output)
 	addFilterFlags(cmd, &filter)
-	cmd.Flags().StringVar(&severityFilter, "severity", "", "only findings at this severity: high | medium | low")
+	cmd.Flags().StringVar(&severityFilter, "severity", "", "only findings at this severity: Critical | High | Medium | Low")
 	cmd.Flags().StringVar(&analyzerFilter, "analyzer", "", "only findings from this analyzer: security | resources | probes | hygiene | availability")
-	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "restrict output to this cluster (Target or Space slug)")
+	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "restrict output to this cluster (Target slug, or None for Units whose Space has no release Target)")
 	cmd.Flags().StringVar(&namespaceFilter, "namespace", "", "filter by namespace")
 	return cmd
 }
 
-func isKnownSeverity(s string) bool {
-	switch workload.Severity(s) {
-	case workload.SeverityHigh, workload.SeverityMedium, workload.SeverityLow:
-		return true
-	}
-	return false
-}
-
-func buildFindingsReport(snap *snapshot.Snapshot, severityFilter, analyzerFilter, clusterFilter, namespaceFilter string) findingsReport {
+func buildFindingsReport(snap *snapshot.Snapshot, severityFilter api.Score, analyzerFilter, clusterFilter, namespaceFilter string) findingsReport {
 	var report findingsReport
 	report.Filter = snap.Filter
 	for _, f := range workload.Findings(snap.Clusters) {
-		if severityFilter != "" && string(f.Severity) != severityFilter {
+		if severityFilter != api.ScoreNone && f.Severity != severityFilter {
 			continue
 		}
 		if analyzerFilter != "" && f.Analyzer != analyzerFilter {
@@ -99,11 +94,11 @@ func buildFindingsReport(snap *snapshot.Snapshot, severityFilter, analyzerFilter
 		report.Findings = append(report.Findings, f)
 		report.Totals.Findings++
 		switch f.Severity {
-		case workload.SeverityHigh:
+		case api.ScoreHigh:
 			report.Totals.High++
-		case workload.SeverityMedium:
+		case api.ScoreMedium:
 			report.Totals.Medium++
-		case workload.SeverityLow:
+		case api.ScoreLow:
 			report.Totals.Low++
 		}
 	}

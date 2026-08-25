@@ -79,7 +79,6 @@ are not signed in.`,
 		newProfileCmd(),
 		// Fleet ops + enforcement
 		newFleetEditCmd(),
-		newPromoteCmd(),
 		newGuardrailsCmd(),
 		// Diagnostics
 		newPreflightCmd(),

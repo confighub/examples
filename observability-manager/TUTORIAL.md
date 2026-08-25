@@ -117,8 +117,9 @@ $ cub-observability fleet-edit --profile otel-sidecar --environment prod \
 fleet-edit otel-sidecar: N of N Unit(s) would change (dry-run — pass --commit --change-desc to write)
 ```
 
-`promote --component <c>` then carries an instrumentation change from a base Space
-to its downstream variants (override-preserving).
+Carrying that change on to the Spaces cloned from a base is variant
+promotion, which lives in `cub` and the **promote-release** skill rather than in
+this tool.
 
 ## 6. Enforce with guardrails
 
@@ -145,5 +146,5 @@ Promote the rule to blocking later with
   `--owner` / `--layer` / `--variant`. `--cluster` / `--namespace` are client-side
   display filters.
 - **Discipline**: reads default to JSON (`-o table` for humans); writes are
-  dry-run until `--commit --change-desc`; nothing is applied to a cluster (roll
-  out with `cub unit apply` separately); ApplyGates are never bypassed.
+  dry-run until `--commit --change-desc`; nothing is published (roll it out with
+  `cub release publish <space>` separately); ApplyGates are never bypassed.

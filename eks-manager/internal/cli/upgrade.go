@@ -320,7 +320,7 @@ func printUpgradePlan(cmd *cobra.Command, p upgradePlan) {
 			p.ControlPlaneStage))
 		fprintln(out, "(the control plane). The later stages are yours to run once it is healthy:")
 	} else {
-		fprintln(out, fmt.Sprintf("Stage %d written (%d resource(s)). It is not applied — roll it out with `cub unit apply`,",
+		fprintln(out, fmt.Sprintf("Stage %d written (%d resource(s)). It is not published — roll it out with `cub release publish`,",
 			p.ControlPlaneStage, p.Mutated))
 		fprintln(out, "wait for the control plane to report ACTIVE, then continue:")
 	}

@@ -56,8 +56,8 @@ Avoid these common mistakes:
 - use `--json` and `--jq` when you want machine-readable output
 - use `--where "Labels.Key = 'value'"` for label filtering on list commands,
   not guessed `--label` filters
-- use `--dry-run` before `cub function do` or `cub unit apply` if you want a
-  non-mutating preview
+- use `--dry-run` before `cub function do` if you want a non-mutating preview;
+  deployment is `cub release publish <space>`, not a per-Unit apply
 
 Good discovery commands:
 
@@ -153,7 +153,7 @@ Treat these as stable repo-wide contracts:
 | `cub target list --space "*" --json` | JSON array of targets | no |
 | `cub unit get --space <space> --json <unit>` | JSON object for one unit | no |
 | `cub function do --dry-run --json ...` | JSON invocation response | no config write |
-| `cub unit apply --dry-run --json ...` | JSON apply preview | no live apply |
+| `cub release list --json` | JSON array of releases | no |
 
 Example-specific seams vary. Do not assume `./verify.sh --json`,
 `./setup.sh --explain-json`, `./find-runs.sh --json`, or similar flags exist
@@ -165,7 +165,7 @@ Examples often use:
 
 - `./setup.sh`
 - `./set-target.sh`
-- `cub unit apply`
+- `cub release publish`
 - `cub function do`
 
 Those do create or mutate ConfigHub objects, and in some cases can affect a

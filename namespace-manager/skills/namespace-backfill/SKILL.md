@@ -12,7 +12,7 @@ Fix the gaps `namespace-findings` / `namespace-audit` surface — **as data**, s
 - **`apply-envelope`** — runs `set-pod-security-defaults` on a Space's Namespace Unit(s) (the fix for `missing-pod-security`).
 - **`backfill`** — clones a base envelope's default-deny NetworkPolicy + baseline RBAC into an existing Space and re-homes them with `set-namespace` (the fix for `missing-default-deny` / `missing-baseline-rbac`).
 
-Both **create/edit Units but do not apply them** to a cluster — rolling out is a separate, deliberate `cub unit apply`.
+Both **create/edit Units but do not publish them** — rolling out is a separate, deliberate `cub release publish <space>`, which bundles the Space's Units for its release Target.
 
 ## Why this matters
 
@@ -29,7 +29,7 @@ A runtime tenancy controller injects policy objects into live namespaces; correc
 - Read-only checks — use **namespace-audit** / **namespace-findings**.
 - Cross-variant consistency — use **namespace-consistency**.
 - Enforcement Triggers / guardrails — a later skill.
-- Applying Units to a cluster — that is `cub unit apply` (a separate, deliberate step).
+- Publishing the Space's Release — that is `cub release publish <space>` (a separate, deliberate step).
 
 ## Preflight gates
 
@@ -54,19 +54,19 @@ A runtime tenancy controller injects policy objects into live namespaces; correc
    ```
    Re-runs are idempotent (`apply-envelope` no-ops; `backfill` clones with allow-exists).
 4. **Verify**: `cub-namespace envelope --cluster <c> --namespace <ns>` shows the namespace complete; `cub-namespace findings --cluster <c>` shows the gaps cleared.
-5. **Roll out** is a separate step — hand off to `cub-apply` (the Units are created/edited, not applied).
+5. **Roll out** is a separate step — hand off to `release-publish` (the Units are created/edited, not published).
 
 ## Stop conditions
 
 - An ApplyGate attaches (a validating Trigger failed). **Do not bypass** — diagnose and fix the data (or the Trigger), via **triggers-and-applygates**.
 - `backfill` reports "nothing missing" — the envelope is already complete; nothing to do.
-- The user wants to apply to a cluster — hand off to `cub-apply`.
+- The user wants the change deployed — hand off to `release-publish`.
 
 ## Tool boundary
 
-Allowed: `apply-envelope`, `backfill` (dry-run by default; `--commit` passes `--change-desc`), and the read commands. Not allowed: bypassing gates, `kubectl` mutations, applying to clusters.
+Allowed: `apply-envelope`, `backfill` (dry-run by default; `--commit` passes `--change-desc`), and the read commands. Not allowed: bypassing gates, `kubectl` mutations, publishing a Release.
 
 ## References
 
 - `cub-namespace apply-envelope --help`, `cub-namespace backfill --help`.
-- Companion skills: **namespace-audit**, **namespace-findings**, `kubernetes-resources`, `triggers-and-applygates`, `cub-apply`.
+- Companion skills: **namespace-audit**, **namespace-findings**, `kubernetes-resources`, `triggers-and-applygates`, `release-publish`.

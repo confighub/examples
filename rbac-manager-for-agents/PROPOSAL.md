@@ -157,8 +157,8 @@ Write (mutating — dry-run by default, require `--change-desc`, never bypass ga
 | -------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------- |
 | Quick/structured edit      | `cub-rbac edit <unit> add-verb/remove-verb/add-subject/...`     | Compiles to server-side `yq-i` via `cub function do`; dry-run diff then commit. |
 | Fleet bulk edit            | `cub-rbac fleet-edit --where … <op>`                            | Org-scoped `yq-i`; one server request, multi-diff preview.                      |
-| Variant propagation        | `cub-rbac promote --where …`                                    | Override-preserving `--patch --upgrade`; reports "behind upstream".             |
-| Apply / Approve / Rollback | defer to `cub unit apply/approve` + `cub unit update --restore` | Routed via skills.                                                              |
+| Variant propagation        | defer to `cub` + the `promote-release` skill                    | Promotion is evolving in `cub` and the server; not duplicated here.             |
+| Publish / Approve / Rollback | defer to `cub release publish` + `cub unit approve` + `cub unit update --restore` | Routed via skills.                          |
 | Guardrail pack             | `cub-rbac guardrails install --policy-space … --where-space …`  | Triggers + Filter + `TriggerFilterID` wiring.                                   |
 
 ## 6. Agent Skills to ship
@@ -174,7 +174,7 @@ routing, evals). Split read vs write so read-only skills physically cannot mutat
 - **`rbac-fleet`** (write) — fleet bulk edits + variant propagation.
 - **`rbac-guardrails`** (write) — install/inspect the Trigger+ApplyGate policy pack.
 
-Each routes to the others and to the existing ConfigHub skills (`cub-apply`, `rollback-revision`,
+Each routes to the others and to the existing ConfigHub skills (`release-publish`, `rollback-revision`,
 `triggers-and-applygates`, `promote-release`).
 
 ## 7. Safety model (RBAC changes are high-stakes)
@@ -222,7 +222,7 @@ examples/rbac-manager-for-agents/
   `rbac-findings` skills + evals.
 - **M3 — Guardrailed writes:** `edit` (yq-i dry-run→commit, `--change-desc`), `guardrails install`.
   Ship `rbac-edit` / `rbac-guardrails` skills.
-- **M4 — Fleet ops:** `fleet-edit`, `promote`. Ship `rbac-fleet` skill.
+- **M4 — Fleet ops:** `fleet-edit`. Ship `rbac-fleet` skill.
 
 ## 10. Open questions
 

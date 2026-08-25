@@ -7,39 +7,9 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	api "github.com/confighub/sdk/core/function/api"
 )
-
-// Severity ranks a finding for triage. It mirrors ConfigHub's Score vocabulary
-// so findings and disruption gradings speak the same language.
-type Severity string
-
-const (
-	SeverityCritical Severity = "critical"
-	SeverityHigh     Severity = "high"
-	SeverityMedium   Severity = "medium"
-	SeverityLow      Severity = "low"
-)
-
-func severityRank(s Severity) int {
-	switch s {
-	case SeverityCritical:
-		return 3
-	case SeverityHigh:
-		return 2
-	case SeverityMedium:
-		return 1
-	}
-	return 0
-}
-
-// ValidSeverity reports whether s names a severity.
-func ValidSeverity(s string) bool {
-	switch Severity(s) {
-	case SeverityCritical, SeverityHigh, SeverityMedium, SeverityLow:
-		return true
-	}
-	return false
-}
 
 // Analyzer names. The analyzer is a finding's identity — it is what --analyzer
 // filters on — so these are stable kebab-case rule names.
@@ -64,15 +34,15 @@ var AllAnalyzers = []string{
 // Finding is one ranked issue on one resource, with enough origin to deep-link
 // and to fix the offending Unit.
 type Finding struct {
-	Severity Severity `json:"severity"`
-	Analyzer string   `json:"analyzer"`
-	Cluster  string   `json:"cluster"`
-	Kind     string   `json:"kind"`
-	Name     string   `json:"name"`
-	Space    string   `json:"space,omitempty"`
-	UnitSlug string   `json:"unitSlug,omitempty"`
-	Message  string   `json:"message"`
-	Fix      string   `json:"fix,omitempty"`
+	Severity api.Score `json:"severity"`
+	Analyzer string    `json:"analyzer"`
+	Cluster  string    `json:"cluster"`
+	Kind     string    `json:"kind"`
+	Name     string    `json:"name"`
+	Space    string    `json:"space,omitempty"`
+	UnitSlug string    `json:"unitSlug,omitempty"`
+	Message  string    `json:"message"`
+	Fix      string    `json:"fix,omitempty"`
 }
 
 // Findings analyzes a fleet and returns severity-ranked findings, worst first.
@@ -84,8 +54,8 @@ func Findings(clusters map[string]*ClusterSet) []Finding {
 	out = append(out, analyzeConsistency(clusters)...)
 
 	sort.Slice(out, func(i, j int) bool {
-		if severityRank(out[i].Severity) != severityRank(out[j].Severity) {
-			return severityRank(out[i].Severity) > severityRank(out[j].Severity)
+		if out[i].Severity != out[j].Severity {
+			return api.ScoreToNumber[out[i].Severity] > api.ScoreToNumber[out[j].Severity]
 		}
 		if out[i].Cluster != out[j].Cluster {
 			return out[i].Cluster < out[j].Cluster
@@ -115,7 +85,7 @@ func analyzeCluster(cs *ClusterSet) []Finding {
 		// update outright and the managed resource never syncs.
 		if !c.AutoMode.Consistent() {
 			f := Finding{
-				Severity: SeverityHigh, Analyzer: AnalyzerAutoModeInvariant,
+				Severity: api.ScoreHigh, Analyzer: AnalyzerAutoModeInvariant,
 				Message: "Auto Mode toggles disagree or are partially specified: computeConfig.enabled, " +
 					"kubernetesNetworkConfig.elasticLoadBalancing.enabled and storageConfig.blockStorage.enabled " +
 					"must all be present and all agree",
@@ -129,7 +99,7 @@ func analyzeCluster(cs *ClusterSet) []Finding {
 		// so leaving it true forecloses Auto Mode for the cluster's whole life.
 		if c.AutoMode.Enabled() && c.BootstrapSelfManagedAddons != nil && *c.BootstrapSelfManagedAddons {
 			f := Finding{
-				Severity: SeverityHigh, Analyzer: AnalyzerBootstrapAddons,
+				Severity: api.ScoreHigh, Analyzer: AnalyzerBootstrapAddons,
 				Message: "Auto Mode is enabled but bootstrapSelfManagedAddons is true; the field is immutable, " +
 					"so this combination cannot be reconciled",
 				Fix: "the cluster must be recreated with bootstrapSelfManagedAddons: false",
@@ -142,7 +112,7 @@ func analyzeCluster(cs *ClusterSet) []Finding {
 		// of standard support, which then fights the pin forever.
 		if c.Version != "" && strings.EqualFold(c.UpgradeSupportType, "STANDARD") {
 			f := Finding{
-				Severity: SeverityMedium, Analyzer: AnalyzerSupportPolicy,
+				Severity: api.ScoreMedium, Analyzer: AnalyzerSupportPolicy,
 				Message: fmt.Sprintf("version is pinned to %s but upgradePolicy.supportType is STANDARD; "+
 					"AWS will auto-upgrade at end of standard support and drift from the pin", c.Version),
 				Fix: "set upgradePolicy.supportType: EXTENDED, or stop pinning the version",
@@ -153,14 +123,14 @@ func analyzeCluster(cs *ClusterSet) []Finding {
 
 		// Prod posture.
 		if isTrue(c.EndpointPublicAccess) {
-			sev, extra := SeverityMedium, ""
+			sev, extra := api.ScoreMedium, ""
 			for _, cidr := range c.PublicAccessCIDRs {
 				if cidr == "0.0.0.0/0" {
-					sev, extra = SeverityHigh, " with publicAccessCidrs 0.0.0.0/0"
+					sev, extra = api.ScoreHigh, " with publicAccessCidrs 0.0.0.0/0"
 				}
 			}
 			if len(c.PublicAccessCIDRs) == 0 {
-				sev, extra = SeverityHigh, " with no publicAccessCidrs restriction (defaults to 0.0.0.0/0)"
+				sev, extra = api.ScoreHigh, " with no publicAccessCidrs restriction (defaults to 0.0.0.0/0)"
 			}
 			f := Finding{
 				Severity: sev, Analyzer: AnalyzerExposure,
@@ -172,7 +142,7 @@ func analyzeCluster(cs *ClusterSet) []Finding {
 		}
 		if !c.EncryptionConfigured {
 			f := Finding{
-				Severity: SeverityMedium, Analyzer: AnalyzerExposure,
+				Severity: api.ScoreMedium, Analyzer: AnalyzerExposure,
 				Message: "no encryptionConfig: Kubernetes Secrets are not encrypted with a KMS key",
 				Fix:     "add encryptionConfig with a KMS key ARN (note: removing it later replaces the cluster)",
 			}
@@ -181,7 +151,7 @@ func analyzeCluster(cs *ClusterSet) []Finding {
 		}
 		if missing := missingLogTypes(c.LogTypes); len(missing) > 0 {
 			f := Finding{
-				Severity: SeverityLow, Analyzer: AnalyzerExposure,
+				Severity: api.ScoreLow, Analyzer: AnalyzerExposure,
 				Message: "control-plane logging is missing: " + strings.Join(missing, ", "),
 				Fix:     "add the missing types to enabledClusterLogTypes",
 			}
@@ -190,7 +160,7 @@ func analyzeCluster(cs *ClusterSet) []Finding {
 		}
 		if c.DeletionProtection != nil && !*c.DeletionProtection {
 			f := Finding{
-				Severity: SeverityLow, Analyzer: AnalyzerExposure,
+				Severity: api.ScoreLow, Analyzer: AnalyzerExposure,
 				Message: "deletionProtection is false",
 				Fix:     "set deletionProtection: true, and add a ConfigHub Destroy Gate on the Unit",
 			}
@@ -220,7 +190,7 @@ func analyzeCluster(cs *ClusterSet) []Finding {
 		// recommendation is Auto Mode.
 		if n.DesiredSize != nil && !n.DesiredSizeInInitProvider && managesUpdates(n.ManagementPolicies) {
 			f := Finding{
-				Severity: SeverityMedium, Analyzer: AnalyzerAutoscalerConflict,
+				Severity: api.ScoreMedium, Analyzer: AnalyzerAutoscalerConflict,
 				Message: fmt.Sprintf("scalingConfig.desiredSize (%d) is set under forProvider with Update "+
 					"management: Crossplane will reconcile it on every pass, fighting Cluster Autoscaler or Karpenter",
 					*n.DesiredSize),
@@ -236,7 +206,7 @@ func analyzeCluster(cs *ClusterSet) []Finding {
 		for _, p := range n.ManagementPolicies {
 			if p == "LateInitialize" || p == "*" {
 				f := Finding{
-					Severity: SeverityMedium, Analyzer: AnalyzerAutoscalerConflict,
+					Severity: api.ScoreMedium, Analyzer: AnalyzerAutoscalerConflict,
 					Message: "managementPolicies includes LateInitialize, which copies observed values into " +
 						"spec and defeats any attempt to leave desiredSize externally managed",
 					Fix: "list the policies explicitly without LateInitialize",
@@ -251,7 +221,7 @@ func analyzeCluster(cs *ClusterSet) []Finding {
 		if n.DesiredSize != nil {
 			if n.MinSize != nil && *n.DesiredSize < *n.MinSize {
 				f := Finding{
-					Severity: SeverityHigh, Analyzer: AnalyzerAutoscalerConflict,
+					Severity: api.ScoreHigh, Analyzer: AnalyzerAutoscalerConflict,
 					Message: fmt.Sprintf("desiredSize %d is below minSize %d", *n.DesiredSize, *n.MinSize),
 					Fix:     "raise desiredSize or lower minSize",
 				}
@@ -260,7 +230,7 @@ func analyzeCluster(cs *ClusterSet) []Finding {
 			}
 			if n.MaxSize != nil && *n.DesiredSize > *n.MaxSize {
 				f := Finding{
-					Severity: SeverityHigh, Analyzer: AnalyzerAutoscalerConflict,
+					Severity: api.ScoreHigh, Analyzer: AnalyzerAutoscalerConflict,
 					Message: fmt.Sprintf("desiredSize %d is above maxSize %d", *n.DesiredSize, *n.MaxSize),
 					Fix:     "lower desiredSize or raise maxSize",
 				}
@@ -273,11 +243,11 @@ func analyzeCluster(cs *ClusterSet) []Finding {
 		if cpOK && n.Version != "" {
 			if v, ok := ParseVersion(n.Version); ok {
 				if skew := MinorSkew(cpVersion, v); skew > 0 {
-					sev := SeverityLow
+					sev := api.ScoreLow
 					if skew >= 3 {
-						sev = SeverityHigh
+						sev = api.ScoreHigh
 					} else if skew == 2 {
-						sev = SeverityMedium
+						sev = api.ScoreMedium
 					}
 					f := Finding{
 						Severity: sev, Analyzer: AnalyzerVersionSkew,
@@ -290,7 +260,7 @@ func analyzeCluster(cs *ClusterSet) []Finding {
 				}
 				if v.Compare(cpVersion) > 0 {
 					f := Finding{
-						Severity: SeverityHigh, Analyzer: AnalyzerVersionSkew,
+						Severity: api.ScoreHigh, Analyzer: AnalyzerVersionSkew,
 						Message: fmt.Sprintf("node group is on %s, ahead of the control plane (%s); "+
 							"EKS does not support nodes newer than the control plane", n.Version, c.Version),
 						Fix: "upgrade the control plane first, or pin the node group back",
@@ -305,7 +275,7 @@ func analyzeCluster(cs *ClusterSet) []Finding {
 		// scope will block at Synced=False forever, invisibly.
 		if n.ClusterName != "" && c != nil && n.ClusterName != c.Name {
 			f := Finding{
-				Severity: SeverityHigh, Analyzer: AnalyzerDanglingRef,
+				Severity: api.ScoreHigh, Analyzer: AnalyzerDanglingRef,
 				Message: fmt.Sprintf("references cluster %q, but the Cluster in this Space is %q",
 					n.ClusterName, c.Name),
 				Fix: "correct clusterNameRef; an unresolvable reference blocks reconciliation indefinitely",
@@ -318,7 +288,7 @@ func analyzeCluster(cs *ClusterSet) []Finding {
 	for _, a := range cs.Addons {
 		if a.ClusterName != "" && c != nil && a.ClusterName != c.Name {
 			out = append(out, Finding{
-				Severity: SeverityHigh, Analyzer: AnalyzerDanglingRef,
+				Severity: api.ScoreHigh, Analyzer: AnalyzerDanglingRef,
 				Cluster: cs.Cluster, Kind: "Addon", Name: a.Name,
 				Space: a.Origin.Space, UnitSlug: a.Origin.UnitSlug,
 				Message: fmt.Sprintf("references cluster %q, but the Cluster in this Space is %q",
@@ -363,7 +333,7 @@ func analyzeConsistency(clusters map[string]*ClusterSet) []Finding {
 			sort.Strings(parts)
 			for _, cs := range group {
 				out = append(out, Finding{
-					Severity: SeverityMedium, Analyzer: AnalyzerInconsistent,
+					Severity: api.ScoreMedium, Analyzer: AnalyzerInconsistent,
 					Cluster: cs.Cluster, Kind: "Cluster", Name: cs.Control.Name,
 					Space: cs.Control.Origin.Space, UnitSlug: cs.Control.Origin.UnitSlug,
 					Message: fmt.Sprintf("clusters in environment %q run different Kubernetes versions (%s)",

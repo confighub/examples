@@ -38,7 +38,7 @@ func newEnsureServiceMonitorCmd() *cobra.Command {
 		Long: `ensure-servicemonitor reads a Service Unit's labels, namespace, and metrics port
 and authors a new ServiceMonitor Unit that selects it. The ServiceMonitor is
 created in the same Space as the Service (its own Unit, per one-resource-per-Unit),
-but not applied — deploying it is a separate 'cub unit apply'.
+but not published — deploying it is a separate 'cub release publish <space>'.
 
 The endpoint port defaults to the Service's metrics port (--port to override).
 Refuses when the Service has no metrics port and no --port. Dry-run unless
@@ -106,8 +106,8 @@ Refuses when the Service has no metrics port and no --port. Dry-run unless
 			if output == outputJSON {
 				return printJSON(out, plan)
 			}
-			fprintln(out, fmt.Sprintf("Created ServiceMonitor Unit %s/%s (revision %d). Apply it to deploy: cub unit apply --space %s %s",
-				ref.spaceSlug, smSlug, created.HeadRevisionNum, ref.spaceSlug, smSlug))
+			fprintln(out, fmt.Sprintf("Created ServiceMonitor Unit %s/%s (revision %d). Publish the Space to deploy: cub release publish %s",
+				ref.spaceSlug, smSlug, created.HeadRevisionNum, ref.spaceSlug))
 			return nil
 		},
 	}

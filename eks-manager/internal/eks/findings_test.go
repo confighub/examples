@@ -6,6 +6,8 @@ package eks
 import (
 	"strings"
 	"testing"
+
+	api "github.com/confighub/sdk/core/function/api"
 )
 
 func findingsFor(t *testing.T, cs *ClusterSet) map[string][]Finding {
@@ -49,7 +51,7 @@ func TestFindings_AutoModeInvariant(t *testing.T) {
 	if len(got[AnalyzerAutoModeInvariant]) != 1 {
 		t.Fatalf("expected an automode-invariant finding, got %+v", got)
 	}
-	if got[AnalyzerAutoModeInvariant][0].Severity != SeverityHigh {
+	if got[AnalyzerAutoModeInvariant][0].Severity != api.ScoreHigh {
 		t.Errorf("severity = %q, want high", got[AnalyzerAutoModeInvariant][0].Severity)
 	}
 
@@ -188,14 +190,14 @@ func TestFindings_VersionSkew(t *testing.T) {
 	tests := []struct {
 		cp, ng string
 		count  int
-		sev    Severity
+		sev    api.Score
 	}{
 		{"1.34", "1.34", 0, ""},
-		{"1.34", "1.33", 1, SeverityLow},
-		{"1.34", "1.32", 1, SeverityMedium},
-		{"1.34", "1.31", 1, SeverityHigh},
+		{"1.34", "1.33", 1, api.ScoreLow},
+		{"1.34", "1.32", 1, api.ScoreMedium},
+		{"1.34", "1.31", 1, api.ScoreHigh},
 		// A node group ahead of its control plane is unsupported by EKS.
-		{"1.33", "1.34", 1, SeverityHigh},
+		{"1.33", "1.34", 1, api.ScoreHigh},
 	}
 	for _, tt := range tests {
 		got := mk(tt.cp, tt.ng)[AnalyzerVersionSkew]
@@ -226,21 +228,21 @@ func TestFindings_Exposure(t *testing.T) {
 
 	// An unrestricted public endpoint is worse than a restricted one.
 	open := mk(func(c *ClusterEntity) { c.EndpointPublicAccess = ptr(true) })
-	if len(open[AnalyzerExposure]) != 1 || open[AnalyzerExposure][0].Severity != SeverityHigh {
+	if len(open[AnalyzerExposure]) != 1 || open[AnalyzerExposure][0].Severity != api.ScoreHigh {
 		t.Errorf("unrestricted public endpoint = %+v, want one high finding", open[AnalyzerExposure])
 	}
 	restricted := mk(func(c *ClusterEntity) {
 		c.EndpointPublicAccess = ptr(true)
 		c.PublicAccessCIDRs = []string{"203.0.113.0/24"}
 	})
-	if len(restricted[AnalyzerExposure]) != 1 || restricted[AnalyzerExposure][0].Severity != SeverityMedium {
+	if len(restricted[AnalyzerExposure]) != 1 || restricted[AnalyzerExposure][0].Severity != api.ScoreMedium {
 		t.Errorf("restricted public endpoint = %+v, want one medium finding", restricted[AnalyzerExposure])
 	}
 	wideOpen := mk(func(c *ClusterEntity) {
 		c.EndpointPublicAccess = ptr(true)
 		c.PublicAccessCIDRs = []string{"0.0.0.0/0"}
 	})
-	if wideOpen[AnalyzerExposure][0].Severity != SeverityHigh {
+	if wideOpen[AnalyzerExposure][0].Severity != api.ScoreHigh {
 		t.Error("0.0.0.0/0 not graded high")
 	}
 
@@ -269,7 +271,7 @@ func TestFindings_DanglingRef(t *testing.T) {
 		t.Errorf("dangling refs = %d, want 2 (node group + addon)", len(got[AnalyzerDanglingRef]))
 	}
 	for _, f := range got[AnalyzerDanglingRef] {
-		if f.Severity != SeverityHigh {
+		if f.Severity != api.ScoreHigh {
 			t.Errorf("dangling ref severity = %q, want high", f.Severity)
 		}
 	}
@@ -336,7 +338,7 @@ func TestFindings_SortedBySeverity(t *testing.T) {
 		t.Fatalf("expected several findings, got %d", len(got))
 	}
 	for i := 1; i < len(got); i++ {
-		if severityRank(got[i-1].Severity) < severityRank(got[i].Severity) {
+		if api.ScoreToNumber[got[i-1].Severity] < api.ScoreToNumber[got[i].Severity] {
 			t.Errorf("findings not sorted worst-first: %q before %q", got[i-1].Severity, got[i].Severity)
 		}
 	}
@@ -347,19 +349,6 @@ func TestFindings_SortedBySeverity(t *testing.T) {
 		}
 		if f.Message == "" {
 			t.Errorf("finding %s has no message", f.Analyzer)
-		}
-	}
-}
-
-func TestValidSeverity(t *testing.T) {
-	for _, s := range []string{"critical", "high", "medium", "low"} {
-		if !ValidSeverity(s) {
-			t.Errorf("%q rejected", s)
-		}
-	}
-	for _, s := range []string{"", "HIGH", "urgent", "info"} {
-		if ValidSeverity(s) {
-			t.Errorf("%q accepted", s)
 		}
 	}
 }

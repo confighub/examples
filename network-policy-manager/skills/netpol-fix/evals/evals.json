@@ -5,7 +5,7 @@
       "id": 1,
       "name": "default-deny-dry-run-then-commit",
       "prompt": "Lock down the payments namespace on prod-cluster with a default-deny.",
-      "expected_output": "Runs preflight, previews `cub-netpol default-deny payments --cluster prod-cluster` (dry-run, shows the YAML), and only on confirmation re-runs with --commit --change-desc. Notes the Unit is created but not applied. Does not kubectl.",
+      "expected_output": "Runs preflight, previews `cub-netpol default-deny payments --cluster prod-cluster` (dry-run, shows the YAML), and only on confirmation re-runs with --commit --change-desc. Notes the Unit is created but not published. Does not kubectl.",
       "files": []
     },
     {
@@ -26,7 +26,7 @@
       "id": 4,
       "name": "routes-apply-elsewhere",
       "prompt": "Now apply that default-deny to the cluster.",
-      "expected_output": "Does not apply from this skill; routes to cub-apply / `cub unit apply` for the rollout, noting netpol-fix only edits stored config.",
+      "expected_output": "Does not apply from this skill; routes to `cub release publish` / the release-publish skill for the rollout, noting netpol-fix only edits stored config.",
       "files": []
     }
   ]

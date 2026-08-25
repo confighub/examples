@@ -28,6 +28,12 @@ import (
 
 const k8sUnitsWhere = "ToolchainType = 'Kubernetes/YAML'"
 
+// ClusterNone is the cluster key for Units the fleet view cannot attribute to
+// a cluster: their Space has no release Target, so there is nothing to name.
+// They group under one bucket rather than each Space standing in for a cluster
+// of its own, which inflated the cluster count with things that are not clusters.
+const ClusterNone = "None"
+
 // resourceQuery is one (whereData, whereResource) pair driving a get-resources
 // invocation. whereData narrows Units server-side by the kind their config
 // carries; whereResource selects which resource types get returned.
@@ -201,7 +207,7 @@ func Load(ctx context.Context, c *cubapi.Client, where string) (*Snapshot, error
 			}
 			cluster := meta.TargetSlug
 			if cluster == "" {
-				cluster = space
+				cluster = ClusterNone
 			}
 			canonical := isCanonicalSpace(meta.SpaceLabels)
 			for _, raw := range decodeResourceList(r.Outputs["ResourceList"]) {

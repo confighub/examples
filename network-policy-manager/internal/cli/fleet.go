@@ -11,7 +11,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/confighub/sdk/cliutil"
-	"github.com/confighub/sdk/core/cubapi"
 
 	"github.com/confighub/examples/network-policy-manager/internal/cub"
 	"github.com/confighub/examples/network-policy-manager/internal/netpol"
@@ -95,7 +94,7 @@ Dry run unless --commit --change-desc.`,
 	}
 	addOutputFlag(cmd, &output)
 	addFilterFlags(cmd, &filter)
-	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "limit to this cluster (Target or Space slug)")
+	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "limit to this cluster (Target slug, or None for Units whose Space has no release Target)")
 	cmd.Flags().BoolVar(&egress, "egress", false, "also deny egress (allowing DNS egress to kube-dns)")
 	commit.Bind(cmd)
 	return cmd
@@ -166,81 +165,3 @@ func reportFleetDefaultDeny(cmd *cobra.Command, items []fleetDenyItem, dryRun bo
 }
 
 // --- promote: pull downstream NetworkPolicy Units up to their upstream ---
-
-func newPromoteCmd() *cobra.Command {
-	var output string
-	var filter filterFlags
-	var commit cliutil.CommitFlags
-	cmd := &cobra.Command{
-		Use:   "promote",
-		Short: "Upgrade downstream NetworkPolicy Units to their upstream head (dry-run unless --commit)",
-		Long: `promote performs an override-preserving upgrade of Kubernetes/YAML Units that are
-behind their upstream (UpstreamRevisionNum < the upstream's head) — the variant
-propagation path: a baseline authored in a base Space flows to the cluster
-Spaces cloned from it, keeping each Space's local customizations.
-
-Scope to the policies you mean with --where (e.g. "Slug LIKE 'default-deny-%'"
-or a Space-label predicate). Dry run unless --commit --change-desc.`,
-		Args: cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			changeDesc, dryRun, err := commit.Validate("promote NetworkPolicy Units from upstream")
-			if err != nil {
-				return err
-			}
-			client, err := cub.Preflight(cmd.Context())
-			if err != nil {
-				return err
-			}
-			where := "ToolchainType = 'Kubernetes/YAML' AND UpstreamRevisionNum > 0"
-			if p := filter.predicate(); p != "" {
-				where += " AND " + p
-			}
-			ch := cubapi.Change{}
-			if !dryRun {
-				ch = cubapi.Change{Description: changeDesc}
-			}
-			res, err := cubapi.UpgradeUnits(cmd.Context(), client, where, ch)
-			if err != nil {
-				return err
-			}
-			return reportPromote(cmd, res, dryRun, output)
-		},
-	}
-	addOutputFlag(cmd, &output)
-	addFilterFlags(cmd, &filter)
-	commit.Bind(cmd)
-	return cmd
-}
-
-func reportPromote(cmd *cobra.Command, res *cubapi.Result, dryRun bool, output string) error {
-	var changed []string
-	for _, o := range res.Outcomes {
-		if !o.Success {
-			return fmt.Errorf("promote failed on %s/%s: %s", o.SpaceSlug, o.UnitSlug, o.Error)
-		}
-		if o.HasMutations {
-			changed = append(changed, o.SpaceSlug+"/"+o.UnitSlug)
-		}
-	}
-	sort.Strings(changed)
-	if output == outputJSON {
-		return printJSON(cmd.OutOrStdout(), map[string]any{"dryRun": dryRun, "changed": changed})
-	}
-	out := cmd.OutOrStdout()
-	if len(changed) == 0 {
-		fprintln(out, "No Units are behind their upstream — nothing to promote.")
-		return nil
-	}
-	verb := "Would upgrade"
-	if !dryRun {
-		verb = "Upgraded"
-	}
-	fprintln(out, fmt.Sprintf("%s %d Unit(s):", verb, len(changed)))
-	for _, u := range changed {
-		fprintln(out, "  "+u)
-	}
-	if dryRun {
-		fprintln(out, "\nRe-run with --commit --change-desc \"…\" to promote.")
-	}
-	return nil
-}

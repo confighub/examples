@@ -8,6 +8,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	api "github.com/confighub/sdk/core/function/api"
 )
 
 // Empty reports whether the selector has no terms.
@@ -56,42 +58,22 @@ func contains(vals []string, v string) bool {
 	return false
 }
 
-// Severity ranks a finding for triage.
-type Severity string
-
-const (
-	SeverityHigh   Severity = "high"
-	SeverityMedium Severity = "medium"
-	SeverityLow    Severity = "low"
-)
-
 // AtLeast reports whether s is at least as severe as threshold.
-func AtLeast(s, threshold Severity) bool {
-	return severityRank(s) >= severityRank(threshold)
-}
-
-func severityRank(s Severity) int {
-	switch s {
-	case SeverityHigh:
-		return 2
-	case SeverityMedium:
-		return 1
-	default:
-		return 0
-	}
+func AtLeast(s, threshold api.Score) bool {
+	return api.ScoreToNumber[s] >= api.ScoreToNumber[threshold]
 }
 
 // Finding is one autoscaling issue.
 type Finding struct {
-	Severity  Severity `json:"severity"`
-	Analyzer  string   `json:"analyzer"`
-	Cluster   string   `json:"cluster"`
-	Namespace string   `json:"namespace,omitempty"`
-	Kind      string   `json:"kind"`
-	Name      string   `json:"name"`
-	Space     string   `json:"space"`
-	UnitSlug  string   `json:"unitSlug"`
-	Message   string   `json:"message"`
+	Severity  api.Score `json:"severity"`
+	Analyzer  string    `json:"analyzer"`
+	Cluster   string    `json:"cluster"`
+	Namespace string    `json:"namespace,omitempty"`
+	Kind      string    `json:"kind"`
+	Name      string    `json:"name"`
+	Space     string    `json:"space"`
+	UnitSlug  string    `json:"unitSlug"`
+	Message   string    `json:"message"`
 }
 
 // autoscalerForWorkload returns the autoscaler targeting a workload (by
@@ -117,7 +99,7 @@ func Findings(clusters map[string]*ClusterAutoscale) []Finding {
 		for _, a := range c.Autoscalers {
 			if a.Pinned() {
 				out = append(out, Finding{
-					Severity: SeverityMedium, Analyzer: "autoscaler-pinned",
+					Severity: api.ScoreMedium, Analyzer: "autoscaler-pinned",
 					Cluster: a.Origin.Cluster, Namespace: a.Namespace, Kind: string(a.Kind), Name: a.Name,
 					Space: a.Origin.Space, UnitSlug: a.Origin.UnitSlug,
 					Message: fmt.Sprintf("min == max (%d) — the autoscaler can't actually scale", *a.Min),
@@ -128,7 +110,7 @@ func Findings(clusters map[string]*ClusterAutoscale) []Finding {
 			a := autoscalerForWorkload(w, c.Autoscalers)
 			if a == nil {
 				out = append(out, Finding{
-					Severity: SeverityLow, Analyzer: "no-autoscaler",
+					Severity: api.ScoreLow, Analyzer: "no-autoscaler",
 					Cluster: w.Origin.Cluster, Namespace: w.Namespace, Kind: w.Kind, Name: w.Name,
 					Space: w.Origin.Space, UnitSlug: w.Origin.UnitSlug,
 					Message: "no HorizontalPodAutoscaler or ScaledObject targets this workload",
@@ -145,7 +127,7 @@ func Findings(clusters map[string]*ClusterAutoscale) []Finding {
 				}
 				if pdbBlocksAtScale(p, *a.Min) {
 					out = append(out, Finding{
-						Severity: SeverityMedium, Analyzer: "pdb-blocks-min-scale",
+						Severity: api.ScoreMedium, Analyzer: "pdb-blocks-min-scale",
 						Cluster: w.Origin.Cluster, Namespace: w.Namespace, Kind: w.Kind, Name: w.Name,
 						Space: w.Origin.Space, UnitSlug: w.Origin.UnitSlug,
 						Message: fmt.Sprintf("PDB %q minAvailable (%s) >= %s minReplicas (%d) — at minimum scale no pod may be voluntarily evicted",
@@ -157,7 +139,7 @@ func Findings(clusters map[string]*ClusterAutoscale) []Finding {
 	}
 	sort.SliceStable(out, func(i, j int) bool {
 		if out[i].Severity != out[j].Severity {
-			return severityRank(out[i].Severity) > severityRank(out[j].Severity)
+			return api.ScoreToNumber[out[i].Severity] > api.ScoreToNumber[out[j].Severity]
 		}
 		if out[i].Cluster != out[j].Cluster {
 			return out[i].Cluster < out[j].Cluster

@@ -63,7 +63,7 @@ Filter with --cluster / --namespace; --uncovered-only shows the gaps.`,
 	}
 	addOutputFlag(cmd, &output)
 	addFilterFlags(cmd, &filter)
-	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "restrict output to this cluster (Target or Space slug)")
+	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "restrict output to this cluster (Target slug, or None for Units whose Space has no release Target)")
 	cmd.Flags().StringVar(&namespaceFilter, "namespace", "", "filter by namespace")
 	cmd.Flags().BoolVar(&uncoveredOnly, "uncovered-only", false, "only metrics Services with no ServiceMonitor")
 	return cmd

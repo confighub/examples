@@ -47,7 +47,7 @@ The rule is a plain **per-resource `vet-cel`** check — a single Unit answers i
 
 ## Tool boundary
 
-Allowed: `guardrails install` (dry-run unless `--commit`), `status`. Not allowed: bypassing gates, `kubectl` mutations, applying to clusters. Fixing flagged workloads is **scheduling-place**.
+Allowed: `guardrails install` (dry-run unless `--commit`), `status`. Not allowed: bypassing gates, `kubectl` mutations, publishing a Release. Fixing flagged workloads is **scheduling-place**.
 
 ## References
 

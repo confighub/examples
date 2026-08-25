@@ -70,7 +70,7 @@ The **namespace-name invariant** (`metadata.namespace == normalizeName(Component
 
 ## Tool boundary
 
-Allowed: `guardrails install/status/annotate` and read commands; `annotate` passes `--change-desc`. Not allowed: bypassing gates, `kubectl`, applying to clusters.
+Allowed: `guardrails install/status/annotate` and read commands; `annotate` passes `--change-desc`. Not allowed: bypassing gates, `kubectl`, publishing a Release.
 
 ## References
 

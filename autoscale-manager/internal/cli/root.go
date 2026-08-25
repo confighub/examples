@@ -65,7 +65,6 @@ are not signed in.`,
 		newConvertCmd(),
 		newProfileCmd(),
 		newFleetEditCmd(),
-		newPromoteCmd(),
 		newGuardrailsCmd(),
 		// Diagnostics
 		newPreflightCmd(),

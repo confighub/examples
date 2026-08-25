@@ -61,7 +61,7 @@ nsmgr-proto-m3  m3app      ScaledObject  web   web             2    10   no     
 - **no-autoscaler** — a Deployment/StatefulSet nothing autoscales.
 
 ```console
-$ cub-autoscale findings -o table --min-severity medium
+$ cub-autoscale findings -o table --min-severity Medium
 No autoscaling findings.
 
 $ cub-autoscale findings -o table --cluster dev-cluster | head -4
@@ -162,8 +162,9 @@ autoscale-test-hpa  yes      -
 fleet-edit hpa-conservative: 1 of 1 Unit(s) would change (dry-run — pass --commit --change-desc to write)
 ```
 
-`promote --component <c>` then carries an autoscaling change from a base Space to
-its downstream environment/region variants (override-preserving).
+Carrying that change on to the Spaces cloned from a base is variant
+promotion, which lives in `cub` and the **promote-release** skill rather than in
+this tool.
 
 ## 7. Enforce with guardrails
 
@@ -200,7 +201,7 @@ blocking later with
   `--owner` / `--layer` / `--variant`. `--cluster` / `--namespace` (on read
   commands) are client-side display filters.
 - **Discipline**: reads default to JSON (`-o table` for humans); writes are
-  dry-run until `--commit --change-desc`; nothing is applied to a cluster (roll
-  out with `cub unit apply` separately); ApplyGates are never bypassed.
+  dry-run until `--commit --change-desc`; nothing is published (roll it out with
+  `cub release publish <space>` separately); ApplyGates are never bypassed.
 - **HPA → KEDA** runs client-side in an embedded executor; deploying ScaledObjects
   needs the KEDA operator in the target cluster.

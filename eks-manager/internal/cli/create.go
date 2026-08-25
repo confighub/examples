@@ -97,8 +97,8 @@ This is the eksctl 'create cluster' analog, with three differences that matter:
   - Availability zones are pinned. eksctl randomizes AZ selection per invocation,
     so the same config yields different infrastructure; here the zones are
     written into the Units, and the same input always produces the same output.
-  - Nothing is applied. The Units are created; rolling them out is a separate,
-    deliberate 'cub unit apply'.
+  - Nothing is published. The Units are created; rolling them out is a
+    separate, deliberate 'cub release publish <space>'.
 
 EKS Auto Mode is the default. It removes the NodeGroup resource entirely, and
 with it the desiredSize-versus-autoscaler conflict that is currently unfixable
@@ -282,7 +282,7 @@ func printCreatePlan(cmd *cobra.Command, plan createPlan, units []eks.GeneratedU
 	}
 	fprintln(out, "")
 	fprintln(out, fmt.Sprintf("Re-run with --commit --change-desc \"…\" to write. Nothing is applied to a cluster;"))
-	fprintln(out, "rolling out is a separate `cub unit apply`.")
+	fprintln(out, "rolling out is a separate `cub release publish`.")
 }
 
 func printCreateResult(cmd *cobra.Command, plan createPlan) {

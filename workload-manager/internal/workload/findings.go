@@ -3,59 +3,43 @@
 
 package workload
 
-import "sort"
+import (
+	"sort"
 
-// Severity ranks a finding for triage.
-type Severity string
-
-const (
-	SeverityHigh   Severity = "high"
-	SeverityMedium Severity = "medium"
-	SeverityLow    Severity = "low"
+	api "github.com/confighub/sdk/core/function/api"
 )
-
-func severityRank(s Severity) int {
-	switch s {
-	case SeverityHigh:
-		return 2
-	case SeverityMedium:
-		return 1
-	default:
-		return 0
-	}
-}
 
 // Finding is one ranked readiness issue on one workload, with enough origin to
 // deep-link and (later) annotate the offending Unit.
 type Finding struct {
-	Severity  Severity `json:"severity"`
-	Analyzer  string   `json:"analyzer"` // the dimension: security | resources | probes | hygiene | availability
-	Cluster   string   `json:"cluster"`
-	Namespace string   `json:"namespace,omitempty"`
-	Kind      string   `json:"kind"`
-	Name      string   `json:"name"`
-	Space     string   `json:"space"`
-	UnitSlug  string   `json:"unitSlug"`
-	Message   string   `json:"message"`
+	Severity  api.Score `json:"severity"`
+	Analyzer  string    `json:"analyzer"` // the dimension: security | resources | probes | hygiene | availability
+	Cluster   string    `json:"cluster"`
+	Namespace string    `json:"namespace,omitempty"`
+	Kind      string    `json:"kind"`
+	Name      string    `json:"name"`
+	Space     string    `json:"space"`
+	UnitSlug  string    `json:"unitSlug"`
+	Message   string    `json:"message"`
 }
 
 // severityFor maps a (dimension, issue-status) pair to a triage severity. A
 // failing security / resources / availability check is high; a failing probe is
 // medium; warnings are one step down (hygiene is always low).
-func severityFor(dimension string, st Status) Severity {
+func severityFor(dimension string, st Status) api.Score {
 	switch dimension {
 	case DimSecurity, DimResources, DimAvailability:
 		if st == StatusFail {
-			return SeverityHigh
+			return api.ScoreHigh
 		}
-		return SeverityMedium
+		return api.ScoreMedium
 	case DimProbes:
 		if st == StatusFail {
-			return SeverityMedium
+			return api.ScoreMedium
 		}
-		return SeverityLow
+		return api.ScoreLow
 	default: // hygiene
-		return SeverityLow
+		return api.ScoreLow
 	}
 }
 
@@ -82,7 +66,7 @@ func Findings(clusters map[string]*ClusterWorkloads) []Finding {
 	}
 	sort.SliceStable(out, func(i, j int) bool {
 		if out[i].Severity != out[j].Severity {
-			return severityRank(out[i].Severity) > severityRank(out[j].Severity)
+			return api.ScoreToNumber[out[i].Severity] > api.ScoreToNumber[out[j].Severity]
 		}
 		if out[i].Cluster != out[j].Cluster {
 			return out[i].Cluster < out[j].Cluster

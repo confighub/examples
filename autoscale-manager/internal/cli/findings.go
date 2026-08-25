@@ -5,8 +5,9 @@ package cli
 
 import (
 	"fmt"
-	"strings"
 	"text/tabwriter"
+
+	api "github.com/confighub/sdk/core/function/api"
 
 	"github.com/spf13/cobra"
 
@@ -41,7 +42,7 @@ func newFindingsCmd() *cobra.Command {
 Canonical base/policy Spaces are excluded from analysis.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			threshold, err := parseSeverity(minSeverity)
+			threshold, err := parseScore(minSeverity)
 			if err != nil {
 				return err
 			}
@@ -63,25 +64,13 @@ Canonical base/policy Spaces are excluded from analysis.`,
 	}
 	addOutputFlag(cmd, &output)
 	addFilterFlags(cmd, &filter)
-	cmd.Flags().StringVar(&minSeverity, "min-severity", "low", "minimum severity to report: low | medium | high")
-	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "restrict output to this cluster (Target or Space slug)")
+	cmd.Flags().StringVar(&minSeverity, "min-severity", string(api.ScoreLow), "minimum severity to report: Low | Medium | High | Critical")
+	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "restrict output to this cluster (Target slug, or None for Units whose Space has no release Target)")
 	cmd.Flags().StringVar(&namespaceFilter, "namespace", "", "restrict output to this namespace")
 	return cmd
 }
 
-func parseSeverity(s string) (autoscale.Severity, error) {
-	switch strings.ToLower(strings.TrimSpace(s)) {
-	case "", "low":
-		return autoscale.SeverityLow, nil
-	case "medium":
-		return autoscale.SeverityMedium, nil
-	case "high":
-		return autoscale.SeverityHigh, nil
-	}
-	return "", fmt.Errorf("invalid --min-severity %q: want low, medium, or high", s)
-}
-
-func buildFindingsReport(snap *snapshot.Snapshot, threshold autoscale.Severity, clusterFilter, namespaceFilter string) findingsReport {
+func buildFindingsReport(snap *snapshot.Snapshot, threshold api.Score, clusterFilter, namespaceFilter string) findingsReport {
 	all := autoscale.Findings(snap.Clusters)
 	kept := make([]autoscale.Finding, 0, len(all))
 	summary := map[string]int{}
@@ -114,5 +103,5 @@ func printFindingsTable(cmd *cobra.Command, r findingsReport) {
 	}
 	_ = tw.Flush()
 	fprintln(cmd.OutOrStdout(), fmt.Sprintf("\n%d findings (high=%d medium=%d low=%d)",
-		r.Total, r.Summary["high"], r.Summary["medium"], r.Summary["low"]))
+		r.Total, r.Summary[string(api.ScoreHigh)], r.Summary[string(api.ScoreMedium)], r.Summary[string(api.ScoreLow)]))
 }

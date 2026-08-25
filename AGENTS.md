@@ -112,13 +112,13 @@ Read-only:
 - `./setup.sh --explain-json`
 - `cub unit get --json`
 - `cub function do --dry-run --json ...`
-- `cub unit apply --dry-run --json ...`
+- `cub release get --json ...`
 
 Mutating:
 
 - `./setup.sh`
 - `./set-target.sh`
-- `cub unit apply`
+- `cub release publish`
 - `cub function do`
 - `cub unit create`
 - `cub space create`

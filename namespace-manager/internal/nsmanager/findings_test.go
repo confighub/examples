@@ -3,7 +3,11 @@
 
 package nsmanager
 
-import "testing"
+import (
+	"testing"
+
+	api "github.com/confighub/sdk/core/function/api"
+)
 
 func findingsByAnalyzer(fs []Finding, analyzer string) []Finding {
 	var out []Finding
@@ -44,7 +48,7 @@ func TestAnalyzeFindings(t *testing.T) {
 		}
 	}
 	// High severity sorts first.
-	if len(fs) > 0 && fs[0].Severity != SeverityHigh {
+	if len(fs) > 0 && fs[0].Severity != api.ScoreHigh {
 		t.Errorf("first finding severity = %q, want high", fs[0].Severity)
 	}
 }

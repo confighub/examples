@@ -17,17 +17,16 @@
     },
     {
       "id": 3,
-      "name": "promote-downstream",
-      "prompt": "Roll the checkout workload fixes downstream to their variant spaces.",
-      "expected_output": "Runs `cub-workload promote --component checkout` dry-run then --commit --change-desc (override-preserving upgrade). No cluster apply.",
-      "files": []
-    },
-    {
-      "id": 4,
       "name": "routes-single-elsewhere",
       "prompt": "Just add a PDB to the web deployment.",
       "expected_output": "Recognizes this is a single-workload fix and routes to workload-harden (`cub-workload ensure-pdb`) rather than fleet-edit.",
       "files": []
+    },
+    {
+      "id": 4,
+      "name": "routes-promotion-elsewhere",
+      "prompt": "Roll the checkout readiness fix downstream to staging and prod.",
+      "expected_output": "Recognizes this is variant propagation, not fleet remediation: cub-workload has no promote command, so it routes to the promote-release skill rather than inventing one, and does not run `cub-workload fleet-edit`."
     }
   ]
 }
