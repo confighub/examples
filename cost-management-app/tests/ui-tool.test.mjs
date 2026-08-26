@@ -17,8 +17,12 @@ assert.equal(workflow.uiTool.authHook, 'useAuth');
 assert.equal(workflow.uiTool.apiHook, 'useConfigHub');
 assert.equal(workflow.uiTool.redirectUri, 'http://localhost:5173/');
 assert.equal(manifest.ui_tool.name, workflow.uiTool.name);
-assert.equal(packageJson.dependencies['@confighub/react-auth'], '^0.1.0');
-assert.equal(packageJson.dependencies['@confighub/api'], '^0.1.0');
+// The app depends on the published SDK packages, at a caret range so a patch or
+// minor release is picked up. Asserting the exact range instead would make every
+// SDK release fail this test, which is what the weekly dependency bump exists to do.
+const caret = /^\^\d+\.\d+\.\d+$/;
+assert.match(packageJson.dependencies['@confighub/react-auth'], caret);
+assert.match(packageJson.dependencies['@confighub/api'], caret);
 assert.equal(packageJson.scripts['ui:dev'], 'vite --host 127.0.0.1 --port 5173 --config vite.config.ts');
 assert.match(index, /ui\/src\/main\.tsx/);
 assert.match(vite, /@vitejs\/plugin-react/);

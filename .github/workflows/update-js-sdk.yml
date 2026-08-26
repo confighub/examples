@@ -1,0 +1,82 @@
+name: Update ConfigHub JS SDK
+
+# Weekly bump of every @confighub/{api,react-auth,rtk-query} requirement in the repo
+# to the latest js-sdk release, as a single pull request. Packages that no longer
+# verify against the new release are left at their current version and listed in the
+# PR body; fixing those is a code change, not a dependency bump.
+#
+# This is the JavaScript counterpart of update-sdk.yml, which does the same for the
+# Go examples. They are separate because the two SDKs release on their own cadences:
+# the Go modules are tagged in lockstep with ConfigHub, while the js-sdk packages
+# carry their own version and ship when that repo decides to.
+#
+# The PR is always branch `chore/update-js-sdk`, force-pushed, so at most one is open
+# at a time. Requires "Allow GitHub Actions to create and approve pull requests" in
+# the repository's Actions settings.
+
+on:
+  schedule:
+    # Mondays, 16:00 UTC — after js-sdk's own Monday spec sync, so a ConfigHub
+    # release that reaches js-sdk and gets published lands here the same week.
+    - cron: '0 16 * * 1'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'js-sdk version to pin to (default: latest on npm)'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Bump SDK packages
+        env:
+          SUMMARY_FILE: ${{ runner.temp }}/js-sdk-update.md
+          VERSION: ${{ inputs.version }}
+        run: |
+          scripts/update-js-sdk.sh $VERSION
+          cat "$SUMMARY_FILE" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Open or update the pull request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SUMMARY_FILE: ${{ runner.temp }}/js-sdk-update.md
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "Every package is already on the latest js-sdk; nothing to open."
+            exit 0
+          fi
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch -C chore/update-js-sdk
+          git commit -am "deps: update ConfigHub JS SDK packages"
+          git push -f origin chore/update-js-sdk
+
+          # --state open matters: gh also resolves the branch to a merged PR, which
+          # would send this week's update to last week's merged one.
+          number="$(gh pr list --head chore/update-js-sdk --state open --json number --jq '.[0].number // empty')"
+          if [ -z "$number" ]; then
+            gh pr create \
+              --base main \
+              --head chore/update-js-sdk \
+              --title 'deps: update ConfigHub JS SDK packages' \
+              --body-file "$SUMMARY_FILE"
+          else
+            # gh pr edit trips over this org's classic Projects; patch via the REST API.
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/pulls/$number" \
+              -f body="$(cat "$SUMMARY_FILE")" >/dev/null
+          fi
