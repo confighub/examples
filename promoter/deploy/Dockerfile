@@ -13,7 +13,14 @@ ENV VITE_OAUTH_CLIENT_ID=$VITE_OAUTH_CLIENT_ID
 # The shared kit is a `file:` dependency of the app, so it has to be in the image
 # at the relative path the manifest names — which makes the build context the
 # repository root rather than the example directory.
+#
+# webkit needs its own install as well as the app's. The app's build typechecks
+# webkit's sources, and module resolution from webkit's directory never reaches
+# the app's node_modules, so without this every import in webkit is unresolvable.
+COPY webkit/package*.json ./webkit/
+RUN npm ci --prefix webkit
 COPY webkit/ ./webkit/
+
 COPY promoter/app/package*.json ./promoter/app/
 WORKDIR /src/promoter/app
 RUN npm ci
