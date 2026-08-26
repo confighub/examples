@@ -19,6 +19,8 @@ import (
 
 	"github.com/confighub/sdk/cliutil"
 	api "github.com/confighub/sdk/core/function/api"
+
+	"github.com/confighub/examples/managerkit"
 )
 
 // Output formats. JSON is the default so the tools compose; table is for humans.
@@ -65,4 +67,12 @@ func ParseScore(s string) (api.Score, error) {
 		return api.ScoreNone, nil
 	}
 	return api.ValidateScore(strings.ToUpper(s[:1]) + strings.ToLower(s[1:]))
+}
+
+// AddProfilesSpaceFlag registers --profiles-space, the Space holding a tool's
+// stored profile Invocations. It defaults to the shared Space, so an operator
+// has one place to look rather than one per tool.
+func AddProfilesSpaceFlag(cmd *cobra.Command, dest *string) {
+	cmd.Flags().StringVar(dest, "profiles-space", managerkit.CommonSpace,
+		"Space holding the profile library; every tool defaults to the same one")
 }

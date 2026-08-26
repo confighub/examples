@@ -17,6 +17,7 @@ import (
 
 	"github.com/confighub/examples/eks-manager/internal/cub"
 	"github.com/confighub/examples/eks-manager/internal/eks"
+	"github.com/confighub/examples/managerkit/guardrails"
 )
 
 // disruptionAttributePrefix must match vet-disruption's default, which looks for
@@ -144,7 +145,8 @@ Dry-run by default; pass --commit to write.`,
 		},
 	}
 	addOutputFlag(cmd, &output)
-	cmd.Flags().StringVar(&space, "space", "eks-policy", "Space to create the Attributes in")
+	cmd.Flags().StringVar(&space, "space", guardrails.DefaultPolicySpace,
+		"Space to create the Attributes in; the same shared policy Space the guardrail Triggers use")
 	cmd.Flags().StringVar(&prefix, "prefix", disruptionAttributePrefix,
 		"attribute-name prefix; must match vet-disruption's attribute-prefix")
 	cmd.Flags().BoolVar(&commit, "commit", false, "create the Attributes (default is dry-run)")

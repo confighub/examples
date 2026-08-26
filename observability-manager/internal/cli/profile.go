@@ -16,10 +16,9 @@ import (
 	api "github.com/confighub/sdk/core/function/api"
 	goclientnew "github.com/confighub/sdk/core/openapi/goclient-new"
 
+	"github.com/confighub/examples/managerkit/clikit"
 	"github.com/confighub/examples/observability-manager/internal/cub"
 )
-
-const profilesSpace = "observability-profiles"
 
 type profileParam struct {
 	name     string
@@ -57,7 +56,7 @@ func newProfileCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "profile",
 		Short: "The observability profile library — reusable, parameterized edits (stored Invocations)",
-		Long: `profile manages the observability-profiles Space: named edits stored as ConfigHub
+		Long: `profile manages the profile library (--profiles-space): named edits stored as ConfigHub
 Invocations (e.g. otel-sidecar, which find-or-appends an otel-collector sidecar
 container via set-path). 'profile apply' invokes one over a workload, dry-run by
 default.`,
@@ -67,9 +66,10 @@ default.`,
 }
 
 func newProfileInstallCmd() *cobra.Command {
-	return &cobra.Command{
+	var profilesSpace string
+	cmd := &cobra.Command{
 		Use:   "install",
-		Short: "Create the observability-profiles Space and seed the default profiles",
+		Short: "Create the profile library Space and seed the default profiles",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -96,6 +96,8 @@ func newProfileInstallCmd() *cobra.Command {
 			return nil
 		},
 	}
+	clikit.AddProfilesSpaceFlag(cmd, &profilesSpace)
+	return cmd
 }
 
 func buildInvocation(spaceID goclientnew.UUID, spec profileSpec) goclientnew.Invocation {
@@ -122,10 +124,11 @@ func buildInvocation(spaceID goclientnew.UUID, spec profileSpec) goclientnew.Inv
 }
 
 func newProfileListCmd() *cobra.Command {
+	var profilesSpace string
 	var output string
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "List the profiles in the observability-profiles Space",
+		Short: "List the profiles in the profile library",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -172,10 +175,12 @@ func newProfileListCmd() *cobra.Command {
 		},
 	}
 	addOutputFlag(cmd, &output)
+	clikit.AddProfilesSpaceFlag(cmd, &profilesSpace)
 	return cmd
 }
 
 func newProfileApplyCmd() *cobra.Command {
+	var profilesSpace string
 	var output string
 	var params []string
 	var commit cliutil.CommitFlags
@@ -223,6 +228,7 @@ otel-sidecar). Dry-run unless --commit --change-desc.`,
 	addOutputFlag(cmd, &output)
 	commit.Bind(cmd)
 	cmd.Flags().StringArrayVar(&params, "param", nil, "profile parameter as name=value (repeatable)")
+	clikit.AddProfilesSpaceFlag(cmd, &profilesSpace)
 	return cmd
 }
 

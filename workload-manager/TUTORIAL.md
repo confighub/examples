@@ -204,10 +204,10 @@ Seed the library once per org, then list it:
 
 ```console
 $ cub-workload profile install
-Space workload-profiles ready
-Profile workload-profiles/resources-small ready
+Space common ready
+Profile common/resources-small ready
 ...
-Profile workload-profiles/termination-message-policy ready
+Profile common/termination-message-policy ready
 
 $ cub-workload profile list -o table
 PROFILE                     FUNCTION                                     PARAMS     DESCRIPTION
@@ -247,7 +247,7 @@ Spaces that already select Triggers their own way rather than clobbering them.
 
 ```console
 $ cub-workload guardrails install -o table
-Plan (dry-run) — policy pack "workload-policy", filter "workload-policy/workload-guardrails"
+Plan (dry-run) — policy pack "common", filter "common/workload-guardrails"
   triggers: workload-has-limits, workload-runs-nonroot, workload-termination-message-policy, workload-pdb-coverage
   spaces to wire (0):
   already wired (1): platform-dev
@@ -264,7 +264,7 @@ $ cub-workload guardrails status -o table       # Units now carrying ApplyWarnin
 ```
 
 Triggers install advisory (`Warn=true`); promote one to blocking later with
-`cub trigger update <slug> --space workload-policy --unwarn`.
+`cub trigger update <slug> --space common --unwarn`.
 
 ## Reference
 

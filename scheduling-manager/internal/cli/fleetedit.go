@@ -11,12 +11,14 @@ import (
 	"github.com/confighub/sdk/cliutil"
 	"github.com/confighub/sdk/core/cubapi"
 
+	"github.com/confighub/examples/managerkit/clikit"
 	"github.com/confighub/examples/scheduling-manager/internal/cub"
 )
 
 const workloadKindsWhereData = "kind IN ('Deployment', 'StatefulSet', 'DaemonSet', 'ReplicaSet', 'Job', 'CronJob', 'Pod')"
 
 func newFleetEditCmd() *cobra.Command {
+	var profilesSpace string
 	var output string
 	var filter filterFlags
 	var profileSlug string
@@ -25,8 +27,7 @@ func newFleetEditCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "fleet-edit --profile <slug> [--where …]",
 		Short: "Apply a placement profile across a selector of workloads (bulk, dry-run unless --commit)",
-		Long: `fleet-edit applies a placement profile (a stored Invocation from the
-scheduling-profiles Space) to every workload Unit matching a selector, in one
+		Long: `fleet-edit applies a placement profile (a stored Invocation from the profile library) to every workload Unit matching a selector, in one
 server-side operation. Scoped to pod-bearing workload kinds.
 
 Scope with --where and the label shorthands (e.g. --environment prod). Supply
@@ -77,5 +78,6 @@ Example: pin every prod ml workload to the gpu pool —
 	commit.Bind(cmd)
 	cmd.Flags().StringVar(&profileSlug, "profile", "", "placement profile (stored Invocation) to apply (required)")
 	cmd.Flags().StringArrayVar(&params, "param", nil, "profile parameter as name=value (repeatable)")
+	clikit.AddProfilesSpaceFlag(cmd, &profilesSpace)
 	return cmd
 }

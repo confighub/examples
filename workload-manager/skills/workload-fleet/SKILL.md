@@ -9,7 +9,7 @@ allowed-tools: Bash(cub-workload --help) Bash(cub-workload * --help) Bash(cub au
 
 Apply a fix across **many** workloads and manage the reusable **profile library** — as data, dry-run by default. Two surfaces:
 
-- **`profile install | list | apply`** — the profile library: named, parameterized edits stored as ConfigHub Invocations in the `workload-profiles` Space (`resources-small/medium/large`, `harden-restricted`, `probes-http`, `anti-affinity-soft`, `termination-message-policy`). `install` seeds them (once per org); `apply <slug> <space>/<unit>` invokes one over a single workload.
+- **`profile install | list | apply`** — the profile library: named, parameterized edits stored as ConfigHub Invocations in the `common` Space (`resources-small/medium/large`, `harden-restricted`, `probes-http`, `anti-affinity-soft`, `termination-message-policy`). `install` seeds them (once per org); `apply <slug> <space>/<unit>` invokes one over a single workload.
 - **`fleet-edit --profile <slug> [--where/shorthands] [--param]`** — applies a profile to *every* workload matching a selector in one server-side operation (the bulk analog of `profile apply`), scoped to workload kinds.
 
 All **edit/create Units but do not publish them**.

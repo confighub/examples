@@ -100,8 +100,8 @@ then list it:
 
 ```console
 $ cub-observability profile install
-Space observability-profiles ready
-Profile observability-profiles/otel-sidecar ready
+Space common ready
+Profile common/otel-sidecar ready
 
 $ cub-observability profile list -o table
 PROFILE       FUNCTION  PARAMS  DESCRIPTION
@@ -137,7 +137,7 @@ $ cub-observability guardrails status -o table           # Units now carrying wa
 ```
 
 Promote the rule to blocking later with
-`cub trigger update servicemonitor-coverage --space observability-policy --unwarn`.
+`cub trigger update servicemonitor-coverage --space common --unwarn`.
 
 ## Reference
 

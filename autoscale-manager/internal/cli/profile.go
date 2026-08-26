@@ -17,10 +17,8 @@ import (
 	goclientnew "github.com/confighub/sdk/core/openapi/goclient-new"
 
 	"github.com/confighub/examples/autoscale-manager/internal/cub"
+	"github.com/confighub/examples/managerkit/clikit"
 )
-
-// profilesSpace holds the parameterized autoscaling profiles (stored Invocations).
-const profilesSpace = "autoscale-profiles"
 
 const profileDescAnnotation = "autoscale.confighub.com/description"
 
@@ -82,7 +80,7 @@ func newProfileCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "profile",
 		Short: "The autoscaling profile library — reusable, parameterized edits (stored Invocations)",
-		Long: `profile manages the autoscale-profiles Space: named autoscaling edits stored as
+		Long: `profile manages the profile library (--profiles-space): named autoscaling edits stored as
 ConfigHub Invocations (e.g. hpa-conservative, hpa-aggressive, hpa-range).
 'profile apply' invokes one over an HPA Unit, dry-run by default.`,
 	}
@@ -91,9 +89,10 @@ ConfigHub Invocations (e.g. hpa-conservative, hpa-aggressive, hpa-range).
 }
 
 func newProfileInstallCmd() *cobra.Command {
-	return &cobra.Command{
+	var profilesSpace string
+	cmd := &cobra.Command{
 		Use:   "install",
-		Short: "Create the autoscale-profiles Space and seed the default profiles",
+		Short: "Create the profile library Space and seed the default profiles",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -120,6 +119,8 @@ func newProfileInstallCmd() *cobra.Command {
 			return nil
 		},
 	}
+	clikit.AddProfilesSpaceFlag(cmd, &profilesSpace)
+	return cmd
 }
 
 func buildInvocation(spaceID goclientnew.UUID, spec profileSpec) goclientnew.Invocation {
@@ -146,10 +147,11 @@ func buildInvocation(spaceID goclientnew.UUID, spec profileSpec) goclientnew.Inv
 }
 
 func newProfileListCmd() *cobra.Command {
+	var profilesSpace string
 	var output string
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "List the autoscaling profiles in the autoscale-profiles Space",
+		Short: "List the autoscaling profiles in the profile library",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -202,10 +204,12 @@ func newProfileListCmd() *cobra.Command {
 		},
 	}
 	addOutputFlag(cmd, &output)
+	clikit.AddProfilesSpaceFlag(cmd, &profilesSpace)
 	return cmd
 }
 
 func newProfileApplyCmd() *cobra.Command {
+	var profilesSpace string
 	var output string
 	var params []string
 	var commit cliutil.CommitFlags
@@ -254,6 +258,7 @@ Dry-run unless --commit --change-desc; never bypasses ApplyGates.`,
 	addOutputFlag(cmd, &output)
 	commit.Bind(cmd)
 	cmd.Flags().StringArrayVar(&params, "param", nil, "profile parameter as name=value (repeatable)")
+	clikit.AddProfilesSpaceFlag(cmd, &profilesSpace)
 	return cmd
 }
 

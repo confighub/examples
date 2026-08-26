@@ -12,12 +12,14 @@ import (
 	"github.com/confighub/sdk/core/cubapi"
 
 	"github.com/confighub/examples/autoscale-manager/internal/cub"
+	"github.com/confighub/examples/managerkit/clikit"
 )
 
 // autoscalerKindsWhereData scopes fleet-edit to HPA / ScaledObject resources.
 const autoscalerKindsWhereData = "kind IN ('HorizontalPodAutoscaler', 'ScaledObject')"
 
 func newFleetEditCmd() *cobra.Command {
+	var profilesSpace string
 	var output string
 	var filter filterFlags
 	var profileSlug string
@@ -26,8 +28,7 @@ func newFleetEditCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "fleet-edit --profile <slug> [--where …]",
 		Short: "Apply an autoscaling profile across a selector of HPA Units (bulk, dry-run unless --commit)",
-		Long: `fleet-edit applies an autoscaling profile (a stored Invocation from the
-autoscale-profiles Space) to every autoscaler Unit matching a selector, in one
+		Long: `fleet-edit applies an autoscaling profile (a stored Invocation from the profile library) to every autoscaler Unit matching a selector, in one
 server-side operation. Scoped to HorizontalPodAutoscaler / ScaledObject Units.
 
 Scope with --where and the label shorthands (e.g. --environment prod). Supply
@@ -78,5 +79,6 @@ Example: set every prod HPA to scale out early —
 	commit.Bind(cmd)
 	cmd.Flags().StringVar(&profileSlug, "profile", "", "autoscaling profile (stored Invocation) to apply (required)")
 	cmd.Flags().StringArrayVar(&params, "param", nil, "profile parameter as name=value (repeatable)")
+	clikit.AddProfilesSpaceFlag(cmd, &profilesSpace)
 	return cmd
 }

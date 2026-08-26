@@ -95,10 +95,10 @@ Invocations:
 
 ```console
 $ cub-autoscale profile install
-Space autoscale-profiles ready
-Profile autoscale-profiles/hpa-conservative ready
-Profile autoscale-profiles/hpa-aggressive ready
-Profile autoscale-profiles/hpa-range ready
+Space common ready
+Profile common/hpa-conservative ready
+Profile common/hpa-aggressive ready
+Profile common/hpa-range ready
 
 $ cub-autoscale profile list -o table
 PROFILE           FUNCTION  PARAMS   DESCRIPTION
@@ -168,14 +168,14 @@ this tool.
 
 ## 7. Enforce with guardrails
 
-`guardrails install` stands up two `Warn=true` Triggers in an `autoscale-policy`
+`guardrails install` stands up two `Warn=true` Triggers in an `common`
 Space and wires in-scope Spaces to them. It's dry-run by default and conservative —
 it skips Spaces that already select Triggers their own way:
 
 ```console
 $ cub-autoscale guardrails install --commit -o table
-Policy pack ready in autoscale-policy.
-Applied — policy pack "autoscale-policy", filter "autoscale-policy/autoscale-guardrails"
+Policy pack ready in common.
+Applied — policy pack "common", filter "common/autoscale-guardrails"
   triggers: autoscaler-not-pinned, schema-valid
   ...
 ```
@@ -192,7 +192,7 @@ $ cub function do --space nsmgr-proto-m3 --where "Slug = 'web-hpa'" vet-schemas
 
 `guardrails status -o table` lists Units now carrying warnings. Promote a rule to
 blocking later with
-`cub trigger update autoscaler-not-pinned --space autoscale-policy --unwarn`.
+`cub trigger update autoscaler-not-pinned --space common --unwarn`.
 
 ## Reference
 
