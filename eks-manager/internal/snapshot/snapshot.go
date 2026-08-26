@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"regexp"
-	"sort"
 	"strings"
 
 	"github.com/confighub/sdk/core/cubapi"
@@ -45,12 +44,26 @@ const SpaceLabelCluster = "Cluster"
 // to be optional.
 const maxFilterLength = 8192
 
+// unitInclude expands the two related entities the snapshot cannot read off the
+// Unit row. Space is included for its Labels, which mark a canonical base/policy
+// Space -- not for its slug, which the Unit carries as SpaceSlug. Target is
+// included for its slug, the cluster key, which the Unit has no field for.
+const unitInclude = "SpaceID,TargetID"
+
 // unitSelectFields are the Unit fields UnitMeta carries. Naming them keeps a
 // fleet-wide list from serializing every column of every Unit; it is the bulk of
 // what the snapshot costs.
-const unitSelectFields = "UnitID,SpaceID,Slug,TargetID,Labels,ApplyGates,ApplyWarnings," +
+const unitSelectFields = "UnitID,SpaceID,SpaceSlug,Slug,TargetID,Labels,ApplyGates,ApplyWarnings," +
 	"HeadRevisionNum,LastAppliedRevisionNum,LiveRevisionNum," +
 	"UpstreamRevisionNum,LastChangeDescription"
+
+// resourceOrderBy makes the fetch reproducible. An unordered query comes back in
+// "the database's default order", which is not a promise, and the analyzers'
+// own sorts tie-break on the order they were handed. ResourceID is the primary
+// key, so ordering by it alone is total -- and order_by takes only one field:
+// a comma-separated list is documented but reaches SQL as a single quoted
+// identifier and fails with a 500.
+var resourceOrderBy = "ResourceID"
 
 // resourceTypePatterns match the ResourceTypes the EKS model needs, one per
 // Crossplane API group.
@@ -184,10 +197,9 @@ func Load(ctx context.Context, c *cubapi.Client, where string) (*Snapshot, error
 		if eu.Unit.TargetID != nil {
 			targetID = eu.Unit.TargetID.String()
 		}
-		var spaceSlug string
+		spaceSlug := eu.Unit.SpaceSlug
 		var spaceLabels map[string]string
 		if eu.Space != nil {
-			spaceSlug = eu.Space.Slug
 			spaceLabels = eu.Space.Labels
 		}
 		targetSlug := ""
@@ -258,23 +270,6 @@ func Load(ctx context.Context, c *cubapi.Client, where string) (*Snapshot, error
 		})
 	}
 
-	// One query returns rows in whatever order the server chose. Sorting here
-	// keeps every downstream view reproducible run to run, including the
-	// findings analyzers, which tie-break on input order.
-	sort.Slice(resources, func(i, j int) bool {
-		a, b := resources[i].Origin, resources[j].Origin
-		if a.Cluster != b.Cluster {
-			return a.Cluster < b.Cluster
-		}
-		if a.Space != b.Space {
-			return a.Space < b.Space
-		}
-		if a.UnitSlug != b.UnitSlug {
-			return a.UnitSlug < b.UnitSlug
-		}
-		return a.ResourceName < b.ResourceName
-	})
-
 	// Canonical definitions stay out of cluster analysis.
 	var forAnalysis []eks.FleetResource
 	for _, r := range resources {
@@ -304,7 +299,7 @@ func Load(ctx context.Context, c *cubapi.Client, where string) (*Snapshot, error
 // --select yields only a small default field set.
 func listUnits(ctx context.Context, c *cubapi.Client, where string) ([]*goclientnew.ExtendedUnit, error) {
 	return cubapi.ListUnits(ctx, c, cubapi.NewWhere(where),
-		cubapi.ListOpts{Include: "SpaceID,TargetID", Select: unitSelectFields})
+		cubapi.ListOpts{Include: unitInclude, Select: unitSelectFields})
 }
 
 func isZeroUUID(id goclientnew.UUID) bool {
@@ -346,5 +341,6 @@ func listResources(ctx context.Context, c *cubapi.Client, unitIDs []goclientnew.
 	// Target slug comes from the Unit metadata already loaded. No RawData
 	// either: Data is the resource's configuration as parsed JSON, which is
 	// what the analyzers walk.
-	return cubapi.ListResources(ctx, c, where, cubapi.ListOpts{})
+	return cubapi.ListResources(ctx, c, where, cubapi.ListOpts{},
+		func(p *goclientnew.ListAllResourcesParams) { p.OrderBy = &resourceOrderBy })
 }
