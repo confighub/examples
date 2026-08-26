@@ -5,16 +5,11 @@ package cli
 
 // This tool's guardrail pack. The mechanism -- policy Space, Triggers, shared
 // Filter, wiring each in-scope Space, and reporting the Units a Trigger marked
-// -- is managerkit/guardrails'. What is this tool's is the rules, and the annotate command that feeds one of them.
+// -- is managerkit/guardrails'. What is this tool's is the rules, and which
+// Units the annotate command has something to say about.
 
 import (
 	"context"
-	"sort"
-
-	"fmt"
-	"github.com/confighub/examples/observability-manager/internal/observability"
-	"github.com/confighub/examples/observability-manager/internal/snapshot"
-	"github.com/confighub/sdk/cliutil"
 
 	"github.com/spf13/cobra"
 
@@ -22,6 +17,8 @@ import (
 
 	"github.com/confighub/examples/managerkit/guardrails"
 	"github.com/confighub/examples/observability-manager/internal/cub"
+	"github.com/confighub/examples/observability-manager/internal/observability"
+	"github.com/confighub/examples/observability-manager/internal/snapshot"
 )
 
 // coverageAnnotation is written by `guardrails annotate` onto each uncovered
@@ -62,88 +59,42 @@ finding onto each uncovered metrics-Service Unit, and this Trigger turns it into
 an advisory ApplyWarning. Triggers are Warn=true; promote to blocking with
   cub trigger update servicemonitor-coverage --space observability-policy --unwarn`,
 	}
-	cmd.AddCommand(pack.InstallCmd(preflight), pack.StatusCmd(preflight), newGuardrailsAnnotateCmd())
+	cmd.AddCommand(pack.InstallCmd(preflight), pack.StatusCmd(preflight), pack.AnnotateCmd(preflight, annotateSpec))
 	return cmd
 }
 
-type annotateResult struct {
-	Cluster   string `json:"cluster"`
-	Namespace string `json:"namespace"`
-	Unit      string `json:"unit"`
-	Service   string `json:"service"`
-	OK        bool   `json:"ok"`
-	Error     string `json:"error,omitempty"`
-}
-
-func newGuardrailsAnnotateCmd() *cobra.Command {
-	var output, clusterFilter string
-	var filter filterFlags
-	var commit cliutil.CommitFlags
-	cmd := &cobra.Command{
-		Use:   "annotate",
-		Short: "Annotate each uncovered metrics-Service Unit with a coverage finding (dry-run unless --commit)",
-		Long: `annotate runs the coverage analysis and writes an observability.confighub.com/
+// annotateSpec is the observability half of `guardrails annotate`: which Service
+// Units nothing scrapes, and what to write on them. The rest of the command is
+// managerkit/guardrails'.
+var annotateSpec = guardrails.AnnotateSpec{
+	Key:   coverageAnnotation,
+	Noun:  "Service Unit",
+	Short: "Annotate each uncovered metrics-Service Unit with a coverage finding (dry-run unless --commit)",
+	Long: `annotate runs the coverage analysis and writes an observability.confighub.com/
 coverage annotation onto each metrics-exposing Service Unit that no ServiceMonitor
-selects. Paired with the servicemonitor-coverage Trigger from 'guardrails
-install', this turns the cross-Unit coverage finding into an advisory ApplyWarning.
+selects. Paired with the servicemonitor-coverage rule from 'guardrails install',
+this turns the cross-Unit coverage finding into an advisory ApplyWarning.
 
 Re-run after adding ServiceMonitors. Dry run unless --commit --change-desc.`,
-		Args: cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			changeDesc, dryRun, err := commit.Validate("annotate Service Units with ServiceMonitor-coverage findings")
-			if err != nil {
-				return err
+	Targets: func(ctx context.Context, c *cubapi.Client, where, cluster string) ([]guardrails.Target, error) {
+		snap, err := snapshot.Load(ctx, c, where)
+		if err != nil {
+			return nil, err
+		}
+		var out []guardrails.Target
+		for _, r := range observability.AnalyzeCoverage(snap.Clusters) {
+			if r.Covered || r.SpaceID == "" || r.UnitSlug == "" {
+				continue
 			}
-			client, err := cub.Preflight(cmd.Context())
-			if err != nil {
-				return err
+			if cluster != "" && r.Cluster != cluster {
+				continue
 			}
-			snap, err := snapshot.Load(cmd.Context(), client, filter.Predicate())
-			if err != nil {
-				return err
-			}
-			var results []annotateResult
-			for _, r := range observability.AnalyzeCoverage(snap.Clusters) {
-				if r.Covered || r.SpaceID == "" || r.UnitSlug == "" {
-					continue
-				}
-				if clusterFilter != "" && r.Cluster != clusterFilter {
-					continue
-				}
-				ar := annotateResult{Cluster: r.Cluster, Namespace: r.Namespace, Unit: r.UnitSlug, Service: r.Service}
-				if !dryRun {
-					err := guardrails.Annotate(cmd.Context(), client, r.SpaceID, r.UnitSlug, coverageAnnotation, "uncovered", changeDesc)
-					ar.OK = err == nil
-					if err != nil {
-						ar.Error = err.Error()
-					}
-				}
-				results = append(results, ar)
-			}
-			sort.Slice(results, func(i, j int) bool {
-				if results[i].Cluster != results[j].Cluster {
-					return results[i].Cluster < results[j].Cluster
-				}
-				return results[i].Unit < results[j].Unit
+			out = append(out, guardrails.Target{
+				SpaceID: r.SpaceID, UnitSlug: r.UnitSlug, Value: "uncovered",
+				Cluster: r.Cluster, Namespace: r.Namespace,
+				Detail: "service: " + r.Service,
 			})
-			if output == outputJSON {
-				return printJSON(cmd.OutOrStdout(), results)
-			}
-			out := cmd.OutOrStdout()
-			for _, r := range results {
-				fprintln(out, fmt.Sprintf("%s/%s  %s  (service: %s)", r.Cluster, dash(r.Namespace), r.Unit, r.Service))
-			}
-			if dryRun {
-				fprintln(out, fmt.Sprintf("\nDry run — %d Service Unit(s) would be annotated. Re-run with --commit --change-desc \"…\".", len(results)))
-			} else {
-				fprintln(out, fmt.Sprintf("\nAnnotated %d Service Unit(s).", len(results)))
-			}
-			return nil
-		},
-	}
-	addOutputFlag(cmd, &output)
-	addFilterFlags(cmd, &filter)
-	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "only annotate Units in this cluster")
-	commit.Bind(cmd)
-	return cmd
+		}
+		return out, nil
+	},
 }

@@ -5,16 +5,11 @@ package cli
 
 // This tool's guardrail pack. The mechanism -- policy Space, Triggers, shared
 // Filter, wiring each in-scope Space, and reporting the Units a Trigger marked
-// -- is managerkit/guardrails'. What is this tool's is the rules, and the annotate command that feeds one of them.
+// -- is managerkit/guardrails'. What is this tool's is the rules, and which
+// Units the annotate command has something to say about.
 
 import (
 	"context"
-	"sort"
-
-	"fmt"
-	"github.com/confighub/examples/namespace-manager/internal/nsmanager"
-	"github.com/confighub/examples/namespace-manager/internal/snapshot"
-	"github.com/confighub/sdk/cliutil"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -23,6 +18,8 @@ import (
 
 	"github.com/confighub/examples/managerkit/guardrails"
 	"github.com/confighub/examples/namespace-manager/internal/cub"
+	"github.com/confighub/examples/namespace-manager/internal/nsmanager"
+	"github.com/confighub/examples/namespace-manager/internal/snapshot"
 )
 
 // findingAnnotation is written by `guardrails annotate` onto the Namespace Unit
@@ -74,99 +71,47 @@ The namespace-name invariant (metadata.namespace == normalizeName(Component)) is
 enforced separately, by a cluster-selected mutating set-namespace Trigger — the
 promotable active-correction option, wired outside this advisory pack.`,
 	}
-	cmd.AddCommand(pack.InstallCmd(preflight), pack.StatusCmd(preflight), newGuardrailsAnnotateCmd())
+	cmd.AddCommand(pack.InstallCmd(preflight), pack.StatusCmd(preflight), pack.AnnotateCmd(preflight, annotateSpec))
 	return cmd
 }
 
-type annotateResult struct {
-	Cluster   string `json:"cluster"`
-	Namespace string `json:"namespace"`
-	Unit      string `json:"unit"`
-	Finding   string `json:"finding"`
-	OK        bool   `json:"ok"`
-	Error     string `json:"error,omitempty"`
-}
-
-func newGuardrailsAnnotateCmd() *cobra.Command {
-	var output, clusterFilter string
-	var filter filterFlags
-	var commit cliutil.CommitFlags
-	cmd := &cobra.Command{
-		Use:   "annotate",
-		Short: "Write a finding annotation onto the Namespace Unit of each incomplete namespace (dry-run unless --commit)",
-		Long: `annotate runs the envelope analysis and writes a namespace.confighub.com/finding
+// annotateSpec is the namespace half of `guardrails annotate`: which namespaces
+// have an incomplete envelope, and what to write on their Namespace Unit. The
+// rest of the command is managerkit/guardrails'.
+var annotateSpec = guardrails.AnnotateSpec{
+	Key:   findingAnnotation,
+	Noun:  "Namespace Unit",
+	Short: "Write a finding annotation onto the Namespace Unit of each incomplete namespace (dry-run unless --commit)",
+	Long: `annotate runs the envelope analysis and writes a namespace.confighub.com/finding
 annotation (value = the missing members) onto the v1/Namespace Unit of each
-incomplete namespace. Paired with the namespace-envelope-finding Trigger from
+incomplete namespace. Paired with the namespace-envelope-finding rule from
 'guardrails install', this turns a set-aware finding into an advisory
-ApplyWarning — the manager cannot set warnings directly, only a failed Trigger
-can.
+ApplyWarning — the manager cannot set warnings directly, only a failed rule can.
 
 Only namespaces that have a Namespace Unit are annotated (there is nowhere else
-to put the annotation). Re-run after fixing config. Dry run unless
---commit --change-desc.`,
-		Args: cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			changeDesc, dryRun, err := commit.Validate("annotate Namespace Units with envelope findings")
-			if err != nil {
-				return err
+to put the annotation). Re-run after fixing config. Dry run unless --commit
+--change-desc.`,
+	Targets: func(ctx context.Context, c *cubapi.Client, where, cluster string) ([]guardrails.Target, error) {
+		snap, err := snapshot.Load(ctx, c, where)
+		if err != nil {
+			return nil, err
+		}
+		var out []guardrails.Target
+		for _, cl := range snap.Clusters {
+			if cluster != "" && cl.Cluster != cluster {
+				continue
 			}
-			client, err := cub.Preflight(cmd.Context())
-			if err != nil {
-				return err
-			}
-			snap, err := snapshot.Load(cmd.Context(), client, filter.Predicate())
-			if err != nil {
-				return err
-			}
-
-			var results []annotateResult
-			for _, c := range snap.Clusters {
-				if clusterFilter != "" && c.Cluster != clusterFilter {
-					continue
+			for _, e := range nsmanager.AnalyzeCluster(cl) {
+				if e.Complete || e.UnitSlug == "" || e.SpaceID == "" {
+					continue // complete, or no Namespace Unit to annotate
 				}
-				for _, e := range nsmanager.AnalyzeCluster(c) {
-					if e.Complete || e.UnitSlug == "" || e.SpaceID == "" {
-						continue // complete, or no Namespace Unit to annotate
-					}
-					r := annotateResult{Cluster: e.Cluster, Namespace: e.Namespace, Unit: e.UnitSlug, Finding: strings.Join(e.Missing, ",")}
-					if !dryRun {
-						err := guardrails.Annotate(cmd.Context(), client, e.SpaceID, e.UnitSlug, findingAnnotation, r.Finding, changeDesc)
-						r.OK = err == nil
-						if err != nil {
-							r.Error = err.Error()
-						}
-					}
-					results = append(results, r)
-				}
+				out = append(out, guardrails.Target{
+					SpaceID: e.SpaceID, UnitSlug: e.UnitSlug,
+					Value:   strings.Join(e.Missing, ","),
+					Cluster: e.Cluster, Namespace: e.Namespace,
+				})
 			}
-			sort.Slice(results, func(i, j int) bool {
-				if results[i].Cluster != results[j].Cluster {
-					return results[i].Cluster < results[j].Cluster
-				}
-				return results[i].Namespace < results[j].Namespace
-			})
-
-			if output == outputJSON {
-				return printJSON(cmd.OutOrStdout(), results)
-			}
-			out := cmd.OutOrStdout()
-			for _, r := range results {
-				fprintln(out, fmt.Sprintf("%s/%s  %s  (finding: %s)", r.Cluster, r.Namespace, r.Unit, r.Finding))
-			}
-			if dryRun {
-				fprintln(out, fmt.Sprintf("\nDry run — %d Namespace Unit(s) would be annotated. Re-run with --commit --change-desc \"…\".", len(results)))
-			} else {
-				fprintln(out, fmt.Sprintf("\nAnnotated %d Namespace Unit(s).", len(results)))
-			}
-			return nil
-		},
-	}
-	addOutputFlag(cmd, &output)
-	addFilterFlags(cmd, &filter)
-	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "only annotate Units in this cluster")
-	commit.Bind(cmd)
-	return cmd
+		}
+		return out, nil
+	},
 }
-
-// annotateUnit sets the finding annotation on one Unit via the set-annotation
-// function (a committed Unit-data mutation).

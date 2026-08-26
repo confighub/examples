@@ -5,16 +5,11 @@ package cli
 
 // This tool's guardrail pack. The mechanism -- policy Space, Triggers, shared
 // Filter, wiring each in-scope Space, and reporting the Units a Trigger marked
-// -- is managerkit/guardrails'. What is this tool's is the rules, and the annotate command that feeds one of them.
+// -- is managerkit/guardrails'. What is this tool's is the rules, and which
+// Units the annotate command has something to say about.
 
 import (
 	"context"
-	"sort"
-
-	"fmt"
-	"github.com/confighub/examples/workload-manager/internal/snapshot"
-	"github.com/confighub/examples/workload-manager/internal/workload"
-	"github.com/confighub/sdk/cliutil"
 
 	"github.com/spf13/cobra"
 
@@ -22,6 +17,8 @@ import (
 
 	"github.com/confighub/examples/managerkit/guardrails"
 	"github.com/confighub/examples/workload-manager/internal/cub"
+	"github.com/confighub/examples/workload-manager/internal/snapshot"
+	"github.com/confighub/examples/workload-manager/internal/workload"
 )
 
 // pdbCoverageAnnotation is written by `guardrails annotate` onto each uncovered
@@ -80,94 +77,42 @@ Triggers are created with Warn=true (advisory ApplyWarnings, never blocking).
 Promote one to blocking later with:
   cub trigger update <slug> --space <policy-space> --unwarn`,
 	}
-	cmd.AddCommand(pack.InstallCmd(preflight), pack.StatusCmd(preflight), newGuardrailsAnnotateCmd())
+	cmd.AddCommand(pack.InstallCmd(preflight), pack.StatusCmd(preflight), pack.AnnotateCmd(preflight, annotateSpec))
 	return cmd
 }
 
-type annotateResult struct {
-	Cluster   string `json:"cluster"`
-	Namespace string `json:"namespace"`
-	Unit      string `json:"unit"`
-	Finding   string `json:"finding"`
-	OK        bool   `json:"ok"`
-	Error     string `json:"error,omitempty"`
-}
-
-func newGuardrailsAnnotateCmd() *cobra.Command {
-	var output, clusterFilter string
-	var filter filterFlags
-	var commit cliutil.CommitFlags
-	cmd := &cobra.Command{
-		Use:   "annotate",
-		Short: "Annotate each uncovered multi-replica workload Unit with a PDB-coverage finding (dry-run unless --commit)",
-		Long: `annotate runs the availability analysis and writes a workload.confighub.com/
+// annotateSpec is the workload half of `guardrails annotate`: which Units have
+// a coverage finding, and what to write on them. The rest of the command is
+// managerkit/guardrails'.
+var annotateSpec = guardrails.AnnotateSpec{
+	Key:   pdbCoverageAnnotation,
+	Noun:  "workload Unit",
+	Short: "Annotate each uncovered multi-replica workload Unit with a PDB-coverage finding (dry-run unless --commit)",
+	Long: `annotate runs the availability analysis and writes a workload.confighub.com/
 pdb-coverage annotation onto each multi-replica workload Unit that has no matching
-PodDisruptionBudget. Paired with the workload-pdb-coverage Trigger from
+PodDisruptionBudget. Paired with the workload-pdb-coverage rule from
 'guardrails install', this turns the cross-Unit coverage finding — the one a
-per-Unit Trigger can't compute — into an advisory ApplyWarning.
+per-Unit rule can't compute — into an advisory ApplyWarning.
 
 Re-run after adding PDBs. Dry run unless --commit --change-desc.`,
-		Args: cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			changeDesc, dryRun, err := commit.Validate("annotate workload Units with PDB-coverage findings")
-			if err != nil {
-				return err
+	Targets: func(ctx context.Context, c *cubapi.Client, where, cluster string) ([]guardrails.Target, error) {
+		snap, err := snapshot.Load(ctx, c, where)
+		if err != nil {
+			return nil, err
+		}
+		var out []guardrails.Target
+		for _, r := range workload.AnalyzeAvailability(snap.Clusters) {
+			if r.HasPDB || r.SpaceID == "" || r.UnitSlug == "" {
+				continue // covered, or no Unit to annotate
 			}
-			client, err := cub.Preflight(cmd.Context())
-			if err != nil {
-				return err
+			if cluster != "" && r.Cluster != cluster {
+				continue
 			}
-			snap, err := snapshot.Load(cmd.Context(), client, filter.Predicate())
-			if err != nil {
-				return err
-			}
-
-			var results []annotateResult
-			for _, r := range workload.AnalyzeAvailability(snap.Clusters) {
-				if r.HasPDB || r.SpaceID == "" || r.UnitSlug == "" {
-					continue // covered, or no Unit to annotate
-				}
-				if clusterFilter != "" && r.Cluster != clusterFilter {
-					continue
-				}
-				ar := annotateResult{Cluster: r.Cluster, Namespace: r.Namespace, Unit: r.UnitSlug, Finding: "uncovered"}
-				if !dryRun {
-					err := guardrails.Annotate(cmd.Context(), client, r.SpaceID, r.UnitSlug, pdbCoverageAnnotation, ar.Finding, changeDesc)
-					ar.OK = err == nil
-					if err != nil {
-						ar.Error = err.Error()
-					}
-				}
-				results = append(results, ar)
-			}
-			sort.Slice(results, func(i, j int) bool {
-				if results[i].Cluster != results[j].Cluster {
-					return results[i].Cluster < results[j].Cluster
-				}
-				return results[i].Unit < results[j].Unit
+			out = append(out, guardrails.Target{
+				SpaceID: r.SpaceID, UnitSlug: r.UnitSlug, Value: "uncovered",
+				Cluster: r.Cluster, Namespace: r.Namespace,
 			})
-
-			if output == outputJSON {
-				return printJSON(cmd.OutOrStdout(), results)
-			}
-			out := cmd.OutOrStdout()
-			for _, r := range results {
-				fprintln(out, fmt.Sprintf("%s/%s  %s  (finding: %s)", r.Cluster, r.Namespace, r.Unit, r.Finding))
-			}
-			if dryRun {
-				fprintln(out, fmt.Sprintf("\nDry run — %d workload Unit(s) would be annotated. Re-run with --commit --change-desc \"…\".", len(results)))
-			} else {
-				fprintln(out, fmt.Sprintf("\nAnnotated %d workload Unit(s).", len(results)))
-			}
-			return nil
-		},
-	}
-	addOutputFlag(cmd, &output)
-	addFilterFlags(cmd, &filter)
-	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "only annotate Units in this cluster")
-	commit.Bind(cmd)
-	return cmd
+		}
+		return out, nil
+	},
 }
-
-// annotateUnit sets the PDB-coverage finding annotation on one Unit via the
-// set-annotation function (a committed Unit-data mutation).

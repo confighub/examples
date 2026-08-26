@@ -11,12 +11,10 @@ package cli
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/spf13/cobra"
 
-	"github.com/confighub/sdk/cliutil"
 	"github.com/confighub/sdk/core/cubapi"
 
 	"github.com/confighub/examples/managerkit/guardrails"
@@ -73,107 +71,65 @@ set ApplyWarnings directly (only a failed Trigger can), so 'guardrails annotate'
 writes a finding annotation onto flagged Units and this Trigger turns it into a
 warning.`,
 	}
-	cmd.AddCommand(pack.InstallCmd(preflight), pack.StatusCmd(preflight), newGuardrailsAnnotateCmd())
+	cmd.AddCommand(pack.InstallCmd(preflight), pack.StatusCmd(preflight), pack.AnnotateCmd(preflight, annotateSpec))
 	return cmd
 }
 
-type annotateResult struct {
-	Space    string `json:"space"`
-	Unit     string `json:"unit"`
-	Analyzer string `json:"analyzer"`
-	OK       bool   `json:"ok"`
-	Error    string `json:"error,omitempty"`
-}
-
-func newGuardrailsAnnotateCmd() *cobra.Command {
-	var output, clusterFilter string
-	var filter filterFlags
-	var commit cliutil.CommitFlags
-	cmd := &cobra.Command{
-		Use:   "annotate",
-		Short: "Write a finding annotation onto each Unit the analyzers flag (dry-run unless --commit)",
-		Long: `annotate runs the findings analyzers and writes a netpol.confighub.com/finding
+// annotateSpec is the netpol half of `guardrails annotate`: which Units an
+// analyzer flagged, and what to write on them. The rest of the command is
+// managerkit/guardrails'.
+//
+// Several analyzers can flag one Unit, so the findings are grouped: one
+// annotation per Unit naming every analyzer that objected, rather than each
+// overwriting the last.
+var annotateSpec = guardrails.AnnotateSpec{
+	Key:   findingAnnotation,
+	Short: "Write a finding annotation onto each Unit the analyzers flag (dry-run unless --commit)",
+	Long: `annotate runs the findings analyzers and writes a netpol.confighub.com/finding
 annotation onto each flagged Unit (those with a resource-level finding, e.g.
-uncovered-ingress or allow-all). Paired with the netpol-coverage-finding Trigger
+uncovered-ingress or allow-all). Paired with the netpol-coverage-finding rule
 from 'guardrails install', this turns a finding into an advisory ApplyWarning —
-the manager cannot set warnings directly, only a failed Trigger can.
+the manager cannot set warnings directly, only a failed rule can.
 
 Re-run after fixing config to clear stale annotations (a fixed Unit produces no
 finding, so its annotation is removed). Dry run unless --commit --change-desc.`,
-		Args: cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			changeDesc, dryRun, err := commit.Validate("annotate Units with NetworkPolicy findings")
-			if err != nil {
-				return err
+	Targets: func(ctx context.Context, c *cubapi.Client, where, cluster string) ([]guardrails.Target, error) {
+		snap, err := snapshot.Load(ctx, c, where)
+		if err != nil {
+			return nil, err
+		}
+		byUnit := map[string]*guardrails.Target{}
+		var order []string
+		for clusterName, cl := range snap.Clusters {
+			if cluster != "" && clusterName != cluster {
+				continue
 			}
-			client, err := cub.Preflight(cmd.Context())
-			if err != nil {
-				return err
-			}
-			snap, err := snapshot.Load(cmd.Context(), client, filter.Predicate())
-			if err != nil {
-				return err
-			}
-
-			// Collect, per flagged Unit, the analyzers that flagged it.
-			perUnit := map[string]*annotateResult{}
-			var order []string
-			for cluster, c := range snap.Clusters {
-				if clusterFilter != "" && cluster != clusterFilter {
-					continue
+			for _, f := range netpol.AnalyzeFindings(cl) {
+				if f.Origin.UnitID == "" || f.Origin.SpaceID == "" {
+					continue // namespace-level finding: no single Unit to annotate
 				}
-				for _, f := range netpol.AnalyzeFindings(c) {
-					if f.Origin.UnitID == "" || f.Origin.SpaceID == "" {
-						continue // namespace-level finding: no single Unit to annotate
+				key := f.Origin.SpaceID + "/" + f.Origin.UnitSlug
+				t, ok := byUnit[key]
+				if !ok {
+					t = &guardrails.Target{
+						SpaceID: f.Origin.SpaceID, UnitSlug: f.Origin.UnitSlug,
+						Space: f.Origin.Space, Cluster: f.Origin.Cluster,
 					}
-					key := f.Origin.SpaceID + "/" + f.Origin.UnitSlug
-					r, ok := perUnit[key]
-					if !ok {
-						r = &annotateResult{Space: f.Origin.Space, Unit: f.Origin.UnitSlug}
-						perUnit[key] = r
-						order = append(order, key)
+					byUnit[key] = t
+					order = append(order, key)
+				}
+				if !strings.Contains(t.Value, f.Analyzer) {
+					if t.Value != "" {
+						t.Value += ","
 					}
-					if !strings.Contains(r.Analyzer, f.Analyzer) {
-						if r.Analyzer != "" {
-							r.Analyzer += ","
-						}
-						r.Analyzer += f.Analyzer
-					}
+					t.Value += f.Analyzer
 				}
 			}
-
-			results := make([]annotateResult, 0, len(order))
-			for _, key := range order {
-				r := perUnit[key]
-				spaceID := strings.SplitN(key, "/", 2)[0]
-				if !dryRun {
-					err := guardrails.Annotate(cmd.Context(), client, spaceID, r.Unit, findingAnnotation, r.Analyzer, changeDesc)
-					r.OK = err == nil
-					if err != nil {
-						r.Error = err.Error()
-					}
-				}
-				results = append(results, *r)
-			}
-
-			if output == outputJSON {
-				return printJSON(cmd.OutOrStdout(), results)
-			}
-			out := cmd.OutOrStdout()
-			for _, r := range results {
-				fprintln(out, fmt.Sprintf("%s/%s  %s", r.Space, r.Unit, r.Analyzer))
-			}
-			if dryRun {
-				fprintln(out, fmt.Sprintf("\nDry run — %d Unit(s) would be annotated. Re-run with --commit --change-desc \"…\".", len(results)))
-			} else {
-				fprintln(out, fmt.Sprintf("\nAnnotated %d Unit(s).", len(results)))
-			}
-			return nil
-		},
-	}
-	addOutputFlag(cmd, &output)
-	addFilterFlags(cmd, &filter)
-	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "only annotate Units in this cluster")
-	commit.Bind(cmd)
-	return cmd
+		}
+		out := make([]guardrails.Target, 0, len(order))
+		for _, key := range order {
+			out = append(out, *byUnit[key])
+		}
+		return out, nil
+	},
 }
