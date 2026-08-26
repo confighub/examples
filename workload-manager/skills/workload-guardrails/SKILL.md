@@ -1,6 +1,6 @@
 ---
 name: workload-guardrails
-description: 'Install and operate the workload-readiness enforcement pack with the cub-workload CLI — a workload-policy Space of Warn=true vet-cel Triggers (containers set a memory limit, run as non-root, set terminationMessagePolicy) plus an annotate-then-validate Trigger for cross-Unit PodDisruptionBudget coverage, wired to in-scope Spaces via a shared Trigger Filter. guardrails install (dry-run by default), status (Units with ApplyWarnings/Gates), annotate (write the PDB-coverage finding onto uncovered workloads). Use for "enforce workload readiness", "block workloads with no memory limit", "warn on workloads with no PDB", "which workloads are flagged?". Not for read-only scoring (use workload-audit / workload-findings) or fixing workloads (use workload-harden / workload-fleet).'
+description: 'Install and operate the workload-readiness enforcement pack with the cub-workload CLI — a common Space of Warn=true vet-cel Triggers (containers set a memory limit, run as non-root, set terminationMessagePolicy) plus an annotate-then-validate Trigger for cross-Unit PodDisruptionBudget coverage, wired to in-scope Spaces via a shared Trigger Filter. guardrails install (dry-run by default), status (Units with ApplyWarnings/Gates), annotate (write the PDB-coverage finding onto uncovered workloads). Use for "enforce workload readiness", "block workloads with no memory limit", "warn on workloads with no PDB", "which workloads are flagged?". Not for read-only scoring (use workload-audit / workload-findings) or fixing workloads (use workload-harden / workload-fleet).'
 phase: act
 allowed-tools: Bash(cub-workload --help) Bash(cub-workload * --help) Bash(cub auth status) Bash(cub-workload preflight) Bash(cub-workload guardrails) Bash(cub-workload guardrails *)
 ---
@@ -9,7 +9,7 @@ allowed-tools: Bash(cub-workload --help) Bash(cub-workload * --help) Bash(cub au
 
 Turn workload-readiness policy into **enforcement** — advisory ApplyWarnings (promotable to blocking ApplyGates) that fire in the normal apply pipeline. Three subcommands:
 
-- **`guardrails install`** — creates the `workload-policy` Space, four `Warn=true` `vet-cel` Triggers, and a shared Trigger Filter, then wires in-scope Spaces to it. **Dry-run by default**; re-run with `--commit`.
+- **`guardrails install`** — creates the `common` Space, four `Warn=true` `vet-cel` Triggers, and a shared Trigger Filter, then wires in-scope Spaces to it. **Dry-run by default**; re-run with `--commit`.
 - **`guardrails status`** — lists Units carrying workload-readiness ApplyWarnings or ApplyGates.
 - **`guardrails annotate`** — writes the `workload.confighub.com/pdb-coverage` finding onto each uncovered multi-replica workload Unit (the producing half of annotate-then-validate). Dry-run unless `--commit --change-desc`.
 
@@ -46,7 +46,7 @@ The manager can't set ApplyWarnings directly — only a failed Trigger can. Thre
    ```bash
    cub-workload guardrails install --commit
    ```
-   Triggers are `Warn=true` (advisory). Promote one to blocking later with `cub trigger update <slug> --space workload-policy --unwarn`.
+   Triggers are `Warn=true` (advisory). Promote one to blocking later with `cub trigger update <slug> --space common --unwarn`.
 3. **Feed the annotate-then-validate rule** (for PDB coverage):
    ```bash
    cub-workload guardrails annotate                       # dry-run: which workloads would be annotated

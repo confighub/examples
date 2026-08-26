@@ -29,10 +29,7 @@ const celTolerationNeedsPlacement = "!(r.kind in " + controllerKinds + ")" +
 	" || (has(r.spec.template.spec.affinity) && has(r.spec.template.spec.affinity.nodeAffinity) && has(r.spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution))"
 
 var pack = guardrails.Pack{
-	App:          "scheduling-manager",
-	DefaultSpace: "scheduling-policy",
-	FilterSlug:   "scheduling-guardrails",
-	Label:        "scheduling-guardrails",
+	Label: "scheduling-guardrails",
 	Rules: []guardrails.Rule{
 		{Slug: "workload-toleration-needs-placement",
 			Description: "Warns on a controller that tolerates a taint but has no nodeSelector or required node affinity (may schedule onto general nodes). Fix: `cub-scheduling set-node-selector` / `set-node-affinity`, or a placement profile.",

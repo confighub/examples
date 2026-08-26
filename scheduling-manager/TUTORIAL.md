@@ -68,10 +68,10 @@ library once, then list it:
 
 ```console
 $ cub-scheduling profile install
-Space scheduling-profiles ready
-Profile scheduling-profiles/placement-gpu ready
-Profile scheduling-profiles/placement-spot ready
-Profile scheduling-profiles/node-pool ready
+Space common ready
+Profile common/placement-gpu ready
+Profile common/placement-spot ready
+Profile common/node-pool ready
 
 $ cub-scheduling profile list -o table
 PROFILE         FUNCTION  PARAMS  DESCRIPTION
@@ -136,7 +136,7 @@ $ cub-scheduling guardrails status -o table         # Units now carrying warning
 ```
 
 Promote the rule to blocking later with
-`cub trigger update workload-toleration-needs-placement --space scheduling-policy --unwarn`.
+`cub trigger update workload-toleration-needs-placement --space common --unwarn`.
 
 ## Reference
 

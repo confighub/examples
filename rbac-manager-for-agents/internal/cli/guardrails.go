@@ -26,10 +26,7 @@ const (
 )
 
 var pack = guardrails.Pack{
-	App:          "rbac-manager-for-agents",
-	DefaultSpace: "policy-guardrails",
-	FilterSlug:   "rbac-guardrails",
-	Label:        "rbac-guardrails",
+	Label: "rbac-guardrails",
 	Rules: []guardrails.Rule{
 		{Slug: "no-rbac-wildcards", Description: "Warns on Roles/ClusterRoles with wildcard verbs, resources, or apiGroups. Fix: enumerate the specific verbs/resources the role needs.", Expression: celNoWildcards},
 		{Slug: "no-rbac-privilege-escalation", Description: "Warns on Roles/ClusterRoles granting escalate, bind, or impersonate. Fix: remove these verbs; they allow privilege escalation.", Expression: celNoEscalation},

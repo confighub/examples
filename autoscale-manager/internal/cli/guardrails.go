@@ -27,10 +27,7 @@ const celAutoscalerNotPinned = "!(r.kind in ['HorizontalPodAutoscaler', 'ScaledO
 	" || (r.kind == 'ScaledObject' && (!has(r.spec.minReplicaCount) || !has(r.spec.maxReplicaCount) || r.spec.minReplicaCount < r.spec.maxReplicaCount))"
 
 var pack = guardrails.Pack{
-	App:          "autoscale-manager",
-	DefaultSpace: "autoscale-policy",
-	FilterSlug:   "autoscale-guardrails",
-	Label:        "autoscale-guardrails",
+	Label: "autoscale-guardrails",
 	Rules: []guardrails.Rule{
 		{Slug: "autoscaler-not-pinned",
 			Description: "Warns on an HPA/ScaledObject with min == max (it can't actually scale). Fix: `cub-autoscale set-hpa --min <lower> --max <higher>` or a profile.",

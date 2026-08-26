@@ -43,10 +43,7 @@ const (
 )
 
 var pack = guardrails.Pack{
-	App:          "network-policy-manager",
-	DefaultSpace: "netpol-policy",
-	FilterSlug:   "netpol-guardrails",
-	Label:        "netpol-guardrails",
+	Label: "netpol-guardrails",
 	Rules: []guardrails.Rule{
 		{Slug: "netpol-no-allow-all-ingress", Description: "Warns on a NetworkPolicy ingress rule with an empty `from` (admits all sources). Fix: enumerate the allowed sources.", Expression: celNoAllowAllIngress},
 		{Slug: "netpol-no-wide-cidr-egress", Description: "Warns on an egress rule permitting 0.0.0.0/0. Fix: restrict the CIDR and exclude the cloud-metadata IP.", Expression: celNoWideCidrEgress},

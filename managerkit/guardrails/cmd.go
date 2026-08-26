@@ -34,6 +34,12 @@ func (p Pack) InstallCmd(preflight Preflight) *cobra.Command {
 		Long: `install creates the policy Space, the Warn=true guardrail Triggers, and the
 shared Trigger Filter, then points each in-scope Space's TriggerFilterID at it.
 
+The Space and the Filter are shared with the sibling tools. A Space has exactly
+one TriggerFilterID, so a Filter per tool could not compose: the first pack
+installed would claim a Space and the rest would find it taken. Instead every
+pack's Triggers carry a common label, one Filter selects them, and installing
+another pack adds its rules to every Space already wired.
+
 Dry-run by default: it prints the plan and changes nothing. Re-run with --commit
 to apply. Spaces that already select Triggers another way are reported, not
 modified. Narrow which Spaces get wired with --where-space.`,
@@ -62,7 +68,8 @@ modified. Narrow which Spaces get wired with --where-space.`,
 			return clikit.PrintJSON(cmd.OutOrStdout(), plan)
 		},
 	}
-	cmd.Flags().StringVar(&policySpace, "policy-space", p.DefaultSpace, "Space that holds the guardrail Triggers and Filter")
+	cmd.Flags().StringVar(&policySpace, "policy-space", DefaultPolicySpace,
+		"Space holding the guardrail Triggers and the shared Filter; every tool defaults to the same one")
 	cmd.Flags().StringVar(&whereSpace, "where-space", "", "ConfigHub filter over Spaces to narrow which Spaces get wired")
 	cmd.Flags().BoolVar(&commit, "commit", false, "apply the plan (default is dry-run)")
 	clikit.AddOutputFlag(cmd, &output)

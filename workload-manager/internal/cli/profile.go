@@ -16,12 +16,9 @@ import (
 	api "github.com/confighub/sdk/core/function/api"
 	goclientnew "github.com/confighub/sdk/core/openapi/goclient-new"
 
+	"github.com/confighub/examples/managerkit/clikit"
 	"github.com/confighub/examples/workload-manager/internal/cub"
 )
-
-// profilesSpace is the Space that holds the parameterized workload profiles
-// (stored Invocations). Created by `profile install`.
-const profilesSpace = "workload-profiles"
 
 // profileParam declares one profile parameter the caller supplies at apply time.
 type profileParam struct {
@@ -114,7 +111,7 @@ func newProfileCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "profile",
 		Short: "The workload profile library — reusable, parameterized edits (stored Invocations)",
-		Long: `profile manages the workload-profiles Space: a library of named, parameterized
+		Long: `profile manages the profile library (--profiles-space): a library of named, parameterized
 edits stored as ConfigHub Invocations. A profile bundles a function with preset
 arguments (a resource tier, a hardening pass, a spread rule); 'profile apply'
 invokes one over a workload, dry-run by default.`,
@@ -125,9 +122,10 @@ invokes one over a workload, dry-run by default.`,
 
 // newProfileInstallCmd seeds the profile library (idempotent).
 func newProfileInstallCmd() *cobra.Command {
-	return &cobra.Command{
+	var profilesSpace string
+	cmd := &cobra.Command{
 		Use:   "install",
-		Short: "Create the workload-profiles Space and seed the default profiles (run once per org)",
+		Short: "Create the profile library Space and seed the default profiles (run once per org)",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -154,6 +152,8 @@ func newProfileInstallCmd() *cobra.Command {
 			return nil
 		},
 	}
+	clikit.AddProfilesSpaceFlag(cmd, &profilesSpace)
+	return cmd
 }
 
 // buildInvocation turns a profileSpec into a stored Invocation, declaring its
@@ -186,10 +186,11 @@ func buildInvocation(spaceID goclientnew.UUID, spec profileSpec) goclientnew.Inv
 }
 
 func newProfileListCmd() *cobra.Command {
+	var profilesSpace string
 	var output string
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "List the profiles in the workload-profiles Space",
+		Short: "List the profiles in the profile library",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -236,10 +237,12 @@ func newProfileListCmd() *cobra.Command {
 		},
 	}
 	addOutputFlag(cmd, &output)
+	clikit.AddProfilesSpaceFlag(cmd, &profilesSpace)
 	return cmd
 }
 
 func newProfileApplyCmd() *cobra.Command {
+	var profilesSpace string
 	var output string
 	var params []string
 	var commit cliutil.CommitFlags
@@ -247,7 +250,7 @@ func newProfileApplyCmd() *cobra.Command {
 		Use:   "apply <profile> <space>/<unit>",
 		Short: "Apply a profile to a workload (dry-run unless --commit)",
 		Long: `apply invokes a stored profile (a parameterized Invocation from the
-workload-profiles Space) over a workload Unit. Supply profile parameters with
+profile library) over a workload Unit. Supply profile parameters with
 --param name=value (e.g. --param container-name=web for the resource tiers).
 
 Dry-run unless --commit --change-desc; never bypasses ApplyGates.`,
@@ -289,6 +292,7 @@ Dry-run unless --commit --change-desc; never bypasses ApplyGates.`,
 	addOutputFlag(cmd, &output)
 	commit.Bind(cmd)
 	cmd.Flags().StringArrayVar(&params, "param", nil, "profile parameter as name=value (repeatable)")
+	clikit.AddProfilesSpaceFlag(cmd, &profilesSpace)
 	return cmd
 }
 

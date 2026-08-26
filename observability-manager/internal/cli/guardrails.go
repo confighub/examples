@@ -35,10 +35,7 @@ const coverageAnnotation = "observability.confighub.com/coverage"
 const celNoCoverageFinding = "!has(r.metadata.annotations) || r.metadata.annotations == null || !('" + coverageAnnotation + "' in r.metadata.annotations)"
 
 var pack = guardrails.Pack{
-	App:          "observability-manager",
-	DefaultSpace: "observability-policy",
-	FilterSlug:   "observability-guardrails",
-	Label:        "observability-guardrails",
+	Label: "observability-guardrails",
 	Rules: []guardrails.Rule{
 		{Slug: "servicemonitor-coverage",
 			Description: "Warns while an observability.confighub.com/coverage annotation is present (set by `cub-observability guardrails annotate`) — a metrics Service with no ServiceMonitor. Fix: `cub-observability ensure-servicemonitor`, then re-run annotate.",

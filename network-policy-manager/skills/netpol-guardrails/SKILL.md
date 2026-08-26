@@ -49,7 +49,7 @@ The manager itself cannot set ApplyWarnings/ApplyGates — only a failed validat
    ```bash
    cub-netpol guardrails install --where-space "Slug LIKE 'apptique-%'" --commit
    ```
-   Spaces with a pre-existing custom `WhereTrigger` are skipped (not clobbered) and reported; wire those deliberately with `cub space update <space> --trigger-filter netpol-policy/netpol-guardrails --where-trigger "-"` (see **triggers-and-applygates**).
+   Spaces with a pre-existing custom `WhereTrigger` are skipped (not clobbered) and reported; wire those deliberately with `cub space update <space> --trigger-filter common/netpol-guardrails --where-trigger "-"` (see **triggers-and-applygates**).
 3. **Annotate** coverage findings so the coverage Trigger flags them (dry-run by default):
    ```bash
    cub-netpol guardrails annotate --commit --change-desc "Flag uncovered Units. User prompt: ..."
@@ -59,7 +59,7 @@ The manager itself cannot set ApplyWarnings/ApplyGates — only a failed validat
    ```bash
    cub-netpol guardrails status -o table
    ```
-5. **Promote a rule to blocking** later (the manager never does this silently): `cub trigger update <slug> --space netpol-policy --unwarn`.
+5. **Promote a rule to blocking** later (the manager never does this silently): `cub trigger update <slug> --space common --unwarn`.
 
 ## Stop conditions
 

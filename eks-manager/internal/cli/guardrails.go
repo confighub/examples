@@ -21,19 +21,10 @@ import (
 	"github.com/confighub/examples/managerkit/guardrails"
 )
 
-const (
-	guardrailPack       = "eks-guardrails"
-	defaultPolicySpace  = "eks-policy"
-	guardrailFilterSlug = "eks-guardrails"
-)
-
 // Each expression short-circuits on kind, so a rule is a no-op for resources it
 // does not govern rather than a failure.
 var pack = guardrails.Pack{
-	App:          unitManagedByLabel,
-	DefaultSpace: defaultPolicySpace,
-	FilterSlug:   guardrailFilterSlug,
-	Label:        guardrailPack,
+	Label: "eks-guardrails",
 	Rules: []guardrails.Rule{
 		{
 			Slug:        "eks-automode-invariant",
@@ -137,7 +128,8 @@ Dry-run by default; pass --commit to write.`,
 			return printJSON(cmd.OutOrStdout(), plan)
 		},
 	}
-	cmd.Flags().StringVar(&policySpace, "policy-space", defaultPolicySpace, "Space that holds the guardrail Triggers and Filter")
+	cmd.Flags().StringVar(&policySpace, "policy-space", guardrails.DefaultPolicySpace,
+		"Space holding the guardrail Triggers and the shared Filter; every tool defaults to the same one")
 	cmd.Flags().BoolVar(&commit, "commit", false, "apply the plan (default is dry-run)")
 	addOutputFlag(cmd, &output)
 	addFilterFlags(cmd, &filter)

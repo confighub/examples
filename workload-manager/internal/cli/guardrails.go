@@ -47,10 +47,7 @@ const (
 )
 
 var pack = guardrails.Pack{
-	App:          "workload-manager",
-	DefaultSpace: "workload-policy",
-	FilterSlug:   "workload-guardrails",
-	Label:        "workload-guardrails",
+	Label: "workload-guardrails",
 	Rules: []guardrails.Rule{
 		{Slug: "workload-has-limits", Description: "Warns on a controller whose containers don't all set resources.limits.memory. Fix: `cub-workload set-resources <space>/<unit>`.", Expression: celHasLimits},
 		{Slug: "workload-runs-nonroot", Description: "Warns on a controller not running as non-root (pod or all containers). Fix: `cub-workload harden <space>/<unit>`.", Expression: celRunsNonRoot},

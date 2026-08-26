@@ -210,7 +210,7 @@ Spaces cloned from it is variant promotion, which lives in `cub` and the
 to every cluster Space, skipping any Space that already has its own Trigger
 configuration rather than clobbering it. Rules ship **advisory** (`Warn=true`,
 so failures attach an ApplyWarning); promote one to blocking with `cub trigger
-update <slug> --space eks-policy --unwarn`. Gate-versus-warning lives on the
+update <slug> --space common --unwarn`. Gate-versus-warning lives on the
 Trigger, not the rule, so the same pack can advise in dev and block in prod.
 
 ## Creating a cluster

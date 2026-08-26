@@ -16,11 +16,9 @@ import (
 	api "github.com/confighub/sdk/core/function/api"
 	goclientnew "github.com/confighub/sdk/core/openapi/goclient-new"
 
+	"github.com/confighub/examples/managerkit/clikit"
 	"github.com/confighub/examples/scheduling-manager/internal/cub"
 )
-
-// profilesSpace holds the parameterized placement profiles (stored Invocations).
-const profilesSpace = "scheduling-profiles"
 
 type profileParam struct {
 	name     string
@@ -77,7 +75,7 @@ func newProfileCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "profile",
 		Short: "The placement profile library — reusable, parameterized edits (stored Invocations)",
-		Long: `profile manages the scheduling-profiles Space: named placement edits stored as
+		Long: `profile manages the profile library (--profiles-space): named placement edits stored as
 ConfigHub Invocations (e.g. placement-gpu, placement-spot, node-pool).
 'profile apply' invokes one over a workload, dry-run by default.`,
 	}
@@ -86,9 +84,10 @@ ConfigHub Invocations (e.g. placement-gpu, placement-spot, node-pool).
 }
 
 func newProfileInstallCmd() *cobra.Command {
-	return &cobra.Command{
+	var profilesSpace string
+	cmd := &cobra.Command{
 		Use:   "install",
-		Short: "Create the scheduling-profiles Space and seed the default placement profiles",
+		Short: "Create the profile library Space and seed the default placement profiles",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -115,6 +114,8 @@ func newProfileInstallCmd() *cobra.Command {
 			return nil
 		},
 	}
+	clikit.AddProfilesSpaceFlag(cmd, &profilesSpace)
+	return cmd
 }
 
 func buildInvocation(spaceID goclientnew.UUID, spec profileSpec) goclientnew.Invocation {
@@ -141,10 +142,11 @@ func buildInvocation(spaceID goclientnew.UUID, spec profileSpec) goclientnew.Inv
 }
 
 func newProfileListCmd() *cobra.Command {
+	var profilesSpace string
 	var output string
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "List the placement profiles in the scheduling-profiles Space",
+		Short: "List the placement profiles in the profile library",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -191,10 +193,12 @@ func newProfileListCmd() *cobra.Command {
 		},
 	}
 	addOutputFlag(cmd, &output)
+	clikit.AddProfilesSpaceFlag(cmd, &profilesSpace)
 	return cmd
 }
 
 func newProfileApplyCmd() *cobra.Command {
+	var profilesSpace string
 	var output string
 	var params []string
 	var commit cliutil.CommitFlags
@@ -243,6 +247,7 @@ Dry-run unless --commit --change-desc; never bypasses ApplyGates.`,
 	addOutputFlag(cmd, &output)
 	commit.Bind(cmd)
 	cmd.Flags().StringArrayVar(&params, "param", nil, "profile parameter as name=value (repeatable)")
+	clikit.AddProfilesSpaceFlag(cmd, &profilesSpace)
 	return cmd
 }
 

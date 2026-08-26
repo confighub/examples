@@ -19,6 +19,8 @@ import (
 	"strings"
 
 	"github.com/confighub/sdk/core/cubapi"
+
+	"github.com/confighub/examples/managerkit"
 	api "github.com/confighub/sdk/core/function/api"
 	goclientnew "github.com/confighub/sdk/core/openapi/goclient-new"
 )
@@ -30,6 +32,28 @@ import (
 // format). The generic vet-celexpr accepts the same expressions and returns the
 // same verdicts, but knows nothing about Kubernetes.
 const ValidatingFunction = "vet-cel"
+
+// DefaultPolicySpace is where a pack installs unless --policy-space says
+// otherwise: the Space every tool shares, so that the packs compose rather than
+// competing for each Space's single TriggerFilterID.
+const DefaultPolicySpace = managerkit.CommonSpace
+
+// SharedFilterSlug is the one Filter every pack wires Spaces to.
+const SharedFilterSlug = "guardrails"
+
+// GuardrailLabel marks a Trigger as part of some pack's guardrails, whichever
+// pack. The shared Filter selects on it, so installing a second pack adds its
+// rules to every Space already wired rather than competing for the Space's
+// single TriggerFilterID.
+//
+// Each Trigger also carries its own Pack label, which is what identifies one
+// tool's rules when you want to inspect or remove just those.
+const GuardrailLabel = "Guardrails"
+
+// sharedFilterWhere selects every pack's Triggers.
+func sharedFilterWhere() string {
+	return "Labels." + GuardrailLabel + " = 'true'"
+}
 
 // Rule is one validating policy in a pack.
 //
@@ -60,16 +84,14 @@ func (r Rule) invocation() (string, []api.FunctionArgument) {
 	return ValidatingFunction, []api.FunctionArgument{{ParameterName: "expression", Value: r.Expression}}
 }
 
-// Pack is a tool's set of guardrail rules and the ConfigHub entities that carry
-// them.
+// Pack is a tool's set of guardrail rules.
+//
+// The Space and the Filter are not the pack's to choose: they are shared with
+// every other tool, so that installing several packs leaves each Space carrying
+// all of their rules rather than only the first one's.
 type Pack struct {
-	// App names the tool, and labels the policy Space it owns.
-	App string
-	// DefaultSpace is the policy Space slug used when --policy-space is not given.
-	DefaultSpace string
-	// FilterSlug names the shared Filter that selects this pack's Triggers.
-	FilterSlug string
-	// Label is the value of the Pack label the Filter selects on.
+	// Label identifies this tool's rules among the shared Filter's selection. It
+	// is what you filter on to inspect or remove one pack.
 	Label string
 	// Rules are the policies. They install with Warn=true: advisory
 	// ApplyWarnings, never blocking, until someone promotes one with
@@ -111,7 +133,7 @@ type spaceInfo struct {
 // it already has, and there is no way to tell from here whether that was
 // deliberate.
 func (p Pack) BuildPlan(ctx context.Context, client *cubapi.Client, policySpace, whereSpace string) (Plan, error) {
-	plan := Plan{PolicySpace: policySpace, Filter: policySpace + "/" + p.FilterSlug}
+	plan := Plan{PolicySpace: policySpace, Filter: policySpace + "/" + SharedFilterSlug}
 	for _, r := range p.Rules {
 		plan.Triggers = append(plan.Triggers, r.Slug)
 	}
@@ -134,7 +156,7 @@ func (p Pack) BuildPlan(ctx context.Context, client *cubapi.Client, policySpace,
 //
 // whereSpace, when set, narrows the candidates further.
 func (p Pack) PlanFor(ctx context.Context, client *cubapi.Client, policySpace string, candidates []string, whereSpace string) (Plan, error) {
-	plan := Plan{PolicySpace: policySpace, Filter: policySpace + "/" + p.FilterSlug}
+	plan := Plan{PolicySpace: policySpace, Filter: policySpace + "/" + SharedFilterSlug}
 	for _, r := range p.Rules {
 		plan.Triggers = append(plan.Triggers, r.Slug)
 	}
@@ -194,9 +216,10 @@ func (p Pack) Execute(ctx context.Context, client *cubapi.Client, policySpace st
 		}
 	}
 
+	// Shared, so the labels name no single tool.
 	ps, err := cubapi.EnsureSpace(ctx, client, goclientnew.Space{
 		Slug:   policySpace,
-		Labels: map[string]string{"app": p.App, "role": "policy"},
+		Labels: map[string]string{"role": "policy"},
 	})
 	if err != nil {
 		return fmt.Errorf("create policy space %s: %w", policySpace, err)
@@ -212,23 +235,23 @@ func (p Pack) Execute(ctx context.Context, client *cubapi.Client, policySpace st
 			FunctionName:  fn,
 			Arguments:     cubapi.Arguments(args),
 			Warn:          true,
-			Labels:        map[string]string{"Pack": p.Label},
+			Labels:        map[string]string{GuardrailLabel: "true", "Pack": p.Label},
 		}); err != nil {
 			return fmt.Errorf("create trigger %s: %w", r.Slug, err)
 		}
 	}
 	flt, err := cubapi.EnsureFilter(ctx, client, goclientnew.Filter{
 		SpaceID: ps.SpaceID,
-		Slug:    p.FilterSlug,
+		Slug:    SharedFilterSlug,
 		From:    "Trigger",
-		Where:   p.filterWhere(),
+		Where:   sharedFilterWhere(),
 	})
 	if err != nil {
-		return fmt.Errorf("create filter %s: %w", p.FilterSlug, err)
+		return fmt.Errorf("create filter %s: %w", SharedFilterSlug, err)
 	}
 	say(fmt.Sprintf("Policy pack ready in %s.", policySpace))
 
-	filterRef := policySpace + "/" + p.FilterSlug
+	filterRef := policySpace + "/" + SharedFilterSlug
 	for _, slug := range plan.Wire {
 		sp, err := cubapi.ResolveSpace(ctx, client, slug)
 		if err != nil {
@@ -242,20 +265,13 @@ func (p Pack) Execute(ctx context.Context, client *cubapi.Client, policySpace st
 	return nil
 }
 
-// filterWhere selects this pack's Triggers and nothing else. Two packs can share
-// a policy Space, so the clause has to key on the pack label rather than the
-// Space: selecting the Space's Triggers would wire each pack's Spaces to both.
-func (p Pack) filterWhere() string {
-	return "Labels.Pack = '" + p.Label + "'"
-}
-
-// FilterID resolves the pack's Filter, empty when it is not installed yet.
+// FilterID resolves the shared Filter, empty when it is not installed yet.
 func (p Pack) FilterID(ctx context.Context, client *cubapi.Client, policySpace string) (string, error) {
 	ps, err := cubapi.ResolveSpace(ctx, client, policySpace)
 	if err != nil {
 		return "", err
 	}
-	flt, err := cubapi.ResolveFilter(ctx, client, ps.SpaceID, p.FilterSlug)
+	flt, err := cubapi.ResolveFilter(ctx, client, ps.SpaceID, SharedFilterSlug)
 	if err != nil {
 		return "", err
 	}

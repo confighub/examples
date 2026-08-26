@@ -35,20 +35,27 @@ func TestRuleInvocationOverride(t *testing.T) {
 	}
 }
 
-// Two packs can share a policy Space, so each Filter must select on the pack
-// label. A clause that selected the Space's Triggers would wire every Space of
-// one pack to the other pack's rules as well.
-func TestPackFilterWhereSelectsOnlyThisPack(t *testing.T) {
-	netpol := Pack{Label: "netpol-guardrails"}
-	workload := Pack{Label: "workload-guardrails"}
-
-	if got, want := netpol.filterWhere(), "Labels.Pack = 'netpol-guardrails'"; got != want {
+// A Space has one TriggerFilterID, so every pack has to wire to the same Filter
+// or the first one installed claims the Space and the rest are skipped. The
+// clause therefore selects on the shared guardrail label, never on one pack.
+func TestSharedFilterSelectsEveryPack(t *testing.T) {
+	want := "Labels.Guardrails = 'true'"
+	if got := sharedFilterWhere(); got != want {
 		t.Errorf("got %q, want %q", got, want)
 	}
-	if netpol.filterWhere() == workload.filterWhere() {
-		t.Error("two packs produced the same Filter clause")
+	if strings.Contains(sharedFilterWhere(), "Pack") {
+		t.Errorf("the shared clause selects one pack: %q", sharedFilterWhere())
 	}
-	if strings.Contains(netpol.filterWhere(), "SpaceID") {
-		t.Errorf("the clause keys on the Space, not the pack: %q", netpol.filterWhere())
+}
+
+// Each Trigger still carries its own Pack label: the shared Filter is how the
+// rules compose, the Pack label is how one tool's rules stay identifiable.
+func TestTriggerLabelsCarryBothTheSharedMarkAndThePack(t *testing.T) {
+	labels := map[string]string{GuardrailLabel: "true", "Pack": "netpol-guardrails"}
+	if labels[GuardrailLabel] != "true" {
+		t.Error("a Trigger without the shared label is invisible to the shared Filter")
+	}
+	if labels["Pack"] != "netpol-guardrails" {
+		t.Error("a Trigger without a Pack label cannot be attributed to a tool")
 	}
 }

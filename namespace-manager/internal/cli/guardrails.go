@@ -42,10 +42,7 @@ const (
 )
 
 var pack = guardrails.Pack{
-	App:          "namespace-manager",
-	DefaultSpace: "namespace-policy",
-	FilterSlug:   "namespace-guardrails",
-	Label:        "namespace-guardrails",
+	Label: "namespace-guardrails",
 	Rules: []guardrails.Rule{
 		{Slug: "namespace-has-pod-security", Description: "Warns on a Namespace with no pod-security.kubernetes.io/enforce label. Fix: `cub-namespace apply-envelope --space <s>`.", Expression: celHasPodSecurity},
 		{Slug: "namespace-envelope-finding", Description: "Warns while a namespace.confighub.com/finding annotation is present (set by `cub-namespace guardrails annotate`). Fix: close the envelope gap, then re-run annotate.", Expression: celNoEnvelopeFinding},
