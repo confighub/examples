@@ -156,3 +156,104 @@ func workloadDoc(t *testing.T, name, namespace, app string) any {
 	}
 	return doc
 }
+
+// helmWorkloadDoc builds a StatefulSet shaped the way Helm renders one: an
+// immutable spec.selector holding the identity labels, and a pod template that
+// additionally carries chart/version labels which change on every upgrade.
+func helmWorkloadDoc(t *testing.T, name, namespace string) any {
+	t.Helper()
+	identity := map[string]any{
+		"app":                        "server",
+		"app.kubernetes.io/instance": name,
+		"app.kubernetes.io/name":     name + "-single",
+	}
+	podLabels := map[string]any{}
+	for k, v := range identity {
+		podLabels[k] = v
+	}
+	podLabels["app.kubernetes.io/managed-by"] = "Helm"
+	podLabels["app.kubernetes.io/version"] = "v1.124.0"
+	podLabels["helm.sh/chart"] = name + "-single-0.24.3"
+
+	return map[string]any{
+		"apiVersion": "apps/v1", "kind": "StatefulSet",
+		"metadata": map[string]any{"name": name, "namespace": namespace},
+		"spec": map[string]any{
+			"selector": map[string]any{"matchLabels": identity},
+			"template": map[string]any{"metadata": map[string]any{"labels": podLabels}},
+		},
+	}
+}
+
+// TestAllowYAMLSelectsOnImmutableSelector guards against generating a podSelector
+// from the pod template labels. Helm stamps the chart and app version onto the
+// template, so a policy selecting those stops matching at the next upgrade and
+// silently protects nothing.
+func TestAllowYAMLSelectsOnImmutableSelector(t *testing.T) {
+	fleet := BuildFleet([]FleetResource{
+		{Origin: ResourceOrigin{Cluster: "c1"}, Doc: helmWorkloadDoc(t, "victoriametrics", "observability")},
+		{Origin: ResourceOrigin{Cluster: "c1"}, Doc: workloadDoc(t, "grafana", "observability", "grafana")},
+	})["c1"]
+	dst := findWorkload(fleet, "victoriametrics")
+	src := findWorkload(fleet, "grafana")
+
+	_, manifest := AllowYAML(src, dst, false, "8428")
+	np := parseManifest(t, manifest).NetworkPolicies[0]
+
+	for _, volatile := range []string{"app.kubernetes.io/version", "helm.sh/chart", "app.kubernetes.io/managed-by"} {
+		if _, ok := np.PodSelector.MatchLabels[volatile]; ok {
+			t.Errorf("podSelector must not select on the release-varying label %q; got %v", volatile, np.PodSelector.MatchLabels)
+		}
+	}
+	if len(np.PodSelector.MatchLabels) != 3 {
+		t.Errorf("podSelector = %v, want the 3 spec.selector.matchLabels", np.PodSelector.MatchLabels)
+	}
+	// The narrower selector must still match the workload's actual pod labels.
+	if !np.PodSelector.Matches(dst.PodLabels) {
+		t.Errorf("podSelector %v does not match pod labels %v", np.PodSelector.MatchLabels, dst.PodLabels)
+	}
+}
+
+// TestAllowYAMLHelmDestinationStaysReachable pairs the generated policy with the
+// real workloads and confirms the flow it authorizes actually resolves.
+func TestAllowYAMLHelmDestinationStaysReachable(t *testing.T) {
+	vmDoc := helmWorkloadDoc(t, "victoriametrics", "observability")
+	grafanaDoc := workloadDoc(t, "grafana", "observability", "grafana")
+	base := BuildFleet([]FleetResource{
+		{Origin: ResourceOrigin{Cluster: "c1"}, Doc: vmDoc},
+		{Origin: ResourceOrigin{Cluster: "c1"}, Doc: grafanaDoc},
+	})["c1"]
+	_, allow := AllowYAML(findWorkload(base, "grafana"), findWorkload(base, "victoriametrics"), false, "")
+
+	var allowDoc any
+	if err := yaml.Unmarshal([]byte(allow), &allowDoc); err != nil {
+		t.Fatal(err)
+	}
+	c := BuildFleet([]FleetResource{
+		{Origin: ResourceOrigin{Cluster: "c1"}, Doc: vmDoc},
+		{Origin: ResourceOrigin{Cluster: "c1"}, Doc: grafanaDoc},
+		{Origin: ResourceOrigin{Cluster: "c1"}, Doc: allowDoc},
+	})["c1"]
+
+	got := names(WhoCanReach(c, findWorkload(c, "victoriametrics")))
+	if len(got) != 1 || got[0] != "grafana" {
+		t.Errorf("who-can-reach victoriametrics = %v, want [grafana]", got)
+	}
+}
+
+// TestPolicySelectorFallsBackToPodLabels covers workloads with no equality-based
+// selector of their own, where the pod labels remain the only thing to select on.
+func TestPolicySelectorFallsBackToPodLabels(t *testing.T) {
+	podDoc := map[string]any{
+		"apiVersion": "v1", "kind": "Pod",
+		"metadata": map[string]any{
+			"name": "standalone", "namespace": "app",
+			"labels": map[string]any{"app": "standalone"},
+		},
+	}
+	c := BuildFleet([]FleetResource{{Origin: ResourceOrigin{Cluster: "c1"}, Doc: podDoc}})["c1"]
+	w := findWorkload(c, "standalone")
+	if got := w.PolicySelector(); len(got) != 1 || got["app"] != "standalone" {
+		t.Errorf("PolicySelector() = %v, want the pod's own labels", got)
+	}
+}

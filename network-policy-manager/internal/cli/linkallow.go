@@ -286,7 +286,12 @@ func pickDst(svcs []*netpol.ServiceEntity, wls []*netpol.WorkloadEntity, slug st
 }
 
 func serviceAsWorkload(s *netpol.ServiceEntity) *netpol.WorkloadEntity {
-	return &netpol.WorkloadEntity{Kind: "Service", Name: s.Name, Namespace: s.Namespace, PodLabels: s.Selector}
+	// A Service's selector is already the stable identity subset, so it serves
+	// as both the pod labels and the policy selector.
+	return &netpol.WorkloadEntity{
+		Kind: "Service", Name: s.Name, Namespace: s.Namespace,
+		PodLabels: s.Selector, SelectorLabels: s.Selector,
+	}
 }
 
 func printAllowPlansTable(cmd *cobra.Command, plans []allowFromLink) {
@@ -369,7 +374,7 @@ func missingPeers(existing *netpol.NetworkPolicyEntity, sources []*netpol.Worklo
 	}
 	var out []string
 	for _, src := range sources {
-		if !have[netpol.CanonicalLabels(src.PodLabels)] {
+		if !have[netpol.CanonicalLabels(src.PolicySelector())] {
 			out = append(out, netpol.FromPeerJSON(src))
 		}
 	}

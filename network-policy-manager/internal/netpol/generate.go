@@ -40,26 +40,26 @@ func DefaultDenyYAML(namespace string, egress bool) (slug, manifest string) {
 // rule to that port (numeric or named); protocol defaults to TCP.
 func AllowYAML(src, dst *WorkloadEntity, egress bool, port string) (slug, manifest string) {
 	if egress {
-		peer := workloadPeer(NamespaceOf(dst.Namespace), dst.PodLabels)
+		peer := workloadPeer(NamespaceOf(dst.Namespace), dst.PolicySelector())
 		rule := map[string]any{"to": []any{peer}}
 		if port != "" {
 			rule["ports"] = []any{portEntry(port)}
 		}
 		spec := map[string]any{
-			"podSelector": matchLabels(src.PodLabels),
+			"podSelector": matchLabels(src.PolicySelector()),
 			"policyTypes": []any{"Egress"},
 			"egress":      []any{rule},
 		}
 		name := "allow-" + src.Name + "-to-" + dst.Name + "-egress"
 		return name, mustYAML(networkPolicyDoc(name, NamespaceOf(src.Namespace), spec))
 	}
-	peer := workloadPeer(NamespaceOf(src.Namespace), src.PodLabels)
+	peer := workloadPeer(NamespaceOf(src.Namespace), src.PolicySelector())
 	rule := map[string]any{"from": []any{peer}}
 	if port != "" {
 		rule["ports"] = []any{portEntry(port)}
 	}
 	spec := map[string]any{
-		"podSelector": matchLabels(dst.PodLabels),
+		"podSelector": matchLabels(dst.PolicySelector()),
 		"policyTypes": []any{"Ingress"},
 		"ingress":     []any{rule},
 	}
@@ -75,14 +75,14 @@ func AllowYAML(src, dst *WorkloadEntity, egress bool, port string) (slug, manife
 func AllowIngressYAML(dst *WorkloadEntity, sources []*WorkloadEntity, port string) (slug, manifest string) {
 	peers := make([]any, 0, len(sources))
 	for _, s := range sortWorkloads(sources) {
-		peers = append(peers, workloadPeer(NamespaceOf(s.Namespace), s.PodLabels))
+		peers = append(peers, workloadPeer(NamespaceOf(s.Namespace), s.PolicySelector()))
 	}
 	rule := map[string]any{"from": peers}
 	if port != "" {
 		rule["ports"] = []any{portEntry(port)}
 	}
 	spec := map[string]any{
-		"podSelector": matchLabels(dst.PodLabels),
+		"podSelector": matchLabels(dst.PolicySelector()),
 		"policyTypes": []any{"Ingress"},
 		"ingress":     []any{rule},
 	}
@@ -186,7 +186,7 @@ func portEntry(port string) map[string]any {
 // for a source workload as compact JSON, for splicing into a set-yq expression
 // when upserting a source into an existing allow policy.
 func FromPeerJSON(src *WorkloadEntity) string {
-	b, err := json.Marshal(workloadPeer(NamespaceOf(src.Namespace), src.PodLabels))
+	b, err := json.Marshal(workloadPeer(NamespaceOf(src.Namespace), src.PolicySelector()))
 	if err != nil {
 		panic(err) // fixed-shape map of strings
 	}
