@@ -18,7 +18,7 @@ import {
 } from '@confighub/rtk-query';
 import { useCallback } from 'react';
 
-import { fetchUnitDataText, putUnitDataText } from '../api/raw';
+import { fetchUnitDataText, putUnitDataText } from '@confighub/examples-webkit/api';
 import { parseDashboard } from '../model/parse';
 import type { Dashboard } from '../model/types';
 import { toDisplayName } from './displayName';
@@ -185,11 +185,13 @@ export function useDashboardStorage(): DashboardStorage {
         }),
         'create dashboard unit',
       );
-      if (!created.UnitID || !created.SpaceID) {
+      // A write answers with what it did, not with the entity: the Unit is nested.
+      const unit = created.Unit;
+      if (!unit?.UnitID || !unit.SpaceID) {
         throw new Error('create dashboard unit returned no UnitID');
       }
       // The document itself is a second call: it is not part of the Unit entity.
-      await putUnitDataText(created.SpaceID, created.UnitID, yaml, changeDesc);
+      await putUnitDataText(unit.SpaceID, unit.UnitID, yaml, changeDesc);
     },
     [ensureSpace, createUnit],
   );

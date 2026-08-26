@@ -4,7 +4,7 @@
 // fall back to a transient context built from the unit's own resources so
 // same-unit references still resolve.
 
-import { buildClusterRbac, ClusterRbac } from '../rbac/model';
+import { buildClusterRbac, ClusterRbac } from '@confighub/examples-webkit/rbac';
 import { FleetSnapshot } from './snapshot';
 
 export function clusterContextFor(

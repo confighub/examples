@@ -26,8 +26,8 @@ import { stringify } from 'yaml';
 
 import { FriendlyResource } from '../components/friendly/RbacFriendly';
 import { clusterContextFor } from '../fleet/enrichment';
-import { useSnapshot } from '../fleet/SnapshotContext';
-import { FleetResource } from '../rbac/model';
+import { useSnapshot } from '../fleet/snapshot';
+import { FleetResource } from '@confighub/examples-webkit/rbac';
 
 interface ResourceRow {
   resource: FleetResource;

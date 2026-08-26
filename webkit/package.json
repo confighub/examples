@@ -1,0 +1,50 @@
+{
+  "name": "@confighub/examples-webkit",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Shared building blocks for the ConfigHub example web apps: auth shell, fleet scope and snapshot, config data access, and the RBAC engine",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts",
+    "./api": "./src/api/index.ts",
+    "./auth": "./src/auth/index.ts",
+    "./fleet": "./src/fleet/index.ts",
+    "./rbac": "./src/rbac/index.ts"
+  },
+  "sideEffects": false,
+  "scripts": {
+    "lint": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "@confighub/api": "^0.1.2",
+    "@confighub/react-auth": "^0.1.2",
+    "@confighub/rtk-query": "^0.1.2",
+    "@mui/material": "^6.4.8",
+    "react": "^18.3.1"
+  },
+  "peerDependenciesMeta": {
+    "@confighub/rtk-query": {
+      "optional": true
+    },
+    "@mui/material": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@confighub/api": "^0.1.2",
+    "@confighub/react-auth": "^0.1.2",
+    "@confighub/rtk-query": "^0.1.2",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@mui/material": "^6.4.8",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "~5.6.2",
+    "vite": "^5.4.12",
+    "vitest": "^2.1.9"
+  }
+}

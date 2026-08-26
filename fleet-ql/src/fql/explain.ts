@@ -50,10 +50,10 @@ export function formatExpr(e: Expr): string {
 
 // ─── Plan → stages: the generated-SDK calls each fetch compiles to ───────────
 //
-// Calls go through the generated openapi-fetch client (`cub`, src/sdk/client.ts),
-// typed against the OpenAPI `paths` map. The explainer renders the real client
-// call — method, path, and the args derived from the pushed-down predicates — so
-// "show plan" points straight at the SDK.
+// Calls go through the published openapi-fetch client (@confighub/api), typed against
+// the OpenAPI `paths` map. The explainer renders the real client call — method, path,
+// and the args derived from the pushed-down predicates — so "show plan" points straight
+// at the SDK.
 
 /** A query/path arg object as openapi-fetch receives it, e.g. `{ where: "…" }`. */
 function args(obj: Record<string, string | undefined>): string {

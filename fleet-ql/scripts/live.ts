@@ -5,10 +5,12 @@
 //   npx vite-node scripts/live.ts            # uses `cub auth get-token`
 //   CONFIGHUB_TOKEN=… CONFIGHUB_URL=… npx vite-node scripts/live.ts
 //
-// It shims the two browser globals the transport uses (window.sessionStorage for
-// the bearer token, and a fetch that rewrites same-origin /api paths to the real
-// server) so the unmodified transport runs under Node. All queries are read-only.
+// There is no browser session out here, so the harness installs its own client —
+// same typed client the app uses, holding a token from `cub` instead of from the
+// OIDC flow. That has to happen before the transport is imported, because the
+// transport reads the shared client on its first call. All queries are read-only.
 
+import { configureClient } from '@confighub/examples-webkit/api';
 import { execSync } from 'node:child_process';
 
 const BASE = process.env.CONFIGHUB_URL ?? 'https://hub.confighub.com';
@@ -16,19 +18,7 @@ const TOKEN = (
   process.env.CONFIGHUB_TOKEN ?? execSync('cub auth get-token').toString()
 ).trim();
 
-const store = new Map<string, string>([['confighub-token', TOKEN]]);
-const sessionStorage = {
-  getItem: (k: string) => store.get(k) ?? null,
-  setItem: (k: string, v: string) => void store.set(k, v),
-  removeItem: (k: string) => void store.delete(k),
-};
-(globalThis as unknown as { window: unknown }).window = { sessionStorage };
-(globalThis as unknown as { sessionStorage: unknown }).sessionStorage = sessionStorage;
-
-// The openapi-fetch client builds an absolute Request, so it needs a real base
-// URL outside the browser. Set it before importing the transport (which creates
-// the client at module load). Node's native fetch then talks to the live server.
-(globalThis as { __CUB_API_BASE__?: string }).__CUB_API_BASE__ = `${BASE}/api`;
+configureClient({ baseUrl: BASE, getToken: () => TOKEN });
 
 const { runQuery, planStatement } = await import('../src/fql/index');
 const { fqlTransport } = await import('../src/api/fqlTransport');

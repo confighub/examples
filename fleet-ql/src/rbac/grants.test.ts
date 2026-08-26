@@ -9,10 +9,10 @@ import {
   roleBinding,
   sa,
   user,
-} from './fixtures';
+} from '@confighub/examples-webkit/rbac';
 import type { Row } from '../fql';
 import { materializeGrants } from './grants';
-import type { FleetResource } from './model';
+import type { FleetResource } from '@confighub/examples-webkit/rbac';
 
 // A two-cluster fleet:
 //  prod: ClusterRole editor (get/list/delete pods) bound to alice + devs;

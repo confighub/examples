@@ -1,18 +1,23 @@
 import react from '@vitejs/plugin-react';
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 
-// In dev, /api and /auth are proxied to a ConfigHub server so the browser sees
-// a single origin (the same shape a production nginx proxy would use). Point
-// CONFIGHUB_URL at a local server or a hosted instance.
-const target = process.env.CONFIGHUB_URL ?? 'https://hub.confighub.com';
+// Auth is browser-direct (OIDC PKCE against the instance's IdP), so there is no proxy
+// to stand up: the app talks to the ConfigHub API cross-origin with a bearer token.
+// The port is pinned because the redirect_uri registered with `cub oauthclient create`
+// has to match exactly.
+//
+// webkit lives outside this app's root, so the dev server has to be told it may
+// serve from there — an alias alone does not lift the fs allow-list.
+const webkit = fileURLToPath(new URL('../../webkit/src', import.meta.url));
 
 export default defineConfig({
   plugins: [react()],
-  server: {
-    port: 5193,
-    proxy: {
-      '/api': { target, changeOrigin: true, cookieDomainRewrite: 'localhost' },
-      '/auth': { target, changeOrigin: true, cookieDomainRewrite: 'localhost' },
+  server: { port: 5193, strictPort: true, fs: { allow: ['.', webkit] } },
+  resolve: {
+    alias: {
+      // Resolve the shared kit to its TypeScript source, so editing it hot-reloads here.
+      '@confighub/examples-webkit': webkit,
     },
   },
 });

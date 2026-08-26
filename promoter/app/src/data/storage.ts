@@ -7,7 +7,7 @@
 
 import { useCallback } from 'react';
 
-import { fetchUnitDataText, putUnitDataText } from '../api/raw';
+import { fetchUnitDataText, putUnitDataText } from '@confighub/examples-webkit/api';
 import { parseWorkflow, serializeWorkflow, Workflow } from '../model/workflow';
 import {
   useCreateSpaceMutation,
@@ -147,11 +147,13 @@ export function useStorage(): Storage {
         }),
         'create workflow unit',
       );
-      if (!created.UnitID || !created.SpaceID) {
+      // A write answers with what it did, not with the entity: the Unit is nested.
+      const unit = created.Unit;
+      if (!unit?.UnitID || !unit.SpaceID) {
         throw new Error('create workflow unit returned no UnitID');
       }
       // The document itself is a second call: it is not part of the Unit entity.
-      await putUnitDataText(created.SpaceID, created.UnitID, serializeWorkflow(wf), changeDesc);
+      await putUnitDataText(unit.SpaceID, unit.UnitID, serializeWorkflow(wf), changeDesc);
     },
     [ensureSpace, createUnit],
   );

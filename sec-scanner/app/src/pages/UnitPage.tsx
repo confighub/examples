@@ -35,8 +35,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { parseAllDocuments } from 'yaml';
 
-import { fetchRevisionDataText, fetchUnitDataText, putUnitDataText } from '../api/raw';
-import { useSnapshot } from '../fleet/SnapshotContext';
+import { fetchRevisionDataText, fetchUnitDataText, putUnitDataText } from '@confighub/examples-webkit/api';
+import { useSnapshot } from '../fleet/snapshot';
 import { compileSetImage } from '../sec/edits';
 import { Finding, isStale } from '../sec/model';
 import { severityColor, severityLabel } from '../sec/severity';
@@ -46,7 +46,7 @@ import {
   useInvokeFunctionsMutation,
   useListExtendedRevisionsQuery,
   usePatchUnitMutation,
-} from '../sdk/confighubapi.gen';
+} from '@confighub/rtk-query';
 
 function DiffView({ before, after }: { before: string; after: string }) {
   const parts = useMemo(() => diffLines(before, after), [before, after]);

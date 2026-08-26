@@ -5,7 +5,7 @@
 
 import { useMemo } from 'react';
 
-import { useListAllInvocationsQuery } from '../sdk/confighubapi.gen';
+import { useListAllInvocationsQuery } from '@confighub/rtk-query';
 import { EDIT_LIBRARY_SPACE, type CompiledEdit } from './edits';
 
 export interface EditInvocationIds {

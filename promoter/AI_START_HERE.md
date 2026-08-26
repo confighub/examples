@@ -47,13 +47,27 @@ proxy). `VITE_CONFIGHUB_BASE_URL` defaults to `https://hub.confighub.com`.
    ```
 4. **Promote (the gate).** A stage's **Promote** button opens only once its
    upstream stage is `Ready`. Clicking it inspects upstream links, then upgrades
-   the variant-Space units (optionally applies). Verify:
+   the variant-Space units. Verify:
    ```bash
    cub revision list <unit> --space <variant-space>
    ```
-5. **See the gate refuse.** Pick a variant that is *not* a downstream clone of
-   the previous stage's variant — Promote reports exactly why it can't upgrade
-   rather than copying data.
+5. **Publish a Release.** The upgrade changes desired state only. The dialog
+   stays open and offers **Publish Release**, which cuts an immutable Release of
+   the variant Space to its OCI Release Target — the artifact Argo CD or Flux
+   pulls. Read the scope note first: a Release captures every Unit assigned to
+   that Target, which can be more than the promotion touched, and those extras
+   are listed by name. Verify:
+   ```bash
+   cub release list --space <variant-space>
+   cub release get --space <variant-space> <release-id> -o json
+   ```
+6. **See publishing refuse.** Publishing is disabled with a reason when the
+   Space has no `ReleaseTargetID`, when that Target is not an `OCI` provider,
+   when no Unit is assigned to it, or when a bundled Unit has an Apply Gate —
+   the app never clears a gate as a side effect.
+7. **See the promote gate refuse.** Pick a variant that is *not* a downstream
+   clone of the previous stage's variant — Promote reports exactly why it can't
+   upgrade rather than copying data.
 
 ## Key files
 
@@ -62,7 +76,9 @@ proxy). `VITE_CONFIGHUB_BASE_URL` defaults to `https://hub.confighub.com`.
   variant Space's `Status` label (the ConfigHub/agent-reported model).
 - `app/src/data/catalog.ts` — reads Spaces grouped by `Component`/`Variant`.
 - `app/src/data/storage.ts` — the `promoter`-Space workflow CRUD.
-- `app/src/data/promote.ts` — upstream-link inspection + `patchUnit` upgrade.
+- `app/src/data/promote.ts` — upstream-link inspection, `patchUnit` upgrade, and
+  the Release readiness read (`ReleaseTargetID` → OCI Target → EffectiveReleaseSet
+  → gates) behind `publishRelease`.
 
 ## Deploy
 

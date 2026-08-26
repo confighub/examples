@@ -1,26 +1,17 @@
-import { Box, Container, Tab, Tabs, Typography } from '@mui/material';
+import { AppShell } from '@confighub/examples-webkit/auth';
+import { ScopeSettings } from '@confighub/examples-webkit/fleet';
+import { Box, Button, Tab, Tabs } from '@mui/material';
+import { useState } from 'react';
 import { Link, Route, Routes, useLocation } from 'react-router-dom';
 
-import { AuthGate } from './auth/AuthGate';
-import { SnapshotProvider } from './fleet/SnapshotContext';
+import { scopeStore } from './fleet/scope';
+import { SnapshotProvider } from './fleet/snapshot';
 import { DashboardPage } from './pages/DashboardPage';
 import { ExplorerPage } from './pages/ExplorerPage';
 import { FindingsPage } from './pages/FindingsPage';
 import { FleetPage } from './pages/FleetPage';
 import { UnitPage } from './pages/UnitPage';
 import { WhoCanPage } from './pages/WhoCanPage';
-
-/** Terminal pages the API client may navigate to on 403. */
-function MessagePage({ title, body }: { title: string; body: string }) {
-  return (
-    <Container sx={{ mt: 8 }}>
-      <Typography variant='h4' gutterBottom>
-        {title}
-      </Typography>
-      <Typography color='text.secondary'>{body}</Typography>
-    </Container>
-  );
-}
 
 const NAV = [
   { path: '/', label: 'Dashboard' },
@@ -45,44 +36,39 @@ function NavTabs() {
 }
 
 export default function App() {
+  const [scopeOpen, setScopeOpen] = useState(false);
+
   return (
-    <Routes>
-      <Route
-        path='/access-denied'
-        element={
-          <MessagePage
-            title='Access denied'
-            body='Your account does not have access to this organization.'
-          />
-        }
+    <AppShell
+      title='RBAC Manager'
+      tagline='Sign in to analyze effective Kubernetes RBAC across your fleet.'
+      actions={
+        <Button color='inherit' size='small' onClick={() => setScopeOpen(true)}>
+          Scope
+        </Button>
+      }
+    >
+      <ScopeSettings
+        open={scopeOpen}
+        store={scopeStore}
+        onClose={(changed) => {
+          setScopeOpen(false);
+          // The snapshot provider reads scope at load time; a reload is the simplest way
+          // to rebuild everything against the new scope.
+          if (changed) window.location.reload();
+        }}
       />
-      <Route
-        path='/pending-approval'
-        element={
-          <MessagePage
-            title='Pending approval'
-            body='Your account is awaiting approval. Sign in again once approved.'
-          />
-        }
-      />
-      <Route
-        path='*'
-        element={
-          <AuthGate>
-            <SnapshotProvider>
-              <NavTabs />
-              <Routes>
-                <Route path='/' element={<DashboardPage />} />
-                <Route path='/explorer' element={<ExplorerPage />} />
-                <Route path='/who-can' element={<WhoCanPage />} />
-                <Route path='/findings' element={<FindingsPage />} />
-                <Route path='/fleet' element={<FleetPage />} />
-                <Route path='/unit/:spaceId/:unitId' element={<UnitPage />} />
-              </Routes>
-            </SnapshotProvider>
-          </AuthGate>
-        }
-      />
-    </Routes>
+      <SnapshotProvider>
+        <NavTabs />
+        <Routes>
+          <Route path='/' element={<DashboardPage />} />
+          <Route path='/explorer' element={<ExplorerPage />} />
+          <Route path='/who-can' element={<WhoCanPage />} />
+          <Route path='/findings' element={<FindingsPage />} />
+          <Route path='/fleet' element={<FleetPage />} />
+          <Route path='/unit/:spaceId/:unitId' element={<UnitPage />} />
+        </Routes>
+      </SnapshotProvider>
+    </AppShell>
   );
 }

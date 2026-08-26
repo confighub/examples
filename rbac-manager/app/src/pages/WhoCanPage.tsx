@@ -20,8 +20,8 @@ import {
 } from '@mui/material';
 import { useState } from 'react';
 
-import { useSnapshot } from '../fleet/SnapshotContext';
-import { Grant, whoCan } from '../rbac/whocan';
+import { useSnapshot } from '../fleet/snapshot';
+import { Grant, whoCan } from '@confighub/examples-webkit/rbac';
 
 const VERBS = ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete', 'deletecollection'];
 

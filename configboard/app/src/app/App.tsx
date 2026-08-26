@@ -1,3 +1,4 @@
+import { explainAuthError } from '@confighub/examples-webkit/auth';
 import { useAuth } from '@confighub/react-auth';
 import AddChartIcon from '@mui/icons-material/AddChart';
 import PushPinIcon from '@mui/icons-material/PushPin';
@@ -32,21 +33,6 @@ import { type DashboardEntry, useDashboards } from './useDashboards';
  * the organization that owns its client_id, and a user who belongs to several orgs can
  * easily authenticate into the wrong one. The raw 403 does not say what to do about it.
  */
-function explainAuthError(message: string): string | undefined {
-  if (/not a member of the organization that owns this app/i.test(message)) {
-    return (
-      'You signed in to a different organization than the one that owns this app\'s ' +
-      'client id. Sign in with the organization you registered the client in — or ' +
-      'register a client in the organization you just used:  cub oauthclient create ' +
-      'configboard-dev --redirect-uri <this origin>'
-    );
-  }
-  if (/redirect_uri/i.test(message)) {
-    return 'The origin serving this app is not a registered redirect URI for this client id.';
-  }
-  return undefined;
-}
-
 function Centered({ children }: { children: React.ReactNode }) {
   return (
     <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
@@ -108,10 +94,10 @@ export function App() {
         </Typography>
         {error && (
           <Alert severity="error" variant="outlined" sx={{ mb: 2, textAlign: 'left' }}>
-            {explainAuthError(error.message) ? (
+            {explainAuthError(error.message, 'configboard') ? (
               <>
                 <Typography variant="body2" gutterBottom>
-                  {explainAuthError(error.message)}
+                  {explainAuthError(error.message, 'configboard')}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
                   {error.message}

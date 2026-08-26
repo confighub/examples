@@ -19,8 +19,8 @@ import {
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import { useSnapshot } from '../fleet/SnapshotContext';
-import { Severity, analyzeFleet } from '../rbac/findings';
+import { useSnapshot } from '../fleet/snapshot';
+import { Severity, analyzeFleet } from '@confighub/examples-webkit/rbac';
 
 const SEVERITY_COLOR: Record<Severity, 'error' | 'warning' | 'default'> = {
   high: 'error',

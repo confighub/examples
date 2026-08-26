@@ -83,8 +83,9 @@ same data the gates do (image refs + the scanner's verdict annotations); it
 computes nothing itself.
 
 ```bash
-cd app && npm install
-CONFIGHUB_URL=http://localhost:9090 npm run dev   # http://localhost:5180
+cub oauthclient create sec-scanner --redirect-uri http://localhost:5182/
+cd app && cp .env.example .env   # paste the client_id into VITE_OAUTH_CLIENT_ID
+npm install && npm run dev       # http://localhost:5182
 ```
 
 Seed and scan the demo fleet first (`./demo-setup.sh`) so the console has data.

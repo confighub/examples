@@ -21,19 +21,32 @@ WHERE kind = 'Deployment'
 - **`src/pages/ExplorerPage.tsx`** — the explorer UI: a schema sidebar (the
   virtual tables and their columns), an FQL editor with autocomplete, a
   "show plan" view of the compiled API calls, and a results grid.
-- **`src/api/`** — `fqlTransport` (the engine's `Transport` over ConfigHub's
-  REST API) and a minimal token/auth helper. No generated SDK.
+- **`src/api/`** — `fqlTransport`, the engine's `Transport` over ConfigHub's REST
+  API, built on the published typed client
+  ([`@confighub/api`](https://www.npmjs.com/package/@confighub/api)). The auth
+  shell and the RBAC engine it queries are shared with the other example
+  consoles in [`../webkit`](../webkit).
 
 ## Run it
 
+Register the app once to get an OAuth `client_id` (public, not a secret — it registers
+in whatever organization your `cub` is logged into, and the app signs users into that
+organization only):
+
 ```bash
-npm install
-CONFIGHUB_URL=https://hub.confighub.com npm run dev   # http://localhost:5190
+cub oauthclient create fleet-ql --redirect-uri http://localhost:5190/
+cp .env.example .env      # paste the client_id into VITE_OAUTH_CLIENT_ID
 ```
 
-Paste a token from `cub auth get-token` when prompted (a same-origin deployment
-uses the session cookie instead). The dev server proxies `/api` to
-`CONFIGHUB_URL`.
+```bash
+npm install
+npm run dev               # http://localhost:5190
+```
+
+Sign in with the Log in button: auth is the browser-direct OIDC PKCE flow run by
+[`@confighub/react-auth`](https://github.com/confighub/js-sdk), so there is no proxy to
+stand up and no token to paste. The port is pinned because it has to match the
+registered `redirect-uri`.
 
 ```bash
 npm test          # the FQL engine suite (vitest)

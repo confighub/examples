@@ -22,7 +22,7 @@ import {
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 
-import { useSnapshot } from '../fleet/SnapshotContext';
+import { useSnapshot } from '../fleet/snapshot';
 import { isStale, severityHistogram, Workload } from '../sec/model';
 import { SEVERITIES, severityColor, severityLabel, severityRank } from '../sec/severity';
 

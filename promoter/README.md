@@ -25,6 +25,7 @@ at an org seeded with
 | **Stage** | a named step in a workflow; names, per component, the variant it deploys |
 | **Workflow** | an ordered list of stages, stored as one `AppConfig/YAML` unit |
 | **Promote** | upgrade the stage's variant-Space units from their upstream (the previous stage's variant) via `patchUnit --upgrade` |
+| **Publish** | cut an immutable Release of the stage's variant Space to its OCI Release Target — the artifact a cluster-side controller pulls |
 
 "Variant X of component Y" is the Space where `Component=Y` and `Variant=X`.
 
@@ -58,6 +59,33 @@ their upstream link. This only works when the chosen variant is actually a
 downstream clone of the previous stage's variant. The Promote button inspects
 the link topology first and is **disabled with a reason** when the links don't
 line up — it never silently copies data you didn't ask for.
+
+## Promoting is not delivering
+
+An upgrade changes desired state in ConfigHub. Nothing reaches a cluster until a
+**Release** of the variant Space is published to its OCI Release Target, which a
+cluster-side controller (Argo CD, Flux) then pulls. So the dialog offers
+publishing as a second, separately confirmed step once the upgrade lands.
+
+The two steps have **different subjects**, and the dialog says so rather than
+quietly widening the first approval into the second:
+
+- an upgrade acts on the Units linked upstream — the ones the report listed;
+- a Release captures the Space's whole **EffectiveReleaseSet**: every Unit whose
+  `TargetID` equals the Space's `ReleaseTargetID`, at its current head, promoted
+  or not.
+
+Anything in the second set that was not in the first is listed by name before
+the Publish button is offered. Publishing is disabled with a reason when the
+Space has no Release Target, when that Target is not an OCI provider, when no
+Unit is assigned to it, or when any bundled Unit has an Apply Gate set — the
+server refuses a gated Release, and the app does not clear gates as a side
+effect.
+
+Publishing untagged bundles each Unit at its head and the server creates a
+`release-<num>` Tag on every bundled Revision. Confirming delivery — that the
+controller synced and the workloads are running — is outside this app; the Space
+status label is what reports it back.
 
 ## Stage status — owned by ConfigHub, not the workflow
 

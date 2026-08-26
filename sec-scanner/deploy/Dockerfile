@@ -1,9 +1,23 @@
 # Build stage
 FROM node:20-alpine AS builder
-WORKDIR /app
-COPY app/package*.json ./
+WORKDIR /src
+
+# Build-time config baked into the static bundle by Vite. The OAuth client id is
+# a public PKCE client (not a secret); CI passes it as a build arg. Both must be
+# set for login to work — an empty client id renders the app's setup hint.
+ARG VITE_CONFIGHUB_BASE_URL=https://hub.confighub.com
+ARG VITE_OAUTH_CLIENT_ID
+ENV VITE_CONFIGHUB_BASE_URL=$VITE_CONFIGHUB_BASE_URL
+ENV VITE_OAUTH_CLIENT_ID=$VITE_OAUTH_CLIENT_ID
+
+# The shared kit is a `file:` dependency of the app, so it has to be in the image
+# at the relative path the manifest names — which makes the build context the
+# repository root rather than the example directory.
+COPY webkit/ ./webkit/
+COPY sec-scanner/app/package*.json ./sec-scanner/app/
+WORKDIR /src/sec-scanner/app
 RUN npm ci
-COPY app/ .
+COPY sec-scanner/app/ .
 RUN npm run build
 
 # Runtime stage
@@ -18,15 +32,13 @@ RUN mkdir -p /var/cache/nginx /var/log/nginx /tmp /usr/share/nginx/html && \
     chown -R appuser:appgroup /var/cache/nginx /var/log/nginx /tmp /usr/share/nginx/html /etc/nginx && \
     chmod -R 755 /var/cache/nginx /var/log/nginx
 
-# Copy built files and config
-COPY --from=builder /app/dist /usr/share/nginx/html
-COPY deploy/nginx.conf /etc/nginx/nginx.conf.template
-COPY deploy/docker-entrypoint.sh /docker-entrypoint.sh
-RUN chown -R appuser:appgroup /usr/share/nginx/html /etc/nginx && \
-    chmod +x /docker-entrypoint.sh
+# Copy built files and config. Static-only: no proxy, so no entrypoint templating.
+COPY --from=builder /src/sec-scanner/app/dist /usr/share/nginx/html
+COPY sec-scanner/deploy/nginx.conf /etc/nginx/nginx.conf
+RUN chown -R appuser:appgroup /usr/share/nginx/html /etc/nginx
 
 # Switch to non-root user
 USER 1000
 
 EXPOSE 8080
-ENTRYPOINT ["/docker-entrypoint.sh"]
+CMD ["nginx", "-g", "daemon off;"]

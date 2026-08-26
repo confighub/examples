@@ -13,8 +13,8 @@ import {
 import { useMemo, useState } from 'react';
 
 import { NewPersonaDialog } from '../components/NewPersonaDialog';
-import { useSnapshot } from '../fleet/SnapshotContext';
-import { ExtendedUnitRead } from '../sdk/confighubapi.gen';
+import { useSnapshot } from '../fleet/snapshot';
+import { ExtendedUnitRead } from '@confighub/rtk-query';
 
 interface GroupSummary {
   key: string;

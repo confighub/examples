@@ -14,6 +14,7 @@ on:
     paths:
       - 'rbac-manager/app/**'
       - 'rbac-manager/deploy/**'
+      - 'webkit/**'
       - '.github/workflows/deploy-rbac-manager.yml'
   workflow_dispatch:
 
@@ -41,8 +42,10 @@ jobs:
         run: |
           docker build \
             --label org.opencontainers.image.source=https://github.com/${{ github.repository }} \
+            --build-arg VITE_CONFIGHUB_BASE_URL=https://hub.confighub.com \
+            --build-arg VITE_OAUTH_CLIENT_ID=${{ vars.RBAC_MANAGER_OAUTH_CLIENT_ID }} \
             -t ghcr.io/confighub/rbac-manager:${{ github.sha }} \
-            -f rbac-manager/deploy/Dockerfile rbac-manager/
+            -f rbac-manager/deploy/Dockerfile .
           docker push ghcr.io/confighub/rbac-manager:${{ github.sha }}
 
   deploy:
