@@ -13,7 +13,6 @@ package snapshot
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/confighub/sdk/core/cubapi"
@@ -30,27 +29,28 @@ const k8sUnitsWhere = "ToolchainType = 'Kubernetes/YAML'"
 // of its own, which inflated the cluster count with things that are not clusters.
 const ClusterNone = "None"
 
-// resourceTypePatterns match the ResourceTypes observability analysis needs: the
+// resourceTypes are the ResourceTypes observability analysis needs: the
 // ServiceMonitors, the Services they select, and the workloads behind them.
-var resourceTypePatterns = []string{
-	`monitoring\.coreos\.com/[^/]+/ServiceMonitor`,
-	`v1/Service`,
-	`apps/v1/(Deployment|StatefulSet|DaemonSet|ReplicaSet)`,
-	`batch/[^/]+/(Job|CronJob)`,
-	`v1/Pod`,
+//
+// The union goes to the server as one IN clause: the filter language has no OR,
+// and IN is how a union of exact values is written. Pinning the API versions
+// means a new one has to be added here, which is the same list the analyzers
+// already know how to read.
+var resourceTypes = []string{
+	"monitoring.coreos.com/v1/ServiceMonitor",
+	"v1/Service",
+	"apps/v1/Deployment",
+	"apps/v1/StatefulSet",
+	"apps/v1/DaemonSet",
+	"apps/v1/ReplicaSet",
+	"batch/v1/Job",
+	"batch/v1/CronJob",
+	"batch/v1beta1/CronJob",
+	"v1/Pod",
 }
 
-// resourceTypeMatch is the exact test, applied to what comes back.
-var resourceTypeMatch = regexp.MustCompile(`(?i)^(` + strings.Join(resourceTypePatterns, "|") + `)$`)
-
-// resourceTypeWhere asks the server for the same union in one clause: the filter
-// language is flat AND-only, so a union of types is one regular expression
-// rather than ORed equalities. A filter literal cannot carry a backslash, so the
-// escapes are dropped — an unescaped `.` matches any character, which makes the
-// clause broader than the patterns, never narrower, and resourceTypeMatch
-// narrows it again on the way out.
-var resourceTypeWhere = "ResourceType ~* '^(" +
-	strings.ReplaceAll(strings.Join(resourceTypePatterns, "|"), `\`, "") + ")$'"
+// resourceTypeWhere selects those types in one clause.
+var resourceTypeWhere = "ResourceType IN ('" + strings.Join(resourceTypes, "', '") + "')"
 
 // UnitMeta is the per-Unit metadata the snapshot joins onto resources.
 type UnitMeta struct {
@@ -156,11 +156,6 @@ func Load(ctx context.Context, c *cubapi.Client, where string) (*Snapshot, error
 			continue
 		}
 		r := er.Resource
-		// The clause is deliberately broader than the patterns where a filter
-		// literal cannot spell them exactly, so match again.
-		if !resourceTypeMatch.MatchString(r.ResourceType) {
-			continue
-		}
 		meta, ok := inScope[r.UnitID.String()]
 		if !ok {
 			continue // out of scope
