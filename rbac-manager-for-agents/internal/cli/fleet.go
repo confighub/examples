@@ -100,7 +100,7 @@ func newFleetSubjectCmd(use string, add bool) *cobra.Command {
 }
 
 func runFleetEdit(cmd *cobra.Command, fl fleetFlags, edit rbac.EditInvocation) error {
-	sel := fl.predicate()
+	sel := fl.Predicate()
 	if strings.TrimSpace(sel) == "" {
 		return fmt.Errorf("--where (or a label selector like --environment) is required to scope a fleet edit (use a deliberate selector, e.g. \"Space.Labels.Environment = 'prod'\")")
 	}

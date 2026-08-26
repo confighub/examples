@@ -62,7 +62,7 @@ Example: set every prod HPA to scale out early —
 				return fmt.Errorf("resolve profile %q: %w", profileSlug, err)
 			}
 			where := "ToolchainType = 'Kubernetes/YAML'"
-			if p := filter.predicate(); p != "" {
+			if p := filter.Predicate(); p != "" {
 				where += " AND " + p
 			}
 			sel := cubapi.Selector{Where: where, WhereData: autoscalerKindsWhereData}

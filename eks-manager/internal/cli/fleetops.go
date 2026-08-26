@@ -101,7 +101,7 @@ Dry-run by default; pass --commit --change-desc "..." to write.`,
 			if err != nil {
 				return err
 			}
-			where := filter.predicate()
+			where := filter.Predicate()
 			sel := cubapi.Selector{
 				Where:         joinWhere("ToolchainType = 'Kubernetes/YAML'", where),
 				WhereData:     eksKindsWhereData,

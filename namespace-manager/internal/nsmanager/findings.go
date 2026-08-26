@@ -22,9 +22,7 @@ type Finding struct {
 }
 
 // AnalyzeFindings runs the v1 analyzer set over the fleet:
-//   - missing-default-deny   (occupied namespace with no default-deny NetworkPolicy)
 //   - missing-pod-security   (Namespace object without a pod-security enforce label)
-//   - missing-baseline-rbac  (occupied namespace with no RoleBinding)
 //   - missing-namespace-object (occupied namespace with no v1/Namespace Unit)
 //   - duplicate-namespace    (two Namespace objects colliding on name + Target)
 //   - namespace-name-inconsistent (a component's namespace name varies across variants)
@@ -47,20 +45,6 @@ func AnalyzeFindings(clusters map[string]*ClusterNamespaces) []Finding {
 					Analyzer: "missing-pod-security", Severity: api.ScoreMedium,
 					Cluster: e.Cluster, Namespace: e.Namespace,
 					Message: fmt.Sprintf("namespace %q has no pod-security.kubernetes.io/enforce label", e.Namespace),
-				})
-			}
-			if e.WorkloadCount > 0 && !e.HasDefaultDeny {
-				fs = append(fs, Finding{
-					Analyzer: "missing-default-deny", Severity: api.ScoreHigh,
-					Cluster: e.Cluster, Namespace: e.Namespace,
-					Message: fmt.Sprintf("namespace %q has %d workload(s) but no default-deny NetworkPolicy", e.Namespace, e.WorkloadCount),
-				})
-			}
-			if e.WorkloadCount > 0 && !e.HasBaselineRBAC {
-				fs = append(fs, Finding{
-					Analyzer: "missing-baseline-rbac", Severity: api.ScoreLow,
-					Cluster: e.Cluster, Namespace: e.Namespace,
-					Message: fmt.Sprintf("namespace %q has no baseline RBAC (RoleBinding)", e.Namespace),
 				})
 			}
 		}

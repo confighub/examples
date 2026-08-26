@@ -89,16 +89,6 @@ func AnalyzeConsistency(clusters map[string]*ClusterNamespaces) []ComponentConsi
 				addNamespace(aggFor(comp, w.Origin.Space, w.Origin.Cluster), w.Namespace)
 			}
 		}
-		for _, r := range c.RBAC {
-			if comp := componentOf(r.Origin); comp != "" {
-				addNamespace(aggFor(comp, r.Origin.Space, r.Origin.Cluster), r.Namespace)
-			}
-		}
-		for _, np := range c.NetworkPolicies {
-			if comp := componentOf(np.Origin); comp != "" {
-				addNamespace(aggFor(comp, np.Origin.Space, np.Origin.Cluster), np.Namespace)
-			}
-		}
 	}
 
 	out := make([]ComponentConsistency, 0, len(byComponent))

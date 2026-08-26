@@ -1,41 +1,23 @@
 // Copyright (C) ConfigHub, Inc.
 // SPDX-License-Identifier: MIT
 
-// Package cub is cub-observability's gateway to ConfigHub: it builds an
-// authenticated API client from the ambient cub session and exposes the
-// authentication preflight every ConfigHub-touching command runs first.
+// Package cub is cub-observability's gateway to ConfigHub: one authenticated session, built
+// from the ambient cub credentials, shared by every command.
 package cub
 
 import (
 	"context"
-	"fmt"
-	"sync"
 
 	"github.com/confighub/sdk/core/cubapi"
+
+	"github.com/confighub/examples/managerkit/fleet"
 )
 
-// Client returns a memoized, authenticated ConfigHub API client.
-func Client(ctx context.Context) (*cubapi.Client, error) {
-	clientOnce.Do(func() {
-		client, clientErr = cubapi.ResolveClient(ctx, cubapi.ClientOptions{UserAgent: "cub-observability"})
-	})
-	return client, clientErr
-}
+var session = fleet.Session{UserAgent: "cub-observability"}
 
-var (
-	clientOnce sync.Once
-	client     *cubapi.Client
-	clientErr  error
-)
+// Client returns the memoized, authenticated ConfigHub API client.
+func Client(ctx context.Context) (*cubapi.Client, error) { return session.Client(ctx) }
 
-// Preflight builds the client and verifies the session against the server.
-func Preflight(ctx context.Context) (*cubapi.Client, error) {
-	c, err := Client(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("not authenticated to ConfigHub — run `cub auth login` (interactive) and retry: %w", err)
-	}
-	if _, err := c.VerifyAuth(ctx); err != nil {
-		return nil, fmt.Errorf("not authenticated to ConfigHub — run `cub auth login` (interactive) and retry: %w", err)
-	}
-	return c, nil
-}
+// Preflight is the standard gate for any ConfigHub-touching command: it verifies
+// the session against the server before the command does anything else.
+func Preflight(ctx context.Context) (*cubapi.Client, error) { return session.Preflight(ctx) }

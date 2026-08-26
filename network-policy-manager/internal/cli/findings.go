@@ -53,7 +53,7 @@ Filter with --severity (Critical|High|Medium|Low), --analyzer, and --cluster.`,
 			if err != nil {
 				return err
 			}
-			snap, err := snapshot.Load(cmd.Context(), client, filter.predicate())
+			snap, err := snapshot.Load(cmd.Context(), client, filter.Predicate())
 			if err != nil {
 				return err
 			}

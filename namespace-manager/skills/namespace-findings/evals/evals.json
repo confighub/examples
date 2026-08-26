@@ -5,7 +5,7 @@
       "id": 1,
       "name": "high-severity",
       "prompt": "Show me the high-severity namespace governance problems across the fleet.",
-      "expected_output": "Runs `cub-namespace preflight` then `cub-namespace findings --severity high` and reports the high findings (missing-default-deny, duplicate-namespace) with their namespaces/clusters. Read-only.",
+      "expected_output": "Runs `cub-namespace preflight` then `cub-namespace findings --severity high` and reports the high findings (duplicate-namespace) with their namespaces/clusters. Read-only.",
       "files": []
     },
     {

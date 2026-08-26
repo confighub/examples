@@ -44,7 +44,7 @@ Filter with --kind, --cluster, and --namespace.`,
 			if err != nil {
 				return err
 			}
-			snap, err := snapshot.Load(cmd.Context(), client, filter.predicate())
+			snap, err := snapshot.Load(cmd.Context(), client, filter.Predicate())
 			if err != nil {
 				return err
 			}
@@ -113,7 +113,7 @@ func printResourceTable(cmd *cobra.Command, rows []resourceRow) {
 		if r.Canonical {
 			name += " (canonical)"
 		}
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", r.Cluster, r.Kind, nsOrDash(r.Namespace), name, r.UnitSlug)
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", r.Cluster, r.Kind, dash(r.Namespace), name, r.UnitSlug)
 	}
 	_ = tw.Flush()
 	fprintln(cmd.OutOrStdout(), fmt.Sprintf("\n%d workloads", len(rows)))

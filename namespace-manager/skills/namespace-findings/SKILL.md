@@ -1,6 +1,6 @@
 ---
 name: namespace-findings
-description: 'Run the ranked namespace-governance analyzer set over a ConfigHub fleet with the cub-namespace CLI — envelope gaps (missing default-deny / pod-security / baseline RBAC / Namespace object), duplicate namespaces colliding on a Target, and cross-variant name/pod-security inconsistency. Use for "what''s wrong with our namespaces?", "namespace governance findings", "any duplicate namespaces?", "show high-severity namespace issues", "audit namespace hygiene". Not for raw inventory (use namespace-audit) or a single component''s consistency detail (use namespace-consistency); read-only, ConfigHub-managed Units only.'
+description: 'Run the ranked namespace-governance analyzer set over a ConfigHub fleet with the cub-namespace CLI — envelope gaps (missing Namespace object / pod-security), duplicate namespaces colliding on a Target, and cross-variant name/pod-security inconsistency. Use for "what''s wrong with our namespaces?", "namespace governance findings", "any duplicate namespaces?", "show high-severity namespace issues", "audit namespace hygiene". Not for raw inventory (use namespace-audit) or a single component''s consistency detail (use namespace-consistency); read-only, ConfigHub-managed Units only.'
 phase: verify
 allowed-tools: Bash(cub-namespace --help) Bash(cub-namespace * --help) Bash(cub auth status) Bash(cub-namespace preflight) Bash(cub-namespace findings) Bash(cub-namespace findings *)
 ---
@@ -11,18 +11,16 @@ Run the v1 analyzer set over the fleet and return a **severity-ranked** list of 
 
 ## Why this matters
 
-Each finding is a property of the *whole set* of resources — "this namespace has workloads but no default-deny", "two Units define the same namespace on one cluster", "this component's namespace name drifts across variants" — none of which a per-resource validator or a single-cluster controller can determine. `cub-namespace` computes them over the fleet's ConfigHub-managed Units and ranks by severity. Output is JSON by default; add `-o table`.
+Each finding is a property of the *whole set* of resources — "this namespace has workloads but no Namespace object", "two Units define the same namespace on one cluster", "this component's namespace name drifts across variants" — none of which a per-resource validator or a single-cluster controller can determine. `cub-namespace` computes them over the fleet's ConfigHub-managed Units and ranks by severity. Output is JSON by default; add `-o table`.
 
 ## The analyzers
 
 | Analyzer | Severity | Fires when |
 | --- | --- | --- |
-| `missing-default-deny` | high | occupied namespace with no default-deny NetworkPolicy |
 | `duplicate-namespace` | high | two Namespace Units collide on name + Target (one cluster) |
 | `missing-namespace-object` | medium | occupied namespace with no `v1/Namespace` Unit |
 | `missing-pod-security` | medium | Namespace object with no `pod-security.kubernetes.io/enforce` label |
 | `namespace-name-inconsistent` | medium | a component's namespace name varies across its variants |
-| `missing-baseline-rbac` | low | occupied namespace with no RoleBinding |
 | `pod-security-inconsistent` | low | a component's pod-security level varies across its variants |
 
 ## When to use
@@ -48,7 +46,7 @@ Each finding is a property of the *whole set* of resources — "this namespace h
 ```bash
 cub-namespace findings -o table
 cub-namespace findings --severity high
-cub-namespace findings --analyzer missing-default-deny
+cub-namespace findings --analyzer missing-pod-security
 cub-namespace findings --cluster prod-cluster
 ```
 

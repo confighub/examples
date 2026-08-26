@@ -1,23 +1,26 @@
 // Copyright (C) ConfigHub, Inc.
 // SPDX-License-Identifier: MIT
 
-// Package nsmanager is the namespace-envelope analysis engine: it parses
-// Namespaces, default-deny NetworkPolicies, baseline RBAC (ServiceAccount /
-// Role / RoleBinding), and pod-bearing workloads drawn from ConfigHub Units into
-// a typed domain model, then computes per-namespace envelope completeness and
+// Package nsmanager is the namespace analysis engine: it parses Namespaces and
+// the pod-bearing workloads that occupy them, drawn from ConfigHub Units, into a
+// typed domain model, then computes per-namespace envelope completeness and
 // fleet-wide consistency checks over it.
 //
-// "Envelope" is the policy bundle a namespace should carry: pod-security labels
-// on the Namespace object, a default-deny NetworkPolicy, and baseline RBAC. The
-// manager reports which namespaces are missing members — the fleet-wide read a
+// "Envelope" is what a namespace should carry to be governed at all: the
+// Namespace object itself and its pod-security labels. The manager reports which
+// namespaces are missing members, which names collide on one cluster, and which
+// components let a namespace name drift across variants — the fleet-wide read a
 // per-resource validator or a runtime tenancy controller (Capsule, HNC) cannot
 // do.
+//
+// It deliberately stops there. Whether a namespace has the NetworkPolicy
+// coverage it needs is network-policy-manager's subject, and whether its RBAC is
+// sound is rbac-manager's; each reasons about its own resources far more
+// carefully than a completeness check here could.
 //
 // Parsing is lenient: malformed documents are skipped, never errored on — a bad
 // resource in one Unit must not take down fleet-wide analysis.
 package nsmanager
-
-import "strings"
 
 // ResourceOrigin records where a resource came from in ConfigHub. Clusters are
 // Targets: a Unit's Target identifies the cluster it deploys to, and Units from
@@ -63,52 +66,6 @@ func (n *NamespaceEntity) PodSecurityEnforce() string {
 	return n.Labels[PodSecurityEnforceLabel]
 }
 
-// NetworkPolicyEntity is a parsed networking.k8s.io/v1 NetworkPolicy, reduced to
-// what envelope analysis needs: whether it is a namespace-wide default-deny.
-type NetworkPolicyEntity struct {
-	Name             string         `json:"name"`
-	Namespace        string         `json:"namespace"`
-	PodSelectorEmpty bool           `json:"podSelectorEmpty"`
-	PolicyTypes      []string       `json:"policyTypes,omitempty"`
-	HasEgressRules   bool           `json:"hasEgressRules,omitempty"`
-	Origin           ResourceOrigin `json:"origin"`
-}
-
-// isolates reports which directions this policy isolates, applying the
-// Kubernetes default: when policyTypes is set it is authoritative; when absent,
-// Ingress is always implied and Egress only if egress rules exist.
-func (np *NetworkPolicyEntity) isolates() (ingress, egress bool) {
-	if len(np.PolicyTypes) > 0 {
-		for _, t := range np.PolicyTypes {
-			switch t {
-			case "Ingress":
-				ingress = true
-			case "Egress":
-				egress = true
-			}
-		}
-		return ingress, egress
-	}
-	return true, np.HasEgressRules
-}
-
-// IsDefaultDenyIngress reports whether this policy is a namespace-wide
-// default-deny on ingress: an empty podSelector (selects every pod) that
-// isolates ingress. This is the envelope's default-deny member.
-func (np *NetworkPolicyEntity) IsDefaultDenyIngress() bool {
-	ingress, _ := np.isolates()
-	return np.PodSelectorEmpty && ingress
-}
-
-// RBACEntity is a parsed namespaced RBAC object (ServiceAccount, Role, or
-// RoleBinding).
-type RBACEntity struct {
-	Kind      string         `json:"kind"`
-	Name      string         `json:"name"`
-	Namespace string         `json:"namespace"`
-	Origin    ResourceOrigin `json:"origin"`
-}
-
 // WorkloadEntity is a parsed pod-bearing resource (Deployment, StatefulSet,
 // DaemonSet, ReplicaSet, Job, CronJob, or bare Pod) — used to identify which
 // namespaces are occupied and therefore want an envelope.
@@ -121,11 +78,9 @@ type WorkloadEntity struct {
 
 // ClusterNamespaces holds the envelope-relevant entities of one cluster.
 type ClusterNamespaces struct {
-	Cluster         string                 `json:"cluster"`
-	Namespaces      []*NamespaceEntity     `json:"namespaces"`
-	NetworkPolicies []*NetworkPolicyEntity `json:"networkPolicies"`
-	RBAC            []*RBACEntity          `json:"rbac"`
-	Workloads       []*WorkloadEntity      `json:"workloads"`
+	Cluster    string             `json:"cluster"`
+	Namespaces []*NamespaceEntity `json:"namespaces"`
+	Workloads  []*WorkloadEntity  `json:"workloads"`
 }
 
 // workloadKinds is the set of pod-bearing kinds whose presence marks a namespace
@@ -138,13 +93,6 @@ var workloadKinds = map[string]bool{
 	"Job":         true,
 	"CronJob":     true,
 	"Pod":         true,
-}
-
-// rbacKinds is the set of namespaced RBAC kinds that make up baseline RBAC.
-var rbacKinds = map[string]bool{
-	"ServiceAccount": true,
-	"Role":           true,
-	"RoleBinding":    true,
 }
 
 // BuildFleet indexes parsed fleet resources into per-cluster entity sets.
@@ -176,27 +124,11 @@ func BuildFleet(resources []FleetResource) map[string]*ClusterNamespaces {
 		namespace, _ := asString(metadata["namespace"])
 		labels := asStringMap(metadata["labels"])
 		cluster := forCluster(fr.Origin.Cluster)
-		spec, _ := asRecord(rec["spec"])
 
 		switch {
 		case kind == "Namespace" && apiVersion == "v1":
 			cluster.Namespaces = append(cluster.Namespaces, &NamespaceEntity{
 				Name: name, Labels: labels, Origin: fr.Origin,
-			})
-		case kind == "NetworkPolicy" && strings.HasPrefix(apiVersion, "networking.k8s.io/"):
-			podSelector, hasPodSelector := asRecord(spec["podSelector"])
-			egress, _ := spec["egress"].([]any)
-			cluster.NetworkPolicies = append(cluster.NetworkPolicies, &NetworkPolicyEntity{
-				Name:             name,
-				Namespace:        namespace,
-				PodSelectorEmpty: hasPodSelector && len(podSelector) == 0,
-				PolicyTypes:      asStringArray(spec["policyTypes"]),
-				HasEgressRules:   len(egress) > 0,
-				Origin:           fr.Origin,
-			})
-		case rbacKinds[kind] && (apiVersion == "v1" || strings.HasPrefix(apiVersion, "rbac.authorization.k8s.io/")):
-			cluster.RBAC = append(cluster.RBAC, &RBACEntity{
-				Kind: kind, Name: name, Namespace: namespace, Origin: fr.Origin,
 			})
 		case workloadKinds[kind]:
 			cluster.Workloads = append(cluster.Workloads, &WorkloadEntity{

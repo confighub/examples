@@ -358,7 +358,7 @@ Re-run after adding ServiceMonitors. Dry run unless --commit --change-desc.`,
 			if err != nil {
 				return err
 			}
-			snap, err := snapshot.Load(cmd.Context(), client, filter.predicate())
+			snap, err := snapshot.Load(cmd.Context(), client, filter.Predicate())
 			if err != nil {
 				return err
 			}
@@ -391,7 +391,7 @@ Re-run after adding ServiceMonitors. Dry run unless --commit --change-desc.`,
 			}
 			out := cmd.OutOrStdout()
 			for _, r := range results {
-				fprintln(out, fmt.Sprintf("%s/%s  %s  (service: %s)", r.Cluster, nsOrDash(r.Namespace), r.Unit, r.Service))
+				fprintln(out, fmt.Sprintf("%s/%s  %s  (service: %s)", r.Cluster, dash(r.Namespace), r.Unit, r.Service))
 			}
 			if dryRun {
 				fprintln(out, fmt.Sprintf("\nDry run — %d Service Unit(s) would be annotated. Re-run with --commit --change-desc \"…\".", len(results)))

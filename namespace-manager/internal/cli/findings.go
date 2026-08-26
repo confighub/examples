@@ -35,9 +35,7 @@ func newFindingsCmd() *cobra.Command {
 		Short: "Namespace-governance findings across the fleet (envelope gaps, duplicates, inconsistency)",
 		Long: `findings runs the v1 analyzer set over the fleet:
 
-  missing-default-deny         occupied namespace with no default-deny NetworkPolicy
   missing-pod-security         Namespace object with no pod-security enforce label
-  missing-baseline-rbac        occupied namespace with no RoleBinding
   missing-namespace-object     occupied namespace with no v1/Namespace Unit
   duplicate-namespace          two Namespace Units collide on name + Target (one cluster)
   namespace-name-inconsistent  a component's namespace name varies across its variants
@@ -57,7 +55,7 @@ Filter with --severity (Critical|High|Medium|Low), --analyzer, --cluster, and --
 			if err != nil {
 				return err
 			}
-			snap, err := snapshot.Load(cmd.Context(), client, filter.predicate())
+			snap, err := snapshot.Load(cmd.Context(), client, filter.Predicate())
 			if err != nil {
 				return err
 			}
@@ -111,11 +109,4 @@ func printFindingsTable(cmd *cobra.Command, r findingsReport) {
 	fprintln(cmd.OutOrStdout(), fmt.Sprintf("\n%d findings (%d high, %d medium, %d low)",
 		r.Totals.Total, r.Totals.BySeverity[api.ScoreHigh],
 		r.Totals.BySeverity[api.ScoreMedium], r.Totals.BySeverity[api.ScoreLow]))
-}
-
-func dash(s string) string {
-	if s == "" {
-		return "-"
-	}
-	return s
 }

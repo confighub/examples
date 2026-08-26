@@ -68,7 +68,7 @@ Restrict to one dimension with --dimension, and to a cluster / namespace with
 			if err != nil {
 				return err
 			}
-			snap, err := snapshot.Load(cmd.Context(), client, filter.predicate())
+			snap, err := snapshot.Load(cmd.Context(), client, filter.Predicate())
 			if err != nil {
 				return err
 			}
@@ -178,16 +178,9 @@ func printReadinessTable(cmd *cobra.Command, r readinessReport) {
 			continue
 		}
 		sort.Strings(lines)
-		fprintln(cmd.OutOrStdout(), fmt.Sprintf("  %s/%s %s/%s:", s.Cluster, nsOrDash(s.Namespace), s.Kind, s.Name))
+		fprintln(cmd.OutOrStdout(), fmt.Sprintf("  %s/%s %s/%s:", s.Cluster, dash(s.Namespace), s.Kind, s.Name))
 		for _, l := range lines {
 			fprintln(cmd.OutOrStdout(), l)
 		}
 	}
-}
-
-func nsOrDash(ns string) string {
-	if ns == "" {
-		return "-"
-	}
-	return ns
 }

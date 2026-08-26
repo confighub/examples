@@ -32,12 +32,12 @@ func newListCmd() *cobra.Command {
 	var kindFilter, clusterFilter, namespaceFilter string
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "List envelope-relevant resources across the fleet (explorer)",
-		Long: `list enumerates the resources ConfigHub holds that the namespace-envelope model
-reasons about — Namespace, NetworkPolicy, baseline RBAC (ServiceAccount, Role,
-RoleBinding), and pod-bearing workloads (Deployment, StatefulSet, DaemonSet,
-ReplicaSet, Job, CronJob, Pod) — with the cluster, Space, and Unit each came
-from. Canonical base/policy definitions are included and flagged.
+		Short: "List namespaces and the workloads occupying them across the fleet",
+		Long: `list enumerates the resources ConfigHub holds that the namespace model reasons
+about — Namespace, and the pod-bearing workloads that occupy one (Deployment,
+StatefulSet, DaemonSet, ReplicaSet, Job, CronJob, Pod) — with the cluster, Space,
+and Unit each came from. Canonical base/policy definitions are included and
+flagged.
 
 Filter with --kind, --cluster, and --namespace.`,
 		Args: cobra.NoArgs,
@@ -46,7 +46,7 @@ Filter with --kind, --cluster, and --namespace.`,
 			if err != nil {
 				return err
 			}
-			snap, err := snapshot.Load(cmd.Context(), client, filter.predicate())
+			snap, err := snapshot.Load(cmd.Context(), client, filter.Predicate())
 			if err != nil {
 				return err
 			}
@@ -60,7 +60,7 @@ Filter with --kind, --cluster, and --namespace.`,
 	}
 	addOutputFlag(cmd, &output)
 	addFilterFlags(cmd, &filter)
-	cmd.Flags().StringVar(&kindFilter, "kind", "", "filter by kind (Namespace, NetworkPolicy, ServiceAccount, Role, RoleBinding, Deployment, ...)")
+	cmd.Flags().StringVar(&kindFilter, "kind", "", "filter by kind (Namespace, Deployment, StatefulSet, Job, Pod, ...)")
 	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "restrict output to this cluster (Target slug, or None for Units whose Space has no release Target)")
 	cmd.Flags().StringVar(&namespaceFilter, "namespace", "", "filter by namespace")
 	return cmd

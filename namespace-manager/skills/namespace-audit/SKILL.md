@@ -1,25 +1,27 @@
 ---
 name: namespace-audit
-description: 'Inventory and audit Kubernetes namespaces and their policy envelope (pod-security labels, default-deny NetworkPolicy, baseline RBAC) stored in ConfigHub across the fleet, using the cub-namespace CLI. Use for "what namespaces do we have?", "which namespaces are missing a default-deny / pod-security / baseline RBAC?", "is this namespace''s envelope complete?", "per-cluster namespace/policy/workload counts", "list the namespaces in apptique". Not for cross-variant consistency (use namespace-consistency), ranked governance findings (use namespace-findings), or live cluster state (use kubectl); analysis is over ConfigHub-managed Units only.'
+description: 'Inventory and audit Kubernetes namespaces stored in ConfigHub across the fleet, using the cub-namespace CLI — the Namespace object, its pod-security labels, and duplicate-name collisions. Use for "what namespaces do we have?", "which namespaces are missing a Namespace object or pod-security labels?", "is this namespace''s envelope complete?", "per-cluster namespace/workload counts", "list the namespaces in apptique". Not for NetworkPolicy coverage (use netpol-audit) or RBAC (use rbac-audit). Not for cross-variant consistency (use namespace-consistency), ranked governance findings (use namespace-findings), or live cluster state (use kubectl); analysis is over ConfigHub-managed Units only.'
 phase: verify
 allowed-tools: Bash(cub-namespace --help) Bash(cub-namespace * --help) Bash(cub auth status) Bash(cub-namespace preflight) Bash(cub-namespace snapshot) Bash(cub-namespace snapshot *) Bash(cub-namespace list) Bash(cub-namespace list *) Bash(cub-namespace envelope) Bash(cub-namespace envelope *)
 ---
 
 # namespace-audit
 
-Inventory the namespaces ConfigHub holds across the fleet and report **envelope completeness** — which namespaces have their pod-security labels, a default-deny NetworkPolicy, and baseline RBAC, and which are missing members. This is the "what do we have / where are the gaps" surface; it never mutates.
+Inventory the namespaces ConfigHub holds across the fleet and report **envelope completeness** — which namespaces have a Namespace object and pod-security labels, and which are missing members. This is the "what do we have / where are the gaps" surface; it never mutates.
+
+NetworkPolicy coverage is **network-policy-manager**'s subject and RBAC is **rbac-manager-for-agents**'s.
 
 ## Why this matters
 
-A runtime tenancy controller (Capsule, the retired HNC) governs one cluster; a per-resource validator sees one object. Neither can answer *does every namespace across the fleet carry its full policy envelope?* — that is a property of the whole set of resources in a namespace, joined across types, over the fleet's source of record. `cub-namespace` loads a fleet snapshot (Namespaces + NetworkPolicies + RBAC + workloads, joined with Space/Target metadata) and reasons over it. Clusters are ConfigHub Targets (the Space slug stands in for unbound Units). Analysis is over **ConfigHub-managed Units only**. Output is JSON by default; add `-o table` for humans.
+A runtime tenancy controller (Capsule, the retired HNC) governs one cluster; a per-resource validator sees one object. Neither can answer *does every namespace across the fleet carry its full policy envelope?* — that is a property of the whole set of resources in a namespace, joined across types, over the fleet's source of record. `cub-namespace` loads a fleet snapshot (Namespaces + the workloads occupying them, joined with Space/Target metadata) and reasons over it. Clusters are ConfigHub Targets; Units whose Space has no release Target group under a single `None` cluster. Analysis is over **ConfigHub-managed Units only**. Output is JSON by default; add `-o table` for humans.
 
 ## When to use
 
 - "What namespaces do we have?" / "audit our namespace governance."
-- "Which namespaces are missing a default-deny / pod-security labels / baseline RBAC?" → `envelope`.
+- "Which namespaces are missing a Namespace object or pod-security labels?" → `envelope`.
 - "Is namespace X's envelope complete?" → `envelope --namespace X`.
-- "Per-cluster counts of namespaces / policies / RBAC / workloads" → `snapshot`.
-- "List the namespaces (or NetworkPolicies / RBAC) in cluster/namespace X" → `list`.
+- "Per-cluster counts of namespaces and workloads" → `snapshot`.
+- "List the namespaces (or the workloads in one) in cluster X" → `list`.
 
 ## Do not load for
 
@@ -36,7 +38,7 @@ A runtime tenancy controller (Capsule, the retired HNC) governs one cluster; a p
 
 ### Fleet inventory — `cub-namespace snapshot`
 
-Per-cluster counts of Namespace / NetworkPolicy / RBAC / workload, plus Units, gated, and unapplied. Canonical base/policy Spaces are excluded.
+Per-cluster counts of Namespace and workload, plus Units, gated, and unapplied. Canonical base/policy Spaces are excluded.
 
 ```bash
 cub-namespace snapshot -o table
@@ -44,7 +46,7 @@ cub-namespace snapshot -o table
 
 ### Envelope completeness — `cub-namespace envelope`
 
-Per namespace: pod-security enforce level, default-deny present, baseline RBAC present, and the list of missing members. Also flags duplicate Namespace objects colliding on name + Target. This is the headline audit.
+Per namespace: pod-security enforce level and the list of missing members. Also flags duplicate Namespace objects colliding on name + Target. This is the headline audit.
 
 ```bash
 cub-namespace envelope -o table
@@ -54,7 +56,7 @@ cub-namespace envelope --namespace payments
 
 ### Explorer — `cub-namespace list`
 
-Every envelope-relevant resource (Namespace, NetworkPolicy, ServiceAccount, Role, RoleBinding, workloads) with its cluster, Space, and Unit.
+Every Namespace and the workloads occupying it, with its cluster, Space, and Unit.
 
 ```bash
 cub-namespace list --kind Namespace -o table

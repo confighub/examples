@@ -19,7 +19,7 @@
       "id": 3,
       "name": "routes-completeness-elsewhere",
       "prompt": "Does the payments namespace have a default-deny?",
-      "expected_output": "Recognizes this is a per-namespace envelope-completeness question, not cross-variant consistency, and routes to namespace-audit / `cub-namespace envelope` rather than answering with consistency.",
+      "expected_output": "Recognizes that NetworkPolicy coverage is not this tool's subject at all: cub-namespace no longer reports default-deny, so it routes to netpol-audit / the network-policy-manager tool rather than running cub-namespace envelope.",
       "files": []
     }
   ]

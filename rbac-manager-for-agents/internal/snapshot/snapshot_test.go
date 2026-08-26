@@ -4,65 +4,71 @@
 package snapshot
 
 import (
-	"strings"
 	"testing"
+
+	"github.com/confighub/examples/managerkit/fleet"
 )
 
-func TestIsCanonicalSpace(t *testing.T) {
-	cases := []struct {
-		labels map[string]string
-		want   bool
-	}{
-		{nil, false},
-		{map[string]string{"Variant": "base"}, true},
-		{map[string]string{"Variant": "prod"}, false},
-		{map[string]string{"role": "base"}, true},
-		{map[string]string{"role": "policy"}, true},
-		{map[string]string{"role": "app"}, false},
-		{map[string]string{"Environment": "prod"}, false},
+// The generic reading of the fleet is managerkit/fleet's, and tested there. What
+// is this tool's own is which resource types it asks for and what it turns them
+// into.
+
+func TestLoaderCoversTheRBACModel(t *testing.T) {
+	want := map[string]bool{
+		"rbac.authorization.k8s.io/v1/Role":               false,
+		"rbac.authorization.k8s.io/v1/ClusterRole":        false,
+		"rbac.authorization.k8s.io/v1/RoleBinding":        false,
+		"rbac.authorization.k8s.io/v1/ClusterRoleBinding": false,
+		"v1/ServiceAccount":                               false,
 	}
-	for _, c := range cases {
-		if got := isCanonicalSpace(c.labels); got != c.want {
-			t.Errorf("isCanonicalSpace(%v) = %v, want %v", c.labels, got, c.want)
+	for _, got := range loader.ResourceTypes {
+		if _, ok := want[got]; !ok {
+			t.Errorf("unexpected resource type %q", got)
+			continue
+		}
+		want[got] = true
+	}
+	for rt, seen := range want {
+		if !seen {
+			t.Errorf("%s is analyzed but never fetched", rt)
 		}
 	}
 }
 
-func TestUnitMetaState(t *testing.T) {
-	cases := []struct {
-		name      string
-		u         UnitMeta
-		gated     bool
-		unapplied bool
-	}{
-		{"never applied", UnitMeta{HeadRevisionNum: 3, LiveRevisionNum: 0}, false, true},
-		{"behind", UnitMeta{HeadRevisionNum: 5, LiveRevisionNum: 4}, false, true},
-		{"in sync", UnitMeta{HeadRevisionNum: 5, LiveRevisionNum: 5}, false, false},
-		{"gated", UnitMeta{HeadRevisionNum: 5, LiveRevisionNum: 5, GateCount: 2}, true, false},
+// A field dropped from the mapping is invisible: the resource still parses, and
+// the analyzers just see an empty cluster or space.
+func TestLoaderNewCarriesTheWholeOrigin(t *testing.T) {
+	origin := fleet.Origin{
+		Cluster:      "prod-oci",
+		Target:       "prod-target",
+		Space:        "prod-rbac",
+		SpaceID:      "11111111-1111-1111-1111-111111111111",
+		UnitID:       "22222222-2222-2222-2222-222222222222",
+		UnitSlug:     "argocd-rbac",
+		ResourceName: "argocd/viewer",
+		ResourceType: "rbac.authorization.k8s.io/v1/Role",
+		Canonical:    true,
 	}
-	for _, c := range cases {
-		if got := c.u.Gated(); got != c.gated {
-			t.Errorf("%s: Gated() = %v, want %v", c.name, got, c.gated)
-		}
-		if got := c.u.Unapplied(); got != c.unapplied {
-			t.Errorf("%s: Unapplied() = %v, want %v", c.name, got, c.unapplied)
-		}
-	}
-}
+	doc := map[string]any{"kind": "Role"}
+	got := loader.New(origin, doc)
 
-func TestResourceTypeWhere(t *testing.T) {
-	// A filter string literal admits no quote or backslash, so a type name
-	// carrying one could not be sent at all.
-	for _, rt := range resourceTypes {
-		if strings.ContainsAny(rt, "'\"\\") {
-			t.Errorf("%q cannot appear in a filter literal", rt)
-		}
-		if !strings.Contains(resourceTypeWhere, "'"+rt+"'") {
-			t.Errorf("%q missing from the IN clause", rt)
+	for _, tc := range []struct{ field, got, want string }{
+		{"Cluster", got.Origin.Cluster, origin.Cluster},
+		{"Target", got.Origin.Target, origin.Target},
+		{"Space", got.Origin.Space, origin.Space},
+		{"SpaceID", got.Origin.SpaceID, origin.SpaceID},
+		{"UnitID", got.Origin.UnitID, origin.UnitID},
+		{"UnitSlug", got.Origin.UnitSlug, origin.UnitSlug},
+		{"ResourceName", got.Origin.ResourceName, origin.ResourceName},
+	} {
+		if tc.got != tc.want {
+			t.Errorf("Origin.%s = %q, want %q", tc.field, tc.got, tc.want)
 		}
 	}
-	if !strings.HasPrefix(resourceTypeWhere, "ResourceType IN ('") ||
-		!strings.HasSuffix(resourceTypeWhere, "')") {
-		t.Errorf("not a well-formed IN clause: %s", resourceTypeWhere)
+	if !got.Origin.Canonical {
+		t.Error("Origin.Canonical was not carried through")
+	}
+	if got.Doc == nil {
+		t.Error("Doc was not carried through")
 	}
 }

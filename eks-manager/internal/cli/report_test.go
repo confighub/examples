@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/spf13/cobra"
+
 	"github.com/confighub/examples/eks-manager/internal/eks"
 	"github.com/confighub/examples/eks-manager/internal/snapshot"
 )
@@ -248,23 +250,34 @@ func TestBuildResourceRows_Filters(t *testing.T) {
 
 func TestFilterFlagsPredicate(t *testing.T) {
 	// Empty means "the whole fleet the user can view".
-	if got := (filterFlags{}).predicate(); got != "" {
+	if got := (filterFlags{}).Predicate(); got != "" {
 		t.Errorf("empty predicate = %q, want empty", got)
 	}
-	f := filterFlags{cluster: "prod-use1", environment: "prod"}
-	want := "Space.Labels.Cluster = 'prod-use1' AND Space.Labels.Environment = 'prod'"
-	if got := f.predicate(); got != want {
+	// The EKS-specific Cluster scope joins the predicate like any other term. A
+	// predicate is a flat conjunction, so where it lands carries no meaning.
+	var f filterFlags
+	cmd := &cobra.Command{}
+	addFilterFlags(cmd, &f)
+	if err := cmd.Flags().Set("cluster", "prod-use1"); err != nil {
+		t.Fatalf("--cluster: %v", err)
+	}
+	f.Environment = "prod"
+	want := "Space.Labels.Environment = 'prod' AND Space.Labels.Cluster = 'prod-use1'"
+	if got := f.Predicate(); got != want {
 		t.Errorf("predicate = %q, want %q", got, want)
 	}
 	// A raw --where leads, and the shorthands AND onto it.
-	f = filterFlags{where: "Slug LIKE 'eks-%'", region: "us-east-1"}
+	f = filterFlags{}
+	f.Where = "Slug LIKE 'eks-%'"
+	f.Region = "us-east-1"
 	want = "Slug LIKE 'eks-%' AND Space.Labels.Region = 'us-east-1'"
-	if got := f.predicate(); got != want {
+	if got := f.Predicate(); got != want {
 		t.Errorf("predicate = %q, want %q", got, want)
 	}
 	// Single quotes are doubled, so a value cannot break out of the literal.
-	f = filterFlags{cluster: "it's"}
-	if got := f.predicate(); got != "Space.Labels.Cluster = 'it''s'" {
+	f = filterFlags{}
+	f.Owner = "it's"
+	if got := f.Predicate(); got != "Space.Labels.Owner = 'it''s'" {
 		t.Errorf("quote escaping = %q", got)
 	}
 }
