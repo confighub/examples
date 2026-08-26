@@ -19,6 +19,7 @@ package snapshot
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/confighub/sdk/core/cubapi"
@@ -29,11 +30,22 @@ import (
 
 const k8sUnitsWhere = "ToolchainType = 'Kubernetes/YAML'"
 
+// maxFilterLength mirrors the server's cap on a filter expression. Going over it
+// is rejected with a 400, so a clause that grows with the size of the fleet has
+// to be optional.
+const maxFilterLength = 8192
+
 // ClusterNone is the cluster key for Units the fleet view cannot attribute to
 // a cluster: their Space has no release Target, so there is nothing to name.
 // They group under one bucket rather than each Space standing in for a cluster
 // of its own, which inflated the cluster count with things that are not clusters.
 const ClusterNone = "None"
+
+// unitSelectFields are the Unit fields UnitMeta carries. Naming them keeps a
+// fleet-wide list from serializing every column of every Unit; it is the bulk of
+// what the snapshot costs.
+const unitSelectFields = "UnitID,SpaceID,Slug,TargetID,Labels,ApplyGates,HeadRevisionNum," +
+	"LiveRevisionNum,UpstreamRevisionNum,LastChangeDescription"
 
 // resourceTypes are the ResourceTypes the coverage model needs: the policies
 // themselves, the namespaces they live in, everything that carries a pod
@@ -208,6 +220,23 @@ func Load(ctx context.Context, c *cubapi.Client, where string) (*Snapshot, error
 		})
 	}
 
+	// One query returns rows in whatever order the server chose. Sorting here
+	// keeps every downstream view reproducible run to run, including the
+	// findings analyzers, which tie-break on input order.
+	sort.Slice(resources, func(i, j int) bool {
+		a, b := resources[i].Origin, resources[j].Origin
+		if a.Cluster != b.Cluster {
+			return a.Cluster < b.Cluster
+		}
+		if a.Space != b.Space {
+			return a.Space < b.Space
+		}
+		if a.UnitSlug != b.UnitSlug {
+			return a.UnitSlug < b.UnitSlug
+		}
+		return a.ResourceName < b.ResourceName
+	})
+
 	// Canonical definitions stay out of cluster analysis.
 	var forAnalysis []netpol.FleetResource
 	for _, r := range resources {
@@ -229,7 +258,7 @@ func Load(ctx context.Context, c *cubapi.Client, where string) (*Snapshot, error
 // and labels.
 func listUnits(ctx context.Context, c *cubapi.Client, where string) ([]*goclientnew.ExtendedUnit, error) {
 	return cubapi.ListUnits(ctx, c, cubapi.NewWhere(where),
-		cubapi.ListOpts{Include: "SpaceID,TargetID"})
+		cubapi.ListOpts{Include: "SpaceID,TargetID", Select: unitSelectFields})
 }
 
 // listResources reads the resources inside the in-scope Units from the Resource
@@ -244,12 +273,23 @@ func listResources(ctx context.Context, c *cubapi.Client, unitIDs []goclientnew.
 	if len(unitIDs) == 0 {
 		return nil, nil
 	}
+	where := cubapi.NewWhere(k8sUnitsWhere).And(resourceTypeWhere)
+
+	// Naming the in-scope Units keeps the server from sending resources that
+	// would only be discarded, but it is an optimization and nothing more: scope
+	// is enforced below, where each resource is joined back onto the Unit
+	// metadata. So the clause goes in only when it fits under the server's
+	// filter-length cap -- a fleet-wide run names more Units than 8192
+	// characters hold, and asking anyway is a 400, not a truncated answer.
+	if scoped := where.In("UnitID", unitIDs); len(scoped.String()) <= maxFilterLength {
+		where = scoped
+	}
+
 	// No Include: the Space and Unit slugs are columns on the row, and the
 	// Target slug comes from the Unit metadata already loaded. No RawData
 	// either: Data is the resource's configuration as parsed JSON, which is
 	// what the analyzers walk.
-	return cubapi.ListResources(ctx, c,
-		cubapi.NewWhere(resourceTypeWhere).In("UnitID", unitIDs), cubapi.ListOpts{})
+	return cubapi.ListResources(ctx, c, where, cubapi.ListOpts{})
 }
 
 func isZeroUUID(id goclientnew.UUID) bool {
