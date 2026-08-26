@@ -1,0 +1,8 @@
+# Never ship a host build into an image. Without this, `COPY webkit/ ...` would
+# carry the developer's node_modules in and a build that cannot resolve its own
+# dependencies would still succeed locally while failing in CI.
+**/node_modules
+**/dist
+**/.vite
+**/.env
+.git
