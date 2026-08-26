@@ -129,9 +129,9 @@ output, not to scope the server-side fetch.
 ## How it works
 
 - **Snapshot** (`internal/snapshot`) — discovers every `Kubernetes/YAML` Unit you
-  can view, runs `get-resources` server-side in parallel over NetworkPolicies,
-  Namespaces, pod-bearing workloads, and Services, and joins with Unit / Space /
-  Target metadata. Coverage is over ConfigHub-managed Units only.
+  can view, reads the NetworkPolicies, Namespaces, pod-bearing workloads, and
+  Services inside them from the Resource entity in one SQL-backed query, and
+  joins with Unit / Space / Target metadata. Coverage is over ConfigHub-managed Units only.
 - **Engine** (`internal/netpol`) — a deterministic, table-tested analysis package:
   label-selector matching, per-namespace/per-workload coverage, a connectivity
   model (isolation + ingress/egress rule matching, additive-OR semantics), the

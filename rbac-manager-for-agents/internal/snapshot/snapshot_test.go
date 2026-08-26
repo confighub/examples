@@ -4,8 +4,7 @@
 package snapshot
 
 import (
-	"encoding/base64"
-	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -51,18 +50,19 @@ func TestUnitMetaState(t *testing.T) {
 	}
 }
 
-func TestDecodeResourceList(t *testing.T) {
-	if got := decodeResourceList(""); got != nil {
-		t.Errorf("empty input = %v, want nil", got)
+func TestResourceTypeWhere(t *testing.T) {
+	// A filter string literal admits no quote or backslash, so a type name
+	// carrying one could not be sent at all.
+	for _, rt := range resourceTypes {
+		if strings.ContainsAny(rt, "'\"\\") {
+			t.Errorf("%q cannot appear in a filter literal", rt)
+		}
+		if !strings.Contains(resourceTypeWhere, "'"+rt+"'") {
+			t.Errorf("%q missing from the IN clause", rt)
+		}
 	}
-	if got := decodeResourceList("not base64!!!"); got != nil {
-		t.Errorf("bad base64 = %v, want nil", got)
-	}
-	list := []rawResource{{ResourceType: "rbac.authorization.k8s.io/v1/Role", ResourceName: "ns/r", ResourceBody: "{}"}}
-	raw, _ := json.Marshal(list)
-	encoded := base64.StdEncoding.EncodeToString(raw)
-	got := decodeResourceList(encoded)
-	if len(got) != 1 || got[0].ResourceName != "ns/r" {
-		t.Errorf("decodeResourceList round-trip = %+v", got)
+	if !strings.HasPrefix(resourceTypeWhere, "ResourceType IN ('") ||
+		!strings.HasSuffix(resourceTypeWhere, "')") {
+		t.Errorf("not a well-formed IN clause: %s", resourceTypeWhere)
 	}
 }

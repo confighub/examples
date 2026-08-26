@@ -197,7 +197,7 @@ examples/rbac-manager-for-agents/
   cmd/cub-rbac/main.go         # thin: plugin hook then cli.NewRoot().Execute()
   internal/cli/                # one cobra file per command, root.go wires + SilenceUsage
   internal/cub/                # exec helpers (capture stderr, wrap errors with remediation)
-  internal/snapshot/           # fleet snapshot orchestration (the get-resources join)
+  internal/snapshot/           # fleet snapshot orchestration (the Resource-entity join)
   internal/rbac/               # PORTED analysis engine: model, semantics, whocan, findings
   internal/rbac/testdata/      # fixtures ported from the web app's engine tests
   skills/<slug>/SKILL.md       # agent skills + evals/
