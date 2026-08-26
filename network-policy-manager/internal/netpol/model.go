@@ -169,12 +169,31 @@ func (np *NetworkPolicyEntity) ExposesMetadataEgress() bool {
 // WorkloadEntity is a parsed pod-bearing resource (Deployment, StatefulSet,
 // DaemonSet, ReplicaSet, Job, CronJob, or bare Pod). PodLabels holds the labels
 // on the pods it manages — the labels a NetworkPolicy podSelector matches.
+// SelectorLabels holds the workload's own equality-based pod selector; see
+// PolicySelector for which of the two a generated policy should select on.
 type WorkloadEntity struct {
-	Kind      string            `json:"kind"`
-	Name      string            `json:"name"`
-	Namespace string            `json:"namespace"`
-	PodLabels map[string]string `json:"podLabels,omitempty"`
-	Origin    ResourceOrigin    `json:"origin"`
+	Kind           string            `json:"kind"`
+	Name           string            `json:"name"`
+	Namespace      string            `json:"namespace"`
+	PodLabels      map[string]string `json:"podLabels,omitempty"`
+	SelectorLabels map[string]string `json:"selectorLabels,omitempty"`
+	Origin         ResourceOrigin    `json:"origin"`
+}
+
+// PolicySelector returns the labels a generated NetworkPolicy should use to
+// select this workload. It prefers the workload's own spec.selector.matchLabels,
+// which Kubernetes requires to be immutable and which therefore cannot carry the
+// release-varying labels (chart version, app version, managed-by) that Helm and
+// similar renderers stamp onto the pod template. Selecting on those would make
+// the policy stop matching at the next upgrade — it would still exist while
+// protecting nothing, a silent fail-open. Falls back to the full pod labels for
+// workloads with no equality-based selector: a bare Pod, or a selector written
+// only as matchExpressions.
+func (w *WorkloadEntity) PolicySelector() map[string]string {
+	if len(w.SelectorLabels) > 0 {
+		return w.SelectorLabels
+	}
+	return w.PodLabels
 }
 
 // NamespaceEntity is a parsed v1 Namespace.
@@ -268,7 +287,9 @@ func BuildFleet(resources []FleetResource) map[string]*ClusterNetpol {
 		case workloadKinds[kind]:
 			cluster.Workloads = append(cluster.Workloads, &WorkloadEntity{
 				Kind: kind, Name: name, Namespace: namespace,
-				PodLabels: podTemplateLabels(kind, rec), Origin: fr.Origin,
+				PodLabels:      podTemplateLabels(kind, rec),
+				SelectorLabels: workloadSelectorLabels(kind, rec),
+				Origin:         fr.Origin,
 			})
 		}
 	}
@@ -288,6 +309,22 @@ func podTemplateLabels(kind string, rec map[string]any) map[string]string {
 	default: // Deployment, StatefulSet, DaemonSet, ReplicaSet, Job
 		md := nestedRecord(rec, "spec", "template", "metadata")
 		return asStringMap(md["labels"])
+	}
+}
+
+// workloadSelectorLabels extracts the workload's own equality-based pod
+// selector, from the path appropriate to its kind. A bare Pod manages no pods
+// and so has no selector.
+func workloadSelectorLabels(kind string, rec map[string]any) map[string]string {
+	switch kind {
+	case "Pod":
+		return nil
+	case "CronJob":
+		sel := nestedRecord(rec, "spec", "jobTemplate", "spec", "selector")
+		return asStringMap(sel["matchLabels"])
+	default: // Deployment, StatefulSet, DaemonSet, ReplicaSet, Job
+		sel := nestedRecord(rec, "spec", "selector")
+		return asStringMap(sel["matchLabels"])
 	}
 }
 
