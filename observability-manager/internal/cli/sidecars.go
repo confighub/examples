@@ -47,7 +47,7 @@ sidecar.`,
 			if err != nil {
 				return err
 			}
-			snap, err := snapshot.Load(cmd.Context(), client, filter.predicate())
+			snap, err := snapshot.Load(cmd.Context(), client, filter.Predicate())
 			if err != nil {
 				return err
 			}
@@ -100,7 +100,7 @@ func printSidecarsTable(cmd *cobra.Command, r sidecarsReport) {
 	tw := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 2, 2, ' ', 0)
 	fmt.Fprintln(tw, "CLUSTER\tNAMESPACE\tKIND\tNAME\tSIDECAR")
 	for _, w := range r.Workloads {
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", w.Cluster, nsOrDash(w.Namespace), w.Kind, w.Name, dash(w.Sidecar))
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", w.Cluster, dash(w.Namespace), w.Kind, w.Name, dash(w.Sidecar))
 	}
 	_ = tw.Flush()
 	fprintln(cmd.OutOrStdout(), fmt.Sprintf("\n%d workloads (%d with sidecar, %d without)",

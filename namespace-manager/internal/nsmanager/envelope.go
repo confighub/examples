@@ -16,8 +16,6 @@ const PlaceholderNamespace = "confighubplaceholder"
 const (
 	MemberNamespaceObject = "namespace-object"
 	MemberPodSecurity     = "pod-security"
-	MemberDefaultDeny     = "default-deny"
-	MemberBaselineRBAC    = "baseline-rbac"
 )
 
 // NamespaceEnvelope is the per-namespace completeness verdict: which envelope
@@ -27,8 +25,6 @@ type NamespaceEnvelope struct {
 	Namespace          string   `json:"namespace"`
 	HasNamespaceObject bool     `json:"hasNamespaceObject"`
 	PodSecurityEnforce string   `json:"podSecurityEnforce,omitempty"`
-	HasDefaultDeny     bool     `json:"hasDefaultDeny"`
-	HasBaselineRBAC    bool     `json:"hasBaselineRBAC"`
 	WorkloadCount      int      `json:"workloadCount"`
 	Missing            []string `json:"missing,omitempty"`
 	Complete           bool     `json:"complete"`
@@ -48,20 +44,6 @@ func AnalyzeCluster(c *ClusterNamespaces) []NamespaceEnvelope {
 	for _, n := range c.Namespaces {
 		nsObjects[n.Name] = n
 	}
-	defaultDeny := map[string]bool{}
-	for _, np := range c.NetworkPolicies {
-		if np.IsDefaultDenyIngress() {
-			defaultDeny[np.Namespace] = true
-		}
-	}
-	// Baseline RBAC is present when the namespace has a RoleBinding (the
-	// operative grant). ServiceAccount/Role alone don't bind anything.
-	baselineRBAC := map[string]bool{}
-	for _, r := range c.RBAC {
-		if r.Kind == "RoleBinding" {
-			baselineRBAC[r.Namespace] = true
-		}
-	}
 	workloads := map[string]int{}
 	for _, w := range c.Workloads {
 		workloads[w.Namespace]++
@@ -78,12 +60,6 @@ func AnalyzeCluster(c *ClusterNamespaces) []NamespaceEnvelope {
 	for name := range nsObjects {
 		add(name)
 	}
-	for _, np := range c.NetworkPolicies {
-		add(np.Namespace)
-	}
-	for _, r := range c.RBAC {
-		add(r.Namespace)
-	}
 	for _, w := range c.Workloads {
 		add(w.Namespace)
 	}
@@ -95,8 +71,6 @@ func AnalyzeCluster(c *ClusterNamespaces) []NamespaceEnvelope {
 			Cluster:            c.Cluster,
 			Namespace:          ns,
 			HasNamespaceObject: hasObj,
-			HasDefaultDeny:     defaultDeny[ns],
-			HasBaselineRBAC:    baselineRBAC[ns],
 			WorkloadCount:      workloads[ns],
 		}
 		if hasObj {
@@ -109,12 +83,6 @@ func AnalyzeCluster(c *ClusterNamespaces) []NamespaceEnvelope {
 		}
 		if e.PodSecurityEnforce == "" {
 			e.Missing = append(e.Missing, MemberPodSecurity)
-		}
-		if !e.HasDefaultDeny {
-			e.Missing = append(e.Missing, MemberDefaultDeny)
-		}
-		if !e.HasBaselineRBAC {
-			e.Missing = append(e.Missing, MemberBaselineRBAC)
 		}
 		e.Complete = len(e.Missing) == 0
 		out = append(out, e)

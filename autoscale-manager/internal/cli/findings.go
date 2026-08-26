@@ -50,7 +50,7 @@ Canonical base/policy Spaces are excluded from analysis.`,
 			if err != nil {
 				return err
 			}
-			snap, err := snapshot.Load(cmd.Context(), client, filter.predicate())
+			snap, err := snapshot.Load(cmd.Context(), client, filter.Predicate())
 			if err != nil {
 				return err
 			}
@@ -99,7 +99,7 @@ func printFindingsTable(cmd *cobra.Command, r findingsReport) {
 	fmt.Fprintln(tw, "SEVERITY\tANALYZER\tCLUSTER\tNAMESPACE\tKIND\tNAME\tMESSAGE")
 	for _, f := range r.Findings {
 		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
-			f.Severity, f.Analyzer, f.Cluster, nsOrDash(f.Namespace), f.Kind, f.Name, f.Message)
+			f.Severity, f.Analyzer, f.Cluster, dash(f.Namespace), f.Kind, f.Name, f.Message)
 	}
 	_ = tw.Flush()
 	fprintln(cmd.OutOrStdout(), fmt.Sprintf("\n%d findings (high=%d medium=%d low=%d)",

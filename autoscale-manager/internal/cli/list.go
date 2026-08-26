@@ -51,7 +51,7 @@ across the fleet: its scale target, min/max replicas, and whether it is pinned
 			if err != nil {
 				return err
 			}
-			snap, err := snapshot.Load(cmd.Context(), client, filter.predicate())
+			snap, err := snapshot.Load(cmd.Context(), client, filter.Predicate())
 			if err != nil {
 				return err
 			}
@@ -109,7 +109,7 @@ func printListTable(cmd *cobra.Command, r listReport) {
 	fmt.Fprintln(tw, "CLUSTER\tNAMESPACE\tKIND\tNAME\tTARGET\tMIN\tMAX\tPINNED\tUNIT")
 	for _, a := range r.Autoscalers {
 		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
-			a.Cluster, nsOrDash(a.Namespace), shortKind(a.Kind), a.Name,
+			a.Cluster, dash(a.Namespace), shortKind(a.Kind), a.Name,
 			targetLabel(a.TargetKind, a.TargetName), minMax(a.Min), minMax(a.Max), yesNo(a.Pinned), a.UnitSlug)
 	}
 	_ = tw.Flush()

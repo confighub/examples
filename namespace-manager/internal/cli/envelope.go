@@ -33,14 +33,12 @@ func newEnvelopeCmd() *cobra.Command {
 	var incompleteOnly bool
 	cmd := &cobra.Command{
 		Use:   "envelope",
-		Short: "Per-namespace envelope completeness: which namespaces lack pod-security / default-deny / baseline RBAC",
+		Short: "Per-namespace envelope completeness: which namespaces lack a Namespace object or pod-security label",
 		Long: `envelope reports, for every namespace in the fleet, which members of the policy
 envelope are present and which are missing:
 
   - namespace-object : a v1/Namespace object exists for the namespace
   - pod-security     : the Namespace carries a pod-security.kubernetes.io/enforce label
-  - default-deny     : a namespace-wide default-deny NetworkPolicy (empty podSelector) exists
-  - baseline-rbac    : a RoleBinding exists in the namespace
 
 This is the fleet-wide read a per-resource validator or a runtime tenancy
 controller (Capsule, HNC) cannot do: envelope completeness is a property of the
@@ -57,7 +55,7 @@ Filter with --cluster, --namespace, and --incomplete-only.`,
 			if err != nil {
 				return err
 			}
-			snap, err := snapshot.Load(cmd.Context(), client, filter.predicate())
+			snap, err := snapshot.Load(cmd.Context(), client, filter.Predicate())
 			if err != nil {
 				return err
 			}
@@ -112,7 +110,7 @@ func buildEnvelopeReport(snap *snapshot.Snapshot, clusterFilter, namespaceFilter
 
 func printEnvelopeTable(cmd *cobra.Command, r envelopeReport) {
 	tw := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 2, 2, ' ', 0)
-	fmt.Fprintln(tw, "CLUSTER\tNAMESPACE\tWORKLOADS\tPOD-SECURITY\tDEFAULT-DENY\tBASELINE-RBAC\tMISSING")
+	fmt.Fprintln(tw, "CLUSTER\tNAMESPACE\tWORKLOADS\tPOD-SECURITY\tMISSING")
 	for _, e := range r.Namespaces {
 		ps := e.PodSecurityEnforce
 		if ps == "" {
@@ -122,9 +120,8 @@ func printEnvelopeTable(cmd *cobra.Command, r envelopeReport) {
 		if len(e.Missing) > 0 {
 			missing = strings.Join(e.Missing, ",")
 		}
-		fmt.Fprintf(tw, "%s\t%s\t%d\t%s\t%s\t%s\t%s\n",
-			e.Cluster, e.Namespace, e.WorkloadCount, ps,
-			yesNo(e.HasDefaultDeny), yesNo(e.HasBaselineRBAC), missing)
+		fmt.Fprintf(tw, "%s\t%s\t%d\t%s\t%s\n",
+			e.Cluster, e.Namespace, e.WorkloadCount, ps, missing)
 	}
 	_ = tw.Flush()
 	fprintln(cmd.OutOrStdout(), fmt.Sprintf(
@@ -135,11 +132,4 @@ func printEnvelopeTable(cmd *cobra.Command, r envelopeReport) {
 			"  DUPLICATE: namespace %q appears %d times on target %q (%s)",
 			d.Namespace, d.Count, d.Target, strings.Join(d.UnitSlugs, ", ")))
 	}
-}
-
-func yesNo(b bool) string {
-	if b {
-		return "yes"
-	}
-	return "no"
 }

@@ -3,6 +3,7 @@ module github.com/confighub/examples/rbac-manager-for-agents
 go 1.25.0
 
 require (
+	github.com/confighub/examples/managerkit v0.0.0
 	github.com/confighub/sdk/cliutil v0.3.0
 	github.com/confighub/sdk/core v0.3.0
 	github.com/spf13/cobra v1.10.2
@@ -79,3 +80,6 @@ require (
 	sigs.k8s.io/kustomize/kyaml v0.18.1 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
+
+// managerkit is drafted in this repo and not published; build it from the tree.
+replace github.com/confighub/examples/managerkit => ../managerkit

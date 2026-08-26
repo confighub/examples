@@ -22,7 +22,7 @@ The invariant is that a component uses the *same* namespace everywhere — dev, 
 
 ## Do not load for
 
-- "Is namespace X missing a default-deny / pod-security / baseline RBAC?" — per-namespace completeness (use **namespace-audit**).
+- "Is namespace X missing a Namespace object or pod-security labels?" — per-namespace completeness (use **namespace-audit**).
 - "Give me the ranked list of everything wrong" — governance findings (use **namespace-findings**).
 - Live cluster state — `kubectl`.
 

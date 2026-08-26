@@ -49,7 +49,7 @@ Filter with --cluster / --namespace; --uncovered-only shows the gaps.`,
 			if err != nil {
 				return err
 			}
-			snap, err := snapshot.Load(cmd.Context(), client, filter.predicate())
+			snap, err := snapshot.Load(cmd.Context(), client, filter.Predicate())
 			if err != nil {
 				return err
 			}
@@ -101,7 +101,7 @@ func printCoverageTable(cmd *cobra.Command, r coverageReport) {
 		if s.Covered {
 			sm = strings.Join(s.Monitors, ",")
 		}
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", s.Cluster, nsOrDash(s.Namespace), s.Service, dash(s.MetricPort), sm)
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", s.Cluster, dash(s.Namespace), s.Service, dash(s.MetricPort), sm)
 	}
 	_ = tw.Flush()
 	fprintln(cmd.OutOrStdout(), fmt.Sprintf("\n%d metrics Services (%d covered, %d uncovered)",

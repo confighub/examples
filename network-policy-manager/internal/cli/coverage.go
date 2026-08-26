@@ -51,7 +51,7 @@ Filter with --cluster, --namespace, and --direction (ingress|egress). With
 			if err != nil {
 				return err
 			}
-			snap, err := snapshot.Load(cmd.Context(), client, filter.predicate())
+			snap, err := snapshot.Load(cmd.Context(), client, filter.Predicate())
 			if err != nil {
 				return err
 			}
@@ -132,11 +132,4 @@ func printCoverageTable(cmd *cobra.Command, r coverageReport, direction string) 
 				nc.Cluster, nc.Namespace, strings.Join(nc.UncoveredEgress, ", ")))
 		}
 	}
-}
-
-func yesNo(b bool) string {
-	if b {
-		return "yes"
-	}
-	return "no"
 }

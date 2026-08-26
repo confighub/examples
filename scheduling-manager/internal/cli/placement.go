@@ -64,7 +64,7 @@ pin nothing.`,
 			if err != nil {
 				return err
 			}
-			snap, err := snapshot.Load(cmd.Context(), client, filter.predicate())
+			snap, err := snapshot.Load(cmd.Context(), client, filter.Predicate())
 			if err != nil {
 				return err
 			}
@@ -159,7 +159,7 @@ func printPlacementTable(cmd *cobra.Command, r placementReport) {
 	fmt.Fprintln(tw, "CLUSTER\tNAMESPACE\tKIND\tNAME\tNODESELECTOR\tTOLERATIONS\tNODEAFFINITY\tCONSTRAINED")
 	for _, w := range r.Workloads {
 		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
-			w.Cluster, nsOrDash(w.Namespace), w.Kind, w.Name,
+			w.Cluster, dash(w.Namespace), w.Kind, w.Name,
 			dashList(w.NodeSelector), dashList(w.Tolerations), w.NodeAffinity, yesNo(w.Constrained))
 	}
 	_ = tw.Flush()
@@ -172,11 +172,4 @@ func dashList(s []string) string {
 		return "-"
 	}
 	return strings.Join(s, ",")
-}
-
-func yesNo(b bool) string {
-	if b {
-		return "yes"
-	}
-	return "no"
 }

@@ -58,7 +58,7 @@ Single-replica workloads and DaemonSet / Job / CronJob / Pod are out of scope
 			if err != nil {
 				return err
 			}
-			snap, err := snapshot.Load(cmd.Context(), client, filter.predicate())
+			snap, err := snapshot.Load(cmd.Context(), client, filter.Predicate())
 			if err != nil {
 				return err
 			}
@@ -135,13 +135,6 @@ func printAvailabilityTable(cmd *cobra.Command, r availabilityReport) {
 			continue
 		}
 		fprintln(cmd.OutOrStdout(), fmt.Sprintf("  %s/%s %s/%s: %s",
-			w.Cluster, nsOrDash(w.Namespace), w.Kind, w.Name, strings.Join(w.Issues, "; ")))
+			w.Cluster, dash(w.Namespace), w.Kind, w.Name, strings.Join(w.Issues, "; ")))
 	}
-}
-
-func yesNo(b bool) string {
-	if b {
-		return "yes"
-	}
-	return "no"
 }

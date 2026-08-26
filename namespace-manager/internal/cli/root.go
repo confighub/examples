@@ -38,12 +38,15 @@ func InvocationName() string {
 func NewRoot() *cobra.Command {
 	root := &cobra.Command{
 		Use:   "cub-namespace",
-		Short: "Manage Kubernetes namespaces and their policy envelope across a ConfigHub fleet",
-		Long: `cub-namespace manages Kubernetes namespaces and their policy envelope —
-pod-security labels, a default-deny NetworkPolicy, and baseline RBAC — stored as
-data in ConfigHub Units across a fleet of cluster-Spaces. It is designed for use
-by an AI agent in a terminal, and is a sibling of rbac-manager and
-network-policy-manager.
+		Short: "Manage Kubernetes namespaces across a ConfigHub fleet",
+		Long: `cub-namespace manages Kubernetes namespaces themselves — the Namespace object,
+its pod-security labels, its name, and whether that name is used consistently —
+stored as ConfigHub Units across a fleet of cluster-Spaces. It is designed for
+use by an AI agent in a terminal.
+
+The envelope stops at the namespace. NetworkPolicy coverage is
+network-policy-manager's subject and RBAC is rbac-manager's; each reasons about
+its own resources far more carefully than a completeness check here could.
 
 This build ships read-only analysis — fleet inventory ('snapshot', 'list'),
 per-namespace envelope completeness ('envelope'), cross-variant consistency

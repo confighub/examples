@@ -4,7 +4,7 @@
     {
       "id": 1,
       "name": "envelope-gaps",
-      "prompt": "Which namespaces in our fleet are missing a default-deny NetworkPolicy or pod-security labels?",
+      "prompt": "Which namespaces in our fleet are missing a Namespace object or pod-security labels?",
       "expected_output": "Runs `cub-namespace preflight` then `cub-namespace envelope` (JSON or -o table, optionally --incomplete-only) and reports the namespaces whose DEFAULT-DENY / POD-SECURITY members are missing. Does not mutate, does not fall back to kubectl.",
       "files": []
     },

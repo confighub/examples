@@ -19,14 +19,12 @@ func findEnvelope(es []NamespaceEnvelope, ns string) *NamespaceEnvelope {
 
 func TestAnalyzeClusterCompleteness(t *testing.T) {
 	resources := []FleetResource{
-		// payments: complete envelope.
+		// payments: complete envelope (Namespace object + pod-security).
 		res("c1", "c1", "ns", nsDoc("payments", map[string]any{PodSecurityEnforceLabel: "baseline"})),
-		res("c1", "c1", "dd", netpolDoc("default-deny-all", "payments", map[string]any{}, []any{"Ingress", "Egress"})),
-		res("c1", "c1", "rb", rbacDoc("RoleBinding", "baseline", "payments")),
 		res("c1", "c1", "web", workloadDoc("Deployment", "web", "payments")),
-		// orders: workload only — missing everything.
+		// orders: workload only — no Namespace object.
 		res("c1", "c1", "orders-web", workloadDoc("Deployment", "api", "orders")),
-		// shipping: Namespace object without pod-security, no default-deny, no rbac.
+		// shipping: Namespace object without pod-security.
 		res("c1", "c1", "shipping-ns", nsDoc("shipping", nil)),
 	}
 	clusters := BuildFleet(resources)
@@ -44,7 +42,7 @@ func TestAnalyzeClusterCompleteness(t *testing.T) {
 	if orders == nil || orders.Complete {
 		t.Fatalf("orders should be incomplete, got %+v", orders)
 	}
-	wantMissing := []string{MemberNamespaceObject, MemberPodSecurity, MemberDefaultDeny, MemberBaselineRBAC}
+	wantMissing := []string{MemberNamespaceObject, MemberPodSecurity}
 	if strings.Join(orders.Missing, ",") != strings.Join(wantMissing, ",") {
 		t.Errorf("orders.Missing = %v, want %v", orders.Missing, wantMissing)
 	}
@@ -64,7 +62,6 @@ func TestAnalyzeClusterCompleteness(t *testing.T) {
 func TestAnalyzeClusterSkipsPlaceholder(t *testing.T) {
 	clusters := BuildFleet([]FleetResource{
 		res("c1", "c1", "ph", nsDoc(PlaceholderNamespace, nil)),
-		res("c1", "c1", "ph-np", netpolDoc("dd", PlaceholderNamespace, map[string]any{}, []any{"Ingress"})),
 	})
 	got := AnalyzeCluster(clusters["c1"])
 	if findEnvelope(got, PlaceholderNamespace) != nil {

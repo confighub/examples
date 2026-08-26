@@ -3,6 +3,7 @@ module github.com/confighub/examples/eks-manager
 go 1.25.0
 
 require (
+	github.com/confighub/examples/managerkit v0.0.0
 	github.com/confighub/sdk/cliutil v0.3.0
 	github.com/confighub/sdk/core v0.3.0
 	github.com/google/uuid v1.6.0
@@ -79,3 +80,6 @@ require (
 	k8s.io/kube-openapi v0.0.0-20250318190949-c8a335a9a2ff // indirect
 	sigs.k8s.io/kustomize/kyaml v0.18.1 // indirect
 )
+
+// managerkit is drafted in this repo and not published; build it from the tree.
+replace github.com/confighub/examples/managerkit => ../managerkit

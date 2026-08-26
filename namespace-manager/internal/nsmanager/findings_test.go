@@ -21,25 +21,17 @@ func findingsByAnalyzer(fs []Finding, analyzer string) []Finding {
 
 func TestAnalyzeFindings(t *testing.T) {
 	resources := []FleetResource{
-		// orders: workload + Namespace object without pod-security, no default-deny, no rbac.
+		// orders: workload + Namespace object without pod-security.
 		resFull("prod", "orders-prod", "orders", nsDoc("orders", nil)),
 		resFull("prod", "orders-prod", "orders", workloadDoc("Deployment", "api", "orders")),
 		// payments: complete envelope → no missing-* findings.
 		resFull("prod", "payments-prod", "payments", nsDoc("payments", map[string]any{PodSecurityEnforceLabel: "baseline"})),
-		resFull("prod", "payments-prod", "payments", netpolDoc("default-deny-all", "payments", map[string]any{}, []any{"Ingress"})),
-		resFull("prod", "payments-prod", "payments", rbacDoc("RoleBinding", "baseline", "payments")),
 		resFull("prod", "payments-prod", "payments", workloadDoc("Deployment", "web", "payments")),
 	}
 	fs := AnalyzeFindings(BuildFleet(resources))
 
-	if len(findingsByAnalyzer(fs, "missing-default-deny")) != 1 {
-		t.Errorf("want 1 missing-default-deny, got %d", len(findingsByAnalyzer(fs, "missing-default-deny")))
-	}
 	if len(findingsByAnalyzer(fs, "missing-pod-security")) != 1 {
 		t.Errorf("want 1 missing-pod-security (orders), got %d", len(findingsByAnalyzer(fs, "missing-pod-security")))
-	}
-	if len(findingsByAnalyzer(fs, "missing-baseline-rbac")) != 1 {
-		t.Errorf("want 1 missing-baseline-rbac (orders), got %d", len(findingsByAnalyzer(fs, "missing-baseline-rbac")))
 	}
 	// payments is complete — no finding should name it.
 	for _, f := range fs {
@@ -47,9 +39,13 @@ func TestAnalyzeFindings(t *testing.T) {
 			t.Errorf("payments should have no findings, got %+v", f)
 		}
 	}
-	// High severity sorts first.
-	if len(fs) > 0 && fs[0].Severity != api.ScoreHigh {
-		t.Errorf("first finding severity = %q, want high", fs[0].Severity)
+	// Findings are ranked most-severe first. Asserting the ordering rather than a
+	// particular severity keeps the test honest as the analyzer set changes.
+	for i := 1; i < len(fs); i++ {
+		if api.ScoreToNumber[fs[i-1].Severity] < api.ScoreToNumber[fs[i].Severity] {
+			t.Errorf("findings not sorted most-severe first at %d: %q before %q",
+				i, fs[i-1].Severity, fs[i].Severity)
+		}
 	}
 }
 

@@ -1,11 +1,16 @@
 # cub-namespace — Namespace manager for ConfigHub
 
-`cub-namespace` manages Kubernetes **namespaces and their policy envelope** —
-pod-security labels, a default-deny NetworkPolicy, and baseline RBAC — stored as
-data in ConfigHub across a whole fleet of cluster-Spaces. It is designed for use
-by an AI agent in a terminal, and is a sibling of
-[`rbac-manager-for-agents`](../rbac-manager-for-agents) and
-[`network-policy-manager`](../network-policy-manager).
+`cub-namespace` manages Kubernetes **namespaces themselves** — the Namespace
+object, its pod-security labels, its name, and whether that name is used
+consistently — stored as data in ConfigHub across a whole fleet of
+cluster-Spaces. It is designed for use by an AI agent in a terminal.
+
+The envelope stops at the namespace itself. Whether a namespace has the
+NetworkPolicy coverage it needs is [`network-policy-manager`](../network-policy-manager)'s
+subject, and whether its RBAC is sound is
+[`rbac-manager-for-agents`](../rbac-manager-for-agents)'s. Each of those reasons
+about its own resources far more carefully than a namespace-completeness check
+could, so this tool does not second-guess them.
 
 **Why a manager, not a runtime controller?** Tenancy controllers (Capsule, the
 retired HNC) and per-resource validators each see one cluster, or one object, at
@@ -29,13 +34,13 @@ All read commands default to JSON (`-o json`); pass `-o table` for a human view.
 | Command | Kind | What it does |
 |---|---|---|
 | `preflight` / `version` | diag | Verify the ConfigHub session; print version |
-| `snapshot` | read | Per-cluster inventory: namespace / NetworkPolicy / RBAC / workload + gated/unapplied Units |
-| `list` | read | Enumerate envelope-relevant resources across the fleet |
-| `envelope` | read | Per-namespace completeness — which namespaces lack pod-security / default-deny / baseline RBAC, plus duplicate-namespace-per-Target collisions |
+| `snapshot` | read | Per-cluster inventory: namespace and workload counts + gated/unapplied Units |
+| `list` | read | Enumerate Namespaces and the workloads occupying them across the fleet |
+| `envelope` | read | Per-namespace completeness — which namespaces lack a Namespace object or pod-security label, plus duplicate-namespace-per-Target collisions |
 | `consistency` | read | Per-component: is the namespace name + pod-security level identical across its variant Spaces? |
 | `findings` | read | Severity-ranked governance findings (envelope gaps + duplicates + cross-variant inconsistency) |
 | `apply-envelope` | write | Stamp pod-security defaults on a Space's Namespace Unit(s) (fixes `missing-pod-security`) |
-| `backfill` | write | Clone a base envelope's default-deny + baseline RBAC into an existing Space, re-homed via `set-namespace` |
+| `backfill` | write | Clone a base envelope Space's Units into an existing Space, re-homed via `set-namespace` |
 | `guardrails install\|status\|annotate` | write | The enforcement pack — `Warn=true` `vet-celexpr` Triggers + annotate-then-validate for envelope gaps |
 
 All write commands are **dry-run by default** and require `--commit` with a
@@ -103,8 +108,6 @@ A namespace's policy **envelope** — the members `envelope` checks for:
 |---|---|
 | `namespace-object` | a `v1/Namespace` object exists for the namespace |
 | `pod-security` | the Namespace carries a `pod-security.kubernetes.io/enforce` label |
-| `default-deny` | a namespace-wide default-deny NetworkPolicy (empty `podSelector`) exists |
-| `baseline-rbac` | a `RoleBinding` exists in the namespace |
 
 `envelope` also flags **duplicate Namespace objects** that resolve to the same
 name on the same Target (a collision in one cluster). Base Units still carrying
@@ -127,8 +130,8 @@ them from deploying.
 ## How it works
 
 - **Snapshot** (`internal/snapshot`) — discovers every `Kubernetes/YAML` Unit you
-  can view, reads the Namespaces, NetworkPolicies, RBAC objects, and workloads
-  inside them from the Resource entity in one SQL-backed query, and joins with
+  can view, reads the Namespaces and the workloads occupying them from the
+  Resource entity in one SQL-backed query, and joins with
   Unit / Space / Target metadata. Canonical base/policy Spaces are excluded from cluster
   analysis. Clusters are ConfigHub Targets; Units whose Space has no release
   Target group under a single `None` cluster.

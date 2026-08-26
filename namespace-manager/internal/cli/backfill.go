@@ -37,12 +37,15 @@ func newBackfillCmd() *cobra.Command {
 		Use:   "backfill --space <dest> --from <base-space> --namespace <ns>",
 		Short: "Clone a base envelope's Units into an existing Space and re-home them with set-namespace",
 		Long: `backfill injects a namespace policy envelope into an existing Space — one that
-already holds workloads (e.g. a Helm/Kustomize-ingested app Space) but is missing
-its default-deny NetworkPolicy and baseline RBAC. It clones every deployable Unit
+already holds workloads (e.g. a Helm/Kustomize-ingested app Space) but none of
+the policy Units a base envelope Space defines. It clones every deployable Unit
 from the base Space (--from) into the destination Space (--space) via the
 BulkCreateUnits API, then runs set-namespace to re-home the clones to the target
 namespace (--namespace) — set-namespace also rewrites RBAC subject namespaces and
-Service DNS references, so the whole envelope lands correctly.
+Service DNS references, so whatever the base defines lands correctly.
+
+What the base Space contains is the base Space's business: backfill clones and
+re-homes it without reading the policies themselves.
 
 This is the half the installer's 'new'/'upload' doesn't cover (greenfield only).
 Re-runs are idempotent (already-present clones are reported, not duplicated).
@@ -74,8 +77,8 @@ Unit creation has no server-side dry-run, so dry-run lists the plan and only
 			// Classify base + dest Units so we clone only the members the dest is
 			// missing. Crucially, skip the base's Namespace Unit when the dest
 			// already has one — cloning it would create a duplicate-namespace
-			// collision (which findings flags). The base's non-Namespace members
-			// (default-deny NetworkPolicy, baseline RBAC) are what backfill adds.
+			// collision (which findings flags). The base's other Units are what
+			// backfill adds, whatever they define.
 			scopeWhere := fmt.Sprintf("SpaceID IN ('%s', '%s')", base.SpaceID.String(), dest.SpaceID.String())
 			snap, err := snapshot.Load(cmd.Context(), client, scopeWhere)
 			if err != nil {

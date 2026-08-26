@@ -129,10 +129,3 @@ func dryRunSuffix(dryRun bool) string {
 	}
 	return ""
 }
-
-func dash(s string) string {
-	if s == "" {
-		return "-"
-	}
-	return s
-}
