@@ -1,6 +1,6 @@
 import { explainAuthError } from '@confighub/examples-webkit/auth';
 import { useAuth } from '@confighub/react-auth';
-import AddChartIcon from '@mui/icons-material/AddChart';
+import AddChartIcon from '@mui/icons-material/Addchart';
 import PushPinIcon from '@mui/icons-material/PushPin';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DataObjectIcon from '@mui/icons-material/DataObject';

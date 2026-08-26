@@ -1,0 +1,97 @@
+name: JS consoles
+
+# Lint, test, and build every JavaScript package, then check the built bundle for
+# packages that got resolved twice.
+#
+# That last check exists because a successful build is not a working app. The
+# consoles alias `webkit` to source, and webkit resolves its own bare imports from
+# webkit/node_modules — so a package can land in the bundle twice, and one with
+# module state (@confighub/react-auth holds a React context) then silently stops
+# working. The dev server hides it by pre-bundling dependencies into one copy;
+# nothing in tsc or vite build reports it. Only the source map does.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'webkit/**'
+      - 'configboard/app/**'
+      - 'promoter/app/**'
+      - 'rbac-manager/app/**'
+      - 'sec-scanner/app/**'
+      - 'cost-estimator/app/**'
+      - 'fleet-ql/**'
+      - 'scripts/check-bundle-dedupe.mjs'
+      - '.github/workflows/js-apps.yml'
+  pull_request:
+    paths:
+      - 'webkit/**'
+      - 'configboard/app/**'
+      - 'promoter/app/**'
+      - 'rbac-manager/app/**'
+      - 'sec-scanner/app/**'
+      - 'cost-estimator/app/**'
+      - 'fleet-ql/**'
+      - 'scripts/check-bundle-dedupe.mjs'
+      - '.github/workflows/js-apps.yml'
+
+jobs:
+  webkit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: webkit/package-lock.json
+      - run: npm ci
+        working-directory: webkit
+      - run: npm run lint
+        working-directory: webkit
+      - run: npm test
+        working-directory: webkit
+
+  console:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        app:
+          - configboard/app
+          - promoter/app
+          - rbac-manager/app
+          - sec-scanner/app
+          - cost-estimator/app
+          - fleet-ql
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: ${{ matrix.app }}/package-lock.json
+
+      # webkit is a `file:` dependency whose sources the console's build typechecks,
+      # and resolution from webkit's directory never reaches the console's
+      # node_modules — so it needs its own install, exactly as the images do.
+      - run: npm ci
+        working-directory: webkit
+
+      - run: npm ci
+        working-directory: ${{ matrix.app }}
+
+      - run: npm run lint
+        working-directory: ${{ matrix.app }}
+
+      - run: npm test
+        working-directory: ${{ matrix.app }}
+
+      - name: Build with source maps
+        run: npx vite build --sourcemap
+        working-directory: ${{ matrix.app }}
+
+      - name: Check the bundle for duplicated packages
+        run: node scripts/check-bundle-dedupe.mjs ${{ matrix.app }}

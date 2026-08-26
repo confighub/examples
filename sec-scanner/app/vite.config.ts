@@ -15,6 +15,21 @@ export default defineConfig({
   plugins: [react()],
   server: { port: 5182, strictPort: true, fs: { allow: ['.', webkit] } },
   resolve: {
+    // webkit resolves its own bare imports from webkit/node_modules, so without this
+    // the bundle gets a second copy of each of these — and a second React context,
+    // which is what stops AppShell from seeing the provider mounted in main.tsx.
+    // The dev server hides it by pre-bundling deps into one copy; only a production
+    // build shows it.
+    dedupe: [
+      'react',
+      'react-dom',
+      '@confighub/api',
+      '@confighub/react-auth',
+      '@confighub/rtk-query',
+      '@emotion/react',
+      '@emotion/styled',
+      '@mui/material',
+    ],
     alias: {
       // Resolve the shared kit to its TypeScript source, so editing it hot-reloads here.
       '@confighub/examples-webkit': webkit,
