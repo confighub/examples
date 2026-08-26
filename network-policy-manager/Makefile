@@ -14,7 +14,10 @@ all: build
 
 build: $(BIN)
 
-$(BIN): $(shell find . -name '*.go' -not -path './bin/*')
+# managerkit is a local module wired in with a replace directive, so its
+# sources are prerequisites too: without them make serves a stale binary
+# after a library change, and a stale binary lies.
+$(BIN): $(shell find . ../managerkit -name '*.go' -not -path './bin/*')
 	$(GO) build -o $(BIN) $(PKG)
 
 # Release-style build: cross-compile with version injection, used by the release
