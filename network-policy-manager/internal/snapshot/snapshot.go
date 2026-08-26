@@ -53,11 +53,9 @@ const unitSelectFields = "UnitID,SpaceID,SpaceSlug,Slug,TargetID,Labels,ApplyGat
 	"LiveRevisionNum,UpstreamRevisionNum,LastChangeDescription"
 
 // resourceOrderBy makes the fetch reproducible. An unordered query comes back in
-// "the database's default order", which is not a promise, and the analyzers'
-// own sorts tie-break on the order they were handed. ResourceID is the primary
-// key, so ordering by it alone is total -- and order_by takes only one field:
-// a comma-separated list is documented but reaches SQL as a single quoted
-// identifier and fails with a 500.
+// "the database's default order", which the API documents as no promise at all,
+// and the analyzers' own sorts tie-break on the order they were handed.
+// ResourceID is the primary key, so ordering by it alone is a total order.
 var resourceOrderBy = "ResourceID"
 
 // resourceTypes are the ResourceTypes the coverage model needs: the policies
