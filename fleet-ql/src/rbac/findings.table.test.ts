@@ -7,8 +7,8 @@ import {
   roleBinding,
   serviceAccount,
   user,
-} from './fixtures';
-import type { FleetResource } from './model';
+} from '@confighub/examples-webkit/rbac';
+import type { FleetResource } from '@confighub/examples-webkit/rbac';
 import { materializeFindings } from './structural';
 
 const FLEET: FleetResource[] = [

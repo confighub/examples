@@ -27,8 +27,8 @@ import {
 import { diffLines } from 'diff';
 import { useMemo, useState } from 'react';
 
-import { fetchUnitDataText } from '../api/raw';
-import { useSnapshot } from '../fleet/SnapshotContext';
+import { fetchUnitDataText } from '@confighub/examples-webkit/api';
+import { useSnapshot } from '../fleet/snapshot';
 import { CompiledEdit, compileAddVerb, compileRemoveVerb } from '../rbac/edits';
 import {
   useEditInvocationIds,
@@ -38,7 +38,7 @@ import {
 import {
   useBulkPatchUnitsMutation,
   useInvokeFunctionsOnOrgMutation,
-} from '../sdk/confighubapi.gen';
+} from '@confighub/rtk-query';
 
 // ConfigHub's recommended Space labels (see `cub variant create --help`).
 // Fleets are selected by these, not by app-specific labels — a Space's

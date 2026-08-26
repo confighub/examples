@@ -1,8 +1,10 @@
 # Reference deployment manifest for the sec-scanner console (a static SPA over
 # the ConfigHub API). Unlike rbac-manager, this example ships no live hosted
 # instance or CI workflow — this file is a template showing the same hosting
-# shape: an nginx container serving the built bundle and proxying /api + /auth
-# to ConfigHub, made same-origin so the session-cookie login works with no CORS.
+# shape: an nginx container serving the built bundle, nothing more. The SPA
+# talks browser-direct to ConfigHub and signs in with OIDC PKCE, so the instance
+# URL and OAuth client id are baked into the image at build time rather than
+# configured here.
 #
 # Adjust the namespace, hostname, and image to your environment before applying.
 # The SPA needs ONLY the ConfigHub API: scan verdicts are already stored on the
@@ -47,9 +49,6 @@ spec:
         # Public package — no imagePullSecrets needed.
         image: ghcr.io/confighub/sec-scanner:latest
         imagePullPolicy: Always
-        env:
-        - name: API_BACKEND_URL
-          value: "http://confighub-api.confighub.svc.cluster.local:9090"
         ports:
         - containerPort: 8080
           name: http

@@ -1,56 +1,49 @@
 # sec-scanner app
 
-Static SPA (React + TypeScript + Vite + MUI) over ConfigHub's published API — a
-security console for the fleet. All durable state lives in ConfigHub: the image
-references are config data, the gate-signal verdict is on the workload Unit
-(`sec-scanner.confighub.com/max-severity`, `…/cve-count`), and the full per-CVE
-findings are read from each Space's `AppConfig/YAML` `sec-scan-record` Unit (a
-multi-document YAML, one document per workload). The browser holds only the
-session and UI state and computes nothing — it reads the scanner's result.
-
-Pages:
-
-- **Dashboard** — fleet severity rollup, gated/unscanned counts, worst workloads.
-- **Fleet** — the image inventory: every workload, its image(s), scan verdict,
-  and gate state, filterable by severity / free text.
-- **Findings** — every CVE across the fleet, flattened, with links to NVD/GHSA.
-- **Unit** — one workload: images, verdict, findings, Apply Gates, an
-  **Upgrade image** action (server-side `yq-i`, dry-run previewed), the raw
-  YAML, and revision history with rollback.
+Static SPA (React + TypeScript + Vite + MUI) over ConfigHub's published API. All
+durable state lives in ConfigHub; the browser holds only the session and UI state.
 
 ## Development
 
+Register the app once to get an OAuth `client_id`. It is public, not a secret, and it
+registers in whatever organization your `cub` is logged into — the app can only sign
+users into that organization:
+
+```bash
+cub oauthclient create sec-scanner --redirect-uri http://localhost:5182/
+cp .env.example .env      # paste the client_id into VITE_OAUTH_CLIENT_ID
+```
+
 ```bash
 npm install
-npm run dev          # http://localhost:5180, proxies /api and /auth to ConfigHub
+npm run dev               # http://localhost:5182
 ```
 
-The dev proxy targets `https://hub.confighub.com` by default; override with
-`CONFIGHUB_URL=http://localhost:9090 npm run dev` for a local server.
+Sign in with the Log in button: auth is the browser-direct OIDC PKCE flow run by
+[`@confighub/react-auth`](https://github.com/confighub/js-sdk), so there is no proxy to
+stand up and no token to paste. The port is pinned because it has to match the
+registered `redirect-uri`.
 
-Authentication in dev: paste a token from `cub auth get-token` when prompted
-(kept in sessionStorage). In a same-origin deployment the standard ConfigHub
-session-cookie login is used automatically and no token is needed.
+Seed demo data first: `../setup.sh` (see the example's top-level README).
 
-Seed demo data and scan it first so the console has something to show:
-
-```bash
-../demo-setup.sh        # seeds the fleet, loads the cvedb, scans + writes back
-```
-
-Without a scan, workloads show as **unscanned**; run
-`../scanner/secscan scan-fleet --space "sec-demo-*" --write-back`.
+When you are done experimenting, remove the client: `cub oauthclient delete sec-scanner`.
 
 ## Build & checks
 
 ```bash
 npm run lint         # tsc --noEmit
 npm run build        # typecheck + production bundle in dist/
+npm test             # this app's own tests
 ```
 
-## SDK client
+## Where the code comes from
 
-`src/sdk/confighubapi.gen.ts` and `src/sdk/validation.gen.ts` are vendored from
-the [ConfigHub SDK](https://github.com/confighub/sdk) (MIT); refresh with
-`npm run vendor-sdk`. `src/sdk/confighubapi.ts` is a deliberate fork of the
-SDK's base client — see the header comment there and `src/sdk/VENDORED_FROM.md`.
+There is no vendored SDK here. The typed client, its hooks, and the auth flow are the
+published [`@confighub/api`](https://www.npmjs.com/package/@confighub/api),
+[`@confighub/rtk-query`](https://www.npmjs.com/package/@confighub/rtk-query), and
+[`@confighub/react-auth`](https://www.npmjs.com/package/@confighub/react-auth) packages.
+
+What this app shares with the other example consoles — the auth shell, the fleet scope
+and snapshot machinery, and config data access — lives in
+[`../../webkit`](../../webkit). What is left in `src/` is this app's own: the pages, the
+severity model, and the image-upgrade edits.

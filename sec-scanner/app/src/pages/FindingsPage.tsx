@@ -23,7 +23,7 @@ import {
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import { useSnapshot } from '../fleet/SnapshotContext';
+import { useSnapshot } from '../fleet/snapshot';
 import { Finding } from '../sec/model';
 import { Severity, severityColor, severityLabel, severityRank } from '../sec/severity';
 

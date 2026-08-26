@@ -73,8 +73,18 @@ A static React + MUI SPA that reads the estimator's annotations and the
 guardrail gates from the ConfigHub API and shows the fleet's spend — total
 monthly cost, the breakdown by environment, budget-status counts, top spenders,
 and a per-workload table with budget + gate chips. It computes nothing itself.
-Built on a generated `openapi-fetch` client (`app/src/sdk/`, refreshed with
-`npm run vendor-sdk`).
+Built on the published typed client
+([`@confighub/api`](https://www.npmjs.com/package/@confighub/api)); its auth shell and
+config-data access are shared with the other example consoles in
+[`../webkit`](../webkit).
+
+Register the app once, then run it:
+
+```bash
+cub oauthclient create cost-estimator --redirect-uri http://localhost:5193/
+cd app && cp .env.example .env   # paste the client_id into VITE_OAUTH_CLIENT_ID
+npm install && npm run dev       # http://localhost:5193
+```
 
 ## Run it
 

@@ -162,11 +162,13 @@ A static React SPA renders all of the above from the ConfigHub API — no extra
 backend.
 
 ```bash
-cd app && npm install
-CONFIGHUB_URL=http://localhost:9090 npm run dev    # then open http://localhost:5180
+cub oauthclient create sec-scanner --redirect-uri http://localhost:5182/
+cd app && cp .env.example .env   # paste the client_id into VITE_OAUTH_CLIENT_ID
+npm install && npm run dev       # then open http://localhost:5182
 ```
 
-Paste a token from `cub auth get-token` when prompted (dev mode). The Dashboard
+Click **Log in** — auth is the browser-direct OIDC flow, so there is no token to
+paste and no proxy to run. The Dashboard
 shows the fleet severity rollup; Fleet is the image inventory; Findings lists
 every CVE; a Unit page offers an in-app **Upgrade image** action (the same
 server-side `yq-i` mutation as Stage 6). The console reads image refs + the

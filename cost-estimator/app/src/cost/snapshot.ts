@@ -1,10 +1,14 @@
-// Load the fleet's cost snapshot: list the cost-estimator Units, read the cost
-// annotations the estimator wrote onto each workload, and the ApplyGates the
-// guardrails set. All reads go through the typed openapi-fetch client.
+// Load the fleet's cost snapshot: the cost-estimator Units, the cost annotations the
+// estimator wrote onto each workload, and the ApplyGates the guardrails set.
+//
+// Two requests, not one per Unit: the list carries the metadata (labels, gates, Space)
+// and the bulk data endpoint carries the configurations, joined on UnitID. A read per
+// Unit is the difference between two round trips and a thousand.
 
+import type { components } from '@confighub/api';
+import { confighub, listUnitData } from '@confighub/examples-webkit/api';
 import { parseAllDocuments } from 'yaml';
 
-import { cub, type Schemas } from '../sdk/client';
 import { ANNO, type BudgetStatus, type CostRow } from './model';
 
 const WORKLOAD_KINDS = new Set(['Deployment', 'StatefulSet']);
@@ -12,23 +16,28 @@ const WORKLOAD_KINDS = new Set(['Deployment', 'StatefulSet']);
 /** Load one CostRow per workload Unit across the demo fleet (or a custom glob). */
 export async function loadSnapshot(spaceGlob = 'cost-demo-%'): Promise<CostRow[]> {
   const where = `Labels.app = 'cost-estimator' AND Space.Slug LIKE '${spaceGlob}'`;
-  const { data, error, response } = await cub.GET('/unit', {
-    params: { query: { where, select: 'Slug,UnitID,SpaceID,Labels,ApplyGates', include: 'SpaceID' } },
-  });
-  if (error || !data) throw new Error(`GET /unit: HTTP ${response.status}`);
+  const [listed, documents] = await Promise.all([
+    confighub().GET('/unit', {
+      params: { query: { where, select: 'Slug,UnitID,SpaceID,Labels,ApplyGates', include: 'SpaceID' } },
+    }),
+    listUnitData({ where }),
+  ]);
+  if (listed.error !== undefined || listed.data === undefined) {
+    throw new Error(`GET /unit: HTTP ${listed.response.status}`);
+  }
+
+  const configurations = new Map(
+    documents.filter((d) => d.UnitID !== undefined).map((d) => [d.UnitID!, d.Data ?? '']),
+  );
 
   const rows: CostRow[] = [];
-  for (const e of data) {
-    const u: Partial<Schemas['Unit']> = e.Unit ?? {};
-    const sid = u.SpaceID;
+  for (const e of listed.data) {
+    const u: Partial<components['schemas']['Unit']> = e.Unit ?? {};
     const uid = u.UnitID;
-    if (!sid || !uid) continue;
-    const dataRes = await cub.GET('/space/{space_id}/unit/{unit_id}/data', {
-      params: { path: { space_id: sid, unit_id: uid } },
-      parseAs: 'text',
-    });
-    if (dataRes.error || dataRes.data === undefined) continue;
-    const wl = workloadAnnotations(dataRes.data);
+    if (uid === undefined) continue;
+    const configuration = configurations.get(uid);
+    if (configuration === undefined) continue;
+    const wl = workloadAnnotations(configuration);
     if (!wl) continue; // not a workload (e.g. a record / status Unit)
 
     const labels = u.Labels ?? {};

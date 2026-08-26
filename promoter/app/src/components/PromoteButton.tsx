@@ -1,13 +1,12 @@
 import {
   Alert,
   Button,
-  Checkbox,
+  Chip,
   CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
-  FormControlLabel,
   List,
   ListItem,
   ListItemText,
@@ -17,7 +16,55 @@ import {
 import { useState } from 'react';
 
 import { VariantRef } from '../data/catalog';
-import { PromotabilityReport, usePromotion } from '../data/promote';
+import { PromotabilityReport, ReleaseReadiness, usePromotion } from '../data/promote';
+
+/**
+ * What publishing would actually capture. A Release is whole-Space: it bundles every
+ * Unit assigned to the Space's Release Target, so the set can be wider than the one
+ * just promoted. Showing the difference is the point of this block — an approval to
+ * promote is not an approval to publish something larger.
+ */
+function ReleaseScope({
+  target,
+  release,
+}: {
+  target: VariantRef | undefined;
+  release: ReleaseReadiness;
+}) {
+  if (!release.publishable) {
+    return <Alert severity='warning'>{release.reason}</Alert>;
+  }
+  return (
+    <>
+      <Typography variant='body2' color='text.secondary' sx={{ mb: 1 }}>
+        Publishing bundles all {release.members.length} Unit(s) in{' '}
+        <code>{target?.spaceSlug}</code> assigned to Release Target{' '}
+        <code>{release.targetSlug}</code>, each at its current head, as one immutable
+        Release.
+      </Typography>
+      {release.alsoCaptured.length > 0 && (
+        <Alert severity='warning' sx={{ mb: 1 }}>
+          {release.alsoCaptured.length} of them {release.alsoCaptured.length === 1 ? 'was' : 'were'}{' '}
+          not part of this promotion and will be published at whatever head they are on:{' '}
+          {release.alsoCaptured.map((m) => m.slug).join(', ')}.
+        </Alert>
+      )}
+      <List dense>
+        {release.members.map((m) => (
+          <ListItem key={m.unitId}>
+            <ListItemText primary={m.slug} />
+            <Chip
+              size='small'
+              label={m.promoted ? 'promoted' : 'already in the Space'}
+              color={m.promoted ? 'primary' : 'default'}
+              variant='outlined'
+            />
+          </ListItem>
+        ))}
+      </List>
+    </>
+  );
+}
 
 /**
  * The manual promotion gate. Promotes a component into a stage by upgrading
@@ -26,6 +73,12 @@ import { PromotabilityReport, usePromotion } from '../data/promote';
  * variants aren't actually linked upstream, or when a target is missing — we
  * never silently copy data. The app changes desired state here; ConfigHub then
  * reports the resulting live status back via the Space label.
+ *
+ * Upgrading changes desired state and delivers nothing. Publishing a Release is
+ * offered as a second, separately confirmed step, because it has a wider subject:
+ * a Release captures every Unit assigned to the Space's Release Target, which can
+ * include Units this promotion never touched. Those are listed before the button
+ * is offered.
  */
 export function PromoteButton({
   target,
@@ -40,13 +93,16 @@ export function PromoteButton({
   /** Called after a successful upgrade so the parent can re-read status. */
   onPromoted: () => void;
 }) {
-  const { inspect, promote } = usePromotion();
+  const { inspect, promote, inspectRelease, publish } = usePromotion();
   const [open, setOpen] = useState(false);
   const [report, setReport] = useState<PromotabilityReport | null>(null);
   const [inspecting, setInspecting] = useState(false);
-  const [apply, setApply] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Set once the upgrade lands, which is when publishing becomes a meaningful offer.
+  const [promoted, setPromoted] = useState(false);
+  const [release, setRelease] = useState<ReleaseReadiness | null>(null);
+  const [published, setPublished] = useState<string | null>(null);
 
   const staticReason =
     blockedReason ??
@@ -61,6 +117,9 @@ export function PromoteButton({
     setOpen(true);
     setError(null);
     setReport(null);
+    setRelease(null);
+    setPromoted(false);
+    setPublished(null);
     setInspecting(true);
     setReport(await inspect(target, upstream));
     setInspecting(false);
@@ -71,13 +130,32 @@ export function PromoteButton({
     setBusy(true);
     setError(null);
     try {
-      await promote(target, report, `Promote ${target.component} to ${target.variant}`, apply);
-      setOpen(false);
+      await promote(target, report, `Promote ${target.component} to ${target.variant}`);
+      // Stay open: the upgrade is done, and publishing it is the next decision.
+      // Reading release readiness only now means the gate states reflect the
+      // Revisions the upgrade just created.
+      setPromoted(true);
+      setRelease(await inspectRelease(target, report));
       setBusy(false);
       onPromoted();
     } catch {
       setBusy(false);
       setError('Promotion failed.');
+    }
+  };
+
+  const doPublish = async () => {
+    if (!target || !release?.publishable) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await publish(target);
+      setPublished(`Release ${result.releaseNum} published — ${result.unitCount} Unit(s) bundled.`);
+      setBusy(false);
+      onPromoted();
+    } catch {
+      setBusy(false);
+      setError('Publishing the Release failed.');
     }
   };
 
@@ -127,25 +205,62 @@ export function PromoteButton({
                   </ListItem>
                 ))}
               </List>
-              <FormControlLabel
-                control={<Checkbox checked={apply} onChange={(e) => setApply(e.target.checked)} />}
-                label='Apply to target after upgrade'
-              />
-              {error && <Alert severity='error'>{error}</Alert>}
+              {!promoted && (
+                <Alert severity='info'>
+                  Upgrading changes desired state in ConfigHub and delivers nothing. After it
+                  lands you can publish a Release, which is what a cluster pulls.
+                </Alert>
+              )}
             </>
           )}
+
+          {promoted && !published && (
+            <>
+              <Alert severity='success' sx={{ mb: 2 }}>
+                Upgraded {report?.units.length} Unit(s). Nothing is delivered yet.
+              </Alert>
+              {release === null && (
+                <Typography
+                  color='text.secondary'
+                  sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+                >
+                  <CircularProgress size={16} /> Checking what a Release would capture…
+                </Typography>
+              )}
+              {release && <ReleaseScope target={target} release={release} />}
+            </>
+          )}
+
+          {published && <Alert severity='success'>{published}</Alert>}
+
+          {error && <Alert severity='error' sx={{ mt: 2 }}>{error}</Alert>}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpen(false)} disabled={busy}>
-            Cancel
+            {promoted ? 'Close' : 'Cancel'}
           </Button>
-          <Button
-            variant='contained'
-            onClick={doPromote}
-            disabled={busy || inspecting || !report?.promotable}
-          >
-            {busy ? 'Promoting…' : 'Promote'}
-          </Button>
+          {!promoted && (
+            <Button
+              variant='contained'
+              onClick={doPromote}
+              disabled={busy || inspecting || !report?.promotable}
+            >
+              {busy ? 'Promoting…' : 'Promote'}
+            </Button>
+          )}
+          {promoted && !published && (
+            <Button
+              variant='contained'
+              onClick={doPublish}
+              disabled={busy || release === null || !release.publishable}
+            >
+              {busy
+                ? 'Publishing…'
+                : release
+                  ? `Publish Release (${release.members.length} Unit${release.members.length === 1 ? '' : 's'})`
+                  : 'Publish Release'}
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
     </>

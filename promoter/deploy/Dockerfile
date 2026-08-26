@@ -1,6 +1,6 @@
 # Build stage
 FROM node:20-alpine AS builder
-WORKDIR /app
+WORKDIR /src
 
 # Build-time config baked into the static bundle by Vite. The OAuth client id is
 # a public PKCE client (not a secret); CI passes it as a build arg. Both must be
@@ -10,9 +10,14 @@ ARG VITE_OAUTH_CLIENT_ID
 ENV VITE_CONFIGHUB_BASE_URL=$VITE_CONFIGHUB_BASE_URL
 ENV VITE_OAUTH_CLIENT_ID=$VITE_OAUTH_CLIENT_ID
 
-COPY app/package*.json ./
+# The shared kit is a `file:` dependency of the app, so it has to be in the image
+# at the relative path the manifest names — which makes the build context the
+# repository root rather than the example directory.
+COPY webkit/ ./webkit/
+COPY promoter/app/package*.json ./promoter/app/
+WORKDIR /src/promoter/app
 RUN npm ci
-COPY app/ .
+COPY promoter/app/ .
 RUN npm run build
 
 # Runtime stage
@@ -28,8 +33,8 @@ RUN mkdir -p /var/cache/nginx /var/log/nginx /tmp /usr/share/nginx/html && \
     chmod -R 755 /var/cache/nginx /var/log/nginx
 
 # Copy built files and config. Static-only: no proxy, so no entrypoint templating.
-COPY --from=builder /app/dist /usr/share/nginx/html
-COPY deploy/nginx.conf /etc/nginx/nginx.conf
+COPY --from=builder /src/promoter/app/dist /usr/share/nginx/html
+COPY promoter/deploy/nginx.conf /etc/nginx/nginx.conf
 RUN chown -R appuser:appgroup /usr/share/nginx/html /etc/nginx
 
 # Switch to non-root user

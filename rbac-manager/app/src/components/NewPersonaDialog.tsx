@@ -18,8 +18,8 @@ import {
 } from '@mui/material';
 import { useMemo, useState } from 'react';
 
-import { useSnapshot } from '../fleet/SnapshotContext';
-import { useCreateUnitMutation } from '../sdk/confighubapi.gen';
+import { useSnapshot } from '../fleet/snapshot';
+import { useCreateUnitMutation } from '@confighub/rtk-query';
 
 const SLUG_RE = /^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/;
 

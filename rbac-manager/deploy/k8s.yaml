@@ -46,9 +46,6 @@ spec:
         # Public package — no imagePullSecrets needed.
         image: ghcr.io/confighub/rbac-manager:latest
         imagePullPolicy: Always
-        env:
-        - name: API_BACKEND_URL
-          value: "http://confighub-api.confighub.svc.cluster.local:9090"
         ports:
         - containerPort: 8080
           name: http

@@ -5,9 +5,9 @@
 // view ("who can what") is the separate `grants` table — see grants.ts.
 
 import type { Row } from '../fql';
-import { analyzeFleet } from './findings';
-import { buildClusterRbac, type FleetResource } from './model';
-import { effectiveRules, isBuiltinRoleName, resolveRoleRef } from './semantics';
+import { analyzeFleet } from '@confighub/examples-webkit/rbac';
+import { buildClusterRbac, type FleetResource } from '@confighub/examples-webkit/rbac';
+import { effectiveRules, isBuiltinRoleName, resolveRoleRef } from '@confighub/examples-webkit/rbac';
 
 /** Does any rule wildcard verbs, resources, or apiGroups? */
 function hasWildcardRule(rules: { verbs: string[]; resources: string[]; apiGroups: string[] }[]): boolean {

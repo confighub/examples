@@ -151,11 +151,13 @@ backend. It reads the estimator's annotations + the guardrail gates; it computes
 nothing itself.
 
 ```bash
-cd app && npm install
-CONFIGHUB_URL=https://hub.confighub.com npm run dev    # then open http://localhost:5193
+cub oauthclient create cost-estimator --redirect-uri http://localhost:5193/
+cd app && cp .env.example .env   # paste the client_id into VITE_OAUTH_CLIENT_ID
+npm install && npm run dev       # then open http://localhost:5193
 ```
 
-Paste a token from `cub auth get-token` when prompted (dev mode). The Dashboard
+Click **Log in** — auth is the browser-direct OIDC flow, so there is no token to
+paste and no proxy to run. The Dashboard
 shows total monthly spend, the breakdown by environment, budget-status counts,
 and top spenders; Fleet is the per-workload cost table with a budget-status chip
 and gate chips; clicking a row opens the cost breakdown for that workload.

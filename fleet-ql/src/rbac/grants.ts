@@ -6,14 +6,14 @@
 // semantics.ts / model.ts.
 
 import type { Row } from '../fql';
-import { buildClusterRbac, type FleetResource, subjectKey } from './model';
+import { buildClusterRbac, type FleetResource, subjectKey } from '@confighub/examples-webkit/rbac';
 import {
   accessMatches,
   bindingScopeMatches,
   effectiveRules,
   isBuiltinRoleName,
   resolveRoleRef,
-} from './semantics';
+} from '@confighub/examples-webkit/rbac';
 
 /** The access question, extracted from the FQL WHERE. Any field omitted is a
  *  wildcard. With none set, every (binding × subject) grant is returned. */

@@ -6,12 +6,12 @@
 import { Alert, Box, Chip, Typography } from '@mui/material';
 import { stringify } from 'yaml';
 
-import { ClusterRbac, Subject, subjectKey } from '../../rbac/model';
+import { ClusterRbac, Subject, subjectKey } from '@confighub/examples-webkit/rbac';
 import {
   effectiveRules,
   isBuiltinRoleName,
   resolveRoleRef,
-} from '../../rbac/semantics';
+} from '@confighub/examples-webkit/rbac';
 import {
   EmptyHint,
   FieldList,

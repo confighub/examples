@@ -7,26 +7,28 @@ top of the ConfigHub API.
 
 ## How it works
 
-The app is a static SPA that only talks to relative `/api` and `/auth` paths.
-A small nginx container serves the built bundle and proxies those two paths to
-the ConfigHub API, making the deployment same-origin: the standard ConfigHub
-session-cookie login works with no OAuth configuration in the app, and no CORS
-is required.
+The app is a static SPA that talks browser-direct to the ConfigHub instance and
+signs in with OIDC PKCE (`@confighub/react-auth`). nginx serves the bundle and
+nothing else — there is no proxy to configure and no session cookie to rewrite.
+The instance URL and the app's OAuth client id are baked into the bundle at
+image-build time, so the image is specific to the origin it is served from.
 
 ```
 Browser ── https://rbac-manager.test.confighub.net
-              │
-              ▼
-           nginx ──── /            → SPA bundle (dist/)
-                 ──── /api, /auth  → ConfigHub API (Host: hub.confighub.com)
+              │                          │
+              │                          └── https://hub.confighub.com  (API + IdP,
+              ▼                                                          bearer token)
+           nginx ──── /  → SPA bundle (dist/)
 ```
 
 Pieces:
 
-- `Dockerfile`, `nginx.conf`, `docker-entrypoint.sh` — multi-stage build
-  (Node → nginx:alpine, non-root). `API_BACKEND_URL` is substituted into the
-  nginx config at container start; the demo points it at the in-cluster API
-  service, but `https://hub.confighub.com` works from anywhere.
+- `Dockerfile`, `nginx.conf` — multi-stage build (Node → nginx:alpine,
+  non-root). The build context is the **repository root**, not this example:
+  the app depends on `../../webkit` as a `file:` dependency, so that directory
+  has to be in the context. `VITE_OAUTH_CLIENT_ID` and
+  `VITE_CONFIGHUB_BASE_URL` are build args; an empty client id builds an image
+  that renders the app's setup hint instead of a login button.
 - `k8s.yaml` — Service, Deployment, and Traefik IngressRoutes. This is the
   initial data for a long-lived ConfigHub unit (`rbac-manager` in the
   `prod-use2-ui-preview` space) — the deployment is itself managed as
@@ -65,9 +67,14 @@ the unit, not this file, is the source of truth for any later config edits.
 
 ## Hosting your own UI like this
 
-The same pattern works against the public API from any infrastructure: serve
-your SPA and proxy `/api` to `https://hub.confighub.com`. The session-cookie
-login flow requires your origin to be in ConfigHub's IdP redirect allowlist,
-so outside ConfigHub-operated infrastructure use the app's bearer-token mode
-instead: get a token with `cub auth get-token` and paste it at the prompt
-(see `../app/README.md`).
+The same pattern works from any infrastructure, because nothing about it is
+ConfigHub-operated: serve the static bundle anywhere. What makes the origin
+work is registering it, which anyone can do for their own organization:
+
+```bash
+cub oauthclient create my-console --redirect-uri https://console.example.com/
+```
+
+Then build with that client id. The redirect URI must match the origin exactly,
+so a new origin means a new client (or another `--redirect-uri` on the existing
+one) — not a change to this repository.

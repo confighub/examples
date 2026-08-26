@@ -78,6 +78,21 @@ Some other examples
   [`k8s-to-score`](./k8s-to-score/README.md) reads the Kubernetes resources in a
   Space and emits a [Score](https://score.dev) workload spec per Deployment or
   StatefulSet (the inverse of `score-k8s`; read-only)
+- Shared libraries the examples are built on, rather than examples themselves:
+  [`webkit`](./webkit/README.md) — the auth shell, fleet scope and snapshot,
+  config-data access, and RBAC engine behind the web consoles
+  ([`configboard`](./configboard/README.md),
+  [`promoter`](./promoter/README.md),
+  [`rbac-manager`](./rbac-manager/README.md),
+  [`sec-scanner`](./sec-scanner/README.md),
+  [`fleet-ql`](./fleet-ql/README.md), and
+  [`cost-estimator`](./cost-estimator/README.md)) — and
+  [`managerkit`](./managerkit), the Go equivalent for the `cub-*` fleet managers.
+  The ConfigHub API client and auth flow themselves are not here: those are the
+  published [`@confighub/api`](https://www.npmjs.com/package/@confighub/api),
+  [`@confighub/rtk-query`](https://www.npmjs.com/package/@confighub/rtk-query), and
+  [`@confighub/react-auth`](https://www.npmjs.com/package/@confighub/react-auth)
+  packages from [confighub/js-sdk](https://github.com/confighub/js-sdk).
 - Incubator and experimental paths: [`incubator/README.md`](./incubator/README.md)
 - App mutation and platform flow: [`spring-platform/springboot-platform-app-centric`](./spring-platform/springboot-platform-app-centric/README.md)
 - Standalone operational app shape: [`pilot-example-addons-manager`](./pilot-example-addons-manager/README.md)

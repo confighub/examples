@@ -26,7 +26,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { parseAllDocuments } from 'yaml';
 
-import { fetchRevisionDataText, fetchUnitDataText, putUnitDataText } from '../api/raw';
+import { fetchRevisionDataText, fetchUnitDataText, putUnitDataText } from '@confighub/examples-webkit/api';
 import { FriendlyResource } from '../components/friendly/RbacFriendly';
 import { StructuredEdit } from '../components/StructuredEdit';
 import type { CompiledEdit } from '../rbac/edits';
@@ -36,14 +36,14 @@ import {
   EDIT_INVOCATIONS_MISSING,
 } from '../rbac/editInvocations';
 import { clusterContextFor } from '../fleet/enrichment';
-import { useSnapshot } from '../fleet/SnapshotContext';
+import { useSnapshot } from '../fleet/snapshot';
 import {
   useApproveUnitMutation,
   useGetUnitQuery,
   useInvokeFunctionsMutation,
   useListExtendedRevisionsQuery,
   usePatchUnitMutation,
-} from '../sdk/confighubapi.gen';
+} from '@confighub/rtk-query';
 
 /** Simple line-level diff rendering (added/removed line backgrounds). */
 function DiffView({ before, after }: { before: string; after: string }) {
