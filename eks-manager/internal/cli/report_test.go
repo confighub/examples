@@ -65,13 +65,13 @@ func fixture() *snapshot.Snapshot {
 		Units: map[string]snapshot.UnitMeta{
 			"u1": {UnitID: "u1", Slug: "cluster", SpaceSlug: "eks-prod-use1",
 				SpaceLabels: map[string]string{"Cluster": "prod-use1"},
-				GateCount:   1, HeadRevisionNum: 5, LiveRevisionNum: 4},
+				GateCount:   1, HeadRevisionNum: 5, LastReleasedRevisionNum: 4},
 			"u2": {UnitID: "u2", Slug: "ng-system", SpaceSlug: "eks-prod-use1",
 				SpaceLabels:     map[string]string{"Cluster": "prod-use1"},
-				HeadRevisionNum: 2, LiveRevisionNum: 2},
+				HeadRevisionNum: 2, LastReleasedRevisionNum: 2},
 			"u3": {UnitID: "u3", Slug: "cluster", SpaceSlug: "eks-dev-use1",
 				SpaceLabels:     map[string]string{"Cluster": "dev-use1"},
-				HeadRevisionNum: 1, LiveRevisionNum: 0},
+				HeadRevisionNum: 1, LastReleasedRevisionNum: 0},
 			// Out of scope: its Space is not among snap.Clusters.
 			"u9": {UnitID: "u9", Slug: "other", SpaceSlug: "unrelated"},
 		},
@@ -165,15 +165,15 @@ func TestBuildSnapshotReport(t *testing.T) {
 	if prod.NodeGroups != 3 || prod.Addons != 2 || prod.Network != 2 || prod.IAM != 1 {
 		t.Errorf("prod counts = %+v", prod)
 	}
-	// Two Units live in prod's Space; one is gated, one is unapplied (head 5 > live 4).
-	if prod.Units != 2 || prod.GatedUnits != 1 || prod.UnappliedUnits != 1 {
-		t.Errorf("prod units=%d gated=%d unapplied=%d", prod.Units, prod.GatedUnits, prod.UnappliedUnits)
+	// Two Units live in prod's Space; one is gated, one is unreleased (head 5 > released 4).
+	if prod.Units != 2 || prod.GatedUnits != 1 || prod.UnreleasedUnits != 1 {
+		t.Errorf("prod units=%d gated=%d unreleased=%d", prod.Units, prod.GatedUnits, prod.UnreleasedUnits)
 	}
 
-	// A never-applied Unit (live 0) counts as unapplied.
+	// A never-released Unit (released 0) counts as unreleased.
 	dev := byName["dev-use1"]
-	if dev.Units != 1 || dev.UnappliedUnits != 1 {
-		t.Errorf("dev units=%d unapplied=%d", dev.Units, dev.UnappliedUnits)
+	if dev.Units != 1 || dev.UnreleasedUnits != 1 {
+		t.Errorf("dev units=%d unreleased=%d", dev.Units, dev.UnreleasedUnits)
 	}
 
 	shared := byName["shared-net"]

@@ -77,21 +77,21 @@ func TestIsCanonicalSpace(t *testing.T) {
 
 func TestUnitMetaState(t *testing.T) {
 	for _, tc := range []struct {
-		name      string
-		u         UnitMeta
-		gated     bool
-		unapplied bool
+		name       string
+		u          UnitMeta
+		gated      bool
+		unreleased bool
 	}{
-		{"never applied", UnitMeta{HeadRevisionNum: 3, LiveRevisionNum: 0}, false, true},
-		{"behind", UnitMeta{HeadRevisionNum: 5, LiveRevisionNum: 4}, false, true},
-		{"in sync", UnitMeta{HeadRevisionNum: 5, LiveRevisionNum: 5}, false, false},
-		{"gated", UnitMeta{HeadRevisionNum: 5, LiveRevisionNum: 5, GateCount: 2}, true, false},
+		{"never released", UnitMeta{HeadRevisionNum: 3, LastReleasedRevisionNum: 0}, false, true},
+		{"behind", UnitMeta{HeadRevisionNum: 5, LastReleasedRevisionNum: 4}, false, true},
+		{"in sync", UnitMeta{HeadRevisionNum: 5, LastReleasedRevisionNum: 5}, false, false},
+		{"gated", UnitMeta{HeadRevisionNum: 5, LastReleasedRevisionNum: 5, GateCount: 2}, true, false},
 	} {
 		if got := tc.u.Gated(); got != tc.gated {
 			t.Errorf("%s: Gated() = %v, want %v", tc.name, got, tc.gated)
 		}
-		if got := tc.u.Unapplied(); got != tc.unapplied {
-			t.Errorf("%s: Unapplied() = %v, want %v", tc.name, got, tc.unapplied)
+		if got := tc.u.Unreleased(); got != tc.unreleased {
+			t.Errorf("%s: Unreleased() = %v, want %v", tc.name, got, tc.unreleased)
 		}
 	}
 }
@@ -101,7 +101,7 @@ func TestUnitMetaState(t *testing.T) {
 func TestUnitSelectCoversUnitMeta(t *testing.T) {
 	for _, field := range []string{
 		"UnitID", "SpaceID", "SpaceSlug", "Slug", "TargetID", "Labels", "ApplyGates",
-		"ApplyWarnings", "HeadRevisionNum", "LastAppliedRevisionNum", "LiveRevisionNum",
+		"ApplyWarnings", "HeadRevisionNum", "LastReleasedRevisionNum",
 		"UpstreamRevisionNum", "LastChangeDescription",
 	} {
 		if !strings.Contains(unitSelectFields, field) {

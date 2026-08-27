@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/confighub/sdk/cliutil v0.3.0
-	github.com/confighub/sdk/core v0.3.0
+	github.com/confighub/sdk/core v0.4.0
 	github.com/spf13/cobra v1.10.2
 )
 

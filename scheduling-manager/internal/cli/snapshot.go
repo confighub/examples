@@ -15,27 +15,27 @@ import (
 )
 
 type clusterSummary struct {
-	Cluster        string `json:"cluster"`
-	Workloads      int    `json:"workloads"`
-	WithSelector   int    `json:"withNodeSelector"`
-	WithToleration int    `json:"withTolerations"`
-	WithAffinity   int    `json:"withNodeAffinity"`
-	Units          int    `json:"units"`
-	GatedUnits     int    `json:"gatedUnits"`
-	UnappliedUnits int    `json:"unappliedUnits"`
+	Cluster         string `json:"cluster"`
+	Workloads       int    `json:"workloads"`
+	WithSelector    int    `json:"withNodeSelector"`
+	WithToleration  int    `json:"withTolerations"`
+	WithAffinity    int    `json:"withNodeAffinity"`
+	Units           int    `json:"units"`
+	GatedUnits      int    `json:"gatedUnits"`
+	UnreleasedUnits int    `json:"unreleasedUnits"`
 }
 
 type snapshotReport struct {
 	Clusters []clusterSummary `json:"clusters"`
 	Totals   struct {
-		Clusters       int `json:"clusters"`
-		Workloads      int `json:"workloads"`
-		WithSelector   int `json:"withNodeSelector"`
-		WithToleration int `json:"withTolerations"`
-		WithAffinity   int `json:"withNodeAffinity"`
-		Units          int `json:"units"`
-		GatedUnits     int `json:"gatedUnits"`
-		UnappliedUnits int `json:"unappliedUnits"`
+		Clusters        int `json:"clusters"`
+		Workloads       int `json:"workloads"`
+		WithSelector    int `json:"withNodeSelector"`
+		WithToleration  int `json:"withTolerations"`
+		WithAffinity    int `json:"withNodeAffinity"`
+		Units           int `json:"units"`
+		GatedUnits      int `json:"gatedUnits"`
+		UnreleasedUnits int `json:"unreleasedUnits"`
 	} `json:"totals"`
 	Filter string `json:"filter,omitempty"`
 }
@@ -48,7 +48,7 @@ func newSnapshotCmd() *cobra.Command {
 		Short: "Fleet inventory: per-cluster workload counts and how many pin placement",
 		Long: `snapshot loads the fleet-wide placement view and reports a per-cluster inventory:
 workload counts, and how many set a nodeSelector, tolerations, or node affinity,
-plus how many Units are gated or unapplied.
+plus how many Units are gated or unreleased.
 
 Clusters are ConfigHub Targets (the Space slug is used for unbound Units).
 Canonical base/policy Spaces are excluded.`,
@@ -113,8 +113,8 @@ func buildSnapshotReport(snap *snapshot.Snapshot) snapshotReport {
 		if u.Gated() {
 			cs.GatedUnits++
 		}
-		if u.Unapplied() {
-			cs.UnappliedUnits++
+		if u.Unreleased() {
+			cs.UnreleasedUnits++
 		}
 	}
 	var report snapshotReport
@@ -129,7 +129,7 @@ func buildSnapshotReport(snap *snapshot.Snapshot) snapshotReport {
 		report.Totals.WithAffinity += cs.WithAffinity
 		report.Totals.Units += cs.Units
 		report.Totals.GatedUnits += cs.GatedUnits
-		report.Totals.UnappliedUnits += cs.UnappliedUnits
+		report.Totals.UnreleasedUnits += cs.UnreleasedUnits
 	}
 	report.Totals.Clusters = len(report.Clusters)
 	report.Filter = snap.Filter
@@ -141,11 +141,11 @@ func printSnapshotTable(cmd *cobra.Command, r snapshotReport) {
 	fmt.Fprintln(tw, "CLUSTER\tWORKLOADS\tNODESELECTOR\tTOLERATIONS\tNODEAFFINITY\tUNITS\tGATED\tUNAPPLIED")
 	for _, c := range r.Clusters {
 		fmt.Fprintf(tw, "%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
-			c.Cluster, c.Workloads, c.WithSelector, c.WithToleration, c.WithAffinity, c.Units, c.GatedUnits, c.UnappliedUnits)
+			c.Cluster, c.Workloads, c.WithSelector, c.WithToleration, c.WithAffinity, c.Units, c.GatedUnits, c.UnreleasedUnits)
 	}
 	_ = tw.Flush()
 	fprintln(cmd.OutOrStdout(), fmt.Sprintf(
-		"\n%d clusters, %d workloads (%d nodeSelector, %d tolerations, %d nodeAffinity), %d units (%d gated, %d unapplied)",
+		"\n%d clusters, %d workloads (%d nodeSelector, %d tolerations, %d nodeAffinity), %d units (%d gated, %d unreleased)",
 		r.Totals.Clusters, r.Totals.Workloads, r.Totals.WithSelector, r.Totals.WithToleration, r.Totals.WithAffinity,
-		r.Totals.Units, r.Totals.GatedUnits, r.Totals.UnappliedUnits))
+		r.Totals.Units, r.Totals.GatedUnits, r.Totals.UnreleasedUnits))
 }

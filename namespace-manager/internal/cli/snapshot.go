@@ -15,23 +15,23 @@ import (
 )
 
 type clusterSummary struct {
-	Cluster        string `json:"cluster"`
-	Namespaces     int    `json:"namespaces"`
-	Workloads      int    `json:"workloads"`
-	Units          int    `json:"units"`
-	GatedUnits     int    `json:"gatedUnits"`
-	UnappliedUnits int    `json:"unappliedUnits"`
+	Cluster         string `json:"cluster"`
+	Namespaces      int    `json:"namespaces"`
+	Workloads       int    `json:"workloads"`
+	Units           int    `json:"units"`
+	GatedUnits      int    `json:"gatedUnits"`
+	UnreleasedUnits int    `json:"unreleasedUnits"`
 }
 
 type snapshotReport struct {
 	Clusters []clusterSummary `json:"clusters"`
 	Totals   struct {
-		Clusters       int `json:"clusters"`
-		Namespaces     int `json:"namespaces"`
-		Workloads      int `json:"workloads"`
-		Units          int `json:"units"`
-		GatedUnits     int `json:"gatedUnits"`
-		UnappliedUnits int `json:"unappliedUnits"`
+		Clusters        int `json:"clusters"`
+		Namespaces      int `json:"namespaces"`
+		Workloads       int `json:"workloads"`
+		Units           int `json:"units"`
+		GatedUnits      int `json:"gatedUnits"`
+		UnreleasedUnits int `json:"unreleasedUnits"`
 	} `json:"totals"`
 	Filter string `json:"filter,omitempty"`
 }
@@ -44,7 +44,7 @@ func newSnapshotCmd() *cobra.Command {
 		Short: "Fleet inventory: per-cluster namespace and workload counts, and Unit state",
 		Long: `snapshot loads the fleet-wide namespace view from ConfigHub and reports a
 per-cluster inventory: Namespace and workload counts, plus how many Units are
-gated or unapplied.
+gated or unreleased.
 
 Clusters are ConfigHub Targets; Units whose Space has no release Target group
 under a single "None" cluster. Canonical base/policy Spaces are excluded from
@@ -109,8 +109,8 @@ func buildSnapshotReport(snap *snapshot.Snapshot) snapshotReport {
 		if u.Gated() {
 			cs.GatedUnits++
 		}
-		if u.Unapplied() {
-			cs.UnappliedUnits++
+		if u.Unreleased() {
+			cs.UnreleasedUnits++
 		}
 	}
 
@@ -126,7 +126,7 @@ func buildSnapshotReport(snap *snapshot.Snapshot) snapshotReport {
 		report.Totals.Workloads += cs.Workloads
 		report.Totals.Units += cs.Units
 		report.Totals.GatedUnits += cs.GatedUnits
-		report.Totals.UnappliedUnits += cs.UnappliedUnits
+		report.Totals.UnreleasedUnits += cs.UnreleasedUnits
 	}
 	report.Totals.Clusters = len(report.Clusters)
 	report.Filter = snap.Filter
@@ -139,11 +139,11 @@ func printSnapshotTable(cmd *cobra.Command, r snapshotReport) {
 	for _, c := range r.Clusters {
 		fmt.Fprintf(tw, "%s\t%d\t%d\t%d\t%d\t%d\n",
 			c.Cluster, c.Namespaces, c.Workloads,
-			c.Units, c.GatedUnits, c.UnappliedUnits)
+			c.Units, c.GatedUnits, c.UnreleasedUnits)
 	}
 	_ = tw.Flush()
 	fprintln(cmd.OutOrStdout(), fmt.Sprintf(
-		"\n%d clusters, %d namespaces, %d workloads, %d units (%d gated, %d unapplied)",
+		"\n%d clusters, %d namespaces, %d workloads, %d units (%d gated, %d unreleased)",
 		r.Totals.Clusters, r.Totals.Namespaces,
-		r.Totals.Workloads, r.Totals.Units, r.Totals.GatedUnits, r.Totals.UnappliedUnits))
+		r.Totals.Workloads, r.Totals.Units, r.Totals.GatedUnits, r.Totals.UnreleasedUnits))
 }

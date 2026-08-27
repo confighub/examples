@@ -16,15 +16,15 @@ import (
 )
 
 type clusterSummary struct {
-	Cluster        string `json:"cluster"`
-	HPAs           int    `json:"hpas"`
-	ScaledObjects  int    `json:"scaledObjects"`
-	Workloads      int    `json:"workloads"`
-	Autoscaled     int    `json:"autoscaledWorkloads"`
-	PDBs           int    `json:"pdbs"`
-	Units          int    `json:"units"`
-	GatedUnits     int    `json:"gatedUnits"`
-	UnappliedUnits int    `json:"unappliedUnits"`
+	Cluster         string `json:"cluster"`
+	HPAs            int    `json:"hpas"`
+	ScaledObjects   int    `json:"scaledObjects"`
+	Workloads       int    `json:"workloads"`
+	Autoscaled      int    `json:"autoscaledWorkloads"`
+	PDBs            int    `json:"pdbs"`
+	Units           int    `json:"units"`
+	GatedUnits      int    `json:"gatedUnits"`
+	UnreleasedUnits int    `json:"unreleasedUnits"`
 }
 
 type snapshotReport struct {
@@ -120,8 +120,8 @@ func buildSnapshotReport(snap *snapshot.Snapshot) snapshotReport {
 		if u.Gated() {
 			cs.GatedUnits++
 		}
-		if u.Unapplied() {
-			cs.UnappliedUnits++
+		if u.Unreleased() {
+			cs.UnreleasedUnits++
 		}
 	}
 	var report snapshotReport

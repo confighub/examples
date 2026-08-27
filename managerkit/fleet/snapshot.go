@@ -41,7 +41,7 @@ const unitInclude = "SpaceID,TargetID"
 // fleet-wide list from serializing every column of every Unit, which is most of
 // what a snapshot costs.
 const unitSelectFields = "UnitID,SpaceID,SpaceSlug,Slug,TargetID,Labels,ApplyGates,ApplyWarnings," +
-	"HeadRevisionNum,LastAppliedRevisionNum,LiveRevisionNum,UpstreamRevisionNum,LastChangeDescription"
+	"HeadRevisionNum,LastReleasedRevisionNum,UpstreamRevisionNum,LastChangeDescription"
 
 // resourceOrderBy makes the fetch reproducible. An unordered query comes back in
 // "the database's default order", which the API documents as no promise at all,
@@ -74,29 +74,32 @@ type Origin struct {
 // still appears here, which is what lets a fleet inventory count Units the
 // resource query cannot see.
 type UnitMeta struct {
-	UnitID                 string            `json:"unitId"`
-	Slug                   string            `json:"slug"`
-	SpaceID                string            `json:"spaceId"`
-	SpaceSlug              string            `json:"spaceSlug"`
-	SpaceLabels            map[string]string `json:"spaceLabels,omitempty"`
-	TargetID               string            `json:"targetId,omitempty"`
-	TargetSlug             string            `json:"targetSlug,omitempty"`
-	Labels                 map[string]string `json:"labels,omitempty"`
-	GateCount              int               `json:"gateCount"`
-	WarningCount           int               `json:"warningCount,omitempty"`
-	HeadRevisionNum        int64             `json:"headRevisionNum"`
-	LastAppliedRevisionNum int64             `json:"lastAppliedRevisionNum,omitempty"`
-	LiveRevisionNum        int64             `json:"liveRevisionNum"`
-	UpstreamRevisionNum    int64             `json:"upstreamRevisionNum,omitempty"`
-	LastChangeDescription  string            `json:"lastChangeDescription,omitempty"`
+	UnitID                  string            `json:"unitId"`
+	Slug                    string            `json:"slug"`
+	SpaceID                 string            `json:"spaceId"`
+	SpaceSlug               string            `json:"spaceSlug"`
+	SpaceLabels             map[string]string `json:"spaceLabels,omitempty"`
+	TargetID                string            `json:"targetId,omitempty"`
+	TargetSlug              string            `json:"targetSlug,omitempty"`
+	Labels                  map[string]string `json:"labels,omitempty"`
+	GateCount               int               `json:"gateCount"`
+	WarningCount            int               `json:"warningCount,omitempty"`
+	HeadRevisionNum         int64             `json:"headRevisionNum"`
+	LastReleasedRevisionNum int64             `json:"lastReleasedRevisionNum,omitempty"`
+	UpstreamRevisionNum     int64             `json:"upstreamRevisionNum,omitempty"`
+	LastChangeDescription   string            `json:"lastChangeDescription,omitempty"`
 }
 
 // Gated reports whether the Unit has any ApplyGates attached.
 func (u UnitMeta) Gated() bool { return u.GateCount > 0 }
 
-// Unapplied reports whether the Unit's head revision has not been applied live.
-func (u UnitMeta) Unapplied() bool {
-	return u.LiveRevisionNum == 0 || u.LiveRevisionNum < u.HeadRevisionNum
+// Unreleased reports whether the Unit's head revision has not been captured by a Release.
+//
+// This used to compare against LiveRevisionNum, which no bridge has advanced since the bridge
+// sunset -- so it was zero on every Unit and this returned true for all of them. Publishing a
+// Release advances LastReleasedRevisionNum, which is what the question was always asking about.
+func (u UnitMeta) Unreleased() bool {
+	return u.LastReleasedRevisionNum == 0 || u.LastReleasedRevisionNum < u.HeadRevisionNum
 }
 
 // Snapshot is one fleet-wide read: every resource a tool asked for, and the
@@ -323,18 +326,17 @@ func listResources(ctx context.Context, c *cubapi.Client, resourceWhere string, 
 
 func unitMeta(eu *goclientnew.ExtendedUnit) UnitMeta {
 	meta := UnitMeta{
-		UnitID:                 eu.Unit.UnitID.String(),
-		Slug:                   eu.Unit.Slug,
-		SpaceID:                eu.Unit.SpaceID.String(),
-		SpaceSlug:              eu.Unit.SpaceSlug,
-		Labels:                 eu.Unit.Labels,
-		GateCount:              len(eu.Unit.ApplyGates),
-		WarningCount:           len(eu.Unit.ApplyWarnings),
-		HeadRevisionNum:        eu.Unit.HeadRevisionNum,
-		LastAppliedRevisionNum: eu.Unit.LastAppliedRevisionNum,
-		LiveRevisionNum:        eu.Unit.LiveRevisionNum,
-		UpstreamRevisionNum:    eu.Unit.UpstreamRevisionNum,
-		LastChangeDescription:  eu.Unit.LastChangeDescription,
+		UnitID:                  eu.Unit.UnitID.String(),
+		Slug:                    eu.Unit.Slug,
+		SpaceID:                 eu.Unit.SpaceID.String(),
+		SpaceSlug:               eu.Unit.SpaceSlug,
+		Labels:                  eu.Unit.Labels,
+		GateCount:               len(eu.Unit.ApplyGates),
+		WarningCount:            len(eu.Unit.ApplyWarnings),
+		HeadRevisionNum:         eu.Unit.HeadRevisionNum,
+		LastReleasedRevisionNum: eu.Unit.LastReleasedRevisionNum,
+		UpstreamRevisionNum:     eu.Unit.UpstreamRevisionNum,
+		LastChangeDescription:   eu.Unit.LastChangeDescription,
 	}
 	if eu.Unit.TargetID != nil {
 		meta.TargetID = eu.Unit.TargetID.String()

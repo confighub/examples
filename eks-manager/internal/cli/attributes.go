@@ -75,7 +75,7 @@ Once registered, attach a Trigger:
 
   cub trigger create eks-disruption --space <space> \
     --function vet-disruption --argument score-threshold=High \
-    --other-data-source LastAppliedRevisionNum --event Mutation --warn
+    --other-data-source LastReleasedRevisionNum --event Mutation --warn
 
 The threshold decides which severities fail; the Trigger's Warn field decides
 whether a failure warns or blocks. Set --other-data-source explicitly: without a
@@ -259,5 +259,5 @@ func printAttributePlan(cmd *cobra.Command, p attributePlan) {
 	fprintln(out, "the Trigger's Warn field decides whether a failure warns or blocks):")
 	fprintln(out, fmt.Sprintf("  cub trigger create eks-disruption --space %s \\", p.Space))
 	fprintln(out, "    --function vet-disruption --argument score-threshold=High \\")
-	fprintln(out, "    --other-data-source LastAppliedRevisionNum --event Mutation --warn")
+	fprintln(out, "    --other-data-source LastReleasedRevisionNum --event Mutation --warn")
 }
