@@ -29,6 +29,16 @@ tutorial, not a recording of it.
 The `cluster` and `prod` sections each build a real kind cluster with Argo CD in it, so they take a
 few minutes. The rest are quick.
 
+For a live demo, set `DEMO_SETUP=INIT` to get both clusters out of the way first:
+
+```
+DEMO_SETUP=INIT ./tutorial.sh
+```
+
+Both `cub cluster up` runs happen before the narration starts, and the `cluster` and `prod` sections
+explain what was done instead of stopping to do it. Unset, or set to anything else, the tutorial
+runs in its own order.
+
 ## The sections
 
 | Section | What it shows |
@@ -39,6 +49,7 @@ few minutes. The rest are quick.
 | `change` | change the base, promote, release — the daily loop |
 | `prod` | a second cluster, and a production deployment stamped from the same base |
 | `flow` | a change flowing base → dev → prod, with a protected value and the conflict it produces |
+| `undo` | an urgent capacity change in prod, undone by restoring the previously released revision |
 | `cleanup` | tear both clusters down and delete the spaces |
 
 `flow` is the interesting five minutes if the clusters are already up: it is where protection,
@@ -56,6 +67,7 @@ DEMO_SPEED=0 ./tutorial.sh flow             # no typing effect; still one keypre
 | `DEMO_SPEED` | characters per second while typing (default 45; `0` is instant) |
 | `DEMO_AUTO` | never wait for a key — for rehearsing end to end |
 | `DEMO_DRYRUN` | show every command, run none of them |
+| `DEMO_SETUP` | `INIT` builds both kind clusters up front, before the narration |
 | `NO_COLOR` | plain text |
 
 ## Using the runner for your own demo
@@ -72,6 +84,12 @@ desc "Everything starts from the base."
 run  "cub unit list --space cubbychat-base"
 ```
 
-`desc` narrates, `run` types and executes, `heading` marks a section, `pause` waits for a beat, and
-`silent` runs setup nobody needs to watch. Commands run in the calling shell, not a subshell, so
-`source cluster.env` and `cd` affect the commands after them.
+`desc` narrates, `run` types and executes, `heading` marks a section, `pause` waits for a beat,
+`run_now` shows a command and runs it without waiting for a key, and `silent` runs setup nobody
+needs to watch. Commands run in the calling shell, not a subshell, so `source cluster.env` and `cd`
+affect the commands after them.
+
+`DEMO_SETUP=INIT` is the library's convention for whatever your demo's slow setup is — a cluster, a
+seeded database, a warm cache. The library defines the variable; your script decides what setup
+means, runs it with `run_now` before the narration, and narrates it where it would otherwise have
+run.

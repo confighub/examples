@@ -13,10 +13,16 @@
 # Wants: cub (authenticated), docker, kind, kubectl. The cluster sections
 # create real kind clusters and take a few minutes each; `cleanup` removes
 # everything this demo makes.
+#
+# The slow setup here is the clusters, so DEMO_SETUP=INIT builds both of them
+# before the narration starts rather than in the middle of it, and the two
+# cluster sections explain what was done instead of doing it. For a live demo,
+# where minutes of kind output is dead air. Unset, or anything else, keeps the
+# tutorial's own order.
 
 source "$(dirname "${BASH_SOURCE[0]}")/demo-lib.sh"
 
-SECTIONS="cluster install release change prod flow cleanup"
+SECTIONS="cluster install release change prod flow undo cleanup"
 
 usage() {
     cat <<EOF
@@ -29,6 +35,7 @@ sections, in tutorial order:
   change    change the base, promote to dev, release
   prod      a second cluster and a production deployment
   flow      flow a change base -> dev -> prod, with protection and conflicts
+  undo      an urgent prod change, undone by restoring a released revision
   cleanup   tear down both clusters and the spaces
 
 with no arguments, runs everything except cleanup.
@@ -38,10 +45,18 @@ EOF
 section_cluster() {
     heading "Set up a cluster"
 
-    desc "ConfigHub manages configuration for live infrastructure, so we start"
-    desc "with some. One command builds a local kind cluster, installs Argo CD"
-    desc "into it, and creates the ConfigHub spaces and target that address it."
-    run "cub cluster up --name dev"
+    if [ "$DEMO_SETUP" = "INIT" ]; then
+        desc "ConfigHub manages configuration for live infrastructure, so we start"
+        desc "with some. The dev cluster is already up: cub cluster up --name dev,"
+        desc "which we ran before starting, built a local kind cluster, installed"
+        desc "Argo CD into it, and created the ConfigHub spaces and target that"
+        desc "address it."
+    else
+        desc "ConfigHub manages configuration for live infrastructure, so we start"
+        desc "with some. One command builds a local kind cluster, installs Argo CD"
+        desc "into it, and creates the ConfigHub spaces and target that address it."
+        run "cub cluster up --name dev"
+    fi
 
     desc "Argo CD is running in the cluster. Nothing has been deployed to it yet."
     run "source ~/.confighub/clusters/dev.env"
@@ -133,7 +148,12 @@ section_prod() {
     heading "Add a production deployment"
 
     desc "The point of the base/deployment split is that the second one is cheap."
-    run "cub cluster up --name prod"
+    if [ "$DEMO_SETUP" = "INIT" ]; then
+        desc "The prod cluster went up front with dev, the same one command:"
+        desc "cub cluster up --name prod. Nothing is deployed to it yet."
+    else
+        run "cub cluster up --name prod"
+    fi
 
     desc "Same clone as dev, with a production label and a delete gate on the units."
     run "cub variant create prod cubbychat-base --target prod/target --namespace cubbychat --environment Prod --unit-delete-gate critical"
@@ -206,6 +226,39 @@ section_flow() {
     desc "The same base change, two outcomes, each correct for where it landed."
 }
 
+section_undo() {
+    heading "Make and undo a change"
+
+    desc "An urgent operational change -- scale up for a news event. With config"
+    desc "in git this is where people break glass: suspend reconciliation, edit"
+    desc "the cluster, reconcile the drift away later, and leave no record."
+    desc "Here it is an ordinary change to one environment, and only that one."
+    run "cub function set --space cubbychat-prod --unit backend --protect set-replicas 5 -o mutations --change-desc \"Temporary boost in capacity to handle news event\""
+    run "cub release publish cubbychat-prod"
+    run "source ~/.confighub/clusters/prod.env"
+    run "kubectl get pods -n cubbychat"
+
+    desc "The configured resource reads as easily as the running one."
+    run "cub k8s get --space cubbychat-prod deployment backend --show detail"
+
+    desc "The boost was meant to be temporary. set-replicas would put it back,"
+    desc "but a larger set of changes you want to undo, not retype. Every change"
+    desc "writes a revision, so there is always something to go back to."
+    run "cub revision list --space cubbychat-prod backend"
+
+    desc "Publishing tags the revisions it shipped, so the release before the"
+    desc "boost names the state to restore."
+    run "cub unit update --patch --space cubbychat-prod backend --restore Tag:release-2 -o mutations --change-desc \"Revert capacity boost\""
+    run "cub release publish cubbychat-prod"
+
+    desc "Restore goes forward, not back: a new revision carrying the old data"
+    desc "and its protection settings."
+    run "cub revision list --space cubbychat-prod backend"
+    run "cub unit get --space cubbychat-prod backend -o mutations"
+
+    desc "Autosave and undo. Undoing a change costs what making one costs."
+}
+
 section_cleanup() {
     heading "Cleanup"
 
@@ -222,6 +275,18 @@ section_cleanup() {
     run "cub space delete cubbychat-base --recursive"
 }
 
+# setup_clusters builds both kind clusters up front, under DEMO_SETUP=INIT.
+# Each takes a few minutes, which the tutorial's order spends in front of the
+# audience -- once at the start, once again in the middle.
+setup_clusters() {
+    heading "Setting up the clusters"
+
+    desc "DEMO_SETUP=INIT: building both kind clusters now, before the tutorial,"
+    desc "so it does not stop for them later. This takes a few minutes."
+    run_now "cub cluster up --name dev"
+    run_now "cub cluster up --name prod"
+}
+
 main() {
     case "${1-}" in
         -h|--help)  usage; exit 0 ;;
@@ -230,7 +295,7 @@ main() {
 
     requested="$*"
     if [ -z "$requested" ]; then
-        requested="cluster install release change prod flow"
+        requested="cluster install release change prod flow undo"
     fi
 
     for name in $requested; do
@@ -239,6 +304,12 @@ main() {
             *) echo "unknown section: $name" >&2; usage >&2; exit 1 ;;
         esac
     done
+
+    if [ "$DEMO_SETUP" = "INIT" ]; then
+        case " $requested " in
+            *" cluster "*|*" prod "*) setup_clusters ;;
+        esac
+    fi
 
     for name in $requested; do
         "section_$name"
