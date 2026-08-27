@@ -13,7 +13,7 @@ export type ExtendedUnit = components['schemas']['ExtendedUnit'];
 /** The Unit fields every fleet view needs: identity, placement, gates, revisions. */
 export const FLEET_UNIT_SELECT =
   'UnitID,Slug,DisplayName,SpaceID,TargetID,Labels,ApplyGates,ApplyWarnings,' +
-  'HeadRevisionNum,LiveRevisionNum,UpstreamRevisionNum,UpstreamUnitID,LastChangeDescription';
+  'HeadRevisionNum,LastReleasedRevisionNum,UpstreamRevisionNum,UpstreamUnitID,LastChangeDescription';
 
 /**
  * Canonical Spaces hold definitions, not deployed config. Analysis that asks what is

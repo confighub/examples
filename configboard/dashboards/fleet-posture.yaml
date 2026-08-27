@@ -76,7 +76,7 @@ panels:
     query:
       source: Unit
     transform:
-      groupBy: [Space.Labels.Environment, Unit.ApplyState]
+      groupBy: [Space.Labels.Environment, Unit.ReleaseState]
       aggregate: { fn: count }
       topN: 6
     chart: { form: stackedBar, orientation: horizontal, color: status }

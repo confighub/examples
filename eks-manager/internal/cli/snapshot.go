@@ -15,17 +15,17 @@ import (
 )
 
 type clusterSummary struct {
-	Cluster        string `json:"cluster"`
-	Version        string `json:"version,omitempty"`
-	Region         string `json:"region,omitempty"`
-	AutoMode       bool   `json:"autoMode"`
-	NodeGroups     int    `json:"nodeGroups"`
-	Addons         int    `json:"addons"`
-	Network        int    `json:"network"`
-	IAM            int    `json:"iam"`
-	Units          int    `json:"units"`
-	GatedUnits     int    `json:"gatedUnits"`
-	UnappliedUnits int    `json:"unappliedUnits"`
+	Cluster         string `json:"cluster"`
+	Version         string `json:"version,omitempty"`
+	Region          string `json:"region,omitempty"`
+	AutoMode        bool   `json:"autoMode"`
+	NodeGroups      int    `json:"nodeGroups"`
+	Addons          int    `json:"addons"`
+	Network         int    `json:"network"`
+	IAM             int    `json:"iam"`
+	Units           int    `json:"units"`
+	GatedUnits      int    `json:"gatedUnits"`
+	UnreleasedUnits int    `json:"unreleasedUnits"`
 	// NoControlPlane flags a Space holding EKS-adjacent resources with no
 	// Cluster resource — usually shared networking, occasionally a mistake.
 	NoControlPlane bool `json:"noControlPlane,omitempty"`
@@ -34,14 +34,14 @@ type clusterSummary struct {
 type snapshotReport struct {
 	Clusters []clusterSummary `json:"clusters"`
 	Totals   struct {
-		Clusters       int `json:"clusters"`
-		NodeGroups     int `json:"nodeGroups"`
-		Addons         int `json:"addons"`
-		Network        int `json:"network"`
-		IAM            int `json:"iam"`
-		Units          int `json:"units"`
-		GatedUnits     int `json:"gatedUnits"`
-		UnappliedUnits int `json:"unappliedUnits"`
+		Clusters        int `json:"clusters"`
+		NodeGroups      int `json:"nodeGroups"`
+		Addons          int `json:"addons"`
+		Network         int `json:"network"`
+		IAM             int `json:"iam"`
+		Units           int `json:"units"`
+		GatedUnits      int `json:"gatedUnits"`
+		UnreleasedUnits int `json:"unreleasedUnits"`
 	} `json:"totals"`
 	Filter string `json:"filter,omitempty"`
 }
@@ -55,7 +55,7 @@ func newSnapshotCmd() *cobra.Command {
 		Long: `snapshot loads the fleet-wide EKS view from ConfigHub and reports a per-cluster
 inventory: the control-plane version and region, whether EKS Auto Mode is on,
 node group / addon / networking / IAM resource counts, and how many Units are
-gated or unapplied.
+gated or unreleased.
 
 A cluster here is a Space — its Units describe an EKS cluster rather than deploy
 to one — identified by the Space's Cluster label, falling back to the Space slug.
@@ -129,8 +129,8 @@ func buildSnapshotReport(snap *snapshot.Snapshot) snapshotReport {
 		if u.Gated() {
 			s.GatedUnits++
 		}
-		if u.Unapplied() {
-			s.UnappliedUnits++
+		if u.Unreleased() {
+			s.UnreleasedUnits++
 		}
 	}
 
@@ -148,7 +148,7 @@ func buildSnapshotReport(snap *snapshot.Snapshot) snapshotReport {
 		report.Totals.IAM += s.IAM
 		report.Totals.Units += s.Units
 		report.Totals.GatedUnits += s.GatedUnits
-		report.Totals.UnappliedUnits += s.UnappliedUnits
+		report.Totals.UnreleasedUnits += s.UnreleasedUnits
 	}
 	report.Totals.Clusters = len(report.Clusters)
 	report.Filter = snap.Filter
@@ -169,11 +169,11 @@ func printSnapshotTable(cmd *cobra.Command, r snapshotReport) {
 		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
 			c.Cluster, dash(c.Version), dash(c.Region), mode,
 			c.NodeGroups, c.Addons, c.Network, c.IAM,
-			c.Units, c.GatedUnits, c.UnappliedUnits)
+			c.Units, c.GatedUnits, c.UnreleasedUnits)
 	}
 	_ = tw.Flush()
 	fprintln(cmd.OutOrStdout(), fmt.Sprintf(
-		"\n%d clusters, %d nodegroups, %d addons, %d units (%d gated, %d unapplied)",
+		"\n%d clusters, %d nodegroups, %d addons, %d units (%d gated, %d unreleased)",
 		r.Totals.Clusters, r.Totals.NodeGroups, r.Totals.Addons,
-		r.Totals.Units, r.Totals.GatedUnits, r.Totals.UnappliedUnits))
+		r.Totals.Units, r.Totals.GatedUnits, r.Totals.UnreleasedUnits))
 }

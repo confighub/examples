@@ -15,9 +15,9 @@ import { parse } from '../parser';
 const VALID: Record<string, string[]> = {
   units: [
     // drift: unapplied changes (ConfigHub's documented expression — column vs column)
-    'SELECT slug, space FROM units WHERE HeadRevisionNum > LiveRevisionNum',
+    'SELECT slug, space FROM units WHERE HeadRevisionNum > LastReleasedRevisionNum',
     // never applied
-    'SELECT slug FROM units WHERE LiveRevisionNum = 0',
+    'SELECT slug FROM units WHERE LastReleasedRevisionNum = 0',
     // clones of a specific upstream
     "SELECT slug FROM units WHERE UpstreamRevisionNum > 0 AND UpstreamUnitID = 'abc-123'",
     // gated units, and a specific gate key (bracket subscript with the / pattern)
@@ -29,7 +29,7 @@ const VALID: Record<string, string[]> = {
     "SELECT slug FROM units WHERE toolchain IN ('Kubernetes/YAML', 'AppConfig/YAML')",
     // detached / untargeted
     'SELECT slug FROM units WHERE target IS NULL',
-    'SELECT slug FROM units WHERE target IS NOT NULL AND HeadRevisionNum != LiveRevisionNum',
+    'SELECT slug FROM units WHERE target IS NOT NULL AND HeadRevisionNum != LastReleasedRevisionNum',
   ],
   revisions: [
     // audit trail, newest first
@@ -73,7 +73,7 @@ const VALID: Record<string, string[]> = {
   ],
   complex: [
     // deeply nested boolean logic + parens
-    "SELECT slug FROM units WHERE (labels.env = 'prod' OR labels.env = 'staging') AND (gates > 0 OR HeadRevisionNum > LiveRevisionNum)",
+    "SELECT slug FROM units WHERE (labels.env = 'prod' OR labels.env = 'staging') AND (gates > 0 OR HeadRevisionNum > LastReleasedRevisionNum)",
     // NOT with De Morgan shape
     "SELECT slug FROM units WHERE NOT (toolchain = 'Kubernetes/YAML' AND target IS NULL)",
     // multiple ORDER BY keys, mixed direction

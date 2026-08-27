@@ -200,9 +200,9 @@ Dry-run by default; pass --commit --change-desc "..." to write.`,
 			// place: the original Unit then carries a committed change that can
 			// never reconcile. The replacement does not fix that — the original
 			// stays wedged until its pending change is reverted.
-			if meta, ok := snap.Units[old.Origin.UnitID]; ok && meta.LastAppliedRevisionNum > 0 &&
-				meta.HeadRevisionNum > meta.LastAppliedRevisionNum {
-				oldDocs, err1 := cub.RevisionDocs(cmd.Context(), client, meta.SpaceID, meta.UnitID, meta.LastAppliedRevisionNum)
+			if meta, ok := snap.Units[old.Origin.UnitID]; ok && meta.LastReleasedRevisionNum > 0 &&
+				meta.HeadRevisionNum > meta.LastReleasedRevisionNum {
+				oldDocs, err1 := cub.RevisionDocs(cmd.Context(), client, meta.SpaceID, meta.UnitID, meta.LastReleasedRevisionNum)
 				newDocs, err2 := cub.RevisionDocs(cmd.Context(), client, meta.SpaceID, meta.UnitID, meta.HeadRevisionNum)
 				if err1 == nil && err2 == nil {
 					for key, nw := range newDocs {
@@ -215,7 +215,7 @@ Dry-run by default; pass --commit --change-desc "..." to write.`,
 						if rc.Blocks {
 							r.SourceWedged = true
 							r.SourceRevisions = fmt.Sprintf("%d->%d",
-								meta.LastAppliedRevisionNum, meta.HeadRevisionNum)
+								meta.LastReleasedRevisionNum, meta.HeadRevisionNum)
 						}
 					}
 				}

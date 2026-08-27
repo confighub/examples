@@ -71,7 +71,7 @@ describe('completion — WHERE', () => {
 
   it('a column-vs-column RHS is treated as a complete predicate', () => {
     // after the RHS column, suggest AND/OR/clauses — NOT operators.
-    const c = at('SELECT slug FROM units WHERE headRevisionNum > liveRevisionNum ');
+    const c = at('SELECT slug FROM units WHERE headRevisionNum > lastReleasedRevisionNum ');
     expect(c).toContain('AND');
     expect(c).not.toContain('LIKE');
   });

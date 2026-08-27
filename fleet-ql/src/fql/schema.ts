@@ -21,7 +21,7 @@ export type ColumnType = 'string' | 'number' | 'boolean';
 //               (the revision endpoint is per-unit); revision-field predicates
 //               use `where` against that endpoint.
 // revision      on `resources`: selects WHICH revision's data to read (a unit's
-//               head by default, or a specific RevisionNum / 'head' / 'live').
+//               head by default, or a specific RevisionNum / 'head' / 'released').
 // accessQuery   on `grants`: a field of the RBAC access question (verb/resource/
 //               apiGroup/namespace/name). Captured by the planner and applied by
 //               the materializer with RBAC semantics, then stripped from the
@@ -92,14 +92,14 @@ const UNITS: TableDef = {
     // client-side; use `target` or `space` directly when you want server narrowing.
     cluster: { type: 'string' },
     // FQL columns are camelCase; the pushdown.expr keeps ConfigHub's real field
-    // name. The revision/drift idioms work as: `headRevisionNum > liveRevisionNum`
-    // (unapplied changes), `liveRevisionNum = 0` (never applied),
-    // `upstreamRevisionNum > 0` (clones). All push to where.
+    // name. The revision idioms work as:
+    // `headRevisionNum > lastReleasedRevisionNum` (unreleased changes),
+    // `lastReleasedRevisionNum = 0` (never released), `upstreamRevisionNum > 0`
+    // (clones). All push to where.
     headRevisionNum: { type: 'number', pushdown: { target: 'where', expr: 'HeadRevisionNum' } },
-    liveRevisionNum: { type: 'number', pushdown: { target: 'where', expr: 'LiveRevisionNum' } },
-    lastAppliedRevisionNum: {
+    lastReleasedRevisionNum: {
       type: 'number',
-      pushdown: { target: 'where', expr: 'LastAppliedRevisionNum' },
+      pushdown: { target: 'where', expr: 'LastReleasedRevisionNum' },
     },
     upstreamRevisionNum: {
       type: 'number',
@@ -164,7 +164,7 @@ const RESOURCES: TableDef = {
       pushdown: { target: 'whereResource', expr: 'ConfigHub.ResourceType' },
     },
     // Time-travel: `WHERE revision = N` reads each unit's resources AS OF that
-    // revision (instead of head). Also accepts 'head' / 'live'. Requires unit or
+    // revision (instead of head). Also accepts 'head' / 'released'. Requires unit or
     // space scoping (it fetches a specific revision's data blob per unit). The
     // value is stamped onto every returned row so the residual check passes.
     revision: { type: 'number', pushdown: { target: 'revision', expr: 'revision' } },

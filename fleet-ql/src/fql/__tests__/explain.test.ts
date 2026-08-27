@@ -9,8 +9,8 @@ const titles = (stages: { title: string }[]) => stages.map((s) => s.title);
 
 describe('formatExpr', () => {
   it('renders predicates back to readable FQL', () => {
-    const stmt = parse("SELECT slug FROM units WHERE space = 'p' AND headRevisionNum > liveRevisionNum");
-    expect(formatExpr(stmt.where!)).toBe("(space = 'p' AND headRevisionNum > liveRevisionNum)");
+    const stmt = parse("SELECT slug FROM units WHERE space = 'p' AND headRevisionNum > lastReleasedRevisionNum");
+    expect(formatExpr(stmt.where!)).toBe("(space = 'p' AND headRevisionNum > lastReleasedRevisionNum)");
   });
 });
 

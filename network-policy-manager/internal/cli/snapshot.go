@@ -22,7 +22,7 @@ type clusterSummary struct {
 	Services        int    `json:"services"`
 	Units           int    `json:"units"`
 	GatedUnits      int    `json:"gatedUnits"`
-	UnappliedUnits  int    `json:"unappliedUnits"`
+	UnreleasedUnits int    `json:"unreleasedUnits"`
 }
 
 type snapshotReport struct {
@@ -35,7 +35,7 @@ type snapshotReport struct {
 		Services        int `json:"services"`
 		Units           int `json:"units"`
 		GatedUnits      int `json:"gatedUnits"`
-		UnappliedUnits  int `json:"unappliedUnits"`
+		UnreleasedUnits int `json:"unreleasedUnits"`
 	} `json:"totals"`
 	Filter string `json:"filter,omitempty"`
 }
@@ -48,7 +48,7 @@ func newSnapshotCmd() *cobra.Command {
 		Short: "Fleet inventory: per-cluster NetworkPolicy / namespace / workload / service and Unit counts",
 		Long: `snapshot loads the fleet-wide NetworkPolicy view from ConfigHub and reports a
 per-cluster inventory: NetworkPolicy, Namespace, workload, and Service counts,
-plus how many Units are gated or unapplied.
+plus how many Units are gated or unreleased.
 
 Clusters are ConfigHub Targets (the Space slug is used for unbound "paper
 cluster" Units). Canonical base/policy Spaces are excluded from the inventory.
@@ -113,8 +113,8 @@ func buildSnapshotReport(snap *snapshot.Snapshot) snapshotReport {
 		if u.Gated() {
 			cs.GatedUnits++
 		}
-		if u.Unapplied() {
-			cs.UnappliedUnits++
+		if u.Unreleased() {
+			cs.UnreleasedUnits++
 		}
 	}
 
@@ -132,7 +132,7 @@ func buildSnapshotReport(snap *snapshot.Snapshot) snapshotReport {
 		report.Totals.Services += cs.Services
 		report.Totals.Units += cs.Units
 		report.Totals.GatedUnits += cs.GatedUnits
-		report.Totals.UnappliedUnits += cs.UnappliedUnits
+		report.Totals.UnreleasedUnits += cs.UnreleasedUnits
 	}
 	report.Totals.Clusters = len(report.Clusters)
 	report.Filter = snap.Filter
@@ -145,11 +145,11 @@ func printSnapshotTable(cmd *cobra.Command, r snapshotReport) {
 	for _, c := range r.Clusters {
 		fmt.Fprintf(tw, "%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
 			c.Cluster, c.NetworkPolicies, c.Namespaces, c.Workloads, c.Services,
-			c.Units, c.GatedUnits, c.UnappliedUnits)
+			c.Units, c.GatedUnits, c.UnreleasedUnits)
 	}
 	_ = tw.Flush()
 	fprintln(cmd.OutOrStdout(), fmt.Sprintf(
-		"\n%d clusters, %d network policies, %d namespaces, %d workloads, %d services, %d units (%d gated, %d unapplied)",
+		"\n%d clusters, %d network policies, %d namespaces, %d workloads, %d services, %d units (%d gated, %d unreleased)",
 		r.Totals.Clusters, r.Totals.NetworkPolicies, r.Totals.Namespaces, r.Totals.Workloads,
-		r.Totals.Services, r.Totals.Units, r.Totals.GatedUnits, r.Totals.UnappliedUnits))
+		r.Totals.Services, r.Totals.Units, r.Totals.GatedUnits, r.Totals.UnreleasedUnits))
 }

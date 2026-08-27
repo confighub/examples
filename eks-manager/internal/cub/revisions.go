@@ -17,10 +17,9 @@ import (
 // as generic documents, keyed by "<apiVersion>/<kind>/<name>" so two revisions
 // can be joined resource-by-resource.
 //
-// The baseline for a disruption check is LastAppliedRevisionNum, not
-// LiveRevisionNum: the former is set at apply time and is "what the cluster was
-// last told", while the latter only advances once an apply completes. For a
-// check that runs *before* apply, the former is the correct comparison point.
+// The baseline for a disruption check is LastReleasedRevisionNum: publishing a
+// Release advances it, so it is "what the cluster was last told". A check that
+// runs *before* the next publish wants exactly that comparison point.
 func RevisionDocs(ctx context.Context, c *cubapi.Client, spaceID, unitID string, revisionNum int64) (map[string]any, error) {
 	rev, err := cubapi.GetRevisionByNum(ctx, c.API, spaceID, unitID, revisionNum)
 	if err != nil {

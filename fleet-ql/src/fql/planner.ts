@@ -44,7 +44,7 @@ export interface FetchSpec {
   /** revisions only: filter on which units to pull revisions from. */
   whereUnit?: string;
   /** resources only: read this revision's data instead of head. A RevisionNum,
-   *  or the symbolic 'head' / 'live'. */
+   *  or the symbolic 'head' / 'released'. */
   revision?: string;
   /** grants only: the RBAC access question the materializer applies. */
   accessQuery?: AccessQuerySpec;
@@ -277,7 +277,7 @@ function groupToFetch(table: TableDef, atoms: Expr[], alias: string | null): Fet
       // Always bind (validate) an RHS column even if we won't push it.
       const rhsCol = rhsIsColumn ? bind(table, atom.right as ColumnExpr, alias) : null;
 
-      // The `revision` selector: only `revision = <N | 'head' | 'live'>`. It
+      // The `revision` selector: only `revision = <N | 'head' | 'released'>`. It
       // picks which revision's data to read, so it's a fetch parameter, not a
       // filter clause (the transport stamps `revision` onto every row, so the
       // residual still matches).
@@ -338,13 +338,13 @@ function groupToFetch(table: TableDef, atoms: Expr[], alias: string | null): Fet
 }
 
 /** Normalize a `revision = …` RHS literal to a selector string: a RevisionNum,
- *  or the symbolic 'head' / 'live'. */
+ *  or the symbolic 'head' / 'released'. */
 function revisionSelector(atom: CompareExpr): string | undefined {
   const lit = atom.right;
   if (lit.kind !== 'literal') return undefined;
   if (lit.type === 'number') return String(lit.value);
   const v = String(lit.value).toLowerCase();
-  if (v === 'head' || v === 'live') return v;
+  if (v === 'head' || v === 'released') return v;
   // A numeric string ('5') is fine too; anything else is left to the residual.
   return /^\d+$/.test(v) ? v : undefined;
 }

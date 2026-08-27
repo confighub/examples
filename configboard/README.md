@@ -159,7 +159,7 @@ a `where`, a dimension to group by, an aggregate, and a chart form:
     source: Unit
     where: "Space.Labels.Environment = '${env}' AND Target.Slug = '${cluster}'"
   transform:
-    groupBy: Unit.ApplyState
+    groupBy: Unit.ReleaseState
     aggregate: { fn: count }
   chart: { form: bar, orientation: horizontal, color: status }
 ```

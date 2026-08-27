@@ -32,8 +32,8 @@ github.com/confighub/sdk/cliutil v0.3.0 h1:wmqtkoo4RvqPGXjoO3CU6j2H97ck2031sjgYN
 github.com/confighub/sdk/cliutil v0.3.0/go.mod h1:CORCG0H/bEGXnl3bQs44Mjw3sLtR+W4a8XlE30+np/Y=
 github.com/confighub/sdk/configkit/yqkit v0.3.0 h1:wesbm9vPThrOdgO00zdMyYzUfhmxGN3UXb12y1ZMN/0=
 github.com/confighub/sdk/configkit/yqkit v0.3.0/go.mod h1:p+O/1R3GjSOK4E7/8r2DvfucZfU0SNxIy7mqz9jBucc=
-github.com/confighub/sdk/core v0.3.0 h1:KJXD226NEAMvPRPlFHZzQXD85Qw07DmH2apd4LdO59c=
-github.com/confighub/sdk/core v0.3.0/go.mod h1:p2HEfpVV1au990ucbAFEPdJ4GjXZmmARRLArMHp+Mws=
+github.com/confighub/sdk/core v0.4.0 h1:Y/n24etbCamdo2tU6jq5dKuX5FJ7SjmcVSuuAsBiiIo=
+github.com/confighub/sdk/core v0.4.0/go.mod h1:TaNkCY1InoqZyg07ZqLHWykWabOZ6I+IZ2jpBKYuSb8=
 github.com/cpuguy83/go-md2man/v2 v2.0.6/go.mod h1:oOW0eioCTA6cOiMLiUPZOpcVxMig6NIQQ7OS05n1F4g=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

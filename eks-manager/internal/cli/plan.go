@@ -116,14 +116,14 @@ func buildPlanReport(ctx context.Context, client *cubapi.Client, snap *snapshot.
 
 	for _, meta := range snap.Units {
 		// Nothing pending.
-		if meta.HeadRevisionNum <= meta.LastAppliedRevisionNum {
+		if meta.HeadRevisionNum <= meta.LastReleasedRevisionNum {
 			continue
 		}
 		pu := plannedUnit{
 			Cluster:      clusterOf[meta.UnitID],
 			Space:        meta.SpaceSlug,
 			Unit:         meta.Slug,
-			FromRevision: meta.LastAppliedRevisionNum,
+			FromRevision: meta.LastReleasedRevisionNum,
 			ToRevision:   meta.HeadRevisionNum,
 		}
 		if pu.Cluster == "" {
@@ -132,14 +132,14 @@ func buildPlanReport(ctx context.Context, client *cubapi.Client, snap *snapshot.
 
 		// Never applied: no baseline, so nothing to disrupt. Creating a resource
 		// is not replacing one.
-		if meta.LastAppliedRevisionNum == 0 {
+		if meta.LastReleasedRevisionNum == 0 {
 			report.Totals.NeverApplied++
 			continue
 		}
 
-		oldDocs, err := cub.RevisionDocs(ctx, client, meta.SpaceID, meta.UnitID, meta.LastAppliedRevisionNum)
+		oldDocs, err := cub.RevisionDocs(ctx, client, meta.SpaceID, meta.UnitID, meta.LastReleasedRevisionNum)
 		if err != nil {
-			pu.Error = fmt.Sprintf("read revision %d: %v", meta.LastAppliedRevisionNum, err)
+			pu.Error = fmt.Sprintf("read revision %d: %v", meta.LastReleasedRevisionNum, err)
 			report.Units = append(report.Units, pu)
 			continue
 		}

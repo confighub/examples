@@ -45,7 +45,7 @@ function mockTransport(): Transport & { calls: ResourceParams[] } {
       // at that revision, stamped with the resolved number (mirrors the real
       // transport). Here unit 'frontend' had nginx:1.20 at revision 3.
       if (params.revision !== undefined) {
-        const rev = params.revision === 'live' || params.revision === 'head' ? '7' : params.revision;
+        const rev = params.revision === 'released' || params.revision === 'head' ? '7' : params.revision;
         const image = rev === '3' ? 'nginx:1.20-alpine' : 'nginx:1.27-alpine';
         return [
           {
@@ -141,10 +141,10 @@ describe('executor — end to end via mock transport', () => {
     expect(res.rows[0].image).toBe('nginx:1.20-alpine');
   });
 
-  it("symbolic revision = 'live' is not filtered out by the residual", async () => {
+  it("symbolic revision = 'released' is not filtered out by the residual", async () => {
     const t = mockTransport();
-    const res = await runQuery("SELECT unit FROM resources WHERE revision = 'live'", t);
-    expect(t.calls[0].revision).toBe('live');
+    const res = await runQuery("SELECT unit FROM resources WHERE revision = 'released'", t);
+    expect(t.calls[0].revision).toBe('released');
     // Row is stamped with the resolved number ('7'), and the symbolic selector
     // was stripped from the residual, so the row survives.
     expect(res.rows).toHaveLength(1);

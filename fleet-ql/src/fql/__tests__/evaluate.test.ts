@@ -50,11 +50,11 @@ describe('evaluate — filter', () => {
     // head > live means "has unapplied changes" — true for both a partially
     // applied unit and a never-applied one (live=0); equal means synced.
     const rows: Row[] = [
-      { slug: 'drifted', headRevisionNum: 8, liveRevisionNum: 5 },
-      { slug: 'synced', headRevisionNum: 5, liveRevisionNum: 5 },
-      { slug: 'never', headRevisionNum: 3, liveRevisionNum: 0 },
+      { slug: 'drifted', headRevisionNum: 8, lastReleasedRevisionNum: 5 },
+      { slug: 'synced', headRevisionNum: 5, lastReleasedRevisionNum: 5 },
+      { slug: 'never', headRevisionNum: 3, lastReleasedRevisionNum: 0 },
     ];
-    const q = 'SELECT slug FROM units WHERE headRevisionNum > liveRevisionNum';
+    const q = 'SELECT slug FROM units WHERE headRevisionNum > lastReleasedRevisionNum';
     const r = evaluate(parse(q), rows, ['slug']);
     expect(r.rows.map((x) => x.slug).sort()).toEqual(['drifted', 'never']);
   });

@@ -23,19 +23,19 @@ type clusterSummary struct {
 	ServiceAccounts     int    `json:"serviceAccounts"`
 	Units               int    `json:"units"`
 	GatedUnits          int    `json:"gatedUnits"`
-	UnappliedUnits      int    `json:"unappliedUnits"`
+	UnreleasedUnits     int    `json:"unreleasedUnits"`
 }
 
 type snapshotReport struct {
 	Clusters []clusterSummary `json:"clusters"`
 	Totals   struct {
-		Clusters       int `json:"clusters"`
-		Roles          int `json:"roles"`
-		Bindings       int `json:"bindings"`
-		ServiceAccount int `json:"serviceAccounts"`
-		Units          int `json:"units"`
-		GatedUnits     int `json:"gatedUnits"`
-		UnappliedUnits int `json:"unappliedUnits"`
+		Clusters        int `json:"clusters"`
+		Roles           int `json:"roles"`
+		Bindings        int `json:"bindings"`
+		ServiceAccount  int `json:"serviceAccounts"`
+		Units           int `json:"units"`
+		GatedUnits      int `json:"gatedUnits"`
+		UnreleasedUnits int `json:"unreleasedUnits"`
 	} `json:"totals"`
 	Filter string `json:"filter,omitempty"`
 }
@@ -48,7 +48,7 @@ func newSnapshotCmd() *cobra.Command {
 		Short: "Fleet RBAC inventory: per-cluster role/binding/SA and Unit counts",
 		Long: `snapshot loads the fleet-wide Kubernetes RBAC view from ConfigHub and reports a
 per-cluster inventory: Role/ClusterRole/RoleBinding/ClusterRoleBinding and
-ServiceAccount counts, plus how many Units are gated or unapplied.
+ServiceAccount counts, plus how many Units are gated or unreleased.
 
 Clusters are ConfigHub Targets (the Space slug is used for unbound "paper
 cluster" Units). Canonical base/policy Spaces are excluded from the inventory.`,
@@ -120,8 +120,8 @@ func buildSnapshotReport(snap *snapshot.Snapshot) snapshotReport {
 		if u.Gated() {
 			cs.GatedUnits++
 		}
-		if u.Unapplied() {
-			cs.UnappliedUnits++
+		if u.Unreleased() {
+			cs.UnreleasedUnits++
 		}
 	}
 
@@ -138,7 +138,7 @@ func buildSnapshotReport(snap *snapshot.Snapshot) snapshotReport {
 		report.Totals.ServiceAccount += cs.ServiceAccounts
 		report.Totals.Units += cs.Units
 		report.Totals.GatedUnits += cs.GatedUnits
-		report.Totals.UnappliedUnits += cs.UnappliedUnits
+		report.Totals.UnreleasedUnits += cs.UnreleasedUnits
 	}
 	report.Totals.Clusters = len(report.Clusters)
 	report.Filter = snap.Filter
@@ -151,11 +151,11 @@ func printSnapshotTable(cmd *cobra.Command, r snapshotReport) {
 	for _, c := range r.Clusters {
 		fmt.Fprintf(tw, "%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
 			c.Cluster, c.Roles, c.ClusterRoles, c.RoleBindings, c.ClusterRoleBindings,
-			c.ServiceAccounts, c.Units, c.GatedUnits, c.UnappliedUnits)
+			c.ServiceAccounts, c.Units, c.GatedUnits, c.UnreleasedUnits)
 	}
 	_ = tw.Flush()
 	fprintln(cmd.OutOrStdout(), fmt.Sprintf(
-		"\n%d clusters, %d roles, %d bindings, %d service accounts, %d units (%d gated, %d unapplied)",
+		"\n%d clusters, %d roles, %d bindings, %d service accounts, %d units (%d gated, %d unreleased)",
 		r.Totals.Clusters, r.Totals.Roles, r.Totals.Bindings, r.Totals.ServiceAccount,
-		r.Totals.Units, r.Totals.GatedUnits, r.Totals.UnappliedUnits))
+		r.Totals.Units, r.Totals.GatedUnits, r.Totals.UnreleasedUnits))
 }

@@ -13,7 +13,7 @@ const unit = (over: Partial<NonNullable<ExtendedUnitRead['Unit']>> = {}): Extend
     Slug: 'frontend',
     TargetID: 't1',
     HeadRevisionNum: 6,
-    LiveRevisionNum: 6,
+    LastReleasedRevisionNum: 6,
     // Required by the generated UnitRead type.
     ToolchainType: 'Kubernetes/YAML',
     ...over,
@@ -78,7 +78,7 @@ describe('findingRows', () => {
     expect(row.values['Space.Slug']).toBe('apptique-prod');
     expect(row.values['Space.Labels.Environment']).toBe('prod');
     expect(row.values['Target.Slug']).toBe('prod-cluster');
-    expect(row.values['Unit.ApplyState']).toBe('Applied and current');
+    expect(row.values['Unit.ReleaseState']).toBe('Released and current');
     expect(row.href).toBe(`${BASE}/units/s1/u1`);
   });
 
