@@ -27,6 +27,15 @@
 #   DEMO_DRYRUN=1  show every command but run none of them
 #   NO_COLOR=1     plain text
 #
+#   DEMO_SETUP=INIT  do the demo's slow setup up front, before the narration
+#                    starts, and describe it when the demo reaches it instead
+#                    of running it there. Which commands are setup is the
+#                    demo script's business -- a cluster to build, a database
+#                    to seed, an image to pull; the library fixes the name so
+#                    every demo answers to the same one. Run those commands
+#                    with run_now, and branch on the variable wherever the
+#                    narration would otherwise run them.
+#
 # Commands run in *this* shell, not a subshell, so `source some.env` and `cd`
 # affect the commands after them -- which a demo of a real workflow needs.
 
@@ -36,6 +45,7 @@
 DEMO_SPEED="${DEMO_SPEED-45}"
 DEMO_AUTO="${DEMO_AUTO-}"
 DEMO_DRYRUN="${DEMO_DRYRUN-}"
+DEMO_SETUP="${DEMO_SETUP-}"
 
 _demo_fast=""       # set by 'f', or by DEMO_SPEED=0
 
@@ -170,6 +180,25 @@ run() {
         return 0
     fi
     eval "$_demo_current"
+    _rc=$?
+    if [ "$_rc" -ne 0 ]; then
+        printf '%s[exit %d]%s\n' "$_c_warn" "$_rc" "$_c_off"
+    fi
+    return 0
+}
+
+# run_now shows a command the way run does and runs it straight away, without
+# waiting for a key -- for setup that happens before the demo starts, where
+# there is nobody to press it. See DEMO_SETUP.
+run_now() {
+    _demo_prompt
+    printf '%s%s%s\n' "$_c_cmd" "$*" "$_c_off"
+
+    if [ -n "$DEMO_DRYRUN" ]; then
+        printf '%s(dry run: not executed)%s\n' "$_c_dim" "$_c_off"
+        return 0
+    fi
+    eval "$@"
     _rc=$?
     if [ "$_rc" -ne 0 ]; then
         printf '%s[exit %d]%s\n' "$_c_warn" "$_rc" "$_c_off"
