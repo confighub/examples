@@ -54,8 +54,7 @@ function unitRow(e: ExtendedUnit): Row {
     // cluster = deploy target, falling back to the Space slug for unbound units.
     cluster: e.Target?.Slug ?? e.Space?.Slug ?? null,
     headRevisionNum: u.HeadRevisionNum,
-    liveRevisionNum: u.LiveRevisionNum,
-    lastAppliedRevisionNum: u.LastAppliedRevisionNum,
+    lastReleasedRevisionNum: u.LastReleasedRevisionNum,
     upstreamRevisionNum: u.UpstreamRevisionNum,
     upstreamUnitId: u.UpstreamUnitID,
     providerType: u.ProviderType,
@@ -80,7 +79,7 @@ function unitRow(e: ExtendedUnit): Row {
 }
 
 const SELECT_UNIT =
-  'UnitID,Slug,DisplayName,SpaceID,TargetID,ToolchainType,HeadRevisionNum,LiveRevisionNum,LastAppliedRevisionNum,UpstreamRevisionNum,UpstreamUnitID,ProviderType,Labels,Annotations,ApplyGates,ApplyWarnings';
+  'UnitID,Slug,DisplayName,SpaceID,TargetID,ToolchainType,HeadRevisionNum,LastReleasedRevisionNum,UpstreamRevisionNum,UpstreamUnitID,ProviderType,Labels,Annotations,ApplyGates,ApplyWarnings';
 
 // The get-resources invocation body, shared by the resources and RBAC paths.
 const GET_RESOURCES: Schemas['FunctionInvocationsRequest']['FunctionInvocations'] = [
@@ -279,10 +278,10 @@ async function fetchFleetRbac(where: string | undefined): Promise<FleetResource[
 
 // ─── Time-travel: resources as of a specific revision ───────────────────────
 
-const SELECT_UNIT_REV = 'UnitID,Slug,SpaceID,TargetID,Labels,HeadRevisionNum,LiveRevisionNum';
+const SELECT_UNIT_REV = 'UnitID,Slug,SpaceID,TargetID,Labels,HeadRevisionNum,LastReleasedRevisionNum';
 
 /** Read resources from a specific revision per in-scope unit (params.revision
- *  is a RevisionNum, or 'head' / 'live'). One row per K8s doc in that revision's
+ *  is a RevisionNum, or 'head' / 'released'). One row per K8s doc in that revision's
  *  data, stamped with the resolved RevisionNum. */
 async function resourcesAtRevision(params: ResourceParams): Promise<Row[]> {
   const sel = params.revision!.toLowerCase();
@@ -298,12 +297,12 @@ async function resourcesAtRevision(params: ResourceParams): Promise<Row[]> {
       const uid = u?.UnitID;
       if (!u || !sid || !uid) return [];
 
-      // Resolve the target RevisionNum: symbolic head/live, else the literal.
+      // Resolve the target RevisionNum: symbolic head/released, else the literal.
       let revNum: number | undefined;
       if (sel === 'head') revNum = u.HeadRevisionNum;
-      else if (sel === 'live') revNum = u.LiveRevisionNum;
+      else if (sel === 'released') revNum = u.LastReleasedRevisionNum;
       else if (/^\d+$/.test(sel)) revNum = Number(sel);
-      if (revNum === undefined || revNum <= 0) return []; // never-applied 'live', etc.
+      if (revNum === undefined || revNum <= 0) return []; // never-released 'released', etc.
 
       // Map RevisionNum → RevisionID (the data endpoint keys on the UUID).
       const { data: revs } = await confighub().GET('/space/{space_id}/unit/{unit_id}/revision', {

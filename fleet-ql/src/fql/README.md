@@ -116,8 +116,8 @@ just sugar over common raw paths; drop to a backtick path for anything not curat
 another column, which is how you express ConfigHub's drift idioms:
 
 ```sql
-SELECT slug FROM units WHERE headRevisionNum > liveRevisionNum   -- unapplied changes
-SELECT slug FROM units WHERE liveRevisionNum = 0                  -- never applied
+SELECT slug FROM units WHERE headRevisionNum > lastReleasedRevisionNum  -- unreleased changes
+SELECT slug FROM units WHERE lastReleasedRevisionNum = 0                -- never released
 SELECT slug FROM units WHERE upstreamRevisionNum > 0             -- clones
 ```
 
@@ -130,7 +130,7 @@ ConfigHub attribute names remain usable in hand-written queries.
 
 ```sql
 -- units with unapplied changes, per space
-SELECT space, COUNT(*) AS n FROM units WHERE headRevisionNum > liveRevisionNum GROUP BY space
+SELECT space, COUNT(*) AS n FROM units WHERE headRevisionNum > lastReleasedRevisionNum GROUP BY space
 
 -- what's blocked, by the exact gate key (StringBool map, pushed down)
 SELECT slug FROM units WHERE applyGates['sec-demo-policy/no-critical-cves/vet-celexpr'] = true
@@ -151,7 +151,7 @@ SELECT space, COUNT(*) AS n FROM units WHERE labels.team = 'payments' GROUP BY s
 
 | Table | Source | Notable columns |
 |---|---|---|
-| `units` | `GET /unit` | `slug`, `space`, `cluster`, `environment`, `component`, `region`, `toolchain`, `target`, `headRevisionNum`, `liveRevisionNum`, `lastAppliedRevisionNum`, `upstreamRevisionNum`, `upstreamUnitId`, `providerType`, `gates`, `warnings`, `labels.*`, `annotations.*`, `applyGates['<space>/<trigger>/<fn>']`, `applyWarnings[...]`, `gate['<trigger>']`, `warning['<trigger>']` |
+| `units` | `GET /unit` | `slug`, `space`, `cluster`, `environment`, `component`, `region`, `toolchain`, `target`, `headRevisionNum`, `lastReleasedRevisionNum`, `upstreamRevisionNum`, `upstreamUnitId`, `providerType`, `gates`, `warnings`, `labels.*`, `annotations.*`, `applyGates['<space>/<trigger>/<fn>']`, `applyWarnings[...]`, `gate['<trigger>']`, `warning['<trigger>']` |
 | `resources` | `POST /function/invoke` + `get-resources` (or a revision's data blob) | `unit`, `space`, `cluster`, `target`, `environment`, `component`, `region`, `kind`, `name`, `namespace`, `replicas`, `resourceType`, `revision`, `labels.*`, + any raw data path |
 | `spaces` | `GET /space` | `slug`, `displayName`, `environment`, `component`, `region`, `labels.*`, `annotations.*` |
 | `revisions` | `GET /space/{id}/unit/{id}/revision` (per Unit) | `unit`, `space` (scope which units), `revisionNum`, `source`, `description`, `createdAt`, `userId` |
@@ -169,8 +169,8 @@ the browser.
 
 **Time travel.** `WHERE revision = N` reads each in-scope unit's resources *as of*
 that revision instead of head — it fetches that revision's data blob and parses
-the resources from it. `revision = 'head'` / `'live'` resolve per unit to the
-unit's `headRevisionNum` / `liveRevisionNum`. The selector is a fetch parameter,
+the resources from it. `revision = 'head'` / `'released'` resolve per unit to the
+unit's `headRevisionNum` / `lastReleasedRevisionNum`. The selector is a fetch parameter,
 not a filter, so it's stripped from the client-side residual (and each row is
 stamped with the resolved `revision`). Pair it with `unit =` / `space =` scoping.
 

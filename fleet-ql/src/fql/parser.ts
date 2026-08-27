@@ -484,7 +484,7 @@ class Parser {
     }
 
     // Comparison / regex operator. RHS is a literal, or another column for
-    // column-to-column comparison (e.g. headRevisionNum > liveRevisionNum).
+    // column-to-column comparison (e.g. headRevisionNum > lastReleasedRevisionNum).
     // TRUE/FALSE are value literals, not columns, so exclude them here.
     if (t.type === 'op' && CMP_OPS.has(t.value)) {
       this.next();

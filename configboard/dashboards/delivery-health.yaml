@@ -43,33 +43,6 @@ panels:
       sort: value-desc
     chart: { form: bar, orientation: horizontal, color: sequential }
 
-  - id: lead-time
-    title: Deploy lead time (p50, hours)
-    description: Time from a revision being created to it going live.
-    span: 6
-    query:
-      source: Revision
-      where: "CreatedAt > '${window.start}'"
-      excludes: { field: Revision.LiveAt, isNull: true, label: revisions that never went live }
-    transform:
-      bin: { field: Revision.CreatedAt, unit: day }
-      groupBy: Revision.CreatedAt
-      aggregate: { fn: p50, field: Revision.LeadTimeHours }
-    chart: { form: line, unit: h }
-
-  - id: landed
-    title: Applies landed per day
-    span: 6
-    query:
-      source: Revision
-      where: "LiveAt > '${window.start}'"
-    transform:
-      bin: { field: Revision.LiveAt, unit: day }
-      groupBy: Revision.LiveAt
-      aggregate: { fn: count }
-      dropEmpty: true
-    chart: { form: bar, orientation: vertical, color: sequential }
-
   - id: churn
     title: Churniest config
     description: Units with the most revisions in the window.

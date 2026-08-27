@@ -67,7 +67,7 @@ export interface NotExpr {
 
 /** `col <op> value`, e.g. `severity = 'CRITICAL'`, `image ~ ':latest'`. The RHS
  *  is usually a literal/list, but may be another column for column-to-column
- *  comparisons like `headRevisionNum > liveRevisionNum` (ConfigHub's drift
+ *  comparisons like `headRevisionNum > lastReleasedRevisionNum` (ConfigHub's unreleased-change
  *  idiom). */
 export interface CompareExpr {
   kind: 'compare';

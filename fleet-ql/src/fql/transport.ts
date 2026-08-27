@@ -17,7 +17,7 @@ export interface ResourceParams {
   whereData?: string;
   whereResource?: string;
   /** Read resources AS OF this revision instead of head: a RevisionNum, or the
-   *  symbolic 'head' / 'live'. */
+   *  symbolic 'head' / 'released'. */
   revision?: string;
 }
 

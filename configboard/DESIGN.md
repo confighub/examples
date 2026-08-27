@@ -199,7 +199,7 @@ and nudges you up the ladder.
 ### Tier 0 — metadata (free, filterable, no config parsing)
 
 On the Unit itself: `Labels`, `ToolchainType`, `ProviderType`, `TargetID`,
-`HeadRevisionNum` vs `LiveRevisionNum`, `ApplyGates`, `ApplyWarnings`,
+`HeadRevisionNum` vs `LastReleasedRevisionNum`, `ApplyGates`, `ApplyWarnings`,
 `ApprovedBy`, `UpstreamRevisionNum`, `UpdatedAt`, `LastActionAt`.
 
 One `include` away: `Space.*` (labels), `Target.*` (labels and facts),
@@ -267,9 +267,8 @@ variables push a `where` down so the common case invokes a fraction of the fleet
 ### Tier 0½ — Space summaries (server-side rollups, one request)
 
 `GET /space?summary=true` returns per-Space counts computed on the server:
-`TotalUnitCount`, `UnappliedUnitCount`, `UnapprovedUnitCount`, `GatedUnitCount`,
-`WarnedUnitCount`, `UpgradableUnitCount`, `IncompleteApplyUnitCount`,
-`UnlinkedUnitCount`, plus `TargetCountByToolchainType`, `TriggerCountByEventType`,
+`TotalUnitCount`, `UnreleasedUnitCount`, `UnapprovedUnitCount`, `GatedUnitCount`,
+`WarnedUnitCount`, `UpgradableUnitCount`, `UnlinkedUnitCount`, plus `TargetCountByToolchainType`, `TriggerCountByEventType`,
 and totals for Links, Filters, Views, Tags, ChangeSets, Invocations, Attributes,
 Releases, BridgeWorkers.
 
@@ -384,7 +383,7 @@ without cloning N repos, and ConfigHub answers in one request.
 | Who/what changes config: `Source` mix (`UpdateUnit`, `PatchUnit`, `Invoke`, `UpgradeUnit`, `CloneUnit`, `RestoreRevision`) | `GET /revision`, groupBy `Source`, bin week                                                      | stacked column — automation-vs-human ratio over time |
 | Rollback rate                                                                                                              | Revision `Source = 'RestoreRevision'`                                                            | sparkline in a stat tile                             |
 | Change concentration: revisions per unit                                                                                   | `GET /revision`, groupBy `UnitID`, topN 10                                                       | horizontal bar — the churniest config in the fleet   |
-| **Unapplied-change aging**: how long changes sit unshipped                                                                 | Unit, `HeadRevisionNum > LiveRevisionNum`, bucket by `UpdatedAt` age (<1d / 1–7d / 7–30d / 30d+) | stacked bar per environment, sequential              |
+| **Unreleased-change aging**: how long changes sit unshipped                                                                 | Unit, `HeadRevisionNum > LastReleasedRevisionNum`, bucket by `UpdatedAt` age (<1d / 1–7d / 7–30d / 30d+) | stacked bar per environment, sequential              |
 | Promotion lag: revisions between a downstream unit and its upstream head                                                   | Unit, `UpstreamRevisionNum` vs `UpstreamUnit.HeadRevisionNum`                                    | horizontal bar per app, sequential                   |
 
 ### D. Governance KPI row (top of every dashboard)
@@ -396,22 +395,23 @@ Spaces in scope:
 | Tile | Summary field |
 |---|---|
 | **Units under management** (+ 30-day delta) | `TotalUnitCount` |
-| **Applied and current** — as a **meter** against the total | `TotalUnitCount − UnappliedUnitCount` |
+| **Released and current** — as a **meter** against the total | `TotalUnitCount − UnreleasedUnitCount` |
 | **Blocked by ApplyGates** — status-colored | `GatedUnitCount` |
 | **Carrying warnings** | `WarnedUnitCount` |
 | **Behind upstream** | `UpgradableUnitCount` |
 | **Unapproved pending changes** | `UnapprovedUnitCount` |
-| **Apply incomplete** | `IncompleteApplyUnitCount` |
 
 These are the same populations as the quick filters in the Filters and Views
-guide (`LEN(ApplyGates) > 0`, `HeadRevisionNum > LiveRevisionNum`, …), so the tile
+guide (`LEN(ApplyGates) > 0`, `HeadRevisionNum > LastReleasedRevisionNum`, …), so the tile
 drill-down can hand the user the equivalent `--where` expression even though the
 count itself came from the rollup. That pairing — cheap rollup for the number,
 explicit filter for the drill-down — is the pattern the whole tool should follow.
 
 The two agree exactly, which is what makes the pairing safe to rely on. Measured on a
 real org: summed `UnappliedUnitCount` across 56 Spaces = 148, and
-`where=HeadRevisionNum > LiveRevisionNum` over the same org returns 148 Units. Summed
+`where=HeadRevisionNum > LiveRevisionNum` over the same org returned 148 Units (measured
+before those names changed; the pairing is what the measurement was checking, and it holds
+the same way for `UnreleasedUnitCount` and `HeadRevisionNum > LastReleasedRevisionNum`). Summed
 `GatedUnitCount` = 0 and `LEN(ApplyGates) > 0` returns 0. If those ever diverge, the
 tile is lying and the drill-down is right.
 
@@ -611,7 +611,7 @@ which is worth saying out loud before the user opens an empty dashboard.
     as the dashboard-scope bug in §7 — any component initializing state from props needs
     a `key`.
 - **Cross-filter design:** filters apply **client-side**, after the fetch. Many chart
-  dimensions are derived rather than stored (`Unit.ApplyState`, every `Resource.*`), so
+  dimensions are derived rather than stored (`Unit.ReleaseState`, every `Resource.*`), so
   no `where` clause could express them; pushing only some clicks down would make the
   same gesture mean different things. A filter on a dimension a panel's source lacks is
   ignored *for that panel*, and the panel says so — clicking a resource kind must not

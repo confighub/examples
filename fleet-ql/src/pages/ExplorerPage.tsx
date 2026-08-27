@@ -49,7 +49,7 @@ const EXAMPLES: { label: string; query: string }[] = [
     query:
       "SELECT unit,\n  metadata.annotations['sec-scanner.confighub.com/max-severity'] AS severity\nFROM resources\nWHERE metadata.annotations['sec-scanner.confighub.com/max-severity'] = 'CRITICAL'",
   },
-  { label: 'Drift (unapplied)', query: 'SELECT slug, space FROM units WHERE headRevisionNum > liveRevisionNum' },
+  { label: 'Unreleased changes', query: 'SELECT slug, space FROM units WHERE headRevisionNum > lastReleasedRevisionNum' },
   {
     label: 'Units by cluster',
     query: 'SELECT cluster, COUNT(*) AS units\nFROM units\nGROUP BY cluster\nORDER BY units DESC',

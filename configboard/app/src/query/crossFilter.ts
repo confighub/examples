@@ -1,7 +1,7 @@
 // Cross-filtering: clicking a mark narrows the whole dashboard.
 //
 // Filters are applied client-side, after the fetch. That is deliberate. Many chart
-// dimensions are derived rather than stored — `Unit.ApplyState`, `Unit.Deployable`,
+// dimensions are derived rather than stored — `Unit.ReleaseState`, `Unit.Deployable`,
 // every `Resource.*` — so there is no `where` clause that could express them, and
 // pushing only *some* clicks down would make the same gesture mean different things.
 // Uniform client-side filtering keeps a click honest at the cost of not narrowing the

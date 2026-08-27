@@ -49,8 +49,8 @@ export const UNIT_DIMENSIONS: Dimension[] = [
     // consumed through a Link) — a category, not missing data.
   }),
   dim({
-    id: 'Unit.ApplyState',
-    label: 'Apply state',
+    id: 'Unit.ReleaseState',
+    label: 'Release state',
     kind: 'string',
     source: 'Unit',
   }),
@@ -63,11 +63,11 @@ export const UNIT_DIMENSIONS: Dimension[] = [
     whereKey: 'HeadRevisionNum',
   }),
   dim({
-    id: 'Unit.LiveRevisionNum',
-    label: 'Live revision',
+    id: 'Unit.LastReleasedRevisionNum',
+    label: 'Last released revision',
     kind: 'number',
     source: 'Unit',
-    whereKey: 'LiveRevisionNum',
+    whereKey: 'LastReleasedRevisionNum',
   }),
   dim({
     id: 'Unit.GateCount',
@@ -100,13 +100,13 @@ export const SPACE_DIMENSIONS: Dimension[] = [
     kind: 'number',
     source: 'Space',
   }),
-  dim({ id: 'Space.UnappliedUnitCount', label: 'Unapplied', kind: 'number', source: 'Space' }),
+  dim({ id: 'Space.UnreleasedUnitCount', label: 'Unreleased', kind: 'number', source: 'Space' }),
   dim({
     id: 'Space.CurrentUnitCount',
-    label: 'Applied and current',
+    label: 'Released and current',
     kind: 'number',
     source: 'Space',
-    // Derived client-side: the complement of UnappliedUnitCount, which is the
+    // Derived client-side: the complement of UnreleasedUnitCount, which is the
     // numerator a meter wants. Not a server field, so it cannot appear in `where`.
   }),
   dim({ id: 'Space.UnlinkedUnitCount', label: 'Unlinked', kind: 'number', source: 'Space' }),
@@ -115,19 +115,12 @@ export const SPACE_DIMENSIONS: Dimension[] = [
   dim({ id: 'Space.GatedUnitCount', label: 'Gated', kind: 'number', source: 'Space' }),
   dim({ id: 'Space.WarnedUnitCount', label: 'Warned', kind: 'number', source: 'Space' }),
   dim({ id: 'Space.UpgradableUnitCount', label: 'Behind upstream', kind: 'number', source: 'Space' }),
-  dim({
-    id: 'Space.IncompleteApplyUnitCount',
-    label: 'Apply incomplete',
-    kind: 'number',
-    source: 'Space',
-  }),
 ];
 
 export const REVISION_DIMENSIONS: Dimension[] = [
   dim({ id: 'Revision.Source', label: 'Change source', kind: 'string', source: 'Revision', whereKey: 'Source' }),
   dim({ id: 'Revision.CreatedAt', label: 'Created', kind: 'time', source: 'Revision', whereKey: 'CreatedAt' }),
-  dim({ id: 'Revision.LiveAt', label: 'Went live', kind: 'time', source: 'Revision', whereKey: 'LiveAt' }),
-  dim({ id: 'Revision.LeadTimeHours', label: 'Lead time (hours)', kind: 'number', source: 'Revision' }),
+  dim({ id: 'Revision.Released', label: 'Released', kind: 'string', source: 'Revision' }),
   dim({ id: 'Space.Slug', label: 'Space', kind: 'string', source: 'Revision', include: 'SpaceID' }),
   dim({ id: 'Unit.Slug', label: 'Unit', kind: 'string', source: 'Revision', include: 'UnitID' }),
 ];
@@ -182,7 +175,7 @@ export const FINDING_DIMENSIONS: Dimension[] = [
   dim({ id: 'Finding.Function', label: 'Validator', kind: 'string', source: 'Finding' }),
   dim({ id: 'Finding.Key', label: 'Full key', kind: 'string', source: 'Finding' }),
   dim({ id: 'Unit.Slug', label: 'Unit', kind: 'string', source: 'Finding' }),
-  dim({ id: 'Unit.ApplyState', label: 'Apply state', kind: 'string', source: 'Finding' }),
+  dim({ id: 'Unit.ReleaseState', label: 'Release state', kind: 'string', source: 'Finding' }),
   dim({ id: 'Space.Slug', label: 'Space', kind: 'string', source: 'Finding', include: 'SpaceID' }),
   dim({ id: 'Target.Slug', label: 'Cluster (Target)', kind: 'string', source: 'Finding', include: 'TargetID' }),
 ];

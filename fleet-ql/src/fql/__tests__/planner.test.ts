@@ -150,8 +150,8 @@ describe('planner — pushdown', () => {
   });
 
   it('pushes a sound column-to-column comparison on entity fields', () => {
-    const p = planOf('SELECT slug FROM units WHERE headRevisionNum > liveRevisionNum');
-    expect(p.fetches).toEqual([{ where: 'HeadRevisionNum > LiveRevisionNum' }]);
+    const p = planOf('SELECT slug FROM units WHERE headRevisionNum > lastReleasedRevisionNum');
+    expect(p.fetches).toEqual([{ where: 'HeadRevisionNum > LastReleasedRevisionNum' }]);
   });
 
   it('queries any kind (all-kinds resources table)', () => {
@@ -182,9 +182,9 @@ describe('planner — pushdown', () => {
     expect(JSON.stringify(p.residual)).not.toContain('revision');
   });
 
-  it('resources: symbolic revision = live carries through and clears the residual', () => {
-    const p = planOf("SELECT unit FROM resources WHERE revision = 'live'");
-    expect(p.fetches).toEqual([{ revision: 'live' }]);
+  it('resources: symbolic revision = released carries through and clears the residual', () => {
+    const p = planOf("SELECT unit FROM resources WHERE revision = 'released'");
+    expect(p.fetches).toEqual([{ revision: 'released' }]);
     // The only predicate was the selector, so the residual is now empty.
     expect(p.residual).toBeNull();
   });

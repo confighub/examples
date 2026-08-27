@@ -12,7 +12,6 @@ import type {
 import type { Row, RowValue } from '../model/types';
 import { hasId, realId } from './ids';
 
-const HOURS = 1000 * 60 * 60;
 
 /** ConfigHub renders "never" timestamps as the zero time rather than omitting them. */
 const ZERO_TIME_PREFIX = '0001-01-01';
@@ -51,7 +50,7 @@ export function unitRow(e: ExtendedUnitRead, baseUrl: string): Row {
     'Unit.ToolchainType': u?.ToolchainType ?? null,
     'Unit.ProviderType': u?.ProviderType || '(none)',
     'Unit.HeadRevisionNum': u?.HeadRevisionNum ?? 0,
-    'Unit.LiveRevisionNum': u?.LiveRevisionNum ?? 0,
+    'Unit.LastReleasedRevisionNum': u?.LastReleasedRevisionNum ?? 0,
     'Unit.UpstreamRevisionNum': u?.UpstreamRevisionNum ?? 0,
     'Unit.GateCount': count(u?.ApplyGates),
     'Unit.WarningCount': count(u?.ApplyWarnings),
@@ -66,7 +65,7 @@ export function unitRow(e: ExtendedUnitRead, baseUrl: string): Row {
   // for cloning, or config that is not deployable on its own. Name the category.
   const targetId = realId(u?.TargetID);
   values['Unit.Deployable'] = targetId ? 'Deployable' : 'Base / not deployable';
-  values['Unit.ApplyState'] = applyState(u?.HeadRevisionNum, u?.LiveRevisionNum, targetId);
+  values['Unit.ReleaseState'] = releaseState(u?.HeadRevisionNum, u?.LastReleasedRevisionNum, targetId);
 
   putMap(values, 'Unit.Labels.', u?.Labels);
   putMap(values, 'Unit.Values.', u?.Values);
@@ -86,11 +85,11 @@ export function unitRow(e: ExtendedUnitRead, baseUrl: string): Row {
   };
 }
 
-function applyState(head?: number, live?: number, targetId?: string): string {
+function releaseState(head?: number, released?: number, targetId?: string): string {
   if (!hasId(targetId)) return 'Not deployable';
-  if (!live) return 'Never applied';
-  if ((head ?? 0) > live) return 'Unapplied changes';
-  return 'Applied and current';
+  if (!released) return 'Never released';
+  if ((head ?? 0) > released) return 'Unreleased changes';
+  return 'Released and current';
 }
 
 export function spaceRow(e: ExtendedSpaceRead): Row {
@@ -99,18 +98,17 @@ export function spaceRow(e: ExtendedSpaceRead): Row {
     'Space.Slug': s?.Slug ?? null,
     'Space.DisplayName': s?.DisplayName || s?.Slug || null,
     'Space.TotalUnitCount': e.TotalUnitCount ?? 0,
-    'Space.UnappliedUnitCount': e.UnappliedUnitCount ?? 0,
+    'Space.UnreleasedUnitCount': e.UnreleasedUnitCount ?? 0,
     'Space.UnapprovedUnitCount': e.UnapprovedUnitCount ?? 0,
     'Space.UnlinkedUnitCount': e.UnlinkedUnitCount ?? 0,
     'Space.GatedUnitCount': e.GatedUnitCount ?? 0,
     'Space.WarnedUnitCount': e.WarnedUnitCount ?? 0,
     'Space.UpgradableUnitCount': e.UpgradableUnitCount ?? 0,
-    'Space.IncompleteApplyUnitCount': e.IncompleteApplyUnitCount ?? 0,
     'Space.TotalLinkCount': e.TotalLinkCount ?? 0,
     'Space.UpdatedAt': time(s?.UpdatedAt),
   };
-  // Derived: the complement of "unapplied", which is what a meter wants.
-  values['Space.CurrentUnitCount'] = (e.TotalUnitCount ?? 0) - (e.UnappliedUnitCount ?? 0);
+  // Derived: the complement of "unreleased", which is what a meter wants.
+  values['Space.CurrentUnitCount'] = (e.TotalUnitCount ?? 0) - (e.UnreleasedUnitCount ?? 0);
 
   putMap(values, 'Space.Labels.', s?.Labels);
   return { id: s?.SpaceID ?? s?.Slug ?? '', values };
@@ -119,22 +117,20 @@ export function spaceRow(e: ExtendedSpaceRead): Row {
 export function revisionRow(e: ExtendedRevisionRead): Row {
   const r = e.Revision;
   const createdAt = time(r?.CreatedAt);
-  const liveAt = time(r?.LiveAt);
   const values: Record<string, RowValue> = {
     'Revision.Num': r?.RevisionNum ?? 0,
     'Revision.Source': r?.Source ?? null,
     'Revision.Description': r?.Description ?? null,
     'Revision.CreatedAt': createdAt,
-    'Revision.LiveAt': liveAt,
-    'Revision.Landed': liveAt ? 'Landed' : 'Not applied',
+    // Whether a Release has bundled this Revision. Revision.LiveAt used to answer a
+    // stronger question -- when a bridge put it on a cluster -- and is gone with the
+    // bridge. Membership in a Release is what ConfigHub still knows, and it is a claim
+    // about publication, not about what the cluster is running.
+    'Revision.Released': count(r?.Releases) > 0 ? 'Released' : 'Not released',
     'Space.Slug': e.Space?.Slug ?? r?.SpaceSlug ?? null,
     'Unit.Slug': e.Unit?.Slug ?? null,
   };
 
-  values['Revision.LeadTimeHours'] =
-    createdAt && liveAt
-      ? Math.max(0, (Date.parse(liveAt) - Date.parse(createdAt)) / HOURS)
-      : null;
 
   putMap(values, 'Space.Labels.', e.Space?.Labels);
   return { id: r?.RevisionID ?? '', values };

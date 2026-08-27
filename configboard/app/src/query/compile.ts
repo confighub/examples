@@ -37,7 +37,7 @@ const UNIT_SELECT = [
   'ProviderType',
   'TargetID',
   'HeadRevisionNum',
-  'LiveRevisionNum',
+  'LastReleasedRevisionNum',
   'UpstreamRevisionNum',
   'ApplyGates',
   'ApplyWarnings',

@@ -95,7 +95,7 @@ panels:
       source: Finding
       where: "Space.Labels.Environment = '${env}'"
     transform:
-      groupBy: Unit.ApplyState
+      groupBy: Unit.ReleaseState
       aggregate: { fn: count }
       sort: value-desc
     chart: { form: bar, orientation: horizontal, color: status }

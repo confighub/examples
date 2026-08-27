@@ -143,11 +143,11 @@ dashboard document schema, and the API requests it issues.
 Measured against a 56-Space / 398-Unit organization. These are the assumptions the
 query layer rests on:
 
-- `GET /space?summary=true` returns per-Space `TotalUnitCount`, `UnappliedUnitCount`,
+- `GET /space?summary=true` returns per-Space `TotalUnitCount`, `UnreleasedUnitCount`,
   `UnapprovedUnitCount`, `UnlinkedUnitCount`, `GatedUnitCount`, `WarnedUnitCount`,
-  `UpgradableUnitCount`, `IncompleteApplyUnitCount`
-- summed `UnappliedUnitCount` equals the count from
-  `where=HeadRevisionNum > LiveRevisionNum`; summed `GatedUnitCount` equals
+  `UpgradableUnitCount`
+- summed `UnreleasedUnitCount` equals the count from
+  `where=HeadRevisionNum > LastReleasedRevisionNum`; summed `GatedUnitCount` equals
   `where=LEN(ApplyGates) > 0`
 - `where=Space.Labels.<K> = '<v>'` and `where=Target.<field> = '<v>'` filter correctly
   on `GET /unit`, with or without the matching `include`
