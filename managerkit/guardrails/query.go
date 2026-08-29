@@ -5,7 +5,6 @@ package guardrails
 
 import (
 	"context"
-	"fmt"
 	"sort"
 
 	"github.com/confighub/sdk/core/cubapi"
@@ -27,31 +26,20 @@ type StatusRow struct {
 // record which rule warned it, and a tool that filtered to its own rules would
 // under-report a Unit that is blocked for some other reason entirely.
 func Status(ctx context.Context, client *cubapi.Client) ([]StatusRow, error) {
-	byKey := map[string]StatusRow{}
-	for _, cond := range []string{"LEN(ApplyWarnings) > 0", "LEN(ApplyGates) > 0"} {
-		units, err := cubapi.ListUnits(ctx, client,
-			cubapi.NewWhere("ToolchainType = 'Kubernetes/YAML'").And(cond),
-			cubapi.ListOpts{Include: "SpaceID", Select: "Slug,SpaceID,ApplyWarnings,ApplyGates"})
-		if err != nil {
-			return nil, err
-		}
-		for _, eu := range units {
-			if eu.Unit == nil {
-				continue
-			}
-			space := ""
-			if eu.Space != nil {
-				space = eu.Space.Slug
-			}
-			byKey[space+"/"+eu.Unit.Slug] = StatusRow{
-				Space: space, Unit: eu.Unit.Slug,
-				Warnings: len(eu.Unit.ApplyWarnings), Gates: len(eu.Unit.ApplyGates),
-			}
-		}
+	marked, err := cubapi.ListMarkedUnits(ctx, client, cubapi.DefaultToolchainType)
+	if err != nil {
+		return nil, err
 	}
-	rows := make([]StatusRow, 0, len(byKey))
-	for _, r := range byKey {
-		rows = append(rows, r)
+	rows := make([]StatusRow, 0, len(marked))
+	for _, eu := range marked {
+		space := ""
+		if eu.Space != nil {
+			space = eu.Space.Slug
+		}
+		rows = append(rows, StatusRow{
+			Space: space, Unit: eu.Unit.Slug,
+			Warnings: len(eu.Unit.ApplyWarnings), Gates: len(eu.Unit.ApplyGates),
+		})
 	}
 	sort.Slice(rows, func(i, j int) bool {
 		if rows[i].Space != rows[j].Space {
@@ -69,6 +57,10 @@ func Status(ctx context.Context, client *cubapi.Client) ([]StatusRow, error) {
 // single resource can express is written as an annotation, and a rule in the
 // pack warns for as long as the annotation is there.
 func Annotate(ctx context.Context, client *cubapi.Client, spaceID, unitSlug, key, value, changeDesc string) error {
+	where := cubapi.Where{}.Eq("SpaceID", spaceID).Slug(unitSlug)
+	if err := where.Err(); err != nil {
+		return err
+	}
 	_, err := cubapi.InvokeFunction(ctx, client,
 		api.FunctionInvocation{
 			FunctionName: "set-annotation",
@@ -77,7 +69,7 @@ func Annotate(ctx context.Context, client *cubapi.Client, spaceID, unitSlug, key
 				{ParameterName: "annotation-value", Value: value},
 			},
 		},
-		cubapi.Selector{Where: fmt.Sprintf("SpaceID = '%s' AND Slug = '%s'", spaceID, unitSlug)},
+		cubapi.Selector{Where: where.String()},
 		cubapi.Change{Description: changeDesc})
 	return err
 }
@@ -86,18 +78,7 @@ func Annotate(ctx context.Context, client *cubapi.Client, spaceID, unitSlug, key
 // Kubernetes/YAML Unit. Wiring a Space that holds none would attach Triggers
 // that can never run.
 func KubernetesSpaces(ctx context.Context, client *cubapi.Client) (map[string]bool, error) {
-	units, err := cubapi.ListUnits(ctx, client, cubapi.NewWhere("ToolchainType = 'Kubernetes/YAML'"),
-		cubapi.ListOpts{Include: "SpaceID", Select: "Slug,SpaceID"})
-	if err != nil {
-		return nil, err
-	}
-	set := map[string]bool{}
-	for _, eu := range units {
-		if eu.Space != nil && eu.Space.Slug != "" {
-			set[eu.Space.Slug] = true
-		}
-	}
-	return set, nil
+	return cubapi.SpacesWithToolchain(ctx, client, cubapi.DefaultToolchainType)
 }
 
 // listSpaces returns the Space metadata the plan reasons about, optionally
@@ -122,20 +103,9 @@ func listSpaces(ctx context.Context, client *cubapi.Client, whereSpace string) (
 			triggerFilterID = es.Space.TriggerFilterID.String()
 		}
 		infos = append(infos, spaceInfo{
-			SpaceID: es.Space.SpaceID.String(), Slug: es.Space.Slug,
+			SpaceID: es.Space.SpaceID, Slug: es.Space.Slug,
 			WhereTrigger: es.Space.WhereTrigger, TriggerFilterID: triggerFilterID,
 		})
 	}
 	return infos, nil
-}
-
-// spaceTriggerCount is how many Triggers a Space defines of its own.
-func spaceTriggerCount(ctx context.Context, client *cubapi.Client, spaceID string) (int, error) {
-	triggers, err := cubapi.ListTriggers(ctx, client,
-		cubapi.NewWhere(fmt.Sprintf("SpaceID = '%s'", spaceID)),
-		cubapi.ListOpts{Select: "Slug,SpaceID"})
-	if err != nil {
-		return 0, err
-	}
-	return len(triggers), nil
 }

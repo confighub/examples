@@ -4,7 +4,7 @@
 // Package snapshot loads the fleet-wide view of the config autoscaling analysis depends on and assembles it into the
 // autoscale analysis model.
 //
-// Reading the fleet is managerkit/fleet's job. What is tool-specific is which
+// Reading the fleet is cubapi.SnapshotLoader's job. What is tool-specific is which
 // resource types the model needs and what a resource becomes once it arrives.
 package snapshot
 
@@ -14,15 +14,14 @@ import (
 	"github.com/confighub/sdk/core/cubapi"
 
 	"github.com/confighub/examples/autoscale-manager/internal/autoscale"
-	"github.com/confighub/examples/managerkit/fleet"
 )
 
 // UnitMeta is the per-Unit metadata joined onto resources.
-type UnitMeta = fleet.UnitMeta
+type UnitMeta = cubapi.UnitMeta
 
 // ClusterNone is the cluster key for Units the fleet view cannot attribute to a
 // cluster.
-const ClusterNone = fleet.ClusterNone
+const ClusterNone = cubapi.ClusterNone
 
 // Snapshot is a fleet-wide autoscaling view.
 type Snapshot struct {
@@ -40,7 +39,7 @@ type Snapshot struct {
 
 // loader names the resource types the autoscaling model needs: the autoscalers, their scale
 // targets, and the PodDisruptionBudgets that can block a scale-down.
-var loader = fleet.Loader[autoscale.FleetResource]{
+var loader = cubapi.SnapshotLoader[autoscale.FleetResource]{
 	ResourceTypes: []string{
 		"autoscaling/v1/HorizontalPodAutoscaler",
 		"autoscaling/v2/HorizontalPodAutoscaler",
@@ -52,7 +51,7 @@ var loader = fleet.Loader[autoscale.FleetResource]{
 		"policy/v1/PodDisruptionBudget",
 		"policy/v1beta1/PodDisruptionBudget",
 	},
-	New: func(o fleet.Origin, doc map[string]any) autoscale.FleetResource {
+	New: func(o cubapi.Origin, doc map[string]any) autoscale.FleetResource {
 		return autoscale.FleetResource{
 			Origin: autoscale.ResourceOrigin{
 				Cluster:      o.Cluster,

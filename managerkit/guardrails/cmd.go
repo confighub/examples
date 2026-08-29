@@ -15,9 +15,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/confighub/sdk/cliutil"
 	"github.com/confighub/sdk/core/cubapi"
-
-	"github.com/confighub/examples/managerkit/clikit"
 )
 
 // Preflight verifies a tool's ConfigHub session and returns the client. Each
@@ -56,23 +55,23 @@ modified. Narrow which Spaces get wired with --where-space.`,
 			if commit {
 				out := cmd.OutOrStdout()
 				if err := p.Execute(cmd.Context(), client, policySpace, plan,
-					func(line string) { clikit.Fprintln(out, line) }); err != nil {
+					func(line string) { cliutil.Fprintln(out, line) }); err != nil {
 					return err
 				}
 				plan.Committed = true
 			}
-			if output == clikit.OutputTable {
+			if output == outputTable {
 				PrintPlan(cmd, plan)
 				return nil
 			}
-			return clikit.PrintJSON(cmd.OutOrStdout(), plan)
+			return cliutil.PrintJSON(cmd.OutOrStdout(), plan)
 		},
 	}
 	cmd.Flags().StringVar(&policySpace, "policy-space", DefaultPolicySpace,
 		"Space holding the guardrail Triggers and the shared Filter; every tool defaults to the same one")
 	cmd.Flags().StringVar(&whereSpace, "where-space", "", "ConfigHub filter over Spaces to narrow which Spaces get wired")
 	cmd.Flags().BoolVar(&commit, "commit", false, "apply the plan (default is dry-run)")
-	clikit.AddOutputFlag(cmd, &output)
+	addOutputFlag(cmd, &output)
 	return cmd
 }
 
@@ -98,14 +97,14 @@ Unit that is blocked for some other reason.`,
 			if err != nil {
 				return err
 			}
-			if output == clikit.OutputTable {
+			if output == outputTable {
 				PrintStatus(cmd, rows)
 				return nil
 			}
-			return clikit.PrintJSON(cmd.OutOrStdout(), rows)
+			return cliutil.PrintJSON(cmd.OutOrStdout(), rows)
 		},
 	}
-	clikit.AddOutputFlag(cmd, &output)
+	addOutputFlag(cmd, &output)
 	return cmd
 }
 
@@ -116,11 +115,11 @@ func PrintPlan(cmd *cobra.Command, plan Plan) {
 	if plan.Committed {
 		verb = "Applied"
 	}
-	clikit.Fprintln(out, fmt.Sprintf("%s — policy pack %q, filter %q", verb, plan.PolicySpace, plan.Filter))
-	clikit.Fprintln(out, "  triggers: "+strings.Join(plan.Triggers, ", "))
-	clikit.Fprintln(out, fmt.Sprintf("  spaces to wire (%d): %s", len(plan.Wire), strings.Join(plan.Wire, ", ")))
+	cliutil.Fprintln(out, fmt.Sprintf("%s — policy pack %q, filter %q", verb, plan.PolicySpace, plan.Filter))
+	cliutil.Fprintln(out, "  triggers: "+strings.Join(plan.Triggers, ", "))
+	cliutil.Fprintln(out, fmt.Sprintf("  spaces to wire (%d): %s", len(plan.Wire), strings.Join(plan.Wire, ", ")))
 	if len(plan.AlreadyWired) > 0 {
-		clikit.Fprintln(out, fmt.Sprintf("  already wired (%d): %s", len(plan.AlreadyWired), strings.Join(plan.AlreadyWired, ", ")))
+		cliutil.Fprintln(out, fmt.Sprintf("  already wired (%d): %s", len(plan.AlreadyWired), strings.Join(plan.AlreadyWired, ", ")))
 	}
 	if len(plan.Skipped) > 0 {
 		tw := tabwriter.NewWriter(out, 0, 2, 2, ' ', 0)
@@ -131,7 +130,7 @@ func PrintPlan(cmd *cobra.Command, plan Plan) {
 		_ = tw.Flush()
 	}
 	if !plan.Committed {
-		clikit.Fprintln(out, "\nNothing changed. Re-run with --commit to apply.")
+		cliutil.Fprintln(out, "\nNothing changed. Re-run with --commit to apply.")
 	}
 }
 
@@ -139,7 +138,7 @@ func PrintPlan(cmd *cobra.Command, plan Plan) {
 func PrintStatus(cmd *cobra.Command, rows []StatusRow) {
 	out := cmd.OutOrStdout()
 	if len(rows) == 0 {
-		clikit.Fprintln(out, "No Units carry ApplyWarnings or ApplyGates.")
+		cliutil.Fprintln(out, "No Units carry ApplyWarnings or ApplyGates.")
 		return
 	}
 	tw := tabwriter.NewWriter(out, 0, 2, 2, ' ', 0)
@@ -148,5 +147,5 @@ func PrintStatus(cmd *cobra.Command, rows []StatusRow) {
 		fmt.Fprintf(tw, "%s\t%s\t%d\t%d\n", r.Space, r.Unit, r.Warnings, r.Gates)
 	}
 	_ = tw.Flush()
-	clikit.Fprintln(out, fmt.Sprintf("\n%d Unit(s) marked.", len(rows)))
+	cliutil.Fprintln(out, fmt.Sprintf("\n%d Unit(s) marked.", len(rows)))
 }

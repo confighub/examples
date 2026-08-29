@@ -4,12 +4,11 @@
 package snapshot
 
 import (
+	"github.com/confighub/sdk/core/cubapi"
 	"testing"
-
-	"github.com/confighub/examples/managerkit/fleet"
 )
 
-// The generic reading of the fleet is managerkit/fleet's, and tested there. What
+// The generic reading of the fleet is cubapi.SnapshotLoader's, and tested there. What
 // is this tool's own is which resource types it asks for and what it turns them
 // into.
 
@@ -38,7 +37,7 @@ func TestLoaderCoversTheRBACModel(t *testing.T) {
 // A field dropped from the mapping is invisible: the resource still parses, and
 // the analyzers just see an empty cluster or space.
 func TestLoaderNewCarriesTheWholeOrigin(t *testing.T) {
-	origin := fleet.Origin{
+	origin := cubapi.Origin{
 		Cluster:      "prod-oci",
 		Target:       "prod-target",
 		Space:        "prod-rbac",

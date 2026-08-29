@@ -57,7 +57,11 @@ probes?") is reported by the 'readiness' command; this is raw inventory only.`,
 			if err != nil {
 				return err
 			}
-			snap, err := snapshot.Load(cmd.Context(), client, filter.Predicate())
+			where, err := filter.Predicate()
+			if err != nil {
+				return err
+			}
+			snap, err := snapshot.Load(cmd.Context(), client, where)
 			if err != nil {
 				return err
 			}

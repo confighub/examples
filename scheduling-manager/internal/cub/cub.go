@@ -9,11 +9,9 @@ import (
 	"context"
 
 	"github.com/confighub/sdk/core/cubapi"
-
-	"github.com/confighub/examples/managerkit/fleet"
 )
 
-var session = fleet.Session{UserAgent: "cub-scheduling"}
+var session = cubapi.MemoizedClient{UserAgent: "cub-scheduling"}
 
 // Client returns the memoized, authenticated ConfigHub API client.
 func Client(ctx context.Context) (*cubapi.Client, error) { return session.Client(ctx) }

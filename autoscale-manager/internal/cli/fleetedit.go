@@ -12,7 +12,6 @@ import (
 	"github.com/confighub/sdk/core/cubapi"
 
 	"github.com/confighub/examples/autoscale-manager/internal/cub"
-	"github.com/confighub/examples/managerkit/clikit"
 )
 
 // autoscalerKindsWhereData scopes fleet-edit to HPA / ScaledObject resources.
@@ -63,7 +62,11 @@ Example: set every prod HPA to scale out early —
 				return fmt.Errorf("resolve profile %q: %w", profileSlug, err)
 			}
 			where := "ToolchainType = 'Kubernetes/YAML'"
-			if p := filter.Predicate(); p != "" {
+			p, err := filter.Predicate()
+			if err != nil {
+				return err
+			}
+			if p != "" {
 				where += " AND " + p
 			}
 			sel := cubapi.Selector{Where: where, WhereData: autoscalerKindsWhereData}
@@ -79,6 +82,6 @@ Example: set every prod HPA to scale out early —
 	commit.Bind(cmd)
 	cmd.Flags().StringVar(&profileSlug, "profile", "", "autoscaling profile (stored Invocation) to apply (required)")
 	cmd.Flags().StringArrayVar(&params, "param", nil, "profile parameter as name=value (repeatable)")
-	clikit.AddProfilesSpaceFlag(cmd, &profilesSpace)
+	addProfilesSpaceFlag(cmd, &profilesSpace)
 	return cmd
 }

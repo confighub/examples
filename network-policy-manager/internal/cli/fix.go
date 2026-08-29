@@ -103,7 +103,11 @@ func newFixSubCmd(use, short, yqExpr, action string, guard func(*netpol.NetworkP
 			if err != nil {
 				return fmt.Errorf("resolve space %q: %w", space, err)
 			}
-			snap, err := snapshot.Load(cmd.Context(), client, filter.Predicate())
+			where, err := filter.Predicate()
+			if err != nil {
+				return err
+			}
+			snap, err := snapshot.Load(cmd.Context(), client, where)
 			if err != nil {
 				return err
 			}

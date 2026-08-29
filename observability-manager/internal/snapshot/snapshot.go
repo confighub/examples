@@ -4,7 +4,7 @@
 // Package snapshot loads the fleet-wide view of the config observability analysis depends on and assembles it into the
 // observability analysis model.
 //
-// Reading the fleet is managerkit/fleet's job. What is tool-specific is which
+// Reading the fleet is cubapi.SnapshotLoader's job. What is tool-specific is which
 // resource types the model needs and what a resource becomes once it arrives.
 package snapshot
 
@@ -13,16 +13,15 @@ import (
 
 	"github.com/confighub/sdk/core/cubapi"
 
-	"github.com/confighub/examples/managerkit/fleet"
 	"github.com/confighub/examples/observability-manager/internal/observability"
 )
 
 // UnitMeta is the per-Unit metadata joined onto resources.
-type UnitMeta = fleet.UnitMeta
+type UnitMeta = cubapi.UnitMeta
 
 // ClusterNone is the cluster key for Units the fleet view cannot attribute to a
 // cluster.
-const ClusterNone = fleet.ClusterNone
+const ClusterNone = cubapi.ClusterNone
 
 // Snapshot is a fleet-wide observability view.
 type Snapshot struct {
@@ -40,7 +39,7 @@ type Snapshot struct {
 
 // loader names the resource types observability analysis needs: the ServiceMonitors, the
 // Services they select, and the workloads behind them.
-var loader = fleet.Loader[observability.FleetResource]{
+var loader = cubapi.SnapshotLoader[observability.FleetResource]{
 	ResourceTypes: []string{
 		"monitoring.coreos.com/v1/ServiceMonitor",
 		"v1/Service",
@@ -53,7 +52,7 @@ var loader = fleet.Loader[observability.FleetResource]{
 		"batch/v1beta1/CronJob",
 		"v1/Pod",
 	},
-	New: func(o fleet.Origin, doc map[string]any) observability.FleetResource {
+	New: func(o cubapi.Origin, doc map[string]any) observability.FleetResource {
 		return observability.FleetResource{
 			Origin: observability.ResourceOrigin{
 				Cluster:      o.Cluster,

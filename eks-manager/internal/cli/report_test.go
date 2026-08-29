@@ -249,12 +249,13 @@ func TestBuildResourceRows_Filters(t *testing.T) {
 }
 
 func TestFilterFlagsPredicate(t *testing.T) {
-	// Empty means "the whole fleet the user can view".
-	if got := (filterFlags{}).Predicate(); got != "" {
-		t.Errorf("empty predicate = %q, want empty", got)
-	}
-	// The EKS-specific Cluster scope joins the predicate like any other term. A
-	// predicate is a flat conjunction, so where it lands carries no meaning.
+	// The standard scopes and the rejection of a value that cannot appear in a
+	// filter literal are cliutil's, and tested there. What is this tool's is the
+	// EKS-specific Cluster scope: it names the cluster a Space describes, which
+	// here is not the Target the config is delivered to.
+	//
+	// It joins the predicate like any other term. A predicate is a flat
+	// conjunction, so where it lands carries no meaning.
 	var f filterFlags
 	cmd := &cobra.Command{}
 	addFilterFlags(cmd, &f)
@@ -263,21 +264,8 @@ func TestFilterFlagsPredicate(t *testing.T) {
 	}
 	f.Environment = "prod"
 	want := "Space.Labels.Environment = 'prod' AND Space.Labels.Cluster = 'prod-use1'"
-	if got := f.Predicate(); got != want {
-		t.Errorf("predicate = %q, want %q", got, want)
-	}
-	// A raw --where leads, and the shorthands AND onto it.
-	f = filterFlags{}
-	f.Where = "Slug LIKE 'eks-%'"
-	f.Region = "us-east-1"
-	want = "Slug LIKE 'eks-%' AND Space.Labels.Region = 'us-east-1'"
-	if got := f.Predicate(); got != want {
-		t.Errorf("predicate = %q, want %q", got, want)
-	}
-	// Single quotes are doubled, so a value cannot break out of the literal.
-	f = filterFlags{}
-	f.Owner = "it's"
-	if got := f.Predicate(); got != "Space.Labels.Owner = 'it''s'" {
-		t.Errorf("quote escaping = %q", got)
+	got, err := f.Predicate()
+	if err != nil || got != want {
+		t.Errorf("predicate = %q, %v; want %q", got, err, want)
 	}
 }

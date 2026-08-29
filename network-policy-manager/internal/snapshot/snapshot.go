@@ -4,7 +4,7 @@
 // Package snapshot loads the fleet-wide view of the Kubernetes config relevant
 // to NetworkPolicy and assembles it into the netpol analysis model.
 //
-// Reading the fleet is managerkit/fleet's job. What is netpol-specific is which
+// Reading the fleet is cubapi.SnapshotLoader's job. What is netpol-specific is which
 // resource types the coverage model needs and what a resource becomes once it
 // arrives: coverage is a join across types -- a NetworkPolicy means nothing
 // without the pods its podSelector matches -- so all four families are pulled.
@@ -15,15 +15,14 @@ import (
 
 	"github.com/confighub/sdk/core/cubapi"
 
-	"github.com/confighub/examples/managerkit/fleet"
 	"github.com/confighub/examples/network-policy-manager/internal/netpol"
 )
 
 // UnitMeta is the per-Unit metadata joined onto resources.
-type UnitMeta = fleet.UnitMeta
+type UnitMeta = cubapi.UnitMeta
 
 // ClusterNone is the cluster key for Units whose Space has no release Target.
-const ClusterNone = fleet.ClusterNone
+const ClusterNone = cubapi.ClusterNone
 
 // Snapshot is a fleet-wide NetworkPolicy view.
 type Snapshot struct {
@@ -43,7 +42,7 @@ type Snapshot struct {
 // loader names the resource types the coverage model needs: the policies
 // themselves, the namespaces they live in, everything that carries a pod
 // template for their selectors to match, and the Services that name it.
-var loader = fleet.Loader[netpol.FleetResource]{
+var loader = cubapi.SnapshotLoader[netpol.FleetResource]{
 	ResourceTypes: []string{
 		"networking.k8s.io/v1/NetworkPolicy",
 		"v1/Namespace",
@@ -57,7 +56,7 @@ var loader = fleet.Loader[netpol.FleetResource]{
 		"v1/Pod",
 		"v1/Service",
 	},
-	New: func(o fleet.Origin, doc map[string]any) netpol.FleetResource {
+	New: func(o cubapi.Origin, doc map[string]any) netpol.FleetResource {
 		return netpol.FleetResource{
 			Origin: netpol.ResourceOrigin{
 				Cluster:      o.Cluster,

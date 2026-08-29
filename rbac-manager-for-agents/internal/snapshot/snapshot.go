@@ -4,7 +4,7 @@
 // Package snapshot loads the fleet-wide view of Kubernetes RBAC config and assembles it into the
 // rbac analysis model.
 //
-// Reading the fleet is managerkit/fleet's job. What is tool-specific is which
+// Reading the fleet is cubapi.SnapshotLoader's job. What is tool-specific is which
 // resource types the model needs and what a resource becomes once it arrives.
 package snapshot
 
@@ -13,16 +13,15 @@ import (
 
 	"github.com/confighub/sdk/core/cubapi"
 
-	"github.com/confighub/examples/managerkit/fleet"
 	"github.com/confighub/examples/rbac-manager-for-agents/internal/rbac"
 )
 
 // UnitMeta is the per-Unit metadata joined onto resources.
-type UnitMeta = fleet.UnitMeta
+type UnitMeta = cubapi.UnitMeta
 
 // ClusterNone is the cluster key for Units the fleet view cannot attribute to a
 // cluster.
-const ClusterNone = fleet.ClusterNone
+const ClusterNone = cubapi.ClusterNone
 
 // Snapshot is a fleet-wide RBAC view.
 type Snapshot struct {
@@ -40,7 +39,7 @@ type Snapshot struct {
 
 // loader names the resource types the RBAC model needs: the roles and bindings themselves,
 // and the ServiceAccounts a binding can name.
-var loader = fleet.Loader[rbac.FleetResource]{
+var loader = cubapi.SnapshotLoader[rbac.FleetResource]{
 	ResourceTypes: []string{
 		"rbac.authorization.k8s.io/v1/Role",
 		"rbac.authorization.k8s.io/v1/ClusterRole",
@@ -48,7 +47,7 @@ var loader = fleet.Loader[rbac.FleetResource]{
 		"rbac.authorization.k8s.io/v1/ClusterRoleBinding",
 		"v1/ServiceAccount",
 	},
-	New: func(o fleet.Origin, doc map[string]any) rbac.FleetResource {
+	New: func(o cubapi.Origin, doc map[string]any) rbac.FleetResource {
 		return rbac.FleetResource{
 			Origin: rbac.ResourceOrigin{
 				Cluster:      o.Cluster,
