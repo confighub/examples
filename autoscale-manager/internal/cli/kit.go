@@ -19,18 +19,12 @@ import (
 
 type filterFlags = cliutil.QueryFlags
 
-// The two formats these commands render. cliutil offers more -- yaml, jq, yq,
-// custom columns -- and adopting them is worth doing, but a flag that advertises
-// a format the command then cannot render is worse than one that does not offer
-// it.
 const (
-	outputJSON  = "json"
-	outputTable = "table"
+	outputJSON  = managerkit.OutputJSON
+	outputTable = managerkit.OutputTable
 )
 
-func addOutputFlag(cmd *cobra.Command, dest *string) {
-	cmd.Flags().StringVarP(dest, "output", "o", outputJSON, "output format: json | table")
-}
+func addOutputFlag(cmd *cobra.Command, dest *string) { managerkit.AddOutputFlag(cmd, dest) }
 
 // addFilterFlags binds --where and the standard Space-label scopes. --select is
 // deliberately not among them: the fleet snapshot pins the fields it reads, so a
@@ -38,13 +32,6 @@ func addOutputFlag(cmd *cobra.Command, dest *string) {
 func addFilterFlags(cmd *cobra.Command, f *filterFlags) {
 	f.BindWhere(cmd)
 	f.BindSpaceLabels(cmd)
-}
-
-// addProfilesSpaceFlag binds --profiles-space, defaulting to the Space these
-// tools share, so an operator has one profile library to look in rather than one
-// per tool.
-func addProfilesSpaceFlag(cmd *cobra.Command, dest *string) {
-	cliutil.ProfilesSpaceFlag(cmd, dest, managerkit.CommonSpace)
 }
 
 func printJSON(w io.Writer, v any) error     { return cliutil.PrintJSON(w, v) }

@@ -9,20 +9,11 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/confighub/sdk/cliutil"
-	"github.com/confighub/sdk/core/cubapi"
 	api "github.com/confighub/sdk/core/function/api"
 
+	"github.com/confighub/examples/managerkit/write"
 	"github.com/confighub/examples/workload-manager/internal/cub"
 )
-
-// changeOf turns the commit flags' dry-run/description into a cubapi.Change
-// (empty Description = dry-run).
-func changeOf(changeDesc string, dryRun bool) cubapi.Change {
-	if dryRun {
-		return cubapi.Change{}
-	}
-	return cubapi.Change{Description: changeDesc}
-}
 
 // newHardenCmd applies the security-context and automount defaults to a workload.
 func newHardenCmd() *cobra.Command {
@@ -54,20 +45,20 @@ ServiceAccount token, record an exception rather than hardening it blindly.`,
 			if err != nil {
 				return err
 			}
-			ref, err := parseUnitRef(cmd.Context(), client, args[0])
+			ref, err := write.ParseUnitRef(cmd.Context(), client, args[0])
 			if err != nil {
 				return err
 			}
-			ch := changeOf(changeDesc, dryRun)
-			sec, err := cub.InvokeMutation(cmd.Context(), client, "set-pod-container-security-context-defaults", nil, ref.selector(), ch)
+			ch := write.Change(changeDesc, dryRun)
+			sec, err := cub.InvokeMutation(cmd.Context(), client, "set-pod-container-security-context-defaults", nil, ref.Selector(), ch)
 			if err != nil {
 				return err
 			}
-			automount, err := cub.InvokeMutation(cmd.Context(), client, "set-automount-service-account-token-false", nil, ref.selector(), ch)
+			automount, err := cub.InvokeMutation(cmd.Context(), client, "set-automount-service-account-token-false", nil, ref.Selector(), ch)
 			if err != nil {
 				return err
 			}
-			return reportMutation(cmd, "harden", ref.spaceSlug, dryRun, output, sec, automount)
+			return write.ReportMutations(cmd, "harden", ref.SpaceSlug, dryRun, output, sec, automount)
 		},
 	}
 	addOutputFlag(cmd, &output)
@@ -118,7 +109,7 @@ Dry-run unless --commit --change-desc; never bypasses ApplyGates.`,
 			if err != nil {
 				return err
 			}
-			ref, err := parseUnitRef(cmd.Context(), client, args[0])
+			ref, err := write.ParseUnitRef(cmd.Context(), client, args[0])
 			if err != nil {
 				return err
 			}
@@ -129,11 +120,11 @@ Dry-run unless --commit --change-desc; never bypasses ApplyGates.`,
 				{ParameterName: "memory", Value: memory},
 				{ParameterName: "limit-factor", Value: limitFactor},
 			}
-			res, err := cub.InvokeMutation(cmd.Context(), client, "set-container-resources", resArgs, ref.selector(), changeOf(changeDesc, dryRun))
+			res, err := cub.InvokeMutation(cmd.Context(), client, "set-container-resources", resArgs, ref.Selector(), write.Change(changeDesc, dryRun))
 			if err != nil {
 				return err
 			}
-			return reportMutation(cmd, "set-resources", ref.spaceSlug, dryRun, output, res)
+			return write.ReportMutations(cmd, "set-resources", ref.SpaceSlug, dryRun, output, res)
 		},
 	}
 	addOutputFlag(cmd, &output)
@@ -170,7 +161,7 @@ ApplyGates.`,
 			if err != nil {
 				return err
 			}
-			ref, err := parseUnitRef(cmd.Context(), client, args[0])
+			ref, err := write.ParseUnitRef(cmd.Context(), client, args[0])
 			if err != nil {
 				return err
 			}
@@ -183,11 +174,11 @@ ApplyGates.`,
 			addArg("liveness-path", livenessPath)
 			addArg("readiness-path", readinessPath)
 			addArg("startup-path", startupPath)
-			res, err := cub.InvokeMutation(cmd.Context(), client, "set-container-probe-defaults", fnArgs, ref.selector(), changeOf(changeDesc, dryRun))
+			res, err := cub.InvokeMutation(cmd.Context(), client, "set-container-probe-defaults", fnArgs, ref.Selector(), write.Change(changeDesc, dryRun))
 			if err != nil {
 				return err
 			}
-			return reportMutation(cmd, "set-probes", ref.spaceSlug, dryRun, output, res)
+			return write.ReportMutations(cmd, "set-probes", ref.SpaceSlug, dryRun, output, res)
 		},
 	}
 	addOutputFlag(cmd, &output)
@@ -245,15 +236,15 @@ not appends). Dry-run unless --commit --change-desc; never bypasses ApplyGates.`
 			if err != nil {
 				return err
 			}
-			ref, err := parseUnitRef(cmd.Context(), client, args[0])
+			ref, err := write.ParseUnitRef(cmd.Context(), client, args[0])
 			if err != nil {
 				return err
 			}
-			res, err := cub.MutateUnitYQ(cmd.Context(), client, yqExpr, ref.selector(), changeOf(changeDesc, dryRun))
+			res, err := cub.MutateUnitYQ(cmd.Context(), client, yqExpr, ref.Selector(), write.Change(changeDesc, dryRun))
 			if err != nil {
 				return err
 			}
-			return reportMutation(cmd, "ensure-spread", ref.spaceSlug, dryRun, output, res)
+			return write.ReportMutations(cmd, "ensure-spread", ref.SpaceSlug, dryRun, output, res)
 		},
 	}
 	addOutputFlag(cmd, &output)

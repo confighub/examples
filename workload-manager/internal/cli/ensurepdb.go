@@ -13,10 +13,14 @@ import (
 	"github.com/confighub/sdk/cliutil"
 	goclientnew "github.com/confighub/sdk/core/openapi/goclient-new"
 
+	"github.com/confighub/examples/managerkit/write"
 	"github.com/confighub/examples/workload-manager/internal/cub"
 	"github.com/confighub/examples/workload-manager/internal/snapshot"
 	"github.com/confighub/examples/workload-manager/internal/workload"
 )
+
+// unitManagedByLabel marks Units this tool authors (e.g. generated PDBs).
+const unitManagedByLabel = "cub-workload"
 
 type ensurePDBPlan struct {
 	Action    string `json:"action"`
@@ -65,19 +69,19 @@ would cover the whole namespace). Dry-run unless --commit --change-desc.`,
 			if err != nil {
 				return err
 			}
-			ref, err := parseUnitRef(cmd.Context(), client, args[0])
+			ref, err := write.ParseUnitRef(cmd.Context(), client, args[0])
 			if err != nil {
 				return err
 			}
 
 			// Find the workload to derive its selector, namespace, and name.
-			snap, err := snapshot.Load(cmd.Context(), client, fmt.Sprintf("SpaceID = '%s'", ref.spaceID.String()))
+			snap, err := snapshot.Load(cmd.Context(), client, fmt.Sprintf("SpaceID = '%s'", ref.SpaceID.String()))
 			if err != nil {
 				return err
 			}
-			w := findWorkloadBySlug(snap, ref.unitSlug)
+			w := findWorkloadBySlug(snap, ref.UnitSlug)
 			if w == nil {
-				return fmt.Errorf("no workload found in Unit %s/%s", ref.spaceSlug, ref.unitSlug)
+				return fmt.Errorf("no workload found in Unit %s/%s", ref.SpaceSlug, ref.UnitSlug)
 			}
 			if len(w.PodLabels) == 0 {
 				return fmt.Errorf("workload %s has no pod-template labels — cannot derive a safe PDB selector", w.Name)
@@ -87,7 +91,7 @@ would cover the whole namespace). Dry-run unless --commit --change-desc.`,
 			manifest := renderPDB(w.Name+"-pdb", w.Namespace, policyKey, policyVal, w.PodLabels)
 
 			plan := ensurePDBPlan{
-				Action: "create-pdb", DryRun: dryRun, Space: ref.spaceSlug,
+				Action: "create-pdb", DryRun: dryRun, Space: ref.SpaceSlug,
 				Namespace: w.Namespace, Unit: pdbSlug, Manifest: manifest,
 			}
 			out := cmd.OutOrStdout()
@@ -95,7 +99,7 @@ would cover the whole namespace). Dry-run unless --commit --change-desc.`,
 				if output == outputJSON {
 					return printJSON(out, plan)
 				}
-				fprintln(out, fmt.Sprintf("Dry run — would create PDB Unit %s/%s:", ref.spaceSlug, pdbSlug))
+				fprintln(out, fmt.Sprintf("Dry run — would create PDB Unit %s/%s:", ref.SpaceSlug, pdbSlug))
 				fprintln(out, "")
 				fprintln(out, manifest)
 				fprintln(out, "Re-run with --commit --change-desc \"…\" to create the Unit. It is not applied until you apply it.")
@@ -106,7 +110,7 @@ would cover the whole namespace). Dry-run unless --commit --change-desc.`,
 				Slug:                  pdbSlug,
 				DisplayName:           pdbSlug,
 				ToolchainType:         "Kubernetes/YAML",
-				SpaceID:               ref.spaceID,
+				SpaceID:               ref.SpaceID,
 				Labels:                map[string]string{"managed-by": unitManagedByLabel},
 				LastChangeDescription: changeDesc,
 			}, manifest)
@@ -119,7 +123,7 @@ would cover the whole namespace). Dry-run unless --commit --change-desc.`,
 				return printJSON(out, plan)
 			}
 			fprintln(out, fmt.Sprintf("Created PDB Unit %s/%s (revision %d). Publish the Space to deploy: cub release publish %s",
-				ref.spaceSlug, pdbSlug, created.HeadRevisionNum, ref.spaceSlug))
+				ref.SpaceSlug, pdbSlug, created.HeadRevisionNum, ref.SpaceSlug))
 			return nil
 		},
 	}

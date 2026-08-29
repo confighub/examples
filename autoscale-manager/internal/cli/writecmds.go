@@ -12,6 +12,7 @@ import (
 	"github.com/confighub/sdk/cliutil"
 
 	"github.com/confighub/examples/autoscale-manager/internal/cub"
+	"github.com/confighub/examples/managerkit/write"
 )
 
 // newSetHPACmd edits an existing HorizontalPodAutoscaler Unit's replica bounds
@@ -97,13 +98,13 @@ func runYQ(cmd *cobra.Command, command, target, expr string, dryRun bool, change
 	if err != nil {
 		return err
 	}
-	ref, err := parseUnitRef(cmd.Context(), client, target)
+	ref, err := write.ParseUnitRef(cmd.Context(), client, target)
 	if err != nil {
 		return err
 	}
-	res, err := cub.MutateUnitYQ(cmd.Context(), client, expr, ref.selector(), changeOf(changeDesc, dryRun))
+	res, err := cub.MutateUnitYQ(cmd.Context(), client, expr, ref.Selector(), write.Change(changeDesc, dryRun))
 	if err != nil {
 		return err
 	}
-	return reportMutation(cmd, command, ref.spaceSlug, dryRun, output, res)
+	return write.ReportMutations(cmd, command, ref.SpaceSlug, dryRun, output, res)
 }

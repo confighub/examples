@@ -13,10 +13,14 @@ import (
 	"github.com/confighub/sdk/cliutil"
 	goclientnew "github.com/confighub/sdk/core/openapi/goclient-new"
 
+	"github.com/confighub/examples/managerkit/write"
 	"github.com/confighub/examples/observability-manager/internal/cub"
 	"github.com/confighub/examples/observability-manager/internal/observability"
 	"github.com/confighub/examples/observability-manager/internal/snapshot"
 )
+
+// unitManagedByLabel marks Units this tool authors (e.g. generated ServiceMonitors).
+const unitManagedByLabel = "cub-observability"
 
 type ensureSMPlan struct {
 	Action    string `json:"action"`
@@ -53,17 +57,17 @@ Refuses when the Service has no metrics port and no --port. Dry-run unless
 			if err != nil {
 				return err
 			}
-			ref, err := parseUnitRef(cmd.Context(), client, args[0])
+			ref, err := write.ParseUnitRef(cmd.Context(), client, args[0])
 			if err != nil {
 				return err
 			}
-			snap, err := snapshot.Load(cmd.Context(), client, fmt.Sprintf("SpaceID = '%s'", ref.spaceID.String()))
+			snap, err := snapshot.Load(cmd.Context(), client, fmt.Sprintf("SpaceID = '%s'", ref.SpaceID.String()))
 			if err != nil {
 				return err
 			}
-			svc := findServiceBySlug(snap, ref.unitSlug)
+			svc := findServiceBySlug(snap, ref.UnitSlug)
 			if svc == nil {
-				return fmt.Errorf("no Service found in Unit %s/%s", ref.spaceSlug, ref.unitSlug)
+				return fmt.Errorf("no Service found in Unit %s/%s", ref.SpaceSlug, ref.UnitSlug)
 			}
 			if len(svc.Labels) == 0 {
 				return fmt.Errorf("Service %s has no labels — cannot derive a ServiceMonitor selector", svc.Name)
@@ -78,13 +82,13 @@ Refuses when the Service has no metrics port and no --port. Dry-run unless
 
 			smSlug := svc.Name + "-sm"
 			manifest := renderServiceMonitor(smSlug, svc.Namespace, svc.Labels, port)
-			plan := ensureSMPlan{Action: "create-servicemonitor", DryRun: dryRun, Space: ref.spaceSlug, Namespace: svc.Namespace, Unit: smSlug, Manifest: manifest}
+			plan := ensureSMPlan{Action: "create-servicemonitor", DryRun: dryRun, Space: ref.SpaceSlug, Namespace: svc.Namespace, Unit: smSlug, Manifest: manifest}
 			out := cmd.OutOrStdout()
 			if dryRun {
 				if output == outputJSON {
 					return printJSON(out, plan)
 				}
-				fprintln(out, fmt.Sprintf("Dry run — would create ServiceMonitor Unit %s/%s:", ref.spaceSlug, smSlug))
+				fprintln(out, fmt.Sprintf("Dry run — would create ServiceMonitor Unit %s/%s:", ref.SpaceSlug, smSlug))
 				fprintln(out, "")
 				fprintln(out, manifest)
 				fprintln(out, "Re-run with --commit --change-desc \"…\" to create the Unit.")
@@ -94,7 +98,7 @@ Refuses when the Service has no metrics port and no --port. Dry-run unless
 				Slug:                  smSlug,
 				DisplayName:           smSlug,
 				ToolchainType:         "Kubernetes/YAML",
-				SpaceID:               ref.spaceID,
+				SpaceID:               ref.SpaceID,
 				Labels:                map[string]string{"managed-by": unitManagedByLabel},
 				LastChangeDescription: changeDesc,
 			}, manifest)
@@ -107,7 +111,7 @@ Refuses when the Service has no metrics port and no --port. Dry-run unless
 				return printJSON(out, plan)
 			}
 			fprintln(out, fmt.Sprintf("Created ServiceMonitor Unit %s/%s (revision %d). Publish the Space to deploy: cub release publish %s",
-				ref.spaceSlug, smSlug, created.HeadRevisionNum, ref.spaceSlug))
+				ref.SpaceSlug, smSlug, created.HeadRevisionNum, ref.SpaceSlug))
 			return nil
 		},
 	}
