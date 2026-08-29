@@ -117,9 +117,7 @@ func (l Library) listCmd() *cobra.Command {
 				for _, p := range inv.Parameters {
 					r.Parameters = append(r.Parameters, p.ParameterName)
 				}
-				if inv.Annotations != nil {
-					r.Description = inv.Annotations[l.descriptionAnnotation()]
-				}
+				r.Description = l.describe(inv.Annotations)
 				rows = append(rows, r)
 			}
 			sort.Slice(rows, func(i, j int) bool { return rows[i].Slug < rows[j].Slug })

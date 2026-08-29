@@ -16,6 +16,7 @@ package profiles
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/confighub/sdk/core/cubapi"
@@ -27,6 +28,31 @@ import (
 // Invocation has no description field, so it goes in an annotation under the
 // tool's own domain.
 func (l Library) descriptionAnnotation() string { return l.Domain + "/description" }
+
+// describe reads a profile's description, preferring this tool's own annotation.
+//
+// The library Space is shared, so a tool lists profiles other tools installed as
+// well -- that is the point of one place to look. Each tool writes the
+// description under its own domain, so falling back to any tool's key is what
+// keeps those rows from listing blank.
+func (l Library) describe(annotations map[string]string) string {
+	if d, ok := annotations[l.descriptionAnnotation()]; ok {
+		return d
+	}
+	// Sorted, so a profile carrying more than one tool's annotation describes
+	// itself the same way on every run.
+	keys := make([]string, 0, len(annotations))
+	for k := range annotations {
+		if strings.HasSuffix(k, "/description") {
+			keys = append(keys, k)
+		}
+	}
+	sort.Strings(keys)
+	if len(keys) > 0 {
+		return annotations[keys[0]]
+	}
+	return ""
+}
 
 // Param declares one profile parameter the caller supplies at apply time.
 type Param struct {

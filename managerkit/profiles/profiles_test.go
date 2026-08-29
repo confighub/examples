@@ -118,3 +118,32 @@ func TestNounDefaults(t *testing.T) {
 		t.Errorf("noun = %q", got)
 	}
 }
+
+// The library Space is shared, so a tool lists profiles other tools installed.
+// Each writes its description under its own domain, so a row would otherwise
+// list blank for every profile this tool did not install.
+func TestDescribeFallsBackToAnotherToolsAnnotation(t *testing.T) {
+	own := map[string]string{"autoscale.confighub.com/description": "mine"}
+	if got := lib.describe(own); got != "mine" {
+		t.Errorf("own annotation = %q", got)
+	}
+	other := map[string]string{"workload.confighub.com/description": "theirs"}
+	if got := lib.describe(other); got != "theirs" {
+		t.Errorf("another tool's annotation = %q, want it read rather than blank", got)
+	}
+	// This tool's own key wins when both are present.
+	both := map[string]string{
+		"workload.confighub.com/description":  "theirs",
+		"autoscale.confighub.com/description": "mine",
+	}
+	if got := lib.describe(both); got != "mine" {
+		t.Errorf("both = %q, want this tool's own", got)
+	}
+	// An unrelated annotation is not a description.
+	if got := lib.describe(map[string]string{"example.com/owner": "team"}); got != "" {
+		t.Errorf("unrelated annotation = %q, want empty", got)
+	}
+	if got := lib.describe(nil); got != "" {
+		t.Errorf("nil annotations = %q", got)
+	}
+}

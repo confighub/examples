@@ -47,15 +47,15 @@ func TestChangeIsDryRunWhenUndescribed(t *testing.T) {
 // mutated if any function changed it.
 func TestSummarizeAggregatesPerUnit(t *testing.T) {
 	res := &cubapi.Result{Outcomes: []cubapi.UnitOutcome{
-		{UnitSlug: "web", Success: true, HasMutations: false},
-		{UnitSlug: "web", Success: true, HasMutations: true},
-		{UnitSlug: "api", Success: true, HasMutations: true},
+		{UnitID: "u-web", SpaceSlug: "prod", UnitSlug: "web", Success: true, HasMutations: false},
+		{UnitID: "u-web", SpaceSlug: "prod", UnitSlug: "web", Success: true, HasMutations: true},
+		{UnitID: "u-api", SpaceSlug: "prod", UnitSlug: "api", Success: true, HasMutations: true},
 	}}
 	rep := Summarize("bulk", "prod", false, res)
 	if len(rep.Outcomes) != 2 {
 		t.Fatalf("outcomes = %+v, want one row per Unit", rep.Outcomes)
 	}
-	// Sorted by slug, so api leads.
+	// Sorted by Space then Unit, so api leads.
 	if rep.Outcomes[0].Unit != "api" || rep.Outcomes[1].Unit != "web" {
 		t.Errorf("not sorted: %+v", rep.Outcomes)
 	}
@@ -67,11 +67,36 @@ func TestSummarizeAggregatesPerUnit(t *testing.T) {
 	}
 }
 
+// A slug is unique only within a Space, and a bulk edit spans Spaces. Keying the
+// aggregation by slug folded every Unit sharing a name into one row, so the
+// count an operator read off a dry run was the number of distinct names rather
+// than the number of Units about to change.
+func TestSummarizeKeepsSameSlugInDifferentSpaces(t *testing.T) {
+	res := &cubapi.Result{Outcomes: []cubapi.UnitOutcome{
+		{UnitID: "u-1", SpaceSlug: "prod", UnitSlug: "app", Success: true, HasMutations: true},
+		{UnitID: "u-2", SpaceSlug: "dev", UnitSlug: "app", Success: true, HasMutations: true},
+		{UnitID: "u-3", SpaceSlug: "staging", UnitSlug: "app", Success: true, HasMutations: true},
+	}}
+	rep := Summarize("fleet-edit", "", false, res)
+	if len(rep.Outcomes) != 3 {
+		t.Fatalf("outcomes = %+v, want one row per Unit, not per slug", rep.Outcomes)
+	}
+	if rep.Mutated != 3 {
+		t.Errorf("mutated = %d, want 3", rep.Mutated)
+	}
+	// Sorted by Space, so the rows are distinguishable in a table.
+	for i, want := range []string{"dev", "prod", "staging"} {
+		if rep.Outcomes[i].Space != want {
+			t.Errorf("outcome %d space = %q, want %q", i, rep.Outcomes[i].Space, want)
+		}
+	}
+}
+
 // Committed follows the server's Success, which it reports separately from
 // Error: a failed outcome that carried no message must not count as committed.
 func TestSummarizeDoesNotCommitAFailure(t *testing.T) {
 	res := &cubapi.Result{Outcomes: []cubapi.UnitOutcome{
-		{UnitSlug: "web", Success: false, HasMutations: true},
+		{UnitID: "u-web", SpaceSlug: "prod", UnitSlug: "web", Success: false, HasMutations: true},
 	}}
 	rep := Summarize("edit", "", false, res)
 	if rep.Mutated != 1 {
@@ -85,7 +110,7 @@ func TestSummarizeDoesNotCommitAFailure(t *testing.T) {
 // On a dry run nothing is committed, however the outcomes read.
 func TestSummarizeDryRunCommitsNothing(t *testing.T) {
 	res := &cubapi.Result{Outcomes: []cubapi.UnitOutcome{
-		{UnitSlug: "web", Success: true, HasMutations: true},
+		{UnitID: "u-web", SpaceSlug: "prod", UnitSlug: "web", Success: true, HasMutations: true},
 	}}
 	rep := Summarize("edit", "", true, res)
 	if !rep.DryRun || rep.Mutated != 1 || rep.Committed != 0 {

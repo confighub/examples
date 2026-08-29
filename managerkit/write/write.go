@@ -72,6 +72,9 @@ func Change(changeDesc string, dryRun bool) cubapi.Change {
 // Outcome is one Unit's aggregated result from one or more mutating function
 // invocations.
 type Outcome struct {
+	// Space is where the Unit lives. A slug is unique only within a Space, so a
+	// fleet-wide report has to carry it to name the Unit at all.
+	Space   string `json:"space,omitempty"`
 	Unit    string `json:"unit"`
 	Mutated bool   `json:"mutated"`
 	Error   string `json:"error,omitempty"`
@@ -102,10 +105,23 @@ func ReportMutations(cmd *cobra.Command, command, space string, dryRun bool, out
 	if output != managerkit.OutputTable {
 		return cliutil.PrintJSON(cmd.OutOrStdout(), rep)
 	}
+	// A Space column only where the report spans Spaces: a single-Unit command
+	// already names the Space in its header, and repeating it in every row of a
+	// one-row table is noise.
+	crossSpace := space == ""
 	tw := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 2, 2, ' ', 0)
-	fmt.Fprintln(tw, "UNIT\tMUTATED\tERROR")
+	if crossSpace {
+		fmt.Fprintln(tw, "SPACE\tUNIT\tMUTATED\tERROR")
+	} else {
+		fmt.Fprintln(tw, "UNIT\tMUTATED\tERROR")
+	}
 	for _, o := range rep.Outcomes {
-		fmt.Fprintf(tw, "%s\t%s\t%s\n", o.Unit, cliutil.YesNo(o.Mutated), cliutil.Dash(o.Error))
+		if crossSpace {
+			fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n",
+				cliutil.Dash(o.Space), o.Unit, cliutil.YesNo(o.Mutated), cliutil.Dash(o.Error))
+		} else {
+			fmt.Fprintf(tw, "%s\t%s\t%s\n", o.Unit, cliutil.YesNo(o.Mutated), cliutil.Dash(o.Error))
+		}
 	}
 	_ = tw.Flush()
 	verb := "changed"
@@ -119,6 +135,11 @@ func ReportMutations(cmd *cobra.Command, command, space string, dryRun bool, out
 
 // Summarize aggregates results per Unit without rendering them, for a command
 // that folds the outcome into a report of its own.
+//
+// Aggregation is by UnitID, not by slug. A slug is unique only within a Space,
+// and a bulk edit spans Spaces: keying by slug silently folds every `app` in the
+// fleet into one row, so the count an operator reads off a dry run is the number
+// of distinct names rather than the number of Units about to change.
 func Summarize(command, space string, dryRun bool, results ...*cubapi.Result) Report {
 	byUnit := map[string]*Outcome{}
 	var order []string
@@ -127,11 +148,11 @@ func Summarize(command, space string, dryRun bool, results ...*cubapi.Result) Re
 			continue
 		}
 		for _, o := range res.Outcomes {
-			out, ok := byUnit[o.UnitSlug]
+			out, ok := byUnit[o.UnitID]
 			if !ok {
-				out = &Outcome{Unit: o.UnitSlug, succeeded: true}
-				byUnit[o.UnitSlug] = out
-				order = append(order, o.UnitSlug)
+				out = &Outcome{Space: o.SpaceSlug, Unit: o.UnitSlug, succeeded: true}
+				byUnit[o.UnitID] = out
+				order = append(order, o.UnitID)
 			}
 			if o.HasMutations {
 				out.Mutated = true
@@ -144,11 +165,21 @@ func Summarize(command, space string, dryRun bool, results ...*cubapi.Result) Re
 			}
 		}
 	}
-	sort.Strings(order)
+	// Sorted by where the Unit is, not by the id rows were keyed on.
+	sort.Slice(order, func(i, j int) bool {
+		a, b := byUnit[order[i]], byUnit[order[j]]
+		if a.Space != b.Space {
+			return a.Space < b.Space
+		}
+		if a.Unit != b.Unit {
+			return a.Unit < b.Unit
+		}
+		return order[i] < order[j]
+	})
 
 	rep := Report{Command: command, Space: space, DryRun: dryRun}
-	for _, slug := range order {
-		out := byUnit[slug]
+	for _, id := range order {
+		out := byUnit[id]
 		rep.Outcomes = append(rep.Outcomes, *out)
 		if out.Mutated {
 			rep.Mutated++
