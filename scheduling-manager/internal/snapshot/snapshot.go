@@ -4,7 +4,7 @@
 // Package snapshot loads the fleet-wide view of the pod-bearing workloads placement depends on and assembles it into the
 // scheduling analysis model.
 //
-// Reading the fleet is managerkit/fleet's job. What is tool-specific is which
+// Reading the fleet is cubapi.SnapshotLoader's job. What is tool-specific is which
 // resource types the model needs and what a resource becomes once it arrives.
 package snapshot
 
@@ -13,16 +13,15 @@ import (
 
 	"github.com/confighub/sdk/core/cubapi"
 
-	"github.com/confighub/examples/managerkit/fleet"
 	"github.com/confighub/examples/scheduling-manager/internal/scheduling"
 )
 
 // UnitMeta is the per-Unit metadata joined onto resources.
-type UnitMeta = fleet.UnitMeta
+type UnitMeta = cubapi.UnitMeta
 
 // ClusterNone is the cluster key for Units the fleet view cannot attribute to a
 // cluster.
-const ClusterNone = fleet.ClusterNone
+const ClusterNone = cubapi.ClusterNone
 
 // Snapshot is a fleet-wide placement view.
 type Snapshot struct {
@@ -40,7 +39,7 @@ type Snapshot struct {
 
 // loader names the resource types the placement model needs: everything that carries a pod
 // template, which is what a nodeSelector, toleration or affinity sits on.
-var loader = fleet.Loader[scheduling.FleetResource]{
+var loader = cubapi.SnapshotLoader[scheduling.FleetResource]{
 	ResourceTypes: []string{
 		"apps/v1/Deployment",
 		"apps/v1/StatefulSet",
@@ -51,7 +50,7 @@ var loader = fleet.Loader[scheduling.FleetResource]{
 		"batch/v1beta1/CronJob",
 		"v1/Pod",
 	},
-	New: func(o fleet.Origin, doc map[string]any) scheduling.FleetResource {
+	New: func(o cubapi.Origin, doc map[string]any) scheduling.FleetResource {
 		return scheduling.FleetResource{
 			Origin: scheduling.ResourceOrigin{
 				Cluster:      o.Cluster,

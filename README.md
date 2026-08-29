@@ -87,7 +87,13 @@ Some other examples
   [`sec-scanner`](./sec-scanner/README.md),
   [`fleet-ql`](./fleet-ql/README.md), and
   [`cost-estimator`](./cost-estimator/README.md)) — and
-  [`managerkit`](./managerkit), the Go equivalent for the `cub-*` fleet managers.
+  [`managerkit`](./managerkit), the guardrail policy pack the `cub-*` fleet
+  managers share. What those managers used to share for reading a fleet and for
+  the command line is now in the Go SDK itself —
+  [`core/cubapi`](https://pkg.go.dev/github.com/confighub/sdk/core/cubapi)
+  (`SnapshotLoader`, `MemoizedClient`) and
+  [`cliutil`](https://pkg.go.dev/github.com/confighub/sdk/cliutil)
+  (`QueryFlags` and the output helpers).
   The ConfigHub API client and auth flow themselves are not here: those are the
   published [`@confighub/api`](https://www.npmjs.com/package/@confighub/api),
   [`@confighub/rtk-query`](https://www.npmjs.com/package/@confighub/rtk-query), and

@@ -1,9 +1,15 @@
 // Copyright (C) ConfigHub, Inc.
 // SPDX-License-Identifier: MIT
 
-// Package managerkit holds what the sibling packages agree on. Its subpackages
-// are the library proper: fleet reads a fleet, clikit is the command-line
-// surface, guardrails installs a policy pack.
+// Package managerkit holds what these example tools agree on. Its guardrails
+// subpackage installs a policy pack.
+//
+// What used to live here as fleet and clikit is now in the SDK, where any tool
+// can import it: github.com/confighub/sdk/core/cubapi reads a fleet
+// (SnapshotLoader, MemoizedClient), and github.com/confighub/sdk/cliutil is the
+// command-line surface (QueryFlags and its Space-label shorthands, the output
+// and table helpers). What stayed is what is a convention of these tools rather
+// than a ConfigHub primitive.
 package managerkit
 
 // CommonSpace is the Space these tools put whatever an organization keeps in

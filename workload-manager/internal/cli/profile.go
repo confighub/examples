@@ -16,7 +16,6 @@ import (
 	api "github.com/confighub/sdk/core/function/api"
 	goclientnew "github.com/confighub/sdk/core/openapi/goclient-new"
 
-	"github.com/confighub/examples/managerkit/clikit"
 	"github.com/confighub/examples/workload-manager/internal/cub"
 )
 
@@ -152,7 +151,7 @@ func newProfileInstallCmd() *cobra.Command {
 			return nil
 		},
 	}
-	clikit.AddProfilesSpaceFlag(cmd, &profilesSpace)
+	addProfilesSpaceFlag(cmd, &profilesSpace)
 	return cmd
 }
 
@@ -237,7 +236,7 @@ func newProfileListCmd() *cobra.Command {
 		},
 	}
 	addOutputFlag(cmd, &output)
-	clikit.AddProfilesSpaceFlag(cmd, &profilesSpace)
+	addProfilesSpaceFlag(cmd, &profilesSpace)
 	return cmd
 }
 
@@ -292,7 +291,7 @@ Dry-run unless --commit --change-desc; never bypasses ApplyGates.`,
 	addOutputFlag(cmd, &output)
 	commit.Bind(cmd)
 	cmd.Flags().StringArrayVar(&params, "param", nil, "profile parameter as name=value (repeatable)")
-	clikit.AddProfilesSpaceFlag(cmd, &profilesSpace)
+	addProfilesSpaceFlag(cmd, &profilesSpace)
 	return cmd
 }
 

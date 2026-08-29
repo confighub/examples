@@ -119,7 +119,7 @@ type Plan struct {
 
 // spaceInfo is the Space metadata the plan reasons about.
 type spaceInfo struct {
-	SpaceID         string
+	SpaceID         goclientnew.UUID
 	Slug            string
 	WhereTrigger    string
 	TriggerFilterID string
@@ -183,10 +183,10 @@ func (p Pack) PlanFor(ctx context.Context, client *cubapi.Client, policySpace st
 			plan.AlreadyWired = append(plan.AlreadyWired, s.Slug)
 		case s.TriggerFilterID != "":
 			plan.Skipped = append(plan.Skipped, Skip{s.Slug, "has a different TriggerFilterID — add the guardrail Filter to that Filter's set"})
-		case s.WhereTrigger != "" && !strings.Contains(s.WhereTrigger, s.SpaceID):
+		case s.WhereTrigger != "" && !strings.Contains(s.WhereTrigger, s.SpaceID.String()):
 			plan.Skipped = append(plan.Skipped, Skip{s.Slug, "custom WhereTrigger — point it at the guardrail Filter as well"})
 		default:
-			own, err := spaceTriggerCount(ctx, client, s.SpaceID)
+			own, err := cubapi.CountTriggers(ctx, client, s.SpaceID)
 			if err != nil {
 				return plan, err
 			}

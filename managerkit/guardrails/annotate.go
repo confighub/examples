@@ -20,8 +20,6 @@ import (
 
 	"github.com/confighub/sdk/cliutil"
 	"github.com/confighub/sdk/core/cubapi"
-
-	"github.com/confighub/examples/managerkit/clikit"
 )
 
 // Target is one Unit to annotate.
@@ -78,7 +76,7 @@ func (s AnnotateSpec) noun() string {
 // AnnotateCmd is `guardrails annotate` for this pack.
 func (p Pack) AnnotateCmd(preflight Preflight, spec AnnotateSpec) *cobra.Command {
 	var output, clusterFilter string
-	var filter clikit.FilterFlags
+	var filter cliutil.QueryFlags
 	var commit cliutil.CommitFlags
 
 	cmd := &cobra.Command{
@@ -95,7 +93,11 @@ func (p Pack) AnnotateCmd(preflight Preflight, spec AnnotateSpec) *cobra.Command
 			if err != nil {
 				return err
 			}
-			targets, err := spec.Targets(cmd.Context(), client, filter.Predicate(), clusterFilter)
+			where, err := filter.Predicate()
+			if err != nil {
+				return err
+			}
+			targets, err := spec.Targets(cmd.Context(), client, where, clusterFilter)
 			if err != nil {
 				return err
 			}
@@ -117,15 +119,16 @@ func (p Pack) AnnotateCmd(preflight Preflight, spec AnnotateSpec) *cobra.Command
 			}
 			sortResults(results)
 
-			if output == clikit.OutputJSON {
-				return clikit.PrintJSON(cmd.OutOrStdout(), results)
+			if output == outputJSON {
+				return cliutil.PrintJSON(cmd.OutOrStdout(), results)
 			}
 			printAnnotate(cmd, results, spec.noun(), dryRun)
 			return nil
 		},
 	}
-	clikit.AddOutputFlag(cmd, &output)
-	filter.Bind(cmd)
+	addOutputFlag(cmd, &output)
+	filter.BindWhere(cmd)
+	filter.BindSpaceLabels(cmd)
 	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "only annotate Units in this cluster")
 	commit.Bind(cmd)
 	return cmd
@@ -175,13 +178,13 @@ func printAnnotate(cmd *cobra.Command, results []Result, noun string, dryRun boo
 		if r.Error != "" {
 			line += "  ERROR: " + r.Error
 		}
-		clikit.Fprintln(out, line)
+		cliutil.Fprintln(out, line)
 	}
 	if dryRun {
-		clikit.Fprintln(out, fmt.Sprintf(
+		cliutil.Fprintln(out, fmt.Sprintf(
 			"\nDry run — %d %s(s) would be annotated. Re-run with --commit --change-desc \"…\".",
 			len(results), noun))
 		return
 	}
-	clikit.Fprintln(out, fmt.Sprintf("\nAnnotated %d %s(s).", len(results), noun))
+	cliutil.Fprintln(out, fmt.Sprintf("\nAnnotated %d %s(s).", len(results), noun))
 }

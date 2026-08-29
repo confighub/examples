@@ -4,7 +4,7 @@
 // Package snapshot loads the fleet-wide view of the Kubernetes config the namespace envelope covers and assembles it into the
 // nsmanager analysis model.
 //
-// Reading the fleet is managerkit/fleet's job. What is tool-specific is which
+// Reading the fleet is cubapi.SnapshotLoader's job. What is tool-specific is which
 // resource types the model needs and what a resource becomes once it arrives.
 package snapshot
 
@@ -13,16 +13,15 @@ import (
 
 	"github.com/confighub/sdk/core/cubapi"
 
-	"github.com/confighub/examples/managerkit/fleet"
 	"github.com/confighub/examples/namespace-manager/internal/nsmanager"
 )
 
 // UnitMeta is the per-Unit metadata joined onto resources.
-type UnitMeta = fleet.UnitMeta
+type UnitMeta = cubapi.UnitMeta
 
 // ClusterNone is the cluster key for Units the fleet view cannot attribute to a
 // cluster.
-const ClusterNone = fleet.ClusterNone
+const ClusterNone = cubapi.ClusterNone
 
 // Snapshot is a fleet-wide namespace-envelope view.
 type Snapshot struct {
@@ -40,7 +39,7 @@ type Snapshot struct {
 
 // loader names the resource types the envelope model needs: the namespace itself and
 // everything the envelope is meant to contain.
-var loader = fleet.Loader[nsmanager.FleetResource]{
+var loader = cubapi.SnapshotLoader[nsmanager.FleetResource]{
 	ResourceTypes: []string{
 		"v1/Namespace",
 		"apps/v1/Deployment",
@@ -52,7 +51,7 @@ var loader = fleet.Loader[nsmanager.FleetResource]{
 		"batch/v1beta1/CronJob",
 		"v1/Pod",
 	},
-	New: func(o fleet.Origin, doc map[string]any) nsmanager.FleetResource {
+	New: func(o cubapi.Origin, doc map[string]any) nsmanager.FleetResource {
 		return nsmanager.FleetResource{
 			Origin: nsmanager.ResourceOrigin{
 				Cluster:      o.Cluster,

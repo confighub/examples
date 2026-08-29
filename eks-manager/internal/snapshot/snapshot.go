@@ -5,7 +5,7 @@
 // resources that make up EKS clusters and assembles it into the eks analysis
 // model.
 //
-// Reading the fleet is managerkit/fleet's job. What is EKS-specific is which
+// Reading the fleet is cubapi.SnapshotLoader's job. What is EKS-specific is which
 // resources count as EKS config and which cluster each one belongs to -- and for
 // this tool that is not the Target the config is delivered to.
 package snapshot
@@ -18,15 +18,14 @@ import (
 	"github.com/confighub/sdk/core/cubapi"
 
 	"github.com/confighub/examples/eks-manager/internal/eks"
-	"github.com/confighub/examples/managerkit/fleet"
 )
 
 // UnitMeta is the per-Unit metadata joined onto resources.
-type UnitMeta = fleet.UnitMeta
+type UnitMeta = cubapi.UnitMeta
 
 // ClusterNone is the cluster key for Units this tool cannot attribute to a
 // cluster.
-const ClusterNone = fleet.ClusterNone
+const ClusterNone = cubapi.ClusterNone
 
 // SpaceLabelCluster is the Space label naming the EKS cluster a Space describes.
 const SpaceLabelCluster = "Cluster"
@@ -87,11 +86,11 @@ func clusterKey(meta UnitMeta) string {
 	return ClusterNone
 }
 
-var loader = fleet.Loader[eks.FleetResource]{
+var loader = cubapi.SnapshotLoader[eks.FleetResource]{
 	ResourceWhere: resourceTypeWhere,
-	Keep:          func(o fleet.Origin) bool { return resourceTypeMatch.MatchString(o.ResourceType) },
+	Keep:          func(o cubapi.Origin) bool { return resourceTypeMatch.MatchString(o.ResourceType) },
 	ClusterKey:    clusterKey,
-	New: func(o fleet.Origin, doc map[string]any) eks.FleetResource {
+	New: func(o cubapi.Origin, doc map[string]any) eks.FleetResource {
 		return eks.FleetResource{
 			Origin: eks.ResourceOrigin{
 				Cluster:      o.Cluster,

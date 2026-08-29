@@ -51,7 +51,11 @@ bindings to admin/edit/view/system:* are reported by 'findings', not here.`,
 			if err != nil {
 				return err
 			}
-			snap, err := snapshot.Load(cmd.Context(), client, filter.Predicate())
+			where, err := filter.Predicate()
+			if err != nil {
+				return err
+			}
+			snap, err := snapshot.Load(cmd.Context(), client, where)
 			if err != nil {
 				return err
 			}
@@ -153,7 +157,11 @@ SUBJECT is "Kind:Name", or "ServiceAccount:namespace/name" for a ServiceAccount:
 			if err != nil {
 				return err
 			}
-			snap, err := snapshot.Load(cmd.Context(), client, filter.Predicate())
+			where, err := filter.Predicate()
+			if err != nil {
+				return err
+			}
+			snap, err := snapshot.Load(cmd.Context(), client, where)
 			if err != nil {
 				return err
 			}
