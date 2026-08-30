@@ -28,7 +28,6 @@ const otelSidecarValue = "image: {{ .Params.image }}\nports:\n- name: otlp-grpc\
 // library is this tool's profile library.
 var library = profiles.Library{
 	Tool:           "observability-manager",
-	Domain:         "observability.confighub.com",
 	Target:         "a workload",
 	ParamExample:   "--param image=otel/opentelemetry-collector:0.100 for otel-sidecar",
 	Preflight:      cub.Preflight,

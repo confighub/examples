@@ -32,7 +32,6 @@ const hpaRangeYQ = `.spec.minReplicas = ($params.min | tonumber) | .spec.maxRepl
 // library is this tool's profile library.
 var library = profiles.Library{
 	Tool:           "autoscale-manager",
-	Domain:         "autoscale.confighub.com",
 	Noun:           "autoscaling profile",
 	Target:         "an HPA Unit",
 	ParamExample:   "--param min=3 --param max=10 for hpa-range",

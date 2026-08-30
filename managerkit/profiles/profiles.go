@@ -16,7 +16,6 @@ package profiles
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/confighub/sdk/core/cubapi"
@@ -24,35 +23,14 @@ import (
 	goclientnew "github.com/confighub/sdk/core/openapi/goclient-new"
 )
 
-// descriptionAnnotation is where a profile's human description is kept. A stored
-// Invocation has no description field, so it goes in an annotation under the
-// tool's own domain.
-func (l Library) descriptionAnnotation() string { return l.Domain + "/description" }
-
-// describe reads a profile's description, preferring this tool's own annotation.
+// DescriptionAnnotation is where a profile's human description is kept: a stored
+// Invocation has no description field.
 //
-// The library Space is shared, so a tool lists profiles other tools installed as
-// well -- that is the point of one place to look. Each tool writes the
-// description under its own domain, so falling back to any tool's key is what
-// keeps those rows from listing blank.
-func (l Library) describe(annotations map[string]string) string {
-	if d, ok := annotations[l.descriptionAnnotation()]; ok {
-		return d
-	}
-	// Sorted, so a profile carrying more than one tool's annotation describes
-	// itself the same way on every run.
-	keys := make([]string, 0, len(annotations))
-	for k := range annotations {
-		if strings.HasSuffix(k, "/description") {
-			keys = append(keys, k)
-		}
-	}
-	sort.Strings(keys)
-	if len(keys) > 0 {
-		return annotations[keys[0]]
-	}
-	return ""
-}
+// One key for every tool, not one per tool. The library Space is shared -- that
+// is the point of one place to look -- so a per-tool key would mean each tool
+// listing every profile it did not install with a blank description, and nothing
+// about a description is tool-specific enough to earn that.
+const DescriptionAnnotation = "Description"
 
 // Param declares one profile parameter the caller supplies at apply time.
 type Param struct {
@@ -105,8 +83,6 @@ type Library struct {
 	// Tool is the tool's module name, e.g. "autoscale-manager". It becomes the
 	// profiles Space's `app` label.
 	Tool string
-	// Domain is the tool's annotation domain, e.g. "autoscale.confighub.com".
-	Domain string
 	// Noun is what this tool calls a profile in help text: "autoscaling
 	// profile", "placement profile", or just "profile".
 	Noun string
@@ -170,7 +146,7 @@ func (l Library) buildInvocation(spaceID goclientnew.UUID, spec Spec) goclientne
 			Arguments:    spec.Args,
 		}),
 		Parameters:  params,
-		Annotations: map[string]string{l.descriptionAnnotation(): spec.Description},
+		Annotations: map[string]string{DescriptionAnnotation: spec.Description},
 	}
 }
 

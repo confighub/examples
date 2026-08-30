@@ -54,7 +54,6 @@ func resTier(slug, cpu, mem string) profiles.Spec {
 // library is this tool's profile library.
 var library = profiles.Library{
 	Tool:           "workload-manager",
-	Domain:         "workload.confighub.com",
 	Target:         "a workload",
 	ParamExample:   "--param container=web for the resource tiers",
 	Preflight:      cub.Preflight,

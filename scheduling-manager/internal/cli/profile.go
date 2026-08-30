@@ -28,7 +28,6 @@ const nodePoolYQ = `.spec.template.spec.nodeSelector.pool = $params.pool`
 // library is this tool's profile library.
 var library = profiles.Library{
 	Tool:           "scheduling-manager",
-	Domain:         "scheduling.confighub.com",
 	Noun:           "placement profile",
 	Target:         "a workload",
 	ParamExample:   "--param pool=gpu for node-pool",

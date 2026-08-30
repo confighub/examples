@@ -12,17 +12,22 @@ import (
 
 var lib = Library{
 	Tool:   "autoscale-manager",
-	Domain: "autoscale.confighub.com",
 	Noun:   "autoscaling profile",
 	Target: "an HPA Unit",
 }
 
-// A profile's description has nowhere to live on an Invocation, so it goes in an
-// annotation under the tool's own domain. The install and list commands have to
-// agree on that key or a listed profile shows no description.
-func TestDescriptionAnnotationKey(t *testing.T) {
-	if got := lib.descriptionAnnotation(); got != "autoscale.confighub.com/description" {
-		t.Fatalf("annotation key = %q", got)
+// The install and list commands have to agree on the annotation key, or a listed
+// profile shows no description. One key for every tool keeps them agreeing even
+// across tools sharing the library Space.
+func TestDescriptionAnnotationIsShared(t *testing.T) {
+	if DescriptionAnnotation != "Description" {
+		t.Fatalf("annotation key = %q", DescriptionAnnotation)
+	}
+	other := Library{Tool: "workload-manager", Target: "a workload"}
+	inv := other.buildInvocation(goclientnew.UUID{}, Spec{Slug: "x", Description: "theirs"})
+	// A profile another tool installed describes itself to this one.
+	if got := inv.Annotations[DescriptionAnnotation]; got != "theirs" {
+		t.Errorf("cross-tool description = %q", got)
 	}
 }
 
@@ -39,7 +44,7 @@ func TestBuildInvocation(t *testing.T) {
 	if inv.Slug != "hpa-range" || inv.DisplayName != "hpa-range" {
 		t.Errorf("slug/displayName = %q/%q", inv.Slug, inv.DisplayName)
 	}
-	if inv.Annotations["autoscale.confighub.com/description"] != "set minReplicas/maxReplicas" {
+	if inv.Annotations[DescriptionAnnotation] != "set minReplicas/maxReplicas" {
 		t.Errorf("description annotation = %v", inv.Annotations)
 	}
 	if inv.ToolchainType != "Kubernetes/YAML" {
@@ -116,34 +121,5 @@ func TestNounDefaults(t *testing.T) {
 	}
 	if got := lib.noun(); got != "autoscaling profile" {
 		t.Errorf("noun = %q", got)
-	}
-}
-
-// The library Space is shared, so a tool lists profiles other tools installed.
-// Each writes its description under its own domain, so a row would otherwise
-// list blank for every profile this tool did not install.
-func TestDescribeFallsBackToAnotherToolsAnnotation(t *testing.T) {
-	own := map[string]string{"autoscale.confighub.com/description": "mine"}
-	if got := lib.describe(own); got != "mine" {
-		t.Errorf("own annotation = %q", got)
-	}
-	other := map[string]string{"workload.confighub.com/description": "theirs"}
-	if got := lib.describe(other); got != "theirs" {
-		t.Errorf("another tool's annotation = %q, want it read rather than blank", got)
-	}
-	// This tool's own key wins when both are present.
-	both := map[string]string{
-		"workload.confighub.com/description":  "theirs",
-		"autoscale.confighub.com/description": "mine",
-	}
-	if got := lib.describe(both); got != "mine" {
-		t.Errorf("both = %q, want this tool's own", got)
-	}
-	// An unrelated annotation is not a description.
-	if got := lib.describe(map[string]string{"example.com/owner": "team"}); got != "" {
-		t.Errorf("unrelated annotation = %q, want empty", got)
-	}
-	if got := lib.describe(nil); got != "" {
-		t.Errorf("nil annotations = %q", got)
 	}
 }

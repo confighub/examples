@@ -47,7 +47,15 @@ func (l Library) installCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "install",
 		Short: fmt.Sprintf("Create the profile library Space and seed the default %ss", l.noun()),
-		Args:  cobra.NoArgs,
+		Long: fmt.Sprintf(`install creates the profile library Space and seeds the default %ss.
+
+Re-running it is safe: a profile that is already there is left alone, so
+installing after adding one installs only the new one. That also means it does
+not update a profile whose definition has changed -- a new description, argument
+or parameter reaches the library only once the old Invocation is deleted:
+
+  cub invocation delete <slug> --space %s`, l.noun(), managerkit.CommonSpace),
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			client, err := l.Preflight(ctx)
@@ -117,7 +125,7 @@ func (l Library) listCmd() *cobra.Command {
 				for _, p := range inv.Parameters {
 					r.Parameters = append(r.Parameters, p.ParameterName)
 				}
-				r.Description = l.describe(inv.Annotations)
+				r.Description = inv.Annotations[DescriptionAnnotation]
 				rows = append(rows, r)
 			}
 			sort.Slice(rows, func(i, j int) bool { return rows[i].Slug < rows[j].Slug })
