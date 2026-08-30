@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/confighub/examples/managerkit"
 	"github.com/confighub/examples/observability-manager/internal/cub"
 	"github.com/confighub/examples/observability-manager/internal/observability"
 	"github.com/confighub/examples/observability-manager/internal/snapshot"
@@ -58,11 +59,11 @@ Filter with --cluster / --namespace; --uncovered-only shows the gaps.`,
 				return err
 			}
 			report := buildCoverageReport(snap, clusterFilter, namespaceFilter, uncoveredOnly)
-			if output == outputTable {
-				printCoverageTable(cmd, report)
-				return nil
+			if done, err := managerkit.Render(cmd.OutOrStdout(), output, report); done || err != nil {
+				return err
 			}
-			return printJSON(cmd.OutOrStdout(), report)
+			printCoverageTable(cmd, report)
+			return nil
 		},
 	}
 	addOutputFlag(cmd, &output)

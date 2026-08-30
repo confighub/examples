@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/confighub/examples/managerkit"
 	"github.com/confighub/sdk/cliutil"
 	goclientnew "github.com/confighub/sdk/core/openapi/goclient-new"
 
@@ -85,8 +86,8 @@ Refuses when the Service has no metrics port and no --port. Dry-run unless
 			plan := ensureSMPlan{Action: "create-servicemonitor", DryRun: dryRun, Space: ref.SpaceSlug, Namespace: svc.Namespace, Unit: smSlug, Manifest: manifest}
 			out := cmd.OutOrStdout()
 			if dryRun {
-				if output == outputJSON {
-					return printJSON(out, plan)
+				if done, err := managerkit.Render(out, output, plan); done || err != nil {
+					return err
 				}
 				fprintln(out, fmt.Sprintf("Dry run — would create ServiceMonitor Unit %s/%s:", ref.SpaceSlug, smSlug))
 				fprintln(out, "")
@@ -107,8 +108,8 @@ Refuses when the Service has no metrics port and no --port. Dry-run unless
 			}
 			plan.UnitID = created.UnitID.String()
 			plan.Revision = created.HeadRevisionNum
-			if output == outputJSON {
-				return printJSON(out, plan)
+			if done, err := managerkit.Render(out, output, plan); done || err != nil {
+				return err
 			}
 			fprintln(out, fmt.Sprintf("Created ServiceMonitor Unit %s/%s (revision %d). Publish the Space to deploy: cub release publish %s",
 				ref.SpaceSlug, smSlug, created.HeadRevisionNum, ref.SpaceSlug))

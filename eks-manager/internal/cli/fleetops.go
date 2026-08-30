@@ -11,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/confighub/examples/managerkit"
 	"github.com/confighub/sdk/cliutil"
 	"github.com/confighub/sdk/core/cubapi"
 
@@ -138,11 +139,11 @@ Dry-run by default; pass --commit --change-desc "..." to write.`,
 				return r.Outcomes[i].Unit < r.Outcomes[j].Unit
 			})
 
-			if output == outputTable {
-				printFleetReport(cmd, r, fmt.Sprintf("%s = %s", shortPath(path), value))
-				return nil
+			if done, err := managerkit.Render(cmd.OutOrStdout(), output, r); done || err != nil {
+				return err
 			}
-			return printJSON(cmd.OutOrStdout(), r)
+			printFleetReport(cmd, r, fmt.Sprintf("%s = %s", shortPath(path), value))
+			return nil
 		},
 	}
 	addOutputFlag(cmd, &output)

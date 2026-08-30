@@ -120,8 +120,8 @@ func (p Pack) AnnotateCmd(preflight Preflight, spec AnnotateSpec) *cobra.Command
 			}
 			sortResults(results)
 
-			if output == managerkit.OutputJSON {
-				return cliutil.PrintJSON(cmd.OutOrStdout(), results)
+			if done, err := managerkit.Render(cmd.OutOrStdout(), output, results); done || err != nil {
+				return err
 			}
 			printAnnotate(cmd, results, spec.noun(), dryRun)
 			return nil

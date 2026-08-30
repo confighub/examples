@@ -18,6 +18,7 @@ import (
 
 	"github.com/confighub/examples/eks-manager/internal/cub"
 	"github.com/confighub/examples/eks-manager/internal/snapshot"
+	"github.com/confighub/examples/managerkit"
 	"github.com/confighub/examples/managerkit/guardrails"
 )
 
@@ -125,11 +126,11 @@ Dry-run by default; pass --commit to write.`,
 				}
 				plan.Committed = true
 			}
-			if output == outputTable {
-				guardrails.PrintPlan(cmd, plan)
-				return nil
+			if done, err := managerkit.Render(cmd.OutOrStdout(), output, plan); done || err != nil {
+				return err
 			}
-			return printJSON(cmd.OutOrStdout(), plan)
+			guardrails.PrintPlan(cmd, plan)
+			return nil
 		},
 	}
 	cmd.Flags().StringVar(&policySpace, "policy-space", guardrails.DefaultPolicySpace,

@@ -11,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/confighub/examples/managerkit"
 	"github.com/confighub/examples/rbac-manager-for-agents/internal/cub"
 	"github.com/confighub/examples/rbac-manager-for-agents/internal/rbac"
 	"github.com/confighub/examples/rbac-manager-for-agents/internal/snapshot"
@@ -67,11 +68,11 @@ bindings to admin/edit/view/system:* are reported by 'findings', not here.`,
 				Name:      name,
 			}
 			rows := grantRows(rbac.WhoCan(snap.Clusters, query))
-			if output == outputTable {
-				printGrantTable(cmd, rows)
-				return nil
+			if done, err := managerkit.Render(cmd.OutOrStdout(), output, rows); done || err != nil {
+				return err
 			}
-			return printJSON(cmd.OutOrStdout(), rows)
+			printGrantTable(cmd, rows)
+			return nil
 		},
 	}
 	addOutputFlag(cmd, &output)
@@ -166,11 +167,11 @@ SUBJECT is "Kind:Name", or "ServiceAccount:namespace/name" for a ServiceAccount:
 				return err
 			}
 			rows := subjectGrantRows(rbac.SubjectAccess(snap.Clusters, subject))
-			if output == outputTable {
-				printSubjectGrantTable(cmd, rows)
-				return nil
+			if done, err := managerkit.Render(cmd.OutOrStdout(), output, rows); done || err != nil {
+				return err
 			}
-			return printJSON(cmd.OutOrStdout(), rows)
+			printSubjectGrantTable(cmd, rows)
+			return nil
 		},
 	}
 	addOutputFlag(cmd, &output)

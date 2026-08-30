@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/confighub/examples/managerkit"
 	"github.com/confighub/sdk/cliutil"
 	"github.com/confighub/sdk/core/cubapi"
 
@@ -122,10 +123,8 @@ Dry-run by default; pass --commit --change-desc "..." to write stage 1.`,
 			// node groups only move one minor at a time, so it cannot simply
 			// catch up afterwards.
 			if plan.Blocked && !dryRun {
-				if output == outputTable {
+				if done, err := managerkit.Render(cmd.OutOrStdout(), output, plan); !done && err == nil {
 					printUpgradePlan(cmd, plan)
-				} else {
-					_ = printJSON(cmd.OutOrStdout(), plan)
 				}
 				return fmt.Errorf("refused: %d node group(s) are behind the current control plane and must be caught up first",
 					countCatchup(plan))
@@ -156,11 +155,11 @@ Dry-run by default; pass --commit --change-desc "..." to write stage 1.`,
 				}
 			}
 
-			if output == outputTable {
-				printUpgradePlan(cmd, plan)
-				return nil
+			if done, err := managerkit.Render(cmd.OutOrStdout(), output, plan); done || err != nil {
+				return err
 			}
-			return printJSON(cmd.OutOrStdout(), plan)
+			printUpgradePlan(cmd, plan)
+			return nil
 		},
 	}
 	addOutputFlag(cmd, &output)

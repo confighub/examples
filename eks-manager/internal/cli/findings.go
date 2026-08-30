@@ -15,6 +15,7 @@ import (
 	"github.com/confighub/examples/eks-manager/internal/cub"
 	"github.com/confighub/examples/eks-manager/internal/eks"
 	"github.com/confighub/examples/eks-manager/internal/snapshot"
+	"github.com/confighub/examples/managerkit"
 )
 
 type findingsReport struct {
@@ -81,11 +82,11 @@ separately by 'plan', which compares head against last-applied.`,
 				return err
 			}
 			report := buildFindingsReport(snap, score, analyzer, clusterFilter)
-			if output == outputTable {
-				printFindingsTable(cmd, report)
-				return nil
+			if done, err := managerkit.Render(cmd.OutOrStdout(), output, report); done || err != nil {
+				return err
 			}
-			return printJSON(cmd.OutOrStdout(), report)
+			printFindingsTable(cmd, report)
+			return nil
 		},
 	}
 	addOutputFlag(cmd, &output)

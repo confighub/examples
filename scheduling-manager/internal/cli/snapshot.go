@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/confighub/examples/managerkit"
 	"github.com/confighub/examples/scheduling-manager/internal/cub"
 	"github.com/confighub/examples/scheduling-manager/internal/snapshot"
 )
@@ -67,11 +68,11 @@ Canonical base/policy Spaces are excluded.`,
 				return err
 			}
 			report := buildSnapshotReport(snap)
-			if output == outputTable {
-				printSnapshotTable(cmd, report)
-				return nil
+			if done, err := managerkit.Render(cmd.OutOrStdout(), output, report); done || err != nil {
+				return err
 			}
-			return printJSON(cmd.OutOrStdout(), report)
+			printSnapshotTable(cmd, report)
+			return nil
 		},
 	}
 	addOutputFlag(cmd, &output)

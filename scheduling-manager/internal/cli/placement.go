@@ -11,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/confighub/examples/managerkit"
 	"github.com/confighub/examples/scheduling-manager/internal/cub"
 	"github.com/confighub/examples/scheduling-manager/internal/scheduling"
 	"github.com/confighub/examples/scheduling-manager/internal/snapshot"
@@ -73,11 +74,11 @@ pin nothing.`,
 				return err
 			}
 			report := buildPlacementReport(snap, clusterFilter, namespaceFilter, unconstrainedOnly)
-			if output == outputTable {
-				printPlacementTable(cmd, report)
-				return nil
+			if done, err := managerkit.Render(cmd.OutOrStdout(), output, report); done || err != nil {
+				return err
 			}
-			return printJSON(cmd.OutOrStdout(), report)
+			printPlacementTable(cmd, report)
+			return nil
 		},
 	}
 	addOutputFlag(cmd, &output)

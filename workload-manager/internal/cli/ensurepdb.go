@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/confighub/examples/managerkit"
 	"github.com/confighub/sdk/cliutil"
 	goclientnew "github.com/confighub/sdk/core/openapi/goclient-new"
 
@@ -96,8 +97,8 @@ would cover the whole namespace). Dry-run unless --commit --change-desc.`,
 			}
 			out := cmd.OutOrStdout()
 			if dryRun {
-				if output == outputJSON {
-					return printJSON(out, plan)
+				if done, err := managerkit.Render(out, output, plan); done || err != nil {
+					return err
 				}
 				fprintln(out, fmt.Sprintf("Dry run — would create PDB Unit %s/%s:", ref.SpaceSlug, pdbSlug))
 				fprintln(out, "")
@@ -119,8 +120,8 @@ would cover the whole namespace). Dry-run unless --commit --change-desc.`,
 			}
 			plan.UnitID = created.UnitID.String()
 			plan.Revision = created.HeadRevisionNum
-			if output == outputJSON {
-				return printJSON(out, plan)
+			if done, err := managerkit.Render(out, output, plan); done || err != nil {
+				return err
 			}
 			fprintln(out, fmt.Sprintf("Created PDB Unit %s/%s (revision %d). Publish the Space to deploy: cub release publish %s",
 				ref.SpaceSlug, pdbSlug, created.HeadRevisionNum, ref.SpaceSlug))

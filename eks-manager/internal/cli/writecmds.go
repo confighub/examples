@@ -11,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/confighub/examples/managerkit"
 	"github.com/confighub/sdk/cliutil"
 	"github.com/confighub/sdk/core/cubapi"
 	goclientnew "github.com/confighub/sdk/core/openapi/goclient-new"
@@ -197,22 +198,22 @@ func runEdit(cmd *cobra.Command, commit cliutil.CommitFlags, output, target, com
 	r.Command, r.Space, r.Unit, r.DryRun, r.Warnings = command, ref.spaceSlug, ref.unitSlug, dryRun, warnings
 
 	if r.Blocks {
-		if output == outputTable {
+		// The report is written whichever way was asked for, then the refusal is
+		// returned: a caller who gets a non-zero exit still gets the reason.
+		if done, err := managerkit.Render(cmd.OutOrStdout(), output, r); !done && err == nil {
 			printEditReport(cmd, r)
-			return fmt.Errorf("refused: this change cannot be reconciled in place")
 		}
-		_ = printJSON(cmd.OutOrStdout(), r)
 		return fmt.Errorf("refused: this change cannot be reconciled in place")
 	}
 
 	if err := applyEdits(cmd.Context(), client, ref, &r, changeDesc, dryRun); err != nil {
 		return err
 	}
-	if output == outputTable {
-		printEditReport(cmd, r)
-		return nil
+	if done, err := managerkit.Render(cmd.OutOrStdout(), output, r); done || err != nil {
+		return err
 	}
-	return printJSON(cmd.OutOrStdout(), r)
+	printEditReport(cmd, r)
+	return nil
 }
 
 func newScaleCmd() *cobra.Command {

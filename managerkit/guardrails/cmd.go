@@ -61,11 +61,11 @@ modified. Narrow which Spaces get wired with --where-space.`,
 				}
 				plan.Committed = true
 			}
-			if output == managerkit.OutputTable {
-				PrintPlan(cmd, plan)
-				return nil
+			if done, err := managerkit.Render(cmd.OutOrStdout(), output, plan); done || err != nil {
+				return err
 			}
-			return cliutil.PrintJSON(cmd.OutOrStdout(), plan)
+			PrintPlan(cmd, plan)
+			return nil
 		},
 	}
 	cmd.Flags().StringVar(&policySpace, "policy-space", DefaultPolicySpace,
@@ -98,11 +98,11 @@ Unit that is blocked for some other reason.`,
 			if err != nil {
 				return err
 			}
-			if output == managerkit.OutputTable {
-				PrintStatus(cmd, rows)
-				return nil
+			if done, err := managerkit.Render(cmd.OutOrStdout(), output, rows); done || err != nil {
+				return err
 			}
-			return cliutil.PrintJSON(cmd.OutOrStdout(), rows)
+			PrintStatus(cmd, rows)
+			return nil
 		},
 	}
 	managerkit.AddOutputFlag(cmd, &output)

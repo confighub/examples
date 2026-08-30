@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/confighub/examples/managerkit"
 	"github.com/confighub/examples/observability-manager/internal/cub"
 	"github.com/confighub/examples/observability-manager/internal/observability"
 	"github.com/confighub/examples/observability-manager/internal/snapshot"
@@ -56,11 +57,11 @@ sidecar.`,
 				return err
 			}
 			report := buildSidecarsReport(snap, sidecarNames, clusterFilter, namespaceFilter, missingOnly)
-			if output == outputTable {
-				printSidecarsTable(cmd, report)
-				return nil
+			if done, err := managerkit.Render(cmd.OutOrStdout(), output, report); done || err != nil {
+				return err
 			}
-			return printJSON(cmd.OutOrStdout(), report)
+			printSidecarsTable(cmd, report)
+			return nil
 		},
 	}
 	addOutputFlag(cmd, &output)

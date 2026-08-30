@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/confighub/examples/managerkit"
 	"github.com/confighub/sdk/cliutil"
 	"github.com/confighub/sdk/core/cubapi"
 
@@ -156,8 +157,8 @@ func reportFix(cmd *cobra.Command, res *cubapi.Result, space, unit, action strin
 			r.Mutated = true
 		}
 	}
-	if output == outputJSON {
-		return printJSON(cmd.OutOrStdout(), r)
+	if done, err := managerkit.Render(cmd.OutOrStdout(), output, r); done || err != nil {
+		return err
 	}
 	out := cmd.OutOrStdout()
 	switch {

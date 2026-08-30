@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/confighub/examples/managerkit"
 	"github.com/confighub/sdk/cliutil"
 	"github.com/confighub/sdk/core/cubapi"
 	goclientnew "github.com/confighub/sdk/core/openapi/goclient-new"
@@ -84,11 +85,11 @@ func createResourceUnit(cmd *cobra.Command, client *cubapi.Client, cs *eks.Clust
 	}
 
 	if dryRun {
-		if output == outputTable {
-			printAddResource(cmd, r)
-			return nil
+		if done, err := managerkit.Render(cmd.OutOrStdout(), output, r); done || err != nil {
+			return err
 		}
-		return printJSON(cmd.OutOrStdout(), r)
+		printAddResource(cmd, r)
+		return nil
 	}
 
 	sp, err := cubapi.ResolveSpace(cmd.Context(), client, space)
@@ -107,11 +108,11 @@ func createResourceUnit(cmd *cobra.Command, client *cubapi.Client, cs *eks.Clust
 		return err
 	}
 	r.Revision = created.HeadRevisionNum
-	if output == outputTable {
-		printAddResource(cmd, r)
-		return nil
+	if done, err := managerkit.Render(cmd.OutOrStdout(), output, r); done || err != nil {
+		return err
 	}
-	return printJSON(cmd.OutOrStdout(), r)
+	printAddResource(cmd, r)
+	return nil
 }
 
 func unitSlugs(cs *eks.ClusterSet) []string {
