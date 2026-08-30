@@ -18,6 +18,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/confighub/examples/managerkit"
 	"github.com/confighub/sdk/cliutil"
 	"github.com/confighub/sdk/core/cubapi"
 )
@@ -119,14 +120,14 @@ func (p Pack) AnnotateCmd(preflight Preflight, spec AnnotateSpec) *cobra.Command
 			}
 			sortResults(results)
 
-			if output == outputJSON {
+			if output == managerkit.OutputJSON {
 				return cliutil.PrintJSON(cmd.OutOrStdout(), results)
 			}
 			printAnnotate(cmd, results, spec.noun(), dryRun)
 			return nil
 		},
 	}
-	addOutputFlag(cmd, &output)
+	managerkit.AddOutputFlag(cmd, &output)
 	filter.BindWhere(cmd)
 	filter.BindSpaceLabels(cmd)
 	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "only annotate Units in this cluster")

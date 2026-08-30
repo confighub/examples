@@ -10,6 +10,7 @@ import (
 
 	"github.com/confighub/sdk/cliutil"
 
+	"github.com/confighub/examples/managerkit/write"
 	"github.com/confighub/examples/observability-manager/internal/cub"
 )
 
@@ -51,15 +52,15 @@ ApplyGates.`,
 			if err != nil {
 				return err
 			}
-			ref, err := parseUnitRef(cmd.Context(), client, args[0])
+			ref, err := write.ParseUnitRef(cmd.Context(), client, args[0])
 			if err != nil {
 				return err
 			}
-			res, err := cub.InvokeSetPath(cmd.Context(), client, path, value, ref.selector(), changeOf(changeDesc, dryRun))
+			res, err := cub.InvokeSetPath(cmd.Context(), client, path, value, ref.Selector(), write.Change(changeDesc, dryRun))
 			if err != nil {
 				return err
 			}
-			return reportMutation(cmd, "inject-sidecar", ref.spaceSlug, dryRun, output, res)
+			return write.ReportMutations(cmd, "inject-sidecar", ref.SpaceSlug, dryRun, output, res)
 		},
 	}
 	addOutputFlag(cmd, &output)

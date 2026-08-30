@@ -15,6 +15,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/confighub/examples/managerkit"
 	"github.com/confighub/sdk/cliutil"
 	"github.com/confighub/sdk/core/cubapi"
 )
@@ -60,7 +61,7 @@ modified. Narrow which Spaces get wired with --where-space.`,
 				}
 				plan.Committed = true
 			}
-			if output == outputTable {
+			if output == managerkit.OutputTable {
 				PrintPlan(cmd, plan)
 				return nil
 			}
@@ -71,7 +72,7 @@ modified. Narrow which Spaces get wired with --where-space.`,
 		"Space holding the guardrail Triggers and the shared Filter; every tool defaults to the same one")
 	cmd.Flags().StringVar(&whereSpace, "where-space", "", "ConfigHub filter over Spaces to narrow which Spaces get wired")
 	cmd.Flags().BoolVar(&commit, "commit", false, "apply the plan (default is dry-run)")
-	addOutputFlag(cmd, &output)
+	managerkit.AddOutputFlag(cmd, &output)
 	return cmd
 }
 
@@ -97,14 +98,14 @@ Unit that is blocked for some other reason.`,
 			if err != nil {
 				return err
 			}
-			if output == outputTable {
+			if output == managerkit.OutputTable {
 				PrintStatus(cmd, rows)
 				return nil
 			}
 			return cliutil.PrintJSON(cmd.OutOrStdout(), rows)
 		},
 	}
-	addOutputFlag(cmd, &output)
+	managerkit.AddOutputFlag(cmd, &output)
 	return cmd
 }
 

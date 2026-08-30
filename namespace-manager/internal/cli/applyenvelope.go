@@ -11,6 +11,7 @@ import (
 	"github.com/confighub/sdk/cliutil"
 	"github.com/confighub/sdk/core/cubapi"
 
+	"github.com/confighub/examples/managerkit/write"
 	"github.com/confighub/examples/namespace-manager/internal/cub"
 )
 
@@ -58,7 +59,7 @@ never bypasses ApplyGates.`,
 			if err != nil {
 				return err
 			}
-			return reportMutation(cmd, res, "apply-envelope", spaceSlug, dryRun, output)
+			return write.ReportMutations(cmd, "apply-envelope", spaceSlug, dryRun, output, res)
 		},
 	}
 	addOutputFlag(cmd, &output)
