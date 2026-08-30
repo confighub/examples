@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/confighub/examples/managerkit"
 	"github.com/confighub/sdk/cliutil"
 	"github.com/confighub/sdk/core/cubapi"
 	api "github.com/confighub/sdk/core/function/api"
@@ -177,8 +178,8 @@ func inList(slugs []string) string {
 }
 
 func reportBackfill(cmd *cobra.Command, r backfillReport, output string) error {
-	if output != outputTable {
-		return printJSON(cmd.OutOrStdout(), r)
+	if done, err := managerkit.Render(cmd.OutOrStdout(), output, r); done || err != nil {
+		return err
 	}
 	if r.DryRun {
 		fprintln(cmd.OutOrStdout(), fmt.Sprintf("Would clone %d Unit(s) from %s into %s, then set-namespace to %q:",

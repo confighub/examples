@@ -14,6 +14,7 @@ import (
 	"github.com/confighub/examples/eks-manager/internal/cub"
 	"github.com/confighub/examples/eks-manager/internal/eks"
 	"github.com/confighub/examples/eks-manager/internal/snapshot"
+	"github.com/confighub/examples/managerkit"
 )
 
 // nodeGroupVersion is one node group's version relative to its control plane.
@@ -98,11 +99,11 @@ downgrade) is checked by the 'plan' command, a later milestone.`,
 				return err
 			}
 			report := buildVersionsReport(snap)
-			if output == outputTable {
-				printVersionsTable(cmd, report)
-				return nil
+			if done, err := managerkit.Render(cmd.OutOrStdout(), output, report); done || err != nil {
+				return err
 			}
-			return printJSON(cmd.OutOrStdout(), report)
+			printVersionsTable(cmd, report)
+			return nil
 		},
 	}
 	addOutputFlag(cmd, &output)

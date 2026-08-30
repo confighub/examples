@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/confighub/examples/managerkit"
 	"github.com/confighub/sdk/cliutil"
 	"github.com/confighub/sdk/core/cubapi"
 	goclientnew "github.com/confighub/sdk/core/openapi/goclient-new"
@@ -167,11 +168,11 @@ Dry-run by default; pass --commit --change-desc "..." to write.`,
 			}
 
 			if dryRun {
-				if output == outputTable {
-					printCreatePlan(cmd, plan, units)
-					return nil
+				if done, err := managerkit.Render(cmd.OutOrStdout(), output, plan); done || err != nil {
+					return err
 				}
-				return printJSON(cmd.OutOrStdout(), plan)
+				printCreatePlan(cmd, plan, units)
+				return nil
 			}
 
 			client, err := cub.Preflight(cmd.Context())
@@ -209,11 +210,11 @@ Dry-run by default; pass --commit --change-desc "..." to write.`,
 				plan.Created++
 			}
 
-			if output == outputTable {
-				printCreateResult(cmd, plan)
-				return nil
+			if done, err := managerkit.Render(cmd.OutOrStdout(), output, plan); done || err != nil {
+				return err
 			}
-			return printJSON(cmd.OutOrStdout(), plan)
+			printCreateResult(cmd, plan)
+			return nil
 		},
 	}
 

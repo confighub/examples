@@ -13,6 +13,7 @@ import (
 	"github.com/confighub/examples/autoscale-manager/internal/autoscale"
 	"github.com/confighub/examples/autoscale-manager/internal/cub"
 	"github.com/confighub/examples/autoscale-manager/internal/snapshot"
+	"github.com/confighub/examples/managerkit"
 )
 
 type autoscalerRow struct {
@@ -60,11 +61,11 @@ across the fleet: its scale target, min/max replicas, and whether it is pinned
 				return err
 			}
 			report := buildListReport(snap, clusterFilter, namespaceFilter)
-			if output == outputTable {
-				printListTable(cmd, report)
-				return nil
+			if done, err := managerkit.Render(cmd.OutOrStdout(), output, report); done || err != nil {
+				return err
 			}
-			return printJSON(cmd.OutOrStdout(), report)
+			printListTable(cmd, report)
+			return nil
 		},
 	}
 	addOutputFlag(cmd, &output)

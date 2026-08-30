@@ -14,6 +14,7 @@ import (
 	"github.com/confighub/examples/eks-manager/internal/cub"
 	"github.com/confighub/examples/eks-manager/internal/eks"
 	"github.com/confighub/examples/eks-manager/internal/snapshot"
+	"github.com/confighub/examples/managerkit"
 )
 
 type resourceRow struct {
@@ -57,11 +58,11 @@ a large fleet.`,
 				return err
 			}
 			rows := buildResourceRows(snap, kindFilter, groupFilter, clusterFilter)
-			if output == outputTable {
-				printResourceTable(cmd, rows)
-				return nil
+			if done, err := managerkit.Render(cmd.OutOrStdout(), output, rows); done || err != nil {
+				return err
 			}
-			return printJSON(cmd.OutOrStdout(), rows)
+			printResourceTable(cmd, rows)
+			return nil
 		},
 	}
 	addOutputFlag(cmd, &output)

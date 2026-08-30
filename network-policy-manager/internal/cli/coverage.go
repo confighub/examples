@@ -11,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/confighub/examples/managerkit"
 	"github.com/confighub/examples/network-policy-manager/internal/cub"
 	"github.com/confighub/examples/network-policy-manager/internal/netpol"
 	"github.com/confighub/examples/network-policy-manager/internal/snapshot"
@@ -60,11 +61,11 @@ Filter with --cluster, --namespace, and --direction (ingress|egress). With
 				return err
 			}
 			report := buildCoverageReport(snap, clusterFilter, namespaceFilter, direction)
-			if output == outputTable {
-				printCoverageTable(cmd, report, direction)
-				return nil
+			if done, err := managerkit.Render(cmd.OutOrStdout(), output, report); done || err != nil {
+				return err
 			}
-			return printJSON(cmd.OutOrStdout(), report)
+			printCoverageTable(cmd, report, direction)
+			return nil
 		},
 	}
 	addOutputFlag(cmd, &output)

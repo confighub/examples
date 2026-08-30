@@ -11,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/confighub/examples/managerkit"
 	"github.com/confighub/examples/observability-manager/internal/cub"
 	"github.com/confighub/examples/observability-manager/internal/observability"
 	"github.com/confighub/examples/observability-manager/internal/snapshot"
@@ -53,11 +54,11 @@ Filter with --kind (ServiceMonitor, Service), --cluster, and --namespace.`,
 				return err
 			}
 			rows := buildResourceRows(snap, kindFilter, clusterFilter, namespaceFilter)
-			if output == outputTable {
-				printResourceTable(cmd, rows)
-				return nil
+			if done, err := managerkit.Render(cmd.OutOrStdout(), output, rows); done || err != nil {
+				return err
 			}
-			return printJSON(cmd.OutOrStdout(), rows)
+			printResourceTable(cmd, rows)
+			return nil
 		},
 	}
 	addOutputFlag(cmd, &output)

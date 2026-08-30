@@ -11,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/confighub/examples/managerkit"
 	"github.com/confighub/examples/network-policy-manager/internal/cub"
 	"github.com/confighub/examples/network-policy-manager/internal/netpol"
 	"github.com/confighub/examples/network-policy-manager/internal/snapshot"
@@ -105,11 +106,11 @@ func newReachCmd(use, direction, short, long string) *cobra.Command {
 				sortRefs(rr.Peers)
 				results = append(results, rr)
 			}
-			if output == outputTable {
-				printReachTable(cmd, results)
-				return nil
+			if done, err := managerkit.Render(cmd.OutOrStdout(), output, results); done || err != nil {
+				return err
 			}
-			return printJSON(cmd.OutOrStdout(), results)
+			printReachTable(cmd, results)
+			return nil
 		},
 	}
 	addOutputFlag(cmd, &output)

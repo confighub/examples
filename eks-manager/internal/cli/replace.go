@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/confighub/examples/managerkit"
 	"github.com/confighub/sdk/cliutil"
 
 	"github.com/confighub/examples/eks-manager/internal/cub"
@@ -229,11 +230,11 @@ Dry-run by default; pass --commit --change-desc "..." to write.`,
 				r.Revision = created.HeadRevisionNum
 			}
 
-			if output == outputTable {
-				printReplaceReport(cmd, r)
-				return nil
+			if done, err := managerkit.Render(cmd.OutOrStdout(), output, r); done || err != nil {
+				return err
 			}
-			return printJSON(cmd.OutOrStdout(), r)
+			printReplaceReport(cmd, r)
+			return nil
 		},
 	}
 	addOutputFlag(cmd, &output)

@@ -130,8 +130,8 @@ func (l Library) listCmd() *cobra.Command {
 			}
 			sort.Slice(rows, func(i, j int) bool { return rows[i].Slug < rows[j].Slug })
 
-			if output != managerkit.OutputTable {
-				return cliutil.PrintJSON(cmd.OutOrStdout(), rows)
+			if done, err := managerkit.Render(cmd.OutOrStdout(), output, rows); done || err != nil {
+				return err
 			}
 			tw := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 2, 2, ' ', 0)
 			fmt.Fprintln(tw, "PROFILE\tFUNCTION\tPARAMS\tDESCRIPTION")

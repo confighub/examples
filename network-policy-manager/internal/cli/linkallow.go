@@ -11,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/confighub/examples/managerkit"
 	"github.com/confighub/sdk/cliutil"
 	"github.com/confighub/sdk/core/cubapi"
 	goclientnew "github.com/confighub/sdk/core/openapi/goclient-new"
@@ -102,8 +103,8 @@ This is a dry run unless you pass --commit --change-desc "…".`,
 			}
 
 			if dryRun {
-				if output == outputJSON {
-					return printJSON(cmd.OutOrStdout(), plans)
+				if done, err := managerkit.Render(cmd.OutOrStdout(), output, plans); done || err != nil {
+					return err
 				}
 				printAllowPlansTable(cmd, plans)
 				return nil
@@ -350,8 +351,8 @@ func commitAllowPlans(cmd *cobra.Command, client *cubapi.Client, snap *snapshot.
 		}
 		results = append(results, r)
 	}
-	if output == outputJSON {
-		return printJSON(cmd.OutOrStdout(), results)
+	if done, err := managerkit.Render(cmd.OutOrStdout(), output, results); done || err != nil {
+		return err
 	}
 	out := cmd.OutOrStdout()
 	for _, r := range results {

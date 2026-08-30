@@ -14,6 +14,7 @@ import (
 	"github.com/confighub/sdk/core/cubapi"
 	goclientnew "github.com/confighub/sdk/core/openapi/goclient-new"
 
+	"github.com/confighub/examples/managerkit"
 	"github.com/confighub/examples/network-policy-manager/internal/cub"
 	"github.com/confighub/examples/network-policy-manager/internal/netpol"
 	"github.com/confighub/examples/network-policy-manager/internal/snapshot"
@@ -119,8 +120,8 @@ func runCreate(cmd *cobra.Command, client *cubapi.Client, dest createDest, slug,
 	}
 	out := cmd.OutOrStdout()
 	if dryRun {
-		if output == outputJSON {
-			return printJSON(out, plan)
+		if done, err := managerkit.Render(out, output, plan); done || err != nil {
+			return err
 		}
 		fprintln(out, fmt.Sprintf("Dry run — would create Unit %s/%s (target %s) for namespace %q:",
 			dest.spaceSlug, slug, orDash(dest.targetSlug), namespace))
@@ -136,8 +137,8 @@ func runCreate(cmd *cobra.Command, client *cubapi.Client, dest createDest, slug,
 	}
 	plan.UnitID = created.UnitID.String()
 	plan.Revision = created.HeadRevisionNum
-	if output == outputJSON {
-		return printJSON(out, plan)
+	if done, err := managerkit.Render(out, output, plan); done || err != nil {
+		return err
 	}
 	fprintln(out, fmt.Sprintf("Created Unit %s/%s (revision %d). Publish the Space to deploy: cub release publish %s",
 		dest.spaceSlug, slug, created.HeadRevisionNum, dest.spaceSlug))

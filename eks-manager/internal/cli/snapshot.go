@@ -12,6 +12,7 @@ import (
 
 	"github.com/confighub/examples/eks-manager/internal/cub"
 	"github.com/confighub/examples/eks-manager/internal/snapshot"
+	"github.com/confighub/examples/managerkit"
 )
 
 type clusterSummary struct {
@@ -79,11 +80,11 @@ Canonical base/policy Spaces are excluded from the inventory.`,
 				return err
 			}
 			report := buildSnapshotReport(snap)
-			if output == outputTable {
-				printSnapshotTable(cmd, report)
-				return nil
+			if done, err := managerkit.Render(cmd.OutOrStdout(), output, report); done || err != nil {
+				return err
 			}
-			return printJSON(cmd.OutOrStdout(), report)
+			printSnapshotTable(cmd, report)
+			return nil
 		},
 	}
 	addOutputFlag(cmd, &output)

@@ -12,6 +12,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/confighub/examples/managerkit"
 	"github.com/confighub/examples/scheduling-manager/internal/cub"
 	"github.com/confighub/examples/scheduling-manager/internal/scheduling"
 	"github.com/confighub/examples/scheduling-manager/internal/snapshot"
@@ -62,11 +63,11 @@ Filter with --severity (Critical|High|Medium|Low), --cluster, and --namespace.`,
 				return err
 			}
 			report := buildFindingsReport(snap, severity, clusterFilter, namespaceFilter)
-			if output == outputTable {
-				printFindingsTable(cmd, report)
-				return nil
+			if done, err := managerkit.Render(cmd.OutOrStdout(), output, report); done || err != nil {
+				return err
 			}
-			return printJSON(cmd.OutOrStdout(), report)
+			printFindingsTable(cmd, report)
+			return nil
 		},
 	}
 	addOutputFlag(cmd, &output)

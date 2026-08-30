@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/confighub/examples/managerkit"
 	"github.com/confighub/sdk/cliutil"
 
 	"github.com/confighub/examples/network-policy-manager/internal/cub"
@@ -138,8 +139,8 @@ func planFleetDefaultDeny(snap *snapshot.Snapshot, clusterFilter string, egress 
 }
 
 func reportFleetDefaultDeny(cmd *cobra.Command, items []fleetDenyItem, dryRun bool, output string) error {
-	if output == outputJSON {
-		return printJSON(cmd.OutOrStdout(), items)
+	if done, err := managerkit.Render(cmd.OutOrStdout(), output, items); done || err != nil {
+		return err
 	}
 	tw := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 2, 2, ' ', 0)
 	fmt.Fprintln(tw, "CLUSTER\tNAMESPACE\tSPACE\tUNIT\tACTION")

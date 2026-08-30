@@ -14,6 +14,7 @@ import (
 	"github.com/confighub/examples/eks-manager/internal/cub"
 	"github.com/confighub/examples/eks-manager/internal/eks"
 	"github.com/confighub/examples/eks-manager/internal/snapshot"
+	"github.com/confighub/examples/managerkit"
 )
 
 func newGetCmd() *cobra.Command {
@@ -52,11 +53,11 @@ resources' Crossplane conditions and status.atProvider.`,
 				return fmt.Errorf("cluster %q not found; run `%s snapshot` to list the clusters in scope",
 					args[0], InvocationName())
 			}
-			if output == outputTable {
-				printClusterDetail(cmd, cs)
-				return nil
+			if done, err := managerkit.Render(cmd.OutOrStdout(), output, cs); done || err != nil {
+				return err
 			}
-			return printJSON(cmd.OutOrStdout(), cs)
+			printClusterDetail(cmd, cs)
+			return nil
 		},
 	}
 	addOutputFlag(cmd, &output)

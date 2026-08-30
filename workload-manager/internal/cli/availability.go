@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/confighub/examples/managerkit"
 	"github.com/confighub/examples/workload-manager/internal/cub"
 	"github.com/confighub/examples/workload-manager/internal/snapshot"
 	"github.com/confighub/examples/workload-manager/internal/workload"
@@ -67,11 +68,11 @@ Single-replica workloads and DaemonSet / Job / CronJob / Pod are out of scope
 				return err
 			}
 			report := buildAvailabilityReport(snap, clusterFilter, namespaceFilter, issuesOnly)
-			if output == outputTable {
-				printAvailabilityTable(cmd, report)
-				return nil
+			if done, err := managerkit.Render(cmd.OutOrStdout(), output, report); done || err != nil {
+				return err
 			}
-			return printJSON(cmd.OutOrStdout(), report)
+			printAvailabilityTable(cmd, report)
+			return nil
 		},
 	}
 	addOutputFlag(cmd, &output)

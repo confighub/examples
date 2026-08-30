@@ -17,6 +17,7 @@ import (
 
 	"github.com/confighub/examples/eks-manager/internal/cub"
 	"github.com/confighub/examples/eks-manager/internal/eks"
+	"github.com/confighub/examples/managerkit"
 	"github.com/confighub/examples/managerkit/guardrails"
 )
 
@@ -115,11 +116,11 @@ Dry-run by default; pass --commit to write.`,
 			}
 
 			if !commit {
-				if output == outputTable {
-					printAttributePlan(cmd, plan)
-					return nil
+				if done, err := managerkit.Render(cmd.OutOrStdout(), output, plan); done || err != nil {
+					return err
 				}
-				return printJSON(cmd.OutOrStdout(), plan)
+				printAttributePlan(cmd, plan)
+				return nil
 			}
 
 			client, err := cub.Preflight(cmd.Context())
@@ -137,11 +138,11 @@ Dry-run by default; pass --commit to write.`,
 				}
 			}
 			plan.Committed = true
-			if output == outputTable {
-				printAttributePlan(cmd, plan)
-				return nil
+			if done, err := managerkit.Render(cmd.OutOrStdout(), output, plan); done || err != nil {
+				return err
 			}
-			return printJSON(cmd.OutOrStdout(), plan)
+			printAttributePlan(cmd, plan)
+			return nil
 		},
 	}
 	addOutputFlag(cmd, &output)

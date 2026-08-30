@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/confighub/examples/managerkit"
 	"github.com/confighub/examples/namespace-manager/internal/cub"
 	"github.com/confighub/examples/namespace-manager/internal/nsmanager"
 	"github.com/confighub/examples/namespace-manager/internal/snapshot"
@@ -64,11 +65,11 @@ Filter with --cluster, --namespace, and --incomplete-only.`,
 				return err
 			}
 			report := buildEnvelopeReport(snap, clusterFilter, namespaceFilter, incompleteOnly)
-			if output == outputTable {
-				printEnvelopeTable(cmd, report)
-				return nil
+			if done, err := managerkit.Render(cmd.OutOrStdout(), output, report); done || err != nil {
+				return err
 			}
-			return printJSON(cmd.OutOrStdout(), report)
+			printEnvelopeTable(cmd, report)
+			return nil
 		},
 	}
 	addOutputFlag(cmd, &output)

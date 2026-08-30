@@ -13,6 +13,7 @@ import (
 	"github.com/confighub/examples/autoscale-manager/internal/autoscale"
 	"github.com/confighub/examples/autoscale-manager/internal/cub"
 	"github.com/confighub/examples/autoscale-manager/internal/snapshot"
+	"github.com/confighub/examples/managerkit"
 )
 
 type clusterSummary struct {
@@ -68,11 +69,11 @@ Canonical base/policy Spaces are excluded.`,
 				return err
 			}
 			report := buildSnapshotReport(snap)
-			if output == outputTable {
-				printSnapshotTable(cmd, report)
-				return nil
+			if done, err := managerkit.Render(cmd.OutOrStdout(), output, report); done || err != nil {
+				return err
 			}
-			return printJSON(cmd.OutOrStdout(), report)
+			printSnapshotTable(cmd, report)
+			return nil
 		},
 	}
 	addOutputFlag(cmd, &output)

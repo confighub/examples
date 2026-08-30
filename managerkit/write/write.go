@@ -102,8 +102,8 @@ type Report struct {
 // run the mutated count is what would change; on a commit it is what did.
 func ReportMutations(cmd *cobra.Command, command, space string, dryRun bool, output string, results ...*cubapi.Result) error {
 	rep := Summarize(command, space, dryRun, results...)
-	if output != managerkit.OutputTable {
-		return cliutil.PrintJSON(cmd.OutOrStdout(), rep)
+	if done, err := managerkit.Render(cmd.OutOrStdout(), output, rep); done || err != nil {
+		return err
 	}
 	// A Space column only where the report spans Spaces: a single-Unit command
 	// already names the Space in its header, and repeating it in every row of a

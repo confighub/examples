@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/confighub/examples/managerkit"
 	"github.com/confighub/examples/namespace-manager/internal/cub"
 	"github.com/confighub/examples/namespace-manager/internal/nsmanager"
 	"github.com/confighub/examples/namespace-manager/internal/snapshot"
@@ -59,11 +60,11 @@ can see. Filter with --component and --inconsistent-only.`,
 				return err
 			}
 			report := buildConsistencyReport(snap, componentFilter, inconsistentOnly)
-			if output == outputTable {
-				printConsistencyTable(cmd, report)
-				return nil
+			if done, err := managerkit.Render(cmd.OutOrStdout(), output, report); done || err != nil {
+				return err
 			}
-			return printJSON(cmd.OutOrStdout(), report)
+			printConsistencyTable(cmd, report)
+			return nil
 		},
 	}
 	addOutputFlag(cmd, &output)

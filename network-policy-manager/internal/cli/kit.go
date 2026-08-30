@@ -19,11 +19,6 @@ import (
 
 type filterFlags = cliutil.QueryFlags
 
-const (
-	outputJSON  = managerkit.OutputJSON
-	outputTable = managerkit.OutputTable
-)
-
 func addOutputFlag(cmd *cobra.Command, dest *string) { managerkit.AddOutputFlag(cmd, dest) }
 
 // addFilterFlags binds --where and the standard Space-label scopes. --select is
@@ -34,7 +29,6 @@ func addFilterFlags(cmd *cobra.Command, f *filterFlags) {
 	f.BindSpaceLabels(cmd)
 }
 
-func printJSON(w io.Writer, v any) error     { return cliutil.PrintJSON(w, v) }
 func fprintln(w io.Writer, a ...any)         { cliutil.Fprintln(w, a...) }
 func parseScore(s string) (api.Score, error) { return api.ParseScore(s) }
 func dash(s string) string                   { return cliutil.Dash(s) }

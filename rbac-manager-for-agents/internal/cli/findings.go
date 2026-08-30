@@ -12,6 +12,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/confighub/examples/managerkit"
 	"github.com/confighub/examples/rbac-manager-for-agents/internal/cub"
 	"github.com/confighub/examples/rbac-manager-for-agents/internal/rbac"
 	"github.com/confighub/examples/rbac-manager-for-agents/internal/snapshot"
@@ -64,11 +65,11 @@ Filter with --severity (Critical|High|Medium|Low) and --analyzer.`,
 				return err
 			}
 			rows := findingRows(rbac.AnalyzeFleet(snap.Clusters), severity, analyzerFilter)
-			if output == outputTable {
-				printFindingsTable(cmd, rows)
-				return nil
+			if done, err := managerkit.Render(cmd.OutOrStdout(), output, rows); done || err != nil {
+				return err
 			}
-			return printJSON(cmd.OutOrStdout(), rows)
+			printFindingsTable(cmd, rows)
+			return nil
 		},
 	}
 	addOutputFlag(cmd, &output)

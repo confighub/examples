@@ -17,6 +17,7 @@ import (
 	"github.com/confighub/examples/eks-manager/internal/cub"
 	"github.com/confighub/examples/eks-manager/internal/eks"
 	"github.com/confighub/examples/eks-manager/internal/snapshot"
+	"github.com/confighub/examples/managerkit"
 )
 
 type plannedUnit struct {
@@ -96,11 +97,11 @@ replacing one.`,
 				return err
 			}
 			report := buildPlanReport(cmd.Context(), client, snap, blockingOnly)
-			if output == outputTable {
-				printPlanTable(cmd, report)
-				return nil
+			if done, err := managerkit.Render(cmd.OutOrStdout(), output, report); done || err != nil {
+				return err
 			}
-			return printJSON(cmd.OutOrStdout(), report)
+			printPlanTable(cmd, report)
+			return nil
 		},
 	}
 	addOutputFlag(cmd, &output)
