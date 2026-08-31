@@ -229,25 +229,25 @@ section_flow() {
 section_undo() {
     heading "Make and undo a change"
 
-    desc "An urgent operational change -- scale up for a news event. With config"
-    desc "in git this is where people break glass: suspend reconciliation, edit"
-    desc "the cluster, reconcile the drift away later, and leave no record."
-    desc "Here it is an ordinary change to one environment, and only that one."
+    desc "An urgent capacity change to production, released and then undone"
+    desc "exactly. You never touch the cluster:"
+    desc "you change the config in ConfigHub, the GitOps tool pulls as usual."
     run "cub function set --space cubbychat-prod --unit backend --protect set-replicas 5 -o mutations --change-desc \"Temporary boost in capacity to handle news event\""
     run "cub release publish cubbychat-prod"
+
+    desc "Notice what that did not need: no branch, no PR, no pause of"
+    desc "reconciliation, no kubectl. Validated like any change, recorded"
+    desc "with the reason. Watch it land."
     run "source ~/.confighub/clusters/prod.env"
     run "kubectl get pods -n cubbychat"
-
-    desc "The configured resource reads as easily as the running one."
-    run "cub k8s get --space cubbychat-prod deployment backend --show detail"
 
     desc "The boost was meant to be temporary. set-replicas would put it back,"
     desc "but a larger set of changes you want to undo, not retype. Every change"
     desc "writes a revision, so there is always something to go back to."
     run "cub revision list --space cubbychat-prod backend"
 
-    desc "Publishing tags the revisions it shipped, so the release before the"
-    desc "boost names the state to restore."
+    desc "Publishing tags each revision it shipped, so the previous release"
+    desc "tag identifies the revision to restore."
     run "cub unit update --patch --space cubbychat-prod backend --restore Tag:release-2 -o mutations --change-desc \"Revert capacity boost\""
     run "cub release publish cubbychat-prod"
 
@@ -256,7 +256,10 @@ section_undo() {
     run "cub revision list --space cubbychat-prod backend"
     run "cub unit get --space cubbychat-prod backend -o mutations"
 
-    desc "Autosave and undo. Undoing a change costs what making one costs."
+    desc "With config in git this is where people break glass: suspend"
+    desc "reconciliation, edit the cluster, leave no record, skip validation,"
+    desc "and hope reconciliation clobbers it later. Here the urgent path is"
+    desc "the normal path: validated, recorded, and undone the way it was made."
 }
 
 section_cleanup() {
