@@ -4,8 +4,8 @@ go 1.25.0
 
 require (
 	github.com/cockroachdb/errors v1.11.3
-	github.com/confighub/sdk/configkit/k8skit v0.3.0
-	github.com/confighub/sdk/core v0.3.0
+	github.com/confighub/sdk/configkit/k8skit v0.4.5
+	github.com/confighub/sdk/core v0.4.5
 	github.com/stretchr/testify v1.11.1
 )
 
