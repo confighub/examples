@@ -230,7 +230,7 @@ section_undo() {
     heading "Make and undo a change"
 
     desc "An urgent capacity change to production, released and then undone"
-    desc "exactly. Two commands each way, and you never touch the cluster:"
+    desc "exactly. You never touch the cluster:"
     desc "you change the config in ConfigHub, the GitOps tool pulls as usual."
     run "cub function set --space cubbychat-prod --unit backend --protect set-replicas 5 -o mutations --change-desc \"Temporary boost in capacity to handle news event\""
     run "cub release publish cubbychat-prod"
@@ -241,16 +241,13 @@ section_undo() {
     run "source ~/.confighub/clusters/prod.env"
     run "kubectl get pods -n cubbychat"
 
-    desc "The configured resource reads as easily as the running one."
-    run "cub k8s get --space cubbychat-prod deployment backend --show detail"
-
     desc "The boost was meant to be temporary. set-replicas would put it back,"
     desc "but a larger set of changes you want to undo, not retype. Every change"
     desc "writes a revision, so there is always something to go back to."
     run "cub revision list --space cubbychat-prod backend"
 
-    desc "Publishing tags the revisions it shipped, so the release before the"
-    desc "boost names the state to restore."
+    desc "Publishing tags each revision it shipped, so the previous release"
+    desc "tag identifies the revision to restore."
     run "cub unit update --patch --space cubbychat-prod backend --restore Tag:release-2 -o mutations --change-desc \"Revert capacity boost\""
     run "cub release publish cubbychat-prod"
 
