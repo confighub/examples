@@ -208,28 +208,81 @@ function unboundServiceAccountFindings(cluster: ClusterRbac): Finding[] {
   return out;
 }
 
-const ANALYZERS: ((cluster: ClusterRbac) => Finding[])[] = [
+type Analyzer = (cluster: ClusterRbac) => Finding[];
+
+/**
+ * Analyzers that judge one resource on its own terms. What they report is true of the
+ * definition wherever it lands, so they are the ones that can also run over base Spaces.
+ */
+const DEFINITION_ANALYZERS: Analyzer[] = [
   wildcardFindings,
   escalationFindings,
   riskyGrantFindings,
   clusterAdminFindings,
-  orphanedBindingFindings,
-  unboundServiceAccountFindings,
 ];
 
-/** Run every analyzer over every cluster. */
-export function analyzeFleet(clusters: Map<string, ClusterRbac>): Finding[] {
+/**
+ * Analyzers that need the whole cluster to be present, because they report on what is
+ * *missing*. Over a base Space they would report a role that is defined downstream as
+ * absent, so they run only where the full set is in view.
+ */
+const CLUSTER_ANALYZERS: Analyzer[] = [orphanedBindingFindings, unboundServiceAccountFindings];
+
+const severityOrder: Record<Severity, number> = { high: 0, medium: 1, low: 2 };
+
+function run(groups: Map<string, ClusterRbac>, analyzers: Analyzer[]): Finding[] {
   const out: Finding[] = [];
-  for (const cluster of clusters.values()) {
-    for (const analyzer of ANALYZERS) {
-      out.push(...analyzer(cluster));
+  for (const group of groups.values()) {
+    for (const analyzer of analyzers) {
+      out.push(...analyzer(group));
     }
   }
-  const severityOrder: Record<Severity, number> = { high: 0, medium: 1, low: 2 };
   return out.sort(
     (a, b) =>
       severityOrder[a.severity] - severityOrder[b.severity] ||
       a.cluster.localeCompare(b.cluster) ||
       a.id.localeCompare(b.id),
   );
+}
+
+/** Run every analyzer over every cluster. */
+export function analyzeFleet(clusters: Map<string, ClusterRbac>): Finding[] {
+  return run(clusters, [...DEFINITION_ANALYZERS, ...CLUSTER_ANALYZERS]);
+}
+
+/**
+ * Run the definition-local analyzers over base/policy Spaces, keyed by Space rather than
+ * cluster. A base Space is where an over-broad role gets fixed once for every cluster it
+ * is cloned into, so the finding has to be reachable there and not only downstream.
+ */
+export function analyzeDefinitions(spaces: Map<string, ClusterRbac>): Finding[] {
+  return run(spaces, DEFINITION_ANALYZERS);
+}
+
+/** Finding counts by severity, for summary surfaces. */
+export interface SeverityCounts {
+  high: number;
+  medium: number;
+  low: number;
+  total: number;
+}
+
+export function countBySeverity(findings: Iterable<Finding>): SeverityCounts {
+  const counts: SeverityCounts = { high: 0, medium: 0, low: 0, total: 0 };
+  for (const f of findings) {
+    counts[f.severity] += 1;
+    counts.total += 1;
+  }
+  return counts;
+}
+
+/** Group findings by the cluster they were found on. */
+export function findingsByCluster(findings: Iterable<Finding>): Map<string, Finding[]> {
+  const out = new Map<string, Finding[]>();
+  for (const f of findings) {
+    const list = out.get(f.cluster);
+    if (list) list.push(f);
+    else out.set(f.cluster, [f]);
+  }
+  return out;
 }

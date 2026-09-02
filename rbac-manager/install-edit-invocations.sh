@@ -50,10 +50,24 @@ install_edit_invocations() {
   local add_subject='select(.kind == $params.bindingKind and .metadata.name == $params.bindingName).subjects += [ {"kind": $params.subjectKind, "name": $params.subjectName, "namespace": $params.subjectNamespace, "apiGroup": $params.subjectApiGroup} | with_entries(select(.value != "")) ]'
   local remove_subject='select(.kind == $params.bindingKind and .metadata.name == $params.bindingName).subjects |= map(select((.kind == $params.subjectKind and .name == $params.subjectName and (.namespace // "") == $params.subjectNamespace) | not))'
 
+  # Whole-rule edits. apiGroups/resources/verbs arrive as comma-separated lists, and must
+  # not be JSON: argument-value templates are expanded with html/template, so a quote
+  # character inside a parameter VALUE comes back as &#34;. (Quotes in the expression
+  # itself are literal template text and survive untouched.) The core API group is the
+  # empty string, which has no comma-separated spelling, so it travels as the sentinel
+  # `core` and is mapped back here.
+  local rule_body='{"apiGroups": ($params.apiGroups | split(",") | map(sub("^core$"; ""))), "resources": ($params.resources | split(",")), "verbs": ($params.verbs | split(","))}'
+  local set_rule="with(select(.kind == \$params.roleKind and .metadata.name == \$params.roleName); .rules[\$params.ruleIdx | tonumber] = ${rule_body})"
+  local add_rule="with(select(.kind == \$params.roleKind and .metadata.name == \$params.roleName); .rules += [${rule_body}])"
+  local remove_rule='del(select(.kind == $params.roleKind and .metadata.name == $params.roleName).rules[$params.ruleIdx | tonumber])'
+
   _create_edit_invocation rbac-add-verb "$add_verb" roleKind roleName ruleIdx:int verb && ((created += 1))
   _create_edit_invocation rbac-remove-verb "$remove_verb" roleKind roleName ruleIdx:int verb && ((created += 1))
   _create_edit_invocation rbac-add-subject "$add_subject" bindingKind bindingName subjectKind subjectName subjectNamespace subjectApiGroup && ((created += 1))
   _create_edit_invocation rbac-remove-subject "$remove_subject" bindingKind bindingName subjectKind subjectName subjectNamespace && ((created += 1))
+  _create_edit_invocation rbac-set-rule "$set_rule" roleKind roleName ruleIdx:int apiGroups resources verbs && ((created += 1))
+  _create_edit_invocation rbac-add-rule "$add_rule" roleKind roleName apiGroups resources verbs && ((created += 1))
+  _create_edit_invocation rbac-remove-rule "$remove_rule" roleKind roleName ruleIdx:int && ((created += 1))
 
   echo "Edit Invocations ready (${created} created)."
 }

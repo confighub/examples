@@ -13,6 +13,9 @@ export const INV_ADD_VERB = 'rbac-add-verb';
 export const INV_REMOVE_VERB = 'rbac-remove-verb';
 export const INV_ADD_SUBJECT = 'rbac-add-subject';
 export const INV_REMOVE_SUBJECT = 'rbac-remove-subject';
+export const INV_SET_RULE = 'rbac-set-rule';
+export const INV_ADD_RULE = 'rbac-add-rule';
+export const INV_REMOVE_RULE = 'rbac-remove-rule';
 
 export interface CompiledEdit {
   /** Slug of the stored parameterized Invocation to execute. */
@@ -21,6 +24,93 @@ export interface CompiledEdit {
   params: Record<string, string>;
   /** Human summary, used as the default change description. */
   summary: string;
+  /**
+   * Set when this edit deletes the rule at that position. Deleting shifts every later
+   * rule down, so {@link orderEdits} runs deletions last and from the back.
+   */
+  removesRuleAt?: number;
+}
+
+/** One rule's grant, as the editor holds it. */
+export interface RuleSpec {
+  /** An empty string entry is the core API group, as in Kubernetes itself. */
+  apiGroups: string[];
+  resources: string[];
+  verbs: string[];
+}
+
+/**
+ * Rule fields as comma-separated lists, never JSON. The server expands argument-value
+ * templates with html/template, so a quote character inside a parameter value comes back
+ * HTML-escaped and silently corrupts the configuration. The core API group is the empty
+ * string, which a comma-separated list cannot spell, so it travels as the sentinel `core`
+ * and the stored yq template maps it back.
+ */
+function ruleParams(rule: RuleSpec): Record<string, string> {
+  return {
+    apiGroups: rule.apiGroups.map((g) => (g === '' ? 'core' : g)).join(','),
+    resources: rule.resources.join(','),
+    verbs: rule.verbs.join(','),
+  };
+}
+
+/** `*` / `core` / a group name, for summaries. */
+function describeRule(rule: RuleSpec): string {
+  const groups = rule.apiGroups.map((g) => (g === '' ? 'core' : g)).join(',');
+  return `${groups || 'core'}/${rule.resources.join(',')} [${rule.verbs.join(',')}]`;
+}
+
+export function compileSetRule(
+  roleKind: string,
+  roleName: string,
+  ruleIdx: number,
+  rule: RuleSpec,
+): CompiledEdit {
+  return {
+    slug: INV_SET_RULE,
+    params: { roleKind, roleName, ruleIdx: String(ruleIdx), ...ruleParams(rule) },
+    summary: `Replace ${roleKind} ${roleName} rule ${ruleIdx} with ${describeRule(rule)}`,
+  };
+}
+
+export function compileAddRule(
+  roleKind: string,
+  roleName: string,
+  rule: RuleSpec,
+): CompiledEdit {
+  return {
+    slug: INV_ADD_RULE,
+    params: { roleKind, roleName, ...ruleParams(rule) },
+    summary: `Add rule ${describeRule(rule)} to ${roleKind} ${roleName}`,
+  };
+}
+
+export function compileRemoveRule(
+  roleKind: string,
+  roleName: string,
+  ruleIdx: number,
+): CompiledEdit {
+  return {
+    slug: INV_REMOVE_RULE,
+    params: { roleKind, roleName, ruleIdx: String(ruleIdx) },
+    summary: `Remove rule ${ruleIdx} from ${roleKind} ${roleName}`,
+    removesRuleAt: ruleIdx,
+  };
+}
+
+/**
+ * Execution order for a batch of pending edits. Every edit's rule index was read against
+ * the document as it stands now, and only deletion invalidates those indices — appending
+ * does not, and replacing in place does not. So everything else runs first in the order it
+ * was added, and deletions run last from the highest index down, leaving every index still
+ * meaning what the user selected.
+ */
+export function orderEdits(edits: CompiledEdit[]): CompiledEdit[] {
+  const keeps = edits.filter((e) => e.removesRuleAt === undefined);
+  const removes = edits
+    .filter((e) => e.removesRuleAt !== undefined)
+    .sort((a, b) => (b.removesRuleAt ?? 0) - (a.removesRuleAt ?? 0));
+  return [...keeps, ...removes];
 }
 
 export function compileAddVerb(

@@ -4,7 +4,6 @@ import {
   Chip,
   CircularProgress,
   Container,
-  Drawer,
   FormControl,
   InputLabel,
   MenuItem,
@@ -16,16 +15,11 @@ import {
   TableHead,
   TableRow,
   TextField,
-  ToggleButton,
-  ToggleButtonGroup,
-  Typography,
 } from '@mui/material';
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { stringify } from 'yaml';
+import { useSearchParams } from 'react-router-dom';
 
-import { FriendlyResource } from '../components/friendly/RbacFriendly';
-import { clusterContextFor } from '../fleet/enrichment';
+import { ResourceDetail, resourceIdentity } from '../components/ResourceDetail';
 import { useSnapshot } from '../fleet/snapshot';
 import { FleetResource } from '@confighub/examples-webkit/rbac';
 
@@ -37,24 +31,28 @@ interface ResourceRow {
 }
 
 function toRow(resource: FleetResource): ResourceRow | null {
-  const doc = resource.doc as { kind?: string; metadata?: { name?: string; namespace?: string } };
-  if (typeof doc?.kind !== 'string') return null;
-  return {
-    resource,
-    kind: doc.kind,
-    name: doc.metadata?.name ?? '',
-    namespace: doc.metadata?.namespace ?? '',
-  };
+  const { kind, name, namespace } = resourceIdentity(resource.doc);
+  if (kind === '') return null;
+  return { resource, kind, name, namespace };
 }
 
 /** Fleet-wide RBAC resource inventory with cluster/kind/text filtering. */
 export function ExplorerPage() {
   const { snapshot, isLoading, error } = useSnapshot();
-  const [cluster, setCluster] = useState('');
+  // The cluster lives in the URL so the Dashboard and the Findings page can link
+  // straight to one cluster's inventory.
+  const [params, setParams] = useSearchParams();
+  const cluster = params.get('cluster') ?? '';
   const [kind, setKind] = useState('');
   const [text, setText] = useState('');
   const [selected, setSelected] = useState<ResourceRow | null>(null);
-  const [viewMode, setViewMode] = useState<'friendly' | 'yaml'>('friendly');
+
+  const setCluster = (value: string) => {
+    const next = new URLSearchParams(params);
+    if (value === '') next.delete('cluster');
+    else next.set('cluster', value);
+    setParams(next, { replace: true });
+  };
 
   const rows = useMemo(() => {
     if (!snapshot) return [];
@@ -87,16 +85,22 @@ export function ExplorerPage() {
     );
   }
 
-  const clusters = [...snapshot.clusters.keys()].sort();
+  // Every group a resource can belong to, not just the clusters analysis runs on, so the
+  // base Spaces the Dashboard lists are selectable here too.
+  const clusters = [...new Set(snapshot.resources.map((r) => r.origin.cluster))].sort();
   const kinds = ['ClusterRole', 'Role', 'ClusterRoleBinding', 'RoleBinding', 'ServiceAccount'];
 
   return (
     <Container maxWidth='lg' sx={{ mt: 3 }}>
       <Stack direction='row' spacing={2} sx={{ mb: 2 }}>
-        <FormControl size='small' sx={{ minWidth: 180 }}>
-          <InputLabel>Cluster</InputLabel>
-          <Select label='Cluster' value={cluster} onChange={(e) => setCluster(e.target.value)}>
-            <MenuItem value=''>All clusters</MenuItem>
+        <FormControl size='small' sx={{ minWidth: 200 }}>
+          <InputLabel>Cluster/Space</InputLabel>
+          <Select
+            label='Cluster/Space'
+            value={cluster}
+            onChange={(e) => setCluster(e.target.value)}
+          >
+            <MenuItem value=''>All clusters and spaces</MenuItem>
             {clusters.map((c) => (
               <MenuItem key={c} value={c}>
                 {c}
@@ -130,7 +134,7 @@ export function ExplorerPage() {
             <TableCell>Kind</TableCell>
             <TableCell>Name</TableCell>
             <TableCell>Namespace</TableCell>
-            <TableCell>Cluster</TableCell>
+            <TableCell>Cluster/Space</TableCell>
             <TableCell>Unit</TableCell>
             <TableCell>Space</TableCell>
           </TableRow>
@@ -154,50 +158,10 @@ export function ExplorerPage() {
         </TableBody>
       </Table>
 
-      <Drawer anchor='right' open={selected !== null} onClose={() => setSelected(null)}>
-        {selected && (
-          <Box sx={{ width: 560, p: 2 }}>
-            <Typography variant='h6' gutterBottom>
-              {selected.kind} {selected.name}
-            </Typography>
-            <Typography variant='body2' color='text.secondary' gutterBottom>
-              {selected.resource.origin.cluster} · unit{' '}
-              <Link to={`/unit/${selected.resource.origin.spaceId}/${selected.resource.origin.unitId}`}>
-                {selected.resource.origin.unitSlug}
-              </Link>{' '}
-              · space {selected.resource.origin.space}
-            </Typography>
-            <ToggleButtonGroup
-              size='small'
-              exclusive
-              value={viewMode}
-              onChange={(_, v: 'friendly' | 'yaml' | null) => v !== null && setViewMode(v)}
-              sx={{ mb: 2 }}
-            >
-              <ToggleButton value='friendly'>Friendly</ToggleButton>
-              <ToggleButton value='yaml'>YAML</ToggleButton>
-            </ToggleButtonGroup>
-            {viewMode === 'friendly' ? (
-              <FriendlyResource
-                doc={selected.resource.doc}
-                cluster={clusterContextFor(
-                  snapshot,
-                  selected.resource.origin.cluster,
-                  selected.resource.origin.unitId,
-                )}
-              />
-            ) : (
-              /* Read-only rendering; writes never round-trip through this. */
-              <Box
-                component='pre'
-                sx={{ bgcolor: 'grey.100', p: 1.5, borderRadius: 1, overflow: 'auto', fontSize: 13 }}
-              >
-                {stringify(selected.resource.doc)}
-              </Box>
-            )}
-          </Box>
-        )}
-      </Drawer>
+      <ResourceDetail
+        resource={selected?.resource ?? null}
+        onClose={() => setSelected(null)}
+      />
     </Container>
   );
 }
