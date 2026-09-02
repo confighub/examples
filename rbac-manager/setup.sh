@@ -121,7 +121,7 @@ explain_json() {
   "spaces": ["${POLICY_SPACE}"],
   "units": [],
   "notes": {
-    "creates": "3 Warn=true guardrail Triggers + 1 Trigger Filter in ${POLICY_SPACE} (label Pack=rbac-guardrails); 4 parameterized set-yq edit Invocations in rbac-edits",
+    "creates": "3 Warn=true guardrail Triggers + 1 Trigger Filter in ${POLICY_SPACE} (label Pack=rbac-guardrails); 7 parameterized set-yq edit Invocations in rbac-edits",
     "wires": "Points each in-scope Space's TriggerFilterID at ${FILTER_REF}",
     "scope": "Spaces with Kubernetes/YAML Units${WHERE_SPACE:+, narrowed by --where-space}",
     "skips": "Spaces with a custom WhereTrigger, an existing TriggerFilterID, or their own Triggers (reported instead)"

@@ -1,7 +1,7 @@
-// Fleet snapshot loader. Discovers every Kubernetes/YAML Unit in scope, extracts the
-// Deployment resources server-side with get-resources, and builds one Workload per Unit:
-// its images and the scanner's verdict (read from the Unit's annotations), joined with
-// the gate/warning/revision metadata from the unit list.
+// Fleet snapshot loader. Reads the fleet's Deployment resources from ConfigHub's Resource
+// inventory in one query — the server extracts and indexes resources as Units change — and
+// builds one Workload per Unit: its images and the scanner's verdict (read from the Unit's
+// annotations), joined with the gate/warning/revision metadata from the unit list.
 //
 // The scan records are a second, separate population: one multi-doc AppConfig/YAML Unit
 // per Space holding the full findings, plus a single cvedb-status Unit. Which kind a Unit
@@ -9,7 +9,7 @@
 // the bulk data endpoint for the documents, joined on UnitID. Two requests for every
 // record in scope, rather than one per Space.
 
-import { confighub, getResources, listUnitData, resourceDocs } from '@confighub/examples-webkit/api';
+import { confighub, getResources, listUnitData, resourceDoc } from '@confighub/examples-webkit/api';
 import {
   createSnapshotContext,
   isCanonicalSpace,
@@ -30,8 +30,7 @@ import { scopeStore } from './scope';
 
 const K8S_UNITS_WHERE = "ToolchainType = 'Kubernetes/YAML'";
 const REPORTS_WHERE = "ToolchainType = 'AppConfig/YAML'";
-const DEPLOY_WHERE_DATA = "kind = 'Deployment'";
-const DEPLOY_WHERE_RESOURCE = "ConfigHub.ResourceType = 'apps/v1/Deployment'";
+const DEPLOY_RESOURCES_WHERE = "ResourceType = 'apps/v1/Deployment'";
 
 export interface FleetSnapshot {
   /** One Workload per in-scope Deployment Unit. */
@@ -45,21 +44,28 @@ export interface FleetSnapshot {
 }
 
 async function build(scope: FleetScope): Promise<FleetSnapshot> {
-  const [deployResponses, scoped, records] = await Promise.all([
-    getResources({
-      where: K8S_UNITS_WHERE,
-      whereData: DEPLOY_WHERE_DATA,
-      whereResource: DEPLOY_WHERE_RESOURCE,
-    }),
+  const [deployResources, scoped, records] = await Promise.all([
+    getResources({ where: DEPLOY_RESOURCES_WHERE }),
     loadScopedUnits(scope, { where: K8S_UNITS_WHERE }),
     // Non-fatal: workloads still render with their gate-signal verdict if this fails.
     loadRecords().catch(() => []),
   ]);
 
+  // The inventory is a flat list of resources; a Workload is per Unit, so the Deployments
+  // are regrouped by the Unit they were extracted from.
+  const deploymentsByUnit = new Map<string, unknown[]>();
+  for (const entry of deployResources) {
+    const unitId = entry.Resource?.UnitID;
+    const doc = resourceDoc(entry);
+    if (unitId === undefined || doc === undefined || doc === null) continue;
+    const docs = deploymentsByUnit.get(unitId);
+    if (docs) docs.push(doc);
+    else deploymentsByUnit.set(unitId, [doc]);
+  }
+
   const workloads: Workload[] = [];
-  for (const response of deployResponses) {
-    if (!response.Success || !response.UnitID) continue;
-    const eu = scoped.units.get(response.UnitID);
+  for (const [unitId, docs] of deploymentsByUnit) {
+    const eu = scoped.units.get(unitId);
     if (!eu) continue; // out of scope
 
     const images: string[] = [];
@@ -70,7 +76,7 @@ async function build(scope: FleetScope): Promise<FleetSnapshot> {
       scannedAt: '',
       cvedbVersion: '',
     };
-    for (const { doc } of resourceDocs(response)) {
+    for (const doc of docs) {
       for (const img of imagesOf(doc)) if (!images.includes(img)) images.push(img);
       const v = scanVerdict(doc);
       if (v.scanned && !verdict.scanned) verdict = v; // first scanned Deployment's verdict
@@ -78,12 +84,12 @@ async function build(scope: FleetScope): Promise<FleetSnapshot> {
     if (images.length === 0) continue;
 
     const target = eu.Target?.Slug;
-    const space = response.SpaceSlug ?? eu.Space?.Slug ?? '';
+    const space = eu.Space?.Slug ?? '';
     workloads.push({
-      unitId: response.UnitID,
-      unitSlug: response.UnitSlug ?? eu.Unit?.Slug ?? '',
+      unitId,
+      unitSlug: eu.Unit?.Slug ?? '',
       space,
-      spaceId: response.SpaceID ?? eu.Unit?.SpaceID ?? '',
+      spaceId: eu.Unit?.SpaceID ?? '',
       target,
       cluster: target ?? space,
       env: eu.Space?.Labels?.env ?? eu.Unit?.Labels?.env,

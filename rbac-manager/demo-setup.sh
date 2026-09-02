@@ -94,8 +94,9 @@ Will create (idempotently):
       no-cluster-admin-binding  vet-celexpr (no cluster-admin ClusterRoleBindings)
       require-approval          vet-approvedby 1 (prod only)
   - 2 Trigger Filters: rbac-guardrails (Scope=all), rbac-guardrails-prod (all incl. approval)
-  - 1 rbac-edits Space with 4 parameterized set-yq edit Invocations
-    (rbac-add-verb, rbac-remove-verb, rbac-add-subject, rbac-remove-subject)
+  - 1 rbac-edits Space with 7 parameterized set-yq edit Invocations
+    (rbac-add-verb, rbac-remove-verb, rbac-add-subject, rbac-remove-subject,
+     rbac-set-rule, rbac-add-rule, rbac-remove-rule)
   - 4 persona Units in ${BASE_SPACE}, cloned into each of the 3 cluster Spaces (12 clones)
   - 1 divergence: ${PREFIX}-dev/developer gains the "delete" verb (server-side yq-i)
   - 3 planted violations in ${PREFIX}-dev (2 gated, 1 app-side audit finding)

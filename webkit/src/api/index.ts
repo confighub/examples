@@ -8,8 +8,9 @@ export {
 } from './data';
 export type { UnitData, ListUnitDataOptions } from './data';
 export {
-  decodeResourceList,
-  resourceDocs,
   getResources,
+  getResourceRaw,
+  resourceDoc,
+  stripCommentKeys,
 } from './resources';
-export type { FunctionInvocationsResponse, RawResource, GetResourcesOptions } from './resources';
+export type { ExtendedResource, GetResourcesOptions } from './resources';

@@ -17,6 +17,8 @@ export interface ResourceOrigin {
   unitId: string;
   unitSlug: string;
   resourceName: string;
+  /** ResourceID, for reading the resource's original text on demand. */
+  resourceId?: string;
   /**
    * True for canonical definitions (base/policy Spaces) that aren't deployed
    * anywhere — shown in the explorer but excluded from cluster analysis

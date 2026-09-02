@@ -1,74 +1,93 @@
-// Server-side resource extraction. `get-resources` runs on the server against every Unit
-// matching the request, so a fleet view never downloads whole configurations to pick the
-// few resources it cares about. Two filters narrow the work, and they are not the same
-// thing: `whereData` decides which Units run the function at all, `whereResource` decides
-// which resources within those Units come back.
+// Fleet-wide resource inventory. Resources are a first-class ConfigHub entity: the server
+// extracts them from each Unit's configuration as it changes and indexes them, so a fleet
+// view asks the Resource list for exactly the resources it wants — filtered, joined to
+// their Unit/Space/Target, across the whole organization — instead of running an
+// extraction function over every Unit and unpacking per-Unit responses.
+//
+// `Resource.Data` is the queryable JSON projection of the resource. It carries the
+// authored comments as `$comment$…` keys, which is why the original toolchain-native text
+// is a separate on-demand read (`getResourceRaw`) that a fleet load never pays for.
 
 import type { components } from '@confighub/api';
 
 import { confighub } from './client';
 import { b64decodeUtf8 } from './encoding';
 
-export type FunctionInvocationsResponse = components['schemas']['FunctionInvocationsResponse'];
-
-/** One resource as `get-resources` reports it. ResourceBody is a JSON document. */
-export interface RawResource {
-  ResourceType?: string;
-  ResourceName?: string;
-  ResourceBody?: string;
-}
-
-/** Outputs.ResourceList is base64-encoded JSON (api.Resource[]). */
-export function decodeResourceList(encoded: string): RawResource[] {
-  try {
-    const parsed: unknown = JSON.parse(b64decodeUtf8(encoded));
-    return Array.isArray(parsed) ? (parsed as RawResource[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-/** The parsed resource documents one invocation response carries, in order. */
-export function resourceDocs(response: FunctionInvocationsResponse): { raw: RawResource; doc: unknown }[] {
-  const out: { raw: RawResource; doc: unknown }[] = [];
-  for (const raw of decodeResourceList(response.Outputs?.['ResourceList'] ?? '')) {
-    if (raw.ResourceBody === undefined || raw.ResourceBody === '') continue;
-    try {
-      out.push({ raw, doc: JSON.parse(raw.ResourceBody) });
-    } catch {
-      // A resource whose body is not JSON is not one this app can reason about.
-    }
-  }
-  return out;
-}
+export type ExtendedResource = components['schemas']['ExtendedResource'];
 
 export interface GetResourcesOptions {
-  /** Which Units to consider, as a `where` expression over Units. */
+  /** Which resources to return, as a `where` expression over Resources. */
   where: string;
-  /** Which of those Units to actually run on, as an expression over their configuration. */
-  whereData?: string;
-  /** Which resources within each Unit to return, as a ConfigHub metadata path expression. */
-  whereResource?: string;
+  /** Related entities to expand into the response envelope, e.g. `'UnitID,SpaceID'`. */
+  include?: string;
+  /** Fields of Resource to return. All of them when omitted. */
+  select?: string;
 }
 
 /**
- * Extract resources across the organization. This reads: the invocation is
- * `get-resources` with no mutation, and nothing is written.
+ * List resources across the organization. Read-only, and the server already limits the
+ * result to what the caller may view.
  */
 export async function getResources(
   options: GetResourcesOptions,
-): Promise<FunctionInvocationsResponse[]> {
-  const { data, error, response } = await confighub().POST('/function/invoke', {
-    params: { query: { where: options.where, where_data: options.whereData } },
-    body: {
-      WhereResource: options.whereResource,
-      FunctionInvocations: [
-        { FunctionName: 'get-resources', Arguments: [{ ParameterName: 'body', Value: 'json' }] },
-      ],
+): Promise<ExtendedResource[]> {
+  const { data, error, response } = await confighub().GET('/resource', {
+    params: {
+      query: { where: options.where, include: options.include, select: options.select },
     },
   });
   if (error !== undefined || data === undefined) {
-    throw new Error(`get-resources: HTTP ${response.status}`);
+    throw new Error(`GET /resource: HTTP ${response.status}`);
   }
   return data;
+}
+
+/**
+ * The resource's configuration document. The generated client types `Data` as opaque, so
+ * this is the one place that widens it to `unknown` for the parsers to narrow again.
+ */
+export function resourceDoc(resource: ExtendedResource): unknown {
+  return resource.Resource?.Data as unknown;
+}
+
+/**
+ * One resource's configuration in its original toolchain-native text — YAML for
+ * Kubernetes, with comments and formatting as authored. Read per resource, on demand:
+ * the bodies are bulk, and only a detail view wants the source rather than the JSON
+ * projection.
+ */
+export async function getResourceRaw(
+  spaceId: string,
+  unitId: string,
+  resourceId: string,
+): Promise<string> {
+  const { data, error, response } = await confighub().GET(
+    '/space/{space_id}/unit/{unit_id}/resource/{resource_id}',
+    {
+      params: {
+        path: { space_id: spaceId, unit_id: unitId, resource_id: resourceId },
+        query: { raw_data: true },
+      },
+    },
+  );
+  if (error !== undefined || data === undefined) {
+    throw new Error(`GET resource ${resourceId}: HTTP ${response.status}`);
+  }
+  return data.RawData === undefined ? '' : b64decodeUtf8(data.RawData);
+}
+
+/**
+ * Drop the `$comment$…` keys the JSON projection uses to carry authored comments, so a
+ * document rendered from `Data` reads as configuration rather than as its own encoding.
+ * Only for display — the raw text is the faithful rendering.
+ */
+export function stripCommentKeys(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stripCommentKeys);
+  if (typeof value !== 'object' || value === null) return value;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(value)) {
+    if (k.startsWith('$comment$')) continue;
+    out[k] = stripCommentKeys(v);
+  }
+  return out;
 }

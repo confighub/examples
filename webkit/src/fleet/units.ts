@@ -122,6 +122,8 @@ export interface Origin {
   unitId: string;
   unitSlug: string;
   resourceName: string;
+  /** ResourceID, for reading the resource's original text on demand. */
+  resourceId?: string;
   /** True when the Unit lives in a canonical (base/policy) Space. */
   canonical: boolean;
 }

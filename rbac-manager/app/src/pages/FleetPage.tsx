@@ -177,7 +177,7 @@ export function FleetPage() {
       op === 'add-verb'
         ? compileAddVerb(roleKind, roleName, ruleIdx, verb)
         : compileRemoveVerb(roleKind, roleName, ruleIdx, verb);
-    const body = editRequest(idBySlug, edit);
+    const body = editRequest(idBySlug, [edit]);
     if (!body) {
       setMessage({ kind: 'error', text: EDIT_INVOCATIONS_MISSING });
       return;
@@ -217,7 +217,7 @@ export function FleetPage() {
 
   const commitBulkEdit = async () => {
     if (pending === null) return;
-    const body = editRequest(idBySlug, pending.edit);
+    const body = editRequest(idBySlug, [pending.edit]);
     if (!body) {
       setMessage({ kind: 'error', text: EDIT_INVOCATIONS_MISSING });
       return;

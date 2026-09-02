@@ -23,13 +23,13 @@ import {
 } from '@mui/material';
 import { diffLines } from 'diff';
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { parseAllDocuments } from 'yaml';
 
 import { fetchRevisionDataText, fetchUnitDataText, putUnitDataText } from '@confighub/examples-webkit/api';
 import { FriendlyResource } from '../components/friendly/RbacFriendly';
 import { StructuredEdit } from '../components/StructuredEdit';
-import type { CompiledEdit } from '../rbac/edits';
+import { orderEdits, type CompiledEdit } from '../rbac/edits';
 import {
   useEditInvocationIds,
   editRequest,
@@ -118,6 +118,13 @@ function ChangeDialog({ open, title, preview, busy, onCancel, onConfirm }: Chang
  */
 export function UnitPage() {
   const { spaceId = '', unitId = '' } = useParams();
+  // A link from a resource detail panel names the resource to open the quick-edit panel
+  // on, so arriving from a finding lands on the role the finding is about.
+  const [searchParams] = useSearchParams();
+  const focusKind = searchParams.get('kind');
+  const focusName = searchParams.get('name');
+  const focus =
+    focusKind !== null && focusName !== null ? { kind: focusKind, name: focusName } : undefined;
   const { data: extended, isLoading, isError, refetch } = useGetUnitQuery({ spaceId, unitId });
   const revisions = useListExtendedRevisionsQuery({ spaceId, unitId });
   const [patchUnit, patchState] = usePatchUnitMutation();
@@ -170,8 +177,10 @@ export function UnitPage() {
   const [diffOpen, setDiffOpen] = useState<{ num: number; before: string } | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionInfo, setActionInfo] = useState<string | null>(null);
-  /** A dry-run-previewed function edit awaiting a change description. */
-  const [pendingEdit, setPendingEdit] = useState<{ edit: CompiledEdit; after: string } | null>(null);
+  /** A dry-run-reviewed batch of function edits awaiting a change description. */
+  const [pendingEdit, setPendingEdit] = useState<{ edits: CompiledEdit[]; after: string } | null>(
+    null,
+  );
 
   if (isError) {
     return (
@@ -243,9 +252,9 @@ export function UnitPage() {
   // head of one unit goes through a where clause instead (as the CLI does).
   const unitWhere = `UnitID = '${unitId}'`;
 
-  const previewEdit = async (edit: CompiledEdit) => {
+  const reviewEdits = async (edits: CompiledEdit[]) => {
     setActionError(null);
-    const body = editRequest(idBySlug, edit);
+    const body = editRequest(idBySlug, edits);
     if (!body) {
       setActionError(EDIT_INVOCATIONS_MISSING);
       return;
@@ -268,16 +277,16 @@ export function UnitPage() {
     // ConfigData comes back only when the invocation changed the configuration.
     const after = response.ConfigData ? response.ConfigData : originalText;
     if (after === originalText) {
-      setActionInfo('No change: the edit is already in effect.');
+      setActionInfo('No change: these edits are already in effect.');
       return;
     }
-    setPendingEdit({ edit, after });
+    setPendingEdit({ edits, after });
   };
 
   const commitEdit = async (changeDescription: string) => {
     if (pendingEdit === null) return;
     setActionError(null);
-    const body = editRequest(idBySlug, pendingEdit.edit);
+    const body = editRequest(idBySlug, pendingEdit.edits);
     if (!body) {
       setActionError(EDIT_INVOCATIONS_MISSING);
       return;
@@ -347,7 +356,11 @@ export function UnitPage() {
         </Alert>
       )}
 
-      <StructuredEdit yamlText={originalText} onPreview={(edit) => void previewEdit(edit)} />
+      <StructuredEdit
+        yamlText={originalText}
+        focus={focus}
+        onReview={(edits) => void reviewEdits(edits)}
+      />
 
       <ToggleButtonGroup
         size='small'
@@ -453,8 +466,25 @@ export function UnitPage() {
       />
       <ChangeDialog
         open={pendingEdit !== null}
-        title='Commit quick edit (runs server-side)'
-        preview={pendingEdit && <DiffView before={originalText} after={pendingEdit.after} />}
+        title={
+          pendingEdit === null
+            ? 'Review changes'
+            : `Review ${pendingEdit.edits.length} change(s) — applied together as one revision`
+        }
+        preview={
+          pendingEdit && (
+            <>
+              <Stack component='ul' spacing={0} sx={{ pl: 3, mt: 0, mb: 1 }}>
+                {orderEdits(pendingEdit.edits).map((edit, i) => (
+                  <Typography key={`${edit.slug}:${i}`} component='li' variant='body2'>
+                    {edit.summary}
+                  </Typography>
+                ))}
+              </Stack>
+              <DiffView before={originalText} after={pendingEdit.after} />
+            </>
+          )
+        }
         busy={invokeState.isLoading}
         onCancel={() => setPendingEdit(null)}
         onConfirm={(d) => void commitEdit(d)}

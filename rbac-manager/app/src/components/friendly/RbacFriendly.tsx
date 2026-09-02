@@ -3,8 +3,11 @@
 // reverse ServiceAccount lookups, and aggregation expansion. Falls back to
 // YAML for unknown kinds.
 
-import { Alert, Box, Chip, Typography } from '@mui/material';
+import { Alert, Box, Chip, Link as MuiLink, Typography } from '@mui/material';
+import { Link as RouterLink } from 'react-router-dom';
 import { stringify } from 'yaml';
+
+import { stripCommentKeys } from '@confighub/examples-webkit/api';
 
 import { ClusterRbac, Subject, subjectKey } from '@confighub/examples-webkit/rbac';
 import {
@@ -66,7 +69,7 @@ function MetadataSection({ doc }: { doc: Doc }) {
   );
 }
 
-function RulesSection({ doc, title }: { doc: Doc; title: string }) {
+function RulesSection({ doc, title, editHref }: { doc: Doc; title: string; editHref?: string }) {
   const rules = asArray(doc.rules);
   if (rules.length === 0) {
     return (
@@ -97,13 +100,22 @@ function RulesSection({ doc, title }: { doc: Doc; title: string }) {
         })}
       />
       <Typography variant='caption' color='text.secondary'>
-        Rule numbers match the Quick edit panel.
+        Rule numbers match the quick-edit panel
+        {editHref !== undefined && (
+          <>
+            {' — '}
+            <MuiLink component={RouterLink} to={editHref}>
+              edit these rules
+            </MuiLink>
+          </>
+        )}
+        .
       </Typography>
     </Section>
   );
 }
 
-function RoleView({ doc, cluster }: { doc: Doc; cluster?: ClusterRbac }) {
+function RoleView({ doc, cluster, editHref }: { doc: Doc; cluster?: ClusterRbac; editHref?: string }) {
   const kind = asString(doc.kind);
   const name = asString(asRecord(doc.metadata)?.name);
   const aggregation = asRecord(doc.aggregationRule);
@@ -142,7 +154,11 @@ function RoleView({ doc, cluster }: { doc: Doc; cluster?: ClusterRbac }) {
           ))}
         </Section>
       )}
-      <RulesSection doc={doc} title={selectors.length > 0 ? 'Own rules' : 'Rules'} />
+      <RulesSection
+        doc={doc}
+        title={selectors.length > 0 ? 'Own rules' : 'Rules'}
+        editHref={editHref}
+      />
       {aggregated !== null && aggregated.length > 0 && (
         <Section title='Effective rules (including aggregation)'>
           <MiniTable
@@ -276,7 +292,7 @@ function ServiceAccountView({ doc, cluster }: { doc: Doc; cluster?: ClusterRbac 
 function GenericView({ doc }: { doc: Doc }) {
   return (
     <Box component='pre' sx={{ bgcolor: 'grey.100', p: 1.5, borderRadius: 1, overflow: 'auto', fontSize: 13 }}>
-      {stringify(doc)}
+      {stringify(stripCommentKeys(doc))}
     </Box>
   );
 }
@@ -285,16 +301,18 @@ export interface FriendlyResourceProps {
   doc: unknown;
   /** Cluster context for resolution/enrichment; omit when unavailable. */
   cluster?: ClusterRbac;
+  /** Route to the quick-edit panel for this resource; omit when already there. */
+  editHref?: string;
 }
 
 /** Dispatch a parsed resource document to its friendly view. */
-export function FriendlyResource({ doc, cluster }: FriendlyResourceProps) {
+export function FriendlyResource({ doc, cluster, editHref }: FriendlyResourceProps) {
   const rec = asRecord(doc);
   if (!rec) return <EmptyHint text='Unparseable resource.' />;
   switch (asString(rec.kind)) {
     case 'Role':
     case 'ClusterRole':
-      return <RoleView doc={rec} cluster={cluster} />;
+      return <RoleView doc={rec} cluster={cluster} editHref={editHref} />;
     case 'RoleBinding':
     case 'ClusterRoleBinding':
       return <BindingView doc={rec} cluster={cluster} />;
