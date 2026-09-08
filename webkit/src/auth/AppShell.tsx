@@ -112,7 +112,7 @@ export function AppShell({ title, tagline, actions, children }: AppShellProps) {
         <Typography color='text.secondary' sx={{ mb: 3 }}>
           {tagline ?? `Sign in with your ConfigHub account to use ${title}.`}
         </Typography>
-        <Button variant='contained' onClick={login}>
+        <Button variant='contained' onClick={() => void login()}>
           Log in
         </Button>
         {error && <AuthError message={error.message} appName={slug(title)} />}
@@ -133,7 +133,7 @@ export function AppShell({ title, tagline, actions, children }: AppShellProps) {
           </Typography>
           {actions}
           <Chip label={`org ${user.organizationId}`} color='secondary' size='small' sx={{ mx: 2 }} />
-          <Button color='inherit' size='small' onClick={logout}>
+          <Button color='inherit' size='small' onClick={() => void logout()}>
             Sign out
           </Button>
         </Toolbar>

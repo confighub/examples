@@ -131,7 +131,7 @@ export function App() {
           <h1>{workflow.app.name}</h1>
           <p className="purpose">{workflow.scenario.jobToBeDone}</p>
           <p className="status-note">Not yet connected to ConfigHub. Nothing here is live.</p>
-          <button type="button" onClick={login}>Sign in</button>
+          <button type="button" onClick={() => void login()}>Sign in</button>
           {error && <pre className="error">{error.message}</pre>}
         </section>
       </main>
@@ -147,7 +147,7 @@ export function App() {
         </div>
         <div className="auth">
           <span>{apiStatus}</span>
-          <button type="button" onClick={logout}>Sign out</button>
+          <button type="button" onClick={() => void logout()}>Sign out</button>
         </div>
       </header>
 

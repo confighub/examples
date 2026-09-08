@@ -70,7 +70,7 @@ export function App() {
           <p className="eyebrow">{workflow.uiTool.name}</p>
           <h1>{workflow.app.name}</h1>
           <p>{workflow.scenario.jobToBeDone}</p>
-          <button type="button" onClick={login}>Sign in with ConfigHub</button>
+          <button type="button" onClick={() => void login()}>Sign in with ConfigHub</button>
           {error && <pre className="error">{error.message}</pre>}
         </section>
       </main>
@@ -86,7 +86,7 @@ export function App() {
         </div>
         <div className="auth">
           <span>{apiStatus}</span>
-          <button type="button" onClick={logout}>Sign out</button>
+          <button type="button" onClick={() => void logout()}>Sign out</button>
         </div>
       </header>
 
