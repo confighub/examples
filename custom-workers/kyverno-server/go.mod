@@ -3,9 +3,9 @@ module github.com/confighub/examples/custom-workers/kyverno-server
 go 1.25.0
 
 require (
-	github.com/confighub/sdk/configkit/k8skit v0.4.5
-	github.com/confighub/sdk/core v0.4.5
-	github.com/confighub/sdk/worker-function-impl v0.4.5
+	github.com/confighub/sdk/configkit/k8skit v0.4.10
+	github.com/confighub/sdk/core v0.4.10
+	github.com/confighub/sdk/worker-function-impl v0.4.10
 )
 
 require (
@@ -22,7 +22,6 @@ require (
 	github.com/cockroachdb/logtags v0.0.0-20230118201751-21c54148d20b // indirect
 	github.com/cockroachdb/redact v1.1.5 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/evanphx/json-patch v5.9.11+incompatible // indirect
 	github.com/getsentry/sentry-go v0.27.0 // indirect
 	github.com/go-errors/errors v1.5.1 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
