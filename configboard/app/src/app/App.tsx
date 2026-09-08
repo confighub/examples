@@ -169,7 +169,7 @@ export function App() {
                 <PushPinIcon fontSize="small" />
               </IconButton>
             </Tooltip>
-            <Button size="small" onClick={logout}>
+            <Button size="small" onClick={() => void logout()}>
               Log out
             </Button>
           </Stack>

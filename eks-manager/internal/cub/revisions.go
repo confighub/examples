@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"github.com/confighub/sdk/core/cubapi"
+	goclientnew "github.com/confighub/sdk/core/openapi/goclient-new"
 	"github.com/google/uuid"
 	"sigs.k8s.io/yaml"
 )
@@ -21,13 +22,6 @@ import (
 // Release advances it, so it is "what the cluster was last told". A check that
 // runs *before* the next publish wants exactly that comparison point.
 func RevisionDocs(ctx context.Context, c *cubapi.Client, spaceID, unitID string, revisionNum int64) (map[string]any, error) {
-	rev, err := cubapi.GetRevisionByNum(ctx, c.API, spaceID, unitID, revisionNum)
-	if err != nil {
-		return nil, err
-	}
-	if rev == nil || rev.Revision == nil {
-		return nil, fmt.Errorf("revision %d has no data", revisionNum)
-	}
 	sid, err := uuid.Parse(spaceID)
 	if err != nil {
 		return nil, fmt.Errorf("parse space id %q: %w", spaceID, err)
@@ -36,9 +30,13 @@ func RevisionDocs(ctx context.Context, c *cubapi.Client, spaceID, unitID string,
 	if err != nil {
 		return nil, fmt.Errorf("parse unit id %q: %w", unitID, err)
 	}
+	revID, err := revisionID(ctx, c, sid, uid, revisionNum)
+	if err != nil {
+		return nil, err
+	}
 	// Configuration is not a field of a Revision: it is read through the Revision's
 	// own data endpoint, as text.
-	res, dlErr := c.API.DownloadRevisionDataWithResponse(ctx, sid, uid, rev.Revision.RevisionID)
+	res, dlErr := c.API.DownloadRevisionDataWithResponse(ctx, sid, uid, revID)
 	if dlErr != nil {
 		return nil, dlErr
 	}
@@ -49,6 +47,26 @@ func RevisionDocs(ctx context.Context, c *cubapi.Client, spaceID, unitID string,
 		return nil, fmt.Errorf("get data for revision %d: %s", revisionNum, res.Status())
 	}
 	return decodeDocs(res.Body)
+}
+
+// revisionID resolves a Unit's revision number to the RevisionID the data
+// endpoint is addressed by. A revision number is unique within its Unit, so the
+// filtered list holds at most one row.
+func revisionID(ctx context.Context, c *cubapi.Client, spaceID, unitID uuid.UUID, revisionNum int64) (uuid.UUID, error) {
+	where := fmt.Sprintf("RevisionNum = %d", revisionNum)
+	resp, err := c.API.ListExtendedRevisionsWithResponse(ctx, spaceID, unitID,
+		&goclientnew.ListExtendedRevisionsParams{Where: &where})
+	if cubapi.IsAPIError(err, resp) {
+		return uuid.Nil, cubapi.InterpretErrorGeneric(err, resp)
+	}
+	if resp.JSON200 == nil || len(*resp.JSON200) == 0 {
+		return uuid.Nil, fmt.Errorf("revision %d not found for unit %s in space %s", revisionNum, unitID, spaceID)
+	}
+	rev := (*resp.JSON200)[0].Revision
+	if rev == nil {
+		return uuid.Nil, fmt.Errorf("revision %d has no data", revisionNum)
+	}
+	return rev.RevisionID, nil
 }
 
 // decodeDocs splits a multi-document YAML payload into resources keyed by
