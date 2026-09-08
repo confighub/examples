@@ -11,9 +11,9 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@confighub/api": "^0.4.4",
+    "@confighub/api": "file:^0.4.5 @confighub/react-auth@^0.4.5 ",
     "@confighub/examples-webkit": "file:../../webkit",
-    "@confighub/react-auth": "^0.4.4",
+    "@confighub/react-auth": "^0.4.5",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
     "@mui/material": "^6.4.8",
