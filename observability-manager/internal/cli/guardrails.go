@@ -56,7 +56,7 @@ ServiceMonitor coverage is a cross-Unit property (the ServiceMonitor and the
 Service live in separate Units), so a per-Unit vet-cel can't compute it directly.
 This realizes annotate-then-validate: 'guardrails annotate' writes the coverage
 finding onto each uncovered metrics-Service Unit, and this Trigger turns it into
-an advisory ApplyWarning. Triggers are Warn=true; promote to blocking with
+an advisory ValidationWarning. Triggers are Warn=true; promote to blocking with
   cub trigger update servicemonitor-coverage --space observability-policy --unwarn`,
 	}
 	cmd.AddCommand(pack.InstallCmd(preflight), pack.StatusCmd(preflight), pack.AnnotateCmd(preflight, annotateSpec))
@@ -73,7 +73,7 @@ var annotateSpec = guardrails.AnnotateSpec{
 	Long: `annotate runs the coverage analysis and writes an observability.confighub.com/
 coverage annotation onto each metrics-exposing Service Unit that no ServiceMonitor
 selects. Paired with the servicemonitor-coverage rule from 'guardrails install',
-this turns the cross-Unit coverage finding into an advisory ApplyWarning.
+this turns the cross-Unit coverage finding into an advisory ValidationWarning.
 
 Re-run after adding ServiceMonitors. Dry run unless --commit --change-desc.`,
 	Targets: func(ctx context.Context, c *cubapi.Client, where, cluster string) ([]guardrails.Target, error) {

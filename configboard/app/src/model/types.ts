@@ -8,7 +8,7 @@
  * read-only `get-resources` function across the selected Units and emits one row per
  * *resource inside* them.
  *
- * `Finding` explodes each Unit's `ApplyGates` and `ApplyWarnings` maps into one row per
+ * `Finding` explodes each Unit's `ValidationErrors` and `ValidationWarnings` maps into one row per
  * failing check. Those maps are already on the Unit — recorded by whichever Trigger
  * produced them — so a findings panel costs the same as any other unit query and needs
  * no validator run. A Unit failing three guardrails is three findings.

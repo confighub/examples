@@ -1,7 +1,7 @@
 # AI Guide: rbac-manager
 
 Multi-cluster Kubernetes RBAC managed as data: canonical personas, per-cluster
-variants, enforced guardrails (Apply Gates), fleet-wide edits over selectors,
+variants, enforced guardrails (Validation Errors), fleet-wide edits over selectors,
 and revision rollback.
 
 ## CRITICAL: Demo Pacing
@@ -30,7 +30,7 @@ GUI gap: there is no single fleet-level view of "which Spaces are RBAC
 clusters and what's gated in each" — that is what the rbac-manager webapp
 will add on top of this layout.
 
-GUI feature ask: a Space-group dashboard summarizing Units, Apply Gates, and
+GUI feature ask: a Space-group dashboard summarizing Units, Validation Errors, and
 unapplied changes across a label-selected set of Spaces.
 
 **PAUSE.** Wait for the human.
@@ -65,13 +65,13 @@ description that introduced the divergence.
 
 ```bash
 # The planted wildcard role is blocked from ever being applied
-cub unit get legacy-wildcard-admin --space rbac-demo-dev -o jq=".Unit.ApplyGates"
+cub unit get legacy-wildcard-admin --space rbac-demo-dev -o jq=".Unit.ValidationErrors"
 
 # So is the standing cluster-admin binding
-cub unit get breakglass-cluster-admin --space rbac-demo-dev -o jq=".Unit.ApplyGates"
+cub unit get breakglass-cluster-admin --space rbac-demo-dev -o jq=".Unit.ValidationErrors"
 
 # Prod changes carry an approval gate out of the box
-cub unit get developer --space rbac-demo-prod -o jq=".Unit.ApplyGates"
+cub unit get developer --space rbac-demo-prod -o jq=".Unit.ValidationErrors"
 ```
 
 Expected gates: `rbac-demo-policy/no-wildcards/vet-celexpr`,

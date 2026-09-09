@@ -1,5 +1,5 @@
 // Load the fleet's cost snapshot: the cost-estimator Units, the cost annotations the
-// estimator wrote onto each workload, and the ApplyGates the guardrails set.
+// estimator wrote onto each workload, and the ValidationErrors the guardrails set.
 //
 // Two requests, not one per Unit: the list carries the metadata (labels, gates, Space)
 // and the bulk data endpoint carries the configurations, joined on UnitID. A read per
@@ -18,7 +18,7 @@ export async function loadSnapshot(spaceGlob = 'cost-demo-%'): Promise<CostRow[]
   const where = `Labels.app = 'cost-estimator' AND Space.Slug LIKE '${spaceGlob}'`;
   const [listed, documents] = await Promise.all([
     confighub().GET('/unit', {
-      params: { query: { where, select: 'Slug,UnitID,SpaceID,Labels,ApplyGates', include: 'SpaceID' } },
+      params: { query: { where, select: 'Slug,UnitID,SpaceID,Labels,ValidationErrors', include: 'SpaceID' } },
     }),
     listUnitData({ where }),
   ]);
@@ -56,7 +56,7 @@ export async function loadSnapshot(spaceGlob = 'cost-demo-%'): Promise<CostRow[]
       budgetStatus: (wl.a['budget-status'] as BudgetStatus) || 'UNKNOWN',
       estimatedAt: wl.a['estimated-at'] ?? '',
       pricingVersion: wl.a['pricing-version'] ?? '',
-      gates: Object.keys(u.ApplyGates ?? {}).map(triggerOf),
+      gates: Object.keys(u.ValidationErrors ?? {}).map(triggerOf),
     });
   }
   rows.sort((a, b) => (b.monthlyUsd ?? -1) - (a.monthlyUsd ?? -1));

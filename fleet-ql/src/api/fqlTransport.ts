@@ -63,23 +63,23 @@ function unitRow(e: ExtendedUnit): Row {
     environment: u.Labels?.Environment ?? null,
     component: u.Labels?.Component ?? null,
     region: u.Labels?.Region ?? null,
-    gates: Object.keys(u.ApplyGates ?? {}).length,
-    warnings: Object.keys(u.ApplyWarnings ?? {}).length,
+    gates: Object.keys(u.ValidationErrors ?? {}).length,
+    warnings: Object.keys(u.ValidationWarnings ?? {}).length,
   };
   spreadMap(row, 'labels', u.Labels);
   spreadMap(row, 'annotations', u.Annotations);
-  // Gate/warning maps spread two ways: by the full key, so `applyGates['<key>']`
+  // Gate/warning maps spread two ways: by the full key, so `validationErrors['<key>']`
   // resolves client-side too; and re-keyed by trigger-slug, so `gate['<trigger>']`
   // works without knowing the fully-qualified key.
-  for (const [k, v] of Object.entries(u.ApplyGates ?? {})) row[`applyGates.${k}`] = v;
-  for (const [k, v] of Object.entries(u.ApplyWarnings ?? {})) row[`applyWarnings.${k}`] = v;
-  spreadGatesByTrigger(row, 'gate', u.ApplyGates);
-  spreadGatesByTrigger(row, 'warning', u.ApplyWarnings);
+  for (const [k, v] of Object.entries(u.ValidationErrors ?? {})) row[`validationErrors.${k}`] = v;
+  for (const [k, v] of Object.entries(u.ValidationWarnings ?? {})) row[`validationWarnings.${k}`] = v;
+  spreadGatesByTrigger(row, 'gate', u.ValidationErrors);
+  spreadGatesByTrigger(row, 'warning', u.ValidationWarnings);
   return row;
 }
 
 const SELECT_UNIT =
-  'UnitID,Slug,DisplayName,SpaceID,TargetID,ToolchainType,HeadRevisionNum,LastReleasedRevisionNum,UpstreamRevisionNum,UpstreamUnitID,ProviderType,Labels,Annotations,ApplyGates,ApplyWarnings';
+  'UnitID,Slug,DisplayName,SpaceID,TargetID,ToolchainType,HeadRevisionNum,LastReleasedRevisionNum,UpstreamRevisionNum,UpstreamUnitID,ProviderType,Labels,Annotations,ValidationErrors,ValidationWarnings';
 
 // The get-resources invocation body, shared by the resources and RBAC paths.
 const GET_RESOURCES: Schemas['FunctionInvocationsRequest']['FunctionInvocations'] = [

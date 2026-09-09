@@ -2,7 +2,7 @@
 # demo-verify.sh — Confirm the sec-scanner demo fleet seeded by demo-setup.sh
 #
 # Read-only on ConfigHub. Asserts the Space/Trigger/Filter/Unit layout, the
-# gate matrix (each planted violation carries exactly its intended Apply Gate,
+# gate matrix (each planted violation carries exactly its intended Validation Error,
 # clean workloads are ungated, prod requires approval), that the scanner wrote
 # its findings back as data, and that the cvedb holds advisories.
 #
@@ -38,7 +38,7 @@ pass() { checks=$((checks + 1)); printf 'ok   %s\n' "$1"; }
 fail() { checks=$((checks + 1)); failures=$((failures + 1)); printf 'FAIL %s\n' "$1"; }
 check() { local desc="$1"; shift; if "$@" &>/dev/null; then pass "$desc"; else fail "$desc"; fi; }
 
-gates_of()  { $cub unit get "$2" --space "$1" -o jq=".Unit.ApplyGates" 2>/dev/null; }
+gates_of()  { $cub unit get "$2" --space "$1" -o jq=".Unit.ValidationErrors" 2>/dev/null; }
 has_gate()  { gates_of "$1" "$2" | grep -q "$3"; }
 no_gates()  { local g; g="$(gates_of "$1" "$2")"; [[ "$g" == "null" || "$g" == "{}" ]]; }
 

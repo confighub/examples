@@ -66,11 +66,11 @@ Unit creation has no server-side dry-run, so dry-run lists the plan and only
 			if err != nil {
 				return err
 			}
-			base, err := cubapi.ResolveSpace(cmd.Context(), client, fromSpace)
+			base, err := cubapi.ResolveSpace(cmd.Context(), client, cubapi.ParseRef(fromSpace), cubapi.ResolveOpts{})
 			if err != nil {
 				return fmt.Errorf("resolve --from space %q: %w", fromSpace, err)
 			}
-			dest, err := cubapi.ResolveSpace(cmd.Context(), client, spaceSlug)
+			dest, err := cubapi.ResolveSpace(cmd.Context(), client, cubapi.ParseRef(spaceSlug), cubapi.ResolveOpts{})
 			if err != nil {
 				return fmt.Errorf("resolve --space %q: %w", spaceSlug, err)
 			}
@@ -80,7 +80,7 @@ Unit creation has no server-side dry-run, so dry-run lists the plan and only
 			// already has one — cloning it would create a duplicate-namespace
 			// collision (which findings flags). The base's other Units are what
 			// backfill adds, whatever they define.
-			scopeWhere := fmt.Sprintf("SpaceID IN ('%s', '%s')", base.SpaceID.String(), dest.SpaceID.String())
+			scopeWhere := fmt.Sprintf("SpaceID IN ('%s', '%s')", base.Space.SpaceID.String(), dest.Space.SpaceID.String())
 			snap, err := snapshot.Load(cmd.Context(), client, scopeWhere)
 			if err != nil {
 				return fmt.Errorf("load base + dest snapshot: %w", err)
@@ -121,14 +121,14 @@ Unit creation has no server-side dry-run, so dry-run lists the plan and only
 			if len(cloneSlugs) == 0 {
 				return fmt.Errorf("no envelope Units to backfill from base Space %q (nothing missing)", fromSpace)
 			}
-			srcWhere := fmt.Sprintf("SpaceID = '%s' AND Slug IN (%s)", base.SpaceID.String(), inList(cloneSlugs))
+			srcWhere := fmt.Sprintf("SpaceID = '%s' AND Slug IN (%s)", base.Space.SpaceID.String(), inList(cloneSlugs))
 			if dryRun {
 				report.WouldClone = cloneSlugs
 				return reportBackfill(cmd, report, output)
 			}
 
 			// Commit: clone base -> dest (idempotent), then re-home the clones.
-			destWhere := fmt.Sprintf("SpaceID = '%s'", dest.SpaceID.String())
+			destWhere := fmt.Sprintf("SpaceID = '%s'", dest.Space.SpaceID.String())
 			cloned, err := cub.BulkCloneUnits(cmd.Context(), client, srcWhere, destWhere, true)
 			if err != nil {
 				return fmt.Errorf("clone envelope into %q: %w", spaceSlug, err)
@@ -143,7 +143,7 @@ Unit creation has no server-side dry-run, so dry-run lists the plan and only
 			report.Cloned = clonedSlugs
 
 			if len(clonedSlugs) > 0 {
-				sel := cubapi.Selector{Where: fmt.Sprintf("SpaceID = '%s' AND Slug IN (%s)", dest.SpaceID.String(), inList(clonedSlugs))}
+				sel := cubapi.Selector{Where: fmt.Sprintf("SpaceID = '%s' AND Slug IN (%s)", dest.Space.SpaceID.String(), inList(clonedSlugs))}
 				res, err := cub.InvokeMutation(cmd.Context(), client, "set-namespace",
 					[]api.FunctionArgument{{ParameterName: "namespace-name", Value: namespace}},
 					sel, cubapi.Change{Description: changeDesc})

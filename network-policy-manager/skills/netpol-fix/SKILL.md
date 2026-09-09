@@ -25,7 +25,7 @@ A per-resource validator can only *report* a gap; fixing it means editing the cl
 
 - Inventory / coverage / findings — **netpol-audit**, **netpol-findings**.
 - Fixing the *whole fleet* at once — **netpol-fleet** (`fleet default-deny`).
-- Installing enforcement (Triggers/ApplyWarnings) — **netpol-guardrails**.
+- Installing enforcement (Triggers/ValidationWarnings) — **netpol-guardrails**.
 - Publishing the change — that's `cub release publish <space>` (the **release-publish** skill); this skill only edits stored config.
 
 ## Preflight gates
@@ -51,7 +51,7 @@ A per-resource validator can only *report* a gap; fixing it means editing the cl
    cub-netpol default-deny payments --cluster prod-cluster \
      --commit --change-desc "Default-deny ingress for payments (no prior policy). User prompt: ..."
    ```
-5. **Stop.** The write created/edited a Unit; it is NOT published. To roll it out, hand off to **release-publish** (`cub release publish`), which respects ApplyGates.
+5. **Stop.** The write created/edited a Unit; it is NOT published. To roll it out, hand off to **release-publish** (`cub release publish`), which respects ValidationErrors.
 
 ## Notes & idioms
 
@@ -63,7 +63,7 @@ A per-resource validator can only *report* a gap; fixing it means editing the cl
 ## Stop conditions
 
 - The user asks to publish/roll out — hand off to **release-publish**, don't publish here.
-- A commit hits an ApplyGate or permission error — report it; fix the data or route to **triggers-and-applygates**; never bypass a gate.
+- A commit hits an ValidationError or permission error — report it; fix the data or route to **triggers-and-applygates**; never bypass a gate.
 - Whole-fleet remediation requested — hand off to **netpol-fleet**.
 
 ## Tool boundary

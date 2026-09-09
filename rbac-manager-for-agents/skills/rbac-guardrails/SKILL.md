@@ -17,7 +17,7 @@ Install and inspect a small pack of RBAC validation policies, defined once in a 
 | `no-rbac-privilege-escalation` | `escalate` / `bind` / `impersonate` verbs |
 | `no-cluster-admin-binding` | ClusterRoleBindings to `cluster-admin` |
 
-Triggers are created with **Warn=true** → they produce advisory **ApplyWarnings**, never blocking **ApplyGates**. Installing on an existing fleet never blocks anyone. Promote one to blocking later (a single change, fleet-wide):
+Triggers are created with **Warn=true** → they produce advisory **ValidationWarnings**, never blocking **ValidationErrors**. Installing on an existing fleet never blocks anyone. Promote one to blocking later (a single change, fleet-wide):
 
 ```bash
 cub trigger update no-rbac-wildcards --space <policy-space> --unwarn
@@ -62,7 +62,7 @@ This is the *enforcement* complement to **rbac-findings** (which only reports). 
    Install is idempotent (`--allow-exists`); re-running is safe.
 4. **Verify** what the guardrails now flag:
    ```bash
-   cub-rbac guardrails status -o table     # Units with ApplyWarnings / ApplyGates
+   cub-rbac guardrails status -o table     # Units with ValidationWarnings / ValidationErrors
    ```
    To resolve a warning, hand off to **rbac-edit** (fix the config) or **rbac-findings** (understand it).
 
@@ -86,4 +86,4 @@ This is the *enforcement* complement to **rbac-findings** (which only reports). 
 ## References
 
 - `cub-rbac guardrails install --help`, `cub-rbac guardrails status --help`.
-- Companion skills: **rbac-findings** (advisory analysis), **rbac-edit** (fix violations), **triggers-and-applygates** (general Trigger/ApplyGate mechanics).
+- Companion skills: **rbac-findings** (advisory analysis), **rbac-edit** (fix violations), **triggers-and-applygates** (general Trigger/ValidationError mechanics).

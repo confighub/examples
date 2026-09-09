@@ -2,7 +2,7 @@
 
 Container image CVEs managed as data: a unified CVE database (GitHub Advisory DB
 + CVE List V5 + OSV, normalized), a custom scanner that digs into images, scan
-verdicts written back onto ConfigHub Units, and Apply Gates that block the
+verdicts written back onto ConfigHub Units, and Validation Errors that block the
 vulnerable.
 
 ## CRITICAL: Demo Pacing
@@ -96,13 +96,13 @@ Expected: the inventory lists each Unit's image; the query returns the dev
 
 ```bash
 # the years-old image is blocked from ever being applied
-cub unit get legacy-frontend --space sec-demo-dev -o jq=".Unit.ApplyGates"
+cub unit get legacy-frontend --space sec-demo-dev -o jq=".Unit.ValidationErrors"
 
 # so is the :latest image (static check, no scan needed)
-cub unit get unpinned-web --space sec-demo-dev -o jq=".Unit.ApplyGates"
+cub unit get unpinned-web --space sec-demo-dev -o jq=".Unit.ValidationErrors"
 
 # prod changes carry an approval gate out of the box
-cub unit get frontend --space sec-demo-prod -o jq=".Unit.ApplyGates"
+cub unit get frontend --space sec-demo-prod -o jq=".Unit.ValidationErrors"
 ```
 
 Expected gates: `sec-demo-policy/no-critical-cves/vet-celexpr`,
@@ -122,7 +122,7 @@ cub function do --space sec-demo-dev --unit legacy-frontend \
 
 # re-scan + write back; the CRITICAL annotation flips to NONE and the gate lifts
 ./scanner/secscan scan-fleet --space "sec-demo-dev" --write-back
-cub unit get legacy-frontend --space sec-demo-dev -o jq=".Unit.ApplyGates"
+cub unit get legacy-frontend --space sec-demo-dev -o jq=".Unit.ValidationErrors"
 ```
 
 Expected: after the upgrade and re-scan, `legacy-frontend` is no longer gated by

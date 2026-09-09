@@ -146,6 +146,6 @@ Promote the rule to blocking later with
   display filters.
 - **Discipline**: reads default to JSON (`-o table` for humans); writes are
   dry-run until `--commit --change-desc`; nothing is published (roll it out with
-  `cub release publish <space>` separately); ApplyGates are never bypassed.
+  `cub release publish <space>` separately); ValidationErrors are never bypassed.
 - **Placement vs availability**: pod anti-affinity and topology spread live in
   [`workload-manager`](../workload-manager), not here.

@@ -400,7 +400,7 @@ create_initiative() {
   local policy_func="$9"
   local check_summary="${10}"
   local worker_id="${11:-}"
-  local enforce="${12:-false}"  # true → gate (ApplyGates); false → warning (ApplyWarnings)
+  local enforce="${12:-false}"  # true → gate (ValidationErrors); false → warning (ValidationWarnings)
 
   local slug
   slug=$(make_slug "$name")
@@ -440,8 +440,8 @@ create_initiative() {
   # 3. Trigger — vet-kyverno with the inline policy as its positional argument.
   #    --label initiative-check=true lets every component space pick it up via
   #    --trigger-filter. --disable creates it paused (Step 8 enables). --warn
-  #    makes failures advisory (ApplyWarnings); omitting it makes the trigger an
-  #    enforced gate (ApplyGates).
+  #    makes failures advisory (ValidationWarnings); omitting it makes the trigger an
+  #    enforced gate (ValidationErrors).
   if [[ -n "$worker_id" ]]; then
     local -a trig_flags=(--worker "$worker_id" --label "initiative-check=true" --disable)
     [[ "$enforce" != "true" ]] && trig_flags+=(--warn)
@@ -642,7 +642,7 @@ create_initiative \
 
 # 5. Disallow Host Ports — Component = docs, completed + enforced (2 passing / 0 failing)
 #    Pass: docs-server, docs-search
-#    Enforce: true → trigger runs as a hard gate (Warn: false / ApplyGates)
+#    Enforce: true → trigger runs as a hard gate (Warn: false / ValidationErrors)
 create_initiative \
   "Disallow Host Ports" \
   "Containers must not bind to host ports. Completed — all workloads now route through ClusterIP Services and Ingress." \

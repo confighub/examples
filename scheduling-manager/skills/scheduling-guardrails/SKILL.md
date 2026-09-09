@@ -1,16 +1,16 @@
 ---
 name: scheduling-guardrails
-description: 'Install and inspect the placement enforcement pack with the cub-scheduling CLI — a common Space with a Warn=true vet-cel Trigger that flags controllers which tolerate a taint but do not constrain where they land (no nodeSelector or required node affinity), wired to in-scope Spaces via a shared Trigger Filter. guardrails install (dry-run by default) and status (Units with ApplyWarnings/Gates). Use for "enforce that tolerations come with placement", "warn on workloads that tolerate a taint but pin nothing", "which workloads are flagged?". Not for read-only findings (use scheduling-findings) or fixing placement (use scheduling-place).'
+description: 'Install and inspect the placement enforcement pack with the cub-scheduling CLI — a common Space with a Warn=true vet-cel Trigger that flags controllers which tolerate a taint but do not constrain where they land (no nodeSelector or required node affinity), wired to in-scope Spaces via a shared Trigger Filter. guardrails install (dry-run by default) and status (Units with ValidationWarnings/Gates). Use for "enforce that tolerations come with placement", "warn on workloads that tolerate a taint but pin nothing", "which workloads are flagged?". Not for read-only findings (use scheduling-findings) or fixing placement (use scheduling-place).'
 phase: act
 allowed-tools: Bash(cub-scheduling --help) Bash(cub-scheduling * --help) Bash(cub auth status) Bash(cub-scheduling preflight) Bash(cub-scheduling guardrails) Bash(cub-scheduling guardrails *)
 ---
 
 # scheduling-guardrails
 
-Turn the placement anti-pattern into **enforcement** — an advisory ApplyWarning (promotable to a blocking ApplyGate) that fires in the normal apply pipeline.
+Turn the placement anti-pattern into **enforcement** — an advisory ValidationWarning (promotable to a blocking ValidationError) that fires in the normal apply pipeline.
 
 - **`guardrails install`** — creates the `common` Space, a `Warn=true` `vet-cel` Trigger (`workload-toleration-needs-placement`), and a shared Trigger Filter, then wires in-scope Spaces to it. **Dry-run by default**; re-run with `--commit`.
-- **`guardrails status`** — lists Units carrying placement ApplyWarnings or ApplyGates.
+- **`guardrails status`** — lists Units carrying placement ValidationWarnings or ValidationErrors.
 
 ## Why this matters
 
@@ -26,7 +26,7 @@ The rule is a plain **per-resource `vet-cel`** check — a single Unit answers i
 
 - Read-only findings — use **scheduling-findings**.
 - Fixing placement — use **scheduling-place**.
-- General Trigger/ApplyGate mechanics beyond this pack — use `triggers-and-applygates`.
+- General Trigger/ValidationError mechanics beyond this pack — use `triggers-and-applygates`.
 
 ## Preflight gates
 

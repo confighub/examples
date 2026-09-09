@@ -12,7 +12,7 @@ This example seeds a realistic multi-cluster RBAC fleet and demonstrates:
 - **Fleet selectors.** "Add a verb to the developer role on every staging
   cluster" is a single command over a label selector, not N pull requests.
 - **Enforced guardrails, not advisory linting.** Wildcard rules, privilege
-  escalation verbs, and cluster-admin bindings are blocked by Apply Gates
+  escalation verbs, and cluster-admin bindings are blocked by Validation Errors
   before they reach a cluster. Prod changes additionally require approval.
 - **Variants as data.** Each cluster's personas are clones of a canonical
   base; intentional divergence (dev may delete, prod may not) is tracked,
@@ -65,8 +65,8 @@ The three guardrail Triggers are defined **once** in a policy Space
 (`policy-guardrails` by default) and enforced fleet-wide via a shared Trigger
 Filter — each in-scope Space's `TriggerFilterID` is pointed at that Filter,
 not given its own copy. They're created with `Warn=true`: violations surface
-as advisory **ApplyWarnings**, never blocking anyone. Promote a guardrail to a
-blocking ApplyGate once the warnings are clean —
+as advisory **ValidationWarnings**, never blocking anyone. Promote a guardrail to a
+blocking ValidationError once the warnings are clean —
 `cub trigger update <slug> --space policy-guardrails --unwarn` — and that one
 change enforces it everywhere. Spaces that already select their Triggers
 another way (a custom `WhereTrigger`, a different `TriggerFilterID`, or
@@ -91,7 +91,7 @@ Use `PREFIX=my-prefix ./demo-setup.sh` to change the `rbac-demo-` Space prefix.
 cub unit list --space "*" --where "Labels.persona = 'developer'"
 
 # A gated violation, with the gate that blocks it
-cub unit get legacy-wildcard-admin --space rbac-demo-dev -o jq=".Unit.ApplyGates"
+cub unit get legacy-wildcard-admin --space rbac-demo-dev -o jq=".Unit.ValidationErrors"
 
 # One fleet edit across a selector of clusters (server-side, comment-preserving)
 cub function do --space "*" --where "Labels.persona = 'developer' AND Labels.env = 'staging'" \

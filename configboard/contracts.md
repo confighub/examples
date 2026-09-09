@@ -148,7 +148,7 @@ query layer rests on:
   `UpgradableUnitCount`
 - summed `UnreleasedUnitCount` equals the count from
   `where=HeadRevisionNum > LastReleasedRevisionNum`; summed `GatedUnitCount` equals
-  `where=LEN(ApplyGates) > 0`
+  `where=LEN(ValidationErrors) > 0`
 - `where=Space.Labels.<K> = '<v>'` and `where=Target.<field> = '<v>'` filter correctly
   on `GET /unit`, with or without the matching `include`
 - `where=<field> IS NOT NULL` tests presence; `where=<field> != ''` does **not** —
@@ -157,7 +157,7 @@ query layer rests on:
   the failing Units in ~22s on a 398-Unit org; narrowing with `where` does not
   meaningfully reduce that, because the validator sweep dominates
 - `where_trigger=FunctionName LIKE 'vet-%'` did not return at all
-- `LEN(ApplyGates) > 0` and `LEN(ApplyWarnings) > 0` need no validator run: those are
+- `LEN(ValidationErrors) > 0` and `LEN(ValidationWarnings) > 0` need no validator run: those are
   recorded on the Unit already, keyed `<policy-space>/<trigger>/<function>`
 - recorded findings are **state**, recomputed by a data revision. Attaching a Filter to a
   Space that had no selection re-evaluates its Units; so does any data revision

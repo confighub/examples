@@ -22,7 +22,7 @@ const VALID: Record<string, string[]> = {
     "SELECT slug FROM units WHERE UpstreamRevisionNum > 0 AND UpstreamUnitID = 'abc-123'",
     // gated units, and a specific gate key (bracket subscript with the / pattern)
     'SELECT slug, gates FROM units WHERE gates > 0 ORDER BY gates DESC',
-    "SELECT slug FROM units u WHERE u.ApplyGates['sec-demo-policy/no-critical-cves/vet-celexpr'] = true",
+    "SELECT slug FROM units u WHERE u.ValidationErrors['sec-demo-policy/no-critical-cves/vet-celexpr'] = true",
     // ownership rollup
     "SELECT space, COUNT(*) AS n FROM units WHERE labels.team = 'payments' GROUP BY space ORDER BY n DESC",
     // toolchain filter with IN
@@ -49,8 +49,8 @@ const VALID: Record<string, string[]> = {
   ],
   gates: [
     // policy audit — what's blocked, and by which gate
-    "SELECT unit FROM units WHERE ApplyGates['sec-demo-policy/no-critical-cves/vet-celexpr'] = true",
-    "SELECT unit FROM units WHERE ApplyWarnings['sec-demo-policy/no-latest-tag/vet-celexpr'] = true",
+    "SELECT unit FROM units WHERE ValidationErrors['sec-demo-policy/no-critical-cves/vet-celexpr'] = true",
+    "SELECT unit FROM units WHERE ValidationWarnings['sec-demo-policy/no-latest-tag/vet-celexpr'] = true",
   ],
   triggers_filters: [
     "SELECT slug FROM triggers WHERE Disabled = false AND Warn = true",

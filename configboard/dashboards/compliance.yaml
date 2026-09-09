@@ -5,7 +5,7 @@ title: Compliance
 description: >-
   Which checks are failing, where. The guardrail packs the fleet managers install (rbac,
   network-policy, namespace, workload) create Warn=true Triggers, and their failures are
-  recorded on each Unit as ApplyWarnings — so most of these panels are ordinary metadata
+  recorded on each Unit as ValidationWarnings — so most of these panels are ordinary metadata
   queries, not validator sweeps.
 
 variables:

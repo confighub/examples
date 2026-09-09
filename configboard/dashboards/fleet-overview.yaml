@@ -38,7 +38,7 @@ panels:
     chart: { form: meter, totalField: Space.TotalUnitCount }
 
   - id: gated
-    title: Blocked by apply gates
+    title: Blocked by validation errors
     span: 3
     query:
       source: Space

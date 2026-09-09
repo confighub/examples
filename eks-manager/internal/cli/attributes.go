@@ -127,12 +127,12 @@ Dry-run by default; pass --commit to write.`,
 			if err != nil {
 				return err
 			}
-			sp, err := cubapi.ResolveSpace(cmd.Context(), client, space)
+			sp, err := cubapi.ResolveSpace(cmd.Context(), client, cubapi.ParseRef(space), cubapi.ResolveOpts{})
 			if err != nil {
 				return fmt.Errorf("resolve space %s: %w", space, err)
 			}
 			for i, tier := range eks.DisruptionTiers() {
-				attr := buildDisruptionAttribute(sp.SpaceID, tier, prefix)
+				attr := buildDisruptionAttribute(sp.Space.SpaceID, tier, prefix)
 				if _, err := cub.CreateAttribute(cmd.Context(), client, attr); err != nil {
 					plan.Attributes[i].Error = err.Error()
 				}

@@ -58,12 +58,12 @@ once in a policy Space and enforced fleet-wide via a shared Trigger Filter:
   namespace-has-pod-security   a Namespace must carry a pod-security enforce label
   namespace-envelope-finding   warns while an envelope finding is annotated (§ annotate)
 
-Triggers are created with Warn=true (advisory ApplyWarnings, never blocking).
+Triggers are created with Warn=true (advisory ValidationWarnings, never blocking).
 Promote one to blocking later with:
   cub trigger update <slug> --space <policy-space> --unwarn
 
 The envelope-finding rule realizes the annotate-then-validate model: the manager
-can't set ApplyWarnings directly (only a failed Trigger can), so 'guardrails
+can't set ValidationWarnings directly (only a failed Trigger can), so 'guardrails
 annotate' writes a finding annotation onto each incomplete namespace's Namespace
 Unit and this Trigger turns it into a warning.
 
@@ -86,7 +86,7 @@ var annotateSpec = guardrails.AnnotateSpec{
 annotation (value = the missing members) onto the v1/Namespace Unit of each
 incomplete namespace. Paired with the namespace-envelope-finding rule from
 'guardrails install', this turns a set-aware finding into an advisory
-ApplyWarning — the manager cannot set warnings directly, only a failed rule can.
+ValidationWarning — the manager cannot set warnings directly, only a failed rule can.
 
 Only namespaces that have a Namespace Unit are annotated (there is nowhere else
 to put the annotation). Re-run after fixing config. Dry run unless --commit

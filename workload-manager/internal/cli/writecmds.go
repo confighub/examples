@@ -31,7 +31,7 @@ workload Unit:
 
 The Unit is edited, not published — rolling it out is a separate
 'cub release publish <space>'. Dry-run unless --commit --change-desc; never
-bypasses ApplyGates.
+bypasses ValidationErrors.
 
 Note: if a container legitimately needs a writable root filesystem or the
 ServiceAccount token, record an exception rather than hardening it blindly.`,
@@ -88,7 +88,7 @@ Pick a --tier (small=100m/128Mi, medium=250m/256Mi, large=500m/512Mi) or give
 explicit --cpu and --memory. --container selects the container by name (default
 '*' = all). Operation is 'all' (set unconditionally).
 
-Dry-run unless --commit --change-desc; never bypasses ApplyGates.`,
+Dry-run unless --commit --change-desc; never bypasses ValidationErrors.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if tier != "" {
@@ -150,7 +150,7 @@ containers that don't already have them.
 
 Override the probe paths with --liveness-path / --readiness-path / --startup-path
 (each defaults to /healthz). Dry-run unless --commit --change-desc; never bypasses
-ApplyGates.`,
+ValidationErrors.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			changeDesc, dryRun, err := commit.Validate(fmt.Sprintf("add probe defaults to %s", args[0]))
@@ -211,7 +211,7 @@ topology.kubernetes.io/zone to spread across zones).
 
 Prefer 'soft' — a 'hard' anti-affinity can leave replicas Pending when the
 cluster has fewer eligible nodes than replicas. The edit is idempotent (it sets,
-not appends). Dry-run unless --commit --change-desc; never bypasses ApplyGates.`,
+not appends). Dry-run unless --commit --change-desc; never bypasses ValidationErrors.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if topologyKey == "" {

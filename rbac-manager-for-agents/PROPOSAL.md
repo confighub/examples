@@ -39,7 +39,7 @@ it talks to ConfigHub through the published HTTP API/SDK. Its substance is in th
      cluster-admin bindings, orphaned bindings, unbound service accounts).
 3. **A governance / write layer** — structured edits compiled to server-side `yq-i` functions
    (dry-run → commit with change description), fleet bulk edits, override-preserving variant
-   propagation, apply/approve/rollback, and a guardrail pack of Triggers + ApplyGates
+   propagation, apply/approve/rollback, and a guardrail pack of Triggers + ValidationErrors
    (`vet-schemas`, `vet-celexpr`, `vet-approvedby`).
 
 **Key takeaway for the agent tool:** raw `cub` already does the CRUD, triggers, apply, and bulk
@@ -172,7 +172,7 @@ routing, evals). Split read vs write so read-only skills physically cannot mutat
 - **`rbac-findings`** (read) — "audit our RBAC hygiene", "any cluster-admin bindings?"
 - **`rbac-edit`** (write) — guardrailed single/structured edits with change descriptions.
 - **`rbac-fleet`** (write) — fleet bulk edits + variant propagation.
-- **`rbac-guardrails`** (write) — install/inspect the Trigger+ApplyGate policy pack.
+- **`rbac-guardrails`** (write) — install/inspect the Trigger+ValidationError policy pack.
 
 Each routes to the others and to the existing ConfigHub skills (`release-publish`, `rollback-revision`,
 `triggers-and-applygates`, `promote-release`).
@@ -183,7 +183,7 @@ Each routes to the others and to the existing ConfigHub skills (`release-publish
 - **Dry-run by default** for every mutation; show the diff, commit only on confirmation.
 - **Every Unit-data mutation carries `--change-desc`** (summary + verbatim user prompt +
   clarifications) for reviewable provenance.
-- **Never bypass ApplyGates/approvals.** Surface gate state; route approval to a human.
+- **Never bypass ValidationErrors/approvals.** Surface gate state; route approval to a human.
 - **Preflight gates:** `cub auth status` (server-verified), caller capability checks, subject
   resolution, valid analysis scope.
 - **Lock-out guard:** warn loudly on edits that touch cluster-admin / privilege-escalation verbs

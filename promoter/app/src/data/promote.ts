@@ -75,7 +75,7 @@ export interface ReleaseReadiness {
   members: ReleaseMember[];
   /** Members that the promotion does not touch — the widened scope. */
   alsoCaptured: ReleaseMember[];
-  /** Members whose ApplyGates block publication. */
+  /** Members whose ValidationErrors block publication. */
   gated: ReleaseMember[];
 }
 
@@ -246,7 +246,7 @@ export function usePromotion(): Promotion {
       // Not the promoted Units, and not every Unit in the Space.
       const unitsResult = await listUnits({
         where: `SpaceID = '${target.spaceId}'`,
-        select: 'UnitID,Slug,TargetID,ApplyGates',
+        select: 'UnitID,Slug,TargetID,ValidationErrors',
       });
       if (unitsResult.error || unitsResult.data === undefined) {
         return { publishable: false, reason: 'Failed to read units.', targetId, targetSlug, providerType, ...empty };
@@ -260,7 +260,7 @@ export function usePromotion(): Promotion {
           {
             unitId: u.UnitID,
             slug: u.Slug ?? u.UnitID,
-            gates: Object.keys(u.ApplyGates ?? {}),
+            gates: Object.keys(u.ValidationErrors ?? {}),
             promoted: promotedIds.has(u.UnitID),
           },
         ];
@@ -284,7 +284,7 @@ export function usePromotion(): Promotion {
       if (gated.length > 0) {
         return {
           publishable: false,
-          reason: `${gated.length} of ${members.length} Unit(s) have an Apply Gate set; publishing is refused until they are cleared.`,
+          reason: `${gated.length} of ${members.length} Unit(s) have an Validation Error set; publishing is refused until they are cleared.`,
           targetId,
           targetSlug,
           providerType,

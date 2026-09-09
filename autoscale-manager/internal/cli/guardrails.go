@@ -57,7 +57,7 @@ policy Space and enforced fleet-wide via a shared Trigger Filter:
                           Mutation trigger and is validated against keda.sh's schema
 
 Both rules run per-resource (a single Unit answers each), created with Warn=true
-(advisory ApplyWarnings, never blocking). Promote one to blocking with:
+(advisory ValidationWarnings, never blocking). Promote one to blocking with:
 cub trigger update <slug> --space autoscale-policy --unwarn`,
 	}
 	cmd.AddCommand(pack.InstallCmd(preflight), pack.StatusCmd(preflight))

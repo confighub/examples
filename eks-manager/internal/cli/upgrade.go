@@ -132,11 +132,11 @@ Dry-run by default; pass --commit --change-desc "..." to write stage 1.`,
 
 			if !dryRun {
 				ref := unitRef{spaceSlug: c.Origin.Space, unitSlug: c.Origin.UnitSlug}
-				sp, err := cubapi.ResolveSpace(cmd.Context(), client, c.Origin.Space)
+				sp, err := cubapi.ResolveSpace(cmd.Context(), client, cubapi.ParseRef(c.Origin.Space), cubapi.ResolveOpts{})
 				if err != nil {
 					return fmt.Errorf("resolve space %s: %w", c.Origin.Space, err)
 				}
-				ref.spaceID = sp.SpaceID
+				ref.spaceID = sp.Space.SpaceID
 				res, err := cub.SetPath(cmd.Context(), client, "set-string-path",
 					c.APIVersion+"/Cluster", "spec.forProvider.version", target.String(),
 					ref.selector(), cubapi.Change{Description: changeDesc})

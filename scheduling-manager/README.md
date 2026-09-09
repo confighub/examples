@@ -38,7 +38,7 @@ Runs standalone (`bin/cub-scheduling ...`) or as a cub plugin (`cub scheduling
 Read commands default to JSON (`-o json`); pass `-o table` for a human view. Write
 commands are **dry-run by default** and require `--commit --change-desc`; they edit
 Units but never publish them (that's a separate `cub release publish <space>`),
-and never bypass ApplyGates.
+and never bypass ValidationErrors.
 
 | Command | Kind | What it does |
 |---|---|---|

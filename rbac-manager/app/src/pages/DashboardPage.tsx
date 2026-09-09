@@ -80,8 +80,8 @@ function summarize(
       groups.set(key, g);
     }
     g.unitCount += 1;
-    const gates = Object.keys(unit.ApplyGates ?? {});
-    const warnings = Object.keys(unit.ApplyWarnings ?? {});
+    const gates = Object.keys(unit.ValidationErrors ?? {});
+    const warnings = Object.keys(unit.ValidationWarnings ?? {});
     if (gates.length > 0 || warnings.length > 0) {
       g.flagged.push({
         unitId: unit.UnitID ?? '',
@@ -180,7 +180,7 @@ function GroupCard({ group, kind }: { group: GroupSummary; kind: 'cluster' | 'sp
       <CardContent sx={{ pt: 1 }}>
         {group.flagged.length === 0 ? (
           <Typography variant='body2' color='text.secondary'>
-            no apply gates or warnings
+            no validation errors or warnings
           </Typography>
         ) : (
           <>

@@ -85,7 +85,7 @@ selecting them, and wires that Filter to every Space holding an EKS cluster in
 scope.
 
 The Triggers are created with Warn=true, so a failing rule attaches a
-non-blocking ApplyWarning rather than an ApplyGate. Promote a rule to blocking
+non-blocking ValidationWarning rather than an ValidationError. Promote a rule to blocking
 with:
 
   cub trigger update <slug> --space <policy-space> --unwarn

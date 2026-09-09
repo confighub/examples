@@ -51,7 +51,7 @@ export interface Workload {
   cvedbVersion: string;
   /** Full findings, loaded from the Space's AppConfig/YAML sec-scan-record Unit. */
   findings: Finding[];
-  /** Apply Gate keys (blocking) and ApplyWarning keys (advisory). */
+  /** Validation Error keys (blocking) and ValidationWarning keys (advisory). */
   gates: string[];
   warnings: string[];
   headRevision?: number;

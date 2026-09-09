@@ -4,7 +4,7 @@ An example of the full governed loop: find config-derived waste across an org,
 price it against a declared rate card, and turn one finding at a time into an
 exactly reviewed, revision-verified, receipted ConfigHub change. The neighbouring
 [`cost-estimator`](../cost-estimator) example is the enforcement plane for the
-same problem (price book, budget verdicts, apply gate); this app is the reduction
+same problem (price book, budget verdicts, validation error); this app is the reduction
 plane. Start with [AI_START_HERE.md](AI_START_HERE.md) for a staged walkthrough
 and [contracts.md](contracts.md) for stable outputs automation can assert against.
 

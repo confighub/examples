@@ -14,7 +14,7 @@ were edited after the fact.
 
 **0:00 · Fleet Overview**
 > configboard — BI-style dashboards over ConfigHub configuration data. Fleet Overview:
-> 85 Units under management, 25% applied and current, nothing blocked by an apply gate.
+> 85 Units under management, 25% applied and current, nothing blocked by an validation error.
 
 configboard is a small React app that treats ConfigHub as a BI backend. Selection,
 projection, and joins happen on the server through the same `where` clauses the CLI
@@ -50,8 +50,8 @@ knowing it.
 > running its own scan.
 
 This dashboard is the one that changed most during the build. The first version invoked
-validators itself, which was slow and found little. The rewrite reads `ApplyGates` and
-`ApplyWarnings` off the Units — fields the platform already maintains — so compliance
+validators itself, which was slow and found little. The rewrite reads `ValidationErrors` and
+`ValidationWarnings` off the Units — fields the platform already maintains — so compliance
 became a metadata query with no extra work at query time. The guardrail packs installed
 by the fleet managers (rbac, network-policy, namespace, workload) are what populate them.
 

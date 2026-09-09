@@ -17,7 +17,7 @@ Stable, machine-checkable behavior for this example. See
 - supports: `--policy-space SLUG`, `--where-space EXPR`, `--explain` /
   `--explain-json` (the latter two mutate nothing)
 - proves: image guardrails can be installed on a real organization, defined
-  once and enforced fleet-wide, without blocking anyone (ApplyWarnings)
+  once and enforced fleet-wide, without blocking anyone (ValidationWarnings)
 
 ### `./verify.sh` (real use)
 
@@ -69,7 +69,7 @@ Stable, machine-checkable behavior for this example. See
 - stable success text: `All checks passed.`
 - proves: the Space/Trigger/Filter/Unit layout exists; the scanner wrote
   `max-severity=CRITICAL` onto the vulnerable Units; each planted violation
-  carries exactly its intended Apply Gate (`legacy-frontend`/`legacy-api` →
+  carries exactly its intended Validation Error (`legacy-frontend`/`legacy-api` →
   `no-critical-cves`, `unpinned-web` → `no-latest-tag`); clean workloads are
   ungated; prod requires approval; each Space's `AppConfig/YAML`
   `sec-scan-record` Unit exists and holds per-workload findings documents; units

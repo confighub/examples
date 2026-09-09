@@ -44,7 +44,7 @@ func newFindingsCmd() *cobra.Command {
   orphaned-bindings          bindings whose role does not exist on the cluster
   unbound-service-accounts   ServiceAccounts with no bindings
 
-These are analysis-only; enforcement is server-side via Triggers/ApplyGates.
+These are analysis-only; enforcement is server-side via Triggers/ValidationErrors.
 Filter with --severity (Critical|High|Medium|Low) and --analyzer.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {

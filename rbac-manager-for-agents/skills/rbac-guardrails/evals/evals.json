@@ -19,7 +19,7 @@
       "id": 3,
       "name": "status-check",
       "prompt": "Which units currently have RBAC warnings?",
-      "expected_output": "Runs `cub-rbac guardrails status` and reports the Units with ApplyWarnings (and any ApplyGates) by space/unit. Read-only; does not mutate.",
+      "expected_output": "Runs `cub-rbac guardrails status` and reports the Units with ValidationWarnings (and any ValidationErrors) by space/unit. Read-only; does not mutate.",
       "files": []
     },
     {

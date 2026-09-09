@@ -114,7 +114,7 @@ function ChangeDialog({ open, title, preview, busy, onCancel, onConfirm }: Chang
 
 /**
  * Unit detail: YAML editor (literal text — the client never re-serializes),
- * Apply Gates, revision history with diffs, and revision rollback.
+ * Validation Errors, revision history with diffs, and revision rollback.
  */
 export function UnitPage() {
   const { spaceId = '', unitId = '' } = useParams();
@@ -197,8 +197,8 @@ export function UnitPage() {
     );
   }
 
-  const gates = Object.keys(unit.ApplyGates ?? {});
-  const warnings = Object.keys(unit.ApplyWarnings ?? {});
+  const gates = Object.keys(unit.ValidationErrors ?? {});
+  const warnings = Object.keys(unit.ValidationWarnings ?? {});
 
   const save = async (changeDescription: string) => {
     setActionError(null);

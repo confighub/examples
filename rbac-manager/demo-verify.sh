@@ -3,7 +3,7 @@
 #
 # Read-only: no ConfigHub or live-infrastructure mutation. Asserts the
 # Space/Trigger/Filter/Unit layout and, critically, the gate matrix:
-# each planted violation carries exactly its intended Apply Gate, the
+# each planted violation carries exactly its intended Validation Error, the
 # orphaned binding carries none (it is an app-side audit finding), prod
 # requires approval, and clean personas are ungated.
 #
@@ -45,8 +45,8 @@ check() { # description, command...
   if "$@" &>/dev/null; then pass "$desc"; else fail "$desc"; fi
 }
 
-gates_of() { # space, unit → ApplyGates JSON (or "null")
-  $cub unit get "$2" --space "$1" -o jq=".Unit.ApplyGates" 2>/dev/null
+gates_of() { # space, unit → ValidationErrors JSON (or "null")
+  $cub unit get "$2" --space "$1" -o jq=".Unit.ValidationErrors" 2>/dev/null
 }
 
 # Trigger evaluation is asynchronous: a fresh mutation briefly carries the

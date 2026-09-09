@@ -1,10 +1,10 @@
-// Gate re-keying: ConfigHub's ApplyGates/ApplyWarnings are keyed by the full
+// Gate re-keying: ConfigHub's ValidationErrors/ValidationWarnings are keyed by the full
 // `<space-slug>/<trigger-slug>/<function-name>` identifier, which is hard to
 // know or type. To let FQL query gates by the human-meaningful TRIGGER slug
 // (`gate['no-critical-cves']`), the transport also spreads each gate onto the
 // row re-keyed by its trigger — OR-ing the booleans when a trigger has several
 // gates. This is client-side only: ConfigHub can't match a map key's middle
-// component server-side, so the exact `applyGates['<full/key>']` form remains
+// component server-side, so the exact `validationErrors['<full/key>']` form remains
 // the one that pushes down.
 
 import type { Row } from '../fql';
@@ -24,7 +24,7 @@ export function triggerOfGateKey(key: string): string | null {
 
 /**
  * Spread a gate map onto `row` under `prefix.<trigger-slug>`, OR-ing values so
- * the entry is true when ANY gate from that trigger is set. E.g. ApplyGates
+ * the entry is true when ANY gate from that trigger is set. E.g. ValidationErrors
  * `{ 'sec/no-critical-cves/vet': true }` → `row['gate.no-critical-cves'] = true`.
  */
 export function spreadGatesByTrigger(

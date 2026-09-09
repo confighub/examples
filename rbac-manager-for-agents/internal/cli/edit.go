@@ -27,7 +27,7 @@ server-side yq edit that modifies the literal YAML in place.
 
 Edits are dry-run by default: the diff is previewed and nothing is written.
 Re-run with --commit and a --change-desc to apply. Edits never bypass
-ApplyGates; gates and warnings are evaluated server-side as usual, and
+ValidationErrors; gates and warnings are evaluated server-side as usual, and
 publishing the resulting revision is a separate step (cub release publish).`,
 	}
 	cmd.AddCommand(
@@ -143,7 +143,7 @@ func runEdit(cmd *cobra.Command, unitRef string, edit rbac.EditInvocation, c cli
 	}
 	ctx := cmd.Context()
 
-	sp, err := cubapi.ResolveSpace(ctx, client, space)
+	sp, err := cubapi.ResolveSpace(ctx, client, cubapi.ParseRef(space), cubapi.ResolveOpts{})
 	if err != nil {
 		return err
 	}
@@ -152,7 +152,7 @@ func runEdit(cmd *cobra.Command, unitRef string, edit rbac.EditInvocation, c cli
 		return err
 	}
 
-	where := fmt.Sprintf("SpaceID = '%s' AND Slug = '%s'", sp.SpaceID.String(), unit)
+	where := fmt.Sprintf("SpaceID = '%s' AND Slug = '%s'", sp.Space.SpaceID.String(), unit)
 	res, err := cubapi.InvokeStoredInvocation(ctx, client, inv.InvocationID,
 		editParams(edit.Params), cubapi.Selector{Where: where}, ch)
 	if err != nil {
@@ -168,13 +168,13 @@ func runEdit(cmd *cobra.Command, unitRef string, edit rbac.EditInvocation, c cli
 // resolveEditInvocation finds a stored edit Invocation by slug in the edit
 // library Space, with a remediation hint when the library is not installed.
 func resolveEditInvocation(ctx context.Context, client *cubapi.Client, slug string) (*goclientnew.Invocation, error) {
-	lib, err := cubapi.ResolveSpace(ctx, client, rbac.EditLibrarySpace)
+	lib, err := cubapi.ResolveSpace(ctx, client, cubapi.ParseRef(rbac.EditLibrarySpace), cubapi.ResolveOpts{})
 	if err != nil {
 		return nil, fmt.Errorf("edit library not installed — run `cub-rbac edit install`: %w", err)
 	}
-	inv, err := cubapi.ResolveInvocation(ctx, client, lib.SpaceID, slug)
+	inv, err := cubapi.ResolveInvocation(ctx, client, cubapi.ParseRef(slug), cubapi.ResolveOpts{Space: lib.Space.SpaceID})
 	if err != nil {
 		return nil, fmt.Errorf("edit library not installed — run `cub-rbac edit install`: %w", err)
 	}
-	return inv, nil
+	return inv.Invocation, nil
 }

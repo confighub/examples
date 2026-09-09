@@ -18,8 +18,8 @@
 #      TriggerFilterID are ANDed; the default WhereTrigger restricts to the
 #      Space's own Triggers, so it is cleared when wiring to the shared Filter.)
 #
-# Triggers are created with Warn=true: violations produce ApplyWarnings
-# (advisory) rather than ApplyGates (blocking), so installing them on an
+# Triggers are created with Warn=true: violations produce ValidationWarnings
+# (advisory) rather than ValidationErrors (blocking), so installing them on an
 # existing fleet never blocks anyone. Promote one to blocking with:
 #
 #   cub trigger update <slug> --space <policy-space> --unwarn
@@ -85,7 +85,7 @@ explain() {
 sec-scanner guardrail setup plan
 ================================
 
-Defines the image guardrail Triggers (Warn=true → ApplyWarnings, never blocking)
+Defines the image guardrail Triggers (Warn=true → ValidationWarnings, never blocking)
 ONCE in the policy Space "${POLICY_SPACE}", and enforces them fleet-wide via a
 shared Trigger Filter ("${FILTER_SLUG}"):
 
@@ -265,12 +265,12 @@ cat <<EOF
 
 Done. Created ${created} object(s), wired ${wired} Space(s), skipped ${skipped} already set, reported ${reported} Space(s) with custom trigger wiring.
 
-Violations now surface as ApplyWarnings (advisory). Review them with:
-  $cub unit list --space "*" --where "LEN(ApplyWarnings) > 0"
+Violations now surface as ValidationWarnings (advisory). Review them with:
+  $cub unit list --space "*" --where "LEN(ValidationWarnings) > 0"
 
 Scan your fleet so no-critical-cves has CVE verdicts to act on:
   ./scanner/secscan scan-fleet --space "<your-spaces>" --write-back
 
-Promote a guardrail to blocking (ApplyGates) — one change, fleet-wide:
+Promote a guardrail to blocking (ValidationErrors) — one change, fleet-wide:
   $cub trigger update no-latest-tag --space ${POLICY_SPACE} --unwarn
 EOF

@@ -94,7 +94,7 @@ type Pack struct {
 	// is what you filter on to inspect or remove one pack.
 	Label string
 	// Rules are the policies. They install with Warn=true: advisory
-	// ApplyWarnings, never blocking, until someone promotes one with
+	// ValidationWarnings, never blocking, until someone promotes one with
 	// `cub trigger update <slug> --space <policy-space> --unwarn`.
 	Rules []Rule
 }
@@ -170,7 +170,7 @@ func (p Pack) PlanFor(ctx context.Context, client *cubapi.Client, policySpace st
 		return plan, fmt.Errorf("list spaces: %w", err)
 	}
 	filterID, _ := p.FilterID(ctx, client, policySpace)
-	if _, err := cubapi.ResolveSpace(ctx, client, policySpace); err == nil {
+	if _, err := cubapi.ResolveSpace(ctx, client, cubapi.ParseRef(policySpace), cubapi.ResolveOpts{}); err == nil {
 		plan.PolicySpaceExists = true
 	}
 
@@ -253,11 +253,11 @@ func (p Pack) Execute(ctx context.Context, client *cubapi.Client, policySpace st
 
 	filterRef := policySpace + "/" + SharedFilterSlug
 	for _, slug := range plan.Wire {
-		sp, err := cubapi.ResolveSpace(ctx, client, slug)
+		sp, err := cubapi.ResolveSpace(ctx, client, cubapi.ParseRef(slug), cubapi.ResolveOpts{})
 		if err != nil {
 			return fmt.Errorf("wire space %s: %w", slug, err)
 		}
-		if err := cubapi.SetSpaceTriggerFilter(ctx, client, sp, flt.FilterID); err != nil {
+		if err := cubapi.SetSpaceTriggerFilter(ctx, client, sp.Space, flt.FilterID); err != nil {
 			return fmt.Errorf("wire space %s: %w", slug, err)
 		}
 		say("  wired " + slug + " → " + filterRef)
@@ -267,13 +267,13 @@ func (p Pack) Execute(ctx context.Context, client *cubapi.Client, policySpace st
 
 // FilterID resolves the shared Filter, empty when it is not installed yet.
 func (p Pack) FilterID(ctx context.Context, client *cubapi.Client, policySpace string) (string, error) {
-	ps, err := cubapi.ResolveSpace(ctx, client, policySpace)
+	ps, err := cubapi.ResolveSpace(ctx, client, cubapi.ParseRef(policySpace), cubapi.ResolveOpts{})
 	if err != nil {
 		return "", err
 	}
-	flt, err := cubapi.ResolveFilter(ctx, client, ps.SpaceID, SharedFilterSlug)
+	flt, err := cubapi.ResolveFilter(ctx, client, cubapi.ParseRef(SharedFilterSlug), cubapi.ResolveOpts{Space: ps.Space.SpaceID})
 	if err != nil {
 		return "", err
 	}
-	return flt.FilterID.String(), nil
+	return flt.Filter.FilterID.String(), nil
 }

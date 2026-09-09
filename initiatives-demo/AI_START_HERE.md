@@ -177,12 +177,12 @@ This removes the component spaces and the `initiatives-demo` platform space
 
 `setup.sh` already installs a vet-kyverno worker into a local kind cluster and
 attaches a trigger per initiative. To exercise one, mutate a unit and watch the
-result land in `ApplyWarnings` (advisory) or `ApplyGates` (the enforced
+result land in `ValidationWarnings` (advisory) or `ValidationErrors` (the enforced
 "Disallow Host Ports" initiative):
 
 ```bash
 # Mutate a unit, then inspect the failure messages behind any gate/warning
-cub unit get aichat-redis --space aichat -o "jq=.Unit.ApplyWarnings"
+cub unit get aichat-redis --space aichat -o "jq=.Unit.ValidationWarnings"
 cub unit get aichat-redis --space aichat -o "jq=.Unit.ValidationResults"
 ```
 

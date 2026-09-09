@@ -78,7 +78,7 @@ quietly widening the first approval into the second:
 Anything in the second set that was not in the first is listed by name before
 the Publish button is offered. Publishing is disabled with a reason when the
 Space has no Release Target, when that Target is not an OCI provider, when no
-Unit is assigned to it, or when any bundled Unit has an Apply Gate set — the
+Unit is assigned to it, or when any bundled Unit has an Validation Error set — the
 server refuses a gated Release, and the app does not clear gates as a side
 effect.
 

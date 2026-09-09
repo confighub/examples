@@ -1,17 +1,17 @@
 ---
 name: namespace-enforce
-description: 'Install, inspect, and feed the namespace-envelope guardrail pack in ConfigHub with the cub-namespace CLI — making envelope findings enforced (advisory ApplyWarnings) instead of just reported. Use for "enforce our namespace standards", "warn on namespaces without pod-security", "flag namespaces missing the envelope", "set up namespace guardrails", "which Units have namespace warnings?", "annotate the incomplete namespaces so they get flagged". Installs Warn=true vet-celexpr Triggers + a Filter (annotate-then-validate for envelope gaps); dry-run by default. Not for one-off checks (use namespace-findings) or fixing config (use namespace-backfill).'
+description: 'Install, inspect, and feed the namespace-envelope guardrail pack in ConfigHub with the cub-namespace CLI — making envelope findings enforced (advisory ValidationWarnings) instead of just reported. Use for "enforce our namespace standards", "warn on namespaces without pod-security", "flag namespaces missing the envelope", "set up namespace guardrails", "which Units have namespace warnings?", "annotate the incomplete namespaces so they get flagged". Installs Warn=true vet-celexpr Triggers + a Filter (annotate-then-validate for envelope gaps); dry-run by default. Not for one-off checks (use namespace-findings) or fixing config (use namespace-backfill).'
 phase: act
 allowed-tools: Bash(cub-namespace --help) Bash(cub-namespace * --help) Bash(cub auth status) Bash(cub-namespace preflight) Bash(cub-namespace findings *) Bash(cub-namespace guardrails install *) Bash(cub-namespace guardrails status *) Bash(cub-namespace guardrails annotate *)
 ---
 
 # namespace-enforce
 
-Make namespace-envelope findings **enforced**, not advisory. Installs a pack of validation policies (defined once in a policy Space, enforced fleet-wide via a shared Filter) and the annotate-then-validate loop that turns a set-aware envelope finding into an ApplyWarning.
+Make namespace-envelope findings **enforced**, not advisory. Installs a pack of validation policies (defined once in a policy Space, enforced fleet-wide via a shared Filter) and the annotate-then-validate loop that turns a set-aware envelope finding into an ValidationWarning.
 
 ## Why this matters
 
-The manager itself cannot set ApplyWarnings/ApplyGates — only a failed validating **Trigger** can. So enforcement is two-sided: per-Unit shape rules are pure `vet-celexpr` Triggers; the set-aware envelope checks use **annotate-then-validate** — `guardrails annotate` writes a finding annotation onto each incomplete namespace's Namespace Unit, and an installed Trigger reads it and raises a warning. Triggers are created with `Warn=true` (advisory ApplyWarnings, never blocking), so installing on an existing fleet blocks no one.
+The manager itself cannot set ValidationWarnings/ValidationErrors — only a failed validating **Trigger** can. So enforcement is two-sided: per-Unit shape rules are pure `vet-celexpr` Triggers; the set-aware envelope checks use **annotate-then-validate** — `guardrails annotate` writes a finding annotation onto each incomplete namespace's Namespace Unit, and an installed Trigger reads it and raises a warning. Triggers are created with `Warn=true` (advisory ValidationWarnings, never blocking), so installing on an existing fleet blocks no one.
 
 ## The pack
 
@@ -33,7 +33,7 @@ The **namespace-name invariant** (`metadata.namespace == normalizeName(Component
 
 - A one-off scan (no enforcement) — use **namespace-findings**.
 - Fixing the config the guardrails flag — use **namespace-backfill**.
-- General Trigger/ApplyGate setup beyond this pack — use **triggers-and-applygates**.
+- General Trigger/ValidationError setup beyond this pack — use **triggers-and-applygates**.
 
 ## Preflight gates
 

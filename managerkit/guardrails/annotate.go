@@ -4,7 +4,7 @@
 package guardrails
 
 // The annotate command: the producing half of annotate-then-validate. A manager
-// cannot attach an ApplyWarning itself -- only a failed Trigger can -- so a
+// cannot attach an ValidationWarning itself -- only a failed Trigger can -- so a
 // finding that no single resource expresses is written onto the Unit as an
 // annotation, and a rule in the pack warns for as long as it is there.
 //

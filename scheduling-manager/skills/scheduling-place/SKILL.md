@@ -19,7 +19,7 @@ All **edit Units but do not publish them** — rolling out is a separate `cub re
 
 ## Why this matters
 
-A toleration only *permits* scheduling onto a tainted node — pair it with a nodeSelector or node affinity to actually land there. `cub-scheduling` edits the source of record with `set-yq` under the hood; everything is **dry-run by default** and requires `--commit --change-desc`, and never bypasses ApplyGates.
+A toleration only *permits* scheduling onto a tainted node — pair it with a nodeSelector or node affinity to actually land there. `cub-scheduling` edits the source of record with `set-yq` under the hood; everything is **dry-run by default** and requires `--commit --change-desc`, and never bypasses ValidationErrors.
 
 ## When to use
 
@@ -61,7 +61,7 @@ A toleration only *permits* scheduling onto a tainted node — pair it with a no
 
 ## Stop conditions
 
-- An ApplyGate attaches (a validating Trigger failed). **Do not bypass** — fix the data (or the rule), via **triggers-and-applygates**.
+- An ValidationError attaches (a validating Trigger failed). **Do not bypass** — fix the data (or the rule), via **triggers-and-applygates**.
 - The user wants the change deployed — hand off to `release-publish`.
 
 ## Tool boundary

@@ -92,7 +92,7 @@ func createResourceUnit(cmd *cobra.Command, client *cubapi.Client, cs *eks.Clust
 		return nil
 	}
 
-	sp, err := cubapi.ResolveSpace(cmd.Context(), client, space)
+	sp, err := cubapi.ResolveSpace(cmd.Context(), client, cubapi.ParseRef(space), cubapi.ResolveOpts{})
 	if err != nil {
 		return fmt.Errorf("resolve space %s: %w", space, err)
 	}
@@ -100,7 +100,7 @@ func createResourceUnit(cmd *cobra.Command, client *cubapi.Client, cs *eks.Clust
 		Slug:                  u.Slug,
 		DisplayName:           u.Slug,
 		ToolchainType:         "Kubernetes/YAML",
-		SpaceID:               sp.SpaceID,
+		SpaceID:               sp.Space.SpaceID,
 		Labels:                unitLabels(u),
 		LastChangeDescription: changeDesc,
 	}, u.YAML)

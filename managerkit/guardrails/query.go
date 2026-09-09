@@ -11,12 +11,12 @@ import (
 	api "github.com/confighub/sdk/core/function/api"
 )
 
-// StatusRow is one Unit carrying an ApplyWarning or an ApplyGate.
+// StatusRow is one Unit carrying an ValidationWarning or an ValidationError.
 type StatusRow struct {
 	Space    string `json:"space"`
 	Unit     string `json:"unit"`
 	Warnings int    `json:"warnings"`
-	Gates    int    `json:"gates"`
+	Errors   int    `json:"errors"`
 }
 
 // Status lists the Units a pack's Triggers have marked, warnings and gates
@@ -38,7 +38,7 @@ func Status(ctx context.Context, client *cubapi.Client) ([]StatusRow, error) {
 		}
 		rows = append(rows, StatusRow{
 			Space: space, Unit: eu.Unit.Slug,
-			Warnings: len(eu.Unit.ApplyWarnings), Gates: len(eu.Unit.ApplyGates),
+			Warnings: len(eu.Unit.ValidationWarnings), Errors: len(eu.Unit.ValidationErrors),
 		})
 	}
 	sort.Slice(rows, func(i, j int) bool {
@@ -53,7 +53,7 @@ func Status(ctx context.Context, client *cubapi.Client) ([]StatusRow, error) {
 // Annotate writes one annotation onto a Unit's resources.
 //
 // It is the producing half of annotate-then-validate: a manager cannot attach an
-// ApplyWarning itself -- only a failed Trigger can -- so a finding that no
+// ValidationWarning itself -- only a failed Trigger can -- so a finding that no
 // single resource can express is written as an annotation, and a rule in the
 // pack warns for as long as the annotation is there.
 func Annotate(ctx context.Context, client *cubapi.Client, spaceID, unitSlug, key, value, changeDesc string) error {

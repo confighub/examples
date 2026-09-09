@@ -21,7 +21,7 @@ export interface CostRow {
   budgetStatus: BudgetStatus;
   estimatedAt: string;
   pricingVersion: string;
-  /** Trigger slugs currently gating this Unit's apply (from ApplyGates). */
+  /** Trigger slugs currently gating this Unit's apply (from ValidationErrors). */
   gates: string[];
 }
 

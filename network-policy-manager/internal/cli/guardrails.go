@@ -62,12 +62,12 @@ policy Space and enforced fleet-wide via a shared Trigger Filter:
   netpol-no-wide-cidr-egress   no egress to 0.0.0.0/0
   netpol-coverage-finding      warns while a coverage finding is annotated (§ annotate)
 
-Triggers are created with Warn=true (advisory ApplyWarnings, never blocking).
+Triggers are created with Warn=true (advisory ValidationWarnings, never blocking).
 Promote one to blocking later with:
   cub trigger update <slug> --space <policy-space> --unwarn
 
 The coverage rule realizes the annotate-then-validate model: the manager can't
-set ApplyWarnings directly (only a failed Trigger can), so 'guardrails annotate'
+set ValidationWarnings directly (only a failed Trigger can), so 'guardrails annotate'
 writes a finding annotation onto flagged Units and this Trigger turns it into a
 warning.`,
 	}
@@ -88,7 +88,7 @@ var annotateSpec = guardrails.AnnotateSpec{
 	Long: `annotate runs the findings analyzers and writes a netpol.confighub.com/finding
 annotation onto each flagged Unit (those with a resource-level finding, e.g.
 uncovered-ingress or allow-all). Paired with the netpol-coverage-finding rule
-from 'guardrails install', this turns a finding into an advisory ApplyWarning —
+from 'guardrails install', this turns a finding into an advisory ValidationWarning —
 the manager cannot set warnings directly, only a failed rule can.
 
 Re-run after fixing config to clear stale annotations (a fixed Unit produces no

@@ -343,7 +343,7 @@ Done. Created ${created} entities, skipped ${skipped} existing.
 
 Inspect the result:
   $cub unit list --space "${PREFIX}-*" --where "Labels.app = 'sec-scanner'"
-  $cub unit get legacy-frontend --space ${DEV_SPACE} -o jq=".Unit.ApplyGates"
+  $cub unit get legacy-frontend --space ${DEV_SPACE} -o jq=".Unit.ValidationErrors"
   ./scanner/secscan inventory --space "${PREFIX}-*"
 
 Next: ./demo-verify.sh confirms the layout, the gate matrix, and the cvedb.

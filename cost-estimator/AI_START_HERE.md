@@ -3,7 +3,7 @@
 Workload cloud cost managed as data: a SQLite cost database (KubeCost-style
 per-provider/region rates + per-env budgets), a custom estimator that costs each
 workload from its resource requests, cost estimates + budget verdicts written
-back onto ConfigHub Units, and Apply Gates that block the over-budget.
+back onto ConfigHub Units, and Validation Errors that block the over-budget.
 
 ## CRITICAL: Demo Pacing
 
@@ -89,13 +89,13 @@ returns the dev `oversized-analytics` Unit the estimator flagged.
 
 ```bash
 # the over-provisioned workload is blocked from ever being applied
-cub unit get oversized-analytics --space cost-demo-dev -o jq=".Unit.ApplyGates"
+cub unit get oversized-analytics --space cost-demo-dev -o jq=".Unit.ValidationErrors"
 
 # so is the workload with no resource requests (static check, no estimate needed)
-cub unit get no-requests-web --space cost-demo-dev -o jq=".Unit.ApplyGates"
+cub unit get no-requests-web --space cost-demo-dev -o jq=".Unit.ValidationErrors"
 
 # prod changes carry an approval gate out of the box
-cub unit get frontend --space cost-demo-prod -o jq=".Unit.ApplyGates"
+cub unit get frontend --space cost-demo-prod -o jq=".Unit.ValidationErrors"
 ```
 
 Expected gates: `cost-demo-policy/within-budget/vet-celexpr`,
@@ -115,7 +115,7 @@ cub function do --space cost-demo-dev --unit oversized-analytics \
 
 # re-estimate + write back; the OVER verdict flips and the gate lifts
 ./estimator/costest estimate-fleet --space "cost-demo-dev" --write-back
-cub unit get oversized-analytics --space cost-demo-dev -o jq=".Unit.ApplyGates"
+cub unit get oversized-analytics --space cost-demo-dev -o jq=".Unit.ValidationErrors"
 ```
 
 Expected: after the right-size and re-estimate, `oversized-analytics` is no

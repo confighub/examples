@@ -260,7 +260,7 @@ finding onto each uncovered multi-replica workload:
 ```console
 $ cub-workload guardrails install --commit
 $ cub-workload guardrails annotate --commit --change-desc "Annotate uncovered workloads"
-$ cub-workload guardrails status -o table       # Units now carrying ApplyWarnings
+$ cub-workload guardrails status -o table       # Units now carrying ValidationWarnings
 ```
 
 Triggers install advisory (`Warn=true`); promote one to blocking later with
@@ -284,7 +284,7 @@ Triggers install advisory (`Warn=true`); promote one to blocking later with
 - **Writes** are dry-run until `--commit`, which requires `--change-desc`.
 - Nothing is published — writes create Unit revisions; roll out with
   `cub release publish <space>` (which your ArgoCD/Flux pipeline consumes) separately.
-- Guardrail ApplyGates are never bypassed — fix the data (or the rule).
+- Guardrail ValidationErrors are never bypassed — fix the data (or the rule).
 
 ### Agent skills
 
