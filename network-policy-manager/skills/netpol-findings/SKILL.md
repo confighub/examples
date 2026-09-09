@@ -59,7 +59,7 @@ Report the findings grouped by severity, each with its namespace/resource and me
 - `allow-all` → **netpol-fix** (replace the empty `from`/`to` with explicit peers) — or generate them from Links via `allow-from-links`.
 - `ingress-egress-asymmetry` → add the missing side with **netpol-fix** `allow`.
 
-To make findings **enforced** (advisory ApplyWarnings) rather than just reported, see **netpol-guardrails**.
+To make findings **enforced** (advisory ValidationWarnings) rather than just reported, see **netpol-guardrails**.
 
 ## Stop conditions
 

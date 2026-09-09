@@ -1,6 +1,6 @@
 // Cost Estimator console: reads each workload's cost estimate + budget verdict
 // (the cost-estimator.confighub.com/* annotations the estimator wrote) and the
-// guardrail ApplyGates from ConfigHub, and shows the fleet's spend and what's
+// guardrail ValidationErrors from ConfigHub, and shows the fleet's spend and what's
 // over budget. All reads go through the published typed client.
 
 import { AppShell } from '@confighub/examples-webkit/auth';

@@ -10,7 +10,7 @@ zero-dependency CLI sibling and no `setup.sh` — the early stages run on a
 cold clone with no install and no ConfigHub account.
 
 The neighbouring [`../cost-estimator`](../cost-estimator) is the enforcement
-plane of the same problem: a price book and an apply gate that block
+plane of the same problem: a price book and an validation error that block
 over-budget changes before they ship. This example is the reduction plane: it
 finds money already leaking and claws it back through governed mutations. The
 two are complementary, not competing.

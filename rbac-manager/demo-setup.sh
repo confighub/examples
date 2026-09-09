@@ -74,7 +74,7 @@ rbac-manager setup plan
 =======================
 
 Model: Kubernetes RBAC managed as data, one Space per cluster, policy
-enforced centrally via Triggers + Apply Gates.
+enforced centrally via Triggers + Validation Errors.
 
     ${POLICY_SPACE}            ${BASE_SPACE}
     (guardrail Triggers        (canonical persona Units:
@@ -332,9 +332,9 @@ Done. Created ${created} entities, skipped ${skipped} existing.
 
 Inspect the result:
   $cub unit list --space ${DEV_SPACE}
-  $cub unit get legacy-wildcard-admin --space ${DEV_SPACE} -o jq=".Unit.ApplyGates"
+  $cub unit get legacy-wildcard-admin --space ${DEV_SPACE} -o jq=".Unit.ValidationErrors"
   $cub unit list --space "*" --where "Labels.persona = 'developer'"
 
 Next: ./demo-verify.sh confirms the seeded fleet, including that the planted
-violations carry the expected Apply Gates.
+violations carry the expected Validation Errors.
 EOF

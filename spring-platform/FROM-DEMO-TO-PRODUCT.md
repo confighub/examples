@@ -118,7 +118,7 @@ In `cub-gen`:
 - `demo-local.sh` runs the source-side verification chain
 - `demo-governed-routes.sh` proves `ALLOW`, `ESCALATE`, and `BLOCK` decisions
 - `demo-initiative-gui.sh` emits the card a ConfigHub Initiative should show:
-  changed field, Generator proof, mutation apply gate, next action, and digest
+  changed field, Generator proof, mutation validation error, next action, and digest
 - `demo-embedded-config-mutation.sh` proves direct embedded `application.yaml` mutation
 - `demo-connected.sh` runs the full ConfigHub integration
 - Real generator profiles detect and transform Spring Boot inputs

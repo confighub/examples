@@ -94,7 +94,7 @@ end-to-end without a cluster:
 - `demo-governed-routes.sh` for the app-owned `ALLOW` versus platform-owned
   `BLOCKED` route proof
 - `demo-initiative-gui.sh` for the ConfigHub Initiative card: changed field,
-  Generator proof, mutation apply gate, next action, and digest
+  Generator proof, mutation validation error, next action, and digest
 - `demo-embedded-config-mutation.sh` for direct embedded `application.yaml`
   mutation inside the ConfigHub payload
 - `demo-connected.sh` for the deeper connected ConfigHub walkthrough

@@ -35,19 +35,19 @@ type UnitRef struct {
 
 // ResolveUnit resolves a Space slug + Unit slug to their IDs.
 func ResolveUnit(ctx context.Context, c *cubapi.Client, spaceSlug, unitSlug string) (UnitRef, error) {
-	sp, err := cubapi.ResolveSpace(ctx, c, spaceSlug)
+	sp, err := cubapi.ResolveSpace(ctx, c, cubapi.ParseRef(spaceSlug), cubapi.ResolveOpts{})
 	if err != nil {
 		return UnitRef{}, fmt.Errorf("resolve space %q: %w", spaceSlug, err)
 	}
 	units, err := cubapi.ListUnits(ctx, c,
-		cubapi.NewWhere(fmt.Sprintf("SpaceID = '%s' AND Slug = '%s'", sp.SpaceID.String(), unitSlug)),
+		cubapi.NewWhere(fmt.Sprintf("SpaceID = '%s' AND Slug = '%s'", sp.Space.SpaceID.String(), unitSlug)),
 		cubapi.ListOpts{Select: "Slug,SpaceID,UnitID"})
 	if err != nil {
 		return UnitRef{}, err
 	}
 	for _, eu := range units {
 		if eu.Unit != nil && eu.Unit.Slug == unitSlug {
-			return UnitRef{SpaceID: sp.SpaceID, SpaceSlug: spaceSlug, UnitID: eu.Unit.UnitID, UnitSlug: unitSlug}, nil
+			return UnitRef{SpaceID: sp.Space.SpaceID, SpaceSlug: spaceSlug, UnitID: eu.Unit.UnitID, UnitSlug: unitSlug}, nil
 		}
 	}
 	return UnitRef{}, fmt.Errorf("unit %q not found in space %q", unitSlug, spaceSlug)

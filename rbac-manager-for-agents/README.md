@@ -47,7 +47,7 @@ bin/cub-rbac edit add-verb prod/rbac --role-kind ClusterRole --role viewer --rul
 bin/cub-rbac fleet-edit add-verb --where "Space.Labels.Environment = 'dev'" \
   --role-kind ClusterRole --role developer --rule 0 --verb deletecollection   # bulk edit
 bin/cub-rbac guardrails install -o table      # plan the policy pack (add --commit to apply)
-bin/cub-rbac guardrails status                # Units with ApplyWarnings / ApplyGates
+bin/cub-rbac guardrails status                # Units with ValidationWarnings / ValidationErrors
 ```
 
 All read commands (and the fleet write command `fleet-edit`) scope

@@ -12,7 +12,7 @@
       "id": 2,
       "name": "status",
       "prompt": "Which Units currently have NetworkPolicy warnings?",
-      "expected_output": "Runs `cub-netpol guardrails status` and reports Units with ApplyWarnings/ApplyGates. Read-only inspection.",
+      "expected_output": "Runs `cub-netpol guardrails status` and reports Units with ValidationWarnings/ValidationErrors. Read-only inspection.",
       "files": []
     },
     {

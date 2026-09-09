@@ -19,7 +19,7 @@
       "id": 3,
       "name": "status",
       "prompt": "Which services are flagged by the observability guardrails?",
-      "expected_output": "Runs `cub-observability guardrails status` and reports Units with ApplyWarnings/ApplyGates. Read-only.",
+      "expected_output": "Runs `cub-observability guardrails status` and reports Units with ValidationWarnings/ValidationErrors. Read-only.",
       "files": []
     },
     {

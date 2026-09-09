@@ -81,9 +81,9 @@ func (p Pack) StatusCmd(preflight Preflight) *cobra.Command {
 	var output string
 	cmd := &cobra.Command{
 		Use:   "status",
-		Short: "Units carrying ApplyWarnings or ApplyGates",
-		Long: `status lists the Units a Trigger has marked — ApplyWarnings from an advisory
-rule, ApplyGates from one promoted to blocking.
+		Short: "Units carrying ValidationWarnings or ValidationErrors",
+		Long: `status lists the Units a Trigger has marked — ValidationWarnings from an advisory
+rule, ValidationErrors from one promoted to blocking.
 
 It reports what any Trigger attached, not only this pack's: a Unit does not
 record which rule marked it, and reporting only this pack's rules would hide a
@@ -139,13 +139,13 @@ func PrintPlan(cmd *cobra.Command, plan Plan) {
 func PrintStatus(cmd *cobra.Command, rows []StatusRow) {
 	out := cmd.OutOrStdout()
 	if len(rows) == 0 {
-		cliutil.Fprintln(out, "No Units carry ApplyWarnings or ApplyGates.")
+		cliutil.Fprintln(out, "No Units carry ValidationWarnings or ValidationErrors.")
 		return
 	}
 	tw := tabwriter.NewWriter(out, 0, 2, 2, ' ', 0)
-	fmt.Fprintln(tw, "SPACE\tUNIT\tWARNINGS\tGATES")
+	fmt.Fprintln(tw, "SPACE\tUNIT\tWARNINGS\tERRORS")
 	for _, r := range rows {
-		fmt.Fprintf(tw, "%s\t%s\t%d\t%d\n", r.Space, r.Unit, r.Warnings, r.Gates)
+		fmt.Fprintf(tw, "%s\t%s\t%d\t%d\n", r.Space, r.Unit, r.Warnings, r.Errors)
 	}
 	_ = tw.Flush()
 	cliutil.Fprintln(out, fmt.Sprintf("\n%d Unit(s) marked.", len(rows)))

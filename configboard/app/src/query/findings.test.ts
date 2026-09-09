@@ -33,7 +33,7 @@ describe('findingRows', () => {
     // <policy-space>/<trigger-slug>/<function>
     const rows = findingRows(
       unit({
-        ApplyWarnings: {
+        ValidationWarnings: {
           'workload-policy/workload-runs-nonroot/vet-cel': true,
           'workload-policy/workload-termination-message-policy/vet-cel': true,
         },
@@ -49,7 +49,7 @@ describe('findingRows', () => {
 
   it('splits the key into policy Space, trigger, and validator', () => {
     const [row] = findingRows(
-      unit({ ApplyWarnings: { 'workload-policy/workload-has-limits/vet-cel': true } }),
+      unit({ ValidationWarnings: { 'workload-policy/workload-has-limits/vet-cel': true } }),
       BASE,
     );
     expect(row.values['Finding.PolicySpace']).toBe('workload-policy');
@@ -61,8 +61,8 @@ describe('findingRows', () => {
   it('distinguishes gates from warnings', () => {
     const rows = findingRows(
       unit({
-        ApplyGates: { 'home/valid-k8s/vet-schemas': true },
-        ApplyWarnings: { 'workload-policy/workload-has-limits/vet-cel': true },
+        ValidationErrors: { 'home/valid-k8s/vet-schemas': true },
+        ValidationWarnings: { 'workload-policy/workload-has-limits/vet-cel': true },
       }),
       BASE,
     );
@@ -71,7 +71,7 @@ describe('findingRows', () => {
 
   it('carries the Unit, Space, and Target identity onto every finding', () => {
     const [row] = findingRows(
-      unit({ ApplyWarnings: { 'p/check/vet-cel': true } }),
+      unit({ ValidationWarnings: { 'p/check/vet-cel': true } }),
       BASE,
     );
     expect(row.values['Unit.Slug']).toBe('frontend');
@@ -84,12 +84,12 @@ describe('findingRows', () => {
 
   it('emits nothing for a clean Unit', () => {
     expect(findingRows(unit(), BASE)).toEqual([]);
-    expect(findingRows(unit({ ApplyGates: {}, ApplyWarnings: {} }), BASE)).toEqual([]);
+    expect(findingRows(unit({ ValidationErrors: {}, ValidationWarnings: {} }), BASE)).toEqual([]);
   });
 
   it('keeps a malformed key rather than dropping the finding', () => {
     // A finding that cannot be parsed still matters; losing it would understate the fleet.
-    const rows = findingRows(unit({ ApplyWarnings: { 'just-a-slug': true } }), BASE);
+    const rows = findingRows(unit({ ValidationWarnings: { 'just-a-slug': true } }), BASE);
     expect(rows).toHaveLength(1);
     expect(rows[0].values['Finding.Trigger']).toBe('just-a-slug');
     expect(rows[0].values['Finding.PolicySpace']).toBeNull();
@@ -98,8 +98,8 @@ describe('findingRows', () => {
   it('gives each finding a distinct id so aggregation counts them separately', () => {
     const rows = findingRows(
       unit({
-        ApplyWarnings: { 'p/a/vet-cel': true, 'p/b/vet-cel': true },
-        ApplyGates: { 'p/a/vet-cel': true },
+        ValidationWarnings: { 'p/a/vet-cel': true, 'p/b/vet-cel': true },
+        ValidationErrors: { 'p/a/vet-cel': true },
       }),
       BASE,
     );
@@ -114,14 +114,14 @@ describe('findings aggregation', () => {
       unit({
         UnitID: `a${i}`,
         Slug: `svc-${i}`,
-        ApplyWarnings: { 'workload-policy/workload-termination-message-policy/vet-cel': true },
+        ValidationWarnings: { 'workload-policy/workload-termination-message-policy/vet-cel': true },
       }),
     ),
     ...Array.from({ length: 2 }, (_, i) =>
       unit({
         UnitID: `b${i}`,
         Slug: `ns-${i}`,
-        ApplyWarnings: { 'namespace-policy/namespace-has-pod-security/vet-celexpr': true },
+        ValidationWarnings: { 'namespace-policy/namespace-has-pod-security/vet-celexpr': true },
       }),
     ),
   ];

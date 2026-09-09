@@ -1,6 +1,6 @@
 ---
 name: rbac-findings
-description: 'Surface Kubernetes RBAC hygiene and risk issues across a ConfigHub fleet with the cub-rbac CLI: wildcard permissions, privilege-escalation verbs, risky grants (secrets/exec/webhooks/CRDs), cluster-admin bindings, orphaned bindings, and unbound service accounts. Use for "audit our RBAC hygiene", "any wildcard roles?", "who has cluster-admin?", "find privilege escalation", "any orphaned role bindings?", "show RBAC risks in prod". Analysis-only — enforcement is server-side via Triggers/ApplyGates. Not for inventory/listing (use rbac-audit) or effective-access who-can queries (use rbac-whocan); not for live cluster scanning (use a cluster scanner).'
+description: 'Surface Kubernetes RBAC hygiene and risk issues across a ConfigHub fleet with the cub-rbac CLI: wildcard permissions, privilege-escalation verbs, risky grants (secrets/exec/webhooks/CRDs), cluster-admin bindings, orphaned bindings, and unbound service accounts. Use for "audit our RBAC hygiene", "any wildcard roles?", "who has cluster-admin?", "find privilege escalation", "any orphaned role bindings?", "show RBAC risks in prod". Analysis-only — enforcement is server-side via Triggers/ValidationErrors. Not for inventory/listing (use rbac-audit) or effective-access who-can queries (use rbac-whocan); not for live cluster scanning (use a cluster scanner).'
 phase: verify
 allowed-tools: Bash(cub-rbac --help) Bash(cub-rbac * --help) Bash(cub auth status) Bash(cub-rbac preflight) Bash(cub-rbac findings) Bash(cub-rbac findings *)
 ---
@@ -11,7 +11,7 @@ Run RBAC hygiene analyzers over the fleet's stored Kubernetes config and report 
 
 ## Why this matters
 
-ConfigHub stores RBAC as data, so hygiene checks run across every cluster at once from one snapshot — no per-cluster scanning. These findings are the *advisory* complement to enforcement: blocking bad RBAC at write time is done server-side with Triggers + ApplyGates (a separate concern). Canonical base/policy Spaces are excluded so definitions don't produce phantom findings.
+ConfigHub stores RBAC as data, so hygiene checks run across every cluster at once from one snapshot — no per-cluster scanning. These findings are the *advisory* complement to enforcement: blocking bad RBAC at write time is done server-side with Triggers + ValidationErrors (a separate concern). Canonical base/policy Spaces are excluded so definitions don't produce phantom findings.
 
 ## The analyzers
 
@@ -34,7 +34,7 @@ ConfigHub stores RBAC as data, so hygiene checks run across every cluster at onc
 
 - Inventory / "list bindings" / "counts per cluster" (use **rbac-audit**).
 - "Who can VERB RESOURCE?" / "what can SUBJECT do?" (use **rbac-whocan**).
-- Actually blocking bad RBAC at write time — that's server-side Triggers/ApplyGates (a write-side concern), not this read-only analyzer.
+- Actually blocking bad RBAC at write time — that's server-side Triggers/ValidationErrors (a write-side concern), not this read-only analyzer.
 - Live cluster scanning — use a dedicated cluster scanner.
 
 ## Preflight gates

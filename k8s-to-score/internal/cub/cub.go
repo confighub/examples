@@ -62,7 +62,7 @@ type Unit struct {
 // Units whose data is empty are dropped: they carry no Kubernetes resource to
 // convert.
 func ListUnits(ctx context.Context, c *cubapi.Client, space, where string) ([]Unit, error) {
-	sp, err := cubapi.ResolveSpace(ctx, c, space)
+	sp, err := cubapi.ResolveSpace(ctx, c, cubapi.ParseRef(space), cubapi.ResolveOpts{})
 	if err != nil {
 		return nil, fmt.Errorf("space %q: %w", space, err)
 	}
@@ -70,7 +70,7 @@ func ListUnits(ctx context.Context, c *cubapi.Client, space, where string) ([]Un
 	// Configuration is not a field of a Unit, so it does not come back on a Unit list.
 	// The bulk data endpoint takes the same where clause and returns the configuration
 	// of everything it selects in one request, which is what a whole Space needs.
-	w := cubapi.NewWhere(where).SpaceID(sp.SpaceID).String()
+	w := cubapi.NewWhere(where).SpaceID(sp.Space.SpaceID).String()
 	params := &goclientnew.SearchUnitDataParams{}
 	if w != "" {
 		params.Where = &w

@@ -34,9 +34,9 @@ const QUERIES: string[] = [
   "SELECT cluster, COUNT(*) AS units FROM units WHERE space = 'sec-demo-dev' GROUP BY cluster ORDER BY cluster",
   "SELECT cluster, unit, `spec.template.spec.containers.*.image` AS image FROM resources WHERE space = 'sec-demo-dev' ORDER BY cluster",
   "SELECT slug FROM spaces WHERE slug LIKE 'sec-demo-%'",
-  // ── gates (the applyGates verification, live) ───────────────────────────────
+  // ── gates (the validationErrors verification, live) ───────────────────────────────
   "SELECT slug, space FROM units WHERE gate['no-critical-cves'] = true",
-  "SELECT slug FROM units WHERE applyGates['sec-demo-policy/no-critical-cves/vet-celexpr'] = true",
+  "SELECT slug FROM units WHERE validationErrors['sec-demo-policy/no-critical-cves/vet-celexpr'] = true",
   // ── resources: kinds, raw paths, scanner annotation ─────────────────────────
   "SELECT unit, kind, name FROM resources WHERE space = 'sec-demo-dev' AND kind = 'Deployment'",
   "SELECT unit, `spec.template.spec.containers.*.image` AS image FROM resources WHERE space = 'sec-demo-dev'",

@@ -155,7 +155,7 @@ export function Gallery() {
         <Grid size={{ xs: 12, md: 3 }}>
           <Card variant="outlined" sx={{ p: 2 }}>
             <Typography variant="subtitle2">statTile — status</Typography>
-            <StatTile value={7} label="blocked by apply gates" level="critical" />
+            <StatTile value={7} label="blocked by validation errors" level="critical" />
           </Card>
         </Grid>
         <Grid size={{ xs: 12, md: 3 }}>

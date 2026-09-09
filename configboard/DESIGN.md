@@ -199,7 +199,7 @@ and nudges you up the ladder.
 ### Tier 0 — metadata (free, filterable, no config parsing)
 
 On the Unit itself: `Labels`, `ToolchainType`, `ProviderType`, `TargetID`,
-`HeadRevisionNum` vs `LastReleasedRevisionNum`, `ApplyGates`, `ApplyWarnings`,
+`HeadRevisionNum` vs `LastReleasedRevisionNum`, `ValidationErrors`, `ValidationWarnings`,
 `ApprovedBy`, `UpstreamRevisionNum`, `UpdatedAt`, `LastActionAt`.
 
 One `include` away: `Space.*` (labels), `Target.*` (labels and facts),
@@ -396,13 +396,13 @@ Spaces in scope:
 |---|---|
 | **Units under management** (+ 30-day delta) | `TotalUnitCount` |
 | **Released and current** — as a **meter** against the total | `TotalUnitCount − UnreleasedUnitCount` |
-| **Blocked by ApplyGates** — status-colored | `GatedUnitCount` |
+| **Blocked by ValidationErrors** — status-colored | `GatedUnitCount` |
 | **Carrying warnings** | `WarnedUnitCount` |
 | **Behind upstream** | `UpgradableUnitCount` |
 | **Unapproved pending changes** | `UnapprovedUnitCount` |
 
 These are the same populations as the quick filters in the Filters and Views
-guide (`LEN(ApplyGates) > 0`, `HeadRevisionNum > LastReleasedRevisionNum`, …), so the tile
+guide (`LEN(ValidationErrors) > 0`, `HeadRevisionNum > LastReleasedRevisionNum`, …), so the tile
 drill-down can hand the user the equivalent `--where` expression even though the
 count itself came from the rollup. That pairing — cheap rollup for the number,
 explicit filter for the drill-down — is the pattern the whole tool should follow.
@@ -412,7 +412,7 @@ real org: summed `UnappliedUnitCount` across 56 Spaces = 148, and
 `where=HeadRevisionNum > LiveRevisionNum` over the same org returned 148 Units (measured
 before those names changed; the pairing is what the measurement was checking, and it holds
 the same way for `UnreleasedUnitCount` and `HeadRevisionNum > LastReleasedRevisionNum`). Summed
-`GatedUnitCount` = 0 and `LEN(ApplyGates) > 0` returns 0. If those ever diverge, the
+`GatedUnitCount` = 0 and `LEN(ValidationErrors) > 0` returns 0. If those ever diverge, the
 tile is lying and the drill-down is right.
 
 ### Suggested starter dashboards (shipped as seed Units)
@@ -671,8 +671,8 @@ which is worth saying out loud before the user opens an empty dashboard.
   - **Which makes auto-running wrong.** Compliance panels are `manual: true`: they state
     the cost and wait to be asked. Spending 20 seconds of someone's server time because a
     tab was opened is not a thing to do silently.
-  - **Gates and warnings need no sweep.** `LEN(ApplyGates) > 0` and
-    `LEN(ApplyWarnings) > 0` are already recorded on the Unit by whichever Trigger
+  - **Gates and warnings need no sweep.** `LEN(ValidationErrors) > 0` and
+    `LEN(ValidationWarnings) > 0` are already recorded on the Unit by whichever Trigger
     produced them, so those panels are ordinary metadata queries and run immediately.
     The `Finding` source explodes those maps into one row per failing check, keyed
     `<policy-space>/<trigger>/<function>` — so "which guardrail fires most, and is it

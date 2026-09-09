@@ -71,13 +71,13 @@ export const UNIT_DIMENSIONS: Dimension[] = [
   }),
   dim({
     id: 'Unit.GateCount',
-    label: 'Apply gates',
+    label: 'Validation errors',
     kind: 'number',
     source: 'Unit',
   }),
   dim({
     id: 'Unit.WarningCount',
-    label: 'Apply warnings',
+    label: 'Validation warnings',
     kind: 'number',
     source: 'Unit',
   }),

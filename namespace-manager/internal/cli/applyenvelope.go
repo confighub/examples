@@ -29,7 +29,7 @@ that produces a clean revision (a no-op where the labels are already present).
 
 The Unit is edited, not published — rolling it out to a cluster is a separate,
 deliberate 'cub release publish <space>'. Dry-run unless --commit --change-desc;
-never bypasses ApplyGates.`,
+never bypasses ValidationErrors.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if spaceSlug == "" {
@@ -43,12 +43,12 @@ never bypasses ApplyGates.`,
 			if err != nil {
 				return err
 			}
-			sp, err := cubapi.ResolveSpace(cmd.Context(), client, spaceSlug)
+			sp, err := cubapi.ResolveSpace(cmd.Context(), client, cubapi.ParseRef(spaceSlug), cubapi.ResolveOpts{})
 			if err != nil {
 				return fmt.Errorf("resolve space %q: %w", spaceSlug, err)
 			}
 			sel := cubapi.Selector{
-				Where:     fmt.Sprintf("SpaceID = '%s'", sp.SpaceID.String()),
+				Where:     fmt.Sprintf("SpaceID = '%s'", sp.Space.SpaceID.String()),
 				WhereData: "kind = 'Namespace'",
 			}
 			ch := cubapi.Change{}

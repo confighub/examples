@@ -50,14 +50,14 @@ func ParseUnitRef(ctx context.Context, c *cubapi.Client, arg string) (UnitRef, e
 	if !ok || space == "" || unit == "" {
 		return UnitRef{}, fmt.Errorf("target must be <space>/<unit>, got %q", arg)
 	}
-	sp, err := cubapi.ResolveSpace(ctx, c, space)
+	sp, err := cubapi.ResolveSpace(ctx, c, cubapi.ParseRef(space), cubapi.ResolveOpts{})
 	if err != nil {
 		return UnitRef{}, fmt.Errorf("resolve space %q: %w", space, err)
 	}
 	if err := (cubapi.Where{}).Slug(unit).Err(); err != nil {
 		return UnitRef{}, err
 	}
-	return UnitRef{SpaceID: sp.SpaceID, SpaceSlug: space, UnitSlug: unit}, nil
+	return UnitRef{SpaceID: sp.Space.SpaceID, SpaceSlug: space, UnitSlug: unit}, nil
 }
 
 // Change turns dry-run/description into a cubapi.Change. An empty description is

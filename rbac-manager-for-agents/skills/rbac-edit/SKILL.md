@@ -1,6 +1,6 @@
 ---
 name: rbac-edit
-description: 'Make guardrailed structured edits to a single Kubernetes RBAC Unit in ConfigHub with the cub-rbac CLI: add/remove a verb on a role rule, or add/remove a subject on a binding. Use for "give the viewer role get on pods", "remove the wildcard verb from this role", "add the oncall group to the admins binding", "revoke alice from breakglass", "drop the deletecollection verb". Edits are dry-run by default and require an explicit --commit with a --change-desc; they never bypass ApplyGates and never publish a Release. Not for inventory/queries (use rbac-audit / rbac-whocan), not for installing policy (use rbac-guardrails), not for applying/rolling out a change (use cub release publish / the release-publish skill).'
+description: 'Make guardrailed structured edits to a single Kubernetes RBAC Unit in ConfigHub with the cub-rbac CLI: add/remove a verb on a role rule, or add/remove a subject on a binding. Use for "give the viewer role get on pods", "remove the wildcard verb from this role", "add the oncall group to the admins binding", "revoke alice from breakglass", "drop the deletecollection verb". Edits are dry-run by default and require an explicit --commit with a --change-desc; they never bypass ValidationErrors and never publish a Release. Not for inventory/queries (use rbac-audit / rbac-whocan), not for installing policy (use rbac-guardrails), not for applying/rolling out a change (use cub release publish / the release-publish skill).'
 phase: act
 allowed-tools: Bash(cub-rbac --help) Bash(cub-rbac * --help) Bash(cub auth status) Bash(cub-rbac preflight) Bash(cub-rbac snapshot *) Bash(cub-rbac list *) Bash(cub unit data *) Bash(cub unit get *) Bash(cub-rbac edit *)
 ---
@@ -52,7 +52,7 @@ This is the safe write path for RBAC: structured edits instead of hand-editing Y
    cub-rbac edit add-verb <space>/<unit> --role-kind ClusterRole --role viewer --rule 0 --verb get \
      --commit --change-desc "grant viewer get on pods (ticket OPS-12)"
    ```
-5. **Stop.** The edit created a new revision; it is NOT published. If the user wants it live, hand off to **release-publish** (`cub release publish`), which respects ApplyGates.
+5. **Stop.** The edit created a new revision; it is NOT published. If the user wants it live, hand off to **release-publish** (`cub release publish`), which respects ValidationErrors.
 
 ## Flags & rules
 

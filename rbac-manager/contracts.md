@@ -22,8 +22,8 @@ Stable, machine-checkable behavior for this example. See
 - supports: `--policy-space SLUG`, `--where-space EXPR`, `--explain` /
   `--explain-json` (the latter two mutate nothing)
 - proves: guardrail validation can be installed on a real organization, defined
-  once and enforced fleet-wide, without blocking anyone (ApplyWarnings, not
-  ApplyGates)
+  once and enforced fleet-wide, without blocking anyone (ValidationWarnings, not
+  ValidationErrors)
 
 ### `./verify.sh` (real use)
 
@@ -68,16 +68,16 @@ Stable, machine-checkable behavior for this example. See
 - output shape: plain text, one `ok`/`FAIL` line per check
 - stable success text: `All checks passed.`
 - proves: the Space/Trigger/Filter/Unit layout exists; each planted violation
-  carries exactly its intended Apply Gate; the orphaned binding carries no
+  carries exactly its intended Validation Error; the orphaned binding carries no
   gate; prod requires approval; clean personas are ungated; dev diverges from
   base and staging does not
 
-### `cub unit get legacy-wildcard-admin --space rbac-demo-dev -o jq=".Unit.ApplyGates"`
+### `cub unit get legacy-wildcard-admin --space rbac-demo-dev -o jq=".Unit.ValidationErrors"`
 
 - mutates: no
 - output shape: JSON object keyed by gate name
 - stable fields: key `rbac-demo-policy/no-wildcards/vet-celexpr` with value `true`
-- proves: guardrail policies are enforced as Apply Gates, not advisory lint
+- proves: guardrail policies are enforced as Validation Errors, not advisory lint
 
 ### `cub function do --space "*" --where "Labels.persona = 'developer' AND Labels.env = 'staging'" --change-desc "..." -- yq-i '...'`
 

@@ -39,7 +39,7 @@ Runs standalone (`bin/cub-observability ...`) or as a cub plugin
 Read commands default to JSON (`-o json`); pass `-o table`. Write commands are
 **dry-run by default** and require `--commit --change-desc`; they edit Units but
 never publish them (that's a separate `cub release publish <space>`), and never
-bypass ApplyGates.
+bypass ValidationErrors.
 
 | Command | Kind | What it does |
 |---|---|---|

@@ -17,7 +17,7 @@ Stable, machine-checkable behavior for this example. See
 - supports: `--policy-space SLUG`, `--where-space EXPR`, `--explain` /
   `--explain-json` (the latter two mutate nothing)
 - proves: budget guardrails can be installed on a real organization, defined
-  once and enforced fleet-wide, without blocking anyone (ApplyWarnings)
+  once and enforced fleet-wide, without blocking anyone (ValidationWarnings)
 
 ### `./verify.sh` (real use)
 
@@ -67,7 +67,7 @@ Stable, machine-checkable behavior for this example. See
 - stable success text: `All checks passed.`
 - proves: the Space/Trigger/Filter/Unit layout exists; the estimator wrote
   `budget-status=OVER` onto the over-provisioned Unit and `monthly-usd` onto
-  every workload; each planted violation carries exactly its intended Apply Gate
+  every workload; each planted violation carries exactly its intended Validation Error
   (`oversized-analytics` → `within-budget`, `no-requests-web` →
   `requests-required`); clean workloads are ungated; prod requires approval;
   each Space's `AppConfig/YAML` `cost-estimate-record` Unit exists and holds the

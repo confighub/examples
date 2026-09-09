@@ -18,7 +18,7 @@ All **edit/create Units but do not publish them** — rolling out is a separate 
 
 ## Why this matters
 
-ServiceMonitor coverage is a cross-Unit property, and a sidecar must be find-or-appended into a pod template by name — `cub-observability` does both as data: `ensure-servicemonitor` authors a new Unit derived from the Service; `inject-sidecar` uses `set-path`'s associative find-or-append so a re-run replaces rather than duplicates. Everything is **dry-run by default** and requires `--commit --change-desc`; ApplyGates are never bypassed.
+ServiceMonitor coverage is a cross-Unit property, and a sidecar must be find-or-appended into a pod template by name — `cub-observability` does both as data: `ensure-servicemonitor` authors a new Unit derived from the Service; `inject-sidecar` uses `set-path`'s associative find-or-append so a re-run replaces rather than duplicates. Everything is **dry-run by default** and requires `--commit --change-desc`; ValidationErrors are never bypassed.
 
 ## When to use
 
@@ -53,7 +53,7 @@ ServiceMonitor coverage is a cross-Unit property, and a sidecar must be find-or-
 ## Stop conditions
 
 - `ensure-servicemonitor` refuses (Service has no labels, or no metrics port and no `--port`) — supply `--port`, or fix the Service.
-- An ApplyGate attaches. **Do not bypass** — fix via **triggers-and-applygates**.
+- An ValidationError attaches. **Do not bypass** — fix via **triggers-and-applygates**.
 - The user wants the change deployed — hand off to `release-publish`.
 
 ## Tool boundary

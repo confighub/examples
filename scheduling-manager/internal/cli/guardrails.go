@@ -51,7 +51,7 @@ policy Space and enforced fleet-wide via a shared Trigger Filter:
                                         required node affinity)
 
 The rule is a plain per-resource vet-cel check (a single Unit answers it), created
-with Warn=true (advisory ApplyWarnings, never blocking). Promote it to blocking
+with Warn=true (advisory ValidationWarnings, never blocking). Promote it to blocking
 with: cub trigger update <slug> --space scheduling-policy --unwarn`,
 	}
 	cmd.AddCommand(pack.InstallCmd(preflight), pack.StatusCmd(preflight))

@@ -33,7 +33,7 @@ appended.
 --name defaults to otel-collector; --otlp-grpc-port defaults to 4317. Applies to
 Deployment / StatefulSet / DaemonSet / ReplicaSet / Job (pod template at
 spec.template.spec). Dry-run unless --commit --change-desc; never bypasses
-ApplyGates.`,
+ValidationErrors.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if image == "" {

@@ -100,7 +100,7 @@ func newFixSubCmd(use, short, yqExpr, action string, guard func(*netpol.NetworkP
 			if err != nil {
 				return err
 			}
-			sp, err := cubapi.ResolveSpace(cmd.Context(), client, space)
+			sp, err := cubapi.ResolveSpace(cmd.Context(), client, cubapi.ParseRef(space), cubapi.ResolveOpts{})
 			if err != nil {
 				return fmt.Errorf("resolve space %q: %w", space, err)
 			}
@@ -125,7 +125,7 @@ func newFixSubCmd(use, short, yqExpr, action string, guard func(*netpol.NetworkP
 			if !dryRun {
 				ch = cubapi.Change{Description: changeDesc}
 			}
-			res, err := cub.MutateUnitYQ(cmd.Context(), client, sp.SpaceID, unit, yqExpr, ch)
+			res, err := cub.MutateUnitYQ(cmd.Context(), client, sp.Space.SpaceID, unit, yqExpr, ch)
 			if err != nil {
 				return err
 			}

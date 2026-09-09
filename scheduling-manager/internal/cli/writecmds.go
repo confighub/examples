@@ -36,7 +36,7 @@ labels.
 
 Applies to Deployment / StatefulSet / DaemonSet / ReplicaSet / Job (pod template
 at spec.template.spec). Dry-run unless --commit --change-desc; never bypasses
-ApplyGates.`,
+ValidationErrors.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(selectors) == 0 {
@@ -114,7 +114,7 @@ affinity term from --required "key=v1,v2" match expressions (operator In). Repea
 
   set-node-affinity web-prod/web --required "topology.kubernetes.io/zone=us-east-1a,us-east-1b"
 
-Dry-run unless --commit --change-desc; never bypasses ApplyGates.`,
+Dry-run unless --commit --change-desc; never bypasses ValidationErrors.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(required) == 0 {

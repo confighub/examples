@@ -19,7 +19,7 @@
       "id": 3,
       "name": "status",
       "prompt": "Which workloads are currently flagged by the readiness guardrails?",
-      "expected_output": "Runs `cub-workload guardrails status` and reports Units with ApplyWarnings/ApplyGates. Read-only.",
+      "expected_output": "Runs `cub-workload guardrails status` and reports Units with ValidationWarnings/ValidationErrors. Read-only.",
       "files": []
     },
     {

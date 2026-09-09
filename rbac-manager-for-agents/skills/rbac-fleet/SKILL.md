@@ -1,6 +1,6 @@
 ---
 name: rbac-fleet
-description: 'Apply RBAC changes across many ConfigHub Units at once with the cub-rbac CLI: bulk structured edits (fleet-edit). Use for "add deletecollection to the developer role in every dev cluster", "remove the wildcard verb from this persona role fleet-wide", "add the oncall group to viewers across prod". Dry-run by default; requires --commit + --change-desc; never bypasses ApplyGates and never publishes a Release. Not for a single Unit (use rbac-edit), not for inventory/queries (use rbac-audit / rbac-whocan), not for installing policy (use rbac-guardrails), not for propagating a base change to its variants (use promote-release), not for rolling out to clusters (use release-publish).'
+description: 'Apply RBAC changes across many ConfigHub Units at once with the cub-rbac CLI: bulk structured edits (fleet-edit). Use for "add deletecollection to the developer role in every dev cluster", "remove the wildcard verb from this persona role fleet-wide", "add the oncall group to viewers across prod". Dry-run by default; requires --commit + --change-desc; never bypasses ValidationErrors and never publishes a Release. Not for a single Unit (use rbac-edit), not for inventory/queries (use rbac-audit / rbac-whocan), not for installing policy (use rbac-guardrails), not for propagating a base change to its variants (use promote-release), not for rolling out to clusters (use release-publish).'
 phase: act
 allowed-tools: Bash(cub-rbac --help) Bash(cub-rbac * --help) Bash(cub auth status) Bash(cub-rbac preflight) Bash(cub-rbac snapshot *) Bash(cub-rbac list *) Bash(cub-rbac edit install) Bash(cub-rbac fleet-edit *)
 ---
@@ -66,7 +66,7 @@ Confirm the selector hits the intended Units first with **rbac-audit** (`cub-rba
      --role-kind ClusterRole --role developer --rule 0 --verb deletecollection \
      --commit --change-desc "dev developers: allow deletecollection (OPS-12)"
    ```
-4. **Stop.** The changes created new revisions; they are NOT published. Hand off rollout to **release-publish** (`cub release publish`), which respects ApplyGates.
+4. **Stop.** The changes created new revisions; they are NOT published. Hand off rollout to **release-publish** (`cub release publish`), which respects ValidationErrors.
 
 ## Flags
 

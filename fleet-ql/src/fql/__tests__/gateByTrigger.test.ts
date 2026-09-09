@@ -17,8 +17,8 @@ describe('gate[<trigger>] — planner', () => {
   });
 
   it('the exact full-key form still pushes to where', () => {
-    const p = planQuery("SELECT slug FROM units WHERE applyGates['p/no-critical-cves/vet-celexpr'] = true");
-    expect(p.fetches[0].where).toBe('ApplyGates.p/no-critical-cves/vet-celexpr = true');
+    const p = planQuery("SELECT slug FROM units WHERE validationErrors['p/no-critical-cves/vet-celexpr'] = true");
+    expect(p.fetches[0].where).toBe('ValidationErrors.p/no-critical-cves/vet-celexpr = true');
   });
 });
 

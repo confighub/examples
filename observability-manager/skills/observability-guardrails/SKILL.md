@@ -1,16 +1,16 @@
 ---
 name: observability-guardrails
-description: 'Install and operate the observability enforcement pack with the cub-observability CLI — an common Space with a Warn=true vet-cel Trigger that flags metrics-exposing Services with no ServiceMonitor, fed by annotate-then-validate (coverage is a cross-Unit property). guardrails install (dry-run by default), status (Units with ApplyWarnings/Gates), annotate (write the coverage finding onto uncovered Service Units). Use for "enforce that metrics services are scraped", "warn on services with no ServiceMonitor", "which services are flagged?". Not for read-only findings (use observability-findings) or fixing coverage (use observability-instrument).'
+description: 'Install and operate the observability enforcement pack with the cub-observability CLI — an common Space with a Warn=true vet-cel Trigger that flags metrics-exposing Services with no ServiceMonitor, fed by annotate-then-validate (coverage is a cross-Unit property). guardrails install (dry-run by default), status (Units with ValidationWarnings/Gates), annotate (write the coverage finding onto uncovered Service Units). Use for "enforce that metrics services are scraped", "warn on services with no ServiceMonitor", "which services are flagged?". Not for read-only findings (use observability-findings) or fixing coverage (use observability-instrument).'
 phase: act
 allowed-tools: Bash(cub-observability --help) Bash(cub-observability * --help) Bash(cub auth status) Bash(cub-observability preflight) Bash(cub-observability guardrails) Bash(cub-observability guardrails *)
 ---
 
 # observability-guardrails
 
-Turn the ServiceMonitor-coverage gap into **enforcement** — an advisory ApplyWarning (promotable to a blocking ApplyGate) that fires in the normal apply pipeline.
+Turn the ServiceMonitor-coverage gap into **enforcement** — an advisory ValidationWarning (promotable to a blocking ValidationError) that fires in the normal apply pipeline.
 
 - **`guardrails install`** — creates the `common` Space, a `Warn=true` `vet-cel` Trigger (`servicemonitor-coverage`), and a shared Trigger Filter, then wires in-scope Spaces to it. **Dry-run by default**; re-run with `--commit`.
-- **`guardrails status`** — lists Units carrying observability ApplyWarnings or ApplyGates.
+- **`guardrails status`** — lists Units carrying observability ValidationWarnings or ValidationErrors.
 - **`guardrails annotate`** — writes the `observability.confighub.com/coverage` finding onto each uncovered metrics-Service Unit (the producing half of annotate-then-validate). Dry-run unless `--commit --change-desc`.
 
 ## Why this matters
@@ -27,7 +27,7 @@ ServiceMonitor coverage is a **cross-Unit** property (the ServiceMonitor and the
 
 - Read-only findings — use **observability-findings**.
 - Fixing coverage — use **observability-instrument**.
-- General Trigger/ApplyGate mechanics beyond this pack — use `triggers-and-applygates`.
+- General Trigger/ValidationError mechanics beyond this pack — use `triggers-and-applygates`.
 
 ## Preflight gates
 

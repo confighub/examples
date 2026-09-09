@@ -52,8 +52,8 @@ export function unitRow(e: ExtendedUnitRead, baseUrl: string): Row {
     'Unit.HeadRevisionNum': u?.HeadRevisionNum ?? 0,
     'Unit.LastReleasedRevisionNum': u?.LastReleasedRevisionNum ?? 0,
     'Unit.UpstreamRevisionNum': u?.UpstreamRevisionNum ?? 0,
-    'Unit.GateCount': count(u?.ApplyGates),
-    'Unit.WarningCount': count(u?.ApplyWarnings),
+    'Unit.GateCount': count(u?.ValidationErrors),
+    'Unit.WarningCount': count(u?.ValidationWarnings),
     'Unit.UpdatedAt': time(u?.UpdatedAt),
     'Unit.LastChangeDescription': u?.LastChangeDescription ?? null,
     'Space.Slug': e.Space?.Slug ?? u?.SpaceSlug ?? null,
@@ -184,7 +184,7 @@ export function findingRows(e: ExtendedUnitRead, baseUrl: string): Row[] {
     });
   };
 
-  for (const key of Object.keys(e.Unit?.ApplyGates ?? {})) add('Gate', key);
-  for (const key of Object.keys(e.Unit?.ApplyWarnings ?? {})) add('Warning', key);
+  for (const key of Object.keys(e.Unit?.ValidationErrors ?? {})) add('Gate', key);
+  for (const key of Object.keys(e.Unit?.ValidationWarnings ?? {})) add('Warning', key);
   return out;
 }

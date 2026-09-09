@@ -12,7 +12,7 @@ export type ExtendedUnit = components['schemas']['ExtendedUnit'];
 
 /** The Unit fields every fleet view needs: identity, placement, gates, revisions. */
 export const FLEET_UNIT_SELECT =
-  'UnitID,Slug,DisplayName,SpaceID,TargetID,Labels,ApplyGates,ApplyWarnings,' +
+  'UnitID,Slug,DisplayName,SpaceID,TargetID,Labels,ValidationErrors,ValidationWarnings,' +
   'HeadRevisionNum,LastReleasedRevisionNum,UpstreamRevisionNum,UpstreamUnitID,LastChangeDescription';
 
 /**

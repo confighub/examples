@@ -96,7 +96,7 @@ Initiatives use ConfigHub Labels and Annotations on Views to store their state:
 
 The worker search is intentionally scoped to the platform Space — no other demo's worker can be silently picked up, and tearing down this demo never touches another demo's state.
 
-To exercise a trigger, mutate one of the units (in the ConfigHub UI or via `cub unit update`) — failures land in `ApplyWarnings` (advisory) for in-progress initiatives, or `ApplyGates` (blocking) for the completed "Disallow Host Ports" initiative.
+To exercise a trigger, mutate one of the units (in the ConfigHub UI or via `cub unit update`) — failures land in `ValidationWarnings` (advisory) for in-progress initiatives, or `ValidationErrors` (blocking) for the completed "Disallow Host Ports" initiative.
 
 ## Exploring the Data
 
@@ -119,6 +119,6 @@ cub view list --space initiatives-demo --where "Labels.initiative-priority = 'HI
 cub view list --space initiatives-demo --where "Labels.initiative-status = 'in_progress'"
 
 # Inspect a unit's gates/warnings and the failure messages behind them
-cub unit get aichat-redis --space aichat -o "jq=.Unit.ApplyWarnings"
+cub unit get aichat-redis --space aichat -o "jq=.Unit.ValidationWarnings"
 cub unit get aichat-redis --space aichat -o "jq=.Unit.ValidationResults"
 ```

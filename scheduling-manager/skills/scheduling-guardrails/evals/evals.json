@@ -12,7 +12,7 @@
       "id": 2,
       "name": "status",
       "prompt": "Which workloads are flagged by the placement guardrails?",
-      "expected_output": "Runs `cub-scheduling guardrails status` and reports Units with ApplyWarnings/ApplyGates. Read-only.",
+      "expected_output": "Runs `cub-scheduling guardrails status` and reports Units with ValidationWarnings/ValidationErrors. Read-only.",
       "files": []
     },
     {

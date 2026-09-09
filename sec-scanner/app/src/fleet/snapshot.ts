@@ -101,8 +101,8 @@ async function build(scope: FleetScope): Promise<FleetSnapshot> {
       scannedAt: verdict.scannedAt,
       cvedbVersion: verdict.cvedbVersion,
       findings: [],
-      gates: Object.keys(eu.Unit?.ApplyGates ?? {}),
-      warnings: Object.keys(eu.Unit?.ApplyWarnings ?? {}),
+      gates: Object.keys(eu.Unit?.ValidationErrors ?? {}),
+      warnings: Object.keys(eu.Unit?.ValidationWarnings ?? {}),
       headRevision: eu.Unit?.HeadRevisionNum,
     });
   }

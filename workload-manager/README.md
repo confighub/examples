@@ -26,7 +26,7 @@ manager does that set-join itself.)
 All read commands default to JSON (`-o json`); pass `-o table` for a human view.
 Write commands are **dry-run by default** and require `--commit --change-desc`;
 they edit/create Units but never apply to a cluster (that's a separate `cub unit
-apply`), and never bypass ApplyGates.
+apply`), and never bypass ValidationErrors.
 
 | Command | Kind | What it does |
 |---|---|---|

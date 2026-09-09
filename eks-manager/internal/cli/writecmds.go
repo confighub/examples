@@ -61,11 +61,11 @@ func parseUnitRef(ctx context.Context, c *cubapi.Client, arg string) (unitRef, e
 	if !ok || space == "" || unit == "" {
 		return unitRef{}, fmt.Errorf("target must be <space>/<unit>, got %q", arg)
 	}
-	sp, err := cubapi.ResolveSpace(ctx, c, space)
+	sp, err := cubapi.ResolveSpace(ctx, c, cubapi.ParseRef(space), cubapi.ResolveOpts{})
 	if err != nil {
 		return unitRef{}, fmt.Errorf("resolve space %s: %w", space, err)
 	}
-	return unitRef{spaceID: sp.SpaceID, spaceSlug: sp.Slug, unitSlug: unit}, nil
+	return unitRef{spaceID: sp.Space.SpaceID, spaceSlug: sp.Space.Slug, unitSlug: unit}, nil
 }
 
 // gradeEdits classifies the intended edits and refuses anything that cannot be

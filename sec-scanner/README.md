@@ -23,7 +23,7 @@ ConfigHub fleet:
   known critical CVE?" is one query across every Space, because image refs are
   data.
 - **Enforced guardrails, not advisory linting.** Images on `:latest` and images
-  the scanner flagged **CRITICAL** are blocked by Apply Gates before they reach
+  the scanner flagged **CRITICAL** are blocked by Validation Errors before they reach
   a cluster. Prod changes additionally require approval.
 - **Findings stored back as data.** The gate signal (`max-severity` +
   `cve-count`) is written onto the workload Unit so the gate decides on the same
@@ -118,8 +118,8 @@ export CONFIGHUB_URL="https://hub.confighub.com" CONFIGHUB_TOKEN="$(cub auth get
 ./verify.sh                                    # confirm the guardrails are installed
 ```
 
-Guardrails install as `Warn=true` (advisory ApplyWarnings, never blocking).
-Promote one to a blocking ApplyGate once warnings are clean —
+Guardrails install as `Warn=true` (advisory ValidationWarnings, never blocking).
+Promote one to a blocking ValidationError once warnings are clean —
 `cub trigger update no-latest-tag --space policy-guardrails --unwarn` — and that
 one change enforces it fleet-wide.
 
@@ -146,7 +146,7 @@ export CONFIGHUB_URL="https://hub.confighub.com" CONFIGHUB_TOKEN="$(cub auth get
 ./scanner/secscan inventory --space "sec-demo-*"
 
 # A gated vulnerable image, with the gate that blocks it
-cub unit get legacy-frontend --space sec-demo-dev -o jq=".Unit.ApplyGates"
+cub unit get legacy-frontend --space sec-demo-dev -o jq=".Unit.ValidationErrors"
 
 # Which clusters were scanned CRITICAL? (data written back by the scanner)
 cub unit list --space "*" --where "Annotations.'sec-scanner.confighub.com/max-severity' = 'CRITICAL'"

@@ -106,11 +106,11 @@ func (l Library) listCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			sp, err := cubapi.ResolveSpace(ctx, client, profilesSpace)
+			sp, err := cubapi.ResolveSpace(ctx, client, cubapi.ParseRef(profilesSpace), cubapi.ResolveOpts{})
 			if err != nil {
 				return fmt.Errorf("%s: %w", l.installHint(profilesSpace), err)
 			}
-			invs, err := cubapi.ListInvocations(ctx, client, (cubapi.Where{}).SpaceID(sp.SpaceID),
+			invs, err := cubapi.ListInvocations(ctx, client, (cubapi.Where{}).SpaceID(sp.Space.SpaceID),
 				cubapi.ListOpts{Select: "Slug,FunctionInvocations,Parameters,Annotations"})
 			if err != nil {
 				return err
@@ -166,7 +166,7 @@ func (l Library) applyCmd() *cobra.Command {
 		Long: fmt.Sprintf(`apply invokes a stored %s over %s.
 %s
 
-Dry-run unless --commit --change-desc; never bypasses ApplyGates.`,
+Dry-run unless --commit --change-desc; never bypasses ValidationErrors.`,
 			l.noun(), l.Target, l.paramHelp()),
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -282,15 +282,15 @@ Dry-run unless --commit --change-desc.%s`,
 // resolveProfile finds one stored profile, reporting a missing library as
 // something to install rather than as a missing Space.
 func (l Library) resolveProfile(ctx context.Context, client *cubapi.Client, profilesSpace, slug string) (*goclientnew.Invocation, error) {
-	lib, err := cubapi.ResolveSpace(ctx, client, profilesSpace)
+	lib, err := cubapi.ResolveSpace(ctx, client, cubapi.ParseRef(profilesSpace), cubapi.ResolveOpts{})
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", l.installHint(profilesSpace), err)
 	}
-	inv, err := cubapi.ResolveInvocation(ctx, client, lib.SpaceID, slug)
+	inv, err := cubapi.ResolveInvocation(ctx, client, cubapi.ParseRef(slug), cubapi.ResolveOpts{Space: lib.Space.SpaceID})
 	if err != nil {
 		return nil, fmt.Errorf("resolve profile %q: %w", slug, err)
 	}
-	return inv, nil
+	return inv.Invocation, nil
 }
 
 func (f FleetEdit) scope() string {

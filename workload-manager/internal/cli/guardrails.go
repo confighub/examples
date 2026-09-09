@@ -73,7 +73,7 @@ property vet-cel can't see under one-resource-per-Unit: whether a *matching* PDB
 exists in some other Unit. 'guardrails annotate' writes that finding onto each
 uncovered workload Unit and this Trigger turns it into a warning.
 
-Triggers are created with Warn=true (advisory ApplyWarnings, never blocking).
+Triggers are created with Warn=true (advisory ValidationWarnings, never blocking).
 Promote one to blocking later with:
   cub trigger update <slug> --space <policy-space> --unwarn`,
 	}
@@ -92,7 +92,7 @@ var annotateSpec = guardrails.AnnotateSpec{
 pdb-coverage annotation onto each multi-replica workload Unit that has no matching
 PodDisruptionBudget. Paired with the workload-pdb-coverage rule from
 'guardrails install', this turns the cross-Unit coverage finding — the one a
-per-Unit rule can't compute — into an advisory ApplyWarning.
+per-Unit rule can't compute — into an advisory ValidationWarning.
 
 Re-run after adding PDBs. Dry run unless --commit --change-desc.`,
 	Targets: func(ctx context.Context, c *cubapi.Client, where, cluster string) ([]guardrails.Target, error) {

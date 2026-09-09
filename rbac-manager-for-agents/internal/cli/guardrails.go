@@ -47,7 +47,7 @@ policy Space and enforced fleet-wide via a shared Trigger Filter:
   no-rbac-privilege-escalation  no escalate/bind/impersonate verbs
   no-cluster-admin-binding      no ClusterRoleBindings to cluster-admin
 
-Triggers are created with Warn=true (advisory ApplyWarnings, never blocking), so
+Triggers are created with Warn=true (advisory ValidationWarnings, never blocking), so
 installing on an existing fleet never blocks anyone. Promote one to blocking
 later with: cub trigger update <slug> --space <policy-space> --unwarn`,
 	}

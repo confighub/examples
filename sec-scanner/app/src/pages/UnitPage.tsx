@@ -1,5 +1,5 @@
 // Unit detail: the workload's images and scan verdict, the CVE findings the
-// scanner recorded, Apply Gates, an "upgrade image" quick action (server-side
+// scanner recorded, Validation Errors, an "upgrade image" quick action (server-side
 // yq-i, dry-run previewed), the raw YAML, and revision history with rollback.
 // The client never re-serializes YAML — edits run in ConfigHub's executor.
 
@@ -292,8 +292,8 @@ export function UnitPage() {
     );
   }
 
-  const gates = Object.keys(unit.ApplyGates ?? {});
-  const warnings = Object.keys(unit.ApplyWarnings ?? {});
+  const gates = Object.keys(unit.ValidationErrors ?? {});
+  const warnings = Object.keys(unit.ValidationWarnings ?? {});
 
   const save = async (changeDescription: string) => {
     setActionError(null);

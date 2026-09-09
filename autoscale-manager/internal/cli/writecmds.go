@@ -34,7 +34,7 @@ func newSetHPACmd() *cobra.Command {
 At least one flag is required. --cpu / --memory replace spec.metrics with the
 given Resource utilization target(s); --min / --max only touch the replica bounds.
 To add an HPA to a workload that has none, or to convert an HPA to KEDA, see
-'convert-keda'. Dry-run unless --commit --change-desc; never bypasses ApplyGates.`,
+'convert-keda'. Dry-run unless --commit --change-desc; never bypasses ValidationErrors.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			flags := cmd.Flags()

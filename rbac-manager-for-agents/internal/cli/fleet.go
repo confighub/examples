@@ -44,7 +44,7 @@ useful for persona roles replicated across clusters.
 
 Dry-run by default: it reports the per-Unit changes and writes nothing. Re-run
 with --commit and a --change-desc to apply. Like edit, it never bypasses
-ApplyGates and does not apply to clusters.`,
+ValidationErrors and does not apply to clusters.`,
 	}
 	cmd.AddCommand(
 		newFleetVerbCmd("add-verb", true),

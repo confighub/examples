@@ -18,7 +18,7 @@ All **edit Units but do not publish them** — rolling out is a separate `cub re
 
 ## Why this matters
 
-`cub-autoscale` edits the source of record with `set-yq` under the hood (and the embedded executor for `convert-keda`); everything is **dry-run by default** and requires `--commit --change-desc`, and never bypasses ApplyGates. A pinned autoscaler (`min == max`) can't scale — widen the bounds. KEDA ScaledObjects also need the KEDA operator installed in the target cluster before they'll do anything.
+`cub-autoscale` edits the source of record with `set-yq` under the hood (and the embedded executor for `convert-keda`); everything is **dry-run by default** and requires `--commit --change-desc`, and never bypasses ValidationErrors. A pinned autoscaler (`min == max`) can't scale — widen the bounds. KEDA ScaledObjects also need the KEDA operator installed in the target cluster before they'll do anything.
 
 ## When to use
 
@@ -60,7 +60,7 @@ All **edit Units but do not publish them** — rolling out is a separate `cub re
 
 ## Stop conditions
 
-- An ApplyGate attaches (a validating Trigger failed). **Do not bypass** — fix the data (or the rule), via **triggers-and-applygates**.
+- An ValidationError attaches (a validating Trigger failed). **Do not bypass** — fix the data (or the rule), via **triggers-and-applygates**.
 - The user wants the change deployed — hand off to `release-publish`.
 
 ## Tool boundary
