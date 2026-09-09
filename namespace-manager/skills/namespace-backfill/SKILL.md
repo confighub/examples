@@ -58,7 +58,7 @@ A runtime tenancy controller injects policy objects into live namespaces; correc
 
 ## Stop conditions
 
-- An ValidationError attaches (a validating Trigger failed). **Do not bypass** — diagnose and fix the data (or the Trigger), via **triggers-and-applygates**.
+- A ValidationError attaches (a validating Trigger failed). **Do not bypass** — diagnose and fix the data (or the Trigger), via **triggers-and-applygates**.
 - `backfill` reports "nothing missing" — the envelope is already complete; nothing to do.
 - The user wants the change deployed — hand off to `release-publish`.
 

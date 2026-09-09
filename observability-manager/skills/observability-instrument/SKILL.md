@@ -53,7 +53,7 @@ ServiceMonitor coverage is a cross-Unit property, and a sidecar must be find-or-
 ## Stop conditions
 
 - `ensure-servicemonitor` refuses (Service has no labels, or no metrics port and no `--port`) — supply `--port`, or fix the Service.
-- An ValidationError attaches. **Do not bypass** — fix via **triggers-and-applygates**.
+- A ValidationError attaches. **Do not bypass** — fix via **triggers-and-applygates**.
 - The user wants the change deployed — hand off to `release-publish`.
 
 ## Tool boundary

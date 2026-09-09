@@ -63,7 +63,7 @@ A per-resource validator can only *report* a gap; fixing it means editing the cl
 ## Stop conditions
 
 - The user asks to publish/roll out — hand off to **release-publish**, don't publish here.
-- A commit hits an ValidationError or permission error — report it; fix the data or route to **triggers-and-applygates**; never bypass a gate.
+- A commit hits a ValidationError or permission error — report it; fix the data or route to **triggers-and-applygates**; never bypass a gate.
 - Whole-fleet remediation requested — hand off to **netpol-fleet**.
 
 ## Tool boundary

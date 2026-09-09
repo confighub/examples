@@ -7,7 +7,7 @@ allowed-tools: Bash(cub-namespace --help) Bash(cub-namespace * --help) Bash(cub 
 
 # namespace-enforce
 
-Make namespace-envelope findings **enforced**, not advisory. Installs a pack of validation policies (defined once in a policy Space, enforced fleet-wide via a shared Filter) and the annotate-then-validate loop that turns a set-aware envelope finding into an ValidationWarning.
+Make namespace-envelope findings **enforced**, not advisory. Installs a pack of validation policies (defined once in a policy Space, enforced fleet-wide via a shared Filter) and the annotate-then-validate loop that turns a set-aware envelope finding into a ValidationWarning.
 
 ## Why this matters
 
