@@ -7,7 +7,7 @@ allowed-tools: Bash(cub-netpol --help) Bash(cub-netpol * --help) Bash(cub auth s
 
 # netpol-guardrails
 
-Make NetworkPolicy findings **enforced**, not advisory. Installs a pack of validation policies (defined once in a policy Space, enforced fleet-wide via a shared Filter) and the annotate-then-validate loop that turns a coverage finding into an ValidationWarning.
+Make NetworkPolicy findings **enforced**, not advisory. Installs a pack of validation policies (defined once in a policy Space, enforced fleet-wide via a shared Filter) and the annotate-then-validate loop that turns a coverage finding into a ValidationWarning.
 
 ## Why this matters
 

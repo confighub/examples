@@ -14,7 +14,7 @@ were edited after the fact.
 
 **0:00 · Fleet Overview**
 > configboard — BI-style dashboards over ConfigHub configuration data. Fleet Overview:
-> 85 Units under management, 25% applied and current, nothing blocked by an validation error.
+> 85 Units under management, 25% applied and current, nothing blocked by a validation error.
 
 configboard is a small React app that treats ConfigHub as a BI backend. Selection,
 projection, and joins happen on the server through the same `where` clauses the CLI

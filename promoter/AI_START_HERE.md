@@ -63,7 +63,7 @@ proxy). `VITE_CONFIGHUB_BASE_URL` defaults to `https://hub.confighub.com`.
    ```
 6. **See publishing refuse.** Publishing is disabled with a reason when the
    Space has no `ReleaseTargetID`, when that Target is not an `OCI` provider,
-   when no Unit is assigned to it, or when a bundled Unit has an Validation Error —
+   when no Unit is assigned to it, or when a bundled Unit has a Validation Error —
    the app never clears a gate as a side effect.
 7. **See the promote gate refuse.** Pick a variant that is *not* a downstream
    clone of the previous stage's variant — Promote reports exactly why it can't

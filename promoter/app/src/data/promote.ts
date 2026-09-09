@@ -284,7 +284,7 @@ export function usePromotion(): Promotion {
       if (gated.length > 0) {
         return {
           publishable: false,
-          reason: `${gated.length} of ${members.length} Unit(s) have an Validation Error set; publishing is refused until they are cleared.`,
+          reason: `${gated.length} of ${members.length} Unit(s) have a Validation Error set; publishing is refused until they are cleared.`,
           targetId,
           targetSlug,
           providerType,

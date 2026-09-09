@@ -93,7 +93,7 @@ its Units *describe* a cluster rather than deploy to one.
 
 A cluster is a **Space** (`eks-<name>-<region>`), labelled `Cluster`, `Region`,
 `Environment`, `Provider=aws`. Inside it, **one managed resource per Unit** — so
-a nodegroup scale never shares a revision, a diff, or an ValidationError with the
+a nodegroup scale never shares a revision, a diff, or a ValidationError with the
 control plane.
 
 The Space's Target is the **Crossplane management cluster**: ConfigHub publishes
@@ -209,7 +209,7 @@ Spaces cloned from it is variant promotion, which lives in `cub` and the
 `guardrails install` creates validating Triggers in a policy Space and wires them
 to every cluster Space, skipping any Space that already has its own Trigger
 configuration rather than clobbering it. Rules ship **advisory** (`Warn=true`,
-so failures attach an ValidationWarning); promote one to blocking with `cub trigger
+so failures attach a ValidationWarning); promote one to blocking with `cub trigger
 update <slug> --space common --unwarn`. Gate-versus-warning lives on the
 Trigger, not the rule, so the same pack can advise in dev and block in prod.
 

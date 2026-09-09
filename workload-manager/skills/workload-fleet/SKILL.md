@@ -59,7 +59,7 @@ All **edit/create Units but do not publish them**.
 ## Stop conditions
 
 - The selector is broader than intended (dry-run count surprises you) — narrow `--where` / shorthands before committing.
-- An ValidationError attaches on a Unit. **Do not bypass** — fix via **triggers-and-applygates**.
+- A ValidationError attaches on a Unit. **Do not bypass** — fix via **triggers-and-applygates**.
 - A single workload is the real target — hand off to **workload-harden**.
 - Variant propagation requested — hand off to **promote-release**.
 - The user wants the change deployed — hand off to `release-publish`.

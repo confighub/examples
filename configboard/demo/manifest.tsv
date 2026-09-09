@@ -1,4 +1,4 @@
-frame-01-fleet-overview.png	6.0	configboard — BI-style dashboards over ConfigHub configuration data.\nFleet Overview: 85 Units under management, 25% applied and current, nothing blocked by an validation error.
+frame-01-fleet-overview.png	6.0	configboard — BI-style dashboards over ConfigHub configuration data.\nFleet Overview: 85 Units under management, 25% applied and current, nothing blocked by a validation error.
 frame-02-show-the-query.png	6.0	Every panel can show its query. The code icon reveals the equivalent cub command —\nhere `cub space list`, which uses the one server-side rollup ConfigHub offers.
 frame-03-cross-filter.png	5.5	Clicking a bar cross-filters the whole dashboard. A chip records the scope, and Clear all removes it.
 frame-04-compliance-findings.png	6.5	Compliance: 36 open findings across 17 Units. These come from the guardrail Triggers the fleet\nmanagers already install — configboard reads recorded findings rather than running its own scan.

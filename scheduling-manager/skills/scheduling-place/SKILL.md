@@ -61,7 +61,7 @@ A toleration only *permits* scheduling onto a tainted node — pair it with a no
 
 ## Stop conditions
 
-- An ValidationError attaches (a validating Trigger failed). **Do not bypass** — fix the data (or the rule), via **triggers-and-applygates**.
+- A ValidationError attaches (a validating Trigger failed). **Do not bypass** — fix the data (or the rule), via **triggers-and-applygates**.
 - The user wants the change deployed — hand off to `release-publish`.
 
 ## Tool boundary

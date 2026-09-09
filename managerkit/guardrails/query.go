@@ -11,7 +11,7 @@ import (
 	api "github.com/confighub/sdk/core/function/api"
 )
 
-// StatusRow is one Unit carrying an ValidationWarning or an ValidationError.
+// StatusRow is one Unit carrying a ValidationWarning or a ValidationError.
 type StatusRow struct {
 	Space    string `json:"space"`
 	Unit     string `json:"unit"`
