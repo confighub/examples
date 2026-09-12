@@ -76,7 +76,7 @@ section_install() {
     desc "A component is a piece of software plus the configuration that runs it."
     desc "It is never deployed itself: it is a base, plus one deployment per place"
     desc "it runs. This pulls a bundle of plain Kubernetes YAML into a base."
-    run "cub variant upload --component cubbychat --variant base --granularity per-file oci://ghcr.io/confighub/configs/cubbychat"
+    run "cub variant upload --component cubbychat --variant base oci://ghcr.io/confighub/configs/cubbychat"
 
     desc "Nothing is running. ConfigHub stores configuration; going live is a"
     desc "separate, deliberate step."
@@ -88,7 +88,8 @@ section_install() {
     desc "The base records where it came from -- the bundle and its digest."
     run "cub space get cubbychat-base -o jq='.Space.Annotations'"
 
-    desc "One unit per file in the bundle."
+    desc "One unit per resource, named for the resource rather than for the file it"
+    desc "came from -- plus one that records what was uploaded and from where."
     run "cub unit list --space cubbychat-base"
 
     desc "Ordinary Kubernetes YAML, with literal values. Note the namespace:"
@@ -114,7 +115,8 @@ section_release() {
     run "cub release publish cubbychat-dev"
 
     desc "Argo notices the release on its next sync and applies it."
-    run "kubectl wait --for=condition=Ready pods --all -n cubbychat --timeout=180s"
+    run "kubectl wait --for=create -n cubbychat deployment/backend --timeout=180s"
+    run "kubectl rollout status -n cubbychat deployment/backend --timeout=180s"
     run "kubectl get pods -n cubbychat"
 
     desc "Nothing was pushed at the cluster: ConfigHub published, the cluster pulled."
@@ -163,7 +165,8 @@ section_prod() {
 
     run "cub release publish cubbychat-prod"
     run "source ~/.confighub/clusters/prod.env"
-    run "kubectl wait --for=condition=Ready pods --all -n cubbychat --timeout=180s"
+    run "kubectl wait --for=create -n cubbychat deployment/backend --timeout=180s"
+    run "kubectl rollout status -n cubbychat deployment/backend --timeout=180s"
     run "kubectl get pods -n cubbychat"
 
     desc "One component, three variants: a base and two deployments."
