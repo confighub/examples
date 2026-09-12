@@ -322,7 +322,7 @@ main() {
     done
 
     demo_end
-    printf '\n%sDone. Sections: %s%s\n' "$_c_dim" "$SECTIONS" "$_c_off"
+    printf '\n%sDone. Sections: %s%s\n' "$_c_dim" "$requested" "$_c_off"
 }
 
 main "$@"
