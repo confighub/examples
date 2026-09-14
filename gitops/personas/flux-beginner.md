@@ -53,3 +53,8 @@ Flux repo and have never used ConfigHub.
 ## Example
 
 [`../flux/beginner`](../flux/beginner/README.md)
+
+## See also
+
+- [Walk the whole model once, with Redis](https://confighub.github.io/helm-expt/site/d/docs/user/workshop-redis-intro-guide.html), a beginner tour of ConfigHub in ConfigHub Workshop.
+- [GitOps adopter guide](https://confighub.github.io/helm-expt/site/d/docs/user/gitops-adopter-guide.html), for keeping Flux in charge while ConfigHub provides the source.

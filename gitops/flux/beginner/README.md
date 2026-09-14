@@ -4,7 +4,7 @@ This example is a small, realistic Flux repo layout for one app running in
 two environments. It follows the structure used by the upstream
 [`fluxcd/flux2-kustomize-helm-example`](https://github.com/fluxcd/flux2-kustomize-helm-example)
 repository. It is part of the `gitops/` canonical example set. See
-[`../../README.md`](../../README.md) for the full catalog.
+[`../../README.md`](../../README.md) for the full index.
 
 ## Who this is for
 
@@ -58,7 +58,7 @@ gitops/flux/beginner/
 
 This example uses a Kustomization-based app, not a HelmRelease. The upstream
 reference repo mixes both; a HelmRelease variant is possible future work for
-this catalog and is listed as planned in [`../../README.md`](../../README.md).
+this index and is listed as planned in [`../../README.md`](../../README.md).
 
 ## Attribution
 

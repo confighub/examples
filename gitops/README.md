@@ -1,6 +1,6 @@
 # GitOps examples
 
-This is the catalog of canonical Argo CD and Flux examples in this repo. If
+This is the index of canonical Argo CD and Flux examples in this repo. If
 you run Argo CD or Flux, and you want an example that looks like your setup,
 start here.
 
@@ -9,7 +9,7 @@ layout a real team would actually have. Each one renders offline (no cluster
 needed) and can be uploaded into ConfigHub so you can inspect, diff, and
 change it safely before anything touches a live cluster.
 
-## Catalog
+## Index
 
 | Shape | Tool | Level | Status | Example |
 |---|---|---|---|---|
@@ -55,17 +55,25 @@ to see how this repo's ConfigHub upload and verification flow works: read
 or [`flux/beginner`](./flux/beginner/README.md), then adapt the shape to
 your own repo.
 
+## ConfigHub Workshop
+
+[ConfigHub Workshop](https://confighub.github.io/helm-expt/) covers the ConfigHub side of the same journey:
+
+- [Walk the whole model once, with Redis](https://confighub.github.io/helm-expt/site/d/docs/user/workshop-redis-intro-guide.html): a beginner tour of the model over one chart.
+- [GitOps adopter guide](https://confighub.github.io/helm-expt/site/d/docs/user/gitops-adopter-guide.html): keeping Argo CD or Flux in charge while ConfigHub provides the source.
+- [Model and vocabulary](https://confighub.github.io/helm-expt/site/d/docs/user/model-and-vocabulary.html): what Workshop means by catalog, base variant, stack and fleet.
+
 ## A note on the older import examples
 
 [`incubator/gitops-import-argo`](../incubator/gitops-import-argo/README.md)
 and [`incubator/gitops-import-flux`](../incubator/gitops-import-flux/README.md)
 use an import route that is being retired. If you are looking for a
-canonical example to run or to point an AI assistant at, use this catalog
+canonical example to run or to point an AI assistant at, use this index
 instead.
 
 ## Contract standard
 
-Every example in this catalog follows
+Every example in this index follows
 [`../EXAMPLE_CONTRACT_STANDARD.md`](../EXAMPLE_CONTRACT_STANDARD.md) and the
 [AI guide standard](../incubator/ai-guide-standard.md): a `README.md`, an
 `AI_START_HERE.md`, a `contracts.md`, and a `setup.sh` that supports
