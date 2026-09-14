@@ -17,6 +17,7 @@ If you are not logged in yet, run `cub auth login` before the `cub` commands.
 
 ## Stable Paths
 
+- [`gitops`](./gitops/README.md): catalog of canonical Argo CD and Flux example repo shapes, by tool and skill level. Start here if you run Argo CD or Flux and want an example that looks like your repo.
 - [`promotion-demo-data`](./promotion-demo-data/README.md): quickest no-cluster demo data for learning ConfigHub's App-Deployment-Target model and promotion flow.
 - [`initiatives-demo`](./initiatives-demo/README.md): 5 compliance initiatives backed by Kyverno CEL policies, with sample Kubernetes units to evaluate.
 - [`custom-workers`](./custom-workers/): worker extension examples, including bridge, function, and policy workers.

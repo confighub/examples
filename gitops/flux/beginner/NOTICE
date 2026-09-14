@@ -1,0 +1,14 @@
+This example's directory structure (the split between clusters/,
+infrastructure/, and apps/, and the flux-system/ placeholder inside each
+cluster directory) follows the layout used by:
+
+  fluxcd/flux2-kustomize-helm-example
+  https://github.com/fluxcd/flux2-kustomize-helm-example
+  Licensed under the Apache License, Version 2.0
+  https://www.apache.org/licenses/LICENSE-2.0
+
+No file content from that repository is copied here. Every YAML file in this
+directory was written for this example. The application content (the
+apptique Deployment, Service, and Kustomize overlays) is reused from
+incubator/apptique-flux-monorepo elsewhere in this repository, under this
+repository's own MIT license (see the top-level LICENSE file).
