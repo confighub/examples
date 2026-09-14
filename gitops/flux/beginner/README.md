@@ -31,9 +31,9 @@ a toy?"
 - A standard Kustomize app layout: `apps/base` plus one overlay per
   environment (`apps/dev`, `apps/prod`), patching replica count and resource
   limits only.
-- One app (`apptique`, a small frontend), copied from
-  [`../../../incubator/apptique-flux-monorepo`](../../../incubator/apptique-flux-monorepo/README.md),
-  which already used this base-plus-overlays shape.
+- One app (`apptique`, a small frontend). This example replaces the former
+  `incubator/apptique-flux-monorepo` example, which was moved here and removed
+  from the incubator.
 
 ## Repo layout
 
@@ -66,9 +66,8 @@ The directory names and split between `clusters/`, `infrastructure/`, and
 `apps/` follow the structure of
 [`fluxcd/flux2-kustomize-helm-example`](https://github.com/fluxcd/flux2-kustomize-helm-example)
 (Apache-2.0). No files from that repository were copied; every file here was
-written for this example, reusing the app content already in
-[`../../../incubator/apptique-flux-monorepo`](../../../incubator/apptique-flux-monorepo)
-(MIT, this repository's own license). See [`NOTICE`](./NOTICE).
+written for this example, reusing the app content of the former `incubator/apptique-flux-monorepo`
+example (MIT, this repository's own license). See [`NOTICE`](./NOTICE).
 
 ## What this example does not do
 
@@ -128,9 +127,8 @@ it:
 
 - [`../../argo/beginner-applicationset`](../../argo/beginner-applicationset/README.md):
   the same app, Argo beginner layout.
-- [`../../../incubator/apptique-flux-monorepo`](../../../incubator/apptique-flux-monorepo/README.md):
-  the original live-cluster version of this pattern, which creates a local
-  `kind` cluster and installs Flux for hands-on verification.
+- [`../../personas/flux-beginner.md`](../../personas/flux-beginner.md): the
+  persona this example is written for.
 
 ## AI-safe path
 

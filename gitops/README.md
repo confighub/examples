@@ -26,6 +26,11 @@ machine-readable contract, and scripts that render and can upload into
 ConfigHub. "Planned" rows are tracked and will land as their own pull
 requests, beginner examples first.
 
+## Personas
+
+Each example is written for one persona. See [`personas/`](./personas/README.md)
+for the Argo and Flux beginner and expert descriptions.
+
 ## Which example is like my repo?
 
 - **I have one app in one or two environments, and I use Argo CD's

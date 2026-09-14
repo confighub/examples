@@ -160,8 +160,6 @@ ai_guide_examples=(
   "${repo_root}/incubator/platform-write-api"
   # apptique examples
   "${repo_root}/incubator/apptique-argo-app-of-apps"
-  "${repo_root}/incubator/apptique-argo-applicationset"
-  "${repo_root}/incubator/apptique-flux-monorepo"
   # canonical gitops examples
   "${repo_root}/gitops/argo/beginner-applicationset"
   "${repo_root}/gitops/flux/beginner"

@@ -24,11 +24,9 @@ and where it goes?"
 - A standard Kustomize layout: a shared `base` plus one overlay per
   environment (`dev`, `prod`). The overlays patch replica count and resource
   limits; nothing else differs between environments.
-- One app (`apptique`, a small frontend), copied from
-  [`../../../incubator/apptique-flux-monorepo`](../../../incubator/apptique-flux-monorepo/README.md),
-  which already used this base-plus-overlays shape. The ApplicationSet itself
-  is adapted from
-  [`../../../incubator/apptique-argo-applicationset`](../../../incubator/apptique-argo-applicationset/README.md).
+- One app (`apptique`, a small frontend). This example replaces the former
+  `incubator/apptique-argo-applicationset` and `incubator/apptique-flux-monorepo`
+  examples, which were moved here and removed from the incubator.
 
 ## Repo layout
 
@@ -105,9 +103,8 @@ it:
 
 - [`../../flux/beginner`](../../flux/beginner/README.md): the same app, Flux
   beginner layout.
-- [`../../../incubator/apptique-argo-applicationset`](../../../incubator/apptique-argo-applicationset/README.md):
-  the original live-cluster version of this pattern, which creates a local
-  `kind` cluster and installs Argo CD for hands-on verification.
+- [`../../personas/argo-beginner.md`](../../personas/argo-beginner.md): the
+  persona this example is written for.
 
 ## AI-safe path
 

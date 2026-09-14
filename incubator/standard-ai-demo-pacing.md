@@ -179,8 +179,8 @@ Incubator:
 
 - [ ] `incubator/AI_START_HERE.md`
 - [ ] `incubator/apptique-argo-app-of-apps/AI_START_HERE.md`
-- [ ] `incubator/apptique-argo-applicationset/AI_START_HERE.md`
-- [ ] `incubator/apptique-flux-monorepo/AI_START_HERE.md`
+- [ ] `gitops/argo/beginner-applicationset/AI_START_HERE.md`
+- [ ] `gitops/flux/beginner/AI_START_HERE.md`
 - [ ] `incubator/artifact-workflow/AI_START_HERE.md`
 - [ ] `incubator/combined-git-live/AI_START_HERE.md`
 - [ ] `incubator/connect-and-compare/AI_START_HERE.md`
