@@ -2,7 +2,7 @@
 
 This example is a small, realistic Argo CD repo layout for one app running in
 two environments. It is part of the `gitops/` canonical example set. See
-[`../../README.md`](../../README.md) for the full catalog.
+[`../../README.md`](../../README.md) for the full index.
 
 ## Who this is for
 

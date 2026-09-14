@@ -16,6 +16,23 @@ helped me" means, written as checks you can test.
 | [Flux beginner](./flux-beginner.md) | Flux | Beginner | One app with a `clusters/`, `infrastructure/`, `apps/` layout | [`../flux/beginner`](../flux/beginner/README.md) |
 | [Flux expert](./flux-expert.md) | Flux | Expert | A Flux fleet repo: several clusters, teams and promotion | planned |
 
+## Words that mean different things
+
+The examples use Argo CD, Flux and Kustomize terms. ConfigHub and ConfigHub
+Workshop use some of the same words for other things, so be explicit when
+both meet:
+
+| Word | In these examples | In ConfigHub Workshop |
+|---|---|---|
+| app | an Argo CD `Application`, or a folder of manifests under `apps/` | `cub app`: a workload and what it needs from a platform |
+| base | a Kustomize base that overlays patch | a base variant: one named, reviewed starting configuration |
+| config | any manifests or settings | `cub config`: one rendered configuration you check or diff; it becomes a ConfigHub Unit only after upload |
+| stack | loosely, a set of apps deployed together | `cub stack`: a certified composition of components |
+| fleet | loosely, many clusters | `cub fleet`: governed placement across many targets |
+| catalog | not used; the example list is called an index | the catalog of known-good configurations |
+
+See Workshop's [model and vocabulary](https://confighub.github.io/helm-expt/site/d/docs/user/model-and-vocabulary.html).
+
 ## How to use a persona
 
 - **Writing or reviewing an example:** the README's "Who this is for" section

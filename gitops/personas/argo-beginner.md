@@ -58,3 +58,8 @@ used ConfigHub.
 ## Example
 
 [`../argo/beginner-applicationset`](../argo/beginner-applicationset/README.md)
+
+## See also
+
+- [Walk the whole model once, with Redis](https://confighub.github.io/helm-expt/site/d/docs/user/workshop-redis-intro-guide.html), a beginner tour of ConfigHub in ConfigHub Workshop.
+- [GitOps adopter guide](https://confighub.github.io/helm-expt/site/d/docs/user/gitops-adopter-guide.html), for keeping Argo CD in charge while ConfigHub provides the source.
