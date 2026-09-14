@@ -47,6 +47,12 @@ script_checks=(
   "${repo_root}/incubator/global-app-layer/e2e/deliver-argo.sh"
   "${repo_root}/incubator/global-app-layer/e2e/assert-cluster.sh"
   "${repo_root}/incubator/global-app-layer/e2e/run-all.sh"
+  "${repo_root}/gitops/argo/beginner-applicationset/setup.sh"
+  "${repo_root}/gitops/argo/beginner-applicationset/verify.sh"
+  "${repo_root}/gitops/argo/beginner-applicationset/cleanup.sh"
+  "${repo_root}/gitops/flux/beginner/setup.sh"
+  "${repo_root}/gitops/flux/beginner/verify.sh"
+  "${repo_root}/gitops/flux/beginner/cleanup.sh"
 )
 
 for script_path in "${script_checks[@]}"; do
@@ -154,8 +160,9 @@ ai_guide_examples=(
   "${repo_root}/incubator/platform-write-api"
   # apptique examples
   "${repo_root}/incubator/apptique-argo-app-of-apps"
-  "${repo_root}/incubator/apptique-argo-applicationset"
-  "${repo_root}/incubator/apptique-flux-monorepo"
+  # canonical gitops examples
+  "${repo_root}/gitops/argo/beginner-applicationset"
+  "${repo_root}/gitops/flux/beginner"
   # discovery and evidence examples
   "${repo_root}/incubator/artifact-workflow"
   "${repo_root}/incubator/combined-git-live"

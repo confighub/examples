@@ -1,5 +1,9 @@
 # GitOps Import Argo
 
+This example uses an import route that is being retired. If you want a
+canonical Argo CD example to run or point an AI assistant at, start with
+[`../../gitops/README.md`](../../gitops/README.md) instead.
+
 This incubator example is the working Argo import path for the current GitHub + Argo + AI/CLI + ConfigHub wedge.
 
 It sets up a local kind cluster with real ArgoCD, installs a ConfigHub worker if requested, and demonstrates `cub gitops discover` and `cub gitops import` against ArgoCD `Application` resources.

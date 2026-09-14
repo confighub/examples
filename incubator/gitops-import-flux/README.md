@@ -1,5 +1,9 @@
 # GitOps Import Flux
 
+This example uses an import route that is being retired. If you want a
+canonical Flux example to run or point an AI assistant at, start with
+[`../../gitops/README.md`](../../gitops/README.md) instead.
+
 This incubator example is the working Flux import path for the current GitHub + Flux + AI/CLI + ConfigHub wedge.
 
 It sets up a local kind cluster with real Flux, optionally installs a ConfigHub discovery worker and an in-cluster Flux worker with both `fluxrenderer` and `fluxoci`, and demonstrates `cub gitops discover` and `cub gitops import` against Flux `Kustomization` and `HelmRelease` resources.

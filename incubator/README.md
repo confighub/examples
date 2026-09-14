@@ -62,8 +62,8 @@ still be runnable for both human-led and AI-led evaluation.
 | Example | What it proves |
 |---------|----------------|
 | [apptique-argo-app-of-apps](./apptique-argo-app-of-apps/README.md) | Argo app-of-apps layout |
-| [apptique-argo-applicationset](./apptique-argo-applicationset/README.md) | Argo ApplicationSet layout |
-| [apptique-flux-monorepo](./apptique-flux-monorepo/README.md) | Flux monorepo layout |
+| [gitops/argo/beginner-applicationset](../gitops/argo/beginner-applicationset/README.md) | Argo ApplicationSet layout (moved to `gitops/`) |
+| [gitops/flux/beginner](../gitops/flux/beginner/README.md) | Flux monorepo layout (moved to `gitops/`) |
 | [flux-boutique](./flux-boutique/README.md) | Flux multi-service fan-out |
 
 ### Offline and Simulation

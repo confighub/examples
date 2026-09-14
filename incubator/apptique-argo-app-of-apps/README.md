@@ -137,8 +137,8 @@ It shows a realistic Argo layout teams actually use:
 
 That makes it a good companion to:
 
-- [../../apptique-argo-applicationset](../apptique-argo-applicationset/README.md)
-- [../../apptique-flux-monorepo](../apptique-flux-monorepo/README.md)
+- [gitops/argo/beginner-applicationset](../../gitops/argo/beginner-applicationset/README.md)
+- [gitops/flux/beginner](../../gitops/flux/beginner/README.md)
 - [../gitops-import-argo](../gitops-import-argo/README.md)
 
 ## AI-Safe Path
