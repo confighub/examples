@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  labels:
+    app: apptique
+    component: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: apptique
+      component: frontend
+  template:
+    metadata:
+      labels:
+        app: apptique
+        component: frontend
+    spec:
+      serviceAccountName: frontend
+      containers:
+        - name: server
+          image: nginx:1.27-alpine
+          ports:
+            - containerPort: 80
+          env:
+            - name: CACHE_HOST
+              value: checkout-cache
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          readinessProbe:
+            initialDelaySeconds: 10
+            httpGet:
+              path: /
+              port: 80
+          livenessProbe:
+            initialDelaySeconds: 10
+            httpGet:
+              path: /
+              port: 80

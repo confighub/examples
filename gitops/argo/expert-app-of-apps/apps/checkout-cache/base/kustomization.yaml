@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# The wrinkle an expert will recognise: this app is a Helm chart wrapped in
+# Kustomize. Argo CD sees a Kustomize application, Kustomize inflates the
+# chart, and the overlays patch the rendered output. The chart itself lives
+# in this repo under charts/checkout-cache, so nothing has to be pulled from
+# a chart registry to render it, and Kustomize finds it in the default
+# chart home, the charts/ folder next to this kustomization.
+helmCharts:
+  - name: checkout-cache
+    releaseName: checkout-cache
+    version: 0.3.1
+    valuesInline:
+      replicaCount: 1
+      maxmemory: 128mb
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: storefront

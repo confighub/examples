@@ -1,0 +1,42 @@
+# Sync wave 0 inside the storefront child: the cache comes up before the
+# frontend that reads it.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: checkout-cache
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            storefront: "true"
+  template:
+    metadata:
+      name: '{{.name}}-checkout-cache'
+      labels:
+        rollout-phase: '{{index .metadata.labels "rollout-phase"}}'
+    spec:
+      project: storefront
+      source:
+        repoURL: https://github.com/confighub/examples
+        targetRevision: main
+        path: 'gitops/argo/expert-app-of-apps/apps/checkout-cache/overlays/{{index .metadata.labels "env"}}'
+        kustomize:
+          # The chart this app wraps lives in the repo, so the Argo CD repo
+          # server does not need access to a chart registry to render it.
+          # Argo CD must be configured with the Helm build option enabled
+          # for Kustomize (kustomize.buildOptions: --enable-helm).
+          version: v5
+      destination:
+        server: '{{.server}}'
+        namespace: 'storefront-{{index .metadata.labels "env"}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true

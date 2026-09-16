@@ -1,0 +1,31 @@
+# The tenant's own source and their own Kustomization. The important field
+# is serviceAccountName: without it, the tenant's manifests would be applied
+# with the controller's rights instead of the tenant's.
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: team-checkout
+  namespace: team-checkout
+spec:
+  interval: 5m
+  url: https://github.com/confighub/examples
+  ref:
+    branch: main
+  ignore: |
+    /*
+    !/gitops/flux/expert-fleet/tenants/base/team-checkout/workloads/
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: team-checkout
+  namespace: team-checkout
+spec:
+  interval: 5m
+  path: ./gitops/flux/expert-fleet/tenants/base/team-checkout/workloads
+  prune: true
+  serviceAccountName: team-checkout
+  targetNamespace: team-checkout
+  sourceRef:
+    kind: GitRepository
+    name: team-checkout

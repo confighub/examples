@@ -1,0 +1,20 @@
+# Cluster registration stub for staging-1. A real Argo CD cluster Secret also holds
+# credentials, which are injected at bootstrap time from a secret store and
+# are never committed. What matters to this example is the labels: the
+# generators in bootstrap/ and apps-of-apps/ select on them.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: staging-1
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: cluster
+    env: staging
+    rollout-phase: secondary
+    storefront: "true"
+type: Opaque
+stringData:
+  name: staging-1
+  server: https://staging-1.example.invalid
+  config: |
+    {"tlsClientConfig":{"insecure":false}}

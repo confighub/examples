@@ -1,0 +1,9 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Three clusters, three rollout phases: canary first, then secondary, then
+# primary. The phase label is what a staged rollout selects on.
+resources:
+  - dev-1.yaml
+  - staging-1.yaml
+  - prod-1.yaml

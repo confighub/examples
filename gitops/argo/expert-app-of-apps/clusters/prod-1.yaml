@@ -1,0 +1,20 @@
+# Cluster registration stub for prod-1. A real Argo CD cluster Secret also holds
+# credentials, which are injected at bootstrap time from a secret store and
+# are never committed. What matters to this example is the labels: the
+# generators in bootstrap/ and apps-of-apps/ select on them.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: prod-1
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: cluster
+    env: prod
+    rollout-phase: primary
+    storefront: "true"
+type: Opaque
+stringData:
+  name: prod-1
+  server: https://prod-1.example.invalid
+  config: |
+    {"tlsClientConfig":{"insecure":false}}

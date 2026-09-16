@@ -1,0 +1,17 @@
+# Layer 4, on the dev cluster only. Image automation writes new tags into
+# the dev overlay in Git. Staging and production are never written to by a
+# controller.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: image-automation
+  namespace: flux-system
+spec:
+  dependsOn:
+    - name: apps
+  interval: 10m
+  path: ./gitops/flux/expert-fleet/image-automation
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: fleet-repo

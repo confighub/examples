@@ -1,0 +1,30 @@
+# The tenant boundary. Everything the tenant's own Kustomization applies is
+# applied as this ServiceAccount, which only has rights inside this one
+# namespace. A tenant change cannot reach the platform layer or another
+# tenant, whatever their repo says.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: team-checkout
+  labels:
+    toolkit.fluxcd.io/tenant: team-checkout
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: team-checkout
+  namespace: team-checkout
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: team-checkout-reconciler
+  namespace: team-checkout
+subjects:
+  - kind: ServiceAccount
+    name: team-checkout
+    namespace: team-checkout
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: admin

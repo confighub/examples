@@ -1,0 +1,53 @@
+# Sync wave 0: platform add-ons land on every registered cluster before the
+# storefront apps are created.
+#
+# Matrix generator: every registered cluster, crossed with the list of
+# platform add-ons. Three clusters and one add-on gives three Applications
+# today; adding a second add-on to the list gives six, with no new files.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: platform-addons
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  # goTemplate with missingkey=error makes the generator fail loudly instead
+  # of rendering an Application with an empty path when a cluster is missing
+  # a label. An empty path syncs the whole repo, so this setting matters.
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+    - matrix:
+        generators:
+          - clusters:
+              selector:
+                matchLabels:
+                  argocd.argoproj.io/secret-type: cluster
+                matchExpressions:
+                  - key: env
+                    operator: Exists
+          - list:
+              elements:
+                - addon: cluster-baseline
+  template:
+    metadata:
+      name: '{{.name}}-{{.addon}}'
+      labels:
+        rollout-phase: '{{index .metadata.labels "rollout-phase"}}'
+    spec:
+      project: platform
+      source:
+        repoURL: https://github.com/confighub/examples
+        targetRevision: main
+        path: 'gitops/argo/expert-app-of-apps/apps/platform/{{.addon}}/overlays/{{index .metadata.labels "env"}}'
+      destination:
+        server: '{{.server}}'
+        namespace: platform-system
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true

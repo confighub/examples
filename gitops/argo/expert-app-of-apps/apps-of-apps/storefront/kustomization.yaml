@@ -1,0 +1,8 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# The two apps this child app-of-apps owns. Adding a third storefront app
+# means adding one file here and nothing anywhere else.
+resources:
+  - checkout-cache.yaml
+  - apptique.yaml

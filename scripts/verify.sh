@@ -53,6 +53,12 @@ script_checks=(
   "${repo_root}/gitops/flux/beginner/setup.sh"
   "${repo_root}/gitops/flux/beginner/verify.sh"
   "${repo_root}/gitops/flux/beginner/cleanup.sh"
+  "${repo_root}/gitops/argo/expert-app-of-apps/setup.sh"
+  "${repo_root}/gitops/argo/expert-app-of-apps/verify.sh"
+  "${repo_root}/gitops/argo/expert-app-of-apps/cleanup.sh"
+  "${repo_root}/gitops/flux/expert-fleet/setup.sh"
+  "${repo_root}/gitops/flux/expert-fleet/verify.sh"
+  "${repo_root}/gitops/flux/expert-fleet/cleanup.sh"
 )
 
 for script_path in "${script_checks[@]}"; do

@@ -1,0 +1,59 @@
+# Sync wave -10: the projects exist before anything that references them.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: platform
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-10"
+spec:
+  description: Platform add-ons and the root application. Owned by the platform team.
+  sourceRepos:
+    - https://github.com/confighub/examples
+  destinations:
+    - server: '*'
+      namespace: argocd
+    - server: '*'
+      namespace: platform-system
+  clusterResourceWhitelist:
+    - group: ''
+      kind: Namespace
+  namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: storefront
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-10"
+spec:
+  description: The storefront apps. Owned by the storefront team.
+  sourceRepos:
+    - https://github.com/confighub/examples
+  destinations:
+    - server: '*'
+      namespace: storefront-dev
+    - server: '*'
+      namespace: storefront-staging
+    - server: '*'
+      namespace: storefront-prod
+  clusterResourceWhitelist:
+    - group: ''
+      kind: Namespace
+  namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  # The production cluster is closed to automatic syncing during working
+  # hours. Anyone who needs a change out during the window has to ask for a
+  # manual sync, which the window also blocks unless manualSync is true.
+  syncWindows:
+    - kind: deny
+      schedule: '0 9 * * 1-5'
+      duration: 9h
+      timeZone: UTC
+      applications:
+        - 'prod-1-*'
+      manualSync: false

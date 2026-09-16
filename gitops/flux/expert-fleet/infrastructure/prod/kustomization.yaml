@@ -1,0 +1,28 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../base
+
+labels:
+  - pairs:
+      environment: prod
+
+patches:
+  # The promotion gate. Production reads the production branch, so a change
+  # only reaches it when someone merges main into that branch. Dev and
+  # staging read main and get it immediately.
+  - target:
+      kind: GitRepository
+      name: fleet-repo
+    patch: |
+      - op: replace
+        path: /spec/ref/branch
+        value: production
+  - target:
+      kind: HelmRelease
+      name: edge-router
+    patch: |
+      - op: replace
+        path: /spec/values/replicaCount
+        value: 3

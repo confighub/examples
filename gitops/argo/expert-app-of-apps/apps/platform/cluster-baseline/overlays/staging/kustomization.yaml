@@ -1,0 +1,21 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+labels:
+  - pairs:
+      environment: staging
+
+patches:
+  - target:
+      kind: ResourceQuota
+      name: platform-baseline
+    patch: |
+      - op: replace
+        path: /spec/hard/requests.cpu
+        value: "4"
+      - op: replace
+        path: /spec/hard/limits.cpu
+        value: "8"

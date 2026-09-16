@@ -1,0 +1,28 @@
+# Layer 2. Waits for infrastructure, because the source and the ingress
+# component it needs are created there.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: apps
+  namespace: flux-system
+spec:
+  dependsOn:
+    - name: infrastructure
+  interval: 5m
+  retryInterval: 1m
+  path: ./gitops/flux/expert-fleet/apps/staging
+  prune: true
+  wait: true
+  sourceRef:
+    kind: GitRepository
+    name: fleet-repo
+  # The two values that only exist here, not in the manifests.
+  postBuild:
+    substitute:
+      cluster_name: staging-1
+      environment: staging
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: frontend
+      namespace: apptique-staging

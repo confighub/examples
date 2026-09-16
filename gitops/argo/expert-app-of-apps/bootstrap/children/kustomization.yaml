@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# This is the directory the root Application syncs. The sync-wave
+# annotations on these objects set the order: projects, then platform
+# add-ons, then the storefront child app-of-apps.
+resources:
+  - projects.yaml
+  - platform-addons-appset.yaml
+  - storefront-app-of-apps.yaml
