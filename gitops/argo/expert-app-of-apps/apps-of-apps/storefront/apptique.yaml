@@ -1,0 +1,38 @@
+# Sync wave 5 inside the storefront child: the frontend comes up after the
+# cache.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: apptique
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            storefront: "true"
+  template:
+    metadata:
+      name: '{{.name}}-apptique'
+      labels:
+        rollout-phase: '{{index .metadata.labels "rollout-phase"}}'
+    spec:
+      project: storefront
+      source:
+        repoURL: https://github.com/confighub/examples
+        targetRevision: main
+        path: 'gitops/argo/expert-app-of-apps/apps/apptique/overlays/{{index .metadata.labels "env"}}'
+      destination:
+        server: '{{.server}}'
+        namespace: 'storefront-{{index .metadata.labels "env"}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=false

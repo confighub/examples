@@ -16,8 +16,8 @@ change it safely before anything touches a live cluster.
 | One app, ApplicationSet | Argo CD | Beginner | Ready | [`argo/beginner-applicationset`](./argo/beginner-applicationset/README.md) |
 | One app, Flux Kustomizations with a clusters, infrastructure, apps split | Flux | Beginner | Ready | [`flux/beginner`](./flux/beginner/README.md) |
 | CI writes image tags to a separate GitOps repo, promotion by pull request | Argo CD | Intermediate | Planned | not yet added |
-| App-of-apps plus ApplicationSets, cluster labels, staged rollout, sync windows | Argo CD | Expert | Planned | not yet added |
-| Bootstrap plus clusters plus apps, namespace per team, branch promotion, post-build substitution | Flux | Expert | Planned | not yet added |
+| App-of-apps plus ApplicationSets, cluster labels, staged rollout, sync windows | Argo CD | Expert | Ready | [`argo/expert-app-of-apps`](./argo/expert-app-of-apps/README.md) |
+| Bootstrap plus clusters plus apps, namespace per team, branch promotion, post-build substitution | Flux | Expert | Ready | [`flux/expert-fleet`](./flux/expert-fleet/README.md) |
 | Several teams on one cluster | Flux | Expert | Planned | not yet added |
 | Drift, failed sync, and bad-commit states | Argo CD and Flux | Expert | Planned | not yet added |
 
@@ -40,11 +40,19 @@ for the Argo and Flux beginner and expert descriptions.
   Kustomizations, with a `clusters/`, `infrastructure/`, `apps/` split.**
   Start with [`flux/beginner`](./flux/beginner/README.md).
 - **I manage many apps across many clusters with an app-of-apps pattern, or
-  I need staged rollout and sync windows.** No expert Argo example exists
-  yet; it is planned (see the table above).
-- **I run several teams on one Flux-managed cluster, or use branch-based
-  promotion.** No expert Flux example exists yet; it is planned (see the
-  table above).
+  I need staged rollout and sync windows.** Start with
+  [`argo/expert-app-of-apps`](./argo/expert-app-of-apps/README.md): a root
+  app, sync waves, a matrix ApplicationSet over three clusters, a production
+  sync window, and a child app-of-apps that owns two apps.
+- **I run a Flux fleet with layered Kustomizations, a tenant per team, image
+  automation, or branch-based promotion.** Start with
+  [`flux/expert-fleet`](./flux/expert-fleet/README.md): three clusters, four
+  layers with dependency ordering, a HelmRelease from a chart source, image
+  automation on dev only, one tenant with its own service account, and a dev
+  to staging to production promotion path written into the layout.
+- **I run several teams on one Flux-managed cluster and want the
+  multi-tenancy shape on its own.** `flux/expert-fleet` includes one tenant;
+  a dedicated several-teams example is still planned (see the table above).
 - **I want to see what a broken GitOps state looks like (drift, a failed
   sync, a bad commit) and how it gets caught.** No broken-state example
   exists yet; it is planned (see the table above).

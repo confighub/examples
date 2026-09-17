@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../base/team-checkout
+
+labels:
+  - pairs:
+      environment: staging
+
+patches:
+  # Each environment reads the tenant's own repo at a different revision.
+  - target:
+      kind: GitRepository
+      name: team-checkout
+    patch: |
+      - op: replace
+        path: /spec/ref/branch
+        value: main

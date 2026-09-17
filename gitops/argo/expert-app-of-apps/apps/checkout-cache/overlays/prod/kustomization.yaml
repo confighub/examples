@@ -1,0 +1,36 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+labels:
+  - pairs:
+      environment: prod
+
+# Second wrinkle, and a real one: resources that Kustomize inflates from a
+# Helm chart do not pick up the Kustomize "namespace:" field. The namespace
+# has to be set on them explicitly, which is what these patches do. If you
+# forget, the app lands in whatever namespace Argo CD is told to use, and
+# the two apps in this child app-of-apps stop agreeing on where they live.
+patches:
+  - target:
+      kind: Deployment
+      name: checkout-cache
+    patch: |
+      - op: add
+        path: /metadata/namespace
+        value: storefront-prod
+      - op: replace
+        path: /spec/replicas
+        value: 3
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: "1Gi"
+  - target:
+      kind: Service
+      name: checkout-cache
+    patch: |
+      - op: add
+        path: /metadata/namespace
+        value: storefront-prod

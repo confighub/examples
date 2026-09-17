@@ -1,0 +1,30 @@
+# The one object a human applies by hand, once per Argo CD instance:
+#
+#   kubectl apply -n argocd -f bootstrap/root-app.yaml
+#
+# Everything else in this repo is created by Argo CD from this root
+# Application. This example never applies it for you.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: platform
+  source:
+    repoURL: https://github.com/confighub/examples
+    targetRevision: main
+    path: gitops/argo/expert-app-of-apps/bootstrap/children
+    directory:
+      recurse: false
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ApplyOutOfSyncOnly=true

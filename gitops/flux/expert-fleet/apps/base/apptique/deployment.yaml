@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  labels:
+    app: apptique
+    component: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: apptique
+      component: frontend
+  template:
+    metadata:
+      labels:
+        app: apptique
+        component: frontend
+    spec:
+      serviceAccountName: frontend
+      containers:
+        - name: server
+          image: nginx:1.27.3-alpine
+          ports:
+            - containerPort: 80
+          env:
+            # Filled in by Flux post-build substitution at reconcile time.
+            # It is still a literal ${...} in the rendered output, and that
+            # is the point: this value does not exist in Git.
+            - name: CLUSTER_NAME
+              value: ${cluster_name}
+            - name: ENVIRONMENT
+              value: ${environment}
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          readinessProbe:
+            initialDelaySeconds: 10
+            httpGet:
+              path: /
+              port: 80

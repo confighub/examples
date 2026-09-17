@@ -1,0 +1,18 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../base
+
+labels:
+  - pairs:
+      environment: staging
+
+patches:
+  - target:
+      kind: HelmRelease
+      name: edge-router
+    patch: |
+      - op: replace
+        path: /spec/values/replicaCount
+        value: 2

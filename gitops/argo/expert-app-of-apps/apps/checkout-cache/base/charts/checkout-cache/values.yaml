@@ -1,0 +1,19 @@
+replicaCount: 1
+
+image:
+  repository: redis
+  tag: 7.4-alpine
+  pullPolicy: IfNotPresent
+
+service:
+  port: 6379
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+maxmemory: 128mb

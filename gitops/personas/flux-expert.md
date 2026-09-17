@@ -76,5 +76,9 @@ repositories kept current by automation.
 
 ## Example
 
-Planned: a fleet repo with bootstrap, clusters and apps, a namespace per
-team, and promotion between environments, plus a multi-tenant variant.
+[`flux/expert-fleet`](../flux/expert-fleet/README.md): three clusters, four
+layers ordered with `dependsOn`, an infrastructure and apps split, a
+HelmRelease from a chart source, image automation on dev only, one tenant
+with its own service account, and a dev to staging to production promotion
+path written into the layout. A several-teams-on-one-cluster example is
+still planned.

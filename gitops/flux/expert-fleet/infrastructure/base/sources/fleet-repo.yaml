@@ -1,0 +1,16 @@
+# The one source every cluster reads from. Dev and staging follow main.
+# Production follows the production branch: see infrastructure/prod, which
+# patches this object. That patch is the promotion gate.
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: fleet-repo
+  namespace: flux-system
+spec:
+  interval: 1m
+  url: https://github.com/confighub/examples
+  ref:
+    branch: main
+  ignore: |
+    /*
+    !/gitops/flux/expert-fleet/

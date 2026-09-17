@@ -1,0 +1,29 @@
+# Writes the chosen tag back into Git, into the dev overlay only, on main.
+# Staging and production are never written by automation: they move when a
+# person opens a pull request or merges into the production branch. That is
+# the whole promotion path, in one object.
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageUpdateAutomation
+metadata:
+  name: apptique-dev
+  namespace: flux-system
+spec:
+  interval: 30m
+  sourceRef:
+    kind: GitRepository
+    name: fleet-repo
+  git:
+    checkout:
+      ref:
+        branch: main
+    commit:
+      author:
+        name: fluxcdbot
+        email: fluxcdbot@users.noreply.github.com
+      messageTemplate: |
+        Update apptique image tag in dev
+    push:
+      branch: main
+  update:
+    path: ./gitops/flux/expert-fleet/apps/dev
+    strategy: Setters

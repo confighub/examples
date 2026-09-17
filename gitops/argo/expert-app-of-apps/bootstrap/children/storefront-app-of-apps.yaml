@@ -1,0 +1,26 @@
+# Sync wave 10: the child app-of-apps. It owns the two storefront apps and
+# nothing else, so the storefront team can be given this one path.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: storefront
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: platform
+  source:
+    repoURL: https://github.com/confighub/examples
+    targetRevision: main
+    path: gitops/argo/expert-app-of-apps/apps-of-apps/storefront
+    directory:
+      recurse: false
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

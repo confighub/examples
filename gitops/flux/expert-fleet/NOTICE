@@ -1,0 +1,19 @@
+This example's directory structure follows two publicly documented Flux
+layouts:
+
+  fluxcd/flux2-kustomize-helm-example
+  https://github.com/fluxcd/flux2-kustomize-helm-example
+  Licensed under the Apache License, Version 2.0
+  (the clusters/, infrastructure/, apps/ split)
+
+  fluxcd/flux2-multi-tenancy
+  https://github.com/fluxcd/flux2-multi-tenancy
+  Licensed under the Apache License, Version 2.0
+  (the tenants/base/<team>/ split into rbac.yaml and sync.yaml, and applying
+  a tenant's Kustomization with the tenant's own ServiceAccount)
+
+No file content from either repository is copied here. Every file in this
+directory was written for this example. The application content (the
+apptique Deployment, Service, and Kustomize overlays) is reused from the
+other examples in this repository, under this repository's own MIT license
+(see the top-level LICENSE file).

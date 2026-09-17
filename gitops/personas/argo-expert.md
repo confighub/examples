@@ -78,5 +78,8 @@ add-ons, and more than one team committing.
 
 ## Example
 
-Planned: an app-of-apps plus ApplicationSets repo over several clusters,
-built from `incubator/apptique-argo-app-of-apps`.
+[`argo/expert-app-of-apps`](../argo/expert-app-of-apps/README.md): a root
+app-of-apps with sync waves, a matrix ApplicationSet over three registered
+clusters, a production sync window, and a child app-of-apps that owns
+apptique and one supporting service. One of the two is a Helm chart wrapped
+in Kustomize.

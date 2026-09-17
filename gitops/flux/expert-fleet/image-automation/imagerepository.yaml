@@ -1,0 +1,9 @@
+# Watches the registry for new tags of the apptique image.
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: apptique
+  namespace: flux-system
+spec:
+  image: docker.io/library/nginx
+  interval: 10m

@@ -1,0 +1,12 @@
+# Chart source for the platform components. Nothing in this example pulls
+# from it: it is here so the shape is complete and so a tool can see that
+# one component comes from a chart rather than from plain manifests.
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: platform-charts
+  namespace: flux-system
+spec:
+  type: oci
+  interval: 1h
+  url: oci://ghcr.io/confighub/charts

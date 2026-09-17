@@ -1,0 +1,16 @@
+# Which of those tags counts as "the next one". The range is deliberately
+# narrow: automation moves the patch version, a human moves the minor.
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: apptique
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: apptique
+  filterTags:
+    pattern: '^(?P<version>[0-9]+\.[0-9]+\.[0-9]+)-alpine$'
+    extract: '$version'
+  policy:
+    semver:
+      range: '~1.27.0'
