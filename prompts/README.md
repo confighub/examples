@@ -8,8 +8,8 @@ Nothing here talks to ConfigHub, and nothing here needs an account.
 
 ## Available
 
-- [`config-repo-ten-questions.md`](./config-repo-ten-questions.md) — ten questions
-  about a configuration repository: Helm values, Argo CD ApplicationSets, Flux
+- [`config-repo-ten-questions.md`](./config-repo-ten-questions.md) — From the blog post "Four roads to config hell", this prompt helps your AI ask questions
+  about your configuration repository: looking at Helm values, Argo CD ApplicationSets, Flux
   Kustomizations, Kustomize overlays or similar. What is allowed to drift, how
   variety is declared, how far one edit reaches, and what is half promoted.
 
