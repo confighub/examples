@@ -1,0 +1,6 @@
+global:
+  name: beta-dev-euw1
+  org: beta
+  env: dev
+  region: euw1
+  provider: aws

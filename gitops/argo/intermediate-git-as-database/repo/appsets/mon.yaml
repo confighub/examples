@@ -1,0 +1,63 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata: {name: mon}
+spec:
+  generators:
+  - clusters:
+      selector:
+        matchLabels: {env: prod, region: use1}
+        matchExpressions:
+        - {key: org, operator: NotIn, values: [gamma]}
+    values:
+      version: 1.4.0
+  - clusters:
+      selector:
+        matchLabels: {env: prod, region: euw1}
+        matchExpressions:
+        - {key: org, operator: NotIn, values: [gamma]}
+    values:
+      version: 1.4.0
+  - clusters:
+      selector:
+        matchLabels: {env: prod, region: aps1}
+        matchExpressions:
+        - {key: org, operator: NotIn, values: [gamma]}
+    values:
+      version: 1.4.0
+  - clusters:
+      selector:
+        matchLabels: {env: prod, region: usw2}
+        matchExpressions:
+        - {key: org, operator: NotIn, values: [gamma]}
+    values:
+      version: 1.4.0
+  - clusters:
+      selector:
+        matchLabels: {env: dev}
+    values:
+      version: 1.5.0
+  - clusters:
+      selector:
+        matchExpressions:
+        - {key: org, operator: In, values: [gamma]}
+        - {key: env, operator: In, values: [prod]}
+    values:
+      version: 1.3.2
+  template:
+    metadata:
+      annotations:
+        argocd.argoproj.io/manifest-generate-paths: /values/global.yaml
+    spec:
+      source:
+        chart: mon
+        targetRevision: ">=1.0.0 <2.0.0"
+        helm:
+          ignoreMissingValueFiles: true
+          valueFiles:
+          - $values/values/global.yaml
+          - $values/values/org/acme.yaml
+          - $values/values/environments/{{env}}.yaml
+          - $values/values/providers/{{provider}}.yaml
+          - $values/values/clusters/{{name}}.yaml
+      syncPolicy:
+        automated: {selfHeal: true}

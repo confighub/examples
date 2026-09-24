@@ -1,0 +1,6 @@
+global:
+  name: gamma-prod-usw2
+  org: gamma
+  env: prod
+  region: usw2
+  provider: aws

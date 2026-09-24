@@ -1,0 +1,6 @@
+global:
+  name: beta-prod-usw2
+  org: beta
+  env: prod
+  region: usw2
+  provider: aws

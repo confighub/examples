@@ -59,6 +59,9 @@ script_checks=(
   "${repo_root}/gitops/flux/expert-fleet/setup.sh"
   "${repo_root}/gitops/flux/expert-fleet/verify.sh"
   "${repo_root}/gitops/flux/expert-fleet/cleanup.sh"
+  "${repo_root}/gitops/argo/intermediate-git-as-database/setup.sh"
+  "${repo_root}/gitops/argo/intermediate-git-as-database/verify.sh"
+  "${repo_root}/gitops/argo/intermediate-git-as-database/cleanup.sh"
 )
 
 for script_path in "${script_checks[@]}"; do
@@ -169,6 +172,7 @@ ai_guide_examples=(
   # canonical gitops examples
   "${repo_root}/gitops/argo/beginner-applicationset"
   "${repo_root}/gitops/flux/beginner"
+  "${repo_root}/gitops/argo/intermediate-git-as-database"
   # discovery and evidence examples
   "${repo_root}/incubator/artifact-workflow"
   "${repo_root}/incubator/combined-git-live"

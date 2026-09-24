@@ -1,0 +1,6 @@
+global:
+  name: beta-prod-use1
+  org: beta
+  env: prod
+  region: use1
+  provider: azure

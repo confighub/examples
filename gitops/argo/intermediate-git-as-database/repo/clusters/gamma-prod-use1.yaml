@@ -1,0 +1,6 @@
+global:
+  name: gamma-prod-use1
+  org: gamma
+  env: prod
+  region: use1
+  provider: azure

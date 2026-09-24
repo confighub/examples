@@ -1,0 +1,6 @@
+global:
+  name: acme-dev-aps1
+  org: acme
+  env: dev
+  region: aps1
+  provider: azure

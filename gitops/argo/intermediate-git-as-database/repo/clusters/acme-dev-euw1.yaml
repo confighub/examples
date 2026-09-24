@@ -1,0 +1,6 @@
+global:
+  name: acme-dev-euw1
+  org: acme
+  env: dev
+  region: euw1
+  provider: aws

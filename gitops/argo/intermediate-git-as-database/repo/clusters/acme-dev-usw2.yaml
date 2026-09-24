@@ -1,0 +1,6 @@
+global:
+  name: acme-dev-usw2
+  org: acme
+  env: dev
+  region: usw2
+  provider: aws

@@ -16,6 +16,7 @@ change it safely before anything touches a live cluster.
 | One app, ApplicationSet | Argo CD | Beginner | Ready | [`argo/beginner-applicationset`](./argo/beginner-applicationset/README.md) |
 | One app, Flux Kustomizations with a clusters, infrastructure, apps split | Flux | Beginner | Ready | [`flux/beginner`](./flux/beginner/README.md) |
 | CI writes image tags to a separate GitOps repo, promotion by pull request | Argo CD | Intermediate | Planned | not yet added |
+| A fleet repo doing a database's job: filename keys, silent layers, find-and-replace promotion, reach nobody can see | Argo CD | Intermediate | Ready (read-only; ConfigHub upload planned) | [`argo/intermediate-git-as-database`](./argo/intermediate-git-as-database/README.md) |
 | App-of-apps plus ApplicationSets, cluster labels, staged rollout, sync windows | Argo CD | Expert | Ready | [`argo/expert-app-of-apps`](./argo/expert-app-of-apps/README.md) |
 | Bootstrap plus clusters plus apps, namespace per team, branch promotion, post-build substitution | Flux | Expert | Ready | [`flux/expert-fleet`](./flux/expert-fleet/README.md) |
 | Several teams on one cluster | Flux | Expert | Planned | not yet added |

@@ -1,0 +1,6 @@
+global:
+  name: gamma-dev-aps1
+  org: gamma
+  env: dev
+  region: aps1
+  provider: azure

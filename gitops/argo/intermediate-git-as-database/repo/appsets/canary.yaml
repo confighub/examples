@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata: {name: canary}
+spec:
+  generators:
+  - clusters:
+      selector:
+        matchLabels: {org: acme, env: prod, region: use1}
+  template:
+    metadata:
+      annotations:
+        argocd.argoproj.io/manifest-generate-paths: /values/clusters/acme-prod-use1.yaml
+    spec:
+      source:
+        chart: mon
+        targetRevision: 1.4.0
+      syncPolicy:
+        automated: {selfHeal: true, prune: true}

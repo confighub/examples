@@ -1,0 +1,6 @@
+global:
+  name: gamma-dev-usw2
+  org: gamma
+  env: dev
+  region: usw2
+  provider: aws

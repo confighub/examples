@@ -1,0 +1,6 @@
+global:
+  name: gamma-prod-aps1
+  org: gamma
+  env: prod
+  region: aps1
+  provider: azure
