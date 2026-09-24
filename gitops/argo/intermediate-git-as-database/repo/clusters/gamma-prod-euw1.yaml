@@ -1,0 +1,6 @@
+global:
+  name: gamma-prod-euw1
+  org: gamma
+  env: prod
+  region: euw1
+  provider: aws

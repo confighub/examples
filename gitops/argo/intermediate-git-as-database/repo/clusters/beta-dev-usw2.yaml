@@ -1,0 +1,6 @@
+global:
+  name: beta-dev-usw2
+  org: beta
+  env: dev
+  region: usw2
+  provider: aws

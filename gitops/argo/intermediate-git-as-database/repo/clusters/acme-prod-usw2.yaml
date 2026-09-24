@@ -1,0 +1,6 @@
+global:
+  name: acme-prod-usw2
+  org: acme
+  env: prod
+  region: usw2
+  provider: aws

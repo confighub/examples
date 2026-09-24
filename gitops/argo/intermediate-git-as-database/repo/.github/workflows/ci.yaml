@@ -1,0 +1,11 @@
+on:
+  pull_request:
+    paths: ["clusters/**", "generated/**"]
+env:
+  MAX_CLUSTERS: 5
+jobs:
+  cap:
+    runs-on: ubuntu-latest
+    steps:
+    - run: test $(git diff --name-only origin/main | grep -c '^clusters/') -le $MAX_CLUSTERS
+    - run: test -z "$(git diff --name-only origin/main | grep '^generated/')" || exit 1

@@ -1,0 +1,6 @@
+global:
+  name: beta-prod-aps1
+  org: beta
+  env: prod
+  region: aps1
+  provider: azure

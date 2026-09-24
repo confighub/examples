@@ -1,0 +1,6 @@
+global:
+  name: acme-prod-aps1
+  org: acme
+  env: prod
+  region: aps1
+  provider: azure

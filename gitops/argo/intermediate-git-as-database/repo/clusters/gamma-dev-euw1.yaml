@@ -1,0 +1,6 @@
+global:
+  name: gamma-dev-euw1
+  org: gamma
+  env: dev
+  region: euw1
+  provider: aws

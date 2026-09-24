@@ -1,0 +1,6 @@
+global:
+  name: beta-dev-aps1
+  org: beta
+  env: dev
+  region: aps1
+  provider: azure

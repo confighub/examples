@@ -12,6 +12,12 @@ Nothing here talks to ConfigHub, and nothing here needs an account.
   about your configuration repository: looking at Helm values, Argo CD ApplicationSets, Flux
   Kustomizations, Kustomize overlays or similar. What is allowed to drift, how
   variety is declared, how far one edit reaches, and what is half promoted.
+- [`scout/`](./scout/README.md) — the reference implementation of the same
+  questions as a single read-only Python script, with tests. Where the prompt
+  and scout disagree, trust scout.
+- To try either on a repo with known answers first, use
+  [`gitops/argo/intermediate-git-as-database`](../gitops/argo/intermediate-git-as-database/README.md):
+  a small fleet with one planted instance of each question and an answer sheet.
 
 ## How to run one
 

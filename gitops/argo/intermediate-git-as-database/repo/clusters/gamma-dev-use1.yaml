@@ -1,0 +1,6 @@
+global:
+  name: gamma-dev-use1
+  org: gamma
+  env: dev
+  region: use1
+  provider: azure

@@ -1,0 +1,6 @@
+global:
+  name: acme-dev-use1
+  org: acme
+  env: dev
+  region: use1
+  provider: azure
