@@ -187,7 +187,7 @@ func unitDataBulk(where string) (map[string]string, error) {
 	if where != "" {
 		q.Set("where", where)
 	}
-	b, err := do("GET", "/unit-data", q, nil)
+	b, err := do("GET", "/unit_data", q, nil)
 	if err != nil {
 		return nil, err
 	}
