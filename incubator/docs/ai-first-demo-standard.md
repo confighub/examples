@@ -43,7 +43,7 @@ The following 31 files need to be reviewed and updated:
 - [ ] `./incubator/AI_START_HERE.md`
 
 ### Incubator examples (29)
-- [ ] `./incubator/apptique-argo-app-of-apps/AI_START_HERE.md`
+- [ ] `./gitops/argo/beginner-app-of-apps/AI_START_HERE.md`
 - [ ] `gitops/argo/beginner-applicationset/AI_START_HERE.md`
 - [ ] `gitops/flux/beginner/AI_START_HERE.md`
 - [ ] `./incubator/artifact-workflow/AI_START_HERE.md`

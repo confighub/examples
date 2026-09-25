@@ -178,7 +178,7 @@ Root:
 Incubator:
 
 - [ ] `incubator/AI_START_HERE.md`
-- [ ] `incubator/apptique-argo-app-of-apps/AI_START_HERE.md`
+- [ ] `gitops/argo/beginner-app-of-apps/AI_START_HERE.md`
 - [ ] `gitops/argo/beginner-applicationset/AI_START_HERE.md`
 - [ ] `gitops/flux/beginner/AI_START_HERE.md`
 - [ ] `incubator/artifact-workflow/AI_START_HERE.md`
