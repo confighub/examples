@@ -111,7 +111,6 @@ export const SPACE_DIMENSIONS: Dimension[] = [
   }),
   dim({ id: 'Space.UnlinkedUnitCount', label: 'Unlinked', kind: 'number', source: 'Space' }),
   dim({ id: 'Space.TotalLinkCount', label: 'Links', kind: 'number', source: 'Space' }),
-  dim({ id: 'Space.UnapprovedUnitCount', label: 'Unapproved', kind: 'number', source: 'Space' }),
   dim({ id: 'Space.GatedUnitCount', label: 'Gated', kind: 'number', source: 'Space' }),
   dim({ id: 'Space.WarnedUnitCount', label: 'Warned', kind: 'number', source: 'Space' }),
   dim({ id: 'Space.UpgradableUnitCount', label: 'Behind upstream', kind: 'number', source: 'Space' }),

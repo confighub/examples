@@ -267,7 +267,7 @@ variables push a `where` down so the common case invokes a fraction of the fleet
 ### Tier 0½ — Space summaries (server-side rollups, one request)
 
 `GET /space?summary=true` returns per-Space counts computed on the server:
-`TotalUnitCount`, `UnreleasedUnitCount`, `UnapprovedUnitCount`, `GatedUnitCount`,
+`TotalUnitCount`, `UnreleasedUnitCount`, `GatedUnitCount`,
 `WarnedUnitCount`, `UpgradableUnitCount`, `UnlinkedUnitCount`, plus `TargetCountByToolchainType`, `TriggerCountByEventType`,
 and totals for Links, Filters, Views, Tags, ChangeSets, Invocations, Attributes,
 Releases, BridgeWorkers.
@@ -399,7 +399,6 @@ Spaces in scope:
 | **Blocked by ValidationErrors** — status-colored | `GatedUnitCount` |
 | **Carrying warnings** | `WarnedUnitCount` |
 | **Behind upstream** | `UpgradableUnitCount` |
-| **Unapproved pending changes** | `UnapprovedUnitCount` |
 
 These are the same populations as the quick filters in the Filters and Views
 guide (`LEN(ValidationErrors) > 0`, `HeadRevisionNum > LastReleasedRevisionNum`, …), so the tile

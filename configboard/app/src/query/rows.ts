@@ -99,7 +99,6 @@ export function spaceRow(e: ExtendedSpaceRead): Row {
     'Space.DisplayName': s?.DisplayName || s?.Slug || null,
     'Space.TotalUnitCount': e.TotalUnitCount ?? 0,
     'Space.UnreleasedUnitCount': e.UnreleasedUnitCount ?? 0,
-    'Space.UnapprovedUnitCount': e.UnapprovedUnitCount ?? 0,
     'Space.UnlinkedUnitCount': e.UnlinkedUnitCount ?? 0,
     'Space.GatedUnitCount': e.GatedUnitCount ?? 0,
     'Space.WarnedUnitCount': e.WarnedUnitCount ?? 0,

@@ -144,8 +144,7 @@ Measured against a 56-Space / 398-Unit organization. These are the assumptions t
 query layer rests on:
 
 - `GET /space?summary=true` returns per-Space `TotalUnitCount`, `UnreleasedUnitCount`,
-  `UnapprovedUnitCount`, `UnlinkedUnitCount`, `GatedUnitCount`, `WarnedUnitCount`,
-  `UpgradableUnitCount`
+  `UnlinkedUnitCount`, `GatedUnitCount`, `WarnedUnitCount`, `UpgradableUnitCount`
 - summed `UnreleasedUnitCount` equals the count from
   `where=HeadRevisionNum > LastReleasedRevisionNum`; summed `GatedUnitCount` equals
   `where=LEN(ValidationErrors) > 0`
