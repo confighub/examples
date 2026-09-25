@@ -27,7 +27,7 @@ For runnable examples, prefer the shared machine seams first:
 | Reason | First choice |
 |--------|--------------|
 | **Import** | [gitops-import-argo](./gitops-import-argo/AI_START_HERE.md) or [gitops-import-flux](./gitops-import-flux/AI_START_HERE.md) |
-| **Mutate** | [platform-write-api](./platform-write-api/AI_START_HERE.md) |
+| **Mutate** | [cub-gen springboot-paas](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas/AI_START_HERE.md) |
 | **Apply** | [global-app-layer/single-component](./global-app-layer/single-component/AI_START_HERE.md) |
 | **Model** | [global-app-layer](./global-app-layer/AI_START_HERE.md) |
 | **Train handoff discipline** | [mini-kubara](./mini-kubara/AI_START_HERE.md) |

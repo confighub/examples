@@ -45,7 +45,7 @@ What do you want to do?
 │   └─ gitops-import-argo or gitops-import-flux
 │
 ├─ Make controlled changes → Mutate
-│   └─ platform-write-api
+│   └─ cub-gen examples/springboot-paas
 │
 ├─ Deploy real workloads → Apply
 │   └─ global-app-layer/single-component

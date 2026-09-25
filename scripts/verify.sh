@@ -168,8 +168,6 @@ ai_guide_examples=(
   # gitops import examples
   "${repo_root}/incubator/gitops-import-argo"
   "${repo_root}/incubator/gitops-import-flux"
-  # mutation examples
-  "${repo_root}/incubator/platform-write-api"
   # canonical gitops examples
   "${repo_root}/gitops/argo/beginner-applicationset"
   "${repo_root}/gitops/argo/beginner-app-of-apps"
