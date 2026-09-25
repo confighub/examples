@@ -3,7 +3,7 @@
 #
 # Read-only on ConfigHub. Asserts the Space/Trigger/Filter/Unit layout, the
 # gate matrix (each planted violation carries exactly its intended Validation Error,
-# clean workloads are ungated, prod requires approval), that the estimator wrote
+# clean workloads are ungated), that the estimator wrote
 # its estimates back as data, and that the cost database is present.
 #
 # Usage:   ./demo-verify.sh
@@ -26,7 +26,7 @@ DEV_SPACE="${PREFIX}-dev"
 STAGING_SPACE="${PREFIX}-staging"
 PROD_SPACE="${PREFIX}-prod"
 WORKLOADS=(frontend api cache db)
-TRIGGERS=(valid-schemas requests-required within-budget require-approval)
+TRIGGERS=(valid-schemas requests-required within-budget)
 
 command -v "$cub" &>/dev/null || { echo "ERROR: cub not found on PATH (set CUB=/path/to/cub)" >&2; exit 1; }
 
@@ -58,9 +58,7 @@ done
 for trigger in "${TRIGGERS[@]}"; do
   check "trigger ${POLICY_SPACE}/${trigger} exists" $cub trigger get "$trigger" --space "$POLICY_SPACE" --quiet
 done
-for filter in cost-guardrails cost-guardrails-prod; do
-  check "filter ${POLICY_SPACE}/${filter} exists" $cub filter get "$filter" --space "$POLICY_SPACE" --quiet
-done
+check "filter ${POLICY_SPACE}/cost-guardrails exists" $cub filter get cost-guardrails --space "$POLICY_SPACE" --quiet
 for space in "$BASE_SPACE" "$DEV_SPACE" "$STAGING_SPACE" "$PROD_SPACE"; do
   for w in "${WORKLOADS[@]}"; do
     check "unit ${space}/${w} exists" $cub unit get "$w" --space "$space" --quiet
@@ -71,20 +69,14 @@ for v in oversized-analytics no-requests-web; do
 done
 
 # Cluster Spaces actually selected the guardrail Triggers (TriggerFilterID):
-# dev/staging select the 3 Scope=all triggers; prod selects all 4.
 trigger_count() { $cub space get "$1" -o jq=".Space.TriggerIDs | length" 2>/dev/null; }
-for space in "$DEV_SPACE" "$STAGING_SPACE"; do
+for space in "$DEV_SPACE" "$STAGING_SPACE" "$PROD_SPACE"; do
   if [[ "$(trigger_count "$space")" == "3" ]]; then
     pass "space ${space} selects 3 guardrail triggers"
   else
     fail "space ${space} selects 3 guardrail triggers (got $(trigger_count "$space"))"
   fi
 done
-if [[ "$(trigger_count "$PROD_SPACE")" == "4" ]]; then
-  pass "space ${PROD_SPACE} selects 4 guardrail triggers (incl. approval)"
-else
-  fail "space ${PROD_SPACE} selects 4 guardrail triggers (got $(trigger_count "$PROD_SPACE"))"
-fi
 
 # ── Estimate write-back ──────────────────────────────────────────────────────
 # The estimator annotated each workload with its budget verdict. The
@@ -135,8 +127,8 @@ check "gate: oversized-analytics blocked by within-budget" \
   has_gate "$DEV_SPACE" oversized-analytics "${POLICY_SPACE}/within-budget/vet-celexpr"
 check "gate: no-requests-web blocked by requests-required" \
   has_gate "$DEV_SPACE" no-requests-web "${POLICY_SPACE}/requests-required/vet-celexpr"
-check "gate: ${PROD_SPACE}/frontend requires approval" \
-  has_gate "$PROD_SPACE" frontend "${POLICY_SPACE}/require-approval/vet-approvedby"
+check "no gate: ${PROD_SPACE}/frontend (within budget, passes the pack)" \
+  no_gates "$PROD_SPACE" frontend
 check "no gate: ${STAGING_SPACE}/frontend (within budget, passes the pack)" \
   no_gates "$STAGING_SPACE" frontend
 check "no gate: ${DEV_SPACE}/frontend (within budget, passes the pack)" \

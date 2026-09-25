@@ -13,7 +13,7 @@ This example seeds a realistic multi-cluster RBAC fleet and demonstrates:
   cluster" is a single command over a label selector, not N pull requests.
 - **Enforced guardrails, not advisory linting.** Wildcard rules, privilege
   escalation verbs, and cluster-admin bindings are blocked by Validation Errors
-  before they reach a cluster. Prod changes additionally require approval.
+  before they reach a cluster.
 - **Variants as data.** Each cluster's personas are clones of a canonical
   base; intentional divergence (dev may delete, prod may not) is tracked,
   diffable, and survives base upgrades.
@@ -31,7 +31,7 @@ rbac-demo-policy     Guardrail Triggers + Filters (no Units)
 rbac-demo-base       Canonical persona Units: developer, operator, viewer, ci
 rbac-demo-dev        Cluster Space (env=dev)     — persona clones + planted violations
 rbac-demo-staging    Cluster Space (env=staging) — persona clones
-rbac-demo-prod       Cluster Space (env=prod)    — persona clones, approval required
+rbac-demo-prod       Cluster Space (env=prod)    — persona clones
 ```
 
 These are "paper clusters": Spaces only, no Targets or Workers — nothing

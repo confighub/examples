@@ -23,7 +23,7 @@ verdict as data, gate on it — applied to cost.
         | TriggerFilterID              v
         +----------->  cost-demo-dev     (Environment=Dev;     + planted violations)
         +----------->  cost-demo-staging (Environment=Staging)
-        +----------->  cost-demo-prod    (Environment=Prod;    + approval required)
+        +----------->  cost-demo-prod    (Environment=Prod)
 
    costdb/cost.db (SQLite: per-provider/region rates + per-env budgets)
         ▲

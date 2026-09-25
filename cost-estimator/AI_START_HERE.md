@@ -94,13 +94,12 @@ cub unit get oversized-analytics --space cost-demo-dev -o jq=".Unit.ValidationEr
 # so is the workload with no resource requests (static check, no estimate needed)
 cub unit get no-requests-web --space cost-demo-dev -o jq=".Unit.ValidationErrors"
 
-# prod changes carry an approval gate out of the box
+# the same workload within budget in prod passes the pack
 cub unit get frontend --space cost-demo-prod -o jq=".Unit.ValidationErrors"
 ```
 
-Expected gates: `cost-demo-policy/within-budget/vet-celexpr`,
-`cost-demo-policy/requests-required/vet-celexpr`, and
-`cost-demo-policy/require-approval/vet-approvedby` respectively. The clean
+Expected gates: `cost-demo-policy/within-budget/vet-celexpr` and
+`cost-demo-policy/requests-required/vet-celexpr` respectively. The clean
 workloads within budget carry NO gate.
 
 **PAUSE.** Wait for the human.

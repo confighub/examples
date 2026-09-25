@@ -31,10 +31,10 @@ describe('spreadGatesByTrigger', () => {
   it('ORs values when one trigger has several gates (any blocking → true)', () => {
     const row: Row = {};
     spreadGatesByTrigger(row, 'gate', {
-      'space-a/approval/vet-approvedby': false,
-      'space-b/approval/vet-celexpr': true, // same trigger slug, different fn/space
+      'space-a/policy/vet-cel': false,
+      'space-b/policy/vet-celexpr': true, // same trigger slug, different fn/space
     });
-    expect(row['gate.approval']).toBe(true);
+    expect(row['gate.policy']).toBe(true);
   });
 
   it('is a no-op for an undefined map', () => {

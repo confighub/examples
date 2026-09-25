@@ -90,8 +90,7 @@ target_ref=$(cub target list --space "${deploy}" -o json \
 # 5. Apply + run a real RAG query
 kubectl --context kind-rag create namespace tenant-acme
 for u in vector-db-tenant-acme nim-embedding-tenant-acme nim-llm-tenant-acme rag-server-tenant-acme; do
-  cub unit approve --space "${deploy}" "${u}"
-  cub unit apply   --space "${deploy}" "${u}"
+  cub unit apply --space "${deploy}" "${u}"
 done
 kubectl --context kind-rag -n tenant-acme rollout status deploy/rag-server
 

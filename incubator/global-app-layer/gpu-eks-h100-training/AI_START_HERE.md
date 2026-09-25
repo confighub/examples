@@ -219,13 +219,11 @@ Run:
 ```bash
 source .state/state.env
 # For direct variant:
-cub unit approve --space "${PREFIX}-deploy-cluster-a" gpu-operator-cluster-a
 cub unit apply --space "${PREFIX}-deploy-cluster-a" gpu-operator-cluster-a
 ```
 
 What to explain:
 
-- Approve makes the unit eligible for apply
 - Apply sends rendered config to the target
 - For Flux OCI: worker publishes to ConfigHub-native OCI origin, Flux reconciles
 - For Argo OCI: worker publishes to ConfigHub-native OCI origin, ArgoCD reconciles

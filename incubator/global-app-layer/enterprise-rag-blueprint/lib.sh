@@ -1048,8 +1048,7 @@ Next steps:
 1. ./verify.sh
 2. ./seed-initiatives.sh
 3. ./set-target.sh <kubernetes-target>        # binds the direct deployment variant
-4. cub unit approve --space $(deploy_space) $(deployment_unit_name rag-server direct)
-   cub unit apply   --space $(deploy_space) $(deployment_unit_name rag-server direct)
+4. cub unit apply --space $(deploy_space) $(deployment_unit_name rag-server direct)
    (repeat for nim-llm, nim-embedding, vector-db)
 5. ./query.sh "What is the capital of France?"   # STACK=ollama only
 EOF_SUMMARY

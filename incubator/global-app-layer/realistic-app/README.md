@@ -213,8 +213,8 @@ The simplest honest live path is:
 - preflights the target and stops if it is not actually apply-ready
 - refreshes the deploy-space clones from the latest upstream recipe revisions
 - refreshes the app-level recipe receipt
-- approves and applies the deployment bootstrap namespace unit first
-- then approves and applies the backend, frontend, and postgres deployment units
+- applies the deployment bootstrap namespace unit first
+- then applies the backend, frontend, and postgres deployment units
 - waits for completion instead of treating "apply started" as success
 
 Important:

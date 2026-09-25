@@ -4,8 +4,8 @@
 # Read-only: no ConfigHub or live-infrastructure mutation. Asserts the
 # Space/Trigger/Filter/Unit layout and, critically, the gate matrix:
 # each planted violation carries exactly its intended Validation Error, the
-# orphaned binding carries none (it is an app-side audit finding), prod
-# requires approval, and clean personas are ungated.
+# orphaned binding carries none (it is an app-side audit finding), and clean
+# personas are ungated.
 #
 # Usage:
 #   ./verify.sh
@@ -27,7 +27,7 @@ DEV_SPACE="${PREFIX}-dev"
 STAGING_SPACE="${PREFIX}-staging"
 PROD_SPACE="${PREFIX}-prod"
 PERSONAS=(developer operator viewer ci)
-TRIGGERS=(valid-rbac-schemas no-wildcards no-privilege-escalation no-cluster-admin-binding require-approval)
+TRIGGERS=(valid-rbac-schemas no-wildcards no-privilege-escalation no-cluster-admin-binding)
 
 if ! command -v "$cub" &>/dev/null; then
   echo "ERROR: cub not found on PATH (set CUB=/path/to/cub)" >&2
@@ -83,9 +83,7 @@ for trigger in "${TRIGGERS[@]}"; do
   check "trigger ${POLICY_SPACE}/${trigger} exists" $cub trigger get "$trigger" --space "$POLICY_SPACE" --quiet
 done
 
-for filter in rbac-guardrails rbac-guardrails-prod; do
-  check "filter ${POLICY_SPACE}/${filter} exists" $cub filter get "$filter" --space "$POLICY_SPACE" --quiet
-done
+check "filter ${POLICY_SPACE}/rbac-guardrails exists" $cub filter get rbac-guardrails --space "$POLICY_SPACE" --quiet
 
 for space in "$BASE_SPACE" "$DEV_SPACE" "$STAGING_SPACE" "$PROD_SPACE"; do
   for persona in "${PERSONAS[@]}"; do
@@ -98,20 +96,15 @@ for violation in legacy-wildcard-admin orphaned-grafana-binding breakglass-clust
 done
 
 # Cluster Spaces actually selected the guardrail Triggers (TriggerFilterID
-# wiring): dev/staging select the 4 Scope=all triggers, prod all 5.
+# wiring).
 trigger_count() { $cub space get "$1" -o jq=".Space.TriggerIDs | length" 2>/dev/null; }
-for space in "$DEV_SPACE" "$STAGING_SPACE"; do
+for space in "$DEV_SPACE" "$STAGING_SPACE" "$PROD_SPACE"; do
   if [[ "$(trigger_count "$space")" == "4" ]]; then
     pass "space ${space} selects 4 guardrail triggers"
   else
     fail "space ${space} selects 4 guardrail triggers (got $(trigger_count "$space"))"
   fi
 done
-if [[ "$(trigger_count "$PROD_SPACE")" == "5" ]]; then
-  pass "space ${PROD_SPACE} selects 5 guardrail triggers (incl. approval)"
-else
-  fail "space ${PROD_SPACE} selects 5 guardrail triggers (got $(trigger_count "$PROD_SPACE"))"
-fi
 
 # ── Divergence ────────────────────────────────────────────────────────────────
 
@@ -145,8 +138,8 @@ check "gate: breakglass-cluster-admin blocked by no-cluster-admin-binding" \
   has_gate "$DEV_SPACE" breakglass-cluster-admin "${POLICY_SPACE}/no-cluster-admin-binding/vet-celexpr"
 check "no gate: orphaned-grafana-binding (app-side audit finding only)" \
   no_gates "$DEV_SPACE" orphaned-grafana-binding
-check "gate: ${PROD_SPACE}/developer requires approval" \
-  has_gate "$PROD_SPACE" developer "${POLICY_SPACE}/require-approval/vet-approvedby"
+check "no gate: ${PROD_SPACE}/developer (clean persona passes the pack)" \
+  no_gates "$PROD_SPACE" developer
 check "no gate: ${STAGING_SPACE}/developer (clean persona passes the pack)" \
   no_gates "$STAGING_SPACE" developer
 check "no gate: ${DEV_SPACE}/developer (divergence passes the pack)" \

@@ -70,13 +70,12 @@ cub unit get legacy-wildcard-admin --space rbac-demo-dev -o jq=".Unit.Validation
 # So is the standing cluster-admin binding
 cub unit get breakglass-cluster-admin --space rbac-demo-dev -o jq=".Unit.ValidationErrors"
 
-# Prod changes carry an approval gate out of the box
+# A clean persona in prod passes the pack
 cub unit get developer --space rbac-demo-prod -o jq=".Unit.ValidationErrors"
 ```
 
-Expected gates: `rbac-demo-policy/no-wildcards/vet-celexpr`,
-`rbac-demo-policy/no-cluster-admin-binding/vet-celexpr`, and
-`rbac-demo-policy/require-approval/vet-approvedby` respectively. The orphaned
+Expected gates: `rbac-demo-policy/no-wildcards/vet-celexpr` and
+`rbac-demo-policy/no-cluster-admin-binding/vet-celexpr` respectively. The orphaned
 binding (`orphaned-grafana-binding`) has NO gate — dangling references are an
 audit finding for analysis tooling, not a policy violation.
 

@@ -179,13 +179,11 @@ Run:
 
 ```bash
 source .state/state.env
-cub unit approve --space "${PREFIX}-deploy-cluster-a" frontend-cluster-a
 cub unit apply --space "${PREFIX}-deploy-cluster-a" frontend-cluster-a
 ```
 
 What to explain:
 
-- Approve makes the unit eligible for apply
 - Apply sends rendered config to the target
 
 GUI now: Inspect the unit after apply.

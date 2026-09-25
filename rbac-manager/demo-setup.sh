@@ -15,7 +15,7 @@
 #
 # Cluster Spaces select the guardrail Triggers via a Filter in the policy
 # Space (TriggerFilterID pattern), so policy is defined once and enforced
-# everywhere. Prod additionally requires approval (vet-approvedby).
+# everywhere.
 #
 # The dev Space gets three planted violations so audit findings and Apply
 # Gates demo immediately:
@@ -83,17 +83,16 @@ enforced centrally via Triggers + Validation Errors.
             | TriggerFilterID          v
             +----------->  ${PREFIX}-dev   (Environment=dev,     Region=use1)
             +----------->  ${PREFIX}-staging (Environment=staging, Region=use1)
-            +----------->  ${PREFIX}-prod  (Environment=prod,    Region=use2; + approval required)
+            +----------->  ${PREFIX}-prod  (Environment=prod,    Region=use2)
 
 Will create (idempotently):
   - 5 Spaces: ${POLICY_SPACE}, ${BASE_SPACE}, ${CLUSTER_SPACES[*]}
-  - 5 Triggers in ${POLICY_SPACE} (Pack=rbac-guardrails):
+  - 4 Triggers in ${POLICY_SPACE} (Pack=rbac-guardrails):
       valid-rbac-schemas        vet-schemas
       no-wildcards              vet-celexpr (no * verbs/resources/apiGroups)
       no-privilege-escalation   vet-celexpr (no escalate/bind/impersonate)
       no-cluster-admin-binding  vet-celexpr (no cluster-admin ClusterRoleBindings)
-      require-approval          vet-approvedby 1 (prod only)
-  - 2 Trigger Filters: rbac-guardrails (Scope=all), rbac-guardrails-prod (all incl. approval)
+  - 1 Trigger Filter: rbac-guardrails
   - 1 rbac-edits Space with 7 parameterized set-yq edit Invocations
     (rbac-add-verb, rbac-remove-verb, rbac-add-subject, rbac-remove-subject,
      rbac-set-rule, rbac-add-rule, rbac-remove-rule)
@@ -193,38 +192,34 @@ ensure_space() { # slug, extra flags...
 note "Policy Space: ${POLICY_SPACE}"
 ensure_space "$POLICY_SPACE" --label app=rbac-manager --label role=policy
 
-create_trigger() { # slug scope description function [args...]
-  local slug="$1" scope="$2" desc="$3"; shift 3
+create_trigger() { # slug description function [args...]
+  local slug="$1" desc="$2"; shift 2
   if trigger_exists "$POLICY_SPACE" "$slug"; then
     note "  trigger ${slug} exists, skipping"; ((skipped+=1))
   else
     $cub trigger create --space "$POLICY_SPACE" \
-      --label Pack=rbac-guardrails --label "Scope=${scope}" \
+      --label Pack=rbac-guardrails \
       --description "$desc" \
       "$slug" Mutation Kubernetes/YAML "$@" >/dev/null
     note "  created trigger ${slug}"; ((created+=1))
   fi
 }
 
-create_trigger valid-rbac-schemas all \
+create_trigger valid-rbac-schemas \
   "Validates Kubernetes resource schemas with kubeconform. Fix: correct the field names/types reported in the failure details." \
   vet-schemas
 
-create_trigger no-wildcards all \
+create_trigger no-wildcards \
   "Blocks Roles/ClusterRoles with wildcard verbs, resources, or apiGroups. Fix: enumerate the specific verbs/resources the role needs." \
   vet-celexpr "$NO_WILDCARDS"
 
-create_trigger no-privilege-escalation all \
+create_trigger no-privilege-escalation \
   "Blocks Roles/ClusterRoles granting escalate, bind, or impersonate. Fix: remove these verbs; they allow privilege escalation." \
   vet-celexpr "$NO_ESCALATION"
 
-create_trigger no-cluster-admin-binding all \
-  "Blocks ClusterRoleBindings to cluster-admin. Fix: bind a scoped role instead, or use the approval-gated break-glass flow." \
+create_trigger no-cluster-admin-binding \
+  "Blocks ClusterRoleBindings to cluster-admin. Fix: bind a scoped role instead." \
   vet-celexpr "$NO_CLUSTER_ADMIN"
-
-create_trigger require-approval prod \
-  "Requires one approval before prod RBAC changes can be applied. Fix: have a reviewer approve the Unit." \
-  vet-approvedby 1
 
 ensure_filter() { # slug where
   local slug="$1" where="$2"
@@ -236,8 +231,7 @@ ensure_filter() { # slug where
   fi
 }
 
-ensure_filter rbac-guardrails      "Labels.Pack = 'rbac-guardrails' AND Labels.Scope = 'all'"
-ensure_filter rbac-guardrails-prod "Labels.Pack = 'rbac-guardrails'"
+ensure_filter rbac-guardrails "Labels.Pack = 'rbac-guardrails'"
 
 # ── 1b. Edit Invocations: shared, parameterized set-yq edits ──────────────────
 # The same Invocations the web app and agent CLI use to apply structured edits.
@@ -267,7 +261,6 @@ done
 
 cluster_env()    { case "$1" in *-dev) echo dev ;; *-staging) echo staging ;; *-prod) echo prod ;; esac; }
 cluster_region() { case "$1" in *-prod) echo use2 ;; *) echo use1 ;; esac; }
-cluster_filter() { case "$1" in *-prod) echo rbac-guardrails-prod ;; *) echo rbac-guardrails ;; esac; }
 
 for space in "${CLUSTER_SPACES[@]}"; do
   env="$(cluster_env "$space")"
@@ -277,7 +270,7 @@ for space in "${CLUSTER_SPACES[@]}"; do
     --label Component=rbac --label "Variant=${env}" \
     --label "Environment=${env}" --label "Region=$(cluster_region "$space")" \
     --label Layer=Security --label Owner=Platform \
-    --trigger-filter "${POLICY_SPACE}/$(cluster_filter "$space")"
+    --trigger-filter "${POLICY_SPACE}/rbac-guardrails"
 
   for persona in "${PERSONAS[@]}"; do
     if unit_exists "$space" "$persona"; then

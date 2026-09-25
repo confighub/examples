@@ -50,7 +50,7 @@ Stable, machine-checkable behavior for this example. See
 
 - mutates: yes (ConfigHub Spaces/Units + a local SQLite file at costdb/cost.db;
   no Targets, Workers, or live infrastructure; no external network)
-- creates: 5 spaces, 4 triggers, 2 filters, 4 base units, 12 cloned units,
+- creates: 5 spaces, 3 triggers, 1 filter, 4 base units, 12 cloned units,
   2 violation units; then builds the cost DB, runs the estimator, writes the cost
   + budget-verdict annotations back onto every workload (incl. `provider`,
   `region`, `estimated-at`, `pricing-version`), publishes one `AppConfig/YAML`
@@ -69,7 +69,7 @@ Stable, machine-checkable behavior for this example. See
   `budget-status=OVER` onto the over-provisioned Unit and `monthly-usd` onto
   every workload; each planted violation carries exactly its intended Validation Error
   (`oversized-analytics` → `within-budget`, `no-requests-web` →
-  `requests-required`); clean workloads are ungated; prod requires approval;
+  `requests-required`); clean workloads are ungated;
   each Space's `AppConfig/YAML` `cost-estimate-record` Unit exists and holds the
   per-workload estimates; units record the `pricing-version` they were costed
   against and the `costdb-status` Unit is present; the cost database holds prices

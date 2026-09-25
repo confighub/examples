@@ -181,7 +181,6 @@ cub unit data --space gitops-import-test argocd-cubbychat-Application-dry | head
 
 # Apply through ArgoCDRenderer:
 cub unit set-target --space gitops-import-test argocd-cubbychat-Application-dry gitops-import-test/worker-argocdrenderer-kubernetes-yaml-cluster
-cub unit approve --space gitops-import-test argocd-cubbychat-Application-dry
 cub unit apply --space gitops-import-test argocd-cubbychat-Application-dry
 ```
 

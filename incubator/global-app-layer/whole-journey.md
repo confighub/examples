@@ -98,7 +98,7 @@ If you started ConfigHub-only, continue like this:
 ./verify.sh
 ```
 
-Then approve and apply the deployment units:
+Then apply the deployment units:
 
 ```bash
 ./apply-live.sh
@@ -198,9 +198,6 @@ cub unit set-target "${SECOND_TARGET}" --space "${CUSTOM_SPACE}" backend-${CUSTO
 cub unit set-target "${SECOND_TARGET}" --space "${CUSTOM_SPACE}" frontend-${CUSTOM_CLUSTER}
 cub unit set-target "${SECOND_TARGET}" --space "${CUSTOM_SPACE}" postgres-${CUSTOM_CLUSTER}
 
-cub unit approve --space "${CUSTOM_SPACE}" backend-${CUSTOM_CLUSTER}
-cub unit approve --space "${CUSTOM_SPACE}" frontend-${CUSTOM_CLUSTER}
-cub unit approve --space "${CUSTOM_SPACE}" postgres-${CUSTOM_CLUSTER}
 
 cub unit apply --space "${CUSTOM_SPACE}" backend-${CUSTOM_CLUSTER}
 cub unit apply --space "${CUSTOM_SPACE}" frontend-${CUSTOM_CLUSTER}

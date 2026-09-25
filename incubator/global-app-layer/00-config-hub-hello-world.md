@@ -62,7 +62,6 @@ If you already have a worker and target:
 
 ```bash
 cub unit set-target --space "${SPACE}" hello-backend <space/target>
-cub unit approve --space "${SPACE}" hello-backend
 cub unit apply --space "${SPACE}" hello-backend
 ```
 

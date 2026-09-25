@@ -200,7 +200,7 @@ and nudges you up the ladder.
 
 On the Unit itself: `Labels`, `ToolchainType`, `ProviderType`, `TargetID`,
 `HeadRevisionNum` vs `LastReleasedRevisionNum`, `ValidationErrors`, `ValidationWarnings`,
-`ApprovedBy`, `UpstreamRevisionNum`, `UpdatedAt`, `LastActionAt`.
+`UpstreamRevisionNum`, `UpdatedAt`, `LastActionAt`.
 
 One `include` away: `Space.*` (labels), `Target.*` (labels and facts),
 `UpstreamUnit.*`, `HeadRevision.*`, `LastAppliedRevision.*`, `ChangeSet.*`.

@@ -38,7 +38,6 @@ import {
 import { clusterContextFor } from '../fleet/enrichment';
 import { useSnapshot } from '../fleet/snapshot';
 import {
-  useApproveUnitMutation,
   useGetUnitQuery,
   useInvokeFunctionsMutation,
   useListExtendedRevisionsQuery,
@@ -130,7 +129,6 @@ export function UnitPage() {
   const [patchUnit, patchState] = usePatchUnitMutation();
   const [invokeFunctions, invokeState] = useInvokeFunctionsMutation();
   const { idBySlug } = useEditInvocationIds();
-  const [approveUnit, approveState] = useApproveUnitMutation();
 
   const unit = extended?.Unit;
   // The configuration is not part of the Unit: it comes from the Unit's data endpoint.
@@ -309,18 +307,6 @@ export function UnitPage() {
     void revisions.refetch();
   };
 
-  const approve = async () => {
-    setActionError(null);
-    setActionInfo(null);
-    const result = await approveUnit({ spaceId, unitId });
-    if ('error' in result && result.error) {
-      setActionError('Approve failed — you may lack Approve permission.');
-      return;
-    }
-    setActionInfo('Approved. Gates re-evaluate asynchronously; refresh in a moment.');
-    void refetch();
-  };
-
   return (
     <Container maxWidth='lg' sx={{ mt: 3 }}>
       <Stack direction='row' spacing={2} alignItems='center' sx={{ mb: 2 }}>
@@ -332,17 +318,6 @@ export function UnitPage() {
         {warnings.map((w) => (
           <Chip key={w} size='small' color='warning' variant='outlined' label={w} />
         ))}
-        <Box sx={{ flexGrow: 1 }} />
-        {gates.some((g) => g.endsWith('/vet-approvedby')) && (
-          <Button
-            variant='contained'
-            color='success'
-            disabled={approveState.isLoading}
-            onClick={() => void approve()}
-          >
-            Approve
-          </Button>
-        )}
       </Stack>
 
       {actionError !== null && (

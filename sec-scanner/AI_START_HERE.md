@@ -101,13 +101,12 @@ cub unit get legacy-frontend --space sec-demo-dev -o jq=".Unit.ValidationErrors"
 # so is the :latest image (static check, no scan needed)
 cub unit get unpinned-web --space sec-demo-dev -o jq=".Unit.ValidationErrors"
 
-# prod changes carry an approval gate out of the box
+# the same workload on a current image in prod passes the pack
 cub unit get frontend --space sec-demo-prod -o jq=".Unit.ValidationErrors"
 ```
 
-Expected gates: `sec-demo-policy/no-critical-cves/vet-celexpr`,
-`sec-demo-policy/no-latest-tag/vet-celexpr`, and
-`sec-demo-policy/require-approval/vet-approvedby` respectively. The clean
+Expected gates: `sec-demo-policy/no-critical-cves/vet-celexpr` and
+`sec-demo-policy/no-latest-tag/vet-celexpr` respectively. The clean
 workloads on current images carry NO gate.
 
 **PAUSE.** Wait for the human.
