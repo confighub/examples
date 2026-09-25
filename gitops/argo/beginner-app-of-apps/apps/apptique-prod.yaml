@@ -14,7 +14,7 @@ spec:
   source:
     repoURL: https://github.com/confighub/examples.git
     targetRevision: main
-    path: incubator/apptique-argo-app-of-apps/manifests/apptique/prod
+    path: gitops/argo/beginner-app-of-apps/manifests/apptique/prod
   destination:
     server: https://kubernetes.default.svc
     namespace: apptique-prod

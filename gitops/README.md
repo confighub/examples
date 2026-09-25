@@ -14,6 +14,7 @@ change it safely before anything touches a live cluster.
 | Shape | Tool | Level | Status | Example |
 |---|---|---|---|---|
 | One app, ApplicationSet | Argo CD | Beginner | Ready | [`argo/beginner-applicationset`](./argo/beginner-applicationset/README.md) |
+| One app, app of apps: a root Application and one child per environment | Argo CD | Beginner | Ready | [`argo/beginner-app-of-apps`](./argo/beginner-app-of-apps/README.md) |
 | One app, Flux Kustomizations with a clusters, infrastructure, apps split | Flux | Beginner | Ready | [`flux/beginner`](./flux/beginner/README.md) |
 | CI writes image tags to a separate GitOps repo, promotion by pull request | Argo CD | Intermediate | Planned | not yet added |
 | A fleet repo doing a database's job: filename keys, silent layers, find-and-replace promotion, reach nobody can see | Argo CD | Intermediate | Ready (read-only; ConfigHub upload planned) | [`argo/intermediate-git-as-database`](./argo/intermediate-git-as-database/README.md) |
@@ -37,6 +38,9 @@ for the Argo and Flux beginner and expert descriptions.
 - **I have one app in one or two environments, and I use Argo CD's
   ApplicationSet to manage them.** Start with
   [`argo/beginner-applicationset`](./argo/beginner-applicationset/README.md).
+- **I have one app in one or two environments, and a root Argo CD
+  Application creates one child Application per environment.** Start with
+  [`argo/beginner-app-of-apps`](./argo/beginner-app-of-apps/README.md).
 - **I have one app in one or two environments, and I use Flux
   Kustomizations, with a `clusters/`, `infrastructure/`, `apps/` split.**
   Start with [`flux/beginner`](./flux/beginner/README.md).

@@ -50,6 +50,9 @@ script_checks=(
   "${repo_root}/gitops/argo/beginner-applicationset/setup.sh"
   "${repo_root}/gitops/argo/beginner-applicationset/verify.sh"
   "${repo_root}/gitops/argo/beginner-applicationset/cleanup.sh"
+  "${repo_root}/gitops/argo/beginner-app-of-apps/setup.sh"
+  "${repo_root}/gitops/argo/beginner-app-of-apps/verify.sh"
+  "${repo_root}/gitops/argo/beginner-app-of-apps/cleanup.sh"
   "${repo_root}/gitops/flux/beginner/setup.sh"
   "${repo_root}/gitops/flux/beginner/verify.sh"
   "${repo_root}/gitops/flux/beginner/cleanup.sh"
@@ -167,10 +170,9 @@ ai_guide_examples=(
   "${repo_root}/incubator/gitops-import-flux"
   # mutation examples
   "${repo_root}/incubator/platform-write-api"
-  # apptique examples
-  "${repo_root}/incubator/apptique-argo-app-of-apps"
   # canonical gitops examples
   "${repo_root}/gitops/argo/beginner-applicationset"
+  "${repo_root}/gitops/argo/beginner-app-of-apps"
   "${repo_root}/gitops/flux/beginner"
   "${repo_root}/gitops/argo/intermediate-git-as-database"
   # discovery and evidence examples
