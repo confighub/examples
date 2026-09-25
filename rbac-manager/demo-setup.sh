@@ -231,7 +231,10 @@ ensure_filter() { # slug where
   fi
 }
 
-ensure_filter rbac-guardrails "Labels.Pack = 'rbac-guardrails'"
+# Scoped to this policy Space: a Filter selects Triggers across the whole organization, and
+# another copy of the demo under a different PREFIX carries the same Pack label.
+POLICY_SPACE_ID="$($cub space get "$POLICY_SPACE" -o jq=.Space.SpaceID | tr -d '"')"
+ensure_filter rbac-guardrails "Labels.Pack = 'rbac-guardrails' AND SpaceID = '${POLICY_SPACE_ID}'"
 
 # ── 1b. Edit Invocations: shared, parameterized set-yq edits ──────────────────
 # The same Invocations the web app and agent CLI use to apply structured edits.
