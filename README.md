@@ -101,7 +101,7 @@ Some other examples
   [`@confighub/react-auth`](https://www.npmjs.com/package/@confighub/react-auth)
   packages from [confighub/js-sdk](https://github.com/confighub/js-sdk).
 - Prompts you can run against your own repository with an AI tool, no account needed: [`prompts/README.md`](./prompts/README.md)
-- Incubator and experimental paths: [`incubator/README.md`](./incubator/README.md)
+- Layered recipes, from one component to an AICR-shaped GPU stack: [`global-app-layer`](./global-app-layer/README.md)
 - App mutation and platform flow: [`spring-platform/springboot-platform-app-centric`](./spring-platform/springboot-platform-app-centric/README.md)
 - Standalone operational app shape: [`pilot-example-addons-manager`](./pilot-example-addons-manager/README.md)
 

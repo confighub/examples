@@ -174,7 +174,7 @@ Both are enforced by `scripts/verify.sh`. Both are required for full runnable ex
 
 | Standard | Doc | What it covers |
 |----------|-----|----------------|
-| AI guide | [incubator/ai-guide-standard.md](./incubator/ai-guide-standard.md) | Demo pacing, stages, GUI markers |
+| AI guide | [docs/ai-guide-standard.md](./docs/ai-guide-standard.md) | Demo pacing, stages, GUI markers |
 | Machine-readable | This doc | --explain-json, contracts.md, verify.sh |
 
 ## Exemptions
@@ -187,7 +187,6 @@ Some lighter stable examples are exempt from the stronger requirements.
 |---------|-------------|--------|
 | `initiatives-demo` | `contracts.md`, `--explain` | Stable demo data |
 | `promotion-demo-data` | `contracts.md`, `--explain` | Stable demo data |
-| `incubator/watch-webhook` | `contracts.md` | Lightweight event example |
 
 ### When exemptions are appropriate
 
@@ -214,6 +213,6 @@ For a lighter example (with justification):
 
 ## Related
 
-- [incubator/ai-guide-standard.md](./incubator/ai-guide-standard.md) — AI guide requirements
-- [incubator/ai-example-template.md](./incubator/ai-example-template.md) — Full template to copy
+- [docs/ai-guide-standard.md](./docs/ai-guide-standard.md) — AI guide requirements
+- [docs/ai-example-template.md](./docs/ai-example-template.md) — Full template to copy
 - [scripts/verify.sh](./scripts/verify.sh) — Enforcement script

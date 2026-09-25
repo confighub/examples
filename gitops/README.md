@@ -78,16 +78,15 @@ your own repo.
 
 ## A note on the older import examples
 
-[`incubator/gitops-import-argo`](../incubator/gitops-import-argo/README.md)
-and [`incubator/gitops-import-flux`](../incubator/gitops-import-flux/README.md)
-use an import route that is being retired. If you are looking for a
-canonical example to run or to point an AI assistant at, use this index
-instead.
+The former `incubator/gitops-import-argo` and `incubator/gitops-import-flux`
+examples used an import route that is being retired, and they have been
+removed. Use this index for a canonical example to run or to point an AI
+assistant at.
 
 ## Contract standard
 
 Every example in this index follows
 [`../EXAMPLE_CONTRACT_STANDARD.md`](../EXAMPLE_CONTRACT_STANDARD.md) and the
-[AI guide standard](../incubator/ai-guide-standard.md): a `README.md`, an
+[AI guide standard](../docs/ai-guide-standard.md): a `README.md`, an
 `AI_START_HERE.md`, a `contracts.md`, and a `setup.sh` that supports
 `--explain` and `--explain-json` without mutating anything.
