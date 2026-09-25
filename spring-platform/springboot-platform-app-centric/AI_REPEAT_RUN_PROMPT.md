@@ -7,7 +7,7 @@ Use this for a fresh Claude or Codex session when you want a **repeat-until-bori
 Open a fresh AI session in the `examples` repo, then use this example directory as the working focus:
 
 ```bash
-cd /Users/alexis/Public/github-repos/examples
+cd <your-examples-checkout>
 ./scripts/verify.sh
 ```
 

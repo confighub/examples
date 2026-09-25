@@ -144,7 +144,7 @@ have) and the Space-grain panels are sparse. `preflight.sh` reports both counts.
 If your org is empty, seed one of these first:
 [`promotion-demo-data`](../promotion-demo-data/) (multi-app, multi-environment),
 [`initiatives-demo`](../initiatives-demo/) (policies to chart compliance against),
-or [`global-app`](../global-app/) (multi-service).
+or [`global-app-layer/realistic-app`](../global-app-layer/realistic-app/) (a three-component app).
 
 ## Dashboards are data
 
