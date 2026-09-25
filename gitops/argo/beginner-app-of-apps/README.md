@@ -30,9 +30,8 @@ and where it goes?"
   `Deployment`, `Service` and `ServiceAccount`. Prod runs 3 replicas with
   larger requests and limits; dev runs 1. Each environment is a full copy, not
   an overlay.
-- One app (`apptique`, a small frontend). This example replaces the former
-  `incubator/apptique-argo-app-of-apps`, which was moved here and removed from
-  the incubator.
+- One app (`apptique`, a small frontend). This example replaces the
+  earlier `apptique-argo-app-of-apps` example, which was rebuilt here.
 
 ## Repo layout
 

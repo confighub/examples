@@ -6,7 +6,7 @@ Verification wrapper for the stable `promotion-demo-data` example.
 
 This wrapper is for **CI and AI workflows** that need structured verification after the stable demo data has been created.
 
-If you're a human exploring the promotion UI, you usually start in [`promotion-demo-data`](../README.md) and use the ConfigHub UI directly. This incubator wrapper exists so AI and CI can make explicit assertions instead of relying on “look at the output.”
+If you're a human exploring the promotion UI, you usually start in [`promotion-demo-data`](../README.md) and use the ConfigHub UI directly. This wrapper exists so AI and CI can make explicit assertions instead of relying on “look at the output.”
 
 ## Stack And Scenario
 
@@ -49,7 +49,7 @@ This wrapper never mutates ConfigHub, Git, or a cluster.
 
 ## Why This Is A Separate Folder
 
-This wrapper verifies the demo data without changing the stable example's own scripts. It used to live in `incubator/promotion-demo-data-verify`.
+This wrapper verifies the demo data without changing the stable example's own scripts.
 
 ## Read-Only Preview
 

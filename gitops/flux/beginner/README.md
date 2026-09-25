@@ -31,9 +31,8 @@ a toy?"
 - A standard Kustomize app layout: `apps/base` plus one overlay per
   environment (`apps/dev`, `apps/prod`), patching replica count and resource
   limits only.
-- One app (`apptique`, a small frontend). This example replaces the former
-  `incubator/apptique-flux-monorepo` example, which was moved here and removed
-  from the incubator.
+- One app (`apptique`, a small frontend). This example replaces the
+  earlier `apptique-flux-monorepo` example, which was rebuilt here.
 
 ## Repo layout
 
@@ -66,7 +65,7 @@ The directory names and split between `clusters/`, `infrastructure/`, and
 `apps/` follow the structure of
 [`fluxcd/flux2-kustomize-helm-example`](https://github.com/fluxcd/flux2-kustomize-helm-example)
 (Apache-2.0). No files from that repository were copied; every file here was
-written for this example, reusing the app content of the former `incubator/apptique-flux-monorepo`
+written for this example, reusing the app content of the earlier `apptique-flux-monorepo`
 example (MIT, this repository's own license). See [`NOTICE`](./NOTICE).
 
 ## What this example does not do
