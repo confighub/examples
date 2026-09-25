@@ -55,7 +55,7 @@ Stable, machine-checkable behavior for this example. See
 ### `./demo-setup.sh`
 
 - mutates: yes (ConfigHub only; no Targets, Workers, or live infrastructure)
-- creates: 5 spaces, 5 triggers, 2 filters, 4 base units, 12 cloned units,
+- creates: 5 spaces, 4 triggers, 1 filter, 4 base units, 12 cloned units,
   3 violation units, 1 divergence revision; plus the `rbac-edits` Space and its
   7 parameterized set-yq edit Invocations (shared with the web app and agent CLI)
 - idempotent: re-running skips existing entities (`exists, skipping`)
@@ -69,7 +69,7 @@ Stable, machine-checkable behavior for this example. See
 - stable success text: `All checks passed.`
 - proves: the Space/Trigger/Filter/Unit layout exists; each planted violation
   carries exactly its intended Validation Error; the orphaned binding carries no
-  gate; prod requires approval; clean personas are ungated; dev diverges from
+  gate; clean personas are ungated; dev diverges from
   base and staging does not
 
 ### `cub unit get legacy-wildcard-admin --space rbac-demo-dev -o jq=".Unit.ValidationErrors"`

@@ -241,9 +241,6 @@ Then you can use normal ConfigHub apply flow on any deployment variant.
 Direct Kubernetes variant:
 
 ```bash
-cub unit approve --space <prefix>-deploy-cluster-a gpu-operator-cluster-a
-cub unit approve --space <prefix>-deploy-cluster-a nvidia-device-plugin-cluster-a
-
 cub unit apply --space <prefix>-deploy-cluster-a gpu-operator-cluster-a
 cub unit apply --space <prefix>-deploy-cluster-a nvidia-device-plugin-cluster-a
 ```
@@ -251,9 +248,6 @@ cub unit apply --space <prefix>-deploy-cluster-a nvidia-device-plugin-cluster-a
 Flux deployment variant:
 
 ```bash
-cub unit approve --space <prefix>-deploy-cluster-a-flux gpu-operator-cluster-a-flux
-cub unit approve --space <prefix>-deploy-cluster-a-flux nvidia-device-plugin-cluster-a-flux
-
 cub unit apply --space <prefix>-deploy-cluster-a-flux gpu-operator-cluster-a-flux
 cub unit apply --space <prefix>-deploy-cluster-a-flux nvidia-device-plugin-cluster-a-flux
 ```
@@ -261,9 +255,6 @@ cub unit apply --space <prefix>-deploy-cluster-a-flux nvidia-device-plugin-clust
 Argo deployment variant:
 
 ```bash
-cub unit approve --space <prefix>-deploy-cluster-a-argo gpu-operator-cluster-a-argo
-cub unit approve --space <prefix>-deploy-cluster-a-argo nvidia-device-plugin-cluster-a-argo
-
 cub unit apply --space <prefix>-deploy-cluster-a-argo gpu-operator-cluster-a-argo
 cub unit apply --space <prefix>-deploy-cluster-a-argo nvidia-device-plugin-cluster-a-argo
 ```

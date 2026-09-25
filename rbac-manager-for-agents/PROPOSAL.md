@@ -39,8 +39,8 @@ it talks to ConfigHub through the published HTTP API/SDK. Its substance is in th
      cluster-admin bindings, orphaned bindings, unbound service accounts).
 3. **A governance / write layer** — structured edits compiled to server-side `yq-i` functions
    (dry-run → commit with change description), fleet bulk edits, override-preserving variant
-   propagation, apply/approve/rollback, and a guardrail pack of Triggers + ValidationErrors
-   (`vet-schemas`, `vet-celexpr`, `vet-approvedby`).
+   propagation, apply/rollback, and a guardrail pack of Triggers + ValidationErrors
+   (`vet-schemas`, `vet-celexpr`).
 
 **Key takeaway for the agent tool:** raw `cub` already does the CRUD, triggers, apply, and bulk
 function invocation. What it does _not_ do is the **analysis engine** and the **fleet-snapshot
@@ -158,7 +158,7 @@ Write (mutating — dry-run by default, require `--change-desc`, never bypass ga
 | Quick/structured edit      | `cub-rbac edit <unit> add-verb/remove-verb/add-subject/...`     | Compiles to server-side `yq-i` via `cub function do`; dry-run diff then commit. |
 | Fleet bulk edit            | `cub-rbac fleet-edit --where … <op>`                            | Org-scoped `yq-i`; one server request, multi-diff preview.                      |
 | Variant propagation        | defer to `cub` + the `promote-release` skill                    | Promotion is evolving in `cub` and the server; not duplicated here.             |
-| Publish / Approve / Rollback | defer to `cub release publish` + `cub unit approve` + `cub unit update --restore` | Routed via skills.                          |
+| Publish / Rollback         | defer to `cub release publish` + `cub unit update --restore`    | Routed via skills.                                                              |
 | Guardrail pack             | `cub-rbac guardrails install --policy-space … --where-space …`  | Triggers + Filter + `TriggerFilterID` wiring.                                   |
 
 ## 6. Agent Skills to ship

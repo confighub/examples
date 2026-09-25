@@ -8,7 +8,7 @@
 #   sec-demo-base      Workload Units (Deployments) on current, pinned images.
 #   sec-demo-dev       "Cluster" Space (env=dev)     — clones + planted violations
 #   sec-demo-staging   "Cluster" Space (env=staging) — clones
-#   sec-demo-prod      "Cluster" Space (env=prod)    — clones, approval required
+#   sec-demo-prod      "Cluster" Space (env=prod)    — clones
 #
 # Cluster Spaces select the guardrail Triggers via a Filter in the policy Space
 # (TriggerFilterID pattern), so policy is defined once and enforced everywhere.
@@ -17,7 +17,6 @@
 #   valid-schemas     vet-schemas   — Kubernetes schema validation
 #   no-latest-tag     vet-celexpr   — block :latest / untagged images (static)
 #   no-critical-cves  vet-celexpr   — block images the scanner flagged CRITICAL
-#   require-approval   vet-approvedby 1 (prod only)
 #
 # The no-critical-cves gate is data-driven: the custom scanner (scanner/) digs
 # into each Unit's image, matches packages against the cvedb (a SQLite file of
@@ -90,7 +89,7 @@ CVE database, and writes findings back as data; guardrails gate the vulnerable.
             | TriggerFilterID           v
             +----------->  ${PREFIX}-dev     (env=dev;     + planted violations)
             +----------->  ${PREFIX}-staging (env=staging)
-            +----------->  ${PREFIX}-prod    (env=prod;    + approval required)
+            +----------->  ${PREFIX}-prod    (env=prod)
 
        cvedb (SQLite)  ◀── import GitHub Advisory DB / CVE List V5 / OSV.dev
             ▲                (unified to one schema)
@@ -99,12 +98,11 @@ CVE database, and writes findings back as data; guardrails gate the vulnerable.
 
 Will create (idempotently):
   - 5 Spaces: ${POLICY_SPACE}, ${BASE_SPACE}, ${CLUSTER_SPACES[*]}
-  - 4 Triggers in ${POLICY_SPACE} (Pack=sec-guardrails):
+  - 3 Triggers in ${POLICY_SPACE} (Pack=sec-guardrails):
       valid-schemas       vet-schemas
       no-latest-tag       vet-celexpr (block :latest / untagged images)
       no-critical-cves    vet-celexpr (block images scanned CRITICAL)
-      require-approval    vet-approvedby 1 (prod only)
-  - 2 Trigger Filters: sec-guardrails (Scope=all), sec-guardrails-prod (incl. approval)
+  - 1 Trigger Filter: sec-guardrails
   - 3 workload Units in ${BASE_SPACE}, cloned into each of the 3 cluster Spaces (9 clones)
   - 3 planted violations in ${PREFIX}-dev:
       legacy-frontend  nginx:1.16-alpine     → CRITICAL CVEs → gated (no-critical-cves)
@@ -209,34 +207,30 @@ ensure_space() { # slug, extra flags...
 note "Policy Space: ${POLICY_SPACE}"
 ensure_space "$POLICY_SPACE" --label app=sec-scanner --label role=policy
 
-create_trigger() { # slug scope description function [args...]
-  local slug="$1" scope="$2" desc="$3"; shift 3
+create_trigger() { # slug description function [args...]
+  local slug="$1" desc="$2"; shift 2
   if trigger_exists "$POLICY_SPACE" "$slug"; then
     note "  trigger ${slug} exists, skipping"; ((skipped+=1))
   else
     $cub trigger create --space "$POLICY_SPACE" \
-      --label Pack=sec-guardrails --label "Scope=${scope}" \
+      --label Pack=sec-guardrails \
       --description "$desc" \
       "$slug" Mutation Kubernetes/YAML "$@" >/dev/null
     note "  created trigger ${slug}"; ((created+=1))
   fi
 }
 
-create_trigger valid-schemas all \
+create_trigger valid-schemas \
   "Validates Kubernetes resource schemas with kubeconform. Fix: correct the field names/types reported." \
   vet-schemas
 
-create_trigger no-latest-tag all \
+create_trigger no-latest-tag \
   "Blocks Deployments using a :latest or untagged image. Fix: pin the image to an immutable tag or digest." \
   vet-celexpr "$NO_LATEST"
 
-create_trigger no-critical-cves all \
+create_trigger no-critical-cves \
   "Blocks images the scanner flagged with a CRITICAL CVE (sec-scanner.confighub.com/max-severity annotation). Fix: upgrade to a patched image, then re-scan." \
   vet-celexpr "$NO_CRITICAL"
-
-create_trigger require-approval prod \
-  "Requires one approval before prod image changes can be applied. Fix: have a reviewer approve the Unit." \
-  vet-approvedby 1
 
 ensure_filter() { # slug where
   local slug="$1" where="$2"
@@ -248,8 +242,10 @@ ensure_filter() { # slug where
   fi
 }
 
-ensure_filter sec-guardrails      "Labels.Pack = 'sec-guardrails' AND Labels.Scope = 'all'"
-ensure_filter sec-guardrails-prod "Labels.Pack = 'sec-guardrails'"
+# Scoped to this policy Space: a Filter selects Triggers across the whole organization, and
+# another copy of the demo under a different PREFIX carries the same Pack label.
+POLICY_SPACE_ID="$($cub space get "$POLICY_SPACE" -o jq=.Space.SpaceID | tr -d '"')"
+ensure_filter sec-guardrails "Labels.Pack = 'sec-guardrails' AND SpaceID = '${POLICY_SPACE_ID}'"
 
 # ── 2. Base Space: workload Units on current images ───────────────────────────
 
@@ -273,14 +269,13 @@ done
 # ── 3. Cluster Spaces: clones of the base workloads ───────────────────────────
 
 cluster_env()    { case "$1" in *-dev) echo dev ;; *-staging) echo staging ;; *-prod) echo prod ;; esac; }
-cluster_filter() { case "$1" in *-prod) echo sec-guardrails-prod ;; *) echo sec-guardrails ;; esac; }
 
 for space in "${CLUSTER_SPACES[@]}"; do
   env="$(cluster_env "$space")"
   note "Cluster Space: ${space} (env=${env})"
   ensure_space "$space" \
     --label app=sec-scanner --label "env=${env}" \
-    --trigger-filter "${POLICY_SPACE}/$(cluster_filter "$space")"
+    --trigger-filter "${POLICY_SPACE}/sec-guardrails"
 
   for w in "${WORKLOADS[@]}"; do
     if unit_exists "$space" "$w"; then

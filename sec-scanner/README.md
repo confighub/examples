@@ -24,7 +24,7 @@ ConfigHub fleet:
   data.
 - **Enforced guardrails, not advisory linting.** Images on `:latest` and images
   the scanner flagged **CRITICAL** are blocked by Validation Errors before they reach
-  a cluster. Prod changes additionally require approval.
+  a cluster.
 - **Findings stored back as data.** The gate signal (`max-severity` +
   `cve-count`) is written onto the workload Unit so the gate decides on the same
   object you review and version; the **full findings** land in one
@@ -48,7 +48,7 @@ sec-demo-policy    Guardrail Triggers + Filters (no Units)
 sec-demo-base      Workload Units on current images: frontend, api, cache
 sec-demo-dev       Cluster Space (env=dev)     — clones + planted violations
 sec-demo-staging   Cluster Space (env=staging) — clones
-sec-demo-prod      Cluster Space (env=prod)    — clones, approval required
+sec-demo-prod      Cluster Space (env=prod)    — clones
 ```
 
 The ConfigHub Spaces are "paper clusters" — no Targets or Workers, nothing

@@ -51,7 +51,7 @@ Stable, machine-checkable behavior for this example. See
 
 - mutates: yes (ConfigHub Spaces/Units + a local SQLite file at cvedb/cve.db;
   pulls the demo images locally to scan them; no Targets, Workers, or live infrastructure)
-- creates: 5 spaces, 4 triggers, 2 filters, 3 base units, 9 cloned units,
+- creates: 5 spaces, 3 triggers, 1 filter, 3 base units, 9 cloned units,
   3 violation units; then loads the cvedb, writes the gate-signal annotations
   back onto every workload (incl. `scanned-at` + `cvedb-version`), publishes one
   `AppConfig/YAML` `sec-scan-record` Unit per Space (a multi-document YAML with
@@ -71,7 +71,7 @@ Stable, machine-checkable behavior for this example. See
   `max-severity=CRITICAL` onto the vulnerable Units; each planted violation
   carries exactly its intended Validation Error (`legacy-frontend`/`legacy-api` →
   `no-critical-cves`, `unpinned-web` → `no-latest-tag`); clean workloads are
-  ungated; prod requires approval; each Space's `AppConfig/YAML`
+  ungated; each Space's `AppConfig/YAML`
   `sec-scan-record` Unit exists and holds per-workload findings documents; units
   record the `cvedb-version` they were scanned against and the `cvedb-status`
   Unit is present; the cvedb holds advisories

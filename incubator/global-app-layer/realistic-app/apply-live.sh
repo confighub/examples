@@ -101,8 +101,6 @@ wait_for_apply_result() {
 
 apply_unit() {
   local unit="$1"
-  echo "==> Approving ${unit}"
-  cub unit approve --space "$(deploy_space)" "${unit}"
   echo "==> Applying ${unit}"
   cub unit apply --space "$(deploy_space)" "${unit}"
 }

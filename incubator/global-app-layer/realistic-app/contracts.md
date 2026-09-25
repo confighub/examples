@@ -98,7 +98,7 @@
   - the deploy-space clones were refreshed from the latest upstream recipe revisions
   - the app-level recipe receipt was refreshed for the live target
   - the deployment bootstrap namespace unit was applied first
-  - backend, frontend, and postgres were approved and applied
+  - backend, frontend, and postgres were applied
   - the script waited for unit completion instead of treating apply start as success
 
 ### `./.logs/apply-live.latest.log`

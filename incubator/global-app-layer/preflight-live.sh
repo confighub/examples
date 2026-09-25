@@ -178,7 +178,6 @@ next_steps_json="$(
         if $deliveryMode == "direct" then
           [
             "run ./set-target.sh <space/target> if needed",
-            "run cub unit approve ...",
             "run cub unit apply ..."
           ]
         elif $deliveryMode == "flux-oci" then
@@ -260,7 +259,7 @@ else
   if [[ "${apply_ready}" == "true" ]]; then
     echo "What this means:"
     if [[ "${delivery_mode}" == "direct" ]]; then
-      echo "- direct apply is expected to work if you approve and apply the units"
+      echo "- direct apply is expected to work if you apply the units"
     elif [[ "${delivery_mode}" == "flux-oci" ]]; then
       echo "- this target can drive a Flux-managed deployment path for raw manifests if the example has an explicit Flux deployment variant"
     elif [[ "${delivery_mode}" == "argo-oci" ]]; then

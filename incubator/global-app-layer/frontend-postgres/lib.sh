@@ -763,9 +763,8 @@ Logs:
 Next steps:
 1. ./verify.sh
 2. ./upgrade-chain.sh ${DEFAULT_FRONTEND_TAG} ${DEFAULT_POSTGRES_TAG}
-3. cub unit approve --space $(deploy_space) $(unit_name frontend deployment) && cub unit approve --space $(deploy_space) $(unit_name postgres deployment)
-4. cub unit apply --space $(deploy_space) $(unit_name frontend deployment) && cub unit apply --space $(deploy_space) $(unit_name postgres deployment)
-5. Review recipe manifest: cub unit data --space $(recipe_space) ${RECIPE_MANIFEST_UNIT}
+3. cub unit apply --space $(deploy_space) $(unit_name frontend deployment) && cub unit apply --space $(deploy_space) $(unit_name postgres deployment)
+4. Review recipe manifest: cub unit data --space $(recipe_space) ${RECIPE_MANIFEST_UNIT}
 EOF_SUMMARY
   else
     cat <<EOF_SUMMARY

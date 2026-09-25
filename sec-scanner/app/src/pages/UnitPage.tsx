@@ -41,7 +41,6 @@ import { compileSetImage } from '../sec/edits';
 import { Finding, isStale } from '../sec/model';
 import { severityColor, severityLabel } from '../sec/severity';
 import {
-  useApproveUnitMutation,
   useGetUnitQuery,
   useInvokeFunctionsMutation,
   useListExtendedRevisionsQuery,
@@ -237,7 +236,6 @@ export function UnitPage() {
   const revisions = useListExtendedRevisionsQuery({ spaceId, unitId });
   const [patchUnit, patchState] = usePatchUnitMutation();
   const [invokeFunctions, invokeState] = useInvokeFunctionsMutation();
-  const [approveUnit, approveState] = useApproveUnitMutation();
 
   const unit = extended?.Unit;
   // The configuration is not part of the Unit: it comes from the Unit's data endpoint.
@@ -397,18 +395,6 @@ export function UnitPage() {
     void revisions.refetch();
   };
 
-  const approve = async () => {
-    setActionError(null);
-    setActionInfo(null);
-    const result = await approveUnit({ spaceId, unitId });
-    if ('error' in result && result.error) {
-      setActionError('Approve failed — you may lack Approve permission.');
-      return;
-    }
-    setActionInfo('Approved. Gates re-evaluate asynchronously; refresh in a moment.');
-    void refetch();
-  };
-
   const sev = workload?.maxSeverity ?? 'UNKNOWN';
 
   return (
@@ -423,12 +409,6 @@ export function UnitPage() {
         {warnings.map((w) => (
           <Chip key={w} size='small' color='warning' variant='outlined' label={w} />
         ))}
-        <Box sx={{ flexGrow: 1 }} />
-        {gates.some((g) => g.endsWith('/vet-approvedby')) && (
-          <Button variant='contained' color='success' disabled={approveState.isLoading} onClick={() => void approve()}>
-            Approve
-          </Button>
-        )}
       </Stack>
 
       {actionError !== null && (

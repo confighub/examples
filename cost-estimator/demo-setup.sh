@@ -8,7 +8,7 @@
 #   cost-demo-base      Workload Units (Deployments/StatefulSet) with resource requests.
 #   cost-demo-dev       "Cluster" Space (Environment=Dev)     — clones + planted violations
 #   cost-demo-staging   "Cluster" Space (Environment=Staging) — clones
-#   cost-demo-prod      "Cluster" Space (Environment=Prod)    — clones, approval required
+#   cost-demo-prod      "Cluster" Space (Environment=Prod)    — clones
 #
 # Cluster Spaces select the guardrail Triggers via a Filter in the policy Space
 # (TriggerFilterID pattern), so policy is defined once and enforced everywhere.
@@ -17,7 +17,6 @@
 #   valid-schemas      vet-schemas   — Kubernetes schema validation
 #   requests-required  vet-celexpr   — every container must declare cpu+memory requests
 #   within-budget      vet-celexpr   — block workloads the estimator flagged OVER budget
-#   require-approval   vet-approvedby 1 (prod only)
 #
 # The within-budget gate is data-driven: the custom estimator (estimator/) reads
 # each Unit's resource requests, costs them against a SQLite cost database, and
@@ -83,7 +82,7 @@ estimate + a budget verdict back as data; guardrails gate the over-budget.
             | TriggerFilterID           v
             +----------->  ${PREFIX}-dev     (Environment=Dev;     + planted violations)
             +----------->  ${PREFIX}-staging (Environment=Staging)
-            +----------->  ${PREFIX}-prod    (Environment=Prod;    + approval required)
+            +----------->  ${PREFIX}-prod    (Environment=Prod)
 
        costdb/cost.db (SQLite: per-provider/region rates + per-env budgets)
             ▲
@@ -92,12 +91,11 @@ estimate + a budget verdict back as data; guardrails gate the over-budget.
 
 Will create (idempotently):
   - 5 Spaces: ${POLICY_SPACE}, ${BASE_SPACE}, ${CLUSTER_SPACES[*]}
-  - 4 Triggers in ${POLICY_SPACE} (Pack=cost-guardrails):
+  - 3 Triggers in ${POLICY_SPACE} (Pack=cost-guardrails):
       valid-schemas       vet-schemas
       requests-required   vet-celexpr (block workloads with no cpu/memory requests)
       within-budget       vet-celexpr (block workloads estimated OVER budget)
-      require-approval    vet-approvedby 1 (prod only)
-  - 2 Trigger Filters: cost-guardrails (Scope=all), cost-guardrails-prod (incl. approval)
+  - 1 Trigger Filter: cost-guardrails
   - 4 workload Units in ${BASE_SPACE}, cloned into each of the 3 cluster Spaces (12 clones)
   - 2 planted violations in ${PREFIX}-dev:
       oversized-analytics  10× 4cpu/16Gi → ~\$1,372/mo > \$500 dev budget → gated (within-budget)
@@ -197,34 +195,30 @@ ensure_space() { # slug, extra flags...
 note "Policy Space: ${POLICY_SPACE}"
 ensure_space "$POLICY_SPACE" --label app=cost-estimator --label role=policy
 
-create_trigger() { # slug scope description function [args...]
-  local slug="$1" scope="$2" desc="$3"; shift 3
+create_trigger() { # slug description function [args...]
+  local slug="$1" desc="$2"; shift 2
   if trigger_exists "$POLICY_SPACE" "$slug"; then
     note "  trigger ${slug} exists, skipping"; ((skipped+=1))
   else
     $cub trigger create --space "$POLICY_SPACE" \
-      --label Pack=cost-guardrails --label "Scope=${scope}" \
+      --label Pack=cost-guardrails \
       --description "$desc" \
       "$slug" Mutation Kubernetes/YAML "$@" >/dev/null
     note "  created trigger ${slug}"; ((created+=1))
   fi
 }
 
-create_trigger valid-schemas all \
+create_trigger valid-schemas \
   "Validates Kubernetes resource schemas with kubeconform. Fix: correct the field names/types reported." \
   vet-schemas
 
-create_trigger requests-required all \
+create_trigger requests-required \
   "Blocks workloads whose containers omit cpu/memory requests (uncostable + a scheduling hazard). Fix: add resources.requests.cpu and .memory." \
   vet-celexpr "$REQUESTS_REQUIRED"
 
-create_trigger within-budget all \
+create_trigger within-budget \
   "Blocks workloads the estimator flagged OVER their environment budget (cost-estimator.confighub.com/budget-status). Fix: cut replicas/requests, or raise the budget, then re-estimate." \
   vet-celexpr "$WITHIN_BUDGET"
-
-create_trigger require-approval prod \
-  "Requires one approval before prod workload changes can be applied. Fix: have a reviewer approve the Unit." \
-  vet-approvedby 1
 
 ensure_filter() { # slug where
   local slug="$1" where="$2"
@@ -236,8 +230,10 @@ ensure_filter() { # slug where
   fi
 }
 
-ensure_filter cost-guardrails      "Labels.Pack = 'cost-guardrails' AND Labels.Scope = 'all'"
-ensure_filter cost-guardrails-prod "Labels.Pack = 'cost-guardrails'"
+# Scoped to this policy Space: a Filter selects Triggers across the whole organization, and
+# another copy of the demo under a different PREFIX carries the same Pack label.
+POLICY_SPACE_ID="$($cub space get "$POLICY_SPACE" -o jq=.Space.SpaceID | tr -d '"')"
+ensure_filter cost-guardrails "Labels.Pack = 'cost-guardrails' AND SpaceID = '${POLICY_SPACE_ID}'"
 
 # ── 2. Base Space: workload Units with resource requests ──────────────────────
 
@@ -264,7 +260,6 @@ done
 
 cluster_env()    { case "$1" in *-dev) echo Dev ;; *-staging) echo Staging ;; *-prod) echo Prod ;; esac; }
 cluster_region() { case "$1" in *-dev) echo us-west-2 ;; *-staging) echo us-east-2 ;; *-prod) echo us-east-1 ;; esac; }
-cluster_filter() { case "$1" in *-prod) echo cost-guardrails-prod ;; *) echo cost-guardrails ;; esac; }
 
 for space in "${CLUSTER_SPACES[@]}"; do
   env="$(cluster_env "$space")"
@@ -272,7 +267,7 @@ for space in "${CLUSTER_SPACES[@]}"; do
   note "Cluster Space: ${space} (Environment=${env}, Region=${region})"
   ensure_space "$space" \
     --label app=cost-estimator --label "Environment=${env}" --label "Region=${region}" \
-    --trigger-filter "${POLICY_SPACE}/$(cluster_filter "$space")"
+    --trigger-filter "${POLICY_SPACE}/cost-guardrails"
 
   for w in "${WORKLOADS[@]}"; do
     if unit_exists "$space" "$w"; then

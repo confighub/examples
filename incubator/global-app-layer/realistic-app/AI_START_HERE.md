@@ -218,7 +218,7 @@ This removes all spaces and units created by the demo.
 | `./setup.sh` | ConfigHub spaces, units, links, recipe manifest, local `.state/`, local `.logs/` |
 | `./verify.sh` | local `.logs/verify.latest.log` |
 | `./set-target.sh` | ConfigHub target bindings, local `.logs/set-target.latest.log` |
-| `./apply-live.sh` | ConfigHub approvals, live target state, local `.logs/apply-live.latest.log` |
+| `./apply-live.sh` | live target state, local `.logs/apply-live.latest.log` |
 
 ## Related Files
 

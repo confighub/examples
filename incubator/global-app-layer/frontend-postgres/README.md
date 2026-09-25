@@ -188,8 +188,6 @@ If you did not pass a target during setup:
 Then you can use normal ConfigHub apply flow on both deployment units:
 
 ```bash
-cub unit approve --space <prefix>-deploy-cluster-a frontend-cluster-a
-cub unit approve --space <prefix>-deploy-cluster-a postgres-cluster-a
 cub unit apply --space <prefix>-deploy-cluster-a frontend-cluster-a
 cub unit apply --space <prefix>-deploy-cluster-a postgres-cluster-a
 ```

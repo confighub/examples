@@ -941,13 +941,10 @@ Next steps:
 3. ./set-target.sh <kubernetes-target>        # binds the direct deployment variant
 4. ./set-target.sh <fluxoci-target>           # binds the Flux deployment variant
 5. ./set-target.sh <argocdoci-target>         # binds the Argo deployment variant
-6. cub unit approve --space $(deploy_space) $(deployment_unit_name gpu-operator direct) && cub unit approve --space $(deploy_space) $(deployment_unit_name nvidia-device-plugin direct)
-7. cub unit apply --space $(deploy_space) $(deployment_unit_name gpu-operator direct) && cub unit apply --space $(deploy_space) $(deployment_unit_name nvidia-device-plugin direct)
-8. cub unit approve --space $(flux_deploy_space) $(deployment_unit_name gpu-operator flux) && cub unit approve --space $(flux_deploy_space) $(deployment_unit_name nvidia-device-plugin flux)
-9. cub unit apply --space $(flux_deploy_space) $(deployment_unit_name gpu-operator flux) && cub unit apply --space $(flux_deploy_space) $(deployment_unit_name nvidia-device-plugin flux)
-10. cub unit approve --space $(argo_deploy_space) $(deployment_unit_name gpu-operator argo) && cub unit approve --space $(argo_deploy_space) $(deployment_unit_name nvidia-device-plugin argo)
-11. cub unit apply --space $(argo_deploy_space) $(deployment_unit_name gpu-operator argo) && cub unit apply --space $(argo_deploy_space) $(deployment_unit_name nvidia-device-plugin argo)
-12. Review recipe manifest: cub unit data --space $(recipe_space) ${RECIPE_MANIFEST_UNIT}
+6. cub unit apply --space $(deploy_space) $(deployment_unit_name gpu-operator direct) && cub unit apply --space $(deploy_space) $(deployment_unit_name nvidia-device-plugin direct)
+7. cub unit apply --space $(flux_deploy_space) $(deployment_unit_name gpu-operator flux) && cub unit apply --space $(flux_deploy_space) $(deployment_unit_name nvidia-device-plugin flux)
+8. cub unit apply --space $(argo_deploy_space) $(deployment_unit_name gpu-operator argo) && cub unit apply --space $(argo_deploy_space) $(deployment_unit_name nvidia-device-plugin argo)
+9. Review recipe manifest: cub unit data --space $(recipe_space) ${RECIPE_MANIFEST_UNIT}
 EOF_SUMMARY
 }
 

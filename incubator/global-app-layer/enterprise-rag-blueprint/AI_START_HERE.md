@@ -210,8 +210,7 @@ source .state/state.env
 deploy_space="${PREFIX}-deploy-tenant-acme"
 
 for unit in vector-db-tenant-acme nim-embedding-tenant-acme nim-llm-tenant-acme rag-server-tenant-acme; do
-  cub unit approve --space "${deploy_space}" "${unit}"
-  cub unit apply   --space "${deploy_space}" "${unit}"
+  cub unit apply --space "${deploy_space}" "${unit}"
 done
 
 kubectl --context kind-rag -n tenant-acme rollout status deploy/rag-server

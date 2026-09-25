@@ -219,13 +219,11 @@ Run:
 
 ```bash
 source .state/state.env
-cub unit approve --space "${PREFIX}-deploy-cluster-a" backend-cluster-a
 cub unit apply --space "${PREFIX}-deploy-cluster-a" backend-cluster-a
 ```
 
 What to explain:
 
-- Approve makes the unit eligible for apply
 - Apply sends the rendered config to the target
 - For Direct Kubernetes: worker applies via kubectl
 - For Flux OCI: worker publishes to ConfigHub-native OCI, Flux reconciles

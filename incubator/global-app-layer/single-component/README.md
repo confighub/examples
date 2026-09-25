@@ -188,19 +188,16 @@ Then you can use normal ConfigHub apply flow on any deployment variant:
 
 Direct variant:
 ```bash
-cub unit approve --space <prefix>-deploy-cluster-a backend-cluster-a
 cub unit apply --space <prefix>-deploy-cluster-a backend-cluster-a
 ```
 
 Flux variant:
 ```bash
-cub unit approve --space <prefix>-deploy-cluster-a-flux backend-cluster-a-flux
 cub unit apply --space <prefix>-deploy-cluster-a-flux backend-cluster-a-flux
 ```
 
 Argo variant:
 ```bash
-cub unit approve --space <prefix>-deploy-cluster-a-argo backend-cluster-a-argo
 cub unit apply --space <prefix>-deploy-cluster-a-argo backend-cluster-a-argo
 ```
 
