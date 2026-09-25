@@ -10,7 +10,7 @@ still be runnable for both human-led and AI-led evaluation.
 |----------------|------------|
 | Import from Argo | [gitops-import-argo](./gitops-import-argo/README.md) |
 | Import from Flux | [gitops-import-flux](./gitops-import-flux/README.md) |
-| Use CH as 'write API' for config | [platform-write-api](./platform-write-api/README.md) |
+| Use CH as 'write API' for config | [cub-gen springboot-paas](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas) (moved to `cub-gen`) |
 | Deploy a real app | [springboot-platform-app-centric](../spring-platform/springboot-platform-app-centric/README.md) |
 | Practice ConfigHub + Argo handoff drills | [mini-kubara](./mini-kubara/README.md) |
 | Understand layered recipes | [global-app-layer/single-component](./global-app-layer/single-component/README.md) |
@@ -45,7 +45,7 @@ still be runnable for both human-led and AI-led evaluation.
 
 | Example | What it proves |
 |---------|----------------|
-| [platform-write-api](./platform-write-api/README.md) | ConfigHub as mutation plane |
+| [cub-gen springboot-paas](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas) | ConfigHub as mutation plane (moved to `cub-gen`) |
 | [springboot-platform-app-centric](../spring-platform/springboot-platform-app-centric/README.md) | Real app with three mutation routes |
 
 ### Layered Recipes - NVIDIA AICR Layers and Bundles
@@ -87,7 +87,7 @@ still be runnable for both human-led and AI-led evaluation.
 ## Reality Guide
 
 - **100% real e2e**: `global-app-layer/*` examples with non-Noop targets
-- **Real mutation, no live delivery**: `platform-write-api`
+- **Real mutation, no live delivery**: [cub-gen springboot-paas](https://github.com/confighub/cub-gen/tree/main/examples/springboot-paas)
 - **Real import, no ConfigHub apply**: `gitops-import-*`, `combined-git-live`
 - **Simulation only**: `demo-data-adt`, `lifecycle-hazards`
 
