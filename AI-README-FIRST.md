@@ -15,9 +15,7 @@ Use this file for:
 - choosing the right example family
 
 Do not treat this file as the walkthrough script. When the user wants
-pause-heavy demo mode, use the selected example's `AI_START_HERE.md`, or
-[`incubator/AI_START_HERE.md`](./incubator/AI_START_HERE.md) for
-incubator-wide walkthrough conventions.
+pause-heavy demo mode, use the selected example's `AI_START_HERE.md`.
 
 ## 2. Resolve The Repo Root First
 
@@ -105,16 +103,13 @@ Pick the family that matches the user's goal:
 - Stable no-cluster intro:
   [`promotion-demo-data`](./promotion-demo-data/README.md) and
   [`initiatives-demo`](./initiatives-demo/README.md)
-- GitOps import or brownfield discovery:
-  [`incubator/import-from-live`](./incubator/import-from-live/README.md),
-  [`incubator/gitops-import-argo`](./incubator/gitops-import-argo/README.md),
-  [`incubator/gitops-import-flux`](./incubator/gitops-import-flux/README.md)
+- Argo CD and Flux repo shapes, by skill level:
+  [`gitops`](./gitops/README.md)
 - App mutation and platform flow:
   [`springboot-platform-app-centric`](./spring-platform/springboot-platform-app-centric/README.md)
 - Worker extensibility: [`custom-workers`](./custom-workers/)
 - Layered and advanced model:
-  [`incubator/global-app-layer`](./incubator/global-app-layer/README.md)
-- Full experimental catalog: [`incubator/README.md`](./incubator/README.md)
+  [`global-app-layer`](./global-app-layer/README.md)
 
 If the user wants a human-oriented overview of the repo,
 [README.md](./README.md) is the public front door, but it is not the primary AI
@@ -183,10 +178,6 @@ Before you run them, say clearly:
 Use the selected example's `AI_START_HERE.md` when the user wants a guided demo
 with pauses after each stage.
 
-Use [`incubator/AI_START_HERE.md`](./incubator/AI_START_HERE.md) when the work
-is specifically in the incubator and you need incubator-specific walkthrough
-conventions.
-
 ## 12. Next Step
 
 If you are starting fresh, the best single next step is:
@@ -206,7 +197,7 @@ Those commands do not mutate ConfigHub.
 If you need to discover live runs for the layered examples, use:
 
 ```bash
-cd incubator/global-app-layer
+cd global-app-layer
 ./find-runs.sh
 ./find-runs.sh realistic-app --json | jq
 ```

@@ -25,6 +25,9 @@ Multiple spaces are created with the `eu` and `us` prefix. If this conflicts wit
 ./cleanup.sh    # Delete all demo data
 ```
 
+To check the data after `./setup.sh`, run the read-only wrapper in
+[`verify/`](./verify/README.md): `cd verify && ./verify.sh`.
+
 ## Conceptual Model
 
 This demo aligns to a **Component-Deployment-Target** model on top of ConfigHub. The core idea is a many-to-many relationship between Components and Targets, with Deployment as the junction object:

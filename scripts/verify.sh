@@ -13,40 +13,45 @@ script_checks=(
   "${repo_root}/spring-platform/springboot-platform-app-centric/demo.sh"
   "${repo_root}/redis-platform-with-rbac-guardrails/setup.sh"
   "${repo_root}/redis-platform-with-rbac-guardrails/verify.sh"
-  "${repo_root}/incubator/global-app-layer/single-component/lib.sh"
-  "${repo_root}/incubator/global-app-layer/single-component/setup.sh"
-  "${repo_root}/incubator/global-app-layer/single-component/set-target.sh"
-  "${repo_root}/incubator/global-app-layer/single-component/upgrade-chain.sh"
-  "${repo_root}/incubator/global-app-layer/single-component/verify.sh"
-  "${repo_root}/incubator/global-app-layer/single-component/cleanup.sh"
-  "${repo_root}/incubator/global-app-layer/frontend-postgres/lib.sh"
-  "${repo_root}/incubator/global-app-layer/frontend-postgres/setup.sh"
-  "${repo_root}/incubator/global-app-layer/frontend-postgres/set-target.sh"
-  "${repo_root}/incubator/global-app-layer/frontend-postgres/upgrade-chain.sh"
-  "${repo_root}/incubator/global-app-layer/frontend-postgres/verify.sh"
-  "${repo_root}/incubator/global-app-layer/frontend-postgres/cleanup.sh"
-  "${repo_root}/incubator/global-app-layer/realistic-app/lib.sh"
-  "${repo_root}/incubator/global-app-layer/realistic-app/setup.sh"
-  "${repo_root}/incubator/global-app-layer/realistic-app/set-target.sh"
-  "${repo_root}/incubator/global-app-layer/realistic-app/upgrade-chain.sh"
-  "${repo_root}/incubator/global-app-layer/realistic-app/verify.sh"
-  "${repo_root}/incubator/global-app-layer/realistic-app/cleanup.sh"
-  "${repo_root}/incubator/global-app-layer/gpu-eks-h100-training/lib.sh"
-  "${repo_root}/incubator/global-app-layer/gpu-eks-h100-training/setup.sh"
-  "${repo_root}/incubator/global-app-layer/gpu-eks-h100-training/set-target.sh"
-  "${repo_root}/incubator/global-app-layer/gpu-eks-h100-training/upgrade-chain.sh"
-  "${repo_root}/incubator/global-app-layer/gpu-eks-h100-training/verify.sh"
-  "${repo_root}/incubator/global-app-layer/gpu-eks-h100-training/cleanup.sh"
-  "${repo_root}/incubator/global-app-layer/find-runs.sh"
-  "${repo_root}/incubator/global-app-layer/preflight-live.sh"
-  "${repo_root}/incubator/global-app-layer/e2e/lib.sh"
-  "${repo_root}/incubator/global-app-layer/e2e/01-brownfield.sh"
-  "${repo_root}/incubator/global-app-layer/e2e/02-greenfield.sh"
-  "${repo_root}/incubator/global-app-layer/e2e/03-bridge.sh"
-  "${repo_root}/incubator/global-app-layer/e2e/deliver-direct.sh"
-  "${repo_root}/incubator/global-app-layer/e2e/deliver-argo.sh"
-  "${repo_root}/incubator/global-app-layer/e2e/assert-cluster.sh"
-  "${repo_root}/incubator/global-app-layer/e2e/run-all.sh"
+  "${repo_root}/global-app-layer/single-component/lib.sh"
+  "${repo_root}/global-app-layer/single-component/setup.sh"
+  "${repo_root}/global-app-layer/single-component/set-target.sh"
+  "${repo_root}/global-app-layer/single-component/upgrade-chain.sh"
+  "${repo_root}/global-app-layer/single-component/verify.sh"
+  "${repo_root}/global-app-layer/single-component/cleanup.sh"
+  "${repo_root}/global-app-layer/frontend-postgres/lib.sh"
+  "${repo_root}/global-app-layer/frontend-postgres/setup.sh"
+  "${repo_root}/global-app-layer/frontend-postgres/set-target.sh"
+  "${repo_root}/global-app-layer/frontend-postgres/upgrade-chain.sh"
+  "${repo_root}/global-app-layer/frontend-postgres/verify.sh"
+  "${repo_root}/global-app-layer/frontend-postgres/cleanup.sh"
+  "${repo_root}/global-app-layer/realistic-app/lib.sh"
+  "${repo_root}/global-app-layer/realistic-app/setup.sh"
+  "${repo_root}/global-app-layer/realistic-app/set-target.sh"
+  "${repo_root}/global-app-layer/realistic-app/upgrade-chain.sh"
+  "${repo_root}/global-app-layer/realistic-app/verify.sh"
+  "${repo_root}/global-app-layer/realistic-app/cleanup.sh"
+  "${repo_root}/global-app-layer/gpu-eks-h100-training/lib.sh"
+  "${repo_root}/global-app-layer/gpu-eks-h100-training/setup.sh"
+  "${repo_root}/global-app-layer/gpu-eks-h100-training/set-target.sh"
+  "${repo_root}/global-app-layer/gpu-eks-h100-training/upgrade-chain.sh"
+  "${repo_root}/global-app-layer/gpu-eks-h100-training/verify.sh"
+  "${repo_root}/global-app-layer/gpu-eks-h100-training/cleanup.sh"
+  "${repo_root}/global-app-layer/find-runs.sh"
+  "${repo_root}/global-app-layer/preflight-live.sh"
+  "${repo_root}/global-app-layer/e2e/lib.sh"
+  "${repo_root}/global-app-layer/e2e/01-brownfield.sh"
+  "${repo_root}/global-app-layer/e2e/02-greenfield.sh"
+  "${repo_root}/global-app-layer/e2e/03-bridge.sh"
+  "${repo_root}/global-app-layer/e2e/deliver-direct.sh"
+  "${repo_root}/global-app-layer/e2e/deliver-argo.sh"
+  "${repo_root}/global-app-layer/e2e/assert-cluster.sh"
+  "${repo_root}/global-app-layer/e2e/run-all.sh"
+  "${repo_root}/global-app-layer/e2e/bin/create-cluster"
+  "${repo_root}/global-app-layer/e2e/bin/install-argocd"
+  "${repo_root}/global-app-layer/e2e/bin/install-worker"
+  "${repo_root}/global-app-layer/e2e/bin/setup-apps"
+  "${repo_root}/global-app-layer/e2e/bin/teardown"
   "${repo_root}/gitops/argo/beginner-applicationset/setup.sh"
   "${repo_root}/gitops/argo/beginner-applicationset/verify.sh"
   "${repo_root}/gitops/argo/beginner-applicationset/cleanup.sh"
@@ -74,31 +79,6 @@ for script_path in "${script_checks[@]}"; do
   fi
   echo "==> Linting shell script: ${script_path##*/}"
   bash -n "${script_path}"
-done
-
-bundle_roots=(
-  "${repo_root}/incubator/cub-run-fixtures"
-)
-
-for bundle_root in "${bundle_roots[@]}"; do
-  if [[ ! -d "${bundle_root}" ]]; then
-    echo "==> Skipping missing bundle root: ${bundle_root##*/}"
-    continue
-  fi
-  while IFS= read -r bundle_dir; do
-    [[ -d "${bundle_dir}" ]] || continue
-    bundle_name="$(basename "${bundle_dir}")"
-    if [[ ! -f "${bundle_dir}/up.yaml" && ! -f "${bundle_dir}/up.yml" ]]; then
-      echo "Bundle ${bundle_name} under ${bundle_root} is missing up.yaml/up.yml" >&2
-      exit 1
-    fi
-    manifest_count="$(find "${bundle_dir}" -maxdepth 1 -type f \( -name '*.yaml' -o -name '*.yml' \) ! -name 'up.yaml' ! -name 'up.yml' | wc -l | tr -d ' ')"
-    if [[ "${manifest_count}" -eq 0 ]]; then
-      echo "Bundle ${bundle_name} under ${bundle_root} has no manifest files besides up.yaml" >&2
-      exit 1
-    fi
-    echo "==> Verified bundle layout: ${bundle_root##*/}/${bundle_name}"
-  done < <(find "${bundle_root}" -mindepth 1 -maxdepth 1 -type d | sort)
 done
 
 # ==================== spring-platform product-path doc checks ====================
@@ -153,6 +133,7 @@ ai_guide_examples=(
   "${repo_root}/spring-platform/springboot-platform-app"
   "${repo_root}/initiatives-demo"
   "${repo_root}/promotion-demo-data"
+  "${repo_root}/promotion-demo-data/verify"
   "${repo_root}/rbac-manager"
   "${repo_root}/sec-scanner"
   "${repo_root}/cost-estimator"
@@ -160,40 +141,20 @@ ai_guide_examples=(
   # standalone generated operational app (UI app + zero-dependency CLI, no setup.sh)
   "${repo_root}/pilot-example-addons-manager"
   # global-app-layer examples
-  "${repo_root}/incubator/global-app-layer/single-component"
-  "${repo_root}/incubator/global-app-layer/frontend-postgres"
-  "${repo_root}/incubator/global-app-layer/realistic-app"
-  "${repo_root}/incubator/global-app-layer/gpu-eks-h100-training"
-  "${repo_root}/incubator/global-app-layer/bundle-evidence-sample"
-  # gitops import examples
-  "${repo_root}/incubator/gitops-import-argo"
-  "${repo_root}/incubator/gitops-import-flux"
+  "${repo_root}/global-app-layer/single-component"
+  "${repo_root}/global-app-layer/frontend-postgres"
+  "${repo_root}/global-app-layer/realistic-app"
+  "${repo_root}/global-app-layer/gpu-eks-h100-training"
+  "${repo_root}/global-app-layer/bundle-evidence-sample"
   # canonical gitops examples
   "${repo_root}/gitops/argo/beginner-applicationset"
   "${repo_root}/gitops/argo/beginner-app-of-apps"
   "${repo_root}/gitops/flux/beginner"
   "${repo_root}/gitops/argo/intermediate-git-as-database"
-  # discovery and evidence examples
-  "${repo_root}/incubator/artifact-workflow"
-  "${repo_root}/incubator/combined-git-live"
-  "${repo_root}/incubator/connect-and-compare"
-  "${repo_root}/incubator/connected-summary-storage"
-  "${repo_root}/incubator/custom-ownership-detectors"
-  "${repo_root}/incubator/demo-data-adt"
-  "${repo_root}/incubator/fleet-import"
-  "${repo_root}/incubator/flux-boutique"
-  "${repo_root}/incubator/graph-export"
-  "${repo_root}/incubator/import-from-bundle"
-  "${repo_root}/incubator/import-from-live"
-  "${repo_root}/incubator/lifecycle-hazards"
-  "${repo_root}/incubator/orphans"
-  "${repo_root}/incubator/platform-example"
-  "${repo_root}/incubator/watch-webhook"
 )
 
 # Examples intentionally exempt from contracts.md requirement
 exempt_from_contracts=(
-  "${repo_root}/incubator/watch-webhook"  # lightweight event example
   "${repo_root}/initiatives-demo"           # stable demo data
   "${repo_root}/promotion-demo-data"      # stable demo data
 )

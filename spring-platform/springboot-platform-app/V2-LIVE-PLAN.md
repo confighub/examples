@@ -134,7 +134,7 @@ Reuse existing repo patterns instead of inventing a new object model.
 Follow:
 
 - the multi-env shape from [`promotion-demo-data`](../../promotion-demo-data/)
-- the ConfigHub-first flow shape from [`../global-app-layer`](../global-app-layer/)
+- the ConfigHub-first flow shape from [`../../global-app-layer`](../../global-app-layer/)
 
 The v2 setup should create:
 

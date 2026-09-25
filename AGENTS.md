@@ -66,7 +66,7 @@ These commands do not mutate:
 ## 5. For `global-app-layer`, do this before reading shell code
 
 ```bash
-cd incubator/global-app-layer
+cd global-app-layer
 ./find-runs.sh --json | jq
 cd realistic-app
 ./setup.sh --explain
@@ -169,9 +169,8 @@ Do not parse human table output if JSON is available.
 - human entry path: [README.md](./README.md)
 - AI context: [AI-README-FIRST.md](./AI-README-FIRST.md)
 - guided walkthrough path: the selected example's `AI_START_HERE.md`
-- incubator AI path: [incubator/AI_START_HERE.md](./incubator/AI_START_HERE.md)
-- layered examples: [incubator/global-app-layer/README.md](./incubator/global-app-layer/README.md)
-- layered run discovery: [incubator/global-app-layer/find-runs.sh](./incubator/global-app-layer/find-runs.sh)
+- layered examples: [global-app-layer/README.md](./global-app-layer/README.md)
+- layered run discovery: [global-app-layer/find-runs.sh](./global-app-layer/find-runs.sh)
 
 ## 10. If unsure
 
