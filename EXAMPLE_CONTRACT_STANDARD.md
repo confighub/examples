@@ -23,12 +23,11 @@ Both are required for full runnable examples. Together they support:
 
 ## Current Scope
 
-The verifier (`scripts/verify.sh`) currently covers **30 examples**:
-
-| Category | Count | Examples |
-|----------|-------|----------|
-| Stable | 4 | spring-platform (2), initiatives-demo, promotion-demo-data |
-| Incubator | 26 | global-app-layer (5), gitops-import (2), apptique (3), and 16 others |
+The verifier (`scripts/verify.sh`) currently covers **19 examples**, the ones
+listed in its `ai_guide_examples` array. They include the `spring-platform`
+apps, `initiatives-demo`, `promotion-demo-data` and its `verify` wrapper, the
+guardrail examples, the five `global-app-layer` examples, and the
+`gitops/` examples.
 
 ## What `./setup.sh --explain` Must Do
 

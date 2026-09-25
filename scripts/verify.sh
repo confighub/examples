@@ -124,8 +124,8 @@ done
 # ==================== AI Guide Standard Checks ====================
 #
 # These checks verify that important examples follow the AI-first demo
-# pacing standard. Incubator examples require contracts.md and --explain
-# support. Stable examples have lighter requirements.
+# pacing standard. Examples require contracts.md and --explain support
+# unless they are listed as exempt below.
 
 ai_guide_examples=(
   # stable examples

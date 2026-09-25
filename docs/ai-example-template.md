@@ -1,4 +1,4 @@
-# Incubator AI Example Template
+# AI Example Template
 
 Use this as a starter for a major example.
 

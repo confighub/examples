@@ -78,9 +78,8 @@ your own repo.
 
 ## A note on the older import examples
 
-The former `incubator/gitops-import-argo` and `incubator/gitops-import-flux`
-examples used an import route that is being retired, and they have been
-removed. Use this index for a canonical example to run or to point an AI
+The older Argo CD and Flux import examples used an import route that is
+being retired, and they have been removed. Use this index for a canonical example to run or to point an AI
 assistant at.
 
 ## Contract standard

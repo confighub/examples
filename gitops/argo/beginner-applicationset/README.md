@@ -24,9 +24,9 @@ and where it goes?"
 - A standard Kustomize layout: a shared `base` plus one overlay per
   environment (`dev`, `prod`). The overlays patch replica count and resource
   limits; nothing else differs between environments.
-- One app (`apptique`, a small frontend). This example replaces the former
-  `incubator/apptique-argo-applicationset` and `incubator/apptique-flux-monorepo`
-  examples, which were moved here and removed from the incubator.
+- One app (`apptique`, a small frontend). This example replaces the
+  earlier `apptique-argo-applicationset` and `apptique-flux-monorepo`
+  examples, which were rebuilt here.
 
 ## Repo layout
 

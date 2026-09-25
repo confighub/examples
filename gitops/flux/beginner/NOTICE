@@ -10,5 +10,5 @@ cluster directory) follows the layout used by:
 No file content from that repository is copied here. Every YAML file in this
 directory was written for this example. The application content (the
 apptique Deployment, Service, and Kustomize overlays) is reused from
-the former incubator/apptique-flux-monorepo example in this repository, under this
+the earlier apptique-flux-monorepo example in this repository, under this
 repository's own MIT license (see the top-level LICENSE file).
