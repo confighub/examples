@@ -1,1 +1,6 @@
 logLevel: info
+image:
+  registry: registry.example.com
+  pullPolicy: IfNotPresent
+resources:
+  requests: {cpu: 100m, memory: 128Mi}

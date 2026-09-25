@@ -23,7 +23,7 @@ disagree, trust scout.
 | Q2 + sprawl ledger | Your primary key is a filename; values in use vs values declared |
 | Q3 | Promotion by find-and-replace |
 | Q4 | Is my change in progress, or abandoned? |
-| Q5 | One value was edited. How many values changed? |
+| Q5 | One value was edited. How many values changed? Fan-out, values per file, and fan-out × density per changed path |
 | Q6 | Safer, or just rarer? |
 | Q7 | Allowed to differ, or just differing? |
 | Q7b | Where observed data lands, and what stops hand edits |

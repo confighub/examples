@@ -197,6 +197,31 @@ for sub, body in (('a', 'k: 1\n'), ('ab', 'k: 2\n')):
 r = scout.Repo([os.path.join(base, 'a')])
 check('roots: no prefix collision', len(r.paths) == 1, r.paths)
 
+# --- density: leaf counting, fan-out x density, missing path not guessed
+check('density: leaves', scout._leaves({'a': 1, 'b': {'c': [1, 2, {'d': 'x'}]}, 'e': None}) == 4)
+r = scout.Repo([repo(inventory(extra={
+    'values/shared.yaml': 'a: 1\nb: {c: 2, d: 3}\n',
+    'appsets/a.yaml': """\
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata: {name: x}
+spec:
+  generators:
+  - clusters:
+      selector:
+        matchLabels: {env: prod}
+  template:
+    metadata:
+      annotations:
+        argocd.argoproj.io/manifest-generate-paths: /values/shared.yaml;/values/missing.yaml
+    spec: {}
+"""}))])
+q = scout.q5_reach(r)
+bp = {b['path']: b for b in q['blast_by_path']}
+check('density: fan-out x values', (bp['/values/shared.yaml']['reach'], bp['/values/shared.yaml']['values'],
+      bp['/values/shared.yaml']['surface']) == (10, 3, 30), bp)
+check('density: missing path is NOT OBSERVED', bp['/values/missing.yaml']['values'] is None, bp)
+
 # --- fleet-small: every planted answer
 FLEET = os.environ.get('SCOUT_FLEET', os.path.join(
     HERE, '..', '..', 'gitops', 'argo', 'intermediate-git-as-database', 'repo'))
@@ -215,6 +240,9 @@ check('fleet Q4: 3 versions live', out['q34']['worst_skew'][0][0] == 3, out['q34
 rbp = dict(out['q5']['reach_by_path'])
 check('fleet Q5: 24 vs 1',
       (rbp.get('/values/global.yaml'), rbp.get('/values/clusters/acme-prod-use1.yaml')) == (24, 1), rbp)
+bb = {b['path']: b['surface'] for b in out['q5']['blast_by_path']}
+check('fleet Q5: blast radius 120 vs 9',
+      (bb.get('/values/global.yaml'), bb.get('/values/clusters/acme-prod-use1.yaml')) == (120, 9), bb)
 check('fleet Q6: 2 quotas', out['q6']['count'] == 2, out['q6'])
 check('fleet Q7: 1 self-heal no prune', out['q7']['posture'].get('self-heal, no prune') == 1, out['q7'])
 check('fleet Q7b: generated/ guarded', out['q7b']['dirs'][0]['guarded_by'] != [], out['q7b'])

@@ -88,6 +88,12 @@ A one-line change to `values/global.yaml` re-renders all 24 clusters. A
 one-line change to `values/clusters/acme-prod-use1.yaml` re-renders one. The
 two diffs look identical in review.
 
+Blast radius is fan-out times density: targets reached, times values changed
+on each. The global file holds 5 values and reaches 24 clusters, so rewriting
+it changes 120 live values. The cluster file is denser, 9 values, but reaches
+one cluster, so rewriting it changes 9. Density is in the file where a reviewer
+can see it. Fan-out is not.
+
 ### 6. Safer, or just rarer?
 
 `.github/workflows/ci.yaml` caps a pull request at five files under

@@ -90,6 +90,34 @@ class Repo:
         return rel in self.exists
 
 
+# ------------------------------------------------------------------ density
+
+def _leaves(x):
+    """Count leaf values (scalars) in a parsed YAML document."""
+    if isinstance(x, dict):
+        return sum(_leaves(v) for v in x.values())
+    if isinstance(x, list):
+        return sum(_leaves(v) for v in x)
+    return 0 if x is None else 1
+
+
+def _values_at(repo, path):
+    """Leaf values in the file (or directory of YAML files) a declared path names.
+    Returns (values, kind) or (None, None) if the path matches nothing on disk."""
+    rel = path.strip().lstrip('/').rstrip('/')
+    if not rel or rel == '.':
+        return None, None
+    files = [p for p in repo.docs if any(
+        os.path.relpath(p, r) == rel for r in repo.roots)]
+    if files:
+        return sum(_leaves(d) for d in repo.docs[files[0]]), 'file'
+    under = [p for p in repo.docs if any(
+        os.path.relpath(p, r).startswith(rel + '/') for r in repo.roots)]
+    if under:
+        return sum(_leaves(d) for p in under for d in repo.docs[p]), 'dir'
+    return None, None
+
+
 # ------------------------------------------------------------------ Q1
 
 def q1_render_gap(repo):
@@ -438,13 +466,25 @@ def q5_reach(repo):
         for seg in [s for s in mgp.split(';') if s and '{{' not in s]:
             scope[seg.strip()] += len(t)
 
+    # density: values carried by each declared path, and fan-out x density
+    by_path = []
+    for path, n in scope.most_common(5):
+        vals, kind = _values_at(repo, path)
+        by_path.append(dict(path=path, reach=n, values=vals, kind=kind,
+                            surface=(n * vals) if vals is not None else None))
+    per_file = [sum(_leaves(d) for d in ds) for ds in repo.docs.values()]
+    density = dict(values=sum(per_file), files=len(per_file),
+                   mean=round(sum(per_file) / len(per_file), 1) if per_file else 0,
+                   median=statistics.median(per_file) if per_file else 0)
+
     return dict(_inv=inv, targets=len(inv), definitions=len(fan) + unresolved,
                 resolved_definitions=len(fan), unresolved_definitions=unresolved,
                 partially_resolved=partial,
                 instances=sum(v), reach_median=statistics.median(v),
                 reach_max=max(v), residual_selectors=residual,
                 widest=fan[:3],
-                reach_by_path=scope.most_common(5))
+                reach_by_path=scope.most_common(5),
+                blast_by_path=by_path, density=density)
 
 
 # ------------------------------------------------------------------ Q6
@@ -739,10 +779,21 @@ def report(res, resolve=False):
     print(f"    resolved instances ................ {r['instances']}")
     print(f"    reach per definition .............. median {r['reach_median']}, "
           f"max {r['reach_max']}")
-    if r['reach_by_path']:
-        print("    reach by changed path:")
-        for path, n in r['reach_by_path']:
-            print(f"        {n:>8}  instances re-render when {path} changes")
+    dn = r['density']
+    print(f"    config values in repo ............. {dn['values']} across {dn['files']} YAML files "
+          f"(mean {dn['mean']}, median {dn['median']})")
+    if r['blast_by_path']:
+        print("    blast radius by changed path (fan-out x density):")
+        print(f"        {'fan-out':>8}  {'values':>7}  {'if whole file changes':>22}  path")
+        for b in r['blast_by_path']:
+            v = 'NOT OBSERVED' if b['values'] is None else str(b['values'])
+            sfc = '' if b['surface'] is None else f"{b['surface']:,}"
+            tag = ' (dir)' if b['kind'] == 'dir' else ''
+            print(f"        {b['reach']:>8}  {v:>7}  {sfc:>22}  {b['path']}{tag}")
+        print("\n    One value edited changes one value on each target: the fan-out.")
+        print("    The whole file changed touches fan-out x values. Density is in the")
+        print("    file, where a reviewer can see it. Fan-out is not. Values are counted")
+        print("    in the input files; values in the rendered output are not visible here.")
     if r['unresolved_definitions']:
         print(f"\n    scout could not work out what {r['unresolved_definitions']} of your "
               f"definitions target.")
