@@ -377,27 +377,27 @@ not.
 
 ### Folder-level files to rewrite
 
-- [README.md](/Users/alexis/Public/github-repos/examples/spring-platform/README.md)
-- [AI_START_HERE.md](/Users/alexis/Public/github-repos/examples/spring-platform/AI_START_HERE.md)
+- [README.md](./README.md)
+- [AI_START_HERE.md](./AI_START_HERE.md)
 
 ### Example 1 files to rewrite
 
-- [README.md](/Users/alexis/Public/github-repos/examples/spring-platform/springboot-platform-app/README.md)
-- [AI_START_HERE.md](/Users/alexis/Public/github-repos/examples/spring-platform/springboot-platform-app/AI_START_HERE.md)
-- [contracts.md](/Users/alexis/Public/github-repos/examples/spring-platform/springboot-platform-app/contracts.md)
-- [prompts.md](/Users/alexis/Public/github-repos/examples/spring-platform/springboot-platform-app/prompts.md)
+- [README.md](./springboot-platform-app/README.md)
+- [AI_START_HERE.md](./springboot-platform-app/AI_START_HERE.md)
+- [contracts.md](./springboot-platform-app/contracts.md)
+- [prompts.md](./springboot-platform-app/prompts.md)
 
 ### Example 2 files to rewrite
 
-- [README.md](/Users/alexis/Public/github-repos/examples/spring-platform/springboot-platform-app-centric/README.md)
-- [AI_START_HERE.md](/Users/alexis/Public/github-repos/examples/spring-platform/springboot-platform-app-centric/AI_START_HERE.md)
-- [contracts.md](/Users/alexis/Public/github-repos/examples/spring-platform/springboot-platform-app-centric/contracts.md)
-- [prompts.md](/Users/alexis/Public/github-repos/examples/spring-platform/springboot-platform-app-centric/prompts.md)
+- [README.md](./springboot-platform-app-centric/README.md)
+- [AI_START_HERE.md](./springboot-platform-app-centric/AI_START_HERE.md)
+- [contracts.md](./springboot-platform-app-centric/contracts.md)
+- [prompts.md](./springboot-platform-app-centric/prompts.md)
 
 ### Example 3 files to rewrite
 
-- [README.md](/Users/alexis/Public/github-repos/examples/spring-platform/springboot-platform-platform-centric/README.md)
-- [AI_START_HERE.md](/Users/alexis/Public/github-repos/examples/spring-platform/springboot-platform-platform-centric/AI_START_HERE.md)
+- [README.md](./springboot-platform-platform-centric/README.md)
+- [AI_START_HERE.md](./springboot-platform-platform-centric/AI_START_HERE.md)
 
 ### Optional support-file changes
 
@@ -487,7 +487,7 @@ Run:
 
 ```bash
 rg -n "wrapper|delegates|all implementation lives in|use .* when you need the full implementation" \
-  /Users/alexis/Public/github-repos/examples/spring-platform \
+  spring-platform \
   --glob 'README.md' --glob 'AI_START_HERE.md'
 ```
 
@@ -502,7 +502,7 @@ Run:
 
 ```bash
 rg -n "ADTP|Platform -> Apps -> Deployments -> Targets" \
-  /Users/alexis/Public/github-repos/examples/spring-platform \
+  spring-platform \
   --glob 'README.md' --glob 'AI_START_HERE.md'
 ```
 
@@ -524,9 +524,9 @@ Run:
 
 ```bash
 rg -n "^## " \
-  /Users/alexis/Public/github-repos/examples/spring-platform/springboot-platform-app/README.md \
-  /Users/alexis/Public/github-repos/examples/spring-platform/springboot-platform-app-centric/README.md \
-  /Users/alexis/Public/github-repos/examples/spring-platform/springboot-platform-platform-centric/README.md
+  spring-platform/springboot-platform-app/README.md \
+  spring-platform/springboot-platform-app-centric/README.md \
+  spring-platform/springboot-platform-platform-centric/README.md
 ```
 
 Expected result:
