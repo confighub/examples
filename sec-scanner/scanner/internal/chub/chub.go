@@ -319,11 +319,14 @@ func UpsertUnit(spaceID, slug, toolchain, displayName string, labels map[string]
 	if err != nil {
 		return err
 	}
+	// The created Unit comes back under "Unit", beside any Conflicts the create reports.
 	var created struct {
-		UnitID string `json:"UnitID"`
+		Unit struct {
+			UnitID string `json:"UnitID"`
+		} `json:"Unit"`
 	}
-	if err := json.Unmarshal(b, &created); err != nil || created.UnitID == "" {
+	if err := json.Unmarshal(b, &created); err != nil || created.Unit.UnitID == "" {
 		return fmt.Errorf("create unit %s: no UnitID in response", slug)
 	}
-	return putUnitData(spaceID, created.UnitID, data, changeDesc)
+	return putUnitData(spaceID, created.Unit.UnitID, data, changeDesc)
 }
