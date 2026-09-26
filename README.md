@@ -1,6 +1,23 @@
 # ConfigHub Examples
 
-This repo contains runnable examples for ConfigHub.
+Learn what an application looks like in ConfigHub, make a useful configuration
+change, and understand how that change reaches your delivery system.
+
+## Start with your app
+
+| What you want to learn | Start here | What you get |
+| --- | --- | --- |
+| What would my app look like? | [First app](./catalog/FIRST_APP.md) | A frontend, backend and database; one local replica change; an optional, separately verified ConfigHub storage walkthrough. No cluster required for the local lesson. |
+| How would I organise a smaller app? | [Layered applications](./global-app-layer/README.md) | Choose one component, an app with a database, or a three-component app. See how shared configuration becomes environment-specific configuration. |
+| How does this fit my existing Argo CD or Flux repository? | [GitOps examples](./gitops/README.md) | Repository shapes and controller-specific guides. Read the selected guide's prerequisites before running it. |
+| Can I manage app settings without Kubernetes? | [App-only configuration](https://github.com/confighub/cub-gen/tree/fa70ffad379765d8052f6873ccdb51b8edf4b3e7/examples/just-apps-no-platform-config) | Provider and channel settings with source provenance, maintained beside the generator. Local configuration output does not prove an update to the provider. |
+| How can I build an app that uses ConfigHub's API? | [SDK browser examples](https://github.com/confighub/js-sdk/tree/499bd223bb3562c15bdf390b8e5f2b49e3e218de/examples/space-browser) | A small developer example in the SDK's canonical home; authentication and setup are separate from the first-app lesson. |
+
+The collection contains both **applications whose configuration you manage**
+(such as the first app) and **tools built on ConfigHub** (such as ConfigBoard and
+the fleet managers below). Shared libraries and diagnostic fixtures are supporting
+material, not additional tutorials. Each guide states its own requirements and
+proof limits; inclusion here is not a claim that every example has been deployed.
 
 ## Safe First Checks
 

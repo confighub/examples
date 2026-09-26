@@ -204,12 +204,17 @@ cd <your-examples-checkout>
 ./scripts/verify.sh
 ```
 
-Then choose the example family that matches the user's goal.
+Then choose the example family that matches the user's goal. For the layered
+three-component app, inspect its plan before setup:
+
+```bash
+cd global-app-layer/realistic-app
 ./setup.sh --explain
 ./setup.sh --explain-json | jq
 ```
 
-Those commands do not mutate ConfigHub.
+Those commands do not mutate ConfigHub. Return to the repository root before
+following a different example.
 
 If you need to discover live runs for the layered examples, use:
 
