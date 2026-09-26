@@ -1,0 +1,680 @@
+{
+  "schema_version": 1,
+  "entries": [
+    {
+      "id": "first-app-realistic",
+      "task": "See what a real application looks like: frontend, backend and database through source, ConfigHub layers and delivery",
+      "tags": [
+        "first-app",
+        "app-shape",
+        "realistic-app",
+        "cubbychat",
+        "frontend",
+        "backend",
+        "database",
+        "tutorial",
+        "onboarding"
+      ],
+      "visibility": "public",
+      "lifecycle": "maintained",
+      "role": "walkthrough",
+      "admission": "verified-source",
+      "source": {
+        "repository": "confighub/examples",
+        "revision": "50879ec441aecfbfcc34982139ea8c2827e8a2e0",
+        "path": "global-app-layer/realistic-app",
+        "url": "https://github.com/confighub/examples/tree/50879ec441aecfbfcc34982139ea8c2827e8a2e0/global-app-layer/realistic-app"
+      },
+      "guides": {
+        "human": "https://github.com/confighub/examples/blob/50879ec441aecfbfcc34982139ea8c2827e8a2e0/global-app-layer/realistic-app/README.md",
+        "ai": "https://github.com/confighub/examples/blob/50879ec441aecfbfcc34982139ea8c2827e8a2e0/global-app-layer/realistic-app/AI_START_HERE.md",
+        "contract": "https://github.com/confighub/examples/blob/50879ec441aecfbfcc34982139ea8c2827e8a2e0/global-app-layer/realistic-app/contracts.md"
+      },
+      "tutorial": "catalog/FIRST_APP.md",
+      "lesson": "Three source manifests describe a frontend, backend and Postgres. The local plan and diff are read-only; a separate checked ConfigHub-only run stored five Spaces and 17 Units, changed one stored frontend replica field, and showed that Unit in the UI. No target was bound and no application was deployed.",
+      "preview": {
+        "working_directory": "global-app-layer/realistic-app",
+        "command": "./setup.sh --explain-json",
+        "requires": [
+          "bash",
+          "jq"
+        ],
+        "artifact": "JSON plan for three coordinated components and five ConfigHub Spaces"
+      },
+      "effects": "The preview is read-only. Setup creates ConfigHub Spaces, Units and clone links; optional target binding and apply can affect a cluster.",
+      "stop_when": "Do not claim a deployed or healthy app from the plan. The direct Kubernetes target path needs separate connected and live proof; this preview makes no server or cluster write.",
+      "evidence": {
+        "checked_on": "2026-09-26",
+        "static": "./setup.sh --explain-json passed locally (three components, five Spaces); local frontend diff found one changed Deployment field /spec/replicas from 1 to 2",
+        "connected": "On a local development ConfigHub server v0.5.1 with matched cub v0.5.1, setup stored five Spaces and 17 Units; a scoped frontend Unit change moved /spec/replicas from 2 to 3, verified by readback and local diff. Read-only GUI inspection showed the deploy Space and frontend Unit with replicas 3 and no target binding.",
+        "controller": "not checked",
+        "runtime": "not checked",
+        "receipt": "catalog/qualification.json#/checks/first-app-realistic",
+        "connected_receipt": "catalog/first-app-connected-receipt.json"
+      },
+      "maintenance_owner": "confighub/examples",
+      "practice": {
+        "command": "bash catalog/first-app-local-change.sh",
+        "artifact": "result.json: one changed Deployment field /spec/replicas from 1 to 2",
+        "effects": "Writes two local copies and a local JSON diff; no ConfigHub or cluster write"
+      },
+      "maintainer_acceptance": "pending-maintainer-review",
+      "requirements": {
+        "local": {
+          "tested_tool_versions": {
+            "bash": "3.2.57",
+            "jq": "1.7.1",
+            "cub": "v0.6.2",
+            "cub-config-plugin": "0.6.30",
+            "rg": "15.2.0",
+            "sed": "unknown",
+            "shasum": "6.02"
+          },
+          "credentials": "none for the plan and local diff",
+          "cost": "Local CPU and temporary disk; no ConfigHub or cluster write",
+          "cleanup": "The plan writes nothing. The diff helper prints a fresh local output directory containing before.yaml, after.yaml and result.json; remove that directory when finished."
+        },
+        "connected": {
+          "qualification": "scoped-config-hub-verified",
+          "credentials": "Authenticated local development ConfigHub context with cub v0.5.1 matching server v0.5.1 for setup and Unit change. A target and cluster authority would be needed only for a separate live path.",
+          "cost": "Five Spaces and 17 Units were created on a local development server; server resource cost is unknown. No cluster/cloud resources were created.",
+          "cleanup": "Not run: this scoped ConfigHub run remains for inspection. The source ./cleanup.sh deletes Spaces labelled with its ExampleChain prefix and local state; review scope before using it. No live resources were created.",
+          "tested_tool_versions": {
+            "cub": "v0.5.1",
+            "server": "v0.5.1",
+            "local-diff-cub": "v0.5.1",
+            "cub-config-plugin": "0.6.30"
+          },
+          "version_note": "The default cub v0.6.2 failed a read preflight against server v0.5.1 (invalid include field ComponentID for entity Space); matched cub v0.5.1 was used for this scoped setup, change, readback and local diff. This observed pair is not a support range."
+        }
+      }
+    },
+    {
+      "id": "argo-beginner-applicationset",
+      "task": "Understand and preview an existing one-app Argo CD ApplicationSet repository",
+      "tags": [
+        "existing-repository",
+        "onboarding",
+        "gitops",
+        "argo",
+        "applicationset"
+      ],
+      "visibility": "public",
+      "lifecycle": "maintained",
+      "role": "walkthrough",
+      "admission": "verified-source",
+      "source": {
+        "repository": "confighub/examples",
+        "revision": "50879ec441aecfbfcc34982139ea8c2827e8a2e0",
+        "path": "gitops/argo/beginner-applicationset",
+        "url": "https://github.com/confighub/examples/tree/50879ec441aecfbfcc34982139ea8c2827e8a2e0/gitops/argo/beginner-applicationset"
+      },
+      "guides": {
+        "human": "https://github.com/confighub/examples/blob/50879ec441aecfbfcc34982139ea8c2827e8a2e0/gitops/argo/beginner-applicationset/README.md",
+        "ai": "https://github.com/confighub/examples/blob/50879ec441aecfbfcc34982139ea8c2827e8a2e0/gitops/argo/beginner-applicationset/AI_START_HERE.md",
+        "contract": "https://github.com/confighub/examples/blob/50879ec441aecfbfcc34982139ea8c2827e8a2e0/gitops/argo/beginner-applicationset/contracts.md"
+      },
+      "preview": {
+        "working_directory": "gitops/argo/beginner-applicationset",
+        "command": "./setup.sh --explain-json",
+        "requires": [
+          "bash",
+          "jq"
+        ],
+        "artifact": "JSON plan for two rendered overlays and ConfigHub Spaces"
+      },
+      "effects": "Preview is read-only. Full setup uploads two rendered variants to ConfigHub; the bootstrap manifest is reference material and no controller is applied.",
+      "stop_when": "Stop before setup without authority to create or update ConfigHub Spaces. An upload alone does not prove Argo CD reconciliation or workload health.",
+      "evidence": {
+        "checked_on": "2026-09-26",
+        "static": "./setup.sh --explain-json and ./verify.sh passed locally",
+        "connected": "not checked",
+        "controller": "not checked",
+        "runtime": "not checked",
+        "receipt": "catalog/qualification.json#/checks/argo-beginner-applicationset"
+      },
+      "maintenance_owner": "confighub/examples",
+      "maintainer_acceptance": "pending-maintainer-review",
+      "requirements": {
+        "local": {
+          "tested_tool_versions": {
+            "bash": "3.2.57",
+            "jq": "1.7.1",
+            "kustomize": "v5.8.1"
+          },
+          "credentials": "none for --explain-json and ./verify.sh",
+          "cost": "Local CPU and temporary render files only",
+          "cleanup": "The preview writes nothing; ./verify.sh removes its temporary render output."
+        },
+        "connected": {
+          "qualification": "not-tested",
+          "credentials": "Authenticated compatible ConfigHub context for ./setup.sh; no cluster credential is used by this example setup",
+          "cost": "ConfigHub resource cost unknown; no cluster or cloud deployment in this setup",
+          "cleanup": "The source ./cleanup.sh removes local var/ output and prints two cub space delete commands; it does not execute those ConfigHub deletions."
+        }
+      }
+    },
+    {
+      "id": "flux-beginner",
+      "task": "Understand and preview an existing one-app Flux repository with clusters, infrastructure and apps",
+      "tags": [
+        "existing-repository",
+        "onboarding",
+        "gitops",
+        "flux",
+        "kustomization"
+      ],
+      "visibility": "public",
+      "lifecycle": "maintained",
+      "role": "walkthrough",
+      "admission": "verified-source",
+      "source": {
+        "repository": "confighub/examples",
+        "revision": "50879ec441aecfbfcc34982139ea8c2827e8a2e0",
+        "path": "gitops/flux/beginner",
+        "url": "https://github.com/confighub/examples/tree/50879ec441aecfbfcc34982139ea8c2827e8a2e0/gitops/flux/beginner"
+      },
+      "guides": {
+        "human": "https://github.com/confighub/examples/blob/50879ec441aecfbfcc34982139ea8c2827e8a2e0/gitops/flux/beginner/README.md",
+        "ai": "https://github.com/confighub/examples/blob/50879ec441aecfbfcc34982139ea8c2827e8a2e0/gitops/flux/beginner/AI_START_HERE.md",
+        "contract": "https://github.com/confighub/examples/blob/50879ec441aecfbfcc34982139ea8c2827e8a2e0/gitops/flux/beginner/contracts.md"
+      },
+      "preview": {
+        "working_directory": "gitops/flux/beginner",
+        "command": "./setup.sh --explain-json",
+        "requires": [
+          "bash",
+          "jq"
+        ],
+        "artifact": "JSON plan for dev and prod Kustomize overlays and ConfigHub Spaces"
+      },
+      "effects": "Preview is read-only. Full setup uploads two rendered variants to ConfigHub; it does not bootstrap Flux or apply a cluster resource.",
+      "stop_when": "Stop before setup without authority to create or update ConfigHub Spaces. An upload alone does not prove Flux reconciliation or workload health.",
+      "evidence": {
+        "checked_on": "2026-09-26",
+        "static": "./setup.sh --explain-json and ./verify.sh passed locally",
+        "connected": "not checked",
+        "controller": "not checked",
+        "runtime": "not checked",
+        "receipt": "catalog/qualification.json#/checks/flux-beginner"
+      },
+      "maintenance_owner": "confighub/examples",
+      "maintainer_acceptance": "pending-maintainer-review",
+      "requirements": {
+        "local": {
+          "tested_tool_versions": {
+            "bash": "3.2.57",
+            "jq": "1.7.1",
+            "kustomize": "v5.8.1"
+          },
+          "credentials": "none for --explain-json and ./verify.sh",
+          "cost": "Local CPU and temporary render files only",
+          "cleanup": "The preview writes nothing; ./verify.sh removes its temporary render output."
+        },
+        "connected": {
+          "qualification": "not-tested",
+          "credentials": "Authenticated compatible ConfigHub context for ./setup.sh; no cluster credential is used by this example setup",
+          "cost": "ConfigHub resource cost unknown; no cluster or cloud deployment in this setup",
+          "cleanup": "The source ./cleanup.sh removes local var/ output and prints two cub space delete commands; it does not execute those ConfigHub deletions."
+        }
+      }
+    },
+    {
+      "id": "promotion-demo-data",
+      "task": "Explore a multi-environment promotion model and the scope of a governed change",
+      "tags": [
+        "governance",
+        "promotion",
+        "change",
+        "staging",
+        "approval"
+      ],
+      "visibility": "public",
+      "lifecycle": "maintained",
+      "role": "walkthrough",
+      "admission": "source-reviewed",
+      "source": {
+        "repository": "confighub/examples",
+        "revision": "50879ec441aecfbfcc34982139ea8c2827e8a2e0",
+        "path": "promotion-demo-data",
+        "url": "https://github.com/confighub/examples/tree/50879ec441aecfbfcc34982139ea8c2827e8a2e0/promotion-demo-data"
+      },
+      "guides": {
+        "human": "https://github.com/confighub/examples/blob/50879ec441aecfbfcc34982139ea8c2827e8a2e0/promotion-demo-data/README.md",
+        "ai": "https://github.com/confighub/examples/blob/50879ec441aecfbfcc34982139ea8c2827e8a2e0/promotion-demo-data/AI_START_HERE.md",
+        "contract": "https://github.com/confighub/examples/blob/50879ec441aecfbfcc34982139ea8c2827e8a2e0/promotion-demo-data/verify/README.md"
+      },
+      "preview": {
+        "working_directory": "promotion-demo-data",
+        "command": "cat README.md",
+        "requires": [],
+        "artifact": "Documented component, target and deployment model with 49 planned Spaces"
+      },
+      "effects": "Reading the guide is local. setup.sh creates 49 Spaces and about 154 Units in ConfigHub and may collide with existing names. The sample noop target does not prove cluster delivery.",
+      "stop_when": "Do not run setup without checking names and obtaining authority for ConfigHub writes. The source does not provide a non-mutating setup plan.",
+      "evidence": {
+        "checked_on": "2026-09-26",
+        "static": "README and scripts reviewed; no local operational test run",
+        "connected": "not checked",
+        "controller": "not checked",
+        "runtime": "not checked"
+      },
+      "maintenance_owner": "confighub/examples",
+      "maintainer_acceptance": "pending-maintainer-review",
+      "requirements": {
+        "local": {
+          "tested_tool_versions": {
+            "cat": "unknown"
+          },
+          "credentials": "none to read the guide",
+          "cost": "No service or cloud cost to read the guide",
+          "cleanup": "None for guide reading."
+        },
+        "connected": {
+          "qualification": "not-tested",
+          "credentials": "Authenticated compatible ConfigHub context with permission to create demo Spaces, Units and targets",
+          "cost": "ConfigHub resource cost unknown; the documented noop target does not deploy to a cluster",
+          "cleanup": "The source ./cleanup.sh recursively deletes all Spaces labelled with the example name, including contained data; inspect label scope and name collisions first."
+        }
+      }
+    },
+    {
+      "id": "config-repo-scout",
+      "task": "Diagnose configuration sprawl, change reach and unresolved layers in a local GitOps repository",
+      "tags": [
+        "diagnosis",
+        "local",
+        "gitops",
+        "helm",
+        "argo",
+        "flux",
+        "drift",
+        "scout"
+      ],
+      "visibility": "public",
+      "lifecycle": "maintained",
+      "role": "walkthrough",
+      "admission": "verified-source",
+      "source": {
+        "repository": "confighub/examples",
+        "revision": "50879ec441aecfbfcc34982139ea8c2827e8a2e0",
+        "path": "prompts/scout",
+        "url": "https://github.com/confighub/examples/tree/50879ec441aecfbfcc34982139ea8c2827e8a2e0/prompts/scout"
+      },
+      "guides": {
+        "human": "https://github.com/confighub/examples/blob/50879ec441aecfbfcc34982139ea8c2827e8a2e0/prompts/scout/README.md",
+        "ai": "https://github.com/confighub/examples/blob/50879ec441aecfbfcc34982139ea8c2827e8a2e0/prompts/config-repo-ten-questions.md",
+        "contract": "https://github.com/confighub/examples/blob/50879ec441aecfbfcc34982139ea8c2827e8a2e0/prompts/scout/README.md"
+      },
+      "preview": {
+        "working_directory": "prompts/scout",
+        "command": "python3 scout.py ../../gitops/argo/intermediate-git-as-database --json",
+        "requires": [
+          "python3",
+          "pyyaml"
+        ],
+        "artifact": "JSON answers for the known-answer local GitOps fixture"
+      },
+      "effects": "The script reads local files only; it does not access a cluster, ConfigHub, the network or credentials.",
+      "stop_when": "Unresolved selectors remain unresolved and counts may be lower bounds. Repository configuration does not reveal live drift or runtime health.",
+      "evidence": {
+        "checked_on": "2026-09-26",
+        "static": "python3 test_scout.py passed locally against parsing cases and known-answer fixture",
+        "connected": "not applicable",
+        "controller": "not checked",
+        "runtime": "not checked",
+        "receipt": "catalog/qualification.json#/checks/config-repo-scout"
+      },
+      "maintenance_owner": "confighub/examples",
+      "maintainer_acceptance": "pending-maintainer-review",
+      "requirements": {
+        "local": {
+          "tested_tool_versions": {
+            "python3": "3.14.4",
+            "pyyaml": "6.0.3"
+          },
+          "credentials": "none; reads a local repository",
+          "cost": "Local CPU only; no network or service use by the script",
+          "cleanup": "None; scout.py does not write output files unless the caller redirects stdout."
+        },
+        "connected": {
+          "qualification": "not-applicable",
+          "credentials": "none; this indexed script has no connected mode",
+          "cost": "none for a connected service, because none is used",
+          "cleanup": "not applicable"
+        }
+      }
+    },
+    {
+      "id": "governed-helm-change",
+      "task": "Trace an existing Helm value to its source and test one allowed and one blocked governed edit",
+      "tags": [
+        "existing-chart",
+        "helm",
+        "values",
+        "ownership",
+        "provenance",
+        "workshop",
+        "governance",
+        "change",
+        "approval",
+        "promotion"
+      ],
+      "visibility": "public",
+      "lifecycle": "maintained",
+      "role": "walkthrough",
+      "admission": "verified-source",
+      "source": {
+        "repository": "confighub/cub-gen",
+        "revision": "fa70ffad379765d8052f6873ccdb51b8edf4b3e7",
+        "path": "examples/helm-paas",
+        "url": "https://github.com/confighub/cub-gen/tree/fa70ffad379765d8052f6873ccdb51b8edf4b3e7/examples/helm-paas"
+      },
+      "guides": {
+        "human": "https://github.com/confighub/cub-gen/blob/fa70ffad379765d8052f6873ccdb51b8edf4b3e7/examples/helm-paas/README.md",
+        "ai": "https://github.com/confighub/cub-gen/blob/fa70ffad379765d8052f6873ccdb51b8edf4b3e7/examples/helm-paas/AI_START_HERE.md",
+        "contract": "https://github.com/confighub/cub-gen/blob/fa70ffad379765d8052f6873ccdb51b8edf4b3e7/examples/helm-paas/contracts.md"
+      },
+      "preview": {
+        "working_directory": "confighub/cub-gen repository root",
+        "command": "./examples/helm-paas/demo-governed-change.sh",
+        "requires": [
+          "bash",
+          "git",
+          "go",
+          "jq",
+          "perl"
+        ],
+        "artifact": "Local allow-explain.json, allow-report.json and block-report.json"
+      },
+      "effects": "The command builds cub-gen and makes two commits in a temporary clone under .tmp (or OUT_ROOT). It checks one allowed values edit and rejects one platform-template edit. It does not call ConfigHub or a cluster.",
+      "stop_when": "A local ownership gate is not ConfigHub approval, promotion or delivery. Umbrella charts, multi-variant fan-out and external values have documented gaps; use separate connected and controller proof for those claims.",
+      "evidence": {
+        "checked_on": "2026-09-26",
+        "static": "Pinned demo-governed-change.sh passed locally: allowed values edit status pass, platform-template edit status fail with exit 2; JSON reports retained in isolated temporary directory",
+        "connected": "not checked",
+        "controller": "not checked here",
+        "runtime": "not checked here",
+        "receipt": "catalog/qualification.json#/checks/governed-helm-change"
+      },
+      "maintenance_owner": "confighub/cub-gen",
+      "maintainer_acceptance": "pending-maintainer-review",
+      "requirements": {
+        "local": {
+          "tested_tool_versions": {
+            "bash": "3.2.57",
+            "git": "2.54.0",
+            "go": "1.26.2",
+            "jq": "1.7.1",
+            "perl": "5.34.1"
+          },
+          "credentials": "none for the local ownership-gate script",
+          "cost": "Local build CPU and temporary disk; Go dependencies may need downloading if uncached; no ConfigHub or cluster write",
+          "cleanup": "Remove the script output directory under .tmp/helm-paas-governed-change or the chosen OUT_ROOT after reviewing allow/block reports. The script leaves its temporary clone and JSON reports for inspection."
+        },
+        "connected": {
+          "qualification": "not-tested",
+          "credentials": "Authenticated compatible ConfigHub context for the separate connected wrapper; cluster access for the separate runtime wrapper",
+          "cost": "ConfigHub and optional cluster/cloud cost unknown",
+          "cleanup": "No connected cleanup was qualified for this indexed local gate; inspect the owning guide before any connected run."
+        }
+      }
+    },
+    {
+      "id": "app-only-provider-config",
+      "task": "Inspect ordinary application settings and source provenance without a Kubernetes platform layer",
+      "tags": [
+        "app-config",
+        "settings",
+        "provider",
+        "source",
+        "provenance",
+        "no-platform"
+      ],
+      "visibility": "public",
+      "lifecycle": "maintained",
+      "role": "walkthrough",
+      "admission": "verified-source",
+      "source": {
+        "repository": "confighub/cub-gen",
+        "revision": "fa70ffad379765d8052f6873ccdb51b8edf4b3e7",
+        "path": "examples/just-apps-no-platform-config",
+        "url": "https://github.com/confighub/cub-gen/tree/fa70ffad379765d8052f6873ccdb51b8edf4b3e7/examples/just-apps-no-platform-config"
+      },
+      "guides": {
+        "human": "https://github.com/confighub/cub-gen/blob/fa70ffad379765d8052f6873ccdb51b8edf4b3e7/examples/just-apps-no-platform-config/README.md",
+        "ai": "https://github.com/confighub/cub-gen/blob/fa70ffad379765d8052f6873ccdb51b8edf4b3e7/examples/just-apps-no-platform-config/README.md"
+      },
+      "preview": {
+        "working_directory": "confighub/cub-gen repository root",
+        "command": "go run ./cmd/cub-gen gitops import --space platform --json ./examples/just-apps-no-platform-config ./examples/just-apps-no-platform-config",
+        "requires": [
+          "go"
+        ],
+        "artifact": "Computed DRY inputs, WET manifest targets and field-origin map in JSON"
+      },
+      "effects": "The command builds locally and inspects source configuration. It makes no ConfigHub or provider write. The separate demo-local.sh simulates decision and promotion records, which are not part of this admitted path.",
+      "stop_when": "The generated ConfigMap/Secret targets and source trace do not establish OCI publication, connected approval or live provider update.",
+      "evidence": {
+        "checked_on": "2026-09-26",
+        "static": "Pinned local import passed: two DRY inputs, two WET targets and a three-entry field-origin map; no simulated decision or promotion included",
+        "connected": "not checked",
+        "controller": "not applicable",
+        "runtime": "not established in source",
+        "receipt": "catalog/qualification.json#/checks/app-only-provider-config"
+      },
+      "maintenance_owner": "confighub/cub-gen",
+      "maintainer_acceptance": "pending-maintainer-review",
+      "requirements": {
+        "local": {
+          "tested_tool_versions": {
+            "go": "1.26.2"
+          },
+          "credentials": "none for local source import and provenance output",
+          "cost": "Local build CPU; Go dependencies may need downloading if uncached; no ConfigHub or provider write",
+          "cleanup": "No example output file is written by the command; clear any caller-redirected JSON when finished."
+        },
+        "connected": {
+          "qualification": "not-tested",
+          "credentials": "Authenticated compatible ConfigHub context for the separate connected bridge wrapper; provider credentials would be separate and are not covered by this example",
+          "cost": "ConfigHub cost unknown; provider runtime cost not assessed",
+          "cleanup": "No connected or provider cleanup was qualified; inspect the owning guide before any connected run."
+        }
+      }
+    },
+    {
+      "id": "layered-platform-recipe",
+      "task": "Preview how a platform recipe layers and promotes one component across deployment variants",
+      "tags": [
+        "platform",
+        "layered",
+        "recipe",
+        "promotion",
+        "governance",
+        "flux",
+        "argo"
+      ],
+      "visibility": "public",
+      "lifecycle": "maintained",
+      "role": "walkthrough",
+      "admission": "verified-source",
+      "source": {
+        "repository": "confighub/examples",
+        "revision": "50879ec441aecfbfcc34982139ea8c2827e8a2e0",
+        "path": "global-app-layer/single-component",
+        "url": "https://github.com/confighub/examples/tree/50879ec441aecfbfcc34982139ea8c2827e8a2e0/global-app-layer/single-component"
+      },
+      "guides": {
+        "human": "https://github.com/confighub/examples/blob/50879ec441aecfbfcc34982139ea8c2827e8a2e0/global-app-layer/single-component/README.md",
+        "ai": "https://github.com/confighub/examples/blob/50879ec441aecfbfcc34982139ea8c2827e8a2e0/global-app-layer/single-component/AI_START_HERE.md",
+        "contract": "https://github.com/confighub/examples/blob/50879ec441aecfbfcc34982139ea8c2827e8a2e0/global-app-layer/single-component/contracts.md"
+      },
+      "preview": {
+        "working_directory": "global-app-layer/single-component",
+        "command": "./setup.sh --explain-json",
+        "requires": [
+          "bash",
+          "jq"
+        ],
+        "artifact": "JSON plan for seven Spaces, variant ancestry and deployment variants"
+      },
+      "effects": "Preview is read-only. Setup writes ConfigHub Spaces, Units and clone links; optional target binding and apply can reach a cluster.",
+      "stop_when": "Do not create Spaces or bind a target without scoped authority. A ConfigHub-only verify result is not Flux or Argo reconciliation proof.",
+      "evidence": {
+        "checked_on": "2026-09-26",
+        "static": "./setup.sh --explain-json passed locally",
+        "connected": "not checked",
+        "controller": "not checked",
+        "runtime": "not checked",
+        "receipt": "catalog/qualification.json#/checks/layered-platform-recipe"
+      },
+      "maintenance_owner": "confighub/examples",
+      "maintainer_acceptance": "pending-maintainer-review",
+      "requirements": {
+        "local": {
+          "tested_tool_versions": {
+            "bash": "3.2.57",
+            "jq": "1.7.1"
+          },
+          "credentials": "none for --explain-json",
+          "cost": "Local CPU only; no ConfigHub or cluster write",
+          "cleanup": "None; the preview writes no example state."
+        },
+        "connected": {
+          "qualification": "not-tested",
+          "credentials": "Authenticated compatible ConfigHub context for setup; compatible target and cluster authority only for optional apply",
+          "cost": "ConfigHub resource cost unknown; optional cluster/cloud cost depends on target",
+          "cleanup": "After setup, the source ./cleanup.sh deletes the run-labelled ConfigHub Spaces recursively and removes local state; review scope before running. Live resources were not checked."
+        }
+      }
+    },
+    {
+      "id": "gpu-layered-recipe",
+      "task": "Preview the shape of a layered GPU recipe with stub images and no H100 runtime claim",
+      "tags": [
+        "gpu",
+        "h100",
+        "eks",
+        "platform",
+        "layered",
+        "recipe",
+        "advanced"
+      ],
+      "visibility": "public",
+      "lifecycle": "maintained",
+      "role": "walkthrough",
+      "admission": "verified-source",
+      "source": {
+        "repository": "confighub/examples",
+        "revision": "50879ec441aecfbfcc34982139ea8c2827e8a2e0",
+        "path": "global-app-layer/gpu-eks-h100-training",
+        "url": "https://github.com/confighub/examples/tree/50879ec441aecfbfcc34982139ea8c2827e8a2e0/global-app-layer/gpu-eks-h100-training"
+      },
+      "guides": {
+        "human": "https://github.com/confighub/examples/blob/50879ec441aecfbfcc34982139ea8c2827e8a2e0/global-app-layer/gpu-eks-h100-training/README.md",
+        "ai": "https://github.com/confighub/examples/blob/50879ec441aecfbfcc34982139ea8c2827e8a2e0/global-app-layer/gpu-eks-h100-training/AI_START_HERE.md",
+        "contract": "https://github.com/confighub/examples/blob/50879ec441aecfbfcc34982139ea8c2827e8a2e0/global-app-layer/gpu-eks-h100-training/contracts.md"
+      },
+      "preview": {
+        "working_directory": "global-app-layer/gpu-eks-h100-training",
+        "command": "./setup.sh --explain-json",
+        "requires": [
+          "bash",
+          "jq"
+        ],
+        "artifact": "JSON plan for layered GPU-themed components and three deployment variants"
+      },
+      "effects": "Preview is read-only. Setup writes ConfigHub objects; optional target binding and apply can change a cluster. Base images are stubs.",
+      "stop_when": "Do not claim H100 execution, NVIDIA runtime health or a cluster deployment from the plan or stub-image configuration. Live proof needs compatible targets and actual hardware.",
+      "evidence": {
+        "checked_on": "2026-09-26",
+        "static": "./setup.sh --explain-json passed locally",
+        "connected": "not checked",
+        "controller": "not checked",
+        "runtime": "not checked",
+        "receipt": "catalog/qualification.json#/checks/gpu-layered-recipe"
+      },
+      "maintenance_owner": "confighub/examples",
+      "maintainer_acceptance": "pending-maintainer-review",
+      "requirements": {
+        "local": {
+          "tested_tool_versions": {
+            "bash": "3.2.57",
+            "jq": "1.7.1"
+          },
+          "credentials": "none for --explain-json",
+          "cost": "Local CPU only; no GPU, ConfigHub or cluster write",
+          "cleanup": "None; the preview writes no example state."
+        },
+        "connected": {
+          "qualification": "not-tested",
+          "credentials": "Authenticated compatible ConfigHub context for setup; compatible target and cluster authority for optional apply; actual GPU proof needs GPU-capable nodes and image access",
+          "cost": "ConfigHub cost unknown; a real GPU/H100 cloud run can incur substantial cost, amount unknown",
+          "cleanup": "After setup, the source ./cleanup.sh deletes the run-labelled ConfigHub Spaces recursively and removes local state; cluster/GPU resource cleanup was not checked."
+        }
+      }
+    },
+    {
+      "id": "scout-import-from-bundle",
+      "task": "Prepare an import proposal from a saved debug bundle without cluster access",
+      "tags": [
+        "diagnosis",
+        "onboarding",
+        "saved-bundle",
+        "import",
+        "scout"
+      ],
+      "visibility": "public",
+      "lifecycle": "candidate",
+      "role": "product-example",
+      "admission": "source-reviewed",
+      "source": {
+        "repository": "confighub/cub-scout",
+        "revision": "adf328e246b57f08f2d75d3307dac5987e63dcb8",
+        "path": "examples/import-from-bundle",
+        "url": "https://github.com/confighub/cub-scout/tree/adf328e246b57f08f2d75d3307dac5987e63dcb8/examples/import-from-bundle"
+      },
+      "guides": {
+        "human": "https://github.com/confighub/cub-scout/blob/adf328e246b57f08f2d75d3307dac5987e63dcb8/examples/import-from-bundle/README.md",
+        "ai": "https://github.com/confighub/cub-scout/blob/adf328e246b57f08f2d75d3307dac5987e63dcb8/examples/import-from-bundle/README.md",
+        "contract": "https://github.com/confighub/cub-scout/blob/adf328e246b57f08f2d75d3307dac5987e63dcb8/examples/import-from-bundle/expected-output/suggestion.json"
+      },
+      "preview": {
+        "working_directory": "confighub/cub-scout repository root",
+        "command": "./cub-scout import --from-bundle examples/workflows/fleet-demo/bundles/dev --dry-run --json",
+        "requires": [
+          "cub-scout binary",
+          "saved sample bundle"
+        ],
+        "artifact": "JSON proposal with namespaces, workloads and bundle evidence"
+      },
+      "effects": "The documented dry run reads a saved bundle and proposes an import; it does not perform the import.",
+      "stop_when": "Treat this as a source-reviewed candidate until its command is rerun on a current binary. A proposal is not successful onboarding or authority transfer.",
+      "evidence": {
+        "checked_on": "2026-09-26",
+        "static": "Pinned public README and committed expected-output path reviewed; command not rerun",
+        "connected": "not checked",
+        "controller": "not checked",
+        "runtime": "not checked"
+      },
+      "maintenance_owner": "confighub/cub-scout",
+      "maintainer_acceptance": "pending-maintainer-review",
+      "requirements": {
+        "local": {
+          "tested_tool_versions": {
+            "cub-scout": "unknown"
+          },
+          "credentials": "none stated for the saved-bundle dry run; command not rerun",
+          "cost": "Expected local CPU only; not independently checked",
+          "cleanup": "The documented command prints a proposal; no local cleanup is described."
+        },
+        "connected": {
+          "qualification": "not-in-index",
+          "credentials": "A real import may require ConfigHub authority; this indexed dry run does not establish its requirements",
+          "cost": "unknown for an actual connected import",
+          "cleanup": "not documented or qualified for an actual import"
+        }
+      }
+    }
+  ]
+}

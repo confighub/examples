@@ -21,7 +21,9 @@ The recipe is the ordered chain of variants, not the bundle.
 
 **Note on proof levels**: "Fully working" means the code path is implemented and has been exercised with real targets. The `verify.sh` script proves ConfigHub-only structure (spaces, units, clone links, mutations). Live controller proof (Flux reconciliation, ArgoCD sync) requires manual verification with actual targets; see the Verification Contract section below.
 
-This example has **all three delivery modes** working:
+The example implements **three delivery variants**. Implementation alone does
+not prove live delivery; run the per-target verification below for your
+client, server and controller versions:
 
 - Direct deployment variant: `<prefix>-deploy-cluster-a`
 - Flux deployment variant: `<prefix>-deploy-cluster-a-flux`

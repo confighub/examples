@@ -1,6 +1,37 @@
 # Global App Layer — Layered Recipes for ConfigHub
 
-ConfigHub models layered software stacks as real versioned config objects. This package demonstrates that with four working examples.
+ConfigHub models layered software stacks as real versioned config objects. This package contains application recipes from one component to GPU and RAG
+configurations. Each example states its prerequisites and proof limits.
+
+## Start With An App, Then The Layer Model
+
+If you are learning what an application looks like before learning layers,
+start with [What an app looks like here](../catalog/FIRST_APP.md). It uses the
+three-component [realistic app](./realistic-app/README.md): a frontend
+Deployment and Service, a backend Deployment and Service, and a Postgres
+StatefulSet and Service, with Ingress resources for the web and API paths.
+The manifests are Kubernetes configuration for the published Cubbychat images;
+they are not the app's source code or proof that a running service is healthy.
+
+The first-app guide starts with a read-only plan and a local frontend replica
+diff. That is the recommended first step before running any ConfigHub setup.
+The replica diff shows a concrete config change without an account or cluster.
+Continue with this package's [Quick Start](#quick-start) when you want to see
+how the same app configuration is represented as layered ConfigHub Units.
+
+ConfigHub owns versioned configuration, layer ancestry, comparisons, and
+governance around changes. Your app repository owns application code and
+container images; a Kubernetes target or GitOps controller owns applying the
+deployment. A planned or stored Unit does not establish that a controller
+applied it or that the app is available.
+
+Here, “flattened” means concrete Kubernetes objects after chart templates,
+overlays, and layer choices have been resolved. The realistic app's base YAML
+is already concrete Kubernetes YAML, but still has a placeholder namespace and
+development values. The layered recipe specializes those objects into region,
+role, recipe, and deployment variants; setup records that chain as ConfigHub
+Units and clone links. For this example's boundaries and evidence, see the
+[realistic app guide](./realistic-app/README.md).
 
 ## Quick Start
 

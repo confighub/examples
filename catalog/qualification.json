@@ -1,0 +1,347 @@
+{
+  "schema_version": 1,
+  "checked_on": "2026-09-26",
+  "scope": "Local source, render, guide and gate checks only; no ConfigHub, controller, cloud or cluster write",
+  "checks": {
+    "argo-beginner-applicationset": {
+      "source_revision": "50879ec441aecfbfcc34982139ea8c2827e8a2e0",
+      "working_directory": "gitops/argo/beginner-applicationset",
+      "commands": [
+        {
+          "command": "./setup.sh --explain-json",
+          "exit_code": 0,
+          "output_projection": {
+            "example_name": "gitops-argo-beginner-applicationset",
+            "mutates": false,
+            "mutates_confighub": true,
+            "mutates_live_infra": false,
+            "spaces": [
+              "gitops-argo-beginner-dev",
+              "gitops-argo-beginner-prod"
+            ],
+            "units": [
+              "apptique-dev",
+              "apptique-prod"
+            ]
+          }
+        },
+        {
+          "command": "./verify.sh",
+          "exit_code": 0,
+          "output_projection": {
+            "success": "All gitops-argo-beginner-applicationset checks passed."
+          }
+        }
+      ],
+      "tested_tool_versions": {
+        "bash": "3.2.57",
+        "jq": "1.7.1",
+        "kustomize": "v5.8.1"
+      }
+    },
+    "flux-beginner": {
+      "source_revision": "50879ec441aecfbfcc34982139ea8c2827e8a2e0",
+      "working_directory": "gitops/flux/beginner",
+      "commands": [
+        {
+          "command": "./setup.sh --explain-json",
+          "exit_code": 0,
+          "output_projection": {
+            "example_name": "gitops-flux-beginner",
+            "mutates": false,
+            "mutates_confighub": true,
+            "mutates_live_infra": false,
+            "spaces": [
+              "gitops-flux-beginner-dev",
+              "gitops-flux-beginner-prod"
+            ],
+            "units": [
+              "apptique-dev",
+              "apptique-prod"
+            ]
+          }
+        },
+        {
+          "command": "./verify.sh",
+          "exit_code": 0,
+          "output_projection": {
+            "success": "All gitops-flux-beginner checks passed."
+          }
+        }
+      ],
+      "tested_tool_versions": {
+        "bash": "3.2.57",
+        "jq": "1.7.1",
+        "kustomize": "v5.8.1"
+      }
+    },
+    "config-repo-scout": {
+      "source_revision": "50879ec441aecfbfcc34982139ea8c2827e8a2e0",
+      "working_directory": "prompts/scout",
+      "commands": [
+        {
+          "command": "python3 scout.py ../../gitops/argo/intermediate-git-as-database --json",
+          "exit_code": 0,
+          "output_projection": {
+            "q1": {
+              "templated_sources": 1,
+              "rendered_manifests": 0,
+              "hydrated_definitions": 0,
+              "gap": true
+            },
+            "q7c": {
+              "charts_with_deps": 1,
+              "charts_locked": 0,
+              "ranged_deps": 1
+            }
+          }
+        },
+        {
+          "command": "python3 test_scout.py",
+          "exit_code": 0,
+          "output_projection": {
+            "success": "all passed"
+          }
+        }
+      ],
+      "tested_tool_versions": {
+        "python3": "3.14.4",
+        "pyyaml": "6.0.3"
+      }
+    },
+    "governed-helm-change": {
+      "source_revision": "fa70ffad379765d8052f6873ccdb51b8edf4b3e7",
+      "working_directory": "confighub/cub-gen repository root",
+      "commands": [
+        {
+          "command": "./examples/helm-paas/demo-governed-change.sh",
+          "exit_code": 0,
+          "output_projection": {
+            "allow_explain": {
+              "owner": "app-team",
+              "wet_path": "Deployment/spec/template/spec/containers[0]/image",
+              "dry_path": "values.image.tag",
+              "source_path": "values-prod.yaml"
+            },
+            "allow_report": {
+              "status": "pass",
+              "changed_files": [
+                "examples/helm-paas/values.yaml"
+              ],
+              "failures": []
+            },
+            "block_report": {
+              "status": "fail",
+              "changed_files": [
+                "examples/helm-paas/templates/deployment.yaml"
+              ],
+              "failures": [
+                "examples/helm-paas/templates/deployment.yaml: changed file is not a recognized DRY input for this generator"
+              ]
+            }
+          }
+        }
+      ],
+      "tested_tool_versions": {
+        "bash": "3.2.57",
+        "git": "2.54.0",
+        "go": "1.26.2",
+        "jq": "1.7.1",
+        "perl": "5.34.1"
+      }
+    },
+    "app-only-provider-config": {
+      "source_revision": "fa70ffad379765d8052f6873ccdb51b8edf4b3e7",
+      "working_directory": "confighub/cub-gen repository root",
+      "commands": [
+        {
+          "command": "go run ./cmd/cub-gen gitops import --space platform --json ./examples/just-apps-no-platform-config ./examples/just-apps-no-platform-config",
+          "exit_code": 0,
+          "output_projection": {
+            "dry_inputs": [
+              {
+                "role": "provider-config-base",
+                "owner": "app-team",
+                "path": "no-config-platform.yaml"
+              },
+              {
+                "role": "provider-config-overlay",
+                "owner": "app-team",
+                "path": "no-config-platform-prod.yaml"
+              }
+            ],
+            "targets": [
+              {
+                "kind": "ConfigMap",
+                "name": "just-apps-no-platform-config-provider-config",
+                "namespace": "apps",
+                "source_dry_path": "app.environment"
+              },
+              {
+                "kind": "Secret",
+                "name": "just-apps-no-platform-config-provider-credentials",
+                "namespace": "apps",
+                "source_dry_path": "credentials.api_key_ref"
+              }
+            ],
+            "field_origins": [
+              [
+                {
+                  "dry_path": "app.environment",
+                  "wet_path": "ConfigMap/data/PROVIDER_ENVIRONMENT",
+                  "source_path": "no-config-platform.yaml",
+                  "transform": "no-config-platform-to-runtime",
+                  "confidence": 0.9
+                },
+                {
+                  "dry_path": "channels.inbound",
+                  "wet_path": "ConfigMap/data/PROVIDER_CHANNEL_INBOUND",
+                  "source_path": "no-config-platform.yaml",
+                  "transform": "no-config-platform-to-runtime",
+                  "confidence": 0.88
+                },
+                {
+                  "dry_path": "channels.inbound",
+                  "wet_path": "ConfigMap/data/PROVIDER_CHANNEL_INBOUND",
+                  "source_path": "no-config-platform-prod.yaml",
+                  "transform": "no-config-platform-overlay-merge",
+                  "confidence": 0.84
+                }
+              ]
+            ]
+          }
+        }
+      ],
+      "tested_tool_versions": {
+        "go": "1.26.2"
+      }
+    },
+    "layered-platform-recipe": {
+      "source_revision": "50879ec441aecfbfcc34982139ea8c2827e8a2e0",
+      "working_directory": "global-app-layer/single-component",
+      "commands": [
+        {
+          "command": "./setup.sh --explain-json",
+          "exit_code": 0,
+          "output_projection": {
+            "example": "global-app-layer-single",
+            "mode": "setup-plan",
+            "mutates": false,
+            "space_count": 7,
+            "component_count": 2
+          }
+        }
+      ],
+      "tested_tool_versions": {
+        "bash": "3.2.57",
+        "jq": "1.7.1"
+      }
+    },
+    "gpu-layered-recipe": {
+      "source_revision": "50879ec441aecfbfcc34982139ea8c2827e8a2e0",
+      "working_directory": "global-app-layer/gpu-eks-h100-training",
+      "commands": [
+        {
+          "command": "./setup.sh --explain-json",
+          "exit_code": 0,
+          "output_projection": {
+            "example": "global-app-layer-gpu-eks-h100-training",
+            "mode": "setup-plan",
+            "mutates": false,
+            "space_count": 8,
+            "component_count": 2
+          }
+        }
+      ],
+      "tested_tool_versions": {
+        "bash": "3.2.57",
+        "jq": "1.7.1"
+      }
+    },
+    "first-app-realistic": {
+      "source_revision": "50879ec441aecfbfcc34982139ea8c2827e8a2e0",
+      "working_directory": "global-app-layer/realistic-app",
+      "commands": [
+        {
+          "command": "./setup.sh --explain-json",
+          "exit_code": 0,
+          "output_projection": {
+            "example": "global-app-layer-realistic-app",
+            "mode": "explain",
+            "mutates": false,
+            "spaces": [
+              "<generated-prefix>-catalog-base",
+              "<generated-prefix>-catalog-us",
+              "<generated-prefix>-catalog-us-staging",
+              "<generated-prefix>-recipe-us-staging",
+              "<generated-prefix>-deploy-cluster-a"
+            ],
+            "deployment_units": [
+              "backend-cluster-a",
+              "frontend-cluster-a",
+              "postgres-cluster-a"
+            ]
+          }
+        },
+        {
+          "command": "bash catalog/first-app-local-change.sh",
+          "working_directory": ".",
+          "exit_code": 0,
+          "output_projection": {
+            "schemaVersion": 1,
+            "scope": "local-configuration-diff",
+            "before": {
+              "sha256": "sha256:245b28d899e05b4ca09b1d6e7bd474131ad48ed8c71949b0518f00f760534833",
+              "objectCount": 3
+            },
+            "after": {
+              "sha256": "sha256:8d05a68928b0bdc020b22e43cbe47cc796ef69e100f234fcecc0e2a89635e5ef",
+              "objectCount": 3
+            },
+            "equal": false,
+            "summary": {
+              "added": 0,
+              "removed": 0,
+              "changed": 1,
+              "unchanged": 2
+            },
+            "changes": [
+              {
+                "object": {
+                  "apiVersion": "apps/v1",
+                  "kind": "Deployment",
+                  "namespace": "confighubplaceholder",
+                  "name": "frontend"
+                },
+                "change": "changed",
+                "fields": [
+                  {
+                    "path": "/spec/replicas",
+                    "operation": "replace",
+                    "before": 1,
+                    "after": 2
+                  }
+                ]
+              }
+            ],
+            "notChecked": [
+              "Kubernetes schema or admission validity",
+              "upstream merge and protected-field preservation",
+              "target readiness or live drift",
+              "application availability"
+            ]
+          }
+        }
+      ],
+      "tested_tool_versions": {
+        "bash": "3.2.57",
+        "jq": "1.7.1",
+        "cub": "v0.6.2",
+        "cub-config-plugin": "0.6.30",
+        "rg": "15.2.0",
+        "sed": "unknown",
+        "shasum": "6.02"
+      }
+    }
+  }
+}

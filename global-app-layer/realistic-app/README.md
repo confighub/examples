@@ -32,6 +32,49 @@ This example is for:
 - a small three-tier app recipe
 - safe app-level layered propagation across backend, frontend, and database
 
+If this is your first example, read [What an app looks like here](../../catalog/FIRST_APP.md)
+first. It starts with a read-only plan and a local frontend replica diff, so
+you can see the app and make one visible config change before creating
+ConfigHub objects.
+
+## The App And Its Boundaries
+
+The source inputs are already Kubernetes objects, sometimes called flattened
+manifests: they are concrete Deployment, Service, Ingress, and StatefulSet
+objects rather than chart templates. They still contain a placeholder
+namespace and development settings, so they are not ready to apply unchanged.
+The three components are:
+
+- `frontend`: Deployment and ClusterIP Service, exposed through an Ingress
+- `backend`: Deployment and ClusterIP Service, with an API Ingress; its
+  `DATABASE_URL` points to the Postgres Service
+- `postgres`: single-replica StatefulSet and Service with a persistent volume
+  claim template; its database, user, and password match the backend example
+
+The images and application code belong to [Cubbychat](https://github.com/confighub/cubbychat).
+This repository demonstrates how to manage the Kubernetes configuration for
+those components. ConfigHub stores and versions the Units, layer ancestry,
+and recipe provenance. A Kubernetes target or a GitOps controller performs
+delivery; setup alone does not apply the app, and successful Unit verification
+does not show that the app is serving requests.
+
+## Start Locally, Then Transfer The Pattern
+
+For the first useful result, follow [the first-app guide](../../catalog/FIRST_APP.md):
+inspect `--explain-json`, then run its local frontend replica comparison. It
+shows the exact Deployment field changing from one replica to two and writes
+only to a temporary copy. This gives you a concrete understanding of the app
+configuration before choosing whether to materialize it in ConfigHub.
+
+To adapt the example to your own app, replace the three base manifests with
+your app's concrete component manifests, then update the recipe's component
+names and cross-component settings (for example, the backend database URL and
+the database name). Keep each component's base config separate from the
+region, role, recipe, and deployment choices. Use the read-only plan to check
+the spaces and resulting Unit names before running setup. Your app source,
+image build, credentials, and delivery controller remain part of your own
+application and delivery workflow.
+
 ## What You Need Installed
 
 - `cub` in `PATH`
