@@ -21,6 +21,20 @@ for (const entry of catalog.entries) {
   ids.add(entry.id);
   assert.equal(entry.visibility, 'public');
   assert.equal(entry.maintenance_owner, entry.source.repository);
+  assert.equal(entry.maintainer_acceptance, 'pending-maintainer-review');
+  assert.deepEqual(Object.keys(entry.requirements).sort(), ['connected', 'local']);
+  for (const scope of ['local', 'connected']) {
+    for (const field of ['credentials', 'cost', 'cleanup']) {
+      assert.ok(typeof entry.requirements[scope][field] === 'string' && entry.requirements[scope][field].trim(), `${entry.id} missing ${scope}.${field}`);
+    }
+  }
+  assert.ok(['not-tested', 'not-applicable', 'not-in-index'].includes(entry.requirements.connected.qualification));
+  const versions = entry.requirements.local.tested_tool_versions;
+  assert.ok(versions && Object.keys(versions).length, `${entry.id} missing tested tool versions`);
+  for (const [tool, version] of Object.entries(versions)) {
+    assert.match(tool, /^[a-z][a-z0-9-]*$/);
+    assert.ok(typeof version === 'string' && (version === 'unknown' || /^[v]?[0-9]+(?:\.[0-9]+)+$/.test(version)), `${entry.id} has an unsupported version value for ${tool}`);
+  }
   assert.ok(['maintained', 'candidate', 'needs-refresh', 'superseded', 'historical'].includes(entry.lifecycle));
   assert.ok(['verified-source', 'source-reviewed'].includes(entry.admission));
   assert.match(entry.source.repository, /^confighub\/[a-z0-9-]+$/);
@@ -52,6 +66,7 @@ for (const entry of catalog.entries) {
     assert.ok(check, `${entry.id} missing qualification receipt`);
     assert.equal(check.source_revision, entry.source.revision);
     assert.equal(check.working_directory, entry.preview.working_directory);
+    assert.deepEqual(check.tested_tool_versions, entry.requirements.local.tested_tool_versions);
     assert.ok(check.commands.some(record => record.command === entry.preview.command && record.exit_code === 0), `${entry.id} preview lacks a passing receipt`);
     if (entry.practice) {
       assert.ok(check.commands.some(record => record.command === entry.practice.command && record.exit_code === 0), `${entry.id} practice lacks a passing receipt`);

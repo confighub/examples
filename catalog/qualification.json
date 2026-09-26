@@ -32,7 +32,12 @@
             "success": "All gitops-argo-beginner-applicationset checks passed."
           }
         }
-      ]
+      ],
+      "tested_tool_versions": {
+        "bash": "3.2.57",
+        "jq": "1.7.1",
+        "kustomize": "v5.8.1"
+      }
     },
     "flux-beginner": {
       "source_revision": "50879ec441aecfbfcc34982139ea8c2827e8a2e0",
@@ -63,7 +68,12 @@
             "success": "All gitops-flux-beginner checks passed."
           }
         }
-      ]
+      ],
+      "tested_tool_versions": {
+        "bash": "3.2.57",
+        "jq": "1.7.1",
+        "kustomize": "v5.8.1"
+      }
     },
     "config-repo-scout": {
       "source_revision": "50879ec441aecfbfcc34982139ea8c2827e8a2e0",
@@ -93,7 +103,11 @@
             "success": "all passed"
           }
         }
-      ]
+      ],
+      "tested_tool_versions": {
+        "python3": "3.14.4",
+        "pyyaml": "6.0.3"
+      }
     },
     "governed-helm-change": {
       "source_revision": "fa70ffad379765d8052f6873ccdb51b8edf4b3e7",
@@ -127,7 +141,14 @@
             }
           }
         }
-      ]
+      ],
+      "tested_tool_versions": {
+        "bash": "3.2.57",
+        "git": "2.54.0",
+        "go": "1.26.2",
+        "jq": "1.7.1",
+        "perl": "5.34.1"
+      }
     },
     "app-only-provider-config": {
       "source_revision": "fa70ffad379765d8052f6873ccdb51b8edf4b3e7",
@@ -190,7 +211,10 @@
             ]
           }
         }
-      ]
+      ],
+      "tested_tool_versions": {
+        "go": "1.26.2"
+      }
     },
     "layered-platform-recipe": {
       "source_revision": "50879ec441aecfbfcc34982139ea8c2827e8a2e0",
@@ -207,7 +231,11 @@
             "component_count": 2
           }
         }
-      ]
+      ],
+      "tested_tool_versions": {
+        "bash": "3.2.57",
+        "jq": "1.7.1"
+      }
     },
     "gpu-layered-recipe": {
       "source_revision": "50879ec441aecfbfcc34982139ea8c2827e8a2e0",
@@ -224,7 +252,11 @@
             "component_count": 2
           }
         }
-      ]
+      ],
+      "tested_tool_versions": {
+        "bash": "3.2.57",
+        "jq": "1.7.1"
+      }
     },
     "first-app-realistic": {
       "source_revision": "50879ec441aecfbfcc34982139ea8c2827e8a2e0",
@@ -300,7 +332,16 @@
             ]
           }
         }
-      ]
+      ],
+      "tested_tool_versions": {
+        "bash": "3.2.57",
+        "jq": "1.7.1",
+        "cub": "v0.6.2",
+        "cub-config-plugin": "0.6.30",
+        "rg": "15.2.0",
+        "sed": "unknown",
+        "shasum": "6.02"
+      }
     }
   }
 }

@@ -45,6 +45,17 @@ needs an authorized ConfigHub setup to test its useful flow; the bounded Helm
 change guide already proves a local allowed and blocked edit. The GPU recipe's
 preview does not prove an H100 run.
 
+Each entry has `maintenance_owner`, the repository that owns its canonical
+source, and `maintainer_acceptance: pending-maintainer-review`. This index
+does not imply that the source maintainer accepted its catalog wording or a
+new support obligation. `requirements.local` describes the checked command
+and any listed practice step. Its `tested_tool_versions` are exact versions
+observed for those local checks, or `unknown` where no version was captured;
+they are not supported version ranges. `credentials`, `cost` and `cleanup`
+describe only that local scope. `requirements.connected` separately states
+the untested ConfigHub, controller or provider path, including its authority,
+cost and cleanup limits. Read the owning guide before crossing that boundary.
+
 For a selected entry, read `guides.human` and `guides.ai` in the owning
 repository, check `source.revision` against its current guide, then run only the
 documented `preview.command` with the stated prerequisites. Guide URLs point to
@@ -60,7 +71,7 @@ exact command and source revision behind admitted entries. The repository
 verifier checks the schema, link shapes, local paths, receipt binding,
 eligibility and search cases. Adding an entry requires a distinct user task, canonical
 public source and revision, lifecycle and role, a deterministic preview,
-effects and stop condition, and separate static, connected, controller and
+effects and stop condition, local/connected requirements, and separate static, connected, controller and
 runtime evidence. Use `source-reviewed` until the useful local path is run;
 keep private, historical, simulated and unimplemented material out of the
 default runnable results.

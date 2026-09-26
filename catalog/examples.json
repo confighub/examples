@@ -56,6 +56,29 @@
         "command": "bash catalog/first-app-local-change.sh",
         "artifact": "result.json: one changed Deployment field /spec/replicas from 1 to 2",
         "effects": "Writes two local copies and a local JSON diff; no ConfigHub or cluster write"
+      },
+      "maintainer_acceptance": "pending-maintainer-review",
+      "requirements": {
+        "local": {
+          "tested_tool_versions": {
+            "bash": "3.2.57",
+            "jq": "1.7.1",
+            "cub": "v0.6.2",
+            "cub-config-plugin": "0.6.30",
+            "rg": "15.2.0",
+            "sed": "unknown",
+            "shasum": "6.02"
+          },
+          "credentials": "none for the plan and local diff",
+          "cost": "Local CPU and temporary disk; no ConfigHub or cluster write",
+          "cleanup": "The plan writes nothing. The diff helper prints a fresh local output directory containing before.yaml, after.yaml and result.json; remove that directory when finished."
+        },
+        "connected": {
+          "qualification": "not-tested",
+          "credentials": "Authenticated compatible ConfigHub context; a Kubernetes target and cluster authority only for the later live path",
+          "cost": "ConfigHub resource cost unknown; live cluster or cloud cost depends on the selected target",
+          "cleanup": "After setup, the source ./cleanup.sh deletes the run-labelled ConfigHub Spaces recursively and removes local state; review its scope before running. Live resource cleanup was not checked."
+        }
       }
     },
     {
@@ -102,7 +125,26 @@
         "runtime": "not checked",
         "receipt": "catalog/qualification.json#/checks/argo-beginner-applicationset"
       },
-      "maintenance_owner": "confighub/examples"
+      "maintenance_owner": "confighub/examples",
+      "maintainer_acceptance": "pending-maintainer-review",
+      "requirements": {
+        "local": {
+          "tested_tool_versions": {
+            "bash": "3.2.57",
+            "jq": "1.7.1",
+            "kustomize": "v5.8.1"
+          },
+          "credentials": "none for --explain-json and ./verify.sh",
+          "cost": "Local CPU and temporary render files only",
+          "cleanup": "The preview writes nothing; ./verify.sh removes its temporary render output."
+        },
+        "connected": {
+          "qualification": "not-tested",
+          "credentials": "Authenticated compatible ConfigHub context for ./setup.sh; no cluster credential is used by this example setup",
+          "cost": "ConfigHub resource cost unknown; no cluster or cloud deployment in this setup",
+          "cleanup": "The source ./cleanup.sh removes local var/ output and prints two cub space delete commands; it does not execute those ConfigHub deletions."
+        }
+      }
     },
     {
       "id": "flux-beginner",
@@ -148,7 +190,26 @@
         "runtime": "not checked",
         "receipt": "catalog/qualification.json#/checks/flux-beginner"
       },
-      "maintenance_owner": "confighub/examples"
+      "maintenance_owner": "confighub/examples",
+      "maintainer_acceptance": "pending-maintainer-review",
+      "requirements": {
+        "local": {
+          "tested_tool_versions": {
+            "bash": "3.2.57",
+            "jq": "1.7.1",
+            "kustomize": "v5.8.1"
+          },
+          "credentials": "none for --explain-json and ./verify.sh",
+          "cost": "Local CPU and temporary render files only",
+          "cleanup": "The preview writes nothing; ./verify.sh removes its temporary render output."
+        },
+        "connected": {
+          "qualification": "not-tested",
+          "credentials": "Authenticated compatible ConfigHub context for ./setup.sh; no cluster credential is used by this example setup",
+          "cost": "ConfigHub resource cost unknown; no cluster or cloud deployment in this setup",
+          "cleanup": "The source ./cleanup.sh removes local var/ output and prints two cub space delete commands; it does not execute those ConfigHub deletions."
+        }
+      }
     },
     {
       "id": "promotion-demo-data",
@@ -190,7 +251,24 @@
         "controller": "not checked",
         "runtime": "not checked"
       },
-      "maintenance_owner": "confighub/examples"
+      "maintenance_owner": "confighub/examples",
+      "maintainer_acceptance": "pending-maintainer-review",
+      "requirements": {
+        "local": {
+          "tested_tool_versions": {
+            "cat": "unknown"
+          },
+          "credentials": "none to read the guide",
+          "cost": "No service or cloud cost to read the guide",
+          "cleanup": "None for guide reading."
+        },
+        "connected": {
+          "qualification": "not-tested",
+          "credentials": "Authenticated compatible ConfigHub context with permission to create demo Spaces, Units and targets",
+          "cost": "ConfigHub resource cost unknown; the documented noop target does not deploy to a cluster",
+          "cleanup": "The source ./cleanup.sh recursively deletes all Spaces labelled with the example name, including contained data; inspect label scope and name collisions first."
+        }
+      }
     },
     {
       "id": "config-repo-scout",
@@ -239,7 +317,25 @@
         "runtime": "not checked",
         "receipt": "catalog/qualification.json#/checks/config-repo-scout"
       },
-      "maintenance_owner": "confighub/examples"
+      "maintenance_owner": "confighub/examples",
+      "maintainer_acceptance": "pending-maintainer-review",
+      "requirements": {
+        "local": {
+          "tested_tool_versions": {
+            "python3": "3.14.4",
+            "pyyaml": "6.0.3"
+          },
+          "credentials": "none; reads a local repository",
+          "cost": "Local CPU only; no network or service use by the script",
+          "cleanup": "None; scout.py does not write output files unless the caller redirects stdout."
+        },
+        "connected": {
+          "qualification": "not-applicable",
+          "credentials": "none; this indexed script has no connected mode",
+          "cost": "none for a connected service, because none is used",
+          "cleanup": "not applicable"
+        }
+      }
     },
     {
       "id": "governed-helm-change",
@@ -293,7 +389,28 @@
         "runtime": "not checked here",
         "receipt": "catalog/qualification.json#/checks/governed-helm-change"
       },
-      "maintenance_owner": "confighub/cub-gen"
+      "maintenance_owner": "confighub/cub-gen",
+      "maintainer_acceptance": "pending-maintainer-review",
+      "requirements": {
+        "local": {
+          "tested_tool_versions": {
+            "bash": "3.2.57",
+            "git": "2.54.0",
+            "go": "1.26.2",
+            "jq": "1.7.1",
+            "perl": "5.34.1"
+          },
+          "credentials": "none for the local ownership-gate script",
+          "cost": "Local build CPU and temporary disk; Go dependencies may need downloading if uncached; no ConfigHub or cluster write",
+          "cleanup": "Remove the script output directory under .tmp/helm-paas-governed-change or the chosen OUT_ROOT after reviewing allow/block reports. The script leaves its temporary clone and JSON reports for inspection."
+        },
+        "connected": {
+          "qualification": "not-tested",
+          "credentials": "Authenticated compatible ConfigHub context for the separate connected wrapper; cluster access for the separate runtime wrapper",
+          "cost": "ConfigHub and optional cluster/cloud cost unknown",
+          "cleanup": "No connected cleanup was qualified for this indexed local gate; inspect the owning guide before any connected run."
+        }
+      }
     },
     {
       "id": "app-only-provider-config",
@@ -338,7 +455,24 @@
         "runtime": "not established in source",
         "receipt": "catalog/qualification.json#/checks/app-only-provider-config"
       },
-      "maintenance_owner": "confighub/cub-gen"
+      "maintenance_owner": "confighub/cub-gen",
+      "maintainer_acceptance": "pending-maintainer-review",
+      "requirements": {
+        "local": {
+          "tested_tool_versions": {
+            "go": "1.26.2"
+          },
+          "credentials": "none for local source import and provenance output",
+          "cost": "Local build CPU; Go dependencies may need downloading if uncached; no ConfigHub or provider write",
+          "cleanup": "No example output file is written by the command; clear any caller-redirected JSON when finished."
+        },
+        "connected": {
+          "qualification": "not-tested",
+          "credentials": "Authenticated compatible ConfigHub context for the separate connected bridge wrapper; provider credentials would be separate and are not covered by this example",
+          "cost": "ConfigHub cost unknown; provider runtime cost not assessed",
+          "cleanup": "No connected or provider cleanup was qualified; inspect the owning guide before any connected run."
+        }
+      }
     },
     {
       "id": "layered-platform-recipe",
@@ -386,7 +520,25 @@
         "runtime": "not checked",
         "receipt": "catalog/qualification.json#/checks/layered-platform-recipe"
       },
-      "maintenance_owner": "confighub/examples"
+      "maintenance_owner": "confighub/examples",
+      "maintainer_acceptance": "pending-maintainer-review",
+      "requirements": {
+        "local": {
+          "tested_tool_versions": {
+            "bash": "3.2.57",
+            "jq": "1.7.1"
+          },
+          "credentials": "none for --explain-json",
+          "cost": "Local CPU only; no ConfigHub or cluster write",
+          "cleanup": "None; the preview writes no example state."
+        },
+        "connected": {
+          "qualification": "not-tested",
+          "credentials": "Authenticated compatible ConfigHub context for setup; compatible target and cluster authority only for optional apply",
+          "cost": "ConfigHub resource cost unknown; optional cluster/cloud cost depends on target",
+          "cleanup": "After setup, the source ./cleanup.sh deletes the run-labelled ConfigHub Spaces recursively and removes local state; review scope before running. Live resources were not checked."
+        }
+      }
     },
     {
       "id": "gpu-layered-recipe",
@@ -434,7 +586,25 @@
         "runtime": "not checked",
         "receipt": "catalog/qualification.json#/checks/gpu-layered-recipe"
       },
-      "maintenance_owner": "confighub/examples"
+      "maintenance_owner": "confighub/examples",
+      "maintainer_acceptance": "pending-maintainer-review",
+      "requirements": {
+        "local": {
+          "tested_tool_versions": {
+            "bash": "3.2.57",
+            "jq": "1.7.1"
+          },
+          "credentials": "none for --explain-json",
+          "cost": "Local CPU only; no GPU, ConfigHub or cluster write",
+          "cleanup": "None; the preview writes no example state."
+        },
+        "connected": {
+          "qualification": "not-tested",
+          "credentials": "Authenticated compatible ConfigHub context for setup; compatible target and cluster authority for optional apply; actual GPU proof needs GPU-capable nodes and image access",
+          "cost": "ConfigHub cost unknown; a real GPU/H100 cloud run can incur substantial cost, amount unknown",
+          "cleanup": "After setup, the source ./cleanup.sh deletes the run-labelled ConfigHub Spaces recursively and removes local state; cluster/GPU resource cleanup was not checked."
+        }
+      }
     },
     {
       "id": "scout-import-from-bundle",
@@ -479,7 +649,24 @@
         "controller": "not checked",
         "runtime": "not checked"
       },
-      "maintenance_owner": "confighub/cub-scout"
+      "maintenance_owner": "confighub/cub-scout",
+      "maintainer_acceptance": "pending-maintainer-review",
+      "requirements": {
+        "local": {
+          "tested_tool_versions": {
+            "cub-scout": "unknown"
+          },
+          "credentials": "none stated for the saved-bundle dry run; command not rerun",
+          "cost": "Expected local CPU only; not independently checked",
+          "cleanup": "The documented command prints a proposal; no local cleanup is described."
+        },
+        "connected": {
+          "qualification": "not-in-index",
+          "credentials": "A real import may require ConfigHub authority; this indexed dry run does not establish its requirements",
+          "cost": "unknown for an actual connected import",
+          "cleanup": "not documented or qualified for an actual import"
+        }
+      }
     }
   ]
 }
