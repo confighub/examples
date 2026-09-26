@@ -4,7 +4,8 @@ This repo contains runnable examples for ConfigHub.
 
 ## Safe First Checks
 
-For a read-only first pass:
+These checks do not change ConfigHub or cluster resources. The repository
+verifier runs local tests and checks example contracts.
 
 ```bash
 ./scripts/verify.sh
@@ -41,6 +42,13 @@ If you are not logged in yet, run `cub auth login` before the `cub` commands.
 - If you want worker extensibility, start with [`custom-workers`](./custom-workers/).
 
 Note on contract standard: [`EXAMPLE_CONTRACT_STANDARD.md`](./EXAMPLE_CONTRACT_STANDARD.md)
+
+## Examples across repositories
+
+The [example landscape review](./docs/example-landscape-review.md) maps the
+non-GitOps families, related examples maintained with their products, and the
+checks needed before moving an example here. It records source inspection, not
+fresh runtime qualification.
 
 ## Companion Material
 
