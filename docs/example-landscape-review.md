@@ -94,6 +94,61 @@ product proof harness, not two more independent tutorials.
   stay in helm-expt alongside their generators and evidence. Their quantity is
   not a count of runnable user journeys.
 
+## Which excluded material is worth updating?
+
+Exclusion from today's runnable list is not a decision to discard the user need.
+Keep the following outcomes, while replacing stale instructions in their owning
+repositories. These are qualification decisions; no runtime status changes here.
+
+| Material | Decision | Useful outcome and condition for admission |
+| --- | --- | --- |
+| Scout's planned Argo and Flux onboarding outlines | Keep the goals; update and implement against current product behavior | Explain an existing app, identify source and delivery authority, and prepare a reviewed handoff. Start with one common shape per controller. A successful upload is not proof that the controller changed source. |
+| Scout's old import demos | Retain diagnostic fixtures; replace obsolete command paths | Preserve useful discovery and render cases. Merge the user walkthrough into the current onboarding path instead of maintaining a second importer. |
+| Scout's simulated Argo demonstrations | Preserve as labelled historical/design references; extract useful acceptance questions | Rebuild only questions covered by a selected real journey. Simulated transcripts stay out of default runnable-example retrieval. |
+| Obsolete flux-bridge and legacy integration copies | Flag for archival review; point to supported successors | Do not revive a removed protocol. Preserve history where useful and verify the replacement link before retirement. |
+| Detector, ownership, hook and refusal fixtures | Keep with product tests | These are valuable regression and agent-evaluation inputs. Label them as fixtures, not user walkthroughs or proof of a live deployment. |
+| The old mini-kubara and source-generation copies | Use the successors recorded in #242 | Preserve any unique acceptance requirements in the current canonical homes; do not restore deleted copies. |
+
+Before removing anything, identify its successor or record why none is needed,
+check incoming links and tests, and preserve relevant historical evidence. This
+review flags archival candidates; it does not delete or archive repositories.
+
+## A discoverable corpus for Pilot and Workshop
+
+The next deliverable should be a small shared example index that points to
+canonical guides and artifacts. Keep one human-readable front door here; do not
+require a user to understand the inventory's internal categories before choosing
+a useful task. Agent retrieval should start with the user's problem and return
+the same maintained guide a person can follow.
+
+Proposed minimum entry contract:
+
+- Stable ID, plain-language user task, canonical source URL/path and pinned revision.
+- Source visibility, accepting maintainer and lifecycle status: candidate,
+  maintained, needs-refresh, superseded or historical.
+- Human guide and AI guide; supported tool versions, prerequisites, effects,
+  credentials/cost requirements and cleanup.
+- Deterministic command or workflow, expected useful artifact, and explicit
+  refusal/stop conditions. Do not invent an executable command for an outline.
+- Evidence references, separately stating static, connected, controller and
+  runtime coverage, with last verified date and known gaps.
+- Successor reference when superseded; role as walkthrough, test fixture or
+  historical reference. A fixture passing is not a user journey passing.
+
+Default runnable retrieval should select explicitly admitted maintained entries
+with public, verified source references and prerequisites the agent can explain.
+Private records stay access-controlled; historical, simulated and unimplemented
+material requires an explicit research/test query. A maintained local-only
+example remains useful: its limits must travel with the result. Drift in pinned
+sources or supported commands triggers review, not automatic proof renewal.
+
+Acceptance for this corpus: given an existing-chart, Argo/Flux, app-configuration,
+platform or GPU request, Pilot and Workshop can find the appropriate guide,
+explain its prerequisites, produce its declared artifact using supported steps,
+and stop honestly at missing authority or proof. Use a fresh agent and the same
+manual path. **This PR defines the direction; it does not implement ingestion or
+claim either tool already consumes this review.**
+
 ## Small follow-up queue
 
 No migration is approved by this review. These are the next qualification tasks,
