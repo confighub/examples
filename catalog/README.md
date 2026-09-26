@@ -1,6 +1,11 @@
-# Public example catalog
+# Optional example search
 
-This small index helps people and agents find a current public guide for a
+**Looking for an example? Start with the [main README](../README.md).** It is
+the public directory. This folder documents optional command-line search over
+a selected set of ten examples, not a second complete collection. The JSON
+records include requirements and proof limits for tooling and maintainers.
+
+This small search index helps people and agents find a public guide for a
 specific task. It links to the owning repository; it does not copy or execute
 its example. Product examples remain with the code and tests that maintain them.
 If you are new to the model, start with [What an app looks like](./FIRST_APP.md):

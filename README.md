@@ -3,6 +3,11 @@
 Learn what an application looks like in ConfigHub, make a useful configuration
 change, and understand how that change reaches your delivery system.
 
+**Start here.** This README is the public directory for the collection. Choose a
+need below, then follow the linked example's guide. Some examples live here;
+others stay in the product repository that maintains them. You do not need to
+read an audit or use a search tool first.
+
 ## Start with your app
 
 | What you want to learn | Start here | What you get |
@@ -35,9 +40,10 @@ If you are not logged in yet, run `cub auth login` before the `cub` commands.
 
 ## Stable Paths
 
-- [`catalog`](./catalog/README.md): search public example guides by user task,
-  with machine-readable status, safe preview and evidence limits. Use
-  `node scripts/examples-catalog.mjs search 'existing Argo repository' --json`.
+- [Optional command-line search](./catalog/README.md): a selected subset of
+  example guides with machine-readable requirements and evidence. This is not
+  the complete directory; the starting points and example families are here
+  in this README.
 - [What an app looks like](./catalog/FIRST_APP.md): follow a three-component
   sample from source manifests to planned ConfigHub Units and delivery boundaries.
 - [`gitops`](./gitops/README.md): index of canonical Argo CD and Flux example repo shapes, by tool and skill level. Start here if you run Argo CD or Flux and want an example that looks like your repo.
@@ -65,12 +71,13 @@ If you are not logged in yet, run `cub auth login` before the `cub` commands.
 
 Note on contract standard: [`EXAMPLE_CONTRACT_STANDARD.md`](./EXAMPLE_CONTRACT_STANDARD.md)
 
-## Examples across repositories
+## Maintainer audit and outstanding work
 
-The [example landscape review](./docs/example-landscape-review.md) maps the
-non-GitOps families, related examples maintained with their products, and the
-checks needed before moving an example here. It records source inspection, not
-fresh runtime qualification.
+The [cross-repository audit](./docs/example-landscape-review.md) records where
+examples belong, which older material has a successor, and which candidates
+still need repair or qualification. It is a maintenance record, not a second
+user directory or a required tutorial step. Use the links in this README to
+choose an example; use the audit when maintaining or consolidating the collection.
 
 ## Companion Material
 

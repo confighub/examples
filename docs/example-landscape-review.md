@@ -1,5 +1,9 @@
 # Example landscape and maintenance review
 
+**Maintainer record.** For the public example directory, use the
+[main README](../README.md). This audit supports decisions about ownership,
+consolidation and qualification; it is not another user starting point.
+
 Reviewed 2026-09-26. This is a source inventory and a maintenance recommendation,
 not a new runnable catalog or a certification of the linked examples.
 
