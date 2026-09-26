@@ -4,8 +4,12 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "${script_dir}/.." && pwd)"
 
+echo "==> Checking public example catalog"
+node "${repo_root}/scripts/test-examples-catalog.mjs"
+
 script_checks=(
   "${repo_root}/scripts/verify.sh"
+  "${repo_root}/catalog/first-app-local-change.sh"
   "${repo_root}/scripts/update-sdk.sh"
   "${repo_root}/spring-platform/springboot-platform-app-centric/setup.sh"
   "${repo_root}/spring-platform/springboot-platform-app-centric/verify.sh"

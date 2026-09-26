@@ -98,6 +98,23 @@ cub unit get --space <space> --json <unit>
 
 ## 7. Choose The Right Example Family
 
+Search the [public example catalog](./catalog/README.md) by the user's task
+before choosing a guide:
+
+```bash
+node scripts/examples-catalog.mjs search 'what an app looks like' --json
+node scripts/examples-catalog.mjs search 'existing Flux repository' --json
+node scripts/examples-catalog.mjs search 'Helm values' --all --json
+```
+
+Default results are public maintained walkthroughs with verified source paths.
+`--all` also returns source-reviewed candidates and advanced references. Read
+each result's `evidence`, `effects` and `stop_when` before running its documented
+preview. A local preview does not establish ConfigHub, controller or runtime
+proof. Then follow the selected example's own AI guide and current source.
+For a first app, use the [same short guide](./catalog/FIRST_APP.md) a person
+reads; it starts with real frontend, backend and database manifests.
+
 Pick the family that matches the user's goal:
 
 - Stable no-cluster intro:

@@ -18,6 +18,11 @@ If you are not logged in yet, run `cub auth login` before the `cub` commands.
 
 ## Stable Paths
 
+- [`catalog`](./catalog/README.md): search public example guides by user task,
+  with machine-readable status, safe preview and evidence limits. Use
+  `node scripts/examples-catalog.mjs search 'existing Argo repository' --json`.
+- [What an app looks like](./catalog/FIRST_APP.md): follow a three-component
+  sample from source manifests to planned ConfigHub Units and delivery boundaries.
 - [`gitops`](./gitops/README.md): index of canonical Argo CD and Flux example repo shapes, by tool and skill level. Start here if you run Argo CD or Flux and want an example that looks like your repo.
 - [`promotion-demo-data`](./promotion-demo-data/README.md): quickest no-cluster demo data for learning ConfigHub's App-Deployment-Target model and promotion flow.
 - [`initiatives-demo`](./initiatives-demo/README.md): 5 compliance initiatives backed by Kyverno CEL policies, with sample Kubernetes units to evaluate.
