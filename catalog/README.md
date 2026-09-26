@@ -53,8 +53,10 @@ and any listed practice step. Its `tested_tool_versions` are exact versions
 observed for those local checks, or `unknown` where no version was captured;
 they are not supported version ranges. `credentials`, `cost` and `cleanup`
 describe only that local scope. `requirements.connected` separately states
-the untested ConfigHub, controller or provider path, including its authority,
-cost and cleanup limits. Read the owning guide before crossing that boundary.
+the ConfigHub, controller or provider scope and its qualification, authority,
+cost and cleanup limits. The [first-app connected receipt](./first-app-connected-receipt.json)
+proves one ConfigHub-only setup and stored Unit change; it does not establish
+controller or runtime behavior. Read the owning guide before crossing a boundary.
 
 For a selected entry, read `guides.human` and `guides.ai` in the owning
 repository, check `source.revision` against its current guide, then run only the

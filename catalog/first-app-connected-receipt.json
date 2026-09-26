@@ -1,0 +1,309 @@
+{
+  "schema_version": 1,
+  "example": "first-app-realistic",
+  "recorded_at": "2026-09-26T07:55:06.532718+00:00",
+  "source": {
+    "repository": "confighub/examples",
+    "revision": "50879ec441aecfbfcc34982139ea8c2827e8a2e0",
+    "path": "global-app-layer/realistic-app"
+  },
+  "scope": "confighub-only-setup-and-scoped-change",
+  "environment": {
+    "server": "local development server",
+    "server_version": "v0.5.1",
+    "server_cli_version": "v0.5.1",
+    "local_diff_cli_version": "v0.5.1",
+    "workshop_plugin_version": "0.6.30"
+  },
+  "preflight": {
+    "latest_client_read": "cub v0.6.2 on server v0.5.1 refused invalid include field ComponentID for entity Space",
+    "matched_client_read": "cub v0.5.1 succeeded; used only for this run, global CLI unchanged"
+  },
+  "prefix": "teaching-app-1790409197",
+  "setup": {
+    "command": "./setup.sh <unique-prefix>",
+    "exit_code": 0,
+    "spaces_created": 5,
+    "units_created": 17,
+    "component_units": 15,
+    "recipe_units": 1,
+    "namespace_configuration_units": 1,
+    "target_argument": null
+  },
+  "verification_before": {
+    "ok": true,
+    "example": "global-app-layer-realistic-app",
+    "prefix": "teaching-app-1790409197",
+    "targetExpected": false,
+    "spacesChecked": [
+      "teaching-app-1790409197-catalog-base",
+      "teaching-app-1790409197-catalog-us",
+      "teaching-app-1790409197-catalog-us-staging",
+      "teaching-app-1790409197-recipe-us-staging",
+      "teaching-app-1790409197-deploy-cluster-a"
+    ],
+    "unitsChecked": [
+      "teaching-app-1790409197-catalog-base/backend-base",
+      "teaching-app-1790409197-catalog-us/backend-us",
+      "teaching-app-1790409197-catalog-us-staging/backend-us-staging",
+      "teaching-app-1790409197-recipe-us-staging/backend-recipe-us-staging",
+      "teaching-app-1790409197-deploy-cluster-a/backend-cluster-a",
+      "teaching-app-1790409197-catalog-base/frontend-base",
+      "teaching-app-1790409197-catalog-us/frontend-us",
+      "teaching-app-1790409197-catalog-us-staging/frontend-us-staging",
+      "teaching-app-1790409197-recipe-us-staging/frontend-recipe-us-staging",
+      "teaching-app-1790409197-deploy-cluster-a/frontend-cluster-a",
+      "teaching-app-1790409197-catalog-base/postgres-base",
+      "teaching-app-1790409197-catalog-us/postgres-us",
+      "teaching-app-1790409197-catalog-us-staging/postgres-us-staging",
+      "teaching-app-1790409197-recipe-us-staging/postgres-recipe-us-staging",
+      "teaching-app-1790409197-deploy-cluster-a/postgres-cluster-a",
+      "teaching-app-1790409197-recipe-us-staging/recipe-us-staging-realistic-app"
+    ],
+    "checks": [
+      "spaces-exist",
+      "namespace-bootstrap",
+      "clone-chains",
+      "component-mutations",
+      "recipe-manifest",
+      "target-bindings-when-present"
+    ],
+    "summary": "All global-app-layer realistic-app checks passed."
+  },
+  "change": {
+    "command": "cub function do set-replicas 3 --space <unique-prefix>-deploy-cluster-a --unit frontend-cluster-a",
+    "exit_code": 0,
+    "comparison": "Read stored frontend Unit data before and after; compared with cub config diff",
+    "diff": {
+      "schemaVersion": 1,
+      "scope": "local-configuration-diff",
+      "before": {
+        "sha256": "sha256:0f9309475a81e37a94733f92c32b350a803433410ec559791af8305af8df8de7",
+        "objectCount": 3
+      },
+      "after": {
+        "sha256": "sha256:1fc8f06ae5bc1519742cd77bf882c303f74d0bdd74feb485fd87c531d7c0c2cb",
+        "objectCount": 3
+      },
+      "equal": false,
+      "summary": {
+        "added": 0,
+        "removed": 0,
+        "changed": 1,
+        "unchanged": 2
+      },
+      "changes": [
+        {
+          "object": {
+            "apiVersion": "apps/v1",
+            "kind": "Deployment",
+            "namespace": "cluster-a",
+            "name": "frontend"
+          },
+          "change": "changed",
+          "fields": [
+            {
+              "path": "/spec/replicas",
+              "operation": "replace",
+              "before": 2,
+              "after": 3
+            }
+          ]
+        }
+      ],
+      "comparison": "Object identity includes API version and explicit namespace; mapping and document order ignored, lists of uniquely named items compared item by item by name, every other list compared as a whole value, missing and null distinct. No Kubernetes defaulting or schema interpretation. Secret data and stringData values are replaced by a short hash of each value.",
+      "notChecked": [
+        "Kubernetes schema or admission validity",
+        "upstream merge and protected-field preservation",
+        "target readiness or live drift",
+        "application availability"
+      ]
+    },
+    "diff_rechecked_with_matched_cli": "cub v0.5.1 and Workshop plugin 0.6.30 reproduced the same local JSON diff"
+  },
+  "verification_after": {
+    "ok": true,
+    "example": "global-app-layer-realistic-app",
+    "prefix": "teaching-app-1790409197",
+    "targetExpected": false,
+    "spacesChecked": [
+      "teaching-app-1790409197-catalog-base",
+      "teaching-app-1790409197-catalog-us",
+      "teaching-app-1790409197-catalog-us-staging",
+      "teaching-app-1790409197-recipe-us-staging",
+      "teaching-app-1790409197-deploy-cluster-a"
+    ],
+    "unitsChecked": [
+      "teaching-app-1790409197-catalog-base/backend-base",
+      "teaching-app-1790409197-catalog-us/backend-us",
+      "teaching-app-1790409197-catalog-us-staging/backend-us-staging",
+      "teaching-app-1790409197-recipe-us-staging/backend-recipe-us-staging",
+      "teaching-app-1790409197-deploy-cluster-a/backend-cluster-a",
+      "teaching-app-1790409197-catalog-base/frontend-base",
+      "teaching-app-1790409197-catalog-us/frontend-us",
+      "teaching-app-1790409197-catalog-us-staging/frontend-us-staging",
+      "teaching-app-1790409197-recipe-us-staging/frontend-recipe-us-staging",
+      "teaching-app-1790409197-deploy-cluster-a/frontend-cluster-a",
+      "teaching-app-1790409197-catalog-base/postgres-base",
+      "teaching-app-1790409197-catalog-us/postgres-us",
+      "teaching-app-1790409197-catalog-us-staging/postgres-us-staging",
+      "teaching-app-1790409197-recipe-us-staging/postgres-recipe-us-staging",
+      "teaching-app-1790409197-deploy-cluster-a/postgres-cluster-a",
+      "teaching-app-1790409197-recipe-us-staging/recipe-us-staging-realistic-app"
+    ],
+    "checks": [
+      "spaces-exist",
+      "namespace-bootstrap",
+      "clone-chains",
+      "component-mutations",
+      "recipe-manifest",
+      "target-bindings-when-present"
+    ],
+    "summary": "All global-app-layer realistic-app checks passed."
+  },
+  "unit_snapshot": [
+    {
+      "space": "teaching-app-1790409197-deploy-cluster-a",
+      "unit": "cluster-a-namespace",
+      "revision": 2,
+      "data_hash": "55707741d4bd73902887d8fd90ca200a53df63dcb0def130d7ce2e7689c4167f"
+    },
+    {
+      "space": "teaching-app-1790409197-catalog-base",
+      "unit": "backend-base",
+      "revision": 2,
+      "data_hash": "2004f717472daff7fbe652d5b912c6fee04588ef6e592078dd889c33f8b2a89d"
+    },
+    {
+      "space": "teaching-app-1790409197-catalog-us",
+      "unit": "backend-us",
+      "revision": 4,
+      "data_hash": "8c7a86a670da300a58929edf0d20661ab3029fb76ee13e4e25c226b68c6e23ae"
+    },
+    {
+      "space": "teaching-app-1790409197-catalog-us-staging",
+      "unit": "backend-us-staging",
+      "revision": 4,
+      "data_hash": "4245f90062405d7527f0c267d8da9707f246eadc396466beafe0cc16086b595c"
+    },
+    {
+      "space": "teaching-app-1790409197-recipe-us-staging",
+      "unit": "backend-recipe-us-staging",
+      "revision": 4,
+      "data_hash": "1b069eaabb9bbaa3215ba6355a5f6fcb4381724b4d2aafd5c3d44ecd1c08e50b"
+    },
+    {
+      "space": "teaching-app-1790409197-deploy-cluster-a",
+      "unit": "backend-cluster-a",
+      "revision": 5,
+      "data_hash": "517d80e2597f9ed4444b20c0b314da19de1ae7cb73c28beb758e0a05fd85c927"
+    },
+    {
+      "space": "teaching-app-1790409197-catalog-base",
+      "unit": "frontend-base",
+      "revision": 2,
+      "data_hash": "245b28d899e05b4ca09b1d6e7bd474131ad48ed8c71949b0518f00f760534833"
+    },
+    {
+      "space": "teaching-app-1790409197-catalog-us",
+      "unit": "frontend-us",
+      "revision": 3,
+      "data_hash": "74dec7f05b2769289fccbda7b0f576b5dfdbc3382a5af3f9cdabd872113744f7"
+    },
+    {
+      "space": "teaching-app-1790409197-catalog-us-staging",
+      "unit": "frontend-us-staging",
+      "revision": 4,
+      "data_hash": "3c7edcf8c10af4e3b0820f677281e80e11879d2350efba4488f9a0b532d13e82"
+    },
+    {
+      "space": "teaching-app-1790409197-recipe-us-staging",
+      "unit": "frontend-recipe-us-staging",
+      "revision": 3,
+      "data_hash": "f393272376b6b3684783dde95b2d572e8e96b22e77dfa4586617a98613e226c5"
+    },
+    {
+      "space": "teaching-app-1790409197-catalog-base",
+      "unit": "postgres-base",
+      "revision": 2,
+      "data_hash": "84ec61bc1bcb462b38d142e51a25b49b315010c407d9c27f928786dd928744be"
+    },
+    {
+      "space": "teaching-app-1790409197-catalog-us",
+      "unit": "postgres-us",
+      "revision": 3,
+      "data_hash": "0e81c256114f2b0783a1c06dfe6fff5256b8341408ae2e6dd282da7e21e0a4b6"
+    },
+    {
+      "space": "teaching-app-1790409197-catalog-us-staging",
+      "unit": "postgres-us-staging",
+      "revision": 4,
+      "data_hash": "2299663314ee126f4ce8cbf6fd9e2cc39c3b07cbdf696c6b6b348f5a0acc8bce"
+    },
+    {
+      "space": "teaching-app-1790409197-recipe-us-staging",
+      "unit": "postgres-recipe-us-staging",
+      "revision": 2,
+      "data_hash": "2299663314ee126f4ce8cbf6fd9e2cc39c3b07cbdf696c6b6b348f5a0acc8bce"
+    },
+    {
+      "space": "teaching-app-1790409197-deploy-cluster-a",
+      "unit": "postgres-cluster-a",
+      "revision": 4,
+      "data_hash": "31d018db907c1e495abf1796e3180eb14152fb6c85914598153f1e9a1c0a3e50"
+    },
+    {
+      "space": "teaching-app-1790409197-recipe-us-staging",
+      "unit": "recipe-us-staging-realistic-app",
+      "revision": 2,
+      "data_hash": "a8de33bc32521cea9907d26f89c7614489ab8c640cbcc84cab514ca7c30f8a0a"
+    },
+    {
+      "space": "teaching-app-1790409197-deploy-cluster-a",
+      "unit": "frontend-cluster-a",
+      "revision": 6,
+      "data_hash": "1fc8f06ae5bc1519742cd77bf882c303f74d0bdd74feb485fd87c531d7c0c2cb"
+    }
+  ],
+  "cleanup": {
+    "performed": false,
+    "reason": "Run retained for inspection; no cluster resources were created",
+    "command": "./cleanup.sh from this run directory; deletes only Spaces labelled with this ExampleChain and local state"
+  },
+  "not_proven": [
+    "human tutorial acceptance",
+    "target binding",
+    "OCI or controller delivery",
+    "workload availability",
+    "rollback safety or successful rollback"
+  ],
+  "gui_inspection": {
+    "mode": "read-only authenticated browser session against the local development instance",
+    "route": [
+      "Units",
+      "teaching-app-1790409197-deploy-cluster-a",
+      "frontend-cluster-a"
+    ],
+    "deploy_space_rows": [
+      "cluster-a-namespace",
+      "backend-cluster-a",
+      "frontend-cluster-a",
+      "postgres-cluster-a"
+    ],
+    "frontend_overview": {
+      "upstream": "frontend-recipe-us-staging",
+      "revisions": 6,
+      "links": 1,
+      "last_change": "Functions: set-replicas",
+      "target_binding": "empty"
+    },
+    "frontend_config": {
+      "format": "Kubernetes/YAML",
+      "kind": "Deployment",
+      "namespace": "cluster-a",
+      "replicas": 3,
+      "image": "ghcr.io/confighub/cubbychat/frontend:1.1.7"
+    },
+    "boundary": "Observed the Units route and one frontend Unit only; no Components dashboard grouping, UI mutation, controller observation or workload health check."
+  }
+}

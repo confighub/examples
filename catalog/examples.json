@@ -31,7 +31,7 @@
         "contract": "https://github.com/confighub/examples/blob/50879ec441aecfbfcc34982139ea8c2827e8a2e0/global-app-layer/realistic-app/contracts.md"
       },
       "tutorial": "catalog/FIRST_APP.md",
-      "lesson": "Three source manifests describe a frontend, backend and Postgres. A read-only plan shows five proposed ConfigHub Spaces; a local diff changes only the frontend replica field. Neither step writes ConfigHub data or deploys the app.",
+      "lesson": "Three source manifests describe a frontend, backend and Postgres. The local plan and diff are read-only; a separate checked ConfigHub-only run stored five Spaces and 17 Units, changed one stored frontend replica field, and showed that Unit in the UI. No target was bound and no application was deployed.",
       "preview": {
         "working_directory": "global-app-layer/realistic-app",
         "command": "./setup.sh --explain-json",
@@ -46,10 +46,11 @@
       "evidence": {
         "checked_on": "2026-09-26",
         "static": "./setup.sh --explain-json passed locally (three components, five Spaces); local frontend diff found one changed Deployment field /spec/replicas from 1 to 2",
-        "connected": "not checked",
+        "connected": "On a local development ConfigHub server v0.5.1 with matched cub v0.5.1, setup stored five Spaces and 17 Units; a scoped frontend Unit change moved /spec/replicas from 2 to 3, verified by readback and local diff. Read-only GUI inspection showed the deploy Space and frontend Unit with replicas 3 and no target binding.",
         "controller": "not checked",
         "runtime": "not checked",
-        "receipt": "catalog/qualification.json#/checks/first-app-realistic"
+        "receipt": "catalog/qualification.json#/checks/first-app-realistic",
+        "connected_receipt": "catalog/first-app-connected-receipt.json"
       },
       "maintenance_owner": "confighub/examples",
       "practice": {
@@ -74,10 +75,17 @@
           "cleanup": "The plan writes nothing. The diff helper prints a fresh local output directory containing before.yaml, after.yaml and result.json; remove that directory when finished."
         },
         "connected": {
-          "qualification": "not-tested",
-          "credentials": "Authenticated compatible ConfigHub context; a Kubernetes target and cluster authority only for the later live path",
-          "cost": "ConfigHub resource cost unknown; live cluster or cloud cost depends on the selected target",
-          "cleanup": "After setup, the source ./cleanup.sh deletes the run-labelled ConfigHub Spaces recursively and removes local state; review its scope before running. Live resource cleanup was not checked."
+          "qualification": "scoped-config-hub-verified",
+          "credentials": "Authenticated local development ConfigHub context with cub v0.5.1 matching server v0.5.1 for setup and Unit change. A target and cluster authority would be needed only for a separate live path.",
+          "cost": "Five Spaces and 17 Units were created on a local development server; server resource cost is unknown. No cluster/cloud resources were created.",
+          "cleanup": "Not run: this scoped ConfigHub run remains for inspection. The source ./cleanup.sh deletes Spaces labelled with its ExampleChain prefix and local state; review scope before using it. No live resources were created.",
+          "tested_tool_versions": {
+            "cub": "v0.5.1",
+            "server": "v0.5.1",
+            "local-diff-cub": "v0.5.1",
+            "cub-config-plugin": "0.6.30"
+          },
+          "version_note": "The default cub v0.6.2 failed a read preflight against server v0.5.1 (invalid include field ComponentID for entity Space); matched cub v0.5.1 was used for this scoped setup, change, readback and local diff. This observed pair is not a support range."
         }
       }
     },

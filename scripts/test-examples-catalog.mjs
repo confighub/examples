@@ -28,7 +28,7 @@ for (const entry of catalog.entries) {
       assert.ok(typeof entry.requirements[scope][field] === 'string' && entry.requirements[scope][field].trim(), `${entry.id} missing ${scope}.${field}`);
     }
   }
-  assert.ok(['not-tested', 'not-applicable', 'not-in-index'].includes(entry.requirements.connected.qualification));
+  assert.ok(['not-tested', 'not-applicable', 'not-in-index', 'scoped-config-hub-verified'].includes(entry.requirements.connected.qualification));
   const versions = entry.requirements.local.tested_tool_versions;
   assert.ok(versions && Object.keys(versions).length, `${entry.id} missing tested tool versions`);
   for (const [tool, version] of Object.entries(versions)) {
@@ -75,6 +75,62 @@ for (const entry of catalog.entries) {
 }
 
 const firstAppDiff = qualification.checks['first-app-realistic'].commands.find(record => record.command === 'bash catalog/first-app-local-change.sh').output_projection;
+const firstApp = getExample('first-app-realistic');
+assert.equal(firstApp.evidence.connected_receipt, 'catalog/first-app-connected-receipt.json');
+assert.equal(firstApp.requirements.connected.qualification, 'scoped-config-hub-verified');
+const connectedRaw = readFileSync(resolve(root, firstApp.evidence.connected_receipt), 'utf8');
+assert.ok(!/\/Users\/|\/private\/tmp\/|localhost|@/.test(connectedRaw), 'connected receipt must not include machine paths or account data');
+const connected = JSON.parse(connectedRaw);
+assert.equal(connected.schema_version, 1);
+assert.equal(connected.example, firstApp.id);
+assert.equal(connected.scope, 'confighub-only-setup-and-scoped-change');
+assert.deepEqual(connected.source, {
+  repository: firstApp.source.repository,
+  revision: firstApp.source.revision,
+  path: firstApp.source.path
+});
+assert.match(connected.prefix, /^teaching-app-[0-9]+$/);
+assert.equal(connected.environment.server_version, 'v0.5.1');
+assert.equal(connected.environment.server_cli_version, 'v0.5.1');
+assert.equal(connected.environment.local_diff_cli_version, 'v0.5.1');
+assert.equal(firstApp.requirements.connected.tested_tool_versions.cub, connected.environment.server_cli_version);
+assert.equal(firstApp.requirements.connected.tested_tool_versions.server, connected.environment.server_version);
+assert.equal(firstApp.requirements.connected.tested_tool_versions['local-diff-cub'], connected.environment.local_diff_cli_version);
+assert.equal(firstApp.requirements.connected.tested_tool_versions['cub-config-plugin'], connected.environment.workshop_plugin_version);
+assert.match(connected.preflight.latest_client_read, /v0\.6\.2.*v0\.5\.1.*invalid include field ComponentID/);
+assert.equal(connected.setup.exit_code, 0);
+assert.deepEqual([connected.setup.spaces_created, connected.setup.units_created, connected.setup.component_units, connected.setup.recipe_units, connected.setup.namespace_configuration_units], [5, 17, 15, 1, 1]);
+assert.equal(connected.setup.target_argument, null);
+for (const result of [connected.verification_before, connected.verification_after]) {
+  assert.equal(result.ok, true);
+  assert.equal(result.prefix, connected.prefix);
+  assert.equal(result.targetExpected, false);
+  assert.equal(result.spacesChecked.length, 5);
+  assert.ok(result.spacesChecked.every(space => space.startsWith(`${connected.prefix}-`)));
+}
+assert.equal(connected.unit_snapshot.length, 17);
+assert.ok(connected.unit_snapshot.every(unit => unit.space.startsWith(`${connected.prefix}-`)));
+assert.equal(connected.change.exit_code, 0);
+assert.deepEqual(connected.change.diff.summary, { added: 0, removed: 0, changed: 1, unchanged: 2 });
+assert.deepEqual(connected.change.diff.changes[0].fields, [{ path: '/spec/replicas', operation: 'replace', before: 2, after: 3 }]);
+assert.equal(connected.change.diff.changes[0].object.name, 'frontend');
+assert.equal(connected.change.diff.changes[0].object.namespace, 'cluster-a');
+assert.equal(connected.unit_snapshot.find(unit => unit.unit === 'frontend-cluster-a').data_hash, connected.change.diff.after.sha256.slice('sha256:'.length));
+assert.equal(connected.cleanup.performed, false);
+assert.match(connected.gui_inspection.mode, /^read-only/);
+assert.deepEqual(connected.gui_inspection.route, ['Units', `${connected.prefix}-deploy-cluster-a`, 'frontend-cluster-a']);
+assert.deepEqual(connected.gui_inspection.deploy_space_rows, ['cluster-a-namespace', 'backend-cluster-a', 'frontend-cluster-a', 'postgres-cluster-a']);
+assert.equal(connected.gui_inspection.frontend_overview.upstream, 'frontend-recipe-us-staging');
+assert.deepEqual([connected.gui_inspection.frontend_overview.revisions, connected.gui_inspection.frontend_overview.links, connected.gui_inspection.frontend_overview.target_binding], [6, 1, 'empty']);
+assert.equal(connected.gui_inspection.frontend_overview.last_change, 'Functions: set-replicas');
+assert.deepEqual(connected.gui_inspection.frontend_config, {
+  format: 'Kubernetes/YAML', kind: 'Deployment', namespace: 'cluster-a', replicas: 3,
+  image: 'ghcr.io/confighub/cubbychat/frontend:1.1.7'
+});
+assert.ok(!connected.not_proven.includes('GUI walkthrough'));
+for (const limit of ['human tutorial acceptance', 'target binding', 'OCI or controller delivery', 'workload availability', 'rollback safety or successful rollback']) {
+  assert.ok(connected.not_proven.includes(limit));
+}
 const frontend = readFileSync(resolve(root, 'global-app-layer/baseconfig/frontend.yaml'));
 const changed = Buffer.from(frontend.toString().replace(/^  replicas: 1$/m, '  replicas: 2'));
 const sha = data => 'sha256:' + createHash('sha256').update(data).digest('hex');

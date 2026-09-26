@@ -97,18 +97,79 @@ for the owner boundary. The qualification receipt also records this command
 and sanitized result. An allowed local edit is a useful
 review artifact; it is not a connected approval or delivery receipt.
 
-If you later have a compatible authenticated ConfigHub context, the realistic
-app's [README](../global-app-layer/realistic-app/README.md) documents
-`./setup.sh` followed by `./verify.sh --json` for the ConfigHub-only path.
-That setup creates five Spaces, layered Units and clone links. Binding a target
-and running `./apply-live.sh` is a further step with cluster effects, and the
-README explains its target preflight and verification. Neither connected nor
-live step was run for this catalog. The [Workshop GitOps adopter guide](https://confighub.github.io/helm-expt/site/d/docs/user/gitops-adopter-guide.html)
-continues the source-to-controller discussion for Argo CD and Flux; a
+## See the stored ConfigHub objects
+
+A separate [scoped connected run](./first-app-connected-receipt.json) created
+this example on a local development ConfigHub server. It used a `cub` v0.5.1
+client with a v0.5.1 server. The installed default v0.6.2 client failed a
+read preflight against that server (`invalid include field ComponentID for
+entity Space`), so check compatibility before starting. This is an observed
+version pair, not a supported-version promise.
+
+From `global-app-layer/realistic-app`, with a compatible authenticated context
+and a **new unique prefix**, the same ConfigHub-only path is:
+
+```bash
+example_prefix="your-unique-prefix"
+cub version                    # confirm client and server are both v0.5.1 here
+./setup.sh "$example_prefix"
+./verify.sh --json
+cub unit data --space "${example_prefix}-deploy-cluster-a" frontend-cluster-a
+```
+
+Do not pass a target to setup for this path. The checked run created five
+Spaces and 17 Units: five layers for each of the three components, one
+app-level recipe manifest, and one namespace configuration Unit. The verifier
+checked the Spaces, clone chains, component mutations and recipe manifest.
+The stored `frontend-cluster-a` Deployment had two replicas before the next
+change. No Kubernetes target was bound.
+
+In a fresh local output directory, save that Unit before changing it, make a
+single ConfigHub Unit mutation, read it back, and compare the stored YAML:
+
+```bash
+change_dir="$(mktemp -d)"
+cub unit data --space "${example_prefix}-deploy-cluster-a" frontend-cluster-a > "$change_dir/before.yaml"
+cub function do set-replicas 3 --space "${example_prefix}-deploy-cluster-a" --unit frontend-cluster-a
+cub unit data --space "${example_prefix}-deploy-cluster-a" frontend-cluster-a > "$change_dir/after.yaml"
+./verify.sh --json
+cub config diff "$change_dir/before.yaml" "$change_dir/after.yaml" --json --out "$change_dir/result.json"
+```
+
+The checked path used the matching v0.5.1 client throughout, including the
+local diff with Workshop's `cub config` plugin v0.6.30. The JSON diff was also
+reproduced with that same client after an earlier local comparison with v0.6.2.
+
+The retained result reports one changed object and exactly one replaced field:
+frontend Deployment `/spec/replicas`, from 2 to 3. Its before/after hashes and
+the readback and verifier summaries are in the connected receipt. This proves
+a scoped ConfigHub stored-data change.
+
+The same run was inspected **read-only** in the local ConfigHub UI. Open
+**Units**, select the `<prefix>-deploy-cluster-a` Space in the tree, and select
+`frontend-cluster-a` from the four rows: namespace, backend, frontend and
+Postgres. In the checked run, **Overview** showed upstream
+`frontend-recipe-us-staging`, six revisions, one link, the latest change
+`Functions: set-replicas`, and an empty Target. **Config** showed a
+Kubernetes/YAML Deployment in namespace `cluster-a`, with three replicas and
+image `ghcr.io/confighub/cubbychat/frontend:1.1.7`. This observed the Units
+route and one Unit. No UI write or Components dashboard grouping was tested.
+
+The combined receipt still does not prove target binding, OCI or controller
+delivery, application availability, rollback or human tutorial acceptance.
+The run was retained for inspection and `./cleanup.sh` was **not**
+run. That cleanup script deletes all Spaces carrying this run's ExampleChain
+label and local state, so review its scope before using it.
+
+The [Workshop GitOps adopter guide](https://confighub.github.io/helm-expt/site/d/docs/user/gitops-adopter-guide.html)
+continues the source-to-controller discussion for Argo CD and Flux. A
 ConfigHub Unit or OCI artifact alone does not show what a controller applied.
 
 For an AI assistant, the user-facing route is the same: show the source files,
 run the read-only plan, explain the resulting planned Units, and show the
-frontend replica diff. The Helm ownership lesson is optional. Stop at a missing
-context, target, or authority. Do not infer a deployed workload from the
-plan, a simulated decision, or the example image name.
+frontend replica diff. Where a compatible authenticated context is available,
+the scoped stored-Unit path and read-only Units view above are separate next
+steps. The Helm ownership
+lesson is optional. Stop at a missing context, target, or authority. Do not
+infer a deployed workload from a plan, stored Unit, simulated decision, or
+example image name.
