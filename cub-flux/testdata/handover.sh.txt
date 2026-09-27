@@ -1,0 +1,162 @@
+#!/usr/bin/env bash
+# Move this Flux fleet onto ConfigHub. Written by `cub flux apply`.
+# Read it, then run it, one cluster at a time:
+#
+#   FLUX_CONTEXT=<kubectl context of one cluster> bash handover.sh
+#
+# Run apply.sh first. Each layer keeps its Kustomization, its name and its
+# inventory; only the source changes, so nothing is reinstalled.
+#
+# This has not been rehearsed on a cluster. Read every step before running
+# it, and start with one non-production cluster.
+set -euo pipefail
+cd "$(dirname "$0")"
+k() { kubectl ${FLUX_CONTEXT:+--context "$FLUX_CONTEXT"} "$@"; }
+step() { printf '\n== %s\n' "$*"; }
+ns=${FLUX_NAMESPACE:-flux-system}
+cluster=${CLUSTER:-}
+[ -n "$cluster" ] || { echo "set CLUSTER=<one of: dev-1, staging-1, prod-1> so the right Target is used"; exit 1; }
+
+step "0/4 Check before changing anything"
+cub space list --quiet >/dev/null || { echo "cub is not logged in: run cub auth login"; exit 1; }
+k get namespace "$ns" >/dev/null || { echo "no $ns namespace: is this the right cluster?"; exit 1; }
+# flux-system reconciles the Flux controllers themselves. It is the way back
+# if anything here goes wrong, so it stays on Git and is never repointed.
+echo 'Left alone: gitops/flux/expert-fleet/clusters/dev/flux-system'
+echo 'Left alone: gitops/flux/expert-fleet/clusters/prod/flux-system'
+echo 'Left alone: gitops/flux/expert-fleet/clusters/staging/flux-system'
+
+step "1/4 Prove each layer holds what Git renders today"
+# Every layer prunes, so anything a release does not hold is deleted from
+# the cluster. Before a source is swapped, what ConfigHub holds has to match
+# what Flux builds from Git, object for object. apply.sh left its renders in
+# render/, so the two are compared here.
+same() {
+  local want="render/$1.yaml" got; got=$(mktemp)
+  [ -f "$want" ] || { echo "no $want: run apply.sh first" >&2; return 1; }
+  cub unit data --space "$1" "$2" > "$got" || return 1
+  if diff -q <(grep -v '^\s*#' "$want") <(grep -v '^\s*#' "$got") >/dev/null; then
+    echo "  $1 matches what Git renders"
+  else
+    echo "  $1 DIFFERS from what Git renders. Swapping its source would prune the difference." >&2
+    diff -u <(grep -v '^\s*#' "$want") <(grep -v '^\s*#' "$got") | head -40 >&2
+    rm -f "$got"; return 1
+  fi
+  rm -f "$got"
+}
+[ "$cluster" = 'dev-1' ] && same 'flux-infrastructure-dev-1' 'infrastructure'
+[ "$cluster" = 'staging-1' ] && same 'flux-infrastructure-staging-1' 'infrastructure'
+[ "$cluster" = 'prod-1' ] && same 'flux-infrastructure-prod-1' 'infrastructure'
+[ "$cluster" = 'dev-1' ] && same 'flux-apps-dev-1' 'apps'
+[ "$cluster" = 'staging-1' ] && same 'flux-apps-staging-1' 'apps'
+[ "$cluster" = 'prod-1' ] && same 'flux-apps-prod-1' 'apps'
+[ "$cluster" = 'dev-1' ] && same 'flux-tenants-dev-1' 'tenants'
+[ "$cluster" = 'staging-1' ] && same 'flux-tenants-staging-1' 'tenants'
+[ "$cluster" = 'prod-1' ] && same 'flux-tenants-prod-1' 'tenants'
+[ "$cluster" = 'dev-1' ] && same 'flux-image-automation-dev-1' 'image-automation'
+
+step "2/4 Add the gateway to flux-system: the credential and one OCIRepository per layer"
+# These cannot come from ConfigHub: a Kustomization cannot read a source that
+# does not exist yet. They are committed to the bootstrap directory, which is
+# the one part of this fleet that stays on Git.
+addr=${CONFIGHUB_OCI:-}
+if [ -z "$addr" ]; then
+  echo "Find the gateway address with: cub target get --space flux-targets $cluster"
+  echo "then re-run with CONFIGHUB_OCI=<address> CLUSTER=$cluster bash handover.sh"; exit 1
+fi
+# The ID and secret go from cub into the Secret through file descriptors,
+# never to disk, the command line, or the terminal.
+k create secret generic confighub-flux-targets --namespace "$ns" \
+  --from-file=username=<(cub worker get --space flux-targets server-worker -o jq=.BridgeWorker.BridgeWorkerID | tr -d '\n') \
+  --from-file=password=<(cub worker get --space flux-targets server-worker --include-secret -o jq=.BridgeWorker.Secret | tr -d '\n') \
+  --dry-run=client -o yaml | k apply -f -
+
+# One OCIRepository per layer, each reading that layer's release for this
+# cluster. Commit these to the bootstrap directory so flux-system keeps them.
+mkdir -p bootstrap
+cat > bootstrap/ocirepository-infrastructure.yaml <<YAML
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: OCIRepository
+metadata:
+  name: infrastructure
+  namespace: ${ns}
+spec:
+  interval: 1m
+  url: oci://${addr}
+  ref:
+    tag: latest
+  secretRef:
+    name: confighub-flux-targets
+YAML
+cat > bootstrap/ocirepository-apps.yaml <<YAML
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: OCIRepository
+metadata:
+  name: apps
+  namespace: ${ns}
+spec:
+  interval: 1m
+  url: oci://${addr}
+  ref:
+    tag: latest
+  secretRef:
+    name: confighub-flux-targets
+YAML
+cat > bootstrap/ocirepository-tenants.yaml <<YAML
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: OCIRepository
+metadata:
+  name: tenants
+  namespace: ${ns}
+spec:
+  interval: 1m
+  url: oci://${addr}
+  ref:
+    tag: latest
+  secretRef:
+    name: confighub-flux-targets
+YAML
+cat > bootstrap/ocirepository-image-automation.yaml <<YAML
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: OCIRepository
+metadata:
+  name: image-automation
+  namespace: ${ns}
+spec:
+  interval: 1m
+  url: oci://${addr}
+  ref:
+    tag: latest
+  secretRef:
+    name: confighub-flux-targets
+YAML
+k apply -f bootstrap/
+echo "Commit bootstrap/ into the flux-system path so these survive a reconcile."
+
+step "3/4 Swap each layer's sourceRef, deepest dependency first"
+# The Kustomization keeps its name, so Flux keeps the inventory of what it
+# applied, and nothing is recreated.
+echo "-- infrastructure"
+k -n "$ns" patch kustomization infrastructure --type merge -p '{"spec":{"sourceRef":{"kind":"OCIRepository","name":"infrastructure"}}}'
+k -n "$ns" wait --for=condition=Ready kustomization/infrastructure --timeout=5m
+echo "-- apps"
+k -n "$ns" patch kustomization apps --type merge -p '{"spec":{"sourceRef":{"kind":"OCIRepository","name":"apps"}}}'
+k -n "$ns" wait --for=condition=Ready kustomization/apps --timeout=5m
+echo "-- tenants"
+k -n "$ns" patch kustomization tenants --type merge -p '{"spec":{"sourceRef":{"kind":"OCIRepository","name":"tenants"}}}'
+k -n "$ns" wait --for=condition=Ready kustomization/tenants --timeout=5m
+echo "-- image-automation"
+k -n "$ns" patch kustomization image-automation --type merge -p '{"spec":{"sourceRef":{"kind":"OCIRepository","name":"image-automation"}}}'
+k -n "$ns" wait --for=condition=Ready kustomization/image-automation --timeout=5m
+
+step "4/4 What is left, and what it means"
+k -n "$ns" patch imageupdateautomation apptique-dev --type merge -p '{"spec":{"suspend":true}}' 2>/dev/null || true
+echo 'Suspended ImageUpdateAutomation apptique-dev: it committed tags to Git, which no longer feeds this cluster. A tag bump is now a change on the base, promoted like any other.'
+echo 'Tenant left as it is: team-checkout/team-checkout runs as ServiceAccount team-checkout, reading GitRepository team-checkout; governed as part of tenants. Repointing it would move that team from Git access to ConfigHub access, which is a decision about delegation, not a step in a handover.'
+echo 'GitRepository fleet-repo promoted by branch. That is now the workflow'\''s stages: a change is promoted and approved per cluster, not merged between branches.'
+echo 'GitRepository team-checkout promoted by branch. That is now the workflow'\''s stages: a change is promoted and approved per cluster, not merged between branches.'
+
+echo
+echo 'Done once every layer is Ready from an OCIRepository:'
+echo '  kubectl -n $ns get kustomizations -o custom-columns=NAME:.metadata.name,SOURCE:.spec.sourceRef.kind,READY:.status.conditions[0].status'
+echo 'Nothing was deleted. To go back, patch each sourceRef to the fleet GitRepository.'

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -49,7 +50,10 @@ func newRoot() *cobra.Command {
          listing exactly what its overlay changes, a Target per cluster, and
          the stage order. Offline: no account, no cluster, nothing changes.
 
-Not yet: apply (write the steps as a script) and handover.`,
+  apply  writes the plan as files beside two scripts: apply.sh, which fills
+         ConfigHub and touches no cluster, and handover.sh, which swaps each
+         layer's sourceRef, one cluster at a time. Nothing runs until you run
+         them.`,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
@@ -93,6 +97,52 @@ Not yet: apply (write the steps as a script) and handover.`,
 	plan.Flags().StringVar(&opts.RepoRoot, "repo-root", "", "the checkout Flux paths are relative to (default: the .git above the input)")
 	plan.Flags().BoolVar(&asJSON, "json", false, "print the plan as JSON")
 
+	var af flux.Options
+	var applyStages, out string
+	apply := &cobra.Command{
+		Use:   "apply <fleet-repo-dir> --out <dir>",
+		Short: "Write the plan's files, apply.sh and handover.sh to read and run; runs nothing",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(c *cobra.Command, args []string) error {
+			if out == "" {
+				return fmt.Errorf("apply needs --out <dir> for the files and the scripts it writes")
+			}
+			in, err := flux.Load(c.InOrStdin(), args)
+			if err != nil {
+				return err
+			}
+			af.Stages = split(applyStages)
+			p, err := flux.Build(in, af)
+			if err != nil {
+				return err
+			}
+			w := c.OutOrStdout()
+			if len(p.Problems) > 0 {
+				fmt.Fprint(w, flux.Render(p))
+				return errProblems{}
+			}
+			script, err := flux.WriteApply(p, af.Prefix, out)
+			if err != nil {
+				return err
+			}
+			shown := script
+			if cwd, err := os.Getwd(); err == nil {
+				if rel, err := filepath.Rel(cwd, script); err == nil {
+					shown = rel
+				}
+			}
+			fmt.Fprint(w, flux.Render(p))
+			fmt.Fprintf(w, "\nWrote %s and the files it reads. Read it, then run it:\n  bash %s\n", shown, shown)
+			fmt.Fprintf(w, "\nThat fills ConfigHub and changes no cluster. Then move one cluster at a time:\n  CLUSTER=<cluster> FLUX_CONTEXT=<kubectl context> bash %s\n", filepath.Join(filepath.Dir(shown), "handover.sh"))
+			return nil
+		},
+	}
+	apply.Flags().StringVar(&af.Prefix, "prefix", "flux", "prefix for everything the plan would create in ConfigHub")
+	apply.Flags().StringVar(&applyStages, "stages", "", "the clusters in rollout order, comma-separated")
+	apply.Flags().StringVar(&af.ClustersDir, "clusters", "clusters", "the directory holding one directory per cluster")
+	apply.Flags().StringVar(&af.RepoRoot, "repo-root", "", "the checkout Flux paths are relative to")
+	apply.Flags().StringVar(&out, "out", "", "directory for the files and the scripts")
+
 	versionCmd := &cobra.Command{
 		Use:   "version",
 		Short: "Print the plugin version",
@@ -102,7 +152,7 @@ Not yet: apply (write the steps as a script) and handover.`,
 		},
 	}
 
-	root.AddCommand(plan, versionCmd)
+	root.AddCommand(plan, apply, versionCmd)
 	return root
 }
 
