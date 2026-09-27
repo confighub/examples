@@ -824,18 +824,115 @@ func (b *builder) unselected() {
 	}
 }
 
-// handover says what handing the live estate to ConfigHub would involve.
+// childrenSpace names the Space that would hold what an app of apps syncs.
+func (b *builder) childrenSpace(name string) string {
+	return fmt.Sprintf("%s-%s-children", b.opts.Prefix, name)
+}
+
+// handover says what moving the live estate onto ConfigHub would involve.
 // Nothing here runs; `apply` will write it as handover.sh.
+//
+// Each layer is repointed rather than orphaned. An app of apps does not own
+// its children through ownerReferences: it owns them by syncing a directory
+// and pruning what is not in it, so there is nothing to sever, and repointing
+// the parent leaves the tree, every name and every tracking ID intact. Only an
+// object nothing above it syncs has to be handled any other way.
 func (b *builder) handover(appsets, apps []object, projects []object) {
 	p := b.plan
-	if len(appsets) > 0 {
-		var names []string
-		for _, a := range appsets {
-			names = append(names, a.name)
-		}
-		p.Handover = append(p.Handover, fmt.Sprintf("delete each ApplicationSet (%s) with 'kubectl delete --cascade=orphan', so its Applications stay", strings.Join(names, ", ")))
-		p.Handover = append(p.Handover, "hand each Application to its variant under the same name, so Argo CD's tracking ID does not change and only the source moves to the ConfigHub gateway")
+	if len(p.Components) == 0 {
+		return
 	}
+
+	// The projects gate every repoint below, so they come first.
+	used := map[string]bool{}
+	for _, c := range p.Components {
+		used[c.Project] = true
+	}
+	var blocked []string
+	for _, pr := range projects {
+		if !used[pr.name] {
+			continue
+		}
+		repos := globs(get(pr.spec(), "sourceRepos"))
+		allowed := false
+		for _, r := range repos {
+			if r == "*" || strings.HasPrefix(r, "oci://") {
+				allowed = true
+			}
+		}
+		if !allowed {
+			blocked = append(blocked, fmt.Sprintf("%s (allows only %s)", pr.name, strings.Join(repos, ", ")))
+		}
+	}
+	if len(blocked) > 0 {
+		p.Handover = append(p.Handover, fmt.Sprintf(
+			"first, add the gateway's oci:// address to sourceRepos on AppProject %s: until then every repoint below is refused",
+			strings.Join(blocked, " and ")))
+	}
+	p.Handover = append(p.Handover,
+		"check Argo CD is v3.1 or newer, which is where an oci:// source is read natively; an older one cannot do this at all")
+
+	// Walk the control tree top down. A node with children is an app of apps:
+	// repoint it, and its children become Units in a Space of its own.
+	hasParent := map[string]bool{}
+	var mark func(n *Node)
+	mark = func(n *Node) {
+		for _, c := range n.Children {
+			hasParent[c.Kind+"/"+c.Name] = true
+			mark(c)
+		}
+	}
+	for _, n := range p.Tree {
+		mark(n)
+	}
+
+	var walk func(n *Node, parent *Node)
+	walk = func(n *Node, parent *Node) {
+		if n.Kind == "Application" && len(n.Children) > 0 {
+			var kids []string
+			for _, c := range n.Children {
+				kids = append(kids, c.Kind+" "+c.Name)
+			}
+			space := b.childrenSpace(n.Name)
+			how := "Nothing above it syncs it, so patch its spec.source in the cluster."
+			if parent != nil {
+				how = fmt.Sprintf("It is a Unit in %s by this point, so repoint it there and promote, and the repoint is reviewed like any other change.", b.childrenSpace(parent.Name))
+			}
+			p.Handover = append(p.Handover, fmt.Sprintf(
+				"repoint Application %s at %s, which would hold %s. Publish that Space first: a parent left syncing an empty source prunes its children. %s",
+				n.Name, space, strings.Join(kids, ", "), how))
+		}
+		for _, c := range n.Children {
+			walk(c, n)
+		}
+	}
+	for _, n := range p.Tree {
+		walk(n, nil)
+	}
+
+	// Each ApplicationSet keeps generating its Applications; only the template's
+	// source moves, so no generated Application is orphaned or renamed.
+	for _, c := range p.Components {
+		if c.Kind != "ApplicationSet" {
+			continue
+		}
+		var names []string
+		for _, st := range c.Stages {
+			for _, v := range st.Variants {
+				names = append(names, v.Application)
+			}
+		}
+		if hasParent["ApplicationSet/"+c.Source] {
+			p.Handover = append(p.Handover, fmt.Sprintf(
+				"point the template of ApplicationSet %s at each cluster's Target, once those Targets carry a release. It goes on generating %s under the same names, so Argo's tracking does not change and nothing is orphaned",
+				c.Source, strings.Join(names, ", ")))
+			continue
+		}
+		p.Handover = append(p.Handover, fmt.Sprintf(
+			"ApplicationSet %s is applied by hand, so its template cannot be repointed under review. Either patch the template in the cluster, or delete it with 'kubectl delete --cascade=orphan' and repoint %s one by one. Orphaning is the fallback here, not the plan",
+			c.Source, strings.Join(names, ", ")))
+	}
+
 	var guarded []string
 	for _, a := range apps {
 		for _, f := range list(get(a.value, "metadata", "finalizers")) {
@@ -852,26 +949,9 @@ func (b *builder) handover(appsets, apps []object, projects []object) {
 		}
 	}
 	if len(guarded) > 0 {
-		p.Handover = append(p.Handover, fmt.Sprintf("never delete %s: resources-finalizer.argocd.argoproj.io deletes everything it deployed", strings.Join(guarded, ", ")))
-	}
-	used := map[string]bool{}
-	for _, c := range p.Components {
-		used[c.Project] = true
-	}
-	for _, pr := range projects {
-		if !used[pr.name] {
-			continue
-		}
-		repos := globs(get(pr.spec(), "sourceRepos"))
-		allowed := false
-		for _, r := range repos {
-			if r == "*" || strings.HasPrefix(r, "oci://") {
-				allowed = true
-			}
-		}
-		if !allowed {
-			p.Handover = append(p.Handover, fmt.Sprintf("AppProject %s allows only %s: add the ConfigHub gateway's oci:// address to sourceRepos first", pr.name, strings.Join(repos, ", ")))
-		}
+		p.Handover = append(p.Handover, fmt.Sprintf(
+			"never delete %s: resources-finalizer.argocd.argoproj.io deletes everything it deployed. Every step above is a patch for exactly this reason",
+			strings.Join(guarded, ", ")))
 	}
 }
 

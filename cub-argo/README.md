@@ -41,12 +41,30 @@ non-zero naming the three overlays that do not exist. A cluster missing a
 label a template reads is caught too: Argo CD renders it as `<no value>` and
 syncs it anyway.
 
+## What a handover does
+
+Each layer is **repointed**, not orphaned. An app of apps does not own its
+children through `ownerReferences`; it owns them by syncing a directory and
+pruning what is not in it. So there is nothing to sever, and repointing the
+parent leaves the tree, every name and every Argo tracking ID intact.
+
+The plan orders it top down, because a parent left syncing an empty source
+prunes its children. For the expert example that is: fix `sourceRepos` on both
+AppProjects, check Argo is v3.1 or newer, publish `argo-root-children` and
+repoint `root` by hand, publish `argo-storefront-children` and repoint the
+`storefront` Unit under approval, then point each ApplicationSet's template at
+its clusters' Targets. Nothing is deleted, which matters because `root` and
+`storefront` carry `resources-finalizer.argocd.argoproj.io`.
+
+Orphaning with `--cascade=orphan` remains the fallback for an ApplicationSet
+applied by hand, where no parent can repoint its template under review.
+
 ## Inputs
 
 - A repository directory, as above. Source paths are checked against the
   checkout found by walking up to `.git`, or `--repo-root`.
-- A live export, which also shows the generated Applications a handover would
-  adopt:
+- A live export, which also names the generated Applications a handover would
+  keep:
 
   ```bash
   { kubectl get applications,applicationsets,appprojects -n argocd -o yaml; echo '---'; \

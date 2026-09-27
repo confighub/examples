@@ -286,3 +286,38 @@ func TestNoCheckoutIsReported(t *testing.T) {
 		t.Errorf("want a skipped-path-check problem, got %v", p.Problems)
 	}
 }
+
+// Handover repoints each layer rather than orphaning it, in an order that
+// publishes a Space before the parent that syncs it is repointed.
+func TestHandoverRepointsTopDown(t *testing.T) {
+	opts := staged
+	opts.RepoRoot = repoRoot(t)
+	p := planOf(t, example, opts)
+
+	joined := strings.Join(p.Handover, "\n")
+	if strings.Contains(joined, "--cascade=orphan") {
+		t.Errorf("every object here has a parent or a template, so nothing should be orphaned:\n%s", joined)
+	}
+	for _, want := range []string{
+		"sourceRepos",                    // the projects gate every repoint
+		"v3.1 or newer",                  // oci:// needs it
+		"repoint Application root",       // hand-applied, patched in the cluster
+		"repoint Application storefront", // a Unit by then, so promoted
+		"template of ApplicationSet",     // generated apps are never touched
+		"never delete root, storefront",  // the finalizer
+	} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("handover is missing %q:\n%s", want, joined)
+		}
+	}
+	// A parent must be published before whoever syncs it is repointed.
+	root := strings.Index(joined, "repoint Application root")
+	store := strings.Index(joined, "repoint Application storefront")
+	if root < 0 || store < 0 || root > store {
+		t.Errorf("root should be repointed before storefront, got %d and %d", root, store)
+	}
+	// The repoint of a child that is already a Unit goes through approval.
+	if !strings.Contains(joined, "repoint it there and promote") {
+		t.Errorf("a child layer's repoint should itself be reviewed:\n%s", joined)
+	}
+}

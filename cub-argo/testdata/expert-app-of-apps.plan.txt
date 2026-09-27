@@ -70,8 +70,11 @@ Sync windows (a published release waits for Argo CD while one is closed)
     covers prod-1-apptique, prod-1-checkout-cache
 
 Handover, when this estate is live (apply will write it as handover.sh; plan runs nothing)
-  1. delete each ApplicationSet (apptique, checkout-cache, platform-addons) with 'kubectl delete --cascade=orphan', so its Applications stay
-  2. hand each Application to its variant under the same name, so Argo CD's tracking ID does not change and only the source moves to the ConfigHub gateway
-  3. never delete root, storefront: resources-finalizer.argocd.argoproj.io deletes everything it deployed
-  4. AppProject platform allows only https://github.com/confighub/examples: add the ConfigHub gateway's oci:// address to sourceRepos first
-  5. AppProject storefront allows only https://github.com/confighub/examples: add the ConfigHub gateway's oci:// address to sourceRepos first
+  1. first, add the gateway's oci:// address to sourceRepos on AppProject platform (allows only https://github.com/confighub/examples) and storefront (allows only https://github.com/confighub/examples): until then every repoint below is refused
+  2. check Argo CD is v3.1 or newer, which is where an oci:// source is read natively; an older one cannot do this at all
+  3. repoint Application root at argo-root-children, which would hold AppProject platform, AppProject storefront, ApplicationSet platform-addons, Application storefront. Publish that Space first: a parent left syncing an empty source prunes its children. Nothing above it syncs it, so patch its spec.source in the cluster.
+  4. repoint Application storefront at argo-storefront-children, which would hold ApplicationSet checkout-cache, ApplicationSet apptique. Publish that Space first: a parent left syncing an empty source prunes its children. It is a Unit in argo-root-children by this point, so repoint it there and promote, and the repoint is reviewed like any other change.
+  5. point the template of ApplicationSet apptique at each cluster's Target, once those Targets carry a release. It goes on generating dev-1-apptique, staging-1-apptique, prod-1-apptique under the same names, so Argo's tracking does not change and nothing is orphaned
+  6. point the template of ApplicationSet checkout-cache at each cluster's Target, once those Targets carry a release. It goes on generating dev-1-checkout-cache, staging-1-checkout-cache, prod-1-checkout-cache under the same names, so Argo's tracking does not change and nothing is orphaned
+  7. point the template of ApplicationSet platform-addons at each cluster's Target, once those Targets carry a release. It goes on generating dev-1-cluster-baseline, staging-1-cluster-baseline, prod-1-cluster-baseline under the same names, so Argo's tracking does not change and nothing is orphaned
+  8. never delete root, storefront: resources-finalizer.argocd.argoproj.io deletes everything it deployed. Every step above is a patch for exactly this reason
