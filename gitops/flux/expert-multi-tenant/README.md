@@ -77,7 +77,7 @@ understand the repo yet:
 | Who owns what? | The platform owns `clusters/shared/` and every team's `rbac.yaml` and `guardrails.yaml`. Each team owns its own `workloads/` folder and nothing above it. |
 | What identity applies each layer? | The platform bootstrap runs with the cluster's own trusted identity. Each team's `workloads/` is applied as that team's own ServiceAccount only. |
 | What stops one team reaching another team's namespace? | The RoleBinding: each ServiceAccount's `admin` grant is scoped to its own namespace by the RoleBinding's own namespace, so no other namespace is reachable, and the NetworkPolicy denies cross-namespace traffic even where RBAC is not the deciding factor. |
-| Which values does ConfigHub see per team? | Two components: `tenant-bootstrap` (platform-authored) and `tenant-workloads` (team-authored), each uploaded into that team's own Space. |
+| Which values does ConfigHub see per team? | Two components, in two Spaces: `tenant-bootstrap` (platform-authored) in that team's bootstrap Space, and `tenant-workloads` (team-authored) in that team's own workloads Space. A ConfigHub Space belongs to exactly one Component, so the platform's and the team's configuration are never uploaded into the same Space. |
 
 ## What this example does not do
 
@@ -104,15 +104,21 @@ Both commands are read-only: no ConfigHub calls, no cluster calls.
 ./verify.sh
 ```
 
-`./setup.sh` renders everything and uploads it into four ConfigHub Spaces:
-one for the platform's cluster-level bootstrap, and one per team. This
-mutates ConfigHub. It does not touch a live cluster.
+`./setup.sh` renders everything and uploads it into seven ConfigHub Spaces:
+one for the platform's cluster-level bootstrap, and two per team, one for
+that team's platform-authored bootstrap and one for that team's own
+workloads. A ConfigHub Space belongs to exactly one Component, so a team's
+bootstrap and its workloads always go to separate Spaces; that separation
+is also what lets the platform's Spaces and the team's Space carry
+different, correct `Owner` and `Environment` labels. This mutates
+ConfigHub. It does not touch a live cluster.
 
 ## Mutation boundaries
 
 - `./setup.sh --explain` and `./setup.sh --explain-json`: read-only.
-- `./setup.sh`: mutates ConfigHub (creates or updates four Spaces). Does not
-  mutate live infrastructure.
+- `./setup.sh`: mutates ConfigHub (creates or updates seven Spaces: one
+  platform Space, plus a bootstrap Space and a workloads Space for each of
+  the three teams). Does not mutate live infrastructure.
 - `./verify.sh`: read-only. Renders locally and checks the output; does not
   call ConfigHub, Flux, or a cluster.
 - `./cleanup.sh`: removes local rendered files. Prints, but does not run,

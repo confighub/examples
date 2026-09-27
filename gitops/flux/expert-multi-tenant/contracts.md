@@ -15,13 +15,14 @@ What a tool may assume about this example.
 
 - mutates: no
 - output shape: JSON object
-- stable fields: `example_name`, `mutates`, `mutates_confighub`, `mutates_live_infra`, `spaces`, `units`, `cluster`, `teams`, `namespaces`, `apps`, `evaluation_modes`
+- stable fields: `example_name`, `mutates`, `mutates_confighub`, `mutates_live_infra`, `spaces`, `units`, `cluster`, `teams`, `namespaces`, `apps`, `space_per_component`, `evaluation_modes`
 - expected anchors:
   - `.example_name == "gitops-flux-multi-tenant"`
   - `.mutates == false`
   - `.mutates_confighub == true`
   - `.mutates_live_infra == false`
-  - `.spaces | length == 4`
+  - `.spaces | length == 7`
+  - `.spaces | unique | length == 7`
   - `.cluster == "shared"`
   - `.teams == ["team-storefront", "team-payments", "team-loyalty"]`
   - `.units | length == 7`
@@ -57,17 +58,28 @@ without running anything against a cluster:
   not have to look identical.
 - Every `Kustomization` path in this example points at a directory in this
   repo that contains a `kustomization.yaml`.
+- A ConfigHub Space belongs to exactly one Component. This example never
+  uploads two Components into the same Space: the platform's cluster
+  control render, and each team's bootstrap and workloads, each go to their
+  own Space. That is also what lets the platform's Spaces and each team's
+  Space carry different, correct `Owner` and `Environment` labels.
 
 ## Mutating Contract
 
 ### `./setup.sh`
 
 - mutates: yes (ConfigHub only, no live infrastructure)
-- creates: 4 Spaces (`gitops-flux-multi-tenant-platform`,
-  `gitops-flux-multi-tenant-team-storefront`,
-  `gitops-flux-multi-tenant-team-payments`,
-  `gitops-flux-multi-tenant-team-loyalty`), one cluster-control Unit plus
-  one `tenant-bootstrap` and one `tenant-workloads` Unit per team
+- creates: 7 Spaces, one per Component-and-variant, never shared:
+  - `gitops-flux-multi-tenant-platform` (Component `cluster-control`, Owner `platform`)
+  - `gitops-flux-multi-tenant-team-storefront-bootstrap` (Component `tenant-bootstrap`, Owner `platform`)
+  - `gitops-flux-multi-tenant-team-storefront-workloads` (Component `tenant-workloads`, Owner `team-storefront`)
+  - `gitops-flux-multi-tenant-team-payments-bootstrap` (Component `tenant-bootstrap`, Owner `platform`)
+  - `gitops-flux-multi-tenant-team-payments-workloads` (Component `tenant-workloads`, Owner `team-payments`)
+  - `gitops-flux-multi-tenant-team-loyalty-bootstrap` (Component `tenant-bootstrap`, Owner `platform`)
+  - `gitops-flux-multi-tenant-team-loyalty-workloads` (Component `tenant-workloads`, Owner `team-loyalty`)
+
+  one cluster-control Unit plus one `tenant-bootstrap` Unit and one
+  `tenant-workloads` Unit per team
 - cleanup: `./cleanup.sh` (local files) plus the `cub space delete` commands
   it prints
 
@@ -79,6 +91,9 @@ without running anything against a cluster:
 - output shape: plain text
 - stable success text: `All gitops-flux-multi-tenant checks passed.`
 - proves:
+  - the plan names 7 distinct Spaces, never fewer, and never a repeated name
+    (the check that catches a bootstrap and a workloads upload aimed at the
+    same Space)
   - `kustomize build` succeeds for the cluster layer and every team's
     bootstrap and workloads
   - the platform bootstrap Kustomization sets no `serviceAccountName`

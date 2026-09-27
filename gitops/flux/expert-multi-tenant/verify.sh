@@ -52,6 +52,22 @@ if [[ "$name" != "gitops-flux-multi-tenant" ]]; then
   exit 1
 fi
 
+echo "==> Checking there are 7 distinct Spaces: 1 platform plus 2 per team"
+space_count="$(echo "$EXPLAIN_JSON_OUT" | jq '.spaces | length')"
+if [[ "$space_count" -ne 7 ]]; then
+  echo "Expected 7 Spaces (1 platform, plus a bootstrap and a workloads Space per team), got $space_count" >&2
+  exit 1
+fi
+unique_space_count="$(echo "$EXPLAIN_JSON_OUT" | jq '.spaces | unique | length')"
+if [[ "$unique_space_count" -ne 7 ]]; then
+  echo "Expected 7 distinct Space names, found duplicates among: $(echo "$EXPLAIN_JSON_OUT" | jq -c '.spaces')" >&2
+  echo "A ConfigHub Space belongs to exactly one Component. Reusing one Space" >&2
+  echo "for a team's bootstrap and its workloads would re-link that Space to" >&2
+  echo "whichever Component uploaded last, and overwrite its Owner and" >&2
+  echo "Environment labels along with it." >&2
+  exit 1
+fi
+
 echo "==> Checking that setup.sh --explain runs without mutation"
 "$SCRIPT_DIR/setup.sh" --explain >/dev/null
 

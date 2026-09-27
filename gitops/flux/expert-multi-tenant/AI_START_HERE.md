@@ -106,10 +106,13 @@ Pause after this stage.
 What this mutates:
 
 - creates or updates ConfigHub Space `gitops-flux-multi-tenant-platform`
-- creates or updates ConfigHub Spaces
-  `gitops-flux-multi-tenant-team-storefront`,
-  `gitops-flux-multi-tenant-team-payments` and
-  `gitops-flux-multi-tenant-team-loyalty`
+  (the cluster-level render)
+- creates or updates, per team, two Spaces, never one: a bootstrap Space
+  (`gitops-flux-multi-tenant-team-<name>-bootstrap`, platform-owned) and a
+  workloads Space (`gitops-flux-multi-tenant-team-<name>-workloads`,
+  team-owned). Seven Spaces in total. A ConfigHub Space belongs to exactly
+  one Component, so a team's bootstrap and its own workloads are never
+  uploaded into the same Space.
 
 What this does not mutate:
 
@@ -117,10 +120,10 @@ What this does not mutate:
 
 GUI checkpoint:
 
-- GUI now: open the four Spaces in ConfigHub and inspect the uploaded Units;
-  notice that each team's Space holds only that team's own bootstrap and
-  workloads
-- GUI gap: there is no single view across the three team Spaces that shows
+- GUI now: open the seven Spaces in ConfigHub and inspect the uploaded
+  Units; notice that each team's bootstrap Space is owned by the platform
+  and each team's workloads Space is owned by that team
+- GUI gap: there is no single view across the six team Spaces that shows
   access side by side
 - GUI feature ask: no issue filed yet for a cross-team access view
 

@@ -4,9 +4,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VAR_DIR="$SCRIPT_DIR/var"
 PLATFORM_SPACE="${GITOPS_FLUX_MULTI_TENANT_PLATFORM_SPACE:-gitops-flux-multi-tenant-platform}"
-STOREFRONT_SPACE="${GITOPS_FLUX_MULTI_TENANT_STOREFRONT_SPACE:-gitops-flux-multi-tenant-team-storefront}"
-PAYMENTS_SPACE="${GITOPS_FLUX_MULTI_TENANT_PAYMENTS_SPACE:-gitops-flux-multi-tenant-team-payments}"
-LOYALTY_SPACE="${GITOPS_FLUX_MULTI_TENANT_LOYALTY_SPACE:-gitops-flux-multi-tenant-team-loyalty}"
+STOREFRONT_BOOTSTRAP_SPACE="${GITOPS_FLUX_MULTI_TENANT_STOREFRONT_BOOTSTRAP_SPACE:-gitops-flux-multi-tenant-team-storefront-bootstrap}"
+STOREFRONT_WORKLOADS_SPACE="${GITOPS_FLUX_MULTI_TENANT_STOREFRONT_WORKLOADS_SPACE:-gitops-flux-multi-tenant-team-storefront-workloads}"
+PAYMENTS_BOOTSTRAP_SPACE="${GITOPS_FLUX_MULTI_TENANT_PAYMENTS_BOOTSTRAP_SPACE:-gitops-flux-multi-tenant-team-payments-bootstrap}"
+PAYMENTS_WORKLOADS_SPACE="${GITOPS_FLUX_MULTI_TENANT_PAYMENTS_WORKLOADS_SPACE:-gitops-flux-multi-tenant-team-payments-workloads}"
+LOYALTY_BOOTSTRAP_SPACE="${GITOPS_FLUX_MULTI_TENANT_LOYALTY_BOOTSTRAP_SPACE:-gitops-flux-multi-tenant-team-loyalty-bootstrap}"
+LOYALTY_WORKLOADS_SPACE="${GITOPS_FLUX_MULTI_TENANT_LOYALTY_WORKLOADS_SPACE:-gitops-flux-multi-tenant-team-loyalty-workloads}"
 EXPLAIN=0
 EXPLAIN_JSON=0
 
@@ -18,9 +21,13 @@ Usage:
   ./setup.sh
 
 This example renders a single-cluster Flux multi-tenancy repo with
-kustomize, once for the platform's cluster-level bootstrap and once per
-team, then uploads each render into its own ConfigHub Space with
-"cub variant upload". It does not bootstrap Flux and does not touch a
+kustomize, once for the platform's cluster-level bootstrap and twice per
+team (its platform-authored bootstrap, its own workloads), then uploads
+each render into its own ConfigHub Space with "cub variant upload". A
+ConfigHub Space belongs to exactly one Component, so the platform's
+bootstrap and a team's workloads always go to separate Spaces, even for the
+same team; that separation is also what lets their ownership and access
+differ. This script does not bootstrap Flux and does not touch a
 Kubernetes cluster.
 EOF_USAGE
 }
@@ -76,24 +83,37 @@ Conceptual model (one cluster, one platform layer, three tenants):
   its own ServiceAccount. No team's Kustomization can reach another team's
   namespace, because no RoleBinding anywhere grants it.
 
+  Space model: a ConfigHub Space belongs to exactly one Component, so this
+  example gives each team two Spaces, not one: a bootstrap Space (Component
+  tenant-bootstrap, Owner platform) and a workloads Space (Component
+  tenant-workloads, Owner team-<name>). That keeps the platform's guardrails
+  and the team's own app in Spaces with different, correct ownership,
+  instead of one upload silently re-labelling the other's Space.
+
 This example will:
 - render clusters/shared with "kustomize build"
 - render tenants/base/team-storefront, team-payments and team-loyalty
   (their rbac.yaml, guardrails.yaml and sync.yaml)
 - render each team's workloads/ folder separately
 - upload the cluster-level render into ConfigHub Space "$PLATFORM_SPACE"
-- upload each team's bootstrap and workloads renders into that team's own
-  Space ("$STOREFRONT_SPACE", "$PAYMENTS_SPACE", "$LOYALTY_SPACE") using
-  "cub variant upload --component <tenant-bootstrap|tenant-workloads> --variant <team> --owner <platform|team>"
+- upload each team's bootstrap render into that team's own bootstrap Space,
+  and each team's workloads render into that team's own workloads Space,
+  using "cub variant upload --component <tenant-bootstrap|tenant-workloads> --variant <team> --owner <platform|team-name>"
 
 ConfigHub mutations if you run without --explain:
 - creates (or updates) Space "$PLATFORM_SPACE" with the cluster-level render
-- creates (or updates) Space "$STOREFRONT_SPACE" with team-storefront's
-  bootstrap and workloads
-- creates (or updates) Space "$PAYMENTS_SPACE" with team-payments' bootstrap
-  and workloads
-- creates (or updates) Space "$LOYALTY_SPACE" with team-loyalty's bootstrap
-  and workloads
+- creates (or updates) Space "$STOREFRONT_BOOTSTRAP_SPACE" with
+  team-storefront's platform-authored bootstrap
+- creates (or updates) Space "$STOREFRONT_WORKLOADS_SPACE" with
+  team-storefront's own workloads
+- creates (or updates) Space "$PAYMENTS_BOOTSTRAP_SPACE" with
+  team-payments' platform-authored bootstrap
+- creates (or updates) Space "$PAYMENTS_WORKLOADS_SPACE" with
+  team-payments' own workloads
+- creates (or updates) Space "$LOYALTY_BOOTSTRAP_SPACE" with
+  team-loyalty's platform-authored bootstrap
+- creates (or updates) Space "$LOYALTY_WORKLOADS_SPACE" with
+  team-loyalty's own workloads
 
 This example never runs "flux bootstrap", never reconciles anything, and
 never creates or mutates a live Kubernetes cluster.
@@ -104,15 +124,23 @@ fi
 if [[ "$EXPLAIN_JSON" -eq 1 ]]; then
   jq -n \
     --arg platformSpace "$PLATFORM_SPACE" \
-    --arg storefrontSpace "$STOREFRONT_SPACE" \
-    --arg paymentsSpace "$PAYMENTS_SPACE" \
-    --arg loyaltySpace "$LOYALTY_SPACE" \
+    --arg storefrontBootstrapSpace "$STOREFRONT_BOOTSTRAP_SPACE" \
+    --arg storefrontWorkloadsSpace "$STOREFRONT_WORKLOADS_SPACE" \
+    --arg paymentsBootstrapSpace "$PAYMENTS_BOOTSTRAP_SPACE" \
+    --arg paymentsWorkloadsSpace "$PAYMENTS_WORKLOADS_SPACE" \
+    --arg loyaltyBootstrapSpace "$LOYALTY_BOOTSTRAP_SPACE" \
+    --arg loyaltyWorkloadsSpace "$LOYALTY_WORKLOADS_SPACE" \
     '{
       example_name: "gitops-flux-multi-tenant",
       mutates: false,
       mutates_confighub: true,
       mutates_live_infra: false,
-      spaces: [$platformSpace, $storefrontSpace, $paymentsSpace, $loyaltySpace],
+      spaces: [
+        $platformSpace,
+        $storefrontBootstrapSpace, $storefrontWorkloadsSpace,
+        $paymentsBootstrapSpace, $paymentsWorkloadsSpace,
+        $loyaltyBootstrapSpace, $loyaltyWorkloadsSpace
+      ],
       units: [
         "cluster-control",
         "tenant-bootstrap-storefront", "tenant-workloads-storefront",
@@ -123,6 +151,7 @@ if [[ "$EXPLAIN_JSON" -eq 1 ]]; then
       teams: ["team-storefront", "team-payments", "team-loyalty"],
       namespaces: ["flux-system", "team-storefront", "team-payments", "team-loyalty"],
       apps: ["storefront", "payments-api", "loyalty-api"],
+      space_per_component: true,
       evaluation_modes: {
         fast_preview: {
           mutates: false,
@@ -156,24 +185,31 @@ cub variant upload \
   --space "$PLATFORM_SPACE" \
   "$VAR_DIR/rendered-cluster-control.yaml"
 
+# Each team gets two Spaces, never one: a ConfigHub Space belongs to exactly
+# one Component, so uploading tenant-bootstrap and tenant-workloads into the
+# same Space would re-link that Space to whichever Component uploaded last,
+# and overwrite its labels (Owner, Environment) along with it. Separate
+# Spaces keep the platform's bootstrap and the team's own workloads each in
+# a Space with the right owner.
 upload_team() {
   local team="$1"
-  local space="$2"
+  local bootstrap_space="$2"
+  local workloads_space="$3"
   cub variant upload \
     --component tenant-bootstrap --variant "$team" --environment Platform --owner platform \
-    --space "$space" \
+    --space "$bootstrap_space" \
     "$VAR_DIR/rendered-bootstrap-$team.yaml"
   cub variant upload \
     --component tenant-workloads --variant "$team" --environment Team --owner "team-$team" \
     --namespace "team-$team" \
-    --space "$space" \
+    --space "$workloads_space" \
     "$VAR_DIR/rendered-workloads-$team.yaml"
-  echo "Uploaded team-$team's bootstrap and workloads to Space $space."
+  echo "Uploaded team-$team's bootstrap to Space $bootstrap_space and workloads to Space $workloads_space."
 }
 
-upload_team storefront "$STOREFRONT_SPACE"
-upload_team payments "$PAYMENTS_SPACE"
-upload_team loyalty "$LOYALTY_SPACE"
+upload_team storefront "$STOREFRONT_BOOTSTRAP_SPACE" "$STOREFRONT_WORKLOADS_SPACE"
+upload_team payments "$PAYMENTS_BOOTSTRAP_SPACE" "$PAYMENTS_WORKLOADS_SPACE"
+upload_team loyalty "$LOYALTY_BOOTSTRAP_SPACE" "$LOYALTY_WORKLOADS_SPACE"
 
 echo "Uploaded the cluster-level render to Space $PLATFORM_SPACE."
 echo "Next: ./verify.sh"
