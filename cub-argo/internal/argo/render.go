@@ -53,7 +53,11 @@ func Render(p *Plan) string {
 		for _, st := range c.Stages {
 			w("  stage %s\n", st.Name)
 			for _, v := range st.Variants {
-				w("    %-11s variant %s  ->  Target %s\n", v.Cluster, v.Space, v.Target)
+				label := v.Cluster
+				if v.Key != "" {
+					label = v.Key
+				}
+				w("    %-11s variant %s  ->  Target %s\n", label, v.Space, v.Target)
 				w("    %-11s Application %s, namespace %s\n", "", v.Application, v.Namespace)
 				w("    %-11s %s\n", "", v.Path)
 			}

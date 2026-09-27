@@ -3,6 +3,8 @@ package argo
 import (
 	"encoding/base64"
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -51,7 +53,12 @@ func secretField(v map[string]any, key, fallback string) string {
 // paramSet is one set of generator parameters: what one Application's
 // template is rendered with.
 type paramSet struct {
-	values  map[string]any
+	values map[string]any
+	// legacy holds the flat {{param}} names, for an ApplicationSet without
+	// goTemplate. Argo's git generator exposes `path` as a string there and as
+	// an object under goTemplate, so the two forms cannot be derived from one
+	// another.
+	legacy  map[string]string
 	cluster *Cluster
 	// element holds the parameters a list generator contributed, which name
 	// the component when a list is crossed with clusters.
@@ -60,8 +67,10 @@ type paramSet struct {
 
 // expand runs one ApplicationSet generator offline. It returns the parameter
 // sets and a short description of what the generator selects.
-func expand(g map[string]any, clusters []Cluster) ([]paramSet, string, error) {
+func expand(g map[string]any, clusters []Cluster, root string) ([]paramSet, string, error) {
 	switch {
+	case hasKey(g, "git"):
+		return expandGit(obj(g["git"]), root)
 	case hasKey(g, "clusters"):
 		c := obj(g["clusters"])
 		sel := obj(c["selector"])
@@ -93,11 +102,11 @@ func expand(g map[string]any, clusters []Cluster) ([]paramSet, string, error) {
 		if len(gens) != 2 {
 			return nil, "", fmt.Errorf("matrix generator: needs exactly two generators, has %d", len(gens))
 		}
-		a, da, err := expand(obj(gens[0]), clusters)
+		a, da, err := expand(obj(gens[0]), clusters, root)
 		if err != nil {
 			return nil, "", err
 		}
-		b, db, err := expand(obj(gens[1]), clusters)
+		b, db, err := expand(obj(gens[1]), clusters, root)
 		if err != nil {
 			return nil, "", err
 		}
@@ -262,12 +271,12 @@ func rendererFor(spec map[string]any) renderer {
 
 // render returns a copy of v with every templated string rendered, and records
 // each templated field's dotted path and rendered value in fields.
-func (r renderer) render(v any, p map[string]any, path string, fields map[string]string) (any, error) {
+func (r renderer) render(v any, ps paramSet, path string, fields map[string]string) (any, error) {
 	switch t := v.(type) {
 	case map[string]any:
 		out := make(map[string]any, len(t))
 		for k, val := range t {
-			rv, err := r.render(val, p, join(path, k), fields)
+			rv, err := r.render(val, ps, join(path, k), fields)
 			if err != nil {
 				return nil, err
 			}
@@ -277,7 +286,7 @@ func (r renderer) render(v any, p map[string]any, path string, fields map[string
 	case []any:
 		out := make([]any, len(t))
 		for i, val := range t {
-			rv, err := r.render(val, p, fmt.Sprintf("%s[%d]", path, i), fields)
+			rv, err := r.render(val, ps, fmt.Sprintf("%s[%d]", path, i), fields)
 			if err != nil {
 				return nil, err
 			}
@@ -288,7 +297,7 @@ func (r renderer) render(v any, p map[string]any, path string, fields map[string
 		if !strings.Contains(t, "{{") {
 			return t, nil
 		}
-		s, err := r.str(t, p)
+		s, err := r.str(t, ps)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", path, err)
 		}
@@ -307,7 +316,7 @@ func join(path, key string) string {
 
 var fastParam = regexp.MustCompile(`\{\{\s*([^{}\s]+)\s*\}\}`)
 
-func (r renderer) str(s string, p map[string]any) (string, error) {
+func (r renderer) str(s string, ps paramSet) (string, error) {
 	if r.goTemplate {
 		t := template.New("field")
 		if r.missingError {
@@ -318,13 +327,16 @@ func (r renderer) str(s string, p map[string]any) (string, error) {
 			return "", err
 		}
 		var b strings.Builder
-		if err := t.Execute(&b, p); err != nil {
+		if err := t.Execute(&b, ps.values); err != nil {
 			return "", err
 		}
 		return b.String(), nil
 	}
 	flat := map[string]string{}
-	flatten("", p, flat)
+	flatten("", ps.values, flat)
+	for k, v := range ps.legacy {
+		flat[k] = v
+	}
 	var missing []string
 	out := fastParam.ReplaceAllStringFunc(s, func(m string) string {
 		key := fastParam.FindStringSubmatch(m)[1]
@@ -348,4 +360,104 @@ func flatten(prefix string, v any, out map[string]string) {
 		return
 	}
 	out[prefix] = str(v)
+}
+
+// expandGit resolves a git generator's directories against the checkout. Argo
+// resolves the same glob against the repository at the revision named, so with
+// the checkout at that revision this gives the same directories, and the same
+// Applications. Without a checkout it cannot be resolved, and says so.
+//
+// The `files` form reads config out of the files it matches, which is a
+// different job; it is named rather than guessed at.
+func expandGit(g map[string]any, root string) ([]paramSet, string, error) {
+	if len(list(g["files"])) > 0 {
+		return nil, "", fmt.Errorf("git generator reads parameters out of files, which is not read offline yet")
+	}
+	dirs := list(g["directories"])
+	if len(dirs) == 0 {
+		return nil, "", fmt.Errorf("git generator names neither directories nor files")
+	}
+	if root == "" {
+		return nil, "", fmt.Errorf("git generator matches paths in the repository, so it needs the checkout: pass the repository directory, or --repo-root")
+	}
+
+	type entry struct {
+		path    string
+		exclude bool
+	}
+	var globs []entry
+	for _, d := range dirs {
+		globs = append(globs, entry{
+			path:    strings.TrimPrefix(filepath.ToSlash(str(get(d, "path"))), "./"),
+			exclude: get(d, "exclude") == true,
+		})
+	}
+
+	matched := map[string]bool{}
+	for _, e := range globs {
+		hits, err := filepath.Glob(filepath.Join(root, filepath.FromSlash(e.path)))
+		if err != nil {
+			return nil, "", fmt.Errorf("git generator path %q: %w", e.path, err)
+		}
+		for _, h := range hits {
+			info, err := os.Stat(h)
+			if err != nil || !info.IsDir() {
+				continue
+			}
+			rel, err := filepath.Rel(root, h)
+			if err != nil {
+				continue
+			}
+			key := filepath.ToSlash(rel)
+			if e.exclude {
+				delete(matched, key)
+			} else {
+				matched[key] = true
+			}
+		}
+	}
+
+	var paths []string
+	for k := range matched {
+		paths = append(paths, k)
+	}
+	sort.Strings(paths)
+
+	var out []paramSet
+	for _, path := range paths {
+		segments := strings.Split(path, "/")
+		base := segments[len(segments)-1]
+		legacy := map[string]string{
+			"path":                    path,
+			"path.basename":           base,
+			"path.basenameNormalized": normalize(base),
+		}
+		for i, seg := range segments {
+			legacy[fmt.Sprintf("path[%d]", i)] = seg
+		}
+		out = append(out, paramSet{
+			values: map[string]any{"path": map[string]any{
+				"path":               path,
+				"basename":           base,
+				"basenameNormalized": normalize(base),
+				"segments":           toAny(segments),
+			}},
+			legacy: legacy,
+		})
+	}
+	var names []string
+	for _, e := range globs {
+		if !e.exclude {
+			names = append(names, e.path)
+		}
+	}
+	return out, fmt.Sprintf("%d directories under %s", len(out), strings.Join(names, ", ")), nil
+}
+
+func toAny(s []string) []any {
+	out := make([]any, len(s))
+	for i, v := range s {
+		out[i] = v
+	}
+	return out
 }

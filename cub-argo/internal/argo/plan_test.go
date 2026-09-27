@@ -490,3 +490,116 @@ func TestChartReproducibility(t *testing.T) {
 		}
 	}
 }
+
+// The commonest ApplicationSet after the cluster generator: one Application
+// per directory, resolved against the checkout the way Argo resolves it
+// against the repository.
+func TestGitDirectoryGenerator(t *testing.T) {
+	const dir = "../../../gitops/argo/beginner-applicationset"
+	if _, err := os.Stat(dir); err != nil {
+		t.Skip("example not present")
+	}
+	p := planOf(t, dir, Options{RepoRoot: repoRoot(t)})
+	if len(p.Components) != 1 {
+		t.Fatalf("want one component from the git generator, got %d", len(p.Components))
+	}
+	c := p.Components[0]
+	apps, spaces := map[string]bool{}, map[string]bool{}
+	for _, st := range c.Stages {
+		for _, v := range st.Variants {
+			apps[v.Application] = true
+			if spaces[v.Space] {
+				t.Errorf("two variants share Space %s; each needs its own", v.Space)
+			}
+			spaces[v.Space] = true
+		}
+	}
+	for _, want := range []string{"apptique-dev", "apptique-prod"} {
+		if !apps[want] {
+			t.Errorf("git generator should produce %s; got %v", want, apps)
+		}
+	}
+	if !strings.Contains(c.Generator, "2 directories") {
+		t.Errorf("generator description should say what it matched, got %q", c.Generator)
+	}
+}
+
+// Without a checkout the glob cannot be resolved, and the plan says so rather
+// than producing nothing.
+func TestGitGeneratorNeedsTheCheckout(t *testing.T) {
+	const dir = "../../../gitops/argo/beginner-applicationset"
+	if _, err := os.Stat(dir); err != nil {
+		t.Skip("example not present")
+	}
+	in, err := Load(nil, []string{dir + "/bootstrap/applicationset.yaml"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := Build(in, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(strings.Join(p.LeftOut, "\n"), "needs the checkout") {
+		t.Errorf("want a left-out note naming the missing checkout, got %v", p.LeftOut)
+	}
+}
+
+// An ApplicationSet that matches nothing used to vanish from the plan.
+func TestApplicationSetThatSelectsNothingIsReported(t *testing.T) {
+	const dir = "../../../gitops/argo/intermediate-git-as-database"
+	if _, err := os.Stat(dir); err != nil {
+		t.Skip("example not present")
+	}
+	p := planOf(t, dir, Options{RepoRoot: repoRoot(t)})
+	for _, want := range []string{"canary", "mon"} {
+		if !hasProblem(p, "ApplicationSet "+want, "selects nothing here") {
+			t.Errorf("ApplicationSet %s matched no cluster and should be reported: %v", want, p.Problems)
+		}
+	}
+}
+
+// A Helm-chart source has no path to render, so the variant would be empty.
+func TestHelmChartSourceIsReported(t *testing.T) {
+	in, err := Load(strings.NewReader(`
+apiVersion: v1
+kind: Secret
+metadata: {name: c1, namespace: argocd, labels: {argocd.argoproj.io/secret-type: cluster}}
+stringData: {name: c1, server: https://c1}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata: {name: mon, namespace: argocd}
+spec:
+  generators: [{clusters: {}}]
+  template:
+    metadata: {name: '{{name}}-mon'}
+    spec:
+      project: default
+      source: {repoURL: https://charts.example.com, chart: mon, targetRevision: 1.4.0}
+      destination: {server: '{{server}}', namespace: mon}
+`), []string{"-"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := Build(in, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasProblem(p, "deploys Helm chart", "variant would be empty") {
+		t.Errorf("a chart source should be reported, not silently empty: %v", p.Problems)
+	}
+}
+
+// A path with no kustomization.yaml renders for Argo but not for the script.
+func TestPlainDirectoryIsReported(t *testing.T) {
+	root, dir := copyExample(t)
+	if err := os.Remove(filepath.Join(dir, "apps", "apptique", "overlays", "prod", "kustomization.yaml")); err != nil {
+		t.Fatal(err)
+	}
+	opts := staged
+	opts.RepoRoot = root
+	p := planOf(t, dir, opts)
+	if !hasProblem(p, "has no kustomization.yaml", "plain directory") {
+		t.Errorf("want a plain-directory problem, got %v", p.Problems)
+	}
+}

@@ -91,7 +91,10 @@ type Variant struct {
 	Namespace   string            `json:"namespace"`
 	Path        string            `json:"path"`
 	Images      map[string]string `json:"images,omitempty"`
-	stage       string
+	// Key is what tells this variant from its siblings: the cluster, or the
+	// Application's own name where one cluster carries several.
+	Key   string `json:"key,omitempty"`
+	stage string
 }
 
 // Window is an AppProject sync window and the planned Applications it covers.
@@ -288,7 +291,7 @@ func (b *builder) appset(o object) {
 	var sets []paramSet
 	var descs []string
 	for _, g := range list(spec["generators"]) {
-		ps, desc, err := expand(obj(g), b.clusters)
+		ps, desc, err := expand(obj(g), b.clusters, b.root)
 		if err != nil {
 			p.LeftOut = append(p.LeftOut, fmt.Sprintf("ApplicationSet %s: %v", o.name, err))
 			return
@@ -297,11 +300,18 @@ func (b *builder) appset(o object) {
 		descs = append(descs, desc)
 	}
 
+	if len(sets) == 0 {
+		p.Problems = append(p.Problems, fmt.Sprintf(
+			"ApplicationSet %s selects nothing here, so it would govern no cluster. Its generator (%s) matched none of the %d clusters in the input; export the cluster Secrets it selects on, or say why it is empty",
+			o.name, strings.Join(descs, "; "), len(b.clusters)))
+		return
+	}
+
 	groups := map[string][]renderedApp{}
 	var keys []string
 	for _, ps := range sets {
 		fields := map[string]string{}
-		v, err := r.render(tmpl, ps.values, "", fields)
+		v, err := r.render(tmpl, ps, "", fields)
 		if err != nil {
 			who := "a parameter set"
 			if ps.cluster != nil {
@@ -434,6 +444,13 @@ func (b *builder) variant(c *Component, app map[string]any, cl *Cluster, fields 
 	} else if s, ok := b.stageOf[cl.Name]; ok {
 		v.stage = s
 	}
+	if ch := str(get(app, "spec", "source", "chart")); ch != "" {
+		p.Problems = append(p.Problems, fmt.Sprintf(
+			"%s on %s: Application %s deploys Helm chart %q from %s, not a path in a repository. What ConfigHub would hold is the chart's render, and this plan does not produce it, so the variant would be empty. Chart sources are not onboarded yet",
+			c.Name, clusterName, v.Application, ch, str(get(app, "spec", "source", "repoURL"))))
+		v.Path = "(helm chart " + ch + ")"
+		return v
+	}
 	if get(app, "spec", "source") == nil && get(app, "spec", "sources") != nil {
 		v.Path = "(multi-source)"
 		c.Notes = appendOnce(c.Notes, "uses spec.sources; only single-source Applications are checked offline")
@@ -461,6 +478,13 @@ func (b *builder) variant(c *Component, app map[string]any, cl *Cluster, fields 
 			p.Problems = append(p.Problems, fmt.Sprintf("%s on %s: source path %s does not exist in this checkout, so Argo CD would fail to sync %s", c.Name, clusterName, v.Path, v.Application))
 		} else {
 			v.Images = overlayImages(local)
+			if _, err := os.Stat(filepath.Join(local, "kustomization.yaml")); err != nil {
+				if _, err := os.Stat(filepath.Join(local, "kustomization.yml")); err != nil {
+					p.Problems = appendOnce(p.Problems, fmt.Sprintf(
+						"%s: %s has no kustomization.yaml. Argo CD reads a plain directory of manifests, and so does Flux, but the script renders with kustomize build, which does not. Onboarding a plain directory is not supported yet",
+						c.Name, v.Path))
+				}
+			}
 			charts := helmCharts(local, 4)
 			if len(charts) > 0 {
 				c.Notes = appendOnce(c.Notes, "a Helm chart inflated by Kustomize: Argo CD must run Kustomize with --enable-helm, and the chart's resources do not take the overlay's namespace field")
@@ -492,6 +516,30 @@ func appendOnce(l []string, s string) []string {
 // finish groups a component's variants into the plan's stages and notes image
 // tags that differ between them.
 func (b *builder) finish(c *Component, variants []Variant) {
+	// A cluster generator fans out one Application per cluster, so the cluster
+	// names a variant. A git-directory generator fans out per directory, often
+	// onto one cluster, and then the cluster does not tell two variants apart.
+	// Argo requires Application names to be unique, so they always do.
+	seen := map[string]bool{}
+	collide := false
+	for _, v := range variants {
+		if seen[v.Cluster] {
+			collide = true
+		}
+		seen[v.Cluster] = true
+	}
+	if collide {
+		for i := range variants {
+			key := strings.TrimPrefix(variants[i].Application, c.Name+"-")
+			key = strings.TrimSuffix(key, "-"+c.Name)
+			if key == "" || key == variants[i].Application {
+				key = variants[i].Application
+			}
+			variants[i].Space = fmt.Sprintf("%s-%s-%s", b.opts.Prefix, c.Name, key)
+			variants[i].Key = key
+		}
+	}
+
 	for _, s := range b.plan.Stages {
 		st := Stage{Name: s}
 		for _, v := range variants {
