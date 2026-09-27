@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+# Move this Argo CD estate onto ConfigHub. Written by `cub argo apply`.
+# Read it, then run it:
+#
+#   ARGOCD_CONTEXT=<kubectl context of the cluster Argo CD runs on> bash handover.sh
+#
+# Run apply.sh first. Every step here is a patch, never a delete: the
+# objects, their names and Argo's tracking of what they own all survive, so
+# no workload is recreated. It goes top down, because a parent pointed at a
+# Space that holds nothing prunes the children it applied.
+#
+# This has not been rehearsed on a cluster. Read every step before running
+# it, and start with one non-production estate.
+set -euo pipefail
+cd "$(dirname "$0")"
+k() { kubectl ${ARGOCD_CONTEXT:+--context "$ARGOCD_CONTEXT"} "$@"; }
+step() { printf '\n== %s\n' "$*"; }
+ns=${ARGOCD_NAMESPACE:-argocd}
+
+# The gateway address a repointed source reads. cub reports it for a Target.
+gateway() { cub target get --space argo-targets "$1" -o jq=.Target.Parameters.OCIRepository 2>/dev/null || true; }
+
+step "0/4 Check before changing anything"
+cub space list --quiet >/dev/null || { echo "cub is not logged in: run cub auth login"; exit 1; }
+image=$(k get deployment argocd-repo-server -n "$ns" -o jsonpath='{.spec.template.spec.containers[0].image}')
+version=${image##*:}; version=${version#v}
+if [ "$(printf '%s\n' 3.1 "${version%.*}.${version#*.}" | sort -V | head -1)" != 3.1 ]; then
+  echo "Argo CD runs $version; an oci:// source is read natively from v3.1, so this handover is not available here"; exit 1
+fi
+# Until the gateway is allowed as a source, every repoint below is refused.
+echo 'first, add the gateway'\''s oci:// address to sourceRepos on AppProject platform (allows only https://github.com/confighub/examples) and storefront (allows only https://github.com/confighub/examples): until then every repoint below is refused'
+echo "  cub target get --space argo-targets argocd -o jq=.Target.Parameters.OCIRepository   # the address to add"
+read -r -p "Add it to sourceRepos on those AppProjects, then press Return to carry on. " _
+
+step "1/4 The credential Argo reads the gateway with"
+# A repository Secret for the gateway, holding the Targets' server worker.
+# The ID and secret go from cub into the Secret through file descriptors,
+# never to disk, the command line, or the terminal.
+addr=${CONFIGHUB_OCI:-$(gateway argocd)}
+if [ -z "$addr" ]; then
+  echo "Could not read the gateway address from Target argo-targets/argocd."
+  echo "Find it with: cub target get --space argo-targets argocd"
+  echo "then re-run with CONFIGHUB_OCI=<address> bash handover.sh"; exit 1
+fi
+# The repository Secret's type for a plain OCI source is the one field here
+# that has not been checked against a live Argo CD. Verify it against your
+# version's repository-Secret docs before trusting this step.
+k create secret generic confighub-argo-targets --namespace "$ns" \
+  --from-literal=type=helm --from-literal=enableOCI=true \
+  --from-literal=url="${addr%%/*}" \
+  --from-file=username=<(cub worker get --space argo-targets server-worker -o jq=.BridgeWorker.BridgeWorkerID | tr -d '\n') \
+  --from-file=password=<(cub worker get --space argo-targets server-worker --include-secret -o jq=.BridgeWorker.Secret | tr -d '\n') \
+  --dry-run=client -o yaml | k apply -f -
+k -n "$ns" label secret confighub-argo-targets argocd.argoproj.io/secret-type=repository --overwrite
+
+step "2/4 Repoint root at argo-root-children"
+# Its children are Units there by now, released to the argocd Target.
+addr=$(gateway argocd)
+k -n "$ns" get application root -o jsonpath='{.spec.source.repoURL}' | grep -q '^oci://' && echo 'root already reads ConfigHub' || \
+  k -n "$ns" patch application root --type merge -p "{\"spec\":{\"source\":{\"repoURL\":\"oci://${addr}\",\"path\":\".\",\"targetRevision\":\"latest\"}}}"
+k -n "$ns" wait --for=jsonpath='{.status.sync.status}'=Synced application/root --timeout=3m
+step "3/4 Repoint storefront at argo-storefront-children"
+# Its children are Units there by now, released to the argocd Target.
+addr=$(gateway argocd)
+k -n "$ns" get application storefront -o jsonpath='{.spec.source.repoURL}' | grep -q '^oci://' && echo 'storefront already reads ConfigHub' || \
+  k -n "$ns" patch application storefront --type merge -p "{\"spec\":{\"source\":{\"repoURL\":\"oci://${addr}\",\"path\":\".\",\"targetRevision\":\"latest\"}}}"
+k -n "$ns" wait --for=jsonpath='{.status.sync.status}'=Synced application/storefront --timeout=3m
+step "4/4 Point each ApplicationSet's template at its clusters' Targets"
+# The ApplicationSet goes on generating the same Applications under the same
+# names, so Argo's tracking does not change and nothing is orphaned. Each
+# generated Application reads its own cluster's Target.
+# apptique generates:
+#   dev-1-apptique               from argo-targets/dev-1
+#   staging-1-apptique           from argo-targets/staging-1
+#   prod-1-apptique              from argo-targets/prod-1
+echo 'Edit the apptique Unit'\''s template: set spec.template.spec.source.repoURL to oci://<the gateway>/<this cluster'\''s Target>, path '\''.'\'', targetRevision latest. Promote it like any other change.'
+# checkout-cache generates:
+#   dev-1-checkout-cache         from argo-targets/dev-1
+#   staging-1-checkout-cache     from argo-targets/staging-1
+#   prod-1-checkout-cache        from argo-targets/prod-1
+echo 'Edit the checkout-cache Unit'\''s template: set spec.template.spec.source.repoURL to oci://<the gateway>/<this cluster'\''s Target>, path '\''.'\'', targetRevision latest. Promote it like any other change.'
+# platform-addons generates:
+#   dev-1-cluster-baseline       from argo-targets/dev-1
+#   staging-1-cluster-baseline   from argo-targets/staging-1
+#   prod-1-cluster-baseline      from argo-targets/prod-1
+echo 'Edit the platform-addons Unit'\''s template: set spec.template.spec.source.repoURL to oci://<the gateway>/<this cluster'\''s Target>, path '\''.'\'', targetRevision latest. Promote it like any other change.'
+echo 'Note: AppProject storefront denies syncing prod-1-apptique, prod-1-checkout-cache on schedule "0 9 * * 1-5" for 9h. The repoint lands, but its first sync waits for the window to close.'
+
+echo
+echo 'Done once every Application reports Synced from an oci:// source:'
+echo '  kubectl -n $ns get applications -o custom-columns=NAME:.metadata.name,SOURCE:.spec.source.repoURL,SYNC:.status.sync.status'
+echo 'Nothing was deleted. To go back, patch each source to its Git repoURL and path.'

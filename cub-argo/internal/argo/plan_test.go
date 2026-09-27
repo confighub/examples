@@ -4,7 +4,9 @@ import (
 	"flag"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -319,5 +321,97 @@ func TestHandoverRepointsTopDown(t *testing.T) {
 	// The repoint of a child that is already a Unit goes through approval.
 	if !strings.Contains(joined, "repoint it there and promote") {
 		t.Errorf("a child layer's repoint should itself be reviewed:\n%s", joined)
+	}
+}
+
+// writeApply runs apply into a temp dir and returns it.
+func writeApply(t *testing.T) string {
+	t.Helper()
+	opts := staged
+	opts.RepoRoot = repoRoot(t)
+	p := planOf(t, example, opts)
+	dir := t.TempDir()
+	if _, err := WriteApply(p, "argo", dir); err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
+func TestApplyGolden(t *testing.T) {
+	dir := writeApply(t)
+	for _, name := range []string{"apply.sh", "handover.sh"} {
+		got, err := os.ReadFile(filepath.Join(dir, name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		// The repo path differs per machine, so it is not part of the golden.
+		body := regexp.MustCompile(`REPO_ROOT=\$\{REPO_ROOT:-'[^']*'\}`).
+			ReplaceAll(got, []byte(`REPO_ROOT=${REPO_ROOT:-'<repo>'}`))
+		golden := filepath.Join("..", "..", "testdata", name+".txt")
+		if *update {
+			if err := os.WriteFile(golden, body, 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		want, err := os.ReadFile(golden)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(body) != string(want) {
+			t.Errorf("%s differs from %s; rerun with -update and review the diff", name, golden)
+		}
+	}
+}
+
+// Both scripts must be valid bash, since a person is asked to read and run them.
+func TestScriptsParseAsBash(t *testing.T) {
+	if _, err := exec.LookPath("bash"); err != nil {
+		t.Skip("no bash")
+	}
+	dir := writeApply(t)
+	for _, name := range []string{"apply.sh", "handover.sh"} {
+		out, err := exec.Command("bash", "-n", filepath.Join(dir, name)).CombinedOutput()
+		if err != nil {
+			t.Errorf("%s is not valid bash: %v\n%s", name, err, out)
+		}
+	}
+}
+
+// Every path apply.sh renders has to exist in the repository, or the first
+// step of a real run fails.
+func TestEveryRenderPathExists(t *testing.T) {
+	dir := writeApply(t)
+	data, err := os.ReadFile(filepath.Join(dir, "apply.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := regexp.MustCompile(`(?m)^render '([^']+)'`).FindAllStringSubmatch(string(data), -1)
+	if len(found) == 0 {
+		t.Fatal("apply.sh renders nothing")
+	}
+	for _, m := range found {
+		p := filepath.Join(repoRoot(t), filepath.FromSlash(m[1]))
+		if info, err := os.Stat(p); err != nil || !info.IsDir() {
+			t.Errorf("apply.sh would render %s, which is not a directory here", m[1])
+		}
+		if _, err := os.Stat(filepath.Join(p, "kustomization.yaml")); err != nil {
+			t.Errorf("%s has no kustomization.yaml, so kustomize build would fail", m[1])
+		}
+	}
+}
+
+// The files apply.sh reads have to be written beside it.
+func TestApplyWritesWhatItReads(t *testing.T) {
+	dir := writeApply(t)
+	data, err := os.ReadFile(filepath.Join(dir, "apply.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, re := range []string{`--filename (\S+)`, `cub unit create --space \S+ \S+ (control/\S+)`} {
+		for _, m := range regexp.MustCompile(re).FindAllStringSubmatch(string(data), -1) {
+			if _, err := os.Stat(filepath.Join(dir, m[1])); err != nil {
+				t.Errorf("apply.sh reads %s, which apply did not write", m[1])
+			}
+		}
 	}
 }
