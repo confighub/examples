@@ -73,7 +73,8 @@ paths. It does not render Kustomize or Helm; for that, use the
 ## Use it as a cub plugin
 
 ```bash
-make install-plugin   # builds into $CUB_CONFIG/plugins/argo/main
+make install-plugin   # builds into $CUB_CONFIG/plugins/cub-argo
+cub plugin list       # cub-argo should be listed, status ok
 cub argo plan ../gitops/argo/expert-app-of-apps --stage-label rollout-phase --stages canary,secondary,primary
 ```
 

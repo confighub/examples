@@ -3,7 +3,7 @@
 GO  ?= go
 BIN ?= bin/cub-flux
 
-.PHONY: all build test vet fmt golden example install-plugin clean
+.PHONY: all build test vet fmt golden example install-plugin uninstall-plugin clean
 
 all: build
 
@@ -27,10 +27,18 @@ golden:
 example: build
 	$(BIN) plan ../gitops/flux/expert-fleet
 
-# Install the binary as a local cub plugin, so `cub flux` works.
+# Install as a local cub plugin, so `cub flux` works. A plugin is a directory
+# named for the repository, holding the binary and the manifest that names it.
+PLUGIN_DIR ?= $(or $(CUB_CONFIG),$(HOME)/.confighub)/plugins/cub-flux
+
 install-plugin:
-	mkdir -p "$${CUB_CONFIG:-$$HOME/.confighub}/plugins/flux"
-	$(GO) build -o "$${CUB_CONFIG:-$$HOME/.confighub}/plugins/flux/main" .
+	mkdir -p "$(PLUGIN_DIR)"
+	$(GO) build -o "$(PLUGIN_DIR)/cub-flux" .
+	printf 'name: flux\nversion: 0.1.0\ncommands:\n    - name: flux\n      summary: Read a Flux fleet repository and plan it into ConfigHub, one variant per cluster\n      entrypoint: cub-flux\n' > "$(PLUGIN_DIR)/cub-plugin.yaml"
+	@echo "Installed. Check it with: cub plugin list"
+
+uninstall-plugin:
+	rm -rf "$(PLUGIN_DIR)"
 
 clean:
 	rm -rf bin
