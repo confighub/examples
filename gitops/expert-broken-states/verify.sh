@@ -112,20 +112,33 @@ if [[ "$redis_count" -ne 1 ]]; then
   exit 1
 fi
 
-echo "==> Checking the bad-commit overlay: container moved to 8080, Service still on 80"
-grep -q "namespace: apptique-broken-states-bad-commit$" "$VAR_DIR/rendered-bad-commit.yaml"
+echo "==> Checking the bad-commit overlay: the healthy app with only the Service targetPort moved to 8080"
+if ! grep -q "namespace: apptique-broken-states$" "$VAR_DIR/rendered-bad-commit.yaml" \
+  || grep -q "namespace: apptique-broken-states-" "$VAR_DIR/rendered-bad-commit.yaml"; then
+  echo "Expected the bad-commit overlay to render into the healthy app's namespace, apptique-broken-states" >&2
+  exit 1
+fi
 bad_commit_container_port="$(awk '/^kind: Deployment$/{f=1} f && /containerPort:/{print $NF; exit}' "$VAR_DIR/rendered-bad-commit.yaml")"
 bad_commit_target_port="$(awk '/^kind: Service$/{f=1} f && /targetPort:/{print $NF; exit}' "$VAR_DIR/rendered-bad-commit.yaml")"
-if [[ "$bad_commit_container_port" != "8080" ]]; then
-  echo "Expected the bad-commit overlay's container port to be 8080, got $bad_commit_container_port" >&2
+bad_commit_probe_ports="$(awk '/^kind: Deployment$/{f=1} /^---$/{f=0} f && /Probe:$/{p=1} f && p && /port:/{print $NF; p=0}' "$VAR_DIR/rendered-bad-commit.yaml" | sort -u | tr '\n' ' ')"
+if [[ "$bad_commit_container_port" != "80" ]]; then
+  echo "Expected the bad-commit overlay's container to stay on port 80 (nginx listens there), got $bad_commit_container_port" >&2
   exit 1
 fi
-if [[ "$bad_commit_target_port" != "80" ]]; then
-  echo "Expected the bad-commit overlay's Service targetPort to stay 80, got $bad_commit_target_port" >&2
+if [[ "$bad_commit_probe_ports" != "80 " ]]; then
+  echo "Expected the bad-commit overlay's readiness and liveness probes to stay on port 80, got: $bad_commit_probe_ports" >&2
+  echo "Moving the probes off the port nginx listens on makes the pods fail readiness," >&2
+  echo "which turns this green-sync scenario into a failed rollout." >&2
   exit 1
 fi
-if [[ "$bad_commit_container_port" == "$bad_commit_target_port" ]]; then
-  echo "Expected the bad-commit overlay's container port and Service targetPort to differ" >&2
+if [[ "$bad_commit_target_port" != "8080" ]]; then
+  echo "Expected the bad-commit overlay's Service targetPort to be 8080, got $bad_commit_target_port" >&2
+  exit 1
+fi
+changed_lines="$(diff "$VAR_DIR/rendered-healthy.yaml" "$VAR_DIR/rendered-bad-commit.yaml" | grep -c '^[<>]' || true)"
+if [[ "$changed_lines" -ne 2 ]]; then
+  echo "Expected the bad-commit render to differ from the healthy render in exactly one line, found:" >&2
+  diff "$VAR_DIR/rendered-healthy.yaml" "$VAR_DIR/rendered-bad-commit.yaml" >&2 || true
   exit 1
 fi
 

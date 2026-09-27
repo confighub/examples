@@ -47,8 +47,12 @@ healthy state is ever uploaded to ConfigHub.
   `apps/apptique/overlays/healthy`.
 - `overlays/failed-sync` and `overlays/bad-commit` both render and both
   differ from `overlays/healthy` by exactly one thing: an added
-  `RedisCache` custom resource, or a moved container port. Neither is ever
-  uploaded to ConfigHub or applied to a cluster by this example.
+  `RedisCache` custom resource, or a Service `targetPort` moved to 8080
+  while the container stays on 80. Neither is ever uploaded to ConfigHub or
+  applied to a cluster by this example's scripts. The bad-commit scenario
+  page documents an optional upload a person may run in their own
+  terminal; do not run it for them without asking, because it mutates
+  ConfigHub.
 - Drift has no overlay: it is a live divergence, not a manifest state, so
   it is documented rather than rendered.
 
@@ -101,7 +105,8 @@ Both commands succeed. Say out loud, before moving on: for each one, is the
 problem in this rendered YAML, or only visible once something tries to
 apply or run it? (Neither: the YAML is well-formed both times. The
 failed-sync problem is a missing CRD on the API server; the bad-commit
-problem is a runtime mismatch between the container and the Service.)
+problem is a runtime mismatch: the Service sends traffic to port 8080,
+and the container listens on 80.)
 
 GUI checkpoint:
 
@@ -153,8 +158,8 @@ Pause after this stage.
 
 This re-renders everything locally and checks the structure: the healthy
 overlay's ports, the failed-sync overlay's one added `RedisCache`, the
-bad-commit overlay's moved container port against the Service's
-unchanged port, and that every script in this example (including every
+bad-commit overlay's Service `targetPort` of 8080 against a container
+and probes that stay on 80, in the healthy app's own namespace, and that every script in this example (including every
 `scenarios/*/break.sh`) is syntactically valid. It does not call
 ConfigHub, so it passes even if you skipped Stage 4.
 

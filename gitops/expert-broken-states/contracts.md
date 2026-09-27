@@ -44,10 +44,12 @@ without running anything against a cluster:
   healthy render: a `RedisCache` custom resource
   (`cache.apptique.example/v1`) with no matching CRD assumed to exist on
   any cluster this example is checked against.
-- `apps/apptique/overlays/bad-commit` changes exactly one value from the
-  healthy render: the frontend container's `containerPort` (and its two
-  probes) move from 80 to 8080. The Service is unchanged and still targets
-  port 80.
+- `apps/apptique/overlays/bad-commit` builds on the healthy overlay and
+  changes exactly one value in its render: the `frontend` Service's
+  `targetPort` moves from 80 to 8080. The container, its `containerPort`
+  and both probes stay on port 80, and the namespace stays
+  `apptique-broken-states`, so the pods go Ready and the rollout succeeds
+  while the Service sends traffic to a port nothing listens on.
 - `argo/application.yaml` is an Argo CD `Application` with
   `syncPolicy.automated.selfHeal: true`, pointed at
   `gitops/expert-broken-states/apps/apptique/overlays/healthy`.
@@ -102,6 +104,21 @@ Component and overwrites its labels (Owner, Environment among them), which
 is why this example never puts the Argo and Flux control objects in the
 same Space even though both are "control" objects.
 
+### Optional bad-commit upload (person-run, documented in `scenarios/03-bad-commit/README.md`)
+
+- run by: a person, in their own terminal. No script in this example runs it.
+- mutates: yes (ConfigHub only: no Release is published and no cluster is touched)
+- writes: a new revision of the `frontend-service` Unit in Space
+  `gitops-expert-broken-states`, with `targetPort: 8080`. The other Units
+  are unchanged, because the bad-commit render differs from the healthy
+  render only in that field.
+- uses the same `--component apptique --variant healthy --environment
+  Healthy --namespace apptique-broken-states --space
+  gitops-expert-broken-states` flags as `setup.sh`, on
+  `var/rendered-bad-commit.yaml`
+- undo: run `./setup.sh` again, which re-uploads the healthy render as a
+  new revision with `targetPort: 80`
+
 ## Verification Contract
 
 ### `./verify.sh`
@@ -116,8 +133,9 @@ same Space even though both are "control" objects.
     Service that both use port 80
   - the failed-sync overlay renders the same Deployment and Service plus
     exactly one `RedisCache` resource
-  - the bad-commit overlay's container and probes move to port 8080 while
-    its Service (inherited unchanged) still targets port 80
+  - the bad-commit overlay renders into `apptique-broken-states`, keeps its
+    container and both probes on port 80, sets the Service `targetPort` to
+    8080, and differs from the healthy render in exactly one line
   - `setup.sh --explain-json` is valid JSON with the fields and anchors
     listed above
   - `bash -n` passes on every script in this example, including

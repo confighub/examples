@@ -15,8 +15,9 @@ Scenario 3: bad commit
 The break is already written down as a file in this repo:
   apps/apptique/overlays/bad-commit/kustomization.yaml
 
-It moves the frontend container's port to 8080 while the Service still
-sends traffic to port 80. Rendering it locally is read-only and safe:
+It is the healthy app with one field changed: the frontend Service's
+targetPort moves to 8080, while the container and its probes stay on port
+80. Rendering it locally is read-only and safe:
 EOF_STEPS
 
 require_cmd() {
@@ -39,6 +40,8 @@ checked out and Argo CD or Flux pointed at it:
 
   argocd app get apptique-broken-states -o json
   flux get kustomizations apptique-broken-states
+  kubectl -n apptique-broken-states get endpointslices \
+    -l kubernetes.io/service-name=frontend
   kubectl -n apptique-broken-states run probe --rm -i --restart=Never \
     --image=curlimages/curl -- curl -sS -m 3 \
     http://frontend.apptique-broken-states.svc.cluster.local

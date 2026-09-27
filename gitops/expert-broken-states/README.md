@@ -55,7 +55,7 @@ renders and can be inspected on its own:
 |---|---|---|---|---|
 | `overlays/healthy` | the only state this example uploads | yes | yes | yes |
 | `overlays/failed-sync` | adds a `RedisCache` custom resource with no CRD assumed | yes | no | n/a, never applied |
-| `overlays/bad-commit` | moves the container port to 8080, leaves the Service on 80 | yes | yes | no |
+| `overlays/bad-commit` | the healthy overlay with the Service `targetPort` moved to 8080; the container still listens on 80 | yes | yes | no |
 
 Drift has no overlay of its own, because drift is not a manifest problem:
 it is a live object diverging from every manifest that describes it. See
@@ -129,9 +129,13 @@ read-only way to check, in the person's own terminal:
    only a live API server rejects it, which is exactly why ConfigHub intent
    alone cannot be read as delivery proof.
 3. [**Bad commit**](./scenarios/03-bad-commit/README.md): the frontend
-   container's port moves to 8080 while the Service stays on 80. Argo and
-   Flux both report success, because the pods really do come up and pass
-   their (also-moved) probes. The workload is unreachable anyway.
+   Service's `targetPort` moves to 8080 while the container still listens
+   on 80. Argo and Flux both report success, because the pods really do
+   come up and pass their probes on 80. The workload is unreachable
+   through its Service anyway. Whether ConfigHub's stored intent agrees
+   with the live Service depends on whether the bad commit was also
+   uploaded; the scenario page has an optional, person-run upload step
+   for that case.
 
 ## What a governed tool should be able to say about each state
 

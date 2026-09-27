@@ -1,43 +1,35 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# This overlay is the "bad commit" state: one field changed, everything
-# still renders and would still apply cleanly, and the workload breaks
-# anyway. See ../../../scenarios/03-bad-commit/README.md.
+# This overlay is the "bad commit" state: the healthy app with one field
+# changed. Everything still renders, applies cleanly and reports healthy,
+# and the app is unreachable anyway. See
+# ../../../scenarios/03-bad-commit/README.md.
 #
-# The frontend container now listens on 8080. The Service (inherited
-# unchanged from base) still sends traffic to port 80. Kubernetes has no
-# rule that a container's port must match the Service that fronts it, so
-# nothing here fails to apply. The container starts, the pod goes Ready
-# (the readiness probe also moved to 8080 in this patch, so kubelet is
-# satisfied), and the frontend Service simply has nowhere live to send
-# traffic on port 80.
+# It builds on ../healthy, so it has the same namespace
+# (apptique-broken-states), the same labels and the same Deployment. The
+# one change is the frontend Service's targetPort: 80 becomes 8080. The
+# nginx container still listens on 80, and its readiness and liveness
+# probes still check 80, so the pods start, pass their probes and go Ready,
+# and the Deployment rolls out. Kubernetes has no rule that a Service's
+# targetPort must match a port the container declares or listens on, so
+# nothing fails to apply. The Service's endpoints are the Ready pods, on
+# port 8080, where nothing is listening: every request through the Service
+# is refused.
 #
-# This overlay is never uploaded by setup.sh and never applied to a
-# cluster. It exists so verify.sh can render it locally and show the exact
-# broken field, offline.
-
-namespace: apptique-broken-states-bad-commit
+# setup.sh never uploads this overlay and nothing in this example applies
+# it to a cluster. verify.sh renders it locally to show the exact broken
+# field, offline. scenarios/03-bad-commit/README.md has an optional,
+# person-run step that uploads it to ConfigHub.
 
 resources:
-  - ../../base
-  - namespace.yaml
-
-labels:
-  - pairs:
-      scenario: bad-commit
+  - ../healthy
 
 patches:
   - target:
-      kind: Deployment
+      kind: Service
       name: frontend
     patch: |
       - op: replace
-        path: /spec/template/spec/containers/0/ports/0/containerPort
-        value: 8080
-      - op: replace
-        path: /spec/template/spec/containers/0/readinessProbe/httpGet/port
-        value: 8080
-      - op: replace
-        path: /spec/template/spec/containers/0/livenessProbe/httpGet/port
+        path: /spec/ports/0/targetPort
         value: 8080
