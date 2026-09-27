@@ -275,3 +275,14 @@ func TestSelects(t *testing.T) {
 		}
 	}
 }
+
+// Without a checkout the source paths cannot be checked at all. A plan that
+// reported nothing would look clean while having looked at nothing, so it
+// says so instead.
+func TestNoCheckoutIsReported(t *testing.T) {
+	_, dir := copyExample(t)
+	p := planOf(t, dir, Options{}) // no RepoRoot, and the copy has no .git
+	if !hasProblem(p, "no repository checkout found", "--repo-root") {
+		t.Errorf("want a skipped-path-check problem, got %v", p.Problems)
+	}
+}

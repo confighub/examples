@@ -171,3 +171,14 @@ func TestBadPathIsCaught(t *testing.T) {
 		t.Errorf("want a missing-path problem, got %v", p.Problems)
 	}
 }
+
+// Flux paths are written from the top of the repository, so without a
+// checkout every path looks missing. The plan names that cause first, rather
+// than reporting a healthy fleet as broken.
+func TestGuessedRootIsExplained(t *testing.T) {
+	_, dir := copyExample(t)
+	p := planOf(t, dir, "") // no RepoRoot, and the copy has no .git
+	if len(p.Problems) == 0 || !strings.Contains(p.Problems[0], "no repository checkout found") {
+		t.Errorf("want the guessed-root explanation first, got %v", p.Problems)
+	}
+}

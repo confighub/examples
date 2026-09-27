@@ -107,12 +107,13 @@ type Source struct {
 const kustomizeToolkit = "kustomize.toolkit.fluxcd.io/"
 
 type builder struct {
-	opts     Options
-	root     string
-	input    string
-	plan     *Plan
-	docs     []Doc
-	clusters []Cluster
+	rootGuessed bool
+	opts        Options
+	root        string
+	input       string
+	plan        *Plan
+	docs        []Doc
+	clusters    []Cluster
 }
 
 // Build plans a Flux fleet repository. It reads the input directory and the
@@ -131,7 +132,11 @@ func Build(in *Input, opts Options) (*Plan, error) {
 	b.root = opts.RepoRoot
 	if b.root == "" {
 		if b.root = findRepoRoot(b.input); b.root == "" {
-			b.root = b.input
+			// Flux paths are written from the top of the repository, so
+			// without a checkout the input directory is only a guess at the
+			// root. Every path then looks missing, which reads as a broken
+			// fleet rather than as the wrong starting point.
+			b.root, b.rootGuessed = b.input, true
 		}
 	}
 	b.plan.Inputs = Inputs{Objects: len(in.Docs), Skipped: in.Skipped, RepoRoot: b.root}
@@ -144,8 +149,30 @@ func Build(in *Input, opts Options) (*Plan, error) {
 	b.automation()
 	b.tenants()
 	b.substitutions()
+	b.explainGuessedRoot()
 	b.takeover()
 	return b.plan, nil
+}
+
+// explainGuessedRoot names the likely cause when a guessed root made every
+// path look missing, so the plan does not report a healthy fleet as broken.
+func (b *builder) explainGuessedRoot() {
+	if !b.rootGuessed {
+		return
+	}
+	missing := 0
+	for _, pr := range b.plan.Problems {
+		if strings.Contains(pr, "does not exist in this checkout") {
+			missing++
+		}
+	}
+	if missing == 0 {
+		return
+	}
+	b.plan.Problems = append([]string{fmt.Sprintf(
+		"no repository checkout found above %s, so paths were resolved against it and all %d look missing. "+
+			"Flux paths are written from the top of the repository: pass --repo-root <checkout> before reading the %d problems below as real",
+		b.input, missing, missing)}, b.plan.Problems...)
 }
 
 func findRepoRoot(dir string) string {

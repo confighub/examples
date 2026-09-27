@@ -184,6 +184,16 @@ func Build(in *Input, opts Options) (*Plan, error) {
 	}
 	p.Inputs = Inputs{Objects: len(in.Docs), Skipped: in.Skipped, RepoRoot: b.root}
 
+	// Without a checkout the source paths cannot be checked, and a path that
+	// does not exist is the failure this plan is most useful for catching. Say
+	// so rather than passing silently: a clean plan would otherwise mean only
+	// that nothing was looked at.
+	if b.root == "" && len(in.Dirs) > 0 {
+		p.Problems = append(p.Problems, "no repository checkout found above "+in.Dirs[0]+
+			": source paths were not checked, so a path that does not exist would not be reported here. "+
+			"Pass --repo-root <checkout> to check them")
+	}
+
 	if len(b.clusters) == 0 {
 		p.Problems = append(p.Problems, "no Argo CD cluster Secrets in the input: add them with "+
 			"'kubectl get secrets -n argocd -l argocd.argoproj.io/secret-type=cluster -o yaml' "+
