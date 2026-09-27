@@ -74,6 +74,9 @@ script_checks=(
   "${repo_root}/gitops/argo/intermediate-git-as-database/setup.sh"
   "${repo_root}/gitops/argo/intermediate-git-as-database/verify.sh"
   "${repo_root}/gitops/argo/intermediate-git-as-database/cleanup.sh"
+  "${repo_root}/gitops/argo/intermediate-ci-to-gitops/setup.sh"
+  "${repo_root}/gitops/argo/intermediate-ci-to-gitops/verify.sh"
+  "${repo_root}/gitops/argo/intermediate-ci-to-gitops/cleanup.sh"
 )
 
 for script_path in "${script_checks[@]}"; do
@@ -155,6 +158,7 @@ ai_guide_examples=(
   "${repo_root}/gitops/argo/beginner-app-of-apps"
   "${repo_root}/gitops/flux/beginner"
   "${repo_root}/gitops/argo/intermediate-git-as-database"
+  "${repo_root}/gitops/argo/intermediate-ci-to-gitops"
 )
 
 # Examples intentionally exempt from contracts.md requirement

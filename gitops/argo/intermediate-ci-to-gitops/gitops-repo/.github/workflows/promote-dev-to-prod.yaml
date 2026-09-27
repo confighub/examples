@@ -1,0 +1,55 @@
+# ============================================================================
+# ILLUSTRATIVE ONLY. Same status as app-repo/.github/workflows/: it lives
+# under this example's own path, not this repo's top-level .github/workflows/,
+# so GitHub Actions never discovers or runs it, and no script in this example
+# invokes it. It shows what a manual promotion looks like in a repo shaped
+# like gitops-repo/: a person, not CI, decides when production moves.
+# ============================================================================
+name: Promote apptique dev to prod
+
+on:
+  workflow_dispatch: {}   # a person runs this; nothing else triggers it
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read the current dev tag
+        id: dev
+        run: |
+          tag=$(grep -A1 'name: ghcr.io/confighub/apptique-frontend' \
+            environments/apptique/dev/kustomization.yaml | grep newTag | awk '{print $2}')
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Bump the prod image tag and update the promotion record
+        run: |
+          cd environments/apptique/prod
+          kustomize edit set image \
+            "ghcr.io/confighub/apptique-frontend=ghcr.io/confighub/apptique-frontend:${{ steps.dev.outputs.tag }}"
+          cat > PROMOTED_FROM.md <<EOF
+          # Promotion record for apptique prod
+
+          - promoted_tag: ${{ steps.dev.outputs.tag }}
+          - promoted_from: dev
+          - source_pr: this workflow run, ${{ github.run_id }}
+          EOF
+
+      - name: Open the promotion pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          branch="promote-apptique-prod-${{ steps.dev.outputs.tag }}"
+          git checkout -b "$branch"
+          git commit -am "apptique prod: promote ${{ steps.dev.outputs.tag }} from dev"
+          git push origin "$branch"
+          gh pr create \
+            --title "apptique prod: promote ${{ steps.dev.outputs.tag }} from dev" \
+            --body "Copies the tag dev is currently running into prod. Review the diff against PROMOTED_FROM.md before merging: the merged tag must equal the promoted_tag this PR records, or production will run a different image than the one that was reviewed." \
+            --base main --head "$branch"
