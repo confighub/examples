@@ -7,9 +7,19 @@ so `plan` works backwards: for each layer (a Flux Kustomization such as
 cluster's overlay builds on, and lists exactly what each cluster's overlay
 changes. Those changes are the variant's departures.
 
-This is a scaffold. It ships `plan`, which is offline and changes nothing.
-`apply` (write the steps as a script) and `handover` are next; the plan
-already says what handover would involve.
+Three commands, and the first two change nothing:
+
+| Command | What it does | Touches a cluster? |
+|---|---|---|
+| `plan` | shows the fleet ConfigHub would govern | no, and no account either |
+| `apply --out` | writes the workflow files, `apply.sh` and `handover.sh` | no, it runs nothing |
+| `apply.sh` | fills ConfigHub with a parallel copy nothing reads | no |
+| `handover.sh` | swaps each layer's `sourceRef`, one cluster at a time | yes, this is the step that moves it |
+
+`flux-system` is never repointed: it reconciles the Flux controllers
+themselves, so it stays on Git as the recovery path.
+
+**Start with the guide: [Onboard your Flux fleet](docs/onboard-your-flux-fleet.md).**
 
 ## Try it on the expert example
 
