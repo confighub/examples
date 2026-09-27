@@ -40,10 +40,12 @@ without running anything against a cluster:
   80, with a Service that targets port 80.
 - `apps/apptique/overlays/healthy` is the only state this example uploads.
   It sets namespace `apptique-broken-states` and changes nothing else.
-- `apps/apptique/overlays/failed-sync` adds exactly one resource beyond the
-  healthy render: a `RedisCache` custom resource
-  (`cache.apptique.example/v1`) with no matching CRD assumed to exist on
-  any cluster this example is checked against.
+- `apps/apptique/overlays/failed-sync` builds on the healthy overlay and
+  adds exactly one resource to its render, leaving every healthy resource
+  unchanged: a `RedisCache` custom resource
+  (`cache.apptique.example/v1`) in the same `apptique-broken-states`
+  namespace, with no matching CRD assumed to exist on any cluster this
+  example is checked against.
 - `apps/apptique/overlays/bad-commit` builds on the healthy overlay and
   changes exactly one value in its render: the `frontend` Service's
   `targetPort` moves from 80 to 8080. The container, its `containerPort`
@@ -131,8 +133,8 @@ same Space even though both are "control" objects.
     `apps/apptique/overlays/*` directories
   - the healthy overlay's Deployment has 2 replicas and a container and
     Service that both use port 80
-  - the failed-sync overlay renders the same Deployment and Service plus
-    exactly one `RedisCache` resource
+  - the failed-sync overlay renders into `apptique-broken-states` and is
+    the healthy render, unchanged, plus exactly one `RedisCache` resource
   - the bad-commit overlay renders into `apptique-broken-states`, keeps its
     container and both probes on port 80, sets the Service `targetPort` to
     8080, and differs from the healthy render in exactly one line

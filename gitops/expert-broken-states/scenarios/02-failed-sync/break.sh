@@ -15,8 +15,9 @@ Scenario 2: failed sync
 The break is already written down as a file in this repo:
   apps/apptique/overlays/failed-sync/redis-cache.yaml
 
-It adds a RedisCache custom resource whose CRD is not installed. Rendering
-it locally is read-only and safe:
+It is the healthy app plus one RedisCache custom resource whose CRD is not
+installed, all in the same apptique-broken-states namespace. Rendering it
+locally is read-only and safe:
 EOF_STEPS
 
 require_cmd() {
@@ -37,6 +38,10 @@ That render is what setup.sh never uploads. To see the real failure, in
 YOUR OWN terminal, against a cluster you control, with this same repo
 checked out and Argo CD or Flux pointed at it:
 
+  # Whether the CRD exists, and what applied anyway in the namespace:
+  kubectl get crd rediscaches.cache.apptique.example
+  kubectl -n apptique-broken-states get deployment,service frontend
+
   # Argo CD, after pointing an Application at this overlay:
   argocd app sync apptique-broken-states
   argocd app get apptique-broken-states -o json
@@ -44,6 +49,6 @@ checked out and Argo CD or Flux pointed at it:
   # Flux, after pointing a Kustomization at this overlay:
   flux get kustomizations apptique-broken-states
 
-Neither command is run by this script. See ./README.md for what each one
+None of these commands are run by this script. See ./README.md for what each one
 reports.
 EOF_NEXT

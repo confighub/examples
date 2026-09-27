@@ -9,7 +9,9 @@ on something the cluster does not have yet.
 adds one resource next to the healthy app: a `RedisCache` custom resource
 for a session cache apptique is about to start using. Its CRD
 (`cache.apptique.example`) has not been installed on the cluster this
-example is checked against.
+example is checked against. The overlay builds on the healthy overlay, so
+everything else is unchanged and everything, the `RedisCache` included,
+renders into the same `apptique-broken-states` namespace.
 
 This is a real and common shape of failure: a platform team's CRD and a
 product team's manifest that uses it land in the same review, or close
@@ -25,6 +27,13 @@ kustomize build ../../apps/apptique/overlays/failed-sync
 
 That command is read-only and safe to run: it never contacts a cluster or
 ConfigHub, it only reads local files with kustomize.
+
+To see it on a live cluster, point the existing Argo CD Application's
+`path` (or the Flux Kustomization's `path`) at
+`gitops/expert-broken-states/apps/apptique/overlays/failed-sync` in a copy
+of this repo you control. The namespace, Application name and
+Kustomization name all stay the same, so the diagnostics below apply
+unchanged.
 
 ## What a person sees
 
@@ -64,6 +73,9 @@ In the person's own terminal:
 ```bash
 # Whether the CRD in question actually exists on this cluster.
 kubectl get crd rediscaches.cache.apptique.example 2>&1 || true
+
+# The healthy resources in the same namespace, which may have applied anyway.
+kubectl -n apptique-broken-states get deployment,service frontend
 
 # Argo CD's own read of the Application's sync/health state.
 argocd app get apptique-broken-states -o json

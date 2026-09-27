@@ -48,7 +48,9 @@ healthy state is ever uploaded to ConfigHub.
 - `overlays/failed-sync` and `overlays/bad-commit` both render and both
   differ from `overlays/healthy` by exactly one thing: an added
   `RedisCache` custom resource, or a Service `targetPort` moved to 8080
-  while the container stays on 80. Neither is ever uploaded to ConfigHub or
+  while the container stays on 80. Both build on `overlays/healthy` and
+  render into the same `apptique-broken-states` namespace, so the
+  scenarios' diagnostics read that namespace. Neither is ever uploaded to ConfigHub or
   applied to a cluster by this example's scripts. The bad-commit scenario
   page documents an optional upload a person may run in their own
   terminal; do not run it for them without asking, because it mutates
@@ -157,10 +159,12 @@ Pause after this stage.
 ```
 
 This re-renders everything locally and checks the structure: the healthy
-overlay's ports, the failed-sync overlay's one added `RedisCache`, the
-bad-commit overlay's Service `targetPort` of 8080 against a container
-and probes that stay on 80, in the healthy app's own namespace, and that every script in this example (including every
-`scenarios/*/break.sh`) is syntactically valid. It does not call
+overlay's ports, the failed-sync overlay's one added `RedisCache` on top
+of an unchanged healthy render, the bad-commit overlay's Service
+`targetPort` of 8080 against a container and probes that stay on 80 (both
+broken overlays in the healthy app's own namespace), and that every script
+in this example (including every `scenarios/*/break.sh`) is syntactically
+valid. It does not call
 ConfigHub, so it passes even if you skipped Stage 4.
 
 GUI checkpoint:

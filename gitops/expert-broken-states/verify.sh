@@ -102,13 +102,27 @@ if [[ "$healthy_container_port" != "80" || "$healthy_target_port" != "80" ]]; th
   exit 1
 fi
 
-echo "==> Checking the failed-sync overlay: healthy app plus one RedisCache with no CRD assumed"
-grep -q "namespace: apptique-broken-states-failed-sync$" "$VAR_DIR/rendered-failed-sync.yaml"
+echo "==> Checking the failed-sync overlay: the healthy app plus one RedisCache with no CRD assumed, in the same namespace"
+if ! grep -q "namespace: apptique-broken-states$" "$VAR_DIR/rendered-failed-sync.yaml" \
+  || grep -q "namespace: apptique-broken-states-" "$VAR_DIR/rendered-failed-sync.yaml"; then
+  echo "Expected the failed-sync overlay to render into the healthy app's namespace, apptique-broken-states," >&2
+  echo "which is the namespace scenarios/02-failed-sync diagnoses" >&2
+  exit 1
+fi
 grep -q "^kind: RedisCache$" "$VAR_DIR/rendered-failed-sync.yaml"
 grep -q "apiVersion: cache.apptique.example/v1" "$VAR_DIR/rendered-failed-sync.yaml"
 redis_count="$(grep -c "^kind: RedisCache$" "$VAR_DIR/rendered-failed-sync.yaml")"
 if [[ "$redis_count" -ne 1 ]]; then
   echo "Expected exactly 1 RedisCache resource in the failed-sync overlay, found $redis_count" >&2
+  exit 1
+fi
+# diff exits 1 when the files differ, which is expected here.
+failed_sync_diff="$(diff "$VAR_DIR/rendered-healthy.yaml" "$VAR_DIR/rendered-failed-sync.yaml" || true)"
+removed_lines="$(printf '%s\n' "$failed_sync_diff" | grep -c '^<' || true)"
+added_kinds="$(printf '%s\n' "$failed_sync_diff" | grep '^> kind: ' || true)"
+if [[ "$removed_lines" -ne 0 || "$added_kinds" != "> kind: RedisCache" ]]; then
+  echo "Expected the failed-sync render to be the healthy render, unchanged, plus exactly one RedisCache. Difference:" >&2
+  printf '%s\n' "$failed_sync_diff" >&2
   exit 1
 fi
 

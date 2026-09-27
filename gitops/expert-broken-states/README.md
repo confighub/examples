@@ -54,7 +54,7 @@ renders and can be inspected on its own:
 | Overlay | What it is | Renders? | Applies? | Workload actually works? |
 |---|---|---|---|---|
 | `overlays/healthy` | the only state this example uploads | yes | yes | yes |
-| `overlays/failed-sync` | adds a `RedisCache` custom resource with no CRD assumed | yes | no | n/a, never applied |
+| `overlays/failed-sync` | the healthy overlay plus a `RedisCache` custom resource with no CRD assumed | yes | no | n/a, never applied |
 | `overlays/bad-commit` | the healthy overlay with the Service `targetPort` moved to 8080; the container still listens on 80 | yes | yes | no |
 
 Drift has no overlay of its own, because drift is not a manifest problem:

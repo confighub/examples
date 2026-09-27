@@ -15,6 +15,9 @@ apiVersion: cache.apptique.example/v1
 kind: RedisCache
 metadata:
   name: sessions
+  labels:
+    app.kubernetes.io/name: apptique
+    app.kubernetes.io/part-of: apptique-examples
 spec:
   replicas: 1
   maxMemoryPolicy: allkeys-lru

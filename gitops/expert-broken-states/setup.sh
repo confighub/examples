@@ -63,7 +63,7 @@ Nothing will be mutated.
 Conceptual model:
 
   apps/apptique/overlays/healthy/     (the only state this example uploads)
-  apps/apptique/overlays/failed-sync/ (local only: a missing-CRD resource added)
+  apps/apptique/overlays/failed-sync/ (local only: the healthy app plus a missing-CRD resource)
   apps/apptique/overlays/bad-commit/  (local only: Service targetPort moved, container left alone)
 
   argo/application.yaml   an Argo CD Application pointed at overlays/healthy
