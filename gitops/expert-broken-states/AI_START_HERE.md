@@ -119,10 +119,18 @@ Pause after this stage.
 
 What this mutates:
 
-- creates or updates ConfigHub Space `gitops-expert-broken-states-control`
-  (the Argo and Flux control objects)
+- creates or updates ConfigHub Space
+  `gitops-expert-broken-states-argo-control` (the Argo Application)
+- creates or updates ConfigHub Space
+  `gitops-expert-broken-states-flux-control` (the Flux Kustomization and
+  GitRepository)
 - creates or updates ConfigHub Space `gitops-expert-broken-states` (the
   healthy `apptique` Unit)
+
+A ConfigHub Space belongs to one Component, so the Argo and Flux control
+objects each get their own Space rather than sharing one: uploading a
+second Component into an already-linked Space would re-link it and
+overwrite its labels.
 
 What this does not mutate:
 
@@ -131,7 +139,7 @@ What this does not mutate:
 
 GUI checkpoint:
 
-- GUI now: open the two Spaces in ConfigHub and inspect the uploaded Units
+- GUI now: open the three Spaces in ConfigHub and inspect the uploaded Units
 - GUI gap: there is no GUI marker distinguishing "uploaded" from "delivered and healthy"
 - GUI feature ask: no issue filed yet for a delivery/runtime status column next to a Unit
 

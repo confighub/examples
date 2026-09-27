@@ -3,7 +3,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VAR_DIR="$SCRIPT_DIR/var"
-CONTROL_SPACE="${GITOPS_EXPERT_BROKEN_STATES_CONTROL_SPACE:-gitops-expert-broken-states-control}"
+ARGO_CONTROL_SPACE="${GITOPS_EXPERT_BROKEN_STATES_ARGO_CONTROL_SPACE:-gitops-expert-broken-states-argo-control}"
+FLUX_CONTROL_SPACE="${GITOPS_EXPERT_BROKEN_STATES_FLUX_CONTROL_SPACE:-gitops-expert-broken-states-flux-control}"
 WORKLOAD_SPACE="${GITOPS_EXPERT_BROKEN_STATES_SPACE:-gitops-expert-broken-states}"
 EXPLAIN=0
 EXPLAIN_JSON=0
@@ -69,20 +70,26 @@ Conceptual model:
   flux/apps.yaml          a Flux Kustomization pointed at the same path
   flux/gitrepository.yaml the GitRepository that Kustomization reads from
 
+A ConfigHub Space belongs to one Component: uploading a second Component
+into a Space re-links that Space to the new Component and overwrites its
+labels. So this example uses one Space per Component, three Spaces in all,
+not one shared control Space.
+
 This example will:
 - render apps/apptique/overlays/healthy with "kustomize build"
 - render argo/ and flux/ (the control objects) with "kustomize build", each
   on its own, since they carry different namespaces (argocd, flux-system)
-- upload the Argo control render into ConfigHub Space "$CONTROL_SPACE" using
-  "cub variant upload --component argo-control --namespace argocd"
-- upload the Flux control render into the same Space using
-  "cub variant upload --component flux-control --namespace flux-system"
+- upload the Argo control render into ConfigHub Space "$ARGO_CONTROL_SPACE"
+  using "cub variant upload --component argo-control --namespace argocd"
+- upload the Flux control render into ConfigHub Space "$FLUX_CONTROL_SPACE"
+  using "cub variant upload --component flux-control --namespace flux-system"
 - upload the healthy app render into ConfigHub Space "$WORKLOAD_SPACE" using
   "cub variant upload --component apptique --variant healthy --namespace apptique-broken-states"
 
 ConfigHub mutations if you run without --explain:
-- creates (or updates) Space "$CONTROL_SPACE" with the Argo Application and
-  the Flux Kustomization/GitRepository, as two labeled sources in one Space
+- creates (or updates) Space "$ARGO_CONTROL_SPACE" with the Argo Application
+- creates (or updates) Space "$FLUX_CONTROL_SPACE" with the Flux
+  Kustomization and GitRepository
 - creates (or updates) Space "$WORKLOAD_SPACE" with the healthy apptique Unit
 
 This example never creates or mutates a live Kubernetes cluster, never
@@ -97,14 +104,15 @@ fi
 
 if [[ "$EXPLAIN_JSON" -eq 1 ]]; then
   jq -n \
-    --arg controlSpace "$CONTROL_SPACE" \
+    --arg argoControlSpace "$ARGO_CONTROL_SPACE" \
+    --arg fluxControlSpace "$FLUX_CONTROL_SPACE" \
     --arg workloadSpace "$WORKLOAD_SPACE" \
     '{
       example_name: "gitops-expert-broken-states",
       mutates: false,
       mutates_confighub: true,
       mutates_live_infra: false,
-      spaces: [$controlSpace, $workloadSpace],
+      spaces: [$argoControlSpace, $fluxControlSpace, $workloadSpace],
       units: ["argo-control", "flux-control", "frontend"],
       apps: ["apptique"],
       scenarios: ["drift", "failed-sync", "bad-commit"],
@@ -139,13 +147,13 @@ kustomize build "$SCRIPT_DIR/apps/apptique/overlays/healthy" > "$VAR_DIR/rendere
 cub variant upload \
   --component argo-control --variant control --environment Control \
   --namespace argocd \
-  --space "$CONTROL_SPACE" \
+  --space "$ARGO_CONTROL_SPACE" \
   "$VAR_DIR/rendered-argo-control.yaml"
 
 cub variant upload \
   --component flux-control --variant control --environment Control \
   --namespace flux-system \
-  --space "$CONTROL_SPACE" \
+  --space "$FLUX_CONTROL_SPACE" \
   "$VAR_DIR/rendered-flux-control.yaml"
 
 cub variant upload \
@@ -154,8 +162,8 @@ cub variant upload \
   --space "$WORKLOAD_SPACE" \
   "$VAR_DIR/rendered-healthy.yaml"
 
-echo "Uploaded the Argo control objects to Space $CONTROL_SPACE (component argo-control)."
-echo "Uploaded the Flux control objects to Space $CONTROL_SPACE (component flux-control)."
+echo "Uploaded the Argo control objects to Space $ARGO_CONTROL_SPACE (component argo-control)."
+echo "Uploaded the Flux control objects to Space $FLUX_CONTROL_SPACE (component flux-control)."
 echo "Uploaded the healthy apptique render to Space $WORKLOAD_SPACE."
 echo "The failed-sync and bad-commit overlays were not uploaded."
 echo "Next: ./verify.sh"

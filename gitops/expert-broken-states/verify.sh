@@ -59,6 +59,18 @@ if [[ "$uploaded" != "healthy" ]]; then
   exit 1
 fi
 
+echo "==> Checking that this example uses one Space per Component (three distinct Spaces)"
+space_count="$(echo "$EXPLAIN_JSON_OUT" | jq -r '.spaces | length')"
+if [[ "$space_count" -ne 3 ]]; then
+  echo "Expected exactly 3 Spaces (one per Component), got $space_count" >&2
+  exit 1
+fi
+distinct_space_count="$(echo "$EXPLAIN_JSON_OUT" | jq -r '.spaces | unique | length')"
+if [[ "$distinct_space_count" -ne 3 ]]; then
+  echo "Expected the 3 Spaces to be distinct, got $distinct_space_count distinct values" >&2
+  exit 1
+fi
+
 echo "==> Checking that setup.sh --explain runs without mutation"
 "$SCRIPT_DIR/setup.sh" --explain >/dev/null
 
@@ -128,5 +140,21 @@ if grep -qE "cub variant upload.*(failed-sync|bad-commit)" "$SCRIPT_DIR/setup.sh
   echo "setup.sh must never upload the failed-sync or bad-commit overlays" >&2
   exit 1
 fi
+
+echo "==> Checking setup.sh never uploads two Components into the same Space"
+# A ConfigHub Space belongs to one Component: uploading a second Component
+# into the same Space re-links it and overwrites its labels. Guard against
+# that regression by requiring the Argo and Flux control uploads to name
+# two different --space variables.
+if ! grep -q -- '--space "\$ARGO_CONTROL_SPACE"' "$SCRIPT_DIR/setup.sh"; then
+  echo "setup.sh must upload the argo-control Component into \$ARGO_CONTROL_SPACE" >&2
+  exit 1
+fi
+if ! grep -q -- '--space "\$FLUX_CONTROL_SPACE"' "$SCRIPT_DIR/setup.sh"; then
+  echo "setup.sh must upload the flux-control Component into \$FLUX_CONTROL_SPACE" >&2
+  exit 1
+fi
+# The distinct-Spaces check above already confirms the two control Space
+# defaults do not collide with each other or with the workload Space.
 
 echo "All gitops-expert-broken-states checks passed."

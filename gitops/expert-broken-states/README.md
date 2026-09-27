@@ -90,16 +90,21 @@ Both commands are read-only: no ConfigHub calls, no cluster calls.
 ```
 
 `./setup.sh` renders the healthy app and both controllers' control objects,
-then uploads them into two ConfigHub Spaces. This mutates ConfigHub. It
-does not touch a live cluster, and it does not upload the broken overlays.
+then uploads them into three ConfigHub Spaces, one per Component: a
+ConfigHub Space belongs to one Component, so the Argo control objects, the
+Flux control objects, and the healthy app each get their own Space. This
+mutates ConfigHub. It does not touch a live cluster, and it does not
+upload the broken overlays.
 
 ## Mutation boundaries
 
 - `./setup.sh --explain` and `./setup.sh --explain-json`: read-only.
-- `./setup.sh`: mutates ConfigHub (creates or updates two Spaces: a control
-  Space with the Argo and Flux control objects, and a workload Space with
-  the healthy `apptique` Unit). Does not mutate live infrastructure. Never
-  uploads `overlays/failed-sync` or `overlays/bad-commit`.
+- `./setup.sh`: mutates ConfigHub (creates or updates three Spaces, one per
+  Component: an Argo control Space with the Argo Application, a Flux
+  control Space with the Flux Kustomization and GitRepository, and a
+  workload Space with the healthy `apptique` Unit). Does not mutate live
+  infrastructure. Never uploads `overlays/failed-sync` or
+  `overlays/bad-commit`.
 - `./verify.sh`: read-only. Renders every overlay and both controllers'
   control objects locally and checks the output; does not call ConfigHub,
   Argo CD, Flux, or a cluster.

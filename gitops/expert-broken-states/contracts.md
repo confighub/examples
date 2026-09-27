@@ -23,7 +23,7 @@ What a tool may assume about this example.
   - `.mutates == false`
   - `.mutates_confighub == true`
   - `.mutates_live_infra == false`
-  - `.spaces | length == 2`
+  - `.spaces | length == 3`
   - `.scenarios == ["drift", "failed-sync", "bad-commit"]`
   - `.uploaded_states == ["healthy"]`
   - `.not_uploaded_states == ["failed-sync", "bad-commit"]`
@@ -64,10 +64,12 @@ without running anything against a cluster:
 ### `./setup.sh`
 
 - mutates: yes (ConfigHub only, no live infrastructure)
-- creates: 2 Spaces (`gitops-expert-broken-states-control`,
-  `gitops-expert-broken-states`); the control Space holds two labeled
-  sources (`argo-control`, `flux-control`); the workload Space holds the
-  healthy `apptique` Unit
+- creates: 3 Spaces (`gitops-expert-broken-states-argo-control`,
+  `gitops-expert-broken-states-flux-control`,
+  `gitops-expert-broken-states`), one per Component: a ConfigHub Space
+  belongs to one Component, so the Argo control objects, the Flux control
+  objects, and the healthy `apptique` Unit each get their own Space rather
+  than sharing one
 - uploads only the healthy overlay; never uploads `failed-sync` or
   `bad-commit`
 - cleanup: `./cleanup.sh` (local files) plus the `cub space delete`
@@ -77,11 +79,11 @@ Exact commands this uploads with:
 
 ```bash
 cub variant upload --component argo-control --variant control --environment Control \
-  --namespace argocd --space gitops-expert-broken-states-control \
+  --namespace argocd --space gitops-expert-broken-states-argo-control \
   var/rendered-argo-control.yaml
 
 cub variant upload --component flux-control --variant control --environment Control \
-  --namespace flux-system --space gitops-expert-broken-states-control \
+  --namespace flux-system --space gitops-expert-broken-states-flux-control \
   var/rendered-flux-control.yaml
 
 cub variant upload --component apptique --variant healthy --environment Healthy \
@@ -93,6 +95,12 @@ cub variant upload --component apptique --variant healthy --environment Healthy 
 cub v0.6.2. `--namespace` has no default on that same help text, so every
 command above states one explicitly rather than relying on a value the
 rendered resources happen to already carry.
+
+A ConfigHub Space belongs to one Component: uploading a second Component
+into an already-linked Space re-links that Space's ComponentID to the new
+Component and overwrites its labels (Owner, Environment among them), which
+is why this example never puts the Argo and Flux control objects in the
+same Space even though both are "control" objects.
 
 ## Verification Contract
 
