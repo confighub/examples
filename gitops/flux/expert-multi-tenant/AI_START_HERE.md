@@ -34,7 +34,7 @@ Do not continue until I say continue.
 
 This is an expert-level Flux multi-tenancy repo: one shared cluster, one
 platform-owned bootstrap layer, and three teams, each with its own
-namespace, ServiceAccount, RoleBinding, ResourceQuota and NetworkPolicy.
+namespace, ServiceAccount, Role, RoleBinding, ResourceQuota and NetworkPolicy.
 Everything renders offline. This example never runs `flux bootstrap`, never
 reconciles anything, and never touches a cluster.
 
@@ -50,6 +50,14 @@ reconciles anything, and never touches a cluster.
   to its own ServiceAccount and `targetNamespace` to its own namespace.
   Those two values must agree with the team's own RoleBinding, or a real
   cluster refuses the apply.
+- Each team is bound to its own namespaced Role, not to the built-in
+  `admin` ClusterRole. The Role grants read-only access to NetworkPolicies,
+  ResourceQuotas and LimitRanges and nothing on RBAC, Namespaces or Flux
+  objects, so a team cannot add a wider NetworkPolicy beside the platform's
+  (allow rules are additive), raise its quota, or rewrite its own sync.
+- The platform bootstrap Kustomization reads from the `flux-system`
+  GitRepository that `flux bootstrap` generates. This example does not
+  commit that source; see `clusters/shared/flux-system/README.md`.
 - Each team's `workloads/` folder is not in that team's own
   `kustomization.yaml`. It is reconciled separately, by the Kustomization
   object `sync.yaml` defines.
@@ -136,8 +144,10 @@ Pause after this stage.
 ```
 
 This re-renders every layer locally and checks the structure: the platform
-bootstrap has no impersonation, every team has its own namespace, RBAC,
-quota and NetworkPolicy, every team's Kustomization impersonates only its
+bootstrap has no impersonation and reads the `flux-system` source, every
+team has its own namespace, RBAC, quota and NetworkPolicy, no team's Role
+can write NetworkPolicies, quotas, LimitRanges, Namespaces, RBAC or Flux
+objects, every team's Kustomization impersonates only its
 own ServiceAccount and targets only its own namespace, and every path any
 Kustomization points at exists. It does not call ConfigHub, so it passes
 even if you skipped Stage 3.
@@ -152,10 +162,12 @@ Pause after this stage.
 
 ## Stage 5: Break It On Purpose (optional, local edits only)
 
-The README lists three single-edit breakages: a tenant escape (a
+The README lists four single-edit breakages: a tenant escape (a
 Kustomization's `targetNamespace` pointed at another team), a missing
 `serviceAccountName` (the opposite failure: too much access instead of a
-refusal), and a removed `NetworkPolicy` (a guardrail quietly gone). Make
+refusal), a removed `NetworkPolicy` (a guardrail quietly gone), and an
+over-broad tenant grant (a team bound to `admin`, which could add its own
+allow-all NetworkPolicy). Make
 one, run `./verify.sh`, and read the failure message it prints: it names
 what a live cluster would do (Kubernetes RBAC refuses the apply, Flux marks
 the Kustomization not `Ready`) and says plainly that this repo only proves

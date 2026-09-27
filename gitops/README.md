@@ -59,7 +59,7 @@ for the Argo and Flux beginner and expert descriptions.
   multi-tenancy shape on its own.** Start with
   [`flux/expert-multi-tenant`](./flux/expert-multi-tenant/README.md): one
   shared cluster, a platform-owned bootstrap layer, and three teams, each
-  with its own namespace, ServiceAccount, RoleBinding, quota and
+  with its own namespace, ServiceAccount, narrow Role, RoleBinding, quota and
   NetworkPolicy. `flux/expert-fleet` also includes one tenant, on its own
   dedicated cluster, if you want the fleet-plus-tenancy shape instead.
 - **I want to see what a broken GitOps state looks like (drift, a failed

@@ -1,9 +1,18 @@
-# The tenant boundary. Everything team-storefront's own Kustomization
-# applies is applied as this ServiceAccount, and this RoleBinding is the
-# only grant that ServiceAccount has anywhere on the cluster: admin rights,
-# scoped to this one namespace. A change from another team's Kustomization
-# cannot reach this namespace, whatever their repo says, because no
-# RoleBinding anywhere gives them rights here.
+# The tenant boundary. Everything team-storefront's own Kustomization applies is
+# applied as this ServiceAccount, and this RoleBinding is the only grant
+# that ServiceAccount has anywhere on the cluster: the team-storefront-tenant Role
+# below, scoped to this one namespace. A change from another team's
+# Kustomization cannot reach this namespace, whatever their repo says,
+# because no RoleBinding anywhere gives them rights here.
+#
+# The Role is deliberately narrower than the built-in admin ClusterRole.
+# admin (through edit) can write NetworkPolicies, and NetworkPolicy allow
+# rules are additive, so a team holding admin could add an allow-all policy
+# next to the platform's same-namespace policy in guardrails.yaml and undo
+# it. This Role lets the team run and expose its own apps, and only read
+# what the platform owns: NetworkPolicies, ResourceQuotas and LimitRanges
+# are read-only, and RBAC, Namespaces and Flux objects are not granted at
+# all, so the team cannot widen its own grant or rewrite its own sync.yaml.
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -18,6 +27,42 @@ metadata:
   namespace: team-storefront
 ---
 apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: team-storefront-tenant
+  namespace: team-storefront
+rules:
+  # Run and expose the team's own apps.
+  - apiGroups: [""]
+    resources: [configmaps, secrets, services, serviceaccounts, persistentvolumeclaims]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [apps]
+    resources: [deployments, statefulsets]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [batch]
+    resources: [jobs, cronjobs]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [autoscaling]
+    resources: [horizontalpodautoscalers]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [policy]
+    resources: [poddisruptionbudgets]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [networking.k8s.io]
+    resources: [ingresses]
+    verbs: [get, list, watch, create, update, patch, delete]
+  # Read, never write, what runs and what the platform owns.
+  - apiGroups: [""]
+    resources: [pods, pods/log, events, endpoints, resourcequotas, limitranges]
+    verbs: [get, list, watch]
+  - apiGroups: [apps]
+    resources: [replicasets]
+    verbs: [get, list, watch]
+  - apiGroups: [networking.k8s.io]
+    resources: [networkpolicies]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: team-storefront-reconciler
@@ -28,5 +73,5 @@ subjects:
     namespace: team-storefront
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: admin
+  kind: Role
+  name: team-storefront-tenant

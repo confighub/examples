@@ -70,7 +70,7 @@ Conceptual model (one cluster, one platform layer, three tenants):
 
   clusters/shared/tenants.yaml   -> tenants/base   (platform bootstrap, no serviceAccountName)
     tenants/base/team-storefront/
-      rbac.yaml, guardrails.yaml   -> Namespace, ServiceAccount, RoleBinding, ResourceQuota, NetworkPolicy
+      rbac.yaml, guardrails.yaml   -> Namespace, ServiceAccount, Role, RoleBinding, ResourceQuota, NetworkPolicy
       sync.yaml                    -> the tenant's own GitRepository + Kustomization,
                                        serviceAccountName + targetNamespace: team-storefront
       workloads/                   -> the tenant's own app, reconciled by sync.yaml, not by this Kustomization
@@ -78,10 +78,12 @@ Conceptual model (one cluster, one platform layer, three tenants):
     tenants/base/team-loyalty/     -> same shape
 
   Least-privilege model: the platform's own Kustomization creates every
-  team's namespace, ServiceAccount and RoleBinding. Each team's own
+  team's namespace, ServiceAccount, Role and RoleBinding. Each team's own
   Kustomization then reconciles only inside its own namespace, impersonating
   its own ServiceAccount. No team's Kustomization can reach another team's
-  namespace, because no RoleBinding anywhere grants it.
+  namespace, because no RoleBinding anywhere grants it. Each team's Role
+  can read, but not write, its NetworkPolicy, ResourceQuota and LimitRange,
+  so a team cannot loosen the platform's guardrails from its own folder.
 
   Space model: a ConfigHub Space belongs to exactly one Component, so this
   example gives each team two Spaces, not one: a bootstrap Space (Component

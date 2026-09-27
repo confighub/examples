@@ -39,11 +39,20 @@ without running anything against a cluster:
   team's.
 - Each of `tenants/base/team-storefront`, `tenants/base/team-payments` and
   `tenants/base/team-loyalty` holds `rbac.yaml` (a `Namespace`, a
-  `ServiceAccount` and a `RoleBinding` to the built-in `admin` ClusterRole,
-  scoped by the RoleBinding's own namespace), `guardrails.yaml` (a
+  `ServiceAccount`, a namespaced `Role` named `team-<name>-tenant`, and a
+  `RoleBinding` to that Role in the same namespace), `guardrails.yaml` (a
   `ResourceQuota` and a `NetworkPolicy` with no `namespaceSelector`, so it
   admits ingress only from pods in the same namespace) and `sync.yaml` (a
   `GitRepository` and a `Kustomization`).
+- No tenant Role grants anything beyond `get`, `list` and `watch` on
+  NetworkPolicies, ResourceQuotas, LimitRanges, Namespaces, anything in the
+  `rbac.authorization.k8s.io` group, or Flux's own objects, and no
+  RoleBinding binds a team to the built-in `admin` or `edit` ClusterRole.
+  NetworkPolicy allow rules are additive, so a NetworkPolicy write would
+  let a team loosen the platform's same-namespace policy.
+- The platform bootstrap Kustomization's `sourceRef` names the
+  `flux-system` GitRepository that `flux bootstrap` generates. That source
+  is not committed here.
 - Every team's `sync.yaml` Kustomization sets `serviceAccountName` to that
   team's own ServiceAccount name and `targetNamespace` to that team's own
   namespace. Those two values always match the namespace the team's
@@ -97,8 +106,12 @@ without running anything against a cluster:
   - `kustomize build` succeeds for the cluster layer and every team's
     bootstrap and workloads
   - the platform bootstrap Kustomization sets no `serviceAccountName`
-  - every team has its own `Namespace`, `ServiceAccount` and `RoleBinding`
-    to the built-in `admin` ClusterRole
+  - the platform bootstrap Kustomization reads the `flux-system` source
+  - every team has its own `Namespace`, `ServiceAccount`, `Role` and
+    `RoleBinding`, and the RoleBinding points at that team's own Role
+  - no tenant Role can write NetworkPolicies, ResourceQuotas, LimitRanges,
+    Namespaces, RBAC or Flux objects, and each still grants Deployments
+    and Services
   - every team has a `ResourceQuota` and a same-namespace-only
     `NetworkPolicy`
   - every team's own Kustomization impersonates its own ServiceAccount and
@@ -124,7 +137,7 @@ without running anything against a cluster:
 
 - mutates: no
 - output shape: Kubernetes YAML stream
-- proves: `team-payments`'s Namespace, ServiceAccount, RoleBinding,
+- proves: `team-payments`'s Namespace, ServiceAccount, Role, RoleBinding,
   ResourceQuota, NetworkPolicy, GitRepository and Kustomization, the last of
   which impersonates `team-payments` and targets the `team-payments`
   namespace
