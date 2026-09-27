@@ -1,0 +1,120 @@
+Flux fleet: 3 clusters, 4 layers, 10 variants
+Read 46 objects
+
+Clusters, one stage each, in order: dev-1 (clusters/dev), staging-1 (clusters/staging), prod-1 (clusters/prod)
+Reconcile order (dependsOn): infrastructure -> apps, tenants -> image-automation
+
+infrastructure
+  base     flux-infrastructure-base  from gitops/flux/expert-fleet/infrastructure/base
+  helm     edge-router: chart edge-router 2.4.x from HelmRepository platform-charts
+  stage dev
+    dev-1       variant flux-infrastructure-dev-1  ->  Target flux-targets/dev-1
+                Kustomization flux-system/infrastructure, path gitops/flux/expert-fleet/infrastructure/dev
+                  label environment=dev
+  stage staging
+    staging-1   variant flux-infrastructure-staging-1  ->  Target flux-targets/staging-1
+                Kustomization flux-system/infrastructure, path gitops/flux/expert-fleet/infrastructure/staging
+                  label environment=staging
+                  HelmRelease/edge-router replace /spec/values/replicaCount = 2
+  stage prod
+    prod-1      variant flux-infrastructure-prod-1  ->  Target flux-targets/prod-1
+                Kustomization flux-system/infrastructure, path gitops/flux/expert-fleet/infrastructure/prod
+                  label environment=prod
+                  GitRepository/fleet-repo replace /spec/ref/branch = production
+                  HelmRelease/edge-router replace /spec/values/replicaCount = 3
+
+apps  (after infrastructure)
+  base     flux-apps-base  from gitops/flux/expert-fleet/apps/base/apptique
+  stage dev
+    dev-1       variant flux-apps-dev-1  ->  Target flux-targets/dev-1
+                Kustomization flux-system/apps, path gitops/flux/expert-fleet/apps/dev
+                  adds namespace.yaml
+                  namespace apptique-dev
+                  label environment=dev
+                  image nginx 1.27.3-alpine (written by image automation)
+                  Deployment/frontend replace /spec/replicas = 1
+                  substitutes cluster_name=dev-1
+                  substitutes environment=dev
+                  Flux spec.healthChecks[0].namespace = apptique-dev
+  stage staging
+    staging-1   variant flux-apps-staging-1  ->  Target flux-targets/staging-1
+                Kustomization flux-system/apps, path gitops/flux/expert-fleet/apps/staging
+                  adds namespace.yaml
+                  namespace apptique-staging
+                  label environment=staging
+                  image nginx 1.27.2-alpine
+                  Deployment/frontend replace /spec/replicas = 2
+                  substitutes cluster_name=staging-1
+                  substitutes environment=staging
+                  Flux spec.healthChecks[0].namespace = apptique-staging
+  stage prod
+    prod-1      variant flux-apps-prod-1  ->  Target flux-targets/prod-1
+                Kustomization flux-system/apps, path gitops/flux/expert-fleet/apps/prod
+                  adds namespace.yaml
+                  namespace apptique-prod
+                  label environment=prod
+                  image nginx 1.26.3-alpine
+                  Deployment/frontend replace /spec/replicas = 4
+                  substitutes cluster_name=prod-1
+                  substitutes environment=prod
+                  Flux spec.healthChecks[0].namespace = apptique-prod
+  in flight  nginx: 1.27.3-alpine on dev-1; 1.27.2-alpine on staging-1; 1.26.3-alpine on prod-1
+
+tenants  (after infrastructure)
+  base     flux-tenants-base  from gitops/flux/expert-fleet/tenants/base/team-checkout
+  stage dev
+    dev-1       variant flux-tenants-dev-1  ->  Target flux-targets/dev-1
+                Kustomization flux-system/tenants, path gitops/flux/expert-fleet/tenants/dev
+                  label environment=dev
+                  GitRepository/team-checkout replace /spec/ref/branch = main
+  stage staging
+    staging-1   variant flux-tenants-staging-1  ->  Target flux-targets/staging-1
+                Kustomization flux-system/tenants, path gitops/flux/expert-fleet/tenants/staging
+                  label environment=staging
+                  GitRepository/team-checkout replace /spec/ref/branch = main
+  stage prod
+    prod-1      variant flux-tenants-prod-1  ->  Target flux-targets/prod-1
+                Kustomization flux-system/tenants, path gitops/flux/expert-fleet/tenants/prod
+                  label environment=prod
+                  GitRepository/team-checkout replace /spec/ref/branch = production
+
+image-automation  (after apps)
+  base     flux-image-automation-base  from gitops/flux/expert-fleet/image-automation
+  stage dev
+    dev-1       variant flux-image-automation-dev-1  ->  Target flux-targets/dev-1
+                Kustomization flux-system/image-automation, path gitops/flux/expert-fleet/image-automation
+                  adds imagerepository.yaml
+                  adds imagepolicy.yaml
+                  adds imageupdateautomation.yaml
+  note     one cluster uses this layer, so its whole directory is the base
+  note     only on dev-1
+
+Sources
+  - HelmRepository platform-charts  oci://ghcr.io/confighub/charts  (gitops/flux/expert-fleet/infrastructure/base/sources/charts.yaml)
+  - GitRepository fleet-repo  https://github.com/confighub/examples  (gitops/flux/expert-fleet/infrastructure/base/sources/fleet-repo.yaml)
+      branch: dev-1 main, staging-1 main, prod-1 production
+  - GitRepository team-checkout  https://github.com/confighub/examples  (gitops/flux/expert-fleet/tenants/base/team-checkout/sync.yaml)
+      branch: dev-1 main, staging-1 main, prod-1 production
+
+Writes to Git by itself
+  - ImageUpdateAutomation apptique-dev commits to branch main, path gitops/flux/expert-fleet/apps/dev, running on dev-1
+
+Not in Git
+  - what the HelmReleases in infrastructure render: the charts are pulled at reconcile time
+  - apps: ${cluster_name}, ${environment}, supplied per cluster by postBuild
+
+Tenants (stay as they are)
+  - team-checkout/team-checkout runs as ServiceAccount team-checkout, reading GitRepository team-checkout; governed as part of tenants
+
+Bootstrap (stays outside ConfigHub)
+  - gitops/flux/expert-fleet/clusters/dev/flux-system
+  - gitops/flux/expert-fleet/clusters/prod/flux-system
+  - gitops/flux/expert-fleet/clusters/staging/flux-system
+
+Takeover (apply will write it as takeover.sh; plan runs nothing)
+  1. keep each layer's Flux Kustomization under its own name and switch its sourceRef to an OCIRepository on the ConfigHub gateway, so Flux keeps its inventory and nothing is reinstalled
+  2. first prove each variant renders exactly what Git renders today: infrastructure, apps, tenants, image-automation prune, so anything the release lacks is deleted
+  3. suspend ImageUpdateAutomation apptique-dev: it would commit to Git that no longer deploys; its tag should become a proposed ConfigHub change on that variant
+  4. GitRepository fleet-repo promotes by branch (dev-1 main, staging-1 main, prod-1 production); after takeover the ChangeWorkflow's stages decide, not the branch
+  5. GitRepository team-checkout promotes by branch (dev-1 main, staging-1 main, prod-1 production); after takeover the ChangeWorkflow's stages decide, not the branch
+  6. leave flux-system alone: flux bootstrap owns it, like the Sveltos management record
