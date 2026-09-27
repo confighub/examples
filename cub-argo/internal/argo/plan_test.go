@@ -1,0 +1,277 @@
+package argo
+
+import (
+	"flag"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+var update = flag.Bool("update", false, "rewrite the golden plan files")
+
+// The expert Argo CD example lives beside this module in the examples repo.
+const example = "../../../gitops/argo/expert-app-of-apps"
+
+func repoRoot(t *testing.T) string {
+	t.Helper()
+	root, err := filepath.Abs("../../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
+
+var staged = Options{StageLabel: "rollout-phase", Stages: []string{"canary", "secondary", "primary"}}
+
+func planOf(t *testing.T, dir string, opts Options) *Plan {
+	t.Helper()
+	in, err := Load(nil, []string{dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := Build(in, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return p
+}
+
+func TestExpertAppOfAppsGolden(t *testing.T) {
+	opts := staged
+	opts.RepoRoot = repoRoot(t)
+	p := planOf(t, example, opts)
+	got := Render(p)
+	golden := filepath.Join("..", "..", "testdata", "expert-app-of-apps.plan.txt")
+	if *update {
+		if err := os.WriteFile(golden, []byte(got), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	want, err := os.ReadFile(golden)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != string(want) {
+		t.Errorf("plan differs from %s; rerun with -update and review the diff\n%s", golden, got)
+	}
+	if len(p.Problems) > 0 {
+		t.Errorf("the example should plan cleanly, got problems: %v", p.Problems)
+	}
+}
+
+// TestExpertAppOfAppsAnswers checks the questions the example's README says a
+// tool must answer.
+func TestExpertAppOfAppsAnswers(t *testing.T) {
+	opts := staged
+	opts.RepoRoot = repoRoot(t)
+	p := planOf(t, example, opts)
+
+	if len(p.Clusters) != 3 {
+		t.Errorf("clusters = %d, want 3", len(p.Clusters))
+	}
+	if len(p.Tree) != 1 || p.Tree[0].Name != "root" {
+		t.Fatalf("want one root Application, got %+v", p.Tree)
+	}
+	names := map[string]*Component{}
+	for _, c := range p.Components {
+		names[c.Name] = c
+	}
+	for _, want := range []string{"apptique", "checkout-cache", "platform-addons-cluster-baseline"} {
+		if names[want] == nil {
+			t.Errorf("missing component %s", want)
+		}
+	}
+	if c := names["apptique"]; c != nil {
+		if len(c.InFlight) != 1 || !strings.Contains(c.InFlight[0], "1.26-alpine on prod-1") {
+			t.Errorf("apptique should be in flight with prod-1 behind, got %v", c.InFlight)
+		}
+		if c.Owner != "storefront" {
+			t.Errorf("apptique owner = %q, want storefront", c.Owner)
+		}
+	}
+	if c := names["checkout-cache"]; c != nil && !strings.Contains(strings.Join(c.Notes, " "), "--enable-helm") {
+		t.Errorf("checkout-cache should carry the --enable-helm note, got %v", c.Notes)
+	}
+	if len(p.Windows) != 1 || strings.Join(p.Windows[0].Applications, ",") != "prod-1-apptique,prod-1-checkout-cache" {
+		t.Errorf("the storefront window should cover the two prod-1 storefront apps, got %+v", p.Windows)
+	}
+}
+
+// copyExample copies the example into a fresh checkout at the same repository
+// path, so Applications' source paths resolve the same way.
+func copyExample(t *testing.T) (root, dir string) {
+	t.Helper()
+	root = t.TempDir()
+	dir = filepath.Join(root, "gitops", "argo", "expert-app-of-apps")
+	err := filepath.WalkDir(example, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, _ := filepath.Rel(example, p)
+		dst := filepath.Join(dir, rel)
+		if d.IsDir() {
+			return os.MkdirAll(dst, 0o755)
+		}
+		data, err := os.ReadFile(p)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(dst, data, 0o644)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return root, dir
+}
+
+func edit(t *testing.T, file, old, new string) {
+	t.Helper()
+	data, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), old) {
+		t.Fatalf("%s does not contain %q", file, old)
+	}
+	if err := os.WriteFile(file, []byte(strings.Replace(string(data), old, new, 1)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func hasProblem(p *Plan, parts ...string) bool {
+	for _, pr := range p.Problems {
+		ok := true
+		for _, part := range parts {
+			ok = ok && strings.Contains(pr, part)
+		}
+		if ok {
+			return true
+		}
+	}
+	return false
+}
+
+// Break it on purpose, number 1 in the example's README: a wrong env label
+// points the generators at an overlay that does not exist.
+func TestBadPathIsCaught(t *testing.T) {
+	root, dir := copyExample(t)
+	edit(t, filepath.Join(dir, "clusters", "prod-1.yaml"), "env: prod", "env: production")
+	opts := staged
+	opts.RepoRoot = root
+	p := planOf(t, dir, opts)
+	if !hasProblem(p, "apptique on prod-1", "overlays/production does not exist") {
+		t.Errorf("want a missing-path problem for apptique on prod-1, got %v", p.Problems)
+	}
+}
+
+// A cluster without the label a template reads renders "<no value>": index
+// returns nothing for a missing key, so missingkey=error does not refuse it.
+func TestMissingLabelIsCaught(t *testing.T) {
+	root, dir := copyExample(t)
+	edit(t, filepath.Join(dir, "clusters", "staging-1.yaml"), "    env: staging\n", "")
+	opts := staged
+	opts.RepoRoot = root
+	p := planOf(t, dir, opts)
+	if !hasProblem(p, "apptique on staging-1", "spec.destination.namespace", `"storefront-<no value>"`) {
+		t.Errorf("want an empty-namespace problem for apptique on staging-1, got %v", p.Problems)
+	}
+	for _, c := range p.Components {
+		if c.Name != "platform-addons-cluster-baseline" {
+			continue
+		}
+		for _, st := range c.Stages {
+			for _, v := range st.Variants {
+				if v.Cluster == "staging-1" {
+					t.Errorf("platform-addons selects env Exists, so it should skip staging-1")
+				}
+			}
+		}
+	}
+}
+
+// A live export has generated Applications and no files: the plan names them
+// and says takeover is needed.
+func TestLiveExport(t *testing.T) {
+	export := `
+apiVersion: v1
+kind: List
+items:
+- apiVersion: v1
+  kind: Secret
+  metadata:
+    name: cluster-a
+    namespace: argocd
+    labels: {argocd.argoproj.io/secret-type: cluster, env: prod}
+  data:
+    name: YQ==
+    server: aHR0cHM6Ly9h
+    config: c2VjcmV0
+- apiVersion: argoproj.io/v1alpha1
+  kind: ApplicationSet
+  metadata: {name: web, namespace: argocd}
+  spec:
+    generators:
+    - clusters: {selector: {matchLabels: {env: prod}}}
+    template:
+      metadata: {name: '{{name}}-web'}
+      spec:
+        project: default
+        source: {repoURL: https://example.com/repo, path: 'web/{{metadata.labels.env}}'}
+        destination: {server: '{{server}}', namespace: web}
+- apiVersion: argoproj.io/v1alpha1
+  kind: Application
+  metadata:
+    name: a-web
+    namespace: argocd
+    ownerReferences: [{kind: ApplicationSet, name: web}]
+  spec: {project: default}
+`
+	in, err := Load(strings.NewReader(export), []string{"-"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := Build(in, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(p.Problems) > 0 {
+		t.Fatalf("unexpected problems: %v", p.Problems)
+	}
+	if len(p.Clusters) != 1 || p.Clusters[0].Name != "a" || p.Clusters[0].Server != "https://a" {
+		t.Errorf("cluster from base64 data: got %+v", p.Clusters)
+	}
+	if len(p.Live) != 1 {
+		t.Errorf("want one live Application, got %v", p.Live)
+	}
+	v := p.Components[0].Stages[0].Variants[0]
+	if v.Application != "a-web" || v.Path != "web/prod" {
+		t.Errorf("fasttemplate render: got %+v", v)
+	}
+	if strings.Contains(Render(p), "c2VjcmV0") {
+		t.Errorf("the plan must never show cluster credentials")
+	}
+}
+
+func TestSelects(t *testing.T) {
+	labels := map[string]string{"env": "prod", "tier": "gold"}
+	cases := []struct {
+		sel  map[string]any
+		want bool
+	}{
+		{map[string]any{}, true},
+		{map[string]any{"matchLabels": map[string]any{"env": "prod"}}, true},
+		{map[string]any{"matchLabels": map[string]any{"env": "dev"}}, false},
+		{map[string]any{"matchExpressions": []any{map[string]any{"key": "env", "operator": "In", "values": []any{"dev", "prod"}}}}, true},
+		{map[string]any{"matchExpressions": []any{map[string]any{"key": "env", "operator": "NotIn", "values": []any{"prod"}}}}, false},
+		{map[string]any{"matchExpressions": []any{map[string]any{"key": "zone", "operator": "Exists"}}}, false},
+		{map[string]any{"matchExpressions": []any{map[string]any{"key": "zone", "operator": "DoesNotExist"}}}, true},
+	}
+	for i, c := range cases {
+		got, err := selects(c.sel, labels)
+		if err != nil || got != c.want {
+			t.Errorf("case %d: got %v, %v; want %v", i, got, err, c.want)
+		}
+	}
+}
