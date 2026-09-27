@@ -1,0 +1,79 @@
+# ============================================================================
+# ILLUSTRATIVE ONLY. This file is example content, not live automation.
+#
+# It lives at gitops/argo/intermediate-ci-to-gitops/app-repo/.github/workflows/
+# inside the confighub/examples repo, not at that repo's own top-level
+# .github/workflows/, so GitHub Actions never discovers or runs it here.
+# This example's setup.sh, verify.sh and cleanup.sh never invoke it either.
+# It shows what the app repo's own CI would contain if app-repo/ were its own
+# real repository, so a reader can see the shape of "CI writes a pull request"
+# without this repo executing a build, pushing an image, or opening a PR
+# anywhere.
+# ============================================================================
+name: Build and open a GitOps pull request
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: write   # GITHUB_TOKEN needs this to push to ghcr.io
+
+env:
+  IMAGE: ghcr.io/confighub/apptique-frontend
+  GITOPS_REPO: confighub-examples-org/apptique-gitops   # fictional, separate repo
+  GITOPS_PATH: environments/apptique/dev/kustomization.yaml
+
+jobs:
+  build-and-propose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout app repo
+        uses: actions/checkout@v4
+
+      - name: Compute image tag
+        id: tag
+        run: echo "tag=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to the GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        run: |
+          docker build -t "$IMAGE:${{ steps.tag.outputs.tag }}" .
+          docker push "$IMAGE:${{ steps.tag.outputs.tag }}"
+
+      - name: Checkout the GitOps repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.GITOPS_REPO }}
+          token: ${{ secrets.GITOPS_REPO_TOKEN }}
+          path: gitops-checkout
+
+      - name: Bump the dev image tag
+        working-directory: gitops-checkout
+        run: |
+          cd "$(dirname "$GITOPS_PATH")"
+          kustomize edit set image "$IMAGE=$IMAGE:${{ steps.tag.outputs.tag }}"
+
+      - name: Open the pull request
+        working-directory: gitops-checkout
+        env:
+          GH_TOKEN: ${{ secrets.GITOPS_REPO_TOKEN }}
+        run: |
+          branch="bump-apptique-dev-${{ steps.tag.outputs.tag }}"
+          # A fresh runner has no git author; set one before committing.
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git commit -am "apptique dev: bump to ${{ steps.tag.outputs.tag }}"
+          git push origin "$branch"
+          gh pr create \
+            --title "apptique dev: bump to ${{ steps.tag.outputs.tag }}" \
+            --body "CI build of apptique@${{ steps.tag.outputs.tag }} from app-repo main. Dev only; production is a separate promotion pull request." \
+            --base main --head "$branch"
