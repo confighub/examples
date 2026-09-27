@@ -1,0 +1,20 @@
+# This is the one-resource addition that causes the "failed sync" state.
+#
+# A person added a RedisCache custom resource for apptique's new session
+# cache, following a pattern from another repo, without adding the CRD that
+# defines "RedisCache" to this cluster (or without that CRD having been
+# installed yet, which is the more common real order of events: platform
+# add-ons and product manifests land in the same pull request and are
+# reviewed together, but only one of them is applied first).
+#
+# kustomize build renders this cleanly: it is well-formed YAML and kustomize
+# does not check whether a CRD for this apiVersion/kind exists. A real
+# cluster's API server does that check, and does not have this CRD, so the
+# apply fails.
+apiVersion: cache.apptique.example/v1
+kind: RedisCache
+metadata:
+  name: sessions
+spec:
+  replicas: 1
+  maxMemoryPolicy: allkeys-lru

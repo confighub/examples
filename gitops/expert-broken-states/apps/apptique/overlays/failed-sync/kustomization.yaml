@@ -1,0 +1,21 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# This overlay renders the healthy app plus one extra resource: a
+# RedisCache custom resource whose CRD is not installed. See
+# redis-cache.yaml and ../../../scenarios/02-failed-sync/README.md.
+#
+# This overlay is never uploaded by setup.sh and never applied to a
+# cluster. It exists so verify.sh can render it locally and show the exact
+# broken resource, offline.
+
+namespace: apptique-broken-states-failed-sync
+
+resources:
+  - ../../base
+  - namespace.yaml
+  - redis-cache.yaml
+
+labels:
+  - pairs:
+      scenario: failed-sync

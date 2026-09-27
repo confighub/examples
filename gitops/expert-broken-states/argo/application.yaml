@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: apptique-broken-states
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: apptique
+    app.kubernetes.io/instance: apptique-broken-states
+    scenario: healthy
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/confighub/examples.git
+    targetRevision: main
+    path: gitops/expert-broken-states/apps/apptique/overlays/healthy
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: apptique-broken-states
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

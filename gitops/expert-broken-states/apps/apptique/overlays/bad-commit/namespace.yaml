@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: apptique-broken-states-bad-commit
+  labels:
+    app.kubernetes.io/part-of: apptique-examples
+    scenario: bad-commit

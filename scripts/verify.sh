@@ -74,6 +74,12 @@ script_checks=(
   "${repo_root}/gitops/argo/intermediate-git-as-database/setup.sh"
   "${repo_root}/gitops/argo/intermediate-git-as-database/verify.sh"
   "${repo_root}/gitops/argo/intermediate-git-as-database/cleanup.sh"
+  "${repo_root}/gitops/expert-broken-states/setup.sh"
+  "${repo_root}/gitops/expert-broken-states/verify.sh"
+  "${repo_root}/gitops/expert-broken-states/cleanup.sh"
+  "${repo_root}/gitops/expert-broken-states/scenarios/01-drift/break.sh"
+  "${repo_root}/gitops/expert-broken-states/scenarios/02-failed-sync/break.sh"
+  "${repo_root}/gitops/expert-broken-states/scenarios/03-bad-commit/break.sh"
 )
 
 for script_path in "${script_checks[@]}"; do
@@ -155,6 +161,7 @@ ai_guide_examples=(
   "${repo_root}/gitops/argo/beginner-app-of-apps"
   "${repo_root}/gitops/flux/beginner"
   "${repo_root}/gitops/argo/intermediate-git-as-database"
+  "${repo_root}/gitops/expert-broken-states"
 )
 
 # Examples intentionally exempt from contracts.md requirement

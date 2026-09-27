@@ -1,0 +1,43 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# This overlay is the "bad commit" state: one field changed, everything
+# still renders and would still apply cleanly, and the workload breaks
+# anyway. See ../../../scenarios/03-bad-commit/README.md.
+#
+# The frontend container now listens on 8080. The Service (inherited
+# unchanged from base) still sends traffic to port 80. Kubernetes has no
+# rule that a container's port must match the Service that fronts it, so
+# nothing here fails to apply. The container starts, the pod goes Ready
+# (the readiness probe also moved to 8080 in this patch, so kubelet is
+# satisfied), and the frontend Service simply has nowhere live to send
+# traffic on port 80.
+#
+# This overlay is never uploaded by setup.sh and never applied to a
+# cluster. It exists so verify.sh can render it locally and show the exact
+# broken field, offline.
+
+namespace: apptique-broken-states-bad-commit
+
+resources:
+  - ../../base
+  - namespace.yaml
+
+labels:
+  - pairs:
+      scenario: bad-commit
+
+patches:
+  - target:
+      kind: Deployment
+      name: frontend
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/ports/0/containerPort
+        value: 8080
+      - op: replace
+        path: /spec/template/spec/containers/0/readinessProbe/httpGet/port
+        value: 8080
+      - op: replace
+        path: /spec/template/spec/containers/0/livenessProbe/httpGet/port
+        value: 8080
