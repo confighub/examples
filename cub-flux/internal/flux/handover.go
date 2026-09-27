@@ -15,7 +15,7 @@ import (
 // source-controller would then be the thing that has to fix itself. It stays
 // on Git as the recovery path, and the objects this handover needs before any
 // layer can move go into it.
-func HandoverScript(p *Plan, prefix string) string {
+func HandoverScript(p *Plan, prefix, repoRel string) string {
 	targets := prefix + "-targets"
 	var L []string
 	add := func(f string, a ...any) { L = append(L, fmt.Sprintf(f, a...)) }
@@ -37,6 +37,8 @@ func HandoverScript(p *Plan, prefix string) string {
 	add(`step() { printf '\n== %%s\n' "$*"; }`)
 	add(`ns=${FLUX_NAMESPACE:-flux-system}`)
 	add(`cluster=${CLUSTER:-}`)
+	add("# The comparison below re-renders from the repository, so it needs it.")
+	add("REPO_ROOT=${REPO_ROOT:-%s}", q(repoRelOr(repoRel)))
 	add(`[ -n "$cluster" ] || { echo "set CLUSTER=<one of: %s> so the right Target is used"; exit 1; }`, clusterNames(p))
 	add("")
 
@@ -52,26 +54,35 @@ func HandoverScript(p *Plan, prefix string) string {
 
 	add(`step "1/4 Prove each layer holds what Git renders today"`)
 	add("# Every layer prunes, so anything a release does not hold is deleted from")
-	add("# the cluster. Before a source is swapped, what ConfigHub holds has to match")
-	add("# what Flux builds from Git, object for object. apply.sh left its renders in")
-	add("# render/, so the two are compared here.")
+	add("# the cluster. This renders from the repository now rather than trusting")
+	add("# what apply.sh left in render/: Git may have moved since, and a stale")
+	add("# comparison would pass while the cluster applies something else.")
+	add(`command -v kustomize >/dev/null || { echo "kustomize is not on PATH; this step re-renders with it"; exit 1; }`)
+	add(`[ -d "$REPO_ROOT" ] || { echo "REPO_ROOT=$REPO_ROOT is not a directory: point it at the repository checkout"; exit 1; }`)
+	add(`echo "  rendering with $(kustomize version)"`)
+	add(`if ! git -C "$REPO_ROOT" diff --quiet 2>/dev/null; then`)
+	add(`  echo "  note: $REPO_ROOT has uncommitted changes, so this renders something Flux is not applying" >&2`)
+	add("fi")
+	add("# same <space> <unit> <path>")
 	add("same() {")
-	add(`  local want="render/$1.yaml" got; got=$(mktemp)`)
-	add(`  [ -f "$want" ] || { echo "no $want: run apply.sh first" >&2; return 1; }`)
-	add(`  cub unit data --space "$1" "$2" > "$got" || return 1`)
-	add(`  if diff -q <(grep -v '^\s*#' "$want") <(grep -v '^\s*#' "$got") >/dev/null; then`)
-	add(`    echo "  $1 matches what Git renders"`)
+	add(`  local fresh got rc=0`)
+	add(`  fresh=$(mktemp); got=$(mktemp)`)
+	add(`  kustomize build ${KUSTOMIZE_FLAGS:-} "$REPO_ROOT/$3" > "$fresh" || { rm -f "$fresh" "$got"; return 1; }`)
+	add(`  cub unit data --space "$1" "$2" > "$got" || { rm -f "$fresh" "$got"; return 1; }`)
+	add(`  if diff -q <(grep -v '^\s*#' "$fresh") <(grep -v '^\s*#' "$got") >/dev/null; then`)
+	add(`    echo "  $1 holds what $3 renders today"`)
 	add("  else")
-	add(`    echo "  $1 DIFFERS from what Git renders. Swapping its source would prune the difference." >&2`)
-	add(`    diff -u <(grep -v '^\s*#' "$want") <(grep -v '^\s*#' "$got") | head -40 >&2`)
-	add(`    rm -f "$got"; return 1`)
+	add(`    echo "  $1 DIFFERS from what $3 renders today. Swapping its source would prune the difference." >&2`)
+	add(`    echo "  Re-run apply.sh to bring ConfigHub up to date, then read the diff before swapping." >&2`)
+	add(`    diff -u <(grep -v '^\s*#' "$fresh") <(grep -v '^\s*#' "$got") | head -40 >&2`)
+	add("    rc=1")
 	add("  fi")
-	add(`  rm -f "$got"`)
+	add(`  rm -f "$fresh" "$got"; return $rc`)
 	add("}")
 	for _, c := range p.Components {
 		for _, st := range c.Stages {
 			for _, v := range st.Variants {
-				add(`[ "$cluster" = %s ] && same %s %s`, q(v.Cluster), q(v.Space), q(c.Name))
+				add(`[ "$cluster" = %s ] && same %s %s %s`, q(v.Cluster), q(v.Space), q(c.Name), q(v.Path))
 			}
 		}
 	}
@@ -166,4 +177,11 @@ func clusterNames(p *Plan) string {
 		n = append(n, c.Name)
 	}
 	return strings.Join(n, ", ")
+}
+
+func repoRelOr(rel string) string {
+	if rel == "" {
+		return "."
+	}
+	return rel
 }

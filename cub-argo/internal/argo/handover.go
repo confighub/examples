@@ -9,7 +9,7 @@ import (
 // repointed at ConfigHub, top down, and nothing is deleted. Run it only after
 // apply.sh, because a parent pointed at a Space that holds nothing is a parent
 // syncing an empty source, and it prunes what it applied.
-func HandoverScript(p *Plan, prefix string) string {
+func HandoverScript(p *Plan, prefix, repoRel string) string {
 	targets := prefix + "-targets"
 	var L []string
 	add := func(f string, a ...any) { L = append(L, fmt.Sprintf(f, a...)) }
@@ -32,12 +32,17 @@ func HandoverScript(p *Plan, prefix string) string {
 	add(`k() { kubectl ${ARGOCD_CONTEXT:+--context "$ARGOCD_CONTEXT"} "$@"; }`)
 	add(`step() { printf '\n== %%s\n' "$*"; }`)
 	add(`ns=${ARGOCD_NAMESPACE:-argocd}`)
+	add("# The comparison before the template repoint renders from the repository.")
+	if repoRel == "" {
+		repoRel = "."
+	}
+	add("REPO_ROOT=${REPO_ROOT:-%s}", q(repoRel))
 	add("")
 	add("# The gateway address a repointed source reads. cub reports it for a Target.")
 	add("gateway() { cub target get --space %s \"$1\" -o jq=.Target.Parameters.OCIRepository 2>/dev/null || true; }", targets)
 	add("")
 
-	add(`step "0/4 Check before changing anything"`)
+	add(`step "0/5 Check before changing anything"`)
 	add(`cub space list --quiet >/dev/null || { echo "cub is not logged in: run cub auth login"; exit 1; }`)
 	add(`image=$(k get deployment argocd-repo-server -n "$ns" -o jsonpath='{.spec.template.spec.containers[0].image}')`)
 	add(`version=${image##*:}; version=${version#v}`)
@@ -60,7 +65,7 @@ func HandoverScript(p *Plan, prefix string) string {
 	}
 	add("")
 
-	add(`step "1/4 The credential Argo reads the gateway with"`)
+	add(`step "1/5 The credential Argo reads the gateway with"`)
 	add("# A repository Secret for the gateway, holding the Targets' server worker.")
 	add("# The ID and secret go from cub into the Secret through file descriptors,")
 	add("# never to disk, the command line, or the terminal.")
@@ -85,7 +90,7 @@ func HandoverScript(p *Plan, prefix string) string {
 	cs := p.controlSpaces(prefix)
 	step := 2
 	for _, s := range cs {
-		add(`step "%d/4 Repoint %s at %s"`, step, s.Parent, s.Space)
+		add(`step "%d/5 Repoint %s at %s"`, step, s.Parent, s.Space)
 		add("# Its children are Units there by now, released to the argocd Target.")
 		add(`addr=$(gateway argocd)`)
 		add(`k -n "$ns" get application %s -o jsonpath='{.spec.source.repoURL}' | grep -q '^oci://' && echo %s || \`,
@@ -95,7 +100,51 @@ func HandoverScript(p *Plan, prefix string) string {
 		step++
 	}
 
-	add(`step "%d/4 Point each ApplicationSet's template at its clusters' Targets"`, step)
+	// Every Application prunes, so what a Target holds has to match what the
+	// overlay renders today before its source is moved to that Target.
+	add(`step "%d/5 Prove each Target holds what its overlay renders today"`, step)
+	add("# This renders from the repository now rather than trusting what apply.sh")
+	add("# left behind: Git may have moved since, and a stale comparison would pass")
+	add("# while Argo applies something else. Every Application prunes, so a")
+	add("# difference here is a difference that would be deleted from the cluster.")
+	add(`command -v kustomize >/dev/null || { echo "kustomize is not on PATH; this step re-renders with it"; exit 1; }`)
+	add(`[ -d "$REPO_ROOT" ] || { echo "REPO_ROOT=$REPO_ROOT is not a directory: point it at the repository checkout"; exit 1; }`)
+	add(`echo "  rendering with $(kustomize version)"`)
+	add(`if ! git -C "$REPO_ROOT" diff --quiet 2>/dev/null; then`)
+	add(`  echo "  note: $REPO_ROOT has uncommitted changes, so this renders something Argo is not applying" >&2`)
+	add("fi")
+	add("# same <space> <unit> <path>")
+	add("same() {")
+	add("  local fresh got rc=0")
+	add(`  fresh=$(mktemp); got=$(mktemp)`)
+	add(`  kustomize build ${KUSTOMIZE_FLAGS:-} "$REPO_ROOT/$3" > "$fresh" || { rm -f "$fresh" "$got"; return 1; }`)
+	add(`  cub unit data --space "$1" "$2" > "$got" || { rm -f "$fresh" "$got"; return 1; }`)
+	add(`  if diff -q <(grep -v '^\s*#' "$fresh") <(grep -v '^\s*#' "$got") >/dev/null; then`)
+	add(`    echo "  $1 holds what $3 renders today"`)
+	add("  else")
+	add(`    echo "  $1 DIFFERS from what $3 renders today. Repointing would prune the difference." >&2`)
+	add(`    echo "  Re-run apply.sh to bring ConfigHub up to date, then read the diff before repointing." >&2`)
+	add(`    diff -u <(grep -v '^\s*#' "$fresh") <(grep -v '^\s*#' "$got") | head -40 >&2`)
+	add("    rc=1")
+	add("  fi")
+	add(`  rm -f "$fresh" "$got"; return $rc`)
+	add("}")
+	for _, c := range p.Components {
+		if c.Kind != "ApplicationSet" {
+			continue
+		}
+		for _, st := range c.Stages {
+			for _, v := range st.Variants {
+				if v.Path != "" && v.Path != "(multi-source)" {
+					add("same %s %s %s", q(v.Space), q(c.Name), q(v.Path))
+				}
+			}
+		}
+	}
+	add("")
+	step++
+
+	add(`step "%d/5 Point each ApplicationSet's template at its clusters' Targets"`, step)
 	add("# The ApplicationSet goes on generating the same Applications under the same")
 	add("# names, so Argo's tracking does not change and nothing is orphaned. Each")
 	add("# generated Application reads its own cluster's Target.")

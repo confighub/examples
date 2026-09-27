@@ -457,3 +457,36 @@ func TestStandaloneApplications(t *testing.T) {
 		t.Errorf("neither Application has a parent, so none can be repointed under review:\n%s", joined)
 	}
 }
+
+// What ConfigHub stores is a render, and the handover turns on comparing that
+// render with what Git produces later. A chart that renders differently from
+// one run to the next makes that comparison meaningless, so the plan stops.
+func TestUnrepeatableRenderIsCaught(t *testing.T) {
+	root, dir := copyExample(t)
+	edit(t, filepath.Join(dir, "apps", "checkout-cache", "base", "kustomization.yaml"),
+		"    version: 0.3.1", "    version: 0.3.x\n    repo: https://charts.example.com")
+	opts := staged
+	opts.RepoRoot = root
+	p := planOf(t, dir, opts)
+	if !hasProblem(p, "checkout-cache renders differently", "not one exact version") {
+		t.Errorf("want an unrepeatable-render problem, got %v", p.Problems)
+	}
+}
+
+func TestChartReproducibility(t *testing.T) {
+	cases := []struct {
+		c    chart
+		want bool
+	}{
+		{chart{name: "a", version: "0.3.1"}, true},                                      // vendored, exact
+		{chart{name: "a", version: "0.3.x"}, false},                                     // a range
+		{chart{name: "a", version: "^1.2.0"}, false},                                    // a range
+		{chart{name: "a"}, false},                                                       // no version at all
+		{chart{name: "a", version: "0.3.1", repo: "https://charts.example.com"}, false}, // pulled at render time
+	}
+	for _, c := range cases {
+		if got := c.c.reproducible(); got != c.want {
+			t.Errorf("%+v: reproducible = %v, want %v", c.c, got, c.want)
+		}
+	}
+}

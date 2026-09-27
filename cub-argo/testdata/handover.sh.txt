@@ -16,11 +16,13 @@ cd "$(dirname "$0")"
 k() { kubectl ${ARGOCD_CONTEXT:+--context "$ARGOCD_CONTEXT"} "$@"; }
 step() { printf '\n== %s\n' "$*"; }
 ns=${ARGOCD_NAMESPACE:-argocd}
+# The comparison before the template repoint renders from the repository.
+REPO_ROOT=${REPO_ROOT:-'<repo>'}
 
 # The gateway address a repointed source reads. cub reports it for a Target.
 gateway() { cub target get --space argo-targets "$1" -o jq=.Target.Parameters.OCIRepository 2>/dev/null || true; }
 
-step "0/4 Check before changing anything"
+step "0/5 Check before changing anything"
 cub space list --quiet >/dev/null || { echo "cub is not logged in: run cub auth login"; exit 1; }
 image=$(k get deployment argocd-repo-server -n "$ns" -o jsonpath='{.spec.template.spec.containers[0].image}')
 version=${image##*:}; version=${version#v}
@@ -32,7 +34,7 @@ echo 'first, add the gateway'\''s oci:// address to sourceRepos on AppProject pl
 echo "  cub target get --space argo-targets argocd -o jq=.Target.Parameters.OCIRepository   # the address to add"
 read -r -p "Add it to sourceRepos on those AppProjects, then press Return to carry on. " _
 
-step "1/4 The credential Argo reads the gateway with"
+step "1/5 The credential Argo reads the gateway with"
 # A repository Secret for the gateway, holding the Targets' server worker.
 # The ID and secret go from cub into the Secret through file descriptors,
 # never to disk, the command line, or the terminal.
@@ -53,19 +55,56 @@ k create secret generic confighub-argo-targets --namespace "$ns" \
   --dry-run=client -o yaml | k apply -f -
 k -n "$ns" label secret confighub-argo-targets argocd.argoproj.io/secret-type=repository --overwrite
 
-step "2/4 Repoint root at argo-root-children"
+step "2/5 Repoint root at argo-root-children"
 # Its children are Units there by now, released to the argocd Target.
 addr=$(gateway argocd)
 k -n "$ns" get application root -o jsonpath='{.spec.source.repoURL}' | grep -q '^oci://' && echo 'root already reads ConfigHub' || \
   k -n "$ns" patch application root --type merge -p "{\"spec\":{\"source\":{\"repoURL\":\"oci://${addr}\",\"path\":\".\",\"targetRevision\":\"latest\"}}}"
 k -n "$ns" wait --for=jsonpath='{.status.sync.status}'=Synced application/root --timeout=3m
-step "3/4 Repoint storefront at argo-storefront-children"
+step "3/5 Repoint storefront at argo-storefront-children"
 # Its children are Units there by now, released to the argocd Target.
 addr=$(gateway argocd)
 k -n "$ns" get application storefront -o jsonpath='{.spec.source.repoURL}' | grep -q '^oci://' && echo 'storefront already reads ConfigHub' || \
   k -n "$ns" patch application storefront --type merge -p "{\"spec\":{\"source\":{\"repoURL\":\"oci://${addr}\",\"path\":\".\",\"targetRevision\":\"latest\"}}}"
 k -n "$ns" wait --for=jsonpath='{.status.sync.status}'=Synced application/storefront --timeout=3m
-step "4/4 Point each ApplicationSet's template at its clusters' Targets"
+step "4/5 Prove each Target holds what its overlay renders today"
+# This renders from the repository now rather than trusting what apply.sh
+# left behind: Git may have moved since, and a stale comparison would pass
+# while Argo applies something else. Every Application prunes, so a
+# difference here is a difference that would be deleted from the cluster.
+command -v kustomize >/dev/null || { echo "kustomize is not on PATH; this step re-renders with it"; exit 1; }
+[ -d "$REPO_ROOT" ] || { echo "REPO_ROOT=$REPO_ROOT is not a directory: point it at the repository checkout"; exit 1; }
+echo "  rendering with $(kustomize version)"
+if ! git -C "$REPO_ROOT" diff --quiet 2>/dev/null; then
+  echo "  note: $REPO_ROOT has uncommitted changes, so this renders something Argo is not applying" >&2
+fi
+# same <space> <unit> <path>
+same() {
+  local fresh got rc=0
+  fresh=$(mktemp); got=$(mktemp)
+  kustomize build ${KUSTOMIZE_FLAGS:-} "$REPO_ROOT/$3" > "$fresh" || { rm -f "$fresh" "$got"; return 1; }
+  cub unit data --space "$1" "$2" > "$got" || { rm -f "$fresh" "$got"; return 1; }
+  if diff -q <(grep -v '^\s*#' "$fresh") <(grep -v '^\s*#' "$got") >/dev/null; then
+    echo "  $1 holds what $3 renders today"
+  else
+    echo "  $1 DIFFERS from what $3 renders today. Repointing would prune the difference." >&2
+    echo "  Re-run apply.sh to bring ConfigHub up to date, then read the diff before repointing." >&2
+    diff -u <(grep -v '^\s*#' "$fresh") <(grep -v '^\s*#' "$got") | head -40 >&2
+    rc=1
+  fi
+  rm -f "$fresh" "$got"; return $rc
+}
+same 'argo-apptique-dev-1' 'apptique' 'gitops/argo/expert-app-of-apps/apps/apptique/overlays/dev'
+same 'argo-apptique-staging-1' 'apptique' 'gitops/argo/expert-app-of-apps/apps/apptique/overlays/staging'
+same 'argo-apptique-prod-1' 'apptique' 'gitops/argo/expert-app-of-apps/apps/apptique/overlays/prod'
+same 'argo-checkout-cache-dev-1' 'checkout-cache' 'gitops/argo/expert-app-of-apps/apps/checkout-cache/overlays/dev'
+same 'argo-checkout-cache-staging-1' 'checkout-cache' 'gitops/argo/expert-app-of-apps/apps/checkout-cache/overlays/staging'
+same 'argo-checkout-cache-prod-1' 'checkout-cache' 'gitops/argo/expert-app-of-apps/apps/checkout-cache/overlays/prod'
+same 'argo-platform-addons-cluster-baseline-dev-1' 'platform-addons-cluster-baseline' 'gitops/argo/expert-app-of-apps/apps/platform/cluster-baseline/overlays/dev'
+same 'argo-platform-addons-cluster-baseline-staging-1' 'platform-addons-cluster-baseline' 'gitops/argo/expert-app-of-apps/apps/platform/cluster-baseline/overlays/staging'
+same 'argo-platform-addons-cluster-baseline-prod-1' 'platform-addons-cluster-baseline' 'gitops/argo/expert-app-of-apps/apps/platform/cluster-baseline/overlays/prod'
+
+step "5/5 Point each ApplicationSet's template at its clusters' Targets"
 # The ApplicationSet goes on generating the same Applications under the same
 # names, so Argo's tracking does not change and nothing is orphaned. Each
 # generated Application reads its own cluster's Target.

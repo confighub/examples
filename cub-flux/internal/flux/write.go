@@ -41,7 +41,7 @@ func WriteApply(p *Plan, prefix, dir string) (string, error) {
 
 	files = append(files,
 		outFile{"apply.sh", []byte(ApplyScript(p, prefix, repoRel)), 0o755},
-		outFile{"handover.sh", []byte(HandoverScript(p, prefix)), 0o755},
+		outFile{"handover.sh", []byte(HandoverScript(p, prefix, repoRel)), 0o755},
 		outFile{".gitignore", []byte("render/\n"), 0o644},
 	)
 

@@ -461,8 +461,19 @@ func (b *builder) variant(c *Component, app map[string]any, cl *Cluster, fields 
 			p.Problems = append(p.Problems, fmt.Sprintf("%s on %s: source path %s does not exist in this checkout, so Argo CD would fail to sync %s", c.Name, clusterName, v.Path, v.Application))
 		} else {
 			v.Images = overlayImages(local)
-			if helmIn(local, 4) {
+			charts := helmCharts(local, 4)
+			if len(charts) > 0 {
 				c.Notes = appendOnce(c.Notes, "a Helm chart inflated by Kustomize: Argo CD must run Kustomize with --enable-helm, and the chart's resources do not take the overlay's namespace field")
+			}
+			// What ConfigHub stores is a render. A render that cannot be
+			// repeated cannot be checked against Git later, and the handover
+			// turns on exactly that comparison.
+			for _, ch := range charts {
+				if !ch.reproducible() {
+					p.Problems = appendOnce(p.Problems, fmt.Sprintf(
+						"%s renders differently from one run to the next: %s. Pin it to an exact version, or vendor it, before what ConfigHub stores can be compared with what Git renders",
+						c.Name, ch.why()))
+				}
 			}
 		}
 	}
@@ -571,20 +582,58 @@ func overlayImages(dir string) map[string]string {
 // helmIn reports whether a kustomization, or one it builds on, inflates a Helm
 // chart.
 func helmIn(dir string, depth int) bool {
+	return len(helmCharts(dir, depth)) > 0
+}
+
+// chart is one Helm chart a kustomization inflates at render time.
+type chart struct {
+	name, version, repo string
+}
+
+// reproducible reports whether rendering this chart twice must give the same
+// bytes. A chart vendored in the repository at an exact version does; one
+// pulled from a remote repository, or pinned to a range, does not.
+func (c chart) reproducible() bool {
+	return c.repo == "" && c.version != "" && !strings.ContainsAny(c.version, "x*^~><= ")
+}
+
+func (c chart) why() string {
+	switch {
+	case c.repo != "" && !c.reproducible():
+		return fmt.Sprintf("chart %s %s is pulled from %s at render time, and %q is not one exact version",
+			c.name, c.version, c.repo, c.version)
+	case c.repo != "":
+		return fmt.Sprintf("chart %s %s is pulled from %s at render time, so what it renders depends on that repository",
+			c.name, c.version, c.repo)
+	case c.version == "":
+		return fmt.Sprintf("chart %s names no version, so what it renders can change", c.name)
+	default:
+		return fmt.Sprintf("chart %s is pinned to %q rather than one exact version", c.name, c.version)
+	}
+}
+
+// helmCharts collects the charts a kustomization, or one it builds on,
+// inflates.
+func helmCharts(dir string, depth int) []chart {
 	k := readKustomization(dir)
 	if k == nil || depth == 0 {
-		return false
+		return nil
 	}
-	if len(list(k["helmCharts"])) > 0 {
-		return true
+	var out []chart
+	for _, h := range list(k["helmCharts"]) {
+		out = append(out, chart{
+			name:    str(get(h, "name")),
+			version: str(get(h, "version")),
+			repo:    str(get(h, "repo")),
+		})
 	}
 	for _, r := range list(k["resources"]) {
 		sub := filepath.Join(dir, filepath.FromSlash(str(r)))
-		if info, err := os.Stat(sub); err == nil && info.IsDir() && helmIn(sub, depth-1) {
-			return true
+		if info, err := os.Stat(sub); err == nil && info.IsDir() {
+			out = append(out, helmCharts(sub, depth-1)...)
 		}
 	}
-	return false
+	return out
 }
 
 func readKustomization(dir string) map[string]any {

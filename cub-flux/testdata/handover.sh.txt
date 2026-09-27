@@ -15,6 +15,8 @@ k() { kubectl ${FLUX_CONTEXT:+--context "$FLUX_CONTEXT"} "$@"; }
 step() { printf '\n== %s\n' "$*"; }
 ns=${FLUX_NAMESPACE:-flux-system}
 cluster=${CLUSTER:-}
+# The comparison below re-renders from the repository, so it needs it.
+REPO_ROOT=${REPO_ROOT:-'<repo>'}
 [ -n "$cluster" ] || { echo "set CLUSTER=<one of: dev-1, staging-1, prod-1> so the right Target is used"; exit 1; }
 
 step "0/4 Check before changing anything"
@@ -28,32 +30,41 @@ echo 'Left alone: gitops/flux/expert-fleet/clusters/staging/flux-system'
 
 step "1/4 Prove each layer holds what Git renders today"
 # Every layer prunes, so anything a release does not hold is deleted from
-# the cluster. Before a source is swapped, what ConfigHub holds has to match
-# what Flux builds from Git, object for object. apply.sh left its renders in
-# render/, so the two are compared here.
+# the cluster. This renders from the repository now rather than trusting
+# what apply.sh left in render/: Git may have moved since, and a stale
+# comparison would pass while the cluster applies something else.
+command -v kustomize >/dev/null || { echo "kustomize is not on PATH; this step re-renders with it"; exit 1; }
+[ -d "$REPO_ROOT" ] || { echo "REPO_ROOT=$REPO_ROOT is not a directory: point it at the repository checkout"; exit 1; }
+echo "  rendering with $(kustomize version)"
+if ! git -C "$REPO_ROOT" diff --quiet 2>/dev/null; then
+  echo "  note: $REPO_ROOT has uncommitted changes, so this renders something Flux is not applying" >&2
+fi
+# same <space> <unit> <path>
 same() {
-  local want="render/$1.yaml" got; got=$(mktemp)
-  [ -f "$want" ] || { echo "no $want: run apply.sh first" >&2; return 1; }
-  cub unit data --space "$1" "$2" > "$got" || return 1
-  if diff -q <(grep -v '^\s*#' "$want") <(grep -v '^\s*#' "$got") >/dev/null; then
-    echo "  $1 matches what Git renders"
+  local fresh got rc=0
+  fresh=$(mktemp); got=$(mktemp)
+  kustomize build ${KUSTOMIZE_FLAGS:-} "$REPO_ROOT/$3" > "$fresh" || { rm -f "$fresh" "$got"; return 1; }
+  cub unit data --space "$1" "$2" > "$got" || { rm -f "$fresh" "$got"; return 1; }
+  if diff -q <(grep -v '^\s*#' "$fresh") <(grep -v '^\s*#' "$got") >/dev/null; then
+    echo "  $1 holds what $3 renders today"
   else
-    echo "  $1 DIFFERS from what Git renders. Swapping its source would prune the difference." >&2
-    diff -u <(grep -v '^\s*#' "$want") <(grep -v '^\s*#' "$got") | head -40 >&2
-    rm -f "$got"; return 1
+    echo "  $1 DIFFERS from what $3 renders today. Swapping its source would prune the difference." >&2
+    echo "  Re-run apply.sh to bring ConfigHub up to date, then read the diff before swapping." >&2
+    diff -u <(grep -v '^\s*#' "$fresh") <(grep -v '^\s*#' "$got") | head -40 >&2
+    rc=1
   fi
-  rm -f "$got"
+  rm -f "$fresh" "$got"; return $rc
 }
-[ "$cluster" = 'dev-1' ] && same 'flux-infrastructure-dev-1' 'infrastructure'
-[ "$cluster" = 'staging-1' ] && same 'flux-infrastructure-staging-1' 'infrastructure'
-[ "$cluster" = 'prod-1' ] && same 'flux-infrastructure-prod-1' 'infrastructure'
-[ "$cluster" = 'dev-1' ] && same 'flux-apps-dev-1' 'apps'
-[ "$cluster" = 'staging-1' ] && same 'flux-apps-staging-1' 'apps'
-[ "$cluster" = 'prod-1' ] && same 'flux-apps-prod-1' 'apps'
-[ "$cluster" = 'dev-1' ] && same 'flux-tenants-dev-1' 'tenants'
-[ "$cluster" = 'staging-1' ] && same 'flux-tenants-staging-1' 'tenants'
-[ "$cluster" = 'prod-1' ] && same 'flux-tenants-prod-1' 'tenants'
-[ "$cluster" = 'dev-1' ] && same 'flux-image-automation-dev-1' 'image-automation'
+[ "$cluster" = 'dev-1' ] && same 'flux-infrastructure-dev-1' 'infrastructure' 'gitops/flux/expert-fleet/infrastructure/dev'
+[ "$cluster" = 'staging-1' ] && same 'flux-infrastructure-staging-1' 'infrastructure' 'gitops/flux/expert-fleet/infrastructure/staging'
+[ "$cluster" = 'prod-1' ] && same 'flux-infrastructure-prod-1' 'infrastructure' 'gitops/flux/expert-fleet/infrastructure/prod'
+[ "$cluster" = 'dev-1' ] && same 'flux-apps-dev-1' 'apps' 'gitops/flux/expert-fleet/apps/dev'
+[ "$cluster" = 'staging-1' ] && same 'flux-apps-staging-1' 'apps' 'gitops/flux/expert-fleet/apps/staging'
+[ "$cluster" = 'prod-1' ] && same 'flux-apps-prod-1' 'apps' 'gitops/flux/expert-fleet/apps/prod'
+[ "$cluster" = 'dev-1' ] && same 'flux-tenants-dev-1' 'tenants' 'gitops/flux/expert-fleet/tenants/dev'
+[ "$cluster" = 'staging-1' ] && same 'flux-tenants-staging-1' 'tenants' 'gitops/flux/expert-fleet/tenants/staging'
+[ "$cluster" = 'prod-1' ] && same 'flux-tenants-prod-1' 'tenants' 'gitops/flux/expert-fleet/tenants/prod'
+[ "$cluster" = 'dev-1' ] && same 'flux-image-automation-dev-1' 'image-automation' 'gitops/flux/expert-fleet/image-automation'
 
 step "2/4 Add the gateway to flux-system: the credential and one OCIRepository per layer"
 # These cannot come from ConfigHub: a Kustomization cannot read a source that
