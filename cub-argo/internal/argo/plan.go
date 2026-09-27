@@ -35,7 +35,7 @@ type Plan struct {
 	Windows    []Window     `json:"syncWindows,omitempty"`
 	Unselected []string     `json:"unselectedClusters,omitempty"`
 	Live       []string     `json:"liveApplications,omitempty"`
-	Takeover   []string     `json:"takeover,omitempty"`
+	Handover   []string     `json:"handover,omitempty"`
 	LeftOut    []string     `json:"leftOut,omitempty"`
 	Problems   []string     `json:"problems,omitempty"`
 }
@@ -216,7 +216,7 @@ func Build(in *Input, opts Options) (*Plan, error) {
 	b.tree(standalone, appsets, projects)
 	b.windows(projects)
 	b.unselected()
-	b.takeover(appsets, standalone, projects)
+	b.handover(appsets, standalone, projects)
 	b.checkLive()
 	return p, nil
 }
@@ -352,7 +352,7 @@ func (b *builder) appset(o object) {
 		}
 		b.finish(c, variants)
 		if strings.EqualFold(str(get(spec, "strategy", "type")), "RollingSync") {
-			c.Notes = append(c.Notes, "orders its own rollout with RollingSync; the ChangeWorkflow would own the order, so takeover turns it off")
+			c.Notes = append(c.Notes, "orders its own rollout with RollingSync; the ChangeWorkflow would own the order, so handover turns it off")
 		}
 		p.Components = append(p.Components, c)
 	}
@@ -824,17 +824,17 @@ func (b *builder) unselected() {
 	}
 }
 
-// takeover says what handing the live estate to ConfigHub would involve.
-// Nothing here runs; `apply` will write it as takeover.sh.
-func (b *builder) takeover(appsets, apps []object, projects []object) {
+// handover says what handing the live estate to ConfigHub would involve.
+// Nothing here runs; `apply` will write it as handover.sh.
+func (b *builder) handover(appsets, apps []object, projects []object) {
 	p := b.plan
 	if len(appsets) > 0 {
 		var names []string
 		for _, a := range appsets {
 			names = append(names, a.name)
 		}
-		p.Takeover = append(p.Takeover, fmt.Sprintf("delete each ApplicationSet (%s) with 'kubectl delete --cascade=orphan', so its Applications stay", strings.Join(names, ", ")))
-		p.Takeover = append(p.Takeover, "hand each Application to its variant under the same name, so Argo CD's tracking ID does not change and only the source moves to the ConfigHub gateway")
+		p.Handover = append(p.Handover, fmt.Sprintf("delete each ApplicationSet (%s) with 'kubectl delete --cascade=orphan', so its Applications stay", strings.Join(names, ", ")))
+		p.Handover = append(p.Handover, "hand each Application to its variant under the same name, so Argo CD's tracking ID does not change and only the source moves to the ConfigHub gateway")
 	}
 	var guarded []string
 	for _, a := range apps {
@@ -852,7 +852,7 @@ func (b *builder) takeover(appsets, apps []object, projects []object) {
 		}
 	}
 	if len(guarded) > 0 {
-		p.Takeover = append(p.Takeover, fmt.Sprintf("never delete %s: resources-finalizer.argocd.argoproj.io deletes everything it deployed", strings.Join(guarded, ", ")))
+		p.Handover = append(p.Handover, fmt.Sprintf("never delete %s: resources-finalizer.argocd.argoproj.io deletes everything it deployed", strings.Join(guarded, ", ")))
 	}
 	used := map[string]bool{}
 	for _, c := range p.Components {
@@ -870,7 +870,7 @@ func (b *builder) takeover(appsets, apps []object, projects []object) {
 			}
 		}
 		if !allowed {
-			p.Takeover = append(p.Takeover, fmt.Sprintf("AppProject %s allows only %s: add the ConfigHub gateway's oci:// address to sourceRepos first", pr.name, strings.Join(repos, ", ")))
+			p.Handover = append(p.Handover, fmt.Sprintf("AppProject %s allows only %s: add the ConfigHub gateway's oci:// address to sourceRepos first", pr.name, strings.Join(repos, ", ")))
 		}
 	}
 }

@@ -8,8 +8,8 @@ one cluster, and a Target per cluster. The root Application, its app of apps
 and the AppProjects stay as they are, as the management record.
 
 This is a scaffold. It ships `plan`, which is offline and changes nothing.
-`apply` (write the steps as a script) and `takeover` are next; the plan
-already says what takeover would involve.
+`apply` (write the steps as a script) and `handover` are next; the plan
+already says what handover would involve.
 
 ## Try it on the expert example
 
@@ -45,7 +45,7 @@ syncs it anyway.
 
 - A repository directory, as above. Source paths are checked against the
   checkout found by walking up to `.git`, or `--repo-root`.
-- A live export, which also shows the generated Applications a takeover would
+- A live export, which also shows the generated Applications a handover would
   adopt:
 
   ```bash
@@ -87,4 +87,4 @@ make golden    # rewrite the golden plan after an intended change
 
 Where it goes next is in the design brief: move the planning core it shares
 with `cub sveltos` into one library, reuse `cub gen`'s ApplicationSet
-detection, then add `apply --out` and `takeover`.
+detection, then add `apply --out` and `handover`.

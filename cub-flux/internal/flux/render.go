@@ -92,9 +92,9 @@ func Render(p *Plan) string {
 	section("Not in Git", p.NotInGit)
 	section("Tenants (stay as they are)", p.Tenants)
 	section("Bootstrap (stays outside ConfigHub)", p.Boundary)
-	if len(p.Takeover) > 0 {
-		w("\nTakeover (apply will write it as takeover.sh; plan runs nothing)\n")
-		for i, t := range p.Takeover {
+	if len(p.Handover) > 0 {
+		w("\nHandover (apply will write it as handover.sh; plan runs nothing)\n")
+		for i, t := range p.Handover {
 			w("  %d. %s\n", i+1, t)
 		}
 	}

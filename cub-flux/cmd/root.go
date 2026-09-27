@@ -49,7 +49,7 @@ func newRoot() *cobra.Command {
          listing exactly what its overlay changes, a Target per cluster, and
          the stage order. Offline: no account, no cluster, nothing changes.
 
-Not yet: apply (write the steps as a script) and takeover.`,
+Not yet: apply (write the steps as a script) and handover.`,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}

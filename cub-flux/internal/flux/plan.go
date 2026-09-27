@@ -39,7 +39,7 @@ type Plan struct {
 	NotInGit   []string     `json:"notInGit,omitempty"`
 	Tenants    []string     `json:"tenants,omitempty"`
 	Boundary   []string     `json:"boundary,omitempty"`
-	Takeover   []string     `json:"takeover,omitempty"`
+	Handover   []string     `json:"handover,omitempty"`
 	LeftOut    []string     `json:"leftOut,omitempty"`
 	Problems   []string     `json:"problems,omitempty"`
 }
@@ -150,7 +150,7 @@ func Build(in *Input, opts Options) (*Plan, error) {
 	b.tenants()
 	b.substitutions()
 	b.explainGuessedRoot()
-	b.takeover()
+	b.handover()
 	return b.plan, nil
 }
 
@@ -824,9 +824,9 @@ func (b *builder) substitutions() {
 	}
 }
 
-// takeover says what handing the fleet to ConfigHub would involve. Nothing
-// here runs; `apply` will write it as takeover.sh.
-func (b *builder) takeover() {
+// handover says what handing the fleet to ConfigHub would involve. Nothing
+// here runs; `apply` will write it as handover.sh.
+func (b *builder) handover() {
 	p := b.plan
 	if len(p.Components) == 0 {
 		return
@@ -841,13 +841,13 @@ func (b *builder) takeover() {
 			}
 		}
 	}
-	p.Takeover = append(p.Takeover, "keep each layer's Flux Kustomization under its own name and switch its sourceRef to an OCIRepository on the ConfigHub gateway, so Flux keeps its inventory and nothing is reinstalled")
+	p.Handover = append(p.Handover, "keep each layer's Flux Kustomization under its own name and switch its sourceRef to an OCIRepository on the ConfigHub gateway, so Flux keeps its inventory and nothing is reinstalled")
 	if len(pruned) > 0 {
-		p.Takeover = append(p.Takeover, fmt.Sprintf("first prove each variant renders exactly what Git renders today: %s prune, so anything the release lacks is deleted", strings.Join(pruned, ", ")))
+		p.Handover = append(p.Handover, fmt.Sprintf("first prove each variant renders exactly what Git renders today: %s prune, so anything the release lacks is deleted", strings.Join(pruned, ", ")))
 	}
 	for _, a := range p.Automation {
 		name := strings.Fields(a)[1]
-		p.Takeover = append(p.Takeover, fmt.Sprintf("suspend ImageUpdateAutomation %s: it would commit to Git that no longer deploys; its tag should become a proposed ConfigHub change on that variant", name))
+		p.Handover = append(p.Handover, fmt.Sprintf("suspend ImageUpdateAutomation %s: it would commit to Git that no longer deploys; its tag should become a proposed ConfigHub change on that variant", name))
 	}
 	for _, s := range p.Sources {
 		seen := map[string]bool{}
@@ -861,11 +861,11 @@ func (b *builder) takeover() {
 					parts = append(parts, cl.Name+" "+br)
 				}
 			}
-			p.Takeover = append(p.Takeover, fmt.Sprintf("GitRepository %s promotes by branch (%s); after takeover the ChangeWorkflow's stages decide, not the branch", s.Name, strings.Join(parts, ", ")))
+			p.Handover = append(p.Handover, fmt.Sprintf("GitRepository %s promotes by branch (%s); after handover the ChangeWorkflow's stages decide, not the branch", s.Name, strings.Join(parts, ", ")))
 		}
 	}
 	if len(p.Boundary) > 0 {
-		p.Takeover = append(p.Takeover, "leave flux-system alone: flux bootstrap owns it, like the Sveltos management record")
+		p.Handover = append(p.Handover, "leave flux-system alone: flux bootstrap owns it, like the Sveltos management record")
 	}
 }
 

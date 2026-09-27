@@ -90,11 +90,11 @@ func Render(p *Plan) string {
 		w("\nClusters no ApplicationSet selects: %s\n", strings.Join(p.Unselected, ", "))
 	}
 	if len(p.Live) > 0 {
-		w("\nLive: %d generated Applications in the input, so takeover is needed\n", len(p.Live))
+		w("\nLive: %d generated Applications in the input, so handover is needed\n", len(p.Live))
 	}
-	if len(p.Takeover) > 0 {
-		w("\nTakeover, when this estate is live (apply will write it as takeover.sh; plan runs nothing)\n")
-		for i, t := range p.Takeover {
+	if len(p.Handover) > 0 {
+		w("\nHandover, when this estate is live (apply will write it as handover.sh; plan runs nothing)\n")
+		for i, t := range p.Handover {
 			w("  %d. %s\n", i+1, t)
 		}
 	}

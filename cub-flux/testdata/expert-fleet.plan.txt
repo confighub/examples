@@ -111,10 +111,10 @@ Bootstrap (stays outside ConfigHub)
   - gitops/flux/expert-fleet/clusters/prod/flux-system
   - gitops/flux/expert-fleet/clusters/staging/flux-system
 
-Takeover (apply will write it as takeover.sh; plan runs nothing)
+Handover (apply will write it as handover.sh; plan runs nothing)
   1. keep each layer's Flux Kustomization under its own name and switch its sourceRef to an OCIRepository on the ConfigHub gateway, so Flux keeps its inventory and nothing is reinstalled
   2. first prove each variant renders exactly what Git renders today: infrastructure, apps, tenants, image-automation prune, so anything the release lacks is deleted
   3. suspend ImageUpdateAutomation apptique-dev: it would commit to Git that no longer deploys; its tag should become a proposed ConfigHub change on that variant
-  4. GitRepository fleet-repo promotes by branch (dev-1 main, staging-1 main, prod-1 production); after takeover the ChangeWorkflow's stages decide, not the branch
-  5. GitRepository team-checkout promotes by branch (dev-1 main, staging-1 main, prod-1 production); after takeover the ChangeWorkflow's stages decide, not the branch
+  4. GitRepository fleet-repo promotes by branch (dev-1 main, staging-1 main, prod-1 production); after handover the ChangeWorkflow's stages decide, not the branch
+  5. GitRepository team-checkout promotes by branch (dev-1 main, staging-1 main, prod-1 production); after handover the ChangeWorkflow's stages decide, not the branch
   6. leave flux-system alone: flux bootstrap owns it, like the Sveltos management record

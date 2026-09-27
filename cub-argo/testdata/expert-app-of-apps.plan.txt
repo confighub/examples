@@ -69,7 +69,7 @@ Sync windows (a published release waits for Argo CD while one is closed)
   storefront  deny 0 9 * * 1-5 for 9h (UTC), manual sync blocked too
     covers prod-1-apptique, prod-1-checkout-cache
 
-Takeover, when this estate is live (apply will write it as takeover.sh; plan runs nothing)
+Handover, when this estate is live (apply will write it as handover.sh; plan runs nothing)
   1. delete each ApplicationSet (apptique, checkout-cache, platform-addons) with 'kubectl delete --cascade=orphan', so its Applications stay
   2. hand each Application to its variant under the same name, so Argo CD's tracking ID does not change and only the source moves to the ConfigHub gateway
   3. never delete root, storefront: resources-finalizer.argocd.argoproj.io deletes everything it deployed

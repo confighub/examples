@@ -192,7 +192,7 @@ func TestMissingLabelIsCaught(t *testing.T) {
 }
 
 // A live export has generated Applications and no files: the plan names them
-// and says takeover is needed.
+// and says handover is needed.
 func TestLiveExport(t *testing.T) {
 	export := `
 apiVersion: v1

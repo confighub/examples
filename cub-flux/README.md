@@ -8,8 +8,8 @@ cluster's overlay builds on, and lists exactly what each cluster's overlay
 changes. Those changes are the variant's departures.
 
 This is a scaffold. It ships `plan`, which is offline and changes nothing.
-`apply` (write the steps as a script) and `takeover` are next; the plan
-already says what takeover would involve.
+`apply` (write the steps as a script) and `handover` are next; the plan
+already says what handover would involve.
 
 ## Try it on the expert example
 

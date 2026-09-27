@@ -49,7 +49,7 @@ func newRoot() *cobra.Command {
          one cluster, and the control tree that stays as it is. Offline: no
          account, no cluster, nothing changes.
 
-Not yet: apply (write the steps as a script) and takeover.`,
+Not yet: apply (write the steps as a script) and handover.`,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
