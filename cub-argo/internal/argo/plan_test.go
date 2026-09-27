@@ -415,3 +415,45 @@ func TestApplyWritesWhatItReads(t *testing.T) {
 		}
 	}
 }
+
+// A shape with no ApplicationSet and no app of apps: two standalone
+// Applications, one per environment, which CI promotes by pull request. It
+// arrived in the repository after this plugin was written, so it is here to
+// keep the plan honest about estates it was not designed against.
+func TestStandaloneApplications(t *testing.T) {
+	const dir = "../../../gitops/argo/intermediate-ci-to-gitops"
+	if _, err := os.Stat(dir); err != nil {
+		t.Skip("example not present")
+	}
+	opts := Options{RepoRoot: repoRoot(t)}
+	p := planOf(t, dir, opts)
+
+	if len(p.Tree) != 0 {
+		t.Errorf("no Application here syncs another, so there is no control tree: %+v", p.Tree)
+	}
+	names := map[string]bool{}
+	for _, c := range p.Components {
+		if c.Kind != "Application" {
+			t.Errorf("%s should be a standalone Application, got %s", c.Name, c.Kind)
+		}
+		for _, st := range c.Stages {
+			for _, v := range st.Variants {
+				names[v.Application] = true
+			}
+		}
+	}
+	for _, want := range []string{"apptique-dev", "apptique-prod"} {
+		if !names[want] {
+			t.Errorf("missing variant for Application %s; got %v", want, names)
+		}
+	}
+	// Both carry the finalizer, so the handover must say not to delete them.
+	joined := strings.Join(p.Handover, "\n")
+	if !strings.Contains(joined, "never delete apptique-dev, apptique-prod") {
+		t.Errorf("the finalizer warning should name both Applications:\n%s", joined)
+	}
+	// Nothing syncs these two, so there is no parent to repoint them.
+	if strings.Contains(joined, "repoint Application") {
+		t.Errorf("neither Application has a parent, so none can be repointed under review:\n%s", joined)
+	}
+}
