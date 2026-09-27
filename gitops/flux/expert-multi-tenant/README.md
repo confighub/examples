@@ -166,13 +166,15 @@ Space, separately from whatever a live cluster reports back.
   without changing anything.
 - Show that each team's guardrails (quota and NetworkPolicy) apply to that
   team's own namespace and no other.
-- **Access reduction across teams**: `pilot access-plan` reads the RBAC and
-  ConfigHub Space grants for all three teams and reports where a team's
-  access is wider than its own namespace, so an over-broad grant is visible
-  before anyone has to wait for a live refusal to find it.
+- **Access reduction across teams**: `pilot access-plan` reads the RBAC this
+  repo declares for all three teams and reports where a team's access is
+  wider than its own namespace, so an over-broad grant is visible before
+  anyone has to wait for a live refusal to find it. On this example it
+  reports each team reaching only its own namespace.
 - Given the tenant-escape edit above, say plainly that it would be refused,
   name what refuses it (the RoleBinding scope, not this repo's rendering),
-  and say what this example can and cannot prove about it offline.
+  and say what this example can and cannot prove about it offline. Today
+  `verify.sh` catches this edit; `pilot access-plan` does not flag it yet.
 
 ## Attribution
 
