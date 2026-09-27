@@ -7,9 +7,16 @@ ApplicationSet, one variant per Application it generates, each addressed to
 one cluster, and a Target per cluster. The root Application, its app of apps
 and the AppProjects stay as they are, as the management record.
 
-This is a scaffold. It ships `plan`, which is offline and changes nothing.
-`apply` (write the steps as a script) and `handover` are next; the plan
-already says what handover would involve.
+Three commands, and the first two change nothing:
+
+| Command | What it does | Touches a cluster? |
+|---|---|---|
+| `plan` | shows the estate ConfigHub would govern | no, and no account either |
+| `apply --out` | writes the files, `apply.sh` and `handover.sh` | no, it runs nothing |
+| `apply.sh` | fills ConfigHub with a parallel copy nothing reads | no |
+| `handover.sh` | repoints each layer's source at ConfigHub, top down | yes, this is the step that moves it |
+
+**Start with the guide: [Onboard your Argo CD estate](docs/onboard-your-argo-estate.md).**
 
 ## Try it on the expert example
 
@@ -103,6 +110,6 @@ make test      # unit tests, the golden plan, and two break-it cases
 make golden    # rewrite the golden plan after an intended change
 ```
 
-Where it goes next is in the design brief: move the planning core it shares
-with `cub sveltos` into one library, reuse `cub gen`'s ApplicationSet
-detection, then add `apply --out` and `handover`.
+Where it goes next: rehearse `handover.sh` on kind and publish the
+measurement, the way `cub sveltos` did, and move the planning core it shares
+with `cub sveltos` into one library.
