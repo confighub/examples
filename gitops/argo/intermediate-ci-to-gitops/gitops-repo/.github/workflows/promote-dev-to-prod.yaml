@@ -46,6 +46,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           branch="promote-apptique-prod-${{ steps.dev.outputs.tag }}"
+          # A fresh runner has no git author; set one before committing.
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$branch"
           git commit -am "apptique prod: promote ${{ steps.dev.outputs.tag }} from dev"
           git push origin "$branch"

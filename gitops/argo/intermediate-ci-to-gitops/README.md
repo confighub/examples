@@ -158,7 +158,7 @@ the prod Unit's image field with `environments/apptique/dev`'s to see
 whether the promotion actually matches what dev is running, rather than
 trusting the line the PR touched.
 
-Undo the edit with `git checkout -- environments/apptique/prod/kustomization.yaml`
+Undo the edit with `git checkout -- gitops-repo/environments/apptique/prod/kustomization.yaml`
 before moving on.
 
 ## Pilot tasks we check
