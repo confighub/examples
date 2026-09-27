@@ -1,0 +1,21 @@
+# The platform-owned bootstrap layer. No serviceAccountName is set here, so
+# this Kustomization reconciles with the kustomize-controller's own default
+# identity, the same trusted identity every cluster-level layer in this
+# repo set uses. That is what makes this a platform piece and not a tenant
+# piece: it is the only object in this example allowed to create namespaces,
+# RoleBindings and quotas across more than one team.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: tenants
+  namespace: flux-system
+spec:
+  interval: 10m
+  retryInterval: 1m
+  timeout: 5m
+  path: ./gitops/flux/expert-multi-tenant/tenants/base
+  prune: true
+  wait: true
+  sourceRef:
+    kind: GitRepository
+    name: fleet-repo

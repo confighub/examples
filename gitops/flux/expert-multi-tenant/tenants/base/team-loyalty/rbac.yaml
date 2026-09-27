@@ -1,0 +1,32 @@
+# The tenant boundary. Everything team-loyalty's own Kustomization applies
+# is applied as this ServiceAccount, and this RoleBinding is the only grant
+# that ServiceAccount has anywhere on the cluster: admin rights, scoped to
+# this one namespace. A change from another team's Kustomization cannot
+# reach this namespace, whatever their repo says, because no RoleBinding
+# anywhere gives them rights here.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: team-loyalty
+  labels:
+    toolkit.fluxcd.io/tenant: team-loyalty
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: team-loyalty
+  namespace: team-loyalty
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: team-loyalty-reconciler
+  namespace: team-loyalty
+subjects:
+  - kind: ServiceAccount
+    name: team-loyalty
+    namespace: team-loyalty
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: admin

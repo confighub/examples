@@ -71,6 +71,9 @@ script_checks=(
   "${repo_root}/gitops/flux/expert-fleet/setup.sh"
   "${repo_root}/gitops/flux/expert-fleet/verify.sh"
   "${repo_root}/gitops/flux/expert-fleet/cleanup.sh"
+  "${repo_root}/gitops/flux/expert-multi-tenant/setup.sh"
+  "${repo_root}/gitops/flux/expert-multi-tenant/verify.sh"
+  "${repo_root}/gitops/flux/expert-multi-tenant/cleanup.sh"
   "${repo_root}/gitops/argo/intermediate-git-as-database/setup.sh"
   "${repo_root}/gitops/argo/intermediate-git-as-database/verify.sh"
   "${repo_root}/gitops/argo/intermediate-git-as-database/cleanup.sh"
@@ -154,6 +157,7 @@ ai_guide_examples=(
   "${repo_root}/gitops/argo/beginner-applicationset"
   "${repo_root}/gitops/argo/beginner-app-of-apps"
   "${repo_root}/gitops/flux/beginner"
+  "${repo_root}/gitops/flux/expert-multi-tenant"
   "${repo_root}/gitops/argo/intermediate-git-as-database"
 )
 
