@@ -11,13 +11,20 @@ It is deliberately two phases, because they carry very different risk:
 flowchart LR
   p["cub argo plan<br/>offline, no account"] --> a["apply.sh<br/>fills ConfigHub<br/>no cluster touched"]
   a --> h["handover.sh<br/>moves each layer's source<br/>the only risky step"]
-  a -.->|"delete the Spaces<br/>and you are back"| p
+  a -.->|"cleanup.sh<br/>takes it back out"| p
 ```
 
 **Onboarding** fills ConfigHub while Argo carries on syncing Git. Afterwards
-ConfigHub holds a complete parallel copy that nothing reads, so deleting those
-Spaces puts you back exactly where you started. **Handover** is the step that
-changes which source feeds your clusters.
+ConfigHub holds a complete parallel copy that nothing reads, and `cleanup.sh`
+— written beside `apply.sh` — takes it all back out. It is a script rather than
+a line in this guide for a reason: ConfigHub refuses to delete a Space while a
+Target, a worker, a Release or a Tag still references it, each refusal names
+only the first blocker, and a Space and its release Target reference each
+other. Finding that order took seven attempts; the script has it.
+
+**Handover** is the step that changes which source feeds your clusters, and it
+is not undone by deleting Spaces — put each Application's source back to Git
+first, which `cleanup.sh` checks before it does anything.
 
 You need the `cub` CLI logged in to your organization (`cub auth login`),
 `kustomize` on your PATH, `kubectl` access to the cluster Argo CD runs on, and

@@ -7,8 +7,11 @@
 #
 # Nothing here touches a cluster. Argo goes on syncing Git throughout, and
 # ConfigHub ends up holding a parallel copy that nothing reads. handover.sh
-# is what moves the estate onto it; until you run that, deleting these
-# Spaces puts you back exactly where you started.
+# is what moves the estate onto it; until you run that, nothing on any
+# cluster reads what this creates, and cleanup.sh beside this script takes
+# it all back out. ConfigHub refuses a Space while a Target, a worker, a
+# Release or a Tag still points at it, so the order matters and that
+# script has it.
 #
 # cub uses its current context; set CUB_CONTEXT to choose another. Every
 # step is safe to re-run, which is also how a cluster that joined since
