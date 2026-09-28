@@ -8,6 +8,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/confighub/examples/cub-argo/internal/catalog"
 )
 
 // Options shape the plan.
@@ -488,6 +490,14 @@ func (b *builder) variant(c *Component, app map[string]any, cl *Cluster, fields 
 			charts := helmCharts(local, 4)
 			if len(charts) > 0 {
 				c.Notes = appendOnce(c.Notes, "a Helm chart inflated by Kustomize: Argo CD must run Kustomize with --enable-helm, and the chart's resources do not take the overlay's namespace field")
+			}
+			// What the Workshop Catalog has already decided about each chart,
+			// per audited values base. A chart it has not audited is said to be
+			// unchecked rather than assumed fine.
+			for _, ch := range charts {
+				for _, line := range catalog.Describe(ch.name, ch.version) {
+					c.Notes = appendOnce(c.Notes, line)
+				}
 			}
 			// What ConfigHub stores is a render. A render that cannot be
 			// repeated cannot be checked against Git later, and the handover

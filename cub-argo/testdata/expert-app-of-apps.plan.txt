@@ -47,6 +47,7 @@ checkout-cache  (ApplicationSet, owned by storefront, project storefront, wave 0
                 Application prod-1-checkout-cache, namespace storefront-prod
                 gitops/argo/expert-app-of-apps/apps/checkout-cache/overlays/prod
   note     a Helm chart inflated by Kustomize: Argo CD must run Kustomize with --enable-helm, and the chart's resources do not take the overlay's namespace field
+  note     chart checkout-cache is not in the Workshop Catalog, so whether its objects may stand in for it has not been decided
 
 platform-addons-cluster-baseline  (ApplicationSet platform-addons, owned by root, project platform, wave 0)
   selects  clusters where env is set x a list of 1
