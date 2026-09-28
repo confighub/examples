@@ -177,25 +177,65 @@ else
   echo "  cub-scout is not installed; skipping the unclaimed-resource cross-check"
 fi
 
-step "5/5 Point each ApplicationSet's template at its clusters' Targets"
-# The ApplicationSet goes on generating the same Applications under the same
-# names, so Argo's tracking does not change and nothing is orphaned. Each
-# generated Application reads its own cluster's Target.
-# apptique generates:
-#   dev-1-apptique               reads Space argo-apptique-dev-1
-#   staging-1-apptique           reads Space argo-apptique-staging-1
-#   prod-1-apptique              reads Space argo-apptique-prod-1
-echo 'Edit the apptique Unit'\''s template: set spec.template.spec.source.repoURL to oci://<the gateway>/space/<this cluster'\''s variant Space, listed above>, path '\''.'\'', targetRevision latest. Promote it like any other change.'
-# checkout-cache generates:
-#   dev-1-checkout-cache         reads Space argo-checkout-cache-dev-1
-#   staging-1-checkout-cache     reads Space argo-checkout-cache-staging-1
-#   prod-1-checkout-cache        reads Space argo-checkout-cache-prod-1
-echo 'Edit the checkout-cache Unit'\''s template: set spec.template.spec.source.repoURL to oci://<the gateway>/space/<this cluster'\''s variant Space, listed above>, path '\''.'\'', targetRevision latest. Promote it like any other change.'
-# platform-addons generates:
-#   dev-1-cluster-baseline       reads Space argo-platform-addons-cluster-baseline-dev-1
-#   staging-1-cluster-baseline   reads Space argo-platform-addons-cluster-baseline-staging-1
-#   prod-1-cluster-baseline      reads Space argo-platform-addons-cluster-baseline-prod-1
-echo 'Edit the platform-addons Unit'\''s template: set spec.template.spec.source.repoURL to oci://<the gateway>/space/<this cluster'\''s variant Space, listed above>, path '\''.'\'', targetRevision latest. Promote it like any other change.'
+step "5/5 Retire each ApplicationSet, then point its Applications at their Spaces"
+# An ApplicationSet generates one Application per cluster from ONE shared
+# template, so it cannot give each cluster its own Space by editing that
+# template with a literal. ConfigHub already holds the fleet enumerated --
+# one variant Space per cluster, staged -- so the generator has nothing left
+# to generate. It is retired, and each Application it made is pointed at its
+# own Space: a literal address, one cluster at a time, which is what makes a
+# staged rollout possible at all.
+#
+# Measured on Argo CD v3.5.3: patching a generated Application while its
+# ApplicationSet is live is reverted in under a second, so the generator has
+# to stand down FIRST. applicationsSync: create-only is what stands it down;
+# the controller then creates but never updates or deletes what it made.
+
+echo '-- apptique'
+echo 'apptique is a Unit in argo-storefront-children. Retire it where ConfigHub keeps it, so the change is reviewed and survives the next sync:'
+echo '  cub unit data --space argo-storefront-children apptique > apptique.yaml'
+echo '  # set spec.syncPolicy.applicationsSync: create-only'
+echo '  #   and annotate it argo.confighub.com/retired: "retired at handover; see cleanup.sh"'
+echo '  cub unit update --space argo-storefront-children apptique apptique.yaml'
+echo '  cub release publish argo-storefront-children'
+echo '  # then wait for the parent to sync it down before patching anything:'
+echo '  kubectl -n $ns get applicationset apptique -o jsonpath='\''{.spec.syncPolicy.applicationsSync}'\'''
+echo 'Once it reads create-only, point each Application at its own Space:'
+echo '  kubectl -n $ns patch application dev-1-apptique --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-apptique-dev-1","path":".","targetRevision":"latest"}}}'\''   # stage canary'
+echo '  kubectl -n $ns patch application staging-1-apptique --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-apptique-staging-1","path":".","targetRevision":"latest"}}}'\''   # stage secondary'
+echo '  kubectl -n $ns patch application prod-1-apptique --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-apptique-prod-1","path":".","targetRevision":"latest"}}}'\''   # stage primary'
+
+echo '-- checkout-cache'
+echo 'checkout-cache is a Unit in argo-storefront-children. Retire it where ConfigHub keeps it, so the change is reviewed and survives the next sync:'
+echo '  cub unit data --space argo-storefront-children checkout-cache > checkout-cache.yaml'
+echo '  # set spec.syncPolicy.applicationsSync: create-only'
+echo '  #   and annotate it argo.confighub.com/retired: "retired at handover; see cleanup.sh"'
+echo '  cub unit update --space argo-storefront-children checkout-cache checkout-cache.yaml'
+echo '  cub release publish argo-storefront-children'
+echo '  # then wait for the parent to sync it down before patching anything:'
+echo '  kubectl -n $ns get applicationset checkout-cache -o jsonpath='\''{.spec.syncPolicy.applicationsSync}'\'''
+echo 'Once it reads create-only, point each Application at its own Space:'
+echo '  kubectl -n $ns patch application dev-1-checkout-cache --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-checkout-cache-dev-1","path":".","targetRevision":"latest"}}}'\''   # stage canary'
+echo '  kubectl -n $ns patch application staging-1-checkout-cache --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-checkout-cache-staging-1","path":".","targetRevision":"latest"}}}'\''   # stage secondary'
+echo '  kubectl -n $ns patch application prod-1-checkout-cache --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-checkout-cache-prod-1","path":".","targetRevision":"latest"}}}'\''   # stage primary'
+
+echo '-- platform-addons'
+echo 'platform-addons is a Unit in argo-root-children. Retire it where ConfigHub keeps it, so the change is reviewed and survives the next sync:'
+echo '  cub unit data --space argo-root-children platform-addons-appset > platform-addons-appset.yaml'
+echo '  # set spec.syncPolicy.applicationsSync: create-only'
+echo '  #   and annotate it argo.confighub.com/retired: "retired at handover; see cleanup.sh"'
+echo '  cub unit update --space argo-root-children platform-addons-appset platform-addons-appset.yaml'
+echo '  cub release publish argo-root-children'
+echo '  # then wait for the parent to sync it down before patching anything:'
+echo '  kubectl -n $ns get applicationset platform-addons -o jsonpath='\''{.spec.syncPolicy.applicationsSync}'\'''
+echo 'Once it reads create-only, point each Application at its own Space:'
+echo '  kubectl -n $ns patch application dev-1-cluster-baseline --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-platform-addons-cluster-baseline-dev-1","path":".","targetRevision":"latest"}}}'\''   # stage canary'
+echo '  kubectl -n $ns patch application staging-1-cluster-baseline --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-platform-addons-cluster-baseline-staging-1","path":".","targetRevision":"latest"}}}'\''   # stage secondary'
+echo '  kubectl -n $ns patch application prod-1-cluster-baseline --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-platform-addons-cluster-baseline-prod-1","path":".","targetRevision":"latest"}}}'\''   # stage primary'
+
+echo 'Each Application keeps its name and its UID, so nothing is orphaned and no'
+echo 'workload restarts. The retired ApplicationSets stay in place, inert. Removing'
+echo 'them is a separate, later decision: cleanup.sh has the one safe way.'
 echo 'Note: AppProject storefront denies syncing prod-1-apptique, prod-1-checkout-cache on schedule "0 9 * * 1-5" for 9h. The repoint lands, but its first sync waits for the window to close.'
 
 echo

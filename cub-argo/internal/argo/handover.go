@@ -295,27 +295,55 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("")
 	step++
 
-	add(`step "%d/5 Point each ApplicationSet's template at its clusters' Targets"`, step)
-	add("# The ApplicationSet goes on generating the same Applications under the same")
-	add("# names, so Argo's tracking does not change and nothing is orphaned. Each")
-	add("# generated Application reads its own cluster's Target.")
+	add(`step "%d/5 Retire each ApplicationSet, then point its Applications at their Spaces"`, step)
+	add("# An ApplicationSet generates one Application per cluster from ONE shared")
+	add("# template, so it cannot give each cluster its own Space by editing that")
+	add("# template with a literal. ConfigHub already holds the fleet enumerated --")
+	add("# one variant Space per cluster, staged -- so the generator has nothing left")
+	add("# to generate. It is retired, and each Application it made is pointed at its")
+	add("# own Space: a literal address, one cluster at a time, which is what makes a")
+	add("# staged rollout possible at all.")
+	add("#")
+	add("# Measured on Argo CD v3.5.3: patching a generated Application while its")
+	add("# ApplicationSet is live is reverted in under a second, so the generator has")
+	add("# to stand down FIRST. applicationsSync: create-only is what stands it down;")
+	add("# the controller then creates but never updates or deletes what it made.")
+	homes := p.unitHomes(prefix)
 	for _, c := range p.Components {
 		if c.Kind != "ApplicationSet" {
 			continue
 		}
-		add("# %s generates:", c.Source)
+		home, known := homes["ApplicationSet/"+c.Source]
+		add("")
+		add("echo %s", q(fmt.Sprintf("-- %s", c.Source)))
+		if !known {
+			add("echo %s", q(fmt.Sprintf(
+				"ApplicationSet %s is not a Unit in any control Space, so it is still yours to edit on the cluster. Set spec.syncPolicy.applicationsSync to create-only before the patches below.", c.Source)))
+		} else {
+			add("echo %s", q(fmt.Sprintf(
+				"%s is a Unit in %s. Retire it where ConfigHub keeps it, so the change is reviewed and survives the next sync:", c.Source, home.Space)))
+			add("echo %s", q(fmt.Sprintf("  cub unit data --space %s %s > %s.yaml", home.Space, home.Unit, home.Unit)))
+			add("echo %s", q("  # set spec.syncPolicy.applicationsSync: create-only"))
+			add("echo %s", q(fmt.Sprintf("  #   and annotate it %s: \"retired at handover; see cleanup.sh\"", retiredAnnotation)))
+			add("echo %s", q(fmt.Sprintf("  cub unit update --space %s %s %s.yaml", home.Space, home.Unit, home.Unit)))
+			add("echo %s", q(fmt.Sprintf("  cub release publish %s", home.Space)))
+			add("echo %s", q("  # then wait for the parent to sync it down before patching anything:"))
+			add("echo %s", q(fmt.Sprintf("  kubectl -n $ns get applicationset %s -o jsonpath='{.spec.syncPolicy.applicationsSync}'", c.Source)))
+		}
+		add("echo %s", q("Once it reads create-only, point each Application at its own Space:"))
 		for _, st := range c.Stages {
 			for _, v := range st.Variants {
-				add("#   %-28s reads Space %s", v.Application, v.Space)
+				add("echo %s", q(fmt.Sprintf(
+					"  kubectl -n $ns patch application %s --type merge -p '{\"spec\":{\"source\":{\"repoURL\":\"oci://<gateway>/space/%s\",\"path\":\".\",\"targetRevision\":\"latest\"}}}'   # stage %s",
+					v.Application, v.Space, st.Name)))
 			}
 		}
-		// Naming the Target here was wrong: the gateway addresses a Space, not a
-		// Target, and an ApplicationSet template needs a per-cluster Space. The
-		// generator's own cluster value is what selects it.
-		add("echo %s", q(fmt.Sprintf(
-			"Edit the %s Unit's template: set spec.template.spec.source.repoURL to oci://<the gateway>/space/<this cluster's variant Space, listed above>, path '.', targetRevision latest. Promote it like any other change.",
-			c.Source)))
 	}
+	add("")
+	add("echo %s", q("Each Application keeps its name and its UID, so nothing is orphaned and no"))
+	add("echo %s", q("workload restarts. The retired ApplicationSets stay in place, inert. Removing"))
+	add("echo %s", q("them is a separate, later decision: cleanup.sh has the one safe way."))
+
 	for _, w := range p.Windows {
 		if w.Kind != "deny" || len(w.Applications) == 0 {
 			continue
@@ -339,3 +367,8 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("echo %s", q("it, or without that annotation, an approved release sits unread on the gateway."))
 	return strings.Join(L, "\n") + "\n"
 }
+
+// retiredAnnotation marks an ApplicationSet that a handover has stood down. It
+// goes on the object, so it is visible both in ConfigHub and to whoever next
+// reads the cluster and wonders why a generator is generating nothing.
+const retiredAnnotation = "argo.confighub.com/retired"

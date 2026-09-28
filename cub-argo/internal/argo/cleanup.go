@@ -51,6 +51,30 @@ func CleanupScript(p *Plan, prefix string) string {
 	}
 	spaces = append(spaces, targets)
 
+	// What handover.sh retires, so cleanup can say how to remove it safely.
+	type retiredSet struct {
+		name, space, unit string
+		apps              []string
+	}
+	var retired []retiredSet
+	homes := p.unitHomes(prefix)
+	for _, c := range p.Components {
+		if c.Kind != "ApplicationSet" {
+			continue
+		}
+		home, known := homes["ApplicationSet/"+c.Source]
+		if !known {
+			continue
+		}
+		r := retiredSet{name: c.Source, space: home.Space, unit: home.Unit}
+		for _, st := range c.Stages {
+			for _, v := range st.Variants {
+				r.apps = append(r.apps, v.Application)
+			}
+		}
+		retired = append(retired, r)
+	}
+
 	add("#!/usr/bin/env bash")
 	add("# Undo what apply.sh created in ConfigHub. Written by `cub argo apply`.")
 	add("#")
@@ -94,6 +118,34 @@ func CleanupScript(p *Plan, prefix string) string {
 	}
 	add("")
 
+	// The retired ApplicationSets are a separate, later decision, and the
+	// obvious way to act on it destroys the estate. Measured on Argo CD v3.5.3:
+	// a generated Application carries an ownerReference to its ApplicationSet
+	// with blockOwnerDeletion true, so deleting the ApplicationSet lets
+	// Kubernetes garbage-collect every Application it made -- and Argo then
+	// removes their workloads and namespaces. preserveResourcesOnDeletion: true
+	// does NOT prevent this; it was set, and everything went anyway.
+	//
+	// Stripping the ownerReference first leaves the Applications standing:
+	// measured, both Applications and the Deployment kept their UIDs.
+	if len(retired) > 0 {
+		add(`step "Retired ApplicationSets (not deleted by this script)"`)
+		add(`echo "handover.sh stood these down with applicationsSync: create-only."`)
+		add(`echo "They generate nothing and are safe to leave. To remove one later, the"`)
+		add(`echo "ORDER is not optional -- deleting it first takes its Applications, their"`)
+		add(`echo "workloads and their namespaces with it:"`)
+		add(`echo`)
+		for _, r := range retired {
+			add(`echo "  # %s, which generated: %s"`, r.name, strings.Join(r.apps, ", "))
+			for _, a := range r.apps {
+				add(`echo "  kubectl -n argocd patch application %s --type json -p '[{\"op\":\"remove\",\"path\":\"/metadata/ownerReferences\"}]'"`, a)
+			}
+			add(`echo "  # only then, and remove it from %s in ConfigHub too:"`, r.space)
+			add(`echo "  cub unit delete --space %s %s && cub release publish %s"`, r.space, r.unit, r.space)
+			add(`echo`)
+		}
+	}
+	add("")
 	add(`step "3/3 The Components those Spaces belonged to"`)
 	for _, s := range p.controlSpaces(prefix) {
 		add("cub component delete %s --quiet 2>/dev/null", s.Space)

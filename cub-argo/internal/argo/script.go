@@ -375,3 +375,40 @@ func commonKustomizeBase(path string) string {
 	}
 	return ""
 }
+
+// unitHome is where an object that a handover has to edit lives in ConfigHub:
+// the control Space holding it, and the Unit's name, which is the file's name
+// and not always the object's own.
+type unitHome struct {
+	Space, Unit string
+}
+
+// unitHomes maps each object in the control tree to the Space and Unit that
+// hold it, so a handover edits it where ConfigHub keeps it rather than on the
+// cluster. Walking the tree rather than matching names: the Unit for
+// ApplicationSet platform-addons is platform-addons-appset, and the Unit for
+// Application storefront is storefront-app-of-apps, so a prefix match would be
+// guessing where the tree already knows.
+func (p *Plan) unitHomes(prefix string) map[string]unitHome {
+	out := map[string]unitHome{}
+	var walk func(n *Node)
+	walk = func(n *Node) {
+		if n.Kind == "Application" && len(n.Children) > 0 {
+			space := fmt.Sprintf("%s-%s-children", prefix, n.Name)
+			for _, c := range n.Children {
+				if c.File == "" {
+					continue
+				}
+				unit := strings.TrimSuffix(filepath.Base(c.File), filepath.Ext(c.File))
+				out[c.Kind+"/"+c.Name] = unitHome{Space: space, Unit: unit}
+			}
+		}
+		for _, c := range n.Children {
+			walk(c)
+		}
+	}
+	for _, n := range p.Tree {
+		walk(n)
+	}
+	return out
+}

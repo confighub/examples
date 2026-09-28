@@ -345,6 +345,70 @@ a plan, and infers ownership where nothing declares it. `handover.sh` asks
 cub-scout what no controller claims in your namespaces, as a cross-check rather
 than a gate.
 
+## ApplicationSets are retired, not repointed
+
+An ApplicationSet generates one Application per cluster from **one shared
+template**, so it cannot give each cluster its own Space by editing that
+template with a literal address. But ConfigHub already holds your fleet
+enumerated — one variant Space per cluster, staged — so by handover time the
+generator has nothing left to generate.
+
+```mermaid
+flowchart TB
+  subgraph before["Before: generated"]
+    as["ApplicationSet<br/>one template"] -->|"generates"| a1["dev-1-apptique"]
+    as --> a2["staging-1-apptique"]
+    as --> a3["prod-1-apptique"]
+  end
+  subgraph after["After: enumerated, one Space each"]
+    b1["dev-1-apptique"] --> s1["argo-apptique-dev-1"]
+    b2["staging-1-apptique"] --> s2["argo-apptique-staging-1"]
+    b3["prod-1-apptique"] --> s3["argo-apptique-prod-1"]
+  end
+  before -->|"retire the generator,<br/>keep every Application"| after
+```
+
+This is the same move `cub sveltos` makes when it drops a profile's
+`clusterSelector` for a `clusterRefs` naming one cluster. A new cluster stops
+producing an Application on its own and becomes a variant you add in ConfigHub —
+a reviewed change rather than an automatic one, which is the point.
+
+**Measured on Argo CD v3.5.3**, and each of these changes what the script does:
+
+- **Patching a generated Application while its ApplicationSet is live is
+  reverted in under a second.** The generator stands down first, with
+  `spec.syncPolicy.applicationsSync: create-only`; the controller then creates
+  but never updates or deletes what it made.
+- **With `create-only`, the patch holds**, the Application genuinely re-syncs to
+  the new source, and its **UID does not change**.
+- **Applications then move one cluster at a time.** Verified: one Application
+  repointed while its sibling stayed where it was — the staged rollout a shared
+  template cannot express.
+
+### Removing a retired ApplicationSet later
+
+The retired ApplicationSets stay in place, inert. Removing one is a separate,
+later decision, and **the obvious way to do it destroys the estate**:
+
+> Measured: a generated Application carries an `ownerReference` to its
+> ApplicationSet with `blockOwnerDeletion: true`. Deleting the ApplicationSet
+> let Kubernetes garbage-collect every Application it made, and Argo then
+> removed their workloads and their namespaces.
+> **`preserveResourcesOnDeletion: true` did not prevent this.** It was set, and
+> everything went anyway.
+
+Strip the `ownerReferences` first and the Applications stand on their own —
+measured, both Applications and the Deployment kept their UIDs:
+
+```bash
+kubectl -n argocd patch application dev-1-apptique --type json \
+  -p '[{"op":"remove","path":"/metadata/ownerReferences"}]'   # every generated Application
+kubectl -n argocd delete applicationset apptique             # only then
+```
+
+`cleanup.sh` prints this for each retired ApplicationSet, naming the exact
+Applications, in the order that does not delete them.
+
 ## What the Argo handover has been through
 
 Rehearsed on Argo CD v3.5.3 against a self-hosted ConfigHub v0.6.2. Both
