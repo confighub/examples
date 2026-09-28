@@ -130,7 +130,16 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 	add("")
 
 	add(`step "0/4 Check before changing anything"`)
-	add(`cub space list --quiet >/dev/null || { echo "cub is not logged in: run cub auth login"; exit 1; }`)
+	// cub auth status, not a list of anything. A list call goes through the
+	// entity API, which fails on a version skew between client and server --
+	// measured: cub v0.6.2 against server v0.5.1 returns "field 'ComponentID'
+	// does not exist on entity type Space" and exits 1 while the session is
+	// perfectly good. Using that as the login check aborts this script on its
+	// own first line and sends the reader to re-login, which cannot help.
+	add(`cub auth status >/dev/null 2>&1 || { echo "cub is not logged in: run cub auth login"; exit 1; }`)
+	// The skew is worth saying out loud, because it is what later steps fail
+	// on, and nothing else in the run would explain them.
+	add(`cub auth status 2>&1 | grep -i '^Warning:' && echo "  Steps below may fail on that skew rather than on anything here."`)
 	add(`command -v kustomize >/dev/null || { echo "kustomize is not on PATH; the layers are rendered with it"; exit 1; }`)
 	add("")
 

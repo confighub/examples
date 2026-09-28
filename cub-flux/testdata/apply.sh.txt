@@ -50,7 +50,8 @@ render() {
 }
 
 step "0/4 Check before changing anything"
-cub space list --quiet >/dev/null || { echo "cub is not logged in: run cub auth login"; exit 1; }
+cub auth status >/dev/null 2>&1 || { echo "cub is not logged in: run cub auth login"; exit 1; }
+cub auth status 2>&1 | grep -i '^Warning:' && echo "  Steps below may fail on that skew rather than on anything here."
 command -v kustomize >/dev/null || { echo "kustomize is not on PATH; the layers are rendered with it"; exit 1; }
 
 step "1/4 One named Target per cluster, in flux-targets"
