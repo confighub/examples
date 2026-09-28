@@ -67,18 +67,18 @@ addr=$(gateway argocd)
 k -n "$ns" get application storefront -o jsonpath='{.spec.source.repoURL}' | grep -q '^oci://' && echo 'storefront already reads ConfigHub' || \
   k -n "$ns" patch application storefront --type merge -p "{\"spec\":{\"source\":{\"repoURL\":\"oci://${addr}\",\"path\":\".\",\"targetRevision\":\"latest\"}}}"
 k -n "$ns" wait --for=jsonpath='{.status.sync.status}'=Synced application/storefront --timeout=3m
-step "4/5 Prove each Target holds what its overlay renders today"
-# This renders from the repository now rather than trusting what apply.sh
-# left behind: Git may have moved since, and a stale comparison would pass
-# while Argo applies something else. Every Application prunes, so a
-# difference here is a difference that would be deleted from the cluster.
+step "4/5 Prove nothing on the clusters would change"
+# Two questions, and only the second can see the cluster.
+#
+# Does what ConfigHub holds equal what the overlay renders today? That
+# compares two things both derived from Git, so it catches Git moving
+# since apply.sh, and nothing else.
 command -v kustomize >/dev/null || { echo "kustomize is not on PATH; this step re-renders with it"; exit 1; }
 [ -d "$REPO_ROOT" ] || { echo "REPO_ROOT=$REPO_ROOT is not a directory: point it at the repository checkout"; exit 1; }
 echo "  rendering with $(kustomize version)"
 if ! git -C "$REPO_ROOT" diff --quiet 2>/dev/null; then
   echo "  note: $REPO_ROOT has uncommitted changes, so this renders something Argo is not applying" >&2
 fi
-# same <space> <unit> <path>
 same() {
   local fresh got rc=0
   fresh=$(mktemp); got=$(mktemp)
@@ -87,22 +87,48 @@ same() {
   if diff -q <(grep -v '^\s*#' "$fresh") <(grep -v '^\s*#' "$got") >/dev/null; then
     echo "  $1 holds what $3 renders today"
   else
-    echo "  $1 DIFFERS from what $3 renders today. Repointing would prune the difference." >&2
-    echo "  Re-run apply.sh to bring ConfigHub up to date, then read the diff before repointing." >&2
+    echo "  $1 DIFFERS from what $3 renders today. Re-run apply.sh, then read the diff." >&2
     diff -u <(grep -v '^\s*#' "$fresh") <(grep -v '^\s*#' "$got") | head -40 >&2
     rc=1
   fi
   rm -f "$fresh" "$got"; return $rc
 }
+
+# And the one that matters: does what ConfigHub would deliver equal what
+# Argo owns on the cluster right now? Argo's own status.resources is the
+# record, so this sees objects that are on the cluster and not in Git at
+# all. Where Argo prunes, those would be deleted the moment the source
+# moves. No render-side check can see them.
 same 'argo-apptique-dev-1' 'apptique' 'gitops/argo/expert-app-of-apps/apps/apptique/overlays/dev'
+cub argo check --namespace "$ns" --application 'dev-1-apptique' --space 'argo-apptique-dev-1' --unit 'apptique' --destination-namespace 'storefront-dev'
 same 'argo-apptique-staging-1' 'apptique' 'gitops/argo/expert-app-of-apps/apps/apptique/overlays/staging'
+cub argo check --namespace "$ns" --application 'staging-1-apptique' --space 'argo-apptique-staging-1' --unit 'apptique' --destination-namespace 'storefront-staging'
 same 'argo-apptique-prod-1' 'apptique' 'gitops/argo/expert-app-of-apps/apps/apptique/overlays/prod'
+cub argo check --namespace "$ns" --application 'prod-1-apptique' --space 'argo-apptique-prod-1' --unit 'apptique' --destination-namespace 'storefront-prod'
 same 'argo-checkout-cache-dev-1' 'checkout-cache' 'gitops/argo/expert-app-of-apps/apps/checkout-cache/overlays/dev'
+cub argo check --namespace "$ns" --application 'dev-1-checkout-cache' --space 'argo-checkout-cache-dev-1' --unit 'checkout-cache' --destination-namespace 'storefront-dev'
 same 'argo-checkout-cache-staging-1' 'checkout-cache' 'gitops/argo/expert-app-of-apps/apps/checkout-cache/overlays/staging'
+cub argo check --namespace "$ns" --application 'staging-1-checkout-cache' --space 'argo-checkout-cache-staging-1' --unit 'checkout-cache' --destination-namespace 'storefront-staging'
 same 'argo-checkout-cache-prod-1' 'checkout-cache' 'gitops/argo/expert-app-of-apps/apps/checkout-cache/overlays/prod'
+cub argo check --namespace "$ns" --application 'prod-1-checkout-cache' --space 'argo-checkout-cache-prod-1' --unit 'checkout-cache' --destination-namespace 'storefront-prod'
 same 'argo-platform-addons-cluster-baseline-dev-1' 'platform-addons-cluster-baseline' 'gitops/argo/expert-app-of-apps/apps/platform/cluster-baseline/overlays/dev'
+cub argo check --namespace "$ns" --application 'dev-1-cluster-baseline' --space 'argo-platform-addons-cluster-baseline-dev-1' --unit 'platform-addons-cluster-baseline' --destination-namespace 'platform-system'
 same 'argo-platform-addons-cluster-baseline-staging-1' 'platform-addons-cluster-baseline' 'gitops/argo/expert-app-of-apps/apps/platform/cluster-baseline/overlays/staging'
+cub argo check --namespace "$ns" --application 'staging-1-cluster-baseline' --space 'argo-platform-addons-cluster-baseline-staging-1' --unit 'platform-addons-cluster-baseline' --destination-namespace 'platform-system'
 same 'argo-platform-addons-cluster-baseline-prod-1' 'platform-addons-cluster-baseline' 'gitops/argo/expert-app-of-apps/apps/platform/cluster-baseline/overlays/prod'
+cub argo check --namespace "$ns" --application 'prod-1-cluster-baseline' --space 'argo-platform-addons-cluster-baseline-prod-1' --unit 'platform-addons-cluster-baseline' --destination-namespace 'platform-system'
+
+# What no controller claims on these namespaces, as a cross-check. This
+# is cub-scout inferring ownership, not a gate: it finds what was applied
+# by hand and would be left behind, which neither record above reports.
+if command -v cub-scout >/dev/null || cub scout --help >/dev/null 2>&1; then
+  cub scout map list -q 'owner=Native AND namespace=storefront-dev' || true
+  cub scout map list -q 'owner=Native AND namespace=storefront-staging' || true
+  cub scout map list -q 'owner=Native AND namespace=storefront-prod' || true
+  cub scout map list -q 'owner=Native AND namespace=platform-system' || true
+else
+  echo "  cub-scout is not installed; skipping the unclaimed-resource cross-check"
+fi
 
 step "5/5 Point each ApplicationSet's template at its clusters' Targets"
 # The ApplicationSet goes on generating the same Applications under the same

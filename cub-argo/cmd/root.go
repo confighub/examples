@@ -142,6 +142,61 @@ func newRoot() *cobra.Command {
 	apply.Flags().StringVar(&af.RepoRoot, "repo-root", "", "the checkout Applications' source paths are relative to")
 	apply.Flags().StringVar(&out, "out", "", "directory for the files and the scripts")
 
+	var checkNS, checkApp, checkSpace, checkUnit, checkDest string
+	var checkJSON bool
+	check := &cobra.Command{
+		Use:   "check --application <name> --space <space> --unit <unit>",
+		Short: "Compare what Argo owns on the cluster with what the release holds; changes nothing",
+		Args:  cobra.NoArgs,
+		RunE: func(c *cobra.Command, _ []string) error {
+			if checkApp == "" || checkSpace == "" || checkUnit == "" {
+				return fmt.Errorf("check needs --application, --space and --unit")
+			}
+			owned, err := argo.LiveInventory(argo.Run, checkNS, checkApp)
+			if err != nil {
+				return err
+			}
+			stored, err := argo.Run("cub", "unit", "data", "--space", checkSpace, checkUnit)
+			if err != nil {
+				return err
+			}
+			held, err := argo.ObjectsIn(stored)
+			if err != nil {
+				return err
+			}
+			cmp := argo.CompareInventory(owned, held, checkDest)
+			w := c.OutOrStdout()
+			if checkJSON {
+				enc := json.NewEncoder(w)
+				enc.SetIndent("", "  ")
+				if err := enc.Encode(cmp); err != nil {
+					return err
+				}
+			} else {
+				fmt.Fprintf(w, "%s: %d objects match what Argo owns\n", checkApp, cmp.Same)
+				for _, l := range cmp.WouldPrune {
+					fmt.Fprintf(w, "  %s\n", l)
+				}
+				for _, l := range cmp.WouldAdd {
+					fmt.Fprintf(w, "  %s\n", l)
+				}
+				for _, l := range cmp.Notes {
+					fmt.Fprintf(w, "  note: %s\n", l)
+				}
+			}
+			if !cmp.OK() {
+				return errProblems{}
+			}
+			return nil
+		},
+	}
+	check.Flags().StringVar(&checkNS, "namespace", "argocd", "the namespace Argo CD's Applications live in")
+	check.Flags().StringVar(&checkApp, "application", "", "the Application to read the owned objects of")
+	check.Flags().StringVar(&checkSpace, "space", "", "the ConfigHub Space holding the variant")
+	check.Flags().StringVar(&checkUnit, "unit", "", "the unit in that Space")
+	check.Flags().StringVar(&checkDest, "destination-namespace", "", "the Application's destination namespace, where objects without one land")
+	check.Flags().BoolVar(&checkJSON, "json", false, "print the comparison as JSON")
+
 	versionCmd := &cobra.Command{
 		Use:   "version",
 		Short: "Print the plugin version",
@@ -151,7 +206,7 @@ func newRoot() *cobra.Command {
 		},
 	}
 
-	root.AddCommand(plan, apply, versionCmd)
+	root.AddCommand(plan, apply, check, versionCmd)
 	return root
 }
 

@@ -102,18 +102,18 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 
 	// Every Application prunes, so what a Target holds has to match what the
 	// overlay renders today before its source is moved to that Target.
-	add(`step "%d/5 Prove each Target holds what its overlay renders today"`, step)
-	add("# This renders from the repository now rather than trusting what apply.sh")
-	add("# left behind: Git may have moved since, and a stale comparison would pass")
-	add("# while Argo applies something else. Every Application prunes, so a")
-	add("# difference here is a difference that would be deleted from the cluster.")
+	add(`step "%d/5 Prove nothing on the clusters would change"`, step)
+	add("# Two questions, and only the second can see the cluster.")
+	add("#")
+	add("# Does what ConfigHub holds equal what the overlay renders today? That")
+	add("# compares two things both derived from Git, so it catches Git moving")
+	add("# since apply.sh, and nothing else.")
 	add(`command -v kustomize >/dev/null || { echo "kustomize is not on PATH; this step re-renders with it"; exit 1; }`)
 	add(`[ -d "$REPO_ROOT" ] || { echo "REPO_ROOT=$REPO_ROOT is not a directory: point it at the repository checkout"; exit 1; }`)
 	add(`echo "  rendering with $(kustomize version)"`)
 	add(`if ! git -C "$REPO_ROOT" diff --quiet 2>/dev/null; then`)
 	add(`  echo "  note: $REPO_ROOT has uncommitted changes, so this renders something Argo is not applying" >&2`)
 	add("fi")
-	add("# same <space> <unit> <path>")
 	add("same() {")
 	add("  local fresh got rc=0")
 	add(`  fresh=$(mktemp); got=$(mktemp)`)
@@ -122,25 +122,53 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add(`  if diff -q <(grep -v '^\s*#' "$fresh") <(grep -v '^\s*#' "$got") >/dev/null; then`)
 	add(`    echo "  $1 holds what $3 renders today"`)
 	add("  else")
-	add(`    echo "  $1 DIFFERS from what $3 renders today. Repointing would prune the difference." >&2`)
-	add(`    echo "  Re-run apply.sh to bring ConfigHub up to date, then read the diff before repointing." >&2`)
+	add(`    echo "  $1 DIFFERS from what $3 renders today. Re-run apply.sh, then read the diff." >&2`)
 	add(`    diff -u <(grep -v '^\s*#' "$fresh") <(grep -v '^\s*#' "$got") | head -40 >&2`)
 	add("    rc=1")
 	add("  fi")
 	add(`  rm -f "$fresh" "$got"; return $rc`)
 	add("}")
+	add("")
+	add("# And the one that matters: does what ConfigHub would deliver equal what")
+	add("# Argo owns on the cluster right now? Argo's own status.resources is the")
+	add("# record, so this sees objects that are on the cluster and not in Git at")
+	add("# all. Where Argo prunes, those would be deleted the moment the source")
+	add("# moves. No render-side check can see them.")
 	for _, c := range p.Components {
 		if c.Kind != "ApplicationSet" {
 			continue
 		}
 		for _, st := range c.Stages {
 			for _, v := range st.Variants {
-				if v.Path != "" && v.Path != "(multi-source)" {
-					add("same %s %s %s", q(v.Space), q(c.Name), q(v.Path))
+				if v.Path == "" || v.Path == "(multi-source)" {
+					continue
 				}
+				add("same %s %s %s", q(v.Space), q(c.Name), q(v.Path))
+				add(`cub argo check --namespace "$ns" --application %s --space %s --unit %s --destination-namespace %s`,
+					q(v.Application), q(v.Space), q(c.Name), q(v.Namespace))
 			}
 		}
 	}
+	add("")
+	add("# What no controller claims on these namespaces, as a cross-check. This")
+	add("# is cub-scout inferring ownership, not a gate: it finds what was applied")
+	add("# by hand and would be left behind, which neither record above reports.")
+	add(`if command -v cub-scout >/dev/null || cub scout --help >/dev/null 2>&1; then`)
+	seen := map[string]bool{}
+	for _, c := range p.Components {
+		for _, st := range c.Stages {
+			for _, v := range st.Variants {
+				if v.Namespace == "" || seen[v.Namespace] {
+					continue
+				}
+				seen[v.Namespace] = true
+				add(`  cub scout map list -q %s || true`, q("owner=Native AND namespace="+v.Namespace))
+			}
+		}
+	}
+	add("else")
+	add(`  echo "  cub-scout is not installed; skipping the unclaimed-resource cross-check"`)
+	add("fi")
 	add("")
 	step++
 
