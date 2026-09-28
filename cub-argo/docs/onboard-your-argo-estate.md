@@ -345,6 +345,40 @@ a plan, and infers ownership where nothing declares it. `handover.sh` asks
 cub-scout what no controller claims in your namespaces, as a cross-check rather
 than a gate.
 
+## What the Argo handover has and has not been through
+
+`cleanup.sh` is rehearsed: the expert estate onboarded and removed cleanly,
+control Spaces included, first pass.
+
+The handover itself is **partly** rehearsed, on Argo CD v3.5.3. These were found
+by running it and are fixed:
+
+- **`sourceRepos` cannot be widened with `kubectl`.** The AppProjects are
+  themselves synced by the root Application with `selfHeal: true`, so a patch is
+  reverted within minutes and the repoint is refused again with no sign of why.
+  The change has to be committed where Argo reads it.
+- **The allow-entry needs `/**`, not `/*`.** Argo's glob does not cross `/`, and
+  the gateway address has two path segments (`/space/<space>`). With `/*` the
+  repoint fails as `not permitted in project`.
+- **The repoURL needs `/space/<space>`.** The gateway serves one repository per
+  Space, and two parents are repointed at two different Spaces, so one address
+  without the Space could only ever be right for one of them.
+- **Step 2 clobbered the gateway address** by re-resolving it from the Target,
+  which carries none. The repoint went in as `oci:///space/<space>` — no host —
+  which Argo reports as `not permitted in project` rather than as malformed.
+- **`${VAR:+  key: "true"}` loses its quotes** to shell quote removal, and the
+  API server rejects the Secret with `cannot unmarshal bool into ... stringData`.
+- **The gate pointed at a command that reports nothing.** `cub target get` does
+  not carry the gateway host; apply.sh creates the Target with empty parameters.
+
+**Still failing, and not yet explained:** with the repoURL, the AppProject and
+the `type: oci` Secret all correct, `argocd-repo-server` cannot resolve the tag
+— `cannot get digest for revision latest`, over **https**, although the Secret
+sets `insecureOCIForceHttp: true`. Setting the Secret's `url` to the full
+`/space/<space>` did not change it. So a plain-HTTP self-hosted gateway is not
+proven to work with Argo CD here. Treat the Argo handover as unfinished until
+this is resolved; the Flux handover is rehearsed end to end and is not affected.
+
 ## A published release does not arrive on its own
 
 This one is measured, and it surprised us. After `handover.sh`, an Application

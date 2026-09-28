@@ -32,9 +32,24 @@ if [ "$(printf '%s\n' 3.1 "${version%.*}.${version#*.}" | sort -V | head -1)" !=
   echo "Argo CD runs $version; an oci:// source is read natively from v3.1, so this handover is not available here"; exit 1
 fi
 # Until the gateway is allowed as a source, every repoint below is refused.
+still_blocked=""
+k -n "$ns" get appproject platform -o jsonpath='{.spec.sourceRepos}' 2>/dev/null | grep -q -e 'oci://' -e '"\*"' || still_blocked="$still_blocked platform"
+k -n "$ns" get appproject storefront -o jsonpath='{.spec.sourceRepos}' 2>/dev/null | grep -q -e 'oci://' -e '"\*"' || still_blocked="$still_blocked storefront"
+if [ -n "$still_blocked" ]; then
 echo 'first, add the gateway'\''s oci:// address to sourceRepos on AppProject platform (allows only https://github.com/confighub/examples) and storefront (allows only https://github.com/confighub/examples): until then every repoint below is refused'
-echo "  cub target get --space argo-targets argocd -o jq=.Target.Parameters.OCIRepository   # the address to add"
-read -r -p "Add it to sourceRepos on those AppProjects, then press Return to carry on. " _
+echo "  The address is oci://<gateway host>, the same CONFIGHUB_OCI this script takes:"
+echo "    ConfigHub cloud:  oci://oci.hub.confighub.com"
+echo "    self-hosted:      oci:// plus the host and port of confighub-oci-server,"
+echo "                      as reachable FROM this cluster, not from your laptop."
+echo
+echo "Change it in GIT, not with kubectl: these AppProjects are synced by an"
+echo "Application with selfHeal on, so a patch here is undone within minutes."
+echo "Commit the oci:// entry to the file that defines them, let Argo sync it,"
+echo "then re-run this script. It re-reads the cluster and will carry on."
+read -r -p "Press Return once sourceRepos allows it, or Ctrl-C to stop. " _ || true
+else
+  echo "sourceRepos already allows an oci:// source on every AppProject this needs."
+fi
 
 step "1/5 The credential Argo reads the gateway with"
 # A repository Secret for the gateway, holding the Targets' server worker.
@@ -51,6 +66,8 @@ fi
 #   password. The Application's repoURL needs the scheme too — without it
 #   Argo treats the address as a git repository and fails on "list refs".
 # insecureOCIForceHttp is only for a gateway served over plain HTTP.
+plain_http=""
+[ -n "${CONFIGHUB_OCI_PLAIN_HTTP:-}" ] && plain_http='  insecureOCIForceHttp: "true"'
 cat <<YAML | k apply -f -
 apiVersion: v1
 kind: Secret
@@ -64,14 +81,13 @@ stringData:
   url: oci://${addr}
   username: "$(cub worker get --space argo-targets server-worker -o jq=.BridgeWorker.BridgeWorkerID | tr -d '\n')"
   password: "$(cub worker get --space argo-targets server-worker --include-secret -o jq=.BridgeWorker.Secret | tr -d '\n')"
-${CONFIGHUB_OCI_PLAIN_HTTP:+  insecureOCIForceHttp: "true"}
+${plain_http}
 YAML
 
 step "2/5 Repoint root at argo-root-children"
 # Its children are Units there by now, released to the argocd Target.
-addr=$(gateway argocd)
 k -n "$ns" get application root -o jsonpath='{.spec.source.repoURL}' | grep -q '^oci://' && echo 'root already reads ConfigHub' || \
-  k -n "$ns" patch application root --type merge -p "{\"spec\":{\"source\":{\"repoURL\":\"oci://${addr}\",\"path\":\".\",\"targetRevision\":\"latest\"}}}"
+  k -n "$ns" patch application root --type merge -p "{\"spec\":{\"source\":{\"repoURL\":\"oci://${addr}/space/argo-root-children\",\"path\":\".\",\"targetRevision\":\"latest\"}}}"
 # Argo caches the digest it resolved for a tag, so a repoint alone can
 # leave it serving the release it read before. A hard refresh re-resolves
 # the tag, and is what argobot issues on every release.published.
@@ -79,9 +95,8 @@ k -n "$ns" annotate application root argocd.argoproj.io/refresh=hard --overwrite
 k -n "$ns" wait --for=jsonpath='{.status.sync.status}'=Synced application/root --timeout=3m
 step "3/5 Repoint storefront at argo-storefront-children"
 # Its children are Units there by now, released to the argocd Target.
-addr=$(gateway argocd)
 k -n "$ns" get application storefront -o jsonpath='{.spec.source.repoURL}' | grep -q '^oci://' && echo 'storefront already reads ConfigHub' || \
-  k -n "$ns" patch application storefront --type merge -p "{\"spec\":{\"source\":{\"repoURL\":\"oci://${addr}\",\"path\":\".\",\"targetRevision\":\"latest\"}}}"
+  k -n "$ns" patch application storefront --type merge -p "{\"spec\":{\"source\":{\"repoURL\":\"oci://${addr}/space/argo-storefront-children\",\"path\":\".\",\"targetRevision\":\"latest\"}}}"
 # Argo caches the digest it resolved for a tag, so a repoint alone can
 # leave it serving the release it read before. A hard refresh re-resolves
 # the tag, and is what argobot issues on every release.published.
@@ -155,20 +170,20 @@ step "5/5 Point each ApplicationSet's template at its clusters' Targets"
 # names, so Argo's tracking does not change and nothing is orphaned. Each
 # generated Application reads its own cluster's Target.
 # apptique generates:
-#   dev-1-apptique               from argo-targets/dev-1
-#   staging-1-apptique           from argo-targets/staging-1
-#   prod-1-apptique              from argo-targets/prod-1
-echo 'Edit the apptique Unit'\''s template: set spec.template.spec.source.repoURL to oci://<the gateway>/<this cluster'\''s Target>, path '\''.'\'', targetRevision latest. Promote it like any other change.'
+#   dev-1-apptique               reads Space argo-apptique-dev-1
+#   staging-1-apptique           reads Space argo-apptique-staging-1
+#   prod-1-apptique              reads Space argo-apptique-prod-1
+echo 'Edit the apptique Unit'\''s template: set spec.template.spec.source.repoURL to oci://<the gateway>/space/<this cluster'\''s variant Space, listed above>, path '\''.'\'', targetRevision latest. Promote it like any other change.'
 # checkout-cache generates:
-#   dev-1-checkout-cache         from argo-targets/dev-1
-#   staging-1-checkout-cache     from argo-targets/staging-1
-#   prod-1-checkout-cache        from argo-targets/prod-1
-echo 'Edit the checkout-cache Unit'\''s template: set spec.template.spec.source.repoURL to oci://<the gateway>/<this cluster'\''s Target>, path '\''.'\'', targetRevision latest. Promote it like any other change.'
+#   dev-1-checkout-cache         reads Space argo-checkout-cache-dev-1
+#   staging-1-checkout-cache     reads Space argo-checkout-cache-staging-1
+#   prod-1-checkout-cache        reads Space argo-checkout-cache-prod-1
+echo 'Edit the checkout-cache Unit'\''s template: set spec.template.spec.source.repoURL to oci://<the gateway>/space/<this cluster'\''s variant Space, listed above>, path '\''.'\'', targetRevision latest. Promote it like any other change.'
 # platform-addons generates:
-#   dev-1-cluster-baseline       from argo-targets/dev-1
-#   staging-1-cluster-baseline   from argo-targets/staging-1
-#   prod-1-cluster-baseline      from argo-targets/prod-1
-echo 'Edit the platform-addons Unit'\''s template: set spec.template.spec.source.repoURL to oci://<the gateway>/<this cluster'\''s Target>, path '\''.'\'', targetRevision latest. Promote it like any other change.'
+#   dev-1-cluster-baseline       reads Space argo-platform-addons-cluster-baseline-dev-1
+#   staging-1-cluster-baseline   reads Space argo-platform-addons-cluster-baseline-staging-1
+#   prod-1-cluster-baseline      reads Space argo-platform-addons-cluster-baseline-prod-1
+echo 'Edit the platform-addons Unit'\''s template: set spec.template.spec.source.repoURL to oci://<the gateway>/space/<this cluster'\''s variant Space, listed above>, path '\''.'\'', targetRevision latest. Promote it like any other change.'
 echo 'Note: AppProject storefront denies syncing prod-1-apptique, prod-1-checkout-cache on schedule "0 9 * * 1-5" for 9h. The repoint lands, but its first sync waits for the window to close.'
 
 echo

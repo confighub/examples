@@ -64,9 +64,36 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	}
 	if len(blocked) > 0 {
 		add("# Until the gateway is allowed as a source, every repoint below is refused.")
+		// Read from the cluster, not from the plan. The plan's reading comes
+		// from the repository, so it cannot tell that the operator has already
+		// widened sourceRepos -- and then this stops a handover that would have
+		// worked, every time it is run.
+		add(`still_blocked=""`)
+		for _, name := range p.RestrictedProjects {
+			add(`k -n "$ns" get appproject %s -o jsonpath='{.spec.sourceRepos}' 2>/dev/null | grep -q -e 'oci://' -e '"\*"' || still_blocked="$still_blocked %s"`, name, name)
+		}
+		add(`if [ -n "$still_blocked" ]; then`)
 		add("echo %s", q(blocked[0]))
-		add(`echo "  cub target get --space %s argocd -o jq=.Target.Parameters.OCIRepository   # the address to add"`, targets)
-		add(`read -r -p "Add it to sourceRepos on those AppProjects, then press Return to carry on. " _`)
+		// Not "cub target get": apply.sh creates the Target with empty parameters
+		// and cub reports no gateway address for it, so that command prints
+		// nothing and reads as a broken install rather than as the wrong query.
+		add(`echo "  The address is oci://<gateway host>, the same CONFIGHUB_OCI this script takes:"`)
+		add(`echo "    ConfigHub cloud:  oci://oci.hub.confighub.com"`)
+		add(`echo "    self-hosted:      oci:// plus the host and port of confighub-oci-server,"`)
+		add(`echo "                      as reachable FROM this cluster, not from your laptop."`)
+		// Measured on Argo CD v3.5.3: these AppProjects are themselves synced by
+		// the root Application with selfHeal on, so a kubectl patch of
+		// sourceRepos is reverted within minutes and the repoint is refused
+		// again with no sign of why. The change has to go where Argo reads it.
+		add(`echo`)
+		add(`echo "Change it in GIT, not with kubectl: these AppProjects are synced by an"`)
+		add(`echo "Application with selfHeal on, so a patch here is undone within minutes."`)
+		add(`echo "Commit the oci:// entry to the file that defines them, let Argo sync it,"`)
+		add(`echo "then re-run this script. It re-reads the cluster and will carry on."`)
+		add(`read -r -p "Press Return once sourceRepos allows it, or Ctrl-C to stop. " _ || true`)
+		add("else")
+		add(`  echo "sourceRepos already allows an oci:// source on every AppProject this needs."`)
+		add("fi")
 	}
 	add("")
 
@@ -85,6 +112,13 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("#   password. The Application's repoURL needs the scheme too — without it")
 	add("#   Argo treats the address as a git repository and fails on \"list refs\".")
 	add("# insecureOCIForceHttp is only for a gateway served over plain HTTP.")
+	// Not ${VAR:+  insecureOCIForceHttp: "true"} inline below: the alternate
+	// word goes through quote removal, so the quotes are gone by the time the
+	// heredoc sees it and the API server rejects the Secret with
+	//   cannot unmarshal bool into Go struct field Secret.stringData
+	// A variable's value is not re-quoted, so this form keeps them.
+	add(`plain_http=""`)
+	add(`[ -n "${CONFIGHUB_OCI_PLAIN_HTTP:-}" ] && plain_http='  insecureOCIForceHttp: "true"'`)
 	add(`cat <<YAML | k apply -f -`)
 	add("apiVersion: v1")
 	add("kind: Secret")
@@ -98,7 +132,7 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add(`  url: oci://${addr}`)
 	add(`  username: "$(cub worker get --space %s server-worker -o jq=.BridgeWorker.BridgeWorkerID | tr -d '\n')"`, targets)
 	add(`  password: "$(cub worker get --space %s server-worker --include-secret -o jq=.BridgeWorker.Secret | tr -d '\n')"`, targets)
-	add(`${CONFIGHUB_OCI_PLAIN_HTTP:+  insecureOCIForceHttp: "true"}`)
+	add(`${plain_http}`)
 	add("YAML")
 	add("")
 
@@ -107,10 +141,18 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	for _, s := range cs {
 		add(`step "%d/5 Repoint %s at %s"`, step, s.Parent, s.Space)
 		add("# Its children are Units there by now, released to the argocd Target.")
-		add(`addr=$(gateway argocd)`)
+		// addr was resolved once in step 1, from CONFIGHUB_OCI or the Target.
+		// Re-reading it here overwrote a good CONFIGHUB_OCI with the Target's
+		// empty answer, and the repoint went in as oci:///space/<space> -- a
+		// URL with no host, which Argo rejects as "not permitted in project"
+		// rather than as malformed.
 		add(`k -n "$ns" get application %s -o jsonpath='{.spec.source.repoURL}' | grep -q '^oci://' && echo %s || \`,
 			s.Parent, q(s.Parent+" already reads ConfigHub"))
-		add(`  k -n "$ns" patch application %s --type merge -p "{\"spec\":{\"source\":{\"repoURL\":\"oci://${addr}\",\"path\":\".\",\"targetRevision\":\"latest\"}}}"`, s.Parent)
+		// The gateway serves one repository per Space, at /space/<space>, so the
+		// Space is part of the URL and not part of the host. Two parents are
+		// repointed at two different Spaces here: one address without the Space
+		// could only ever be right for one of them.
+		add(`  k -n "$ns" patch application %s --type merge -p "{\"spec\":{\"source\":{\"repoURL\":\"oci://${addr}/space/%s\",\"path\":\".\",\"targetRevision\":\"latest\"}}}"`, s.Parent, s.Space)
 		add("# Argo caches the digest it resolved for a tag, so a repoint alone can")
 		add("# leave it serving the release it read before. A hard refresh re-resolves")
 		add("# the tag, and is what argobot issues on every release.published.")
@@ -202,11 +244,14 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 		add("# %s generates:", c.Source)
 		for _, st := range c.Stages {
 			for _, v := range st.Variants {
-				add("#   %-28s from %s/%s", v.Application, targets, v.Cluster)
+				add("#   %-28s reads Space %s", v.Application, v.Space)
 			}
 		}
+		// Naming the Target here was wrong: the gateway addresses a Space, not a
+		// Target, and an ApplicationSet template needs a per-cluster Space. The
+		// generator's own cluster value is what selects it.
 		add("echo %s", q(fmt.Sprintf(
-			"Edit the %s Unit's template: set spec.template.spec.source.repoURL to oci://<the gateway>/<this cluster's Target>, path '.', targetRevision latest. Promote it like any other change.",
+			"Edit the %s Unit's template: set spec.template.spec.source.repoURL to oci://<the gateway>/space/<this cluster's variant Space, listed above>, path '.', targetRevision latest. Promote it like any other change.",
 			c.Source)))
 	}
 	for _, w := range p.Windows {

@@ -40,8 +40,12 @@ type Plan struct {
 	Unselected []string     `json:"unselectedClusters,omitempty"`
 	Live       []string     `json:"liveApplications,omitempty"`
 	Handover   []string     `json:"handover,omitempty"`
-	LeftOut    []string     `json:"leftOut,omitempty"`
-	Problems   []string     `json:"problems,omitempty"`
+	// RestrictedProjects are the AppProjects whose sourceRepos would refuse an
+	// oci:// source, as the repository reads today. handover.sh re-reads them
+	// on the cluster before it stops for them.
+	RestrictedProjects []string `json:"restrictedProjects,omitempty"`
+	LeftOut            []string `json:"leftOut,omitempty"`
+	Problems           []string `json:"problems,omitempty"`
 }
 
 // Inputs says what the plan read.
@@ -974,6 +978,10 @@ func (b *builder) handover(appsets, apps []object, projects []object) {
 		}
 		if !allowed {
 			blocked = append(blocked, fmt.Sprintf("%s (allows only %s)", pr.name, strings.Join(repos, ", ")))
+			// The bare name as well: handover.sh re-checks these on the cluster,
+			// because this reading comes from Git and cannot tell whether the
+			// operator has already widened them.
+			p.RestrictedProjects = append(p.RestrictedProjects, pr.name)
 		}
 	}
 	if len(blocked) > 0 {
