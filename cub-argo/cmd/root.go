@@ -100,7 +100,7 @@ func newRoot() *cobra.Command {
 	var applyStages, out string
 	apply := &cobra.Command{
 		Use:   "apply <dir|input.yaml|-> [more inputs] --out <dir>",
-		Short: "Write the plan's files, apply.sh and handover.sh to read and run; runs nothing",
+		Short: "Write the plan's files and the apply, handover and cleanup scripts; runs nothing",
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
 			if out == "" {
@@ -142,77 +142,98 @@ func newRoot() *cobra.Command {
 	apply.Flags().StringVar(&af.RepoRoot, "repo-root", "", "the checkout Applications' source paths are relative to")
 	apply.Flags().StringVar(&out, "out", "", "directory for the files and the scripts")
 
-	var checkNS, checkApp, checkSpace, checkUnit, checkDest, kubeContext string
+	var checkNS, checkApp, checkSpace, checkUnit, checkDest, kubeContext, checkStages string
 	var checkDeep bool
+	var cf argo.Options
 	var checkJSON bool
 	check := &cobra.Command{
-		Use:   "check --application <name> --space <space> --unit <unit>",
-		Short: "Compare what Argo owns on the cluster with what the release holds; changes nothing",
-		Args:  cobra.NoArgs,
-		RunE: func(c *cobra.Command, _ []string) error {
+		Use:   "check [dir|input.yaml|-]",
+		Short: "Compare what Argo owns on the cluster with what ConfigHub holds; changes nothing",
+		Long: `Compare the estate on the cluster with what ConfigHub holds for it.
+
+Given the same input as plan, it works out every Application to check and
+checks them all, which is what handover.sh does before it moves anything.
+Given --application, it checks that one.
+
+It answers two questions. Would moving the source add or remove an object:
+Argo's own status.resources against the release. And with --fields, would it
+change one: every field the release sets against the object on the cluster,
+naming who has written it, which is how a hand edit is told from the source
+moving on.
+
+Nothing is changed either way.`,
+		Args: cobra.MaximumNArgs(1),
+		RunE: func(c *cobra.Command, args []string) error {
 			argo.KubeContext = kubeContext
-			if checkApp == "" || checkSpace == "" || checkUnit == "" {
-				return fmt.Errorf("check needs --application, --space and --unit")
-			}
-			live, err := argo.LiveInventory(argo.Run, checkNS, checkApp)
-			if err != nil {
-				return err
-			}
-			stored, err := argo.Run("cub", "unit", "data", "--space", checkSpace, checkUnit)
-			if err != nil {
-				return err
-			}
-			held, err := argo.ObjectsIn(stored)
-			if err != nil {
-				return err
-			}
-			cmp := argo.CompareInventory(live, held, checkDest)
-			var fields []argo.FieldDiff
-			if checkDeep {
-				fields, err = argo.CompareFields(argo.Run, checkDest, stored)
+			argo.SetApplicationNamespace(checkNS)
+			var checks []argo.Check
+			if checkApp != "" {
+				if checkSpace == "" || checkUnit == "" {
+					return fmt.Errorf("--application needs --space and --unit; or pass the repository instead and every Application is checked")
+				}
+				checks = []argo.Check{{Application: checkApp, Space: checkSpace, Unit: checkUnit, Namespace: checkDest}}
+			} else {
+				if len(args) == 0 {
+					return fmt.Errorf("check needs the repository to work out what to check, or --application with --space and --unit")
+				}
+				in, err := argo.Load(c.InOrStdin(), args)
 				if err != nil {
 					return err
 				}
-			}
-			w := c.OutOrStdout()
-			argo.KubeContext = kubeContext
-			if checkJSON {
-				enc := json.NewEncoder(w)
-				enc.SetIndent("", "  ")
-				if err := enc.Encode(cmp); err != nil {
+				cf.Stages = split(checkStages)
+				p, err := argo.Build(in, cf)
+				if err != nil {
 					return err
 				}
-			} else {
-				fmt.Fprintf(w, "%s: %d objects match what Argo owns\n", checkApp, cmp.Same)
-				if checkDeep {
-					if len(fields) == 0 {
-						fmt.Fprintf(w, "  and every field the release sets already has that value on the cluster\n")
-					}
-					for _, d := range fields {
-						fmt.Fprintf(w, "  %s\n", d)
-						if h := argo.ByHand(d.Managers); len(h) > 0 {
-							fmt.Fprintf(w, "    %s has written this object, so this is likely a hand edit rather than the source moving on\n", strings.Join(h, ", "))
-						}
-					}
-				}
-				for _, l := range cmp.WouldPrune {
-					fmt.Fprintf(w, "  %s\n", l)
-				}
-				for _, l := range cmp.WouldAdd {
-					fmt.Fprintf(w, "  %s\n", l)
-				}
-				for _, l := range cmp.Notes {
-					fmt.Fprintf(w, "  note: %s\n", l)
+				checks = argo.ChecksFor(p)
+				if len(checks) == 0 {
+					return fmt.Errorf("the plan has no variants to check; run plan to see why")
 				}
 			}
-			if !cmp.OK() || len(fields) > 0 {
+			w := c.OutOrStdout()
+			bad := 0
+			for _, ck := range checks {
+				r, err := argo.RunCheck(argo.Run, ck, checkDeep)
+				if err != nil {
+					fmt.Fprintf(w, "%s: %v\n", ck.Application, err)
+					bad++
+					continue
+				}
+				fmt.Fprintf(w, "%s: %d objects match what Argo owns\n", ck.Application, r.Inventory.Same)
+				for _, l := range append(r.Inventory.WouldPrune, r.Inventory.WouldAdd...) {
+					fmt.Fprintf(w, "  %s\n", l)
+				}
+				for _, l := range r.Inventory.Notes {
+					fmt.Fprintf(w, "  note: %s\n", l)
+				}
+				if checkDeep && len(r.Fields) == 0 && r.Inventory.OK() {
+					fmt.Fprintf(w, "  and every field the release sets already has that value on the cluster\n")
+				}
+				for _, d := range r.Fields {
+					fmt.Fprintf(w, "  %s\n", d)
+					if h := argo.ByHand(d.Managers); len(h) > 0 {
+						fmt.Fprintf(w, "    %s has written this object, so this is likely a hand edit rather than the source moving on\n", strings.Join(h, ", "))
+					}
+				}
+				if !r.OK() {
+					bad++
+				}
+			}
+			if len(checks) > 1 {
+				fmt.Fprintf(w, "\n%d of %d clean\n", len(checks)-bad, len(checks))
+			}
+			if bad > 0 {
 				return errProblems{}
 			}
 			return nil
 		},
 	}
-	check.Flags().BoolVar(&checkDeep, "fields", false, "also compare every field the release sets with the object on the cluster, and say who last wrote it")
+	check.Flags().BoolVar(&checkDeep, "fields", false, "also compare every field the release sets with the object on the cluster, and say who has written it")
 	check.Flags().StringVar(&checkNS, "namespace", "argocd", "the namespace Argo CD's Applications live in")
+	check.Flags().StringVar(&cf.Prefix, "prefix", "argo", "the prefix the plan used in ConfigHub")
+	check.Flags().StringVar(&cf.StageLabel, "stage-label", "", "the cluster label the plan staged by")
+	check.Flags().StringVar(&checkStages, "stages", "", "the stages in order, comma-separated")
+	check.Flags().StringVar(&cf.RepoRoot, "repo-root", "", "the checkout Applications' source paths are relative to")
 	check.Flags().StringVar(&checkApp, "application", "", "the Application to read the owned objects of")
 	check.Flags().StringVar(&checkSpace, "space", "", "the ConfigHub Space holding the variant")
 	check.Flags().StringVar(&checkUnit, "unit", "", "the unit in that Space")

@@ -7,7 +7,8 @@ import (
 	"sort"
 )
 
-// WriteApply writes the workflow files, apply.sh and handover.sh. It runs
+// WriteApply writes the workflow files and the apply, handover and cleanup
+// scripts. It runs
 // nothing and touches nothing outside dir.
 func WriteApply(p *Plan, prefix, dir string) (string, error) {
 	if len(p.Problems) > 0 {
@@ -42,6 +43,7 @@ func WriteApply(p *Plan, prefix, dir string) (string, error) {
 	files = append(files,
 		outFile{"apply.sh", []byte(ApplyScript(p, prefix, repoRel)), 0o755},
 		outFile{"handover.sh", []byte(HandoverScript(p, prefix, repoRel)), 0o755},
+		outFile{"cleanup.sh", []byte(CleanupScript(p, prefix)), 0o755},
 		outFile{".gitignore", []byte("render/\n"), 0o644},
 	)
 

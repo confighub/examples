@@ -611,3 +611,29 @@ func TestPlainDirectoryIsReported(t *testing.T) {
 		t.Errorf("want a plain-directory problem, got %v", p.Problems)
 	}
 }
+
+// check works the estate out from the same input plan does, so a person needs
+// no per-Application flags and handover.sh checks exactly what the plan governs.
+func TestChecksAreDerivedFromThePlan(t *testing.T) {
+	opts := staged
+	opts.RepoRoot = repoRoot(t)
+	p := planOf(t, example, opts)
+	checks := ChecksFor(p)
+	if len(checks) != 9 {
+		t.Fatalf("the expert example has nine variants, got %d checks", len(checks))
+	}
+	seen := map[string]Check{}
+	for _, c := range checks {
+		if c.Application == "" || c.Space == "" || c.Unit == "" {
+			t.Errorf("a check needs an Application, Space and unit: %+v", c)
+		}
+		if _, dup := seen[c.Application]; dup {
+			t.Errorf("two checks for Application %s", c.Application)
+		}
+		seen[c.Application] = c
+	}
+	got := seen["prod-1-apptique"]
+	if got.Space != "argo-apptique-prod-1" || got.Unit != "apptique" || got.Namespace != "storefront-prod" {
+		t.Errorf("prod-1-apptique should carry its Space, unit and destination: %+v", got)
+	}
+}

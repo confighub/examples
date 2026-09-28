@@ -246,6 +246,26 @@ runs this for every variant before anything moves, passing the cluster's
 context so it reads the estate being handed over rather than whichever context
 happens to be current.
 
+**You run it the way you ran `plan`.** `check` takes the same repository
+directory and works the estate out for itself — there is no per-Application
+flag to get right, and no list to keep in step with the repository:
+
+```bash
+cub argo check ./my-estate --stage-label rollout-phase --stages canary,secondary,primary
+```
+
+```text
+prod-1-apptique: 3 objects match what Argo owns
+staging-apptique: 3 objects match what Argo owns
+...
+9 of 9 clean
+```
+
+It exits non-zero if any Application is not clean, so it drops into CI as it
+is. `--kube-context` names the cluster to read; without it kubectl uses
+whatever context is current, which during a handover is very likely the wrong
+one.
+
 **Has the chart been audited?** Where an overlay inflates a Helm chart, the
 plan reports what the Workshop Catalog has already decided about it — one
 verdict per chart, version **and values base**, because a verdict is not a
@@ -264,11 +284,66 @@ reader — "authentication or TLS enabled", "certificates supplied from outside
 the render" — and that part is handed back to you explicitly rather than passed
 over in silence.
 
-**What none of this can see:** whether anyone edited an object on the cluster by
-hand. The object sets still match, so the check passes. `cub scout compare` is
-the tool for that — it reads Kubernetes `managedFields` and attributes each
-field path to whoever last wrote it. `handover.sh` also asks cub-scout what no
-controller claims in your namespaces, which is a cross-check rather than a gate.
+## Three questions, not one: objects, identities, fields
+
+A handover is safe when swapping the source changes nothing. "Nothing" breaks
+into three questions, and each needs a different thing to be read.
+
+```mermaid
+flowchart TB
+  q1["**Same objects?**<br/>status.resources vs the release"] --> a1["catches an object the release<br/>would add, or that Argo would prune"]
+  q2["**Same identities?**<br/>metadata.uid, before and after"] --> a2["catches a delete-and-recreate<br/>wearing the same name"]
+  q3["**Same values?**<br/>every field the release sets,<br/>vs the live object"] --> a3["catches a hand edit the object<br/>set cannot see"]
+```
+
+The first two are the object-set check and the UID comparison the handover
+rehearsal runs. The third is `--fields`, and it is the one that sees a person.
+
+```bash
+cub argo check ./my-estate --fields
+```
+
+For every object the release holds, it reads the live object and compares
+**only the fields the release sets**. That restriction is the whole design:
+Kubernetes fills in defaults a release never mentions and controllers own
+others, so comparing everything the cluster holds reports noise as drift. It is
+the same rule a reconciler applies.
+
+Each difference is reported with Kubernetes' own record of who has written that
+object:
+
+```text
+Deployment apptique-dev/frontend .spec.replicas: cluster has 4, the release
+holds 2 (written on this object by kubectl-scale, argocd-controller)
+```
+
+`managedFields` is that record, and `kubectl get -o json` **strips it** unless
+asked — the plugin passes `--show-managed-fields`, without which attribution
+comes back silently empty. The managers are not ordered by time: kubectl leaves
+the timestamp off some writes, so naming a last writer would be a guess where a
+fact belongs.
+
+**Measured on a live cluster**, Argo CD v3.5.3, with a `kubectl scale` against
+an Application whose `selfHeal` was off:
+
+- The object sets matched exactly. The inventory check passed, correctly.
+- `--fields` named `.spec.replicas`, both values, and `kubectl-scale` among the
+  managers.
+- `kubectl scale` took **sole** ownership of `f:replicas` via the scale
+  subresource — `argocd-controller` no longer held that field at all. That
+  subresource records no timestamp, which is why the ordering claim was dropped.
+- `argocd-controller` writes with `Update`, not `Apply`: client-side apply, not
+  server-side.
+- Argo CD itself reported `OutOfSync`/`Healthy` once its refresh had run. Argo
+  does notice a hand edit — the point of `--fields` is not that Argo is blind,
+  but that Argo compares the app to **Git** and reports one status, while this
+  compares it to **the release you are about to hand it**, per field, with a
+  name attached.
+
+`cub scout compare` remains the broader tool: it works across an estate without
+a plan, and infers ownership where nothing declares it. `handover.sh` asks
+cub-scout what no controller claims in your namespaces, as a cross-check rather
+than a gate.
 
 ## A published release does not arrive on its own
 

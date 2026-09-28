@@ -358,3 +358,29 @@ func TestTargetNamespaceIsCarriedToTheCheck(t *testing.T) {
 		}
 	}
 }
+
+// check works the estate out from the same input plan does, so a person needs
+// no per-Kustomization flags.
+func TestChecksAreDerivedFromThePlan(t *testing.T) {
+	p := planOf(t, example, repoRoot(t))
+	checks := ChecksFor(p)
+	if len(checks) == 0 {
+		t.Fatal("the expert fleet has layers, so it should yield checks")
+	}
+	seen := map[string]bool{}
+	for _, c := range checks {
+		if c.Kustomization == "" || c.Space == "" || c.Unit == "" {
+			t.Errorf("a check needs a Kustomization, Space and unit: %+v", c)
+		}
+		// A layer name reaches kubectl, so it must not still carry the
+		// namespace the plan writes it with.
+		if strings.Contains(c.Kustomization, "/") {
+			t.Errorf("%q is a namespace/name, not the name kubectl takes", c.Kustomization)
+		}
+		key := c.Cluster + "|" + c.Kustomization
+		if seen[key] {
+			t.Errorf("two checks for %s on %s", c.Kustomization, c.Cluster)
+		}
+		seen[key] = true
+	}
+}

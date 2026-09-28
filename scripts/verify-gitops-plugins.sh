@@ -74,8 +74,10 @@ if ! "$bin/cub-flux" apply gitops/flux/expert-fleet --out "$work/flux" >"$work/f
   bad "cub-flux apply refused the expert example: $(grep -A2 'Problems to fix first' "$work/flux.log" | tail -1)"
 fi
 shopt -s nullglob
-scripts=("$work"/*/apply.sh "$work"/*/handover.sh)
-[ ${#scripts[@]} -gt 0 ] || bad "apply wrote no scripts to check"
+scripts=("$work"/*/apply.sh "$work"/*/handover.sh "$work"/*/cleanup.sh)
+# Both plugins write all three scripts. cub-flux once wrote no cleanup.sh at
+# all, which is only visible if the count is checked rather than the parse.
+[ ${#scripts[@]} -eq 6 ] || bad "expected 3 scripts from each plugin, found ${#scripts[@]}"
 for s in "${scripts[@]}"; do
   bash -n "$s" && ok "$(basename "$(dirname "$s")")/$(basename "$s") parses" \
     || bad "$(basename "$s") is not valid bash"

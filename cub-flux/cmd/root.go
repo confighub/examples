@@ -101,7 +101,7 @@ func newRoot() *cobra.Command {
 	var applyStages, out string
 	apply := &cobra.Command{
 		Use:   "apply <fleet-repo-dir> --out <dir>",
-		Short: "Write the plan's files, apply.sh and handover.sh to read and run; runs nothing",
+		Short: "Write the plan's files and the apply, handover and cleanup scripts; runs nothing",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
 			if out == "" {
@@ -143,50 +143,100 @@ func newRoot() *cobra.Command {
 	apply.Flags().StringVar(&af.RepoRoot, "repo-root", "", "the checkout Flux paths are relative to")
 	apply.Flags().StringVar(&out, "out", "", "directory for the files and the scripts")
 
-	var ckNS, ckName, ckSpace, ckUnit, ckTarget, kubeContext string
-	var ckJSON bool
+	var ckNS, ckName, ckSpace, ckUnit, ckTarget, kubeContext, ckCluster string
+	var ckJSON, ckDeep bool
+	var ckOpts flux.Options
 	check := &cobra.Command{
-		Use:   "check --kustomization <name> --space <space> --unit <unit>",
-		Short: "Compare what a layer applied with what the release holds; changes nothing",
-		Args:  cobra.NoArgs,
-		RunE: func(c *cobra.Command, _ []string) error {
+		Use:   "check [fleet-repo-dir]",
+		Short: "Compare what each layer applied with what ConfigHub holds; changes nothing",
+		Long: `Compare the fleet on a cluster with what ConfigHub holds for it.
+
+Given the same input as plan, it works out every layer to check and checks
+them all. Given --kustomization, it checks that one.
+
+It answers two questions. Would swapping the source add or remove an object:
+Flux's own status.inventory against the release. And with --fields, would it
+change one: every field the release sets against the object on the cluster,
+naming who has written it, which is how a hand edit is told from the source
+moving on.
+
+One cluster at a time: pass --kube-context for the cluster to read.`,
+		Args: cobra.MaximumNArgs(1),
+		RunE: func(c *cobra.Command, args []string) error {
 			flux.KubeContext = kubeContext
-			if ckName == "" || ckSpace == "" || ckUnit == "" {
-				return fmt.Errorf("check needs --kustomization, --space and --unit")
-			}
-			live, err := flux.LiveInventory(flux.Run, ckNS, ckName)
-			if err != nil {
-				return err
-			}
-			data, err := flux.Run("cub", "unit", "data", "--space", ckSpace, ckUnit)
-			if err != nil {
-				return err
-			}
-			held, err := flux.ObjectsIn(data)
-			if err != nil {
-				return err
-			}
-			cmp := flux.CompareInventory(live, held, ckTarget)
-			w := c.OutOrStdout()
-			flux.KubeContext = kubeContext
-			if ckJSON {
-				enc := json.NewEncoder(w)
-				enc.SetIndent("", "  ")
-				if err := enc.Encode(cmp); err != nil {
+			flux.SetControllerNamespace(ckNS)
+			var checks []flux.Check
+			if ckName != "" {
+				if ckSpace == "" || ckUnit == "" {
+					return fmt.Errorf("--kustomization needs --space and --unit; or pass the fleet repository instead and every layer is checked")
+				}
+				checks = []flux.Check{{Kustomization: ckName, Space: ckSpace, Unit: ckUnit, Namespace: ckTarget}}
+			} else {
+				if len(args) == 0 {
+					return fmt.Errorf("check needs the fleet repository to work out what to check, or --kustomization with --space and --unit")
+				}
+				in, err := flux.Load(c.InOrStdin(), args)
+				if err != nil {
 					return err
 				}
-			} else {
-				fmt.Fprintf(w, "%s: %d objects match what the layer applied\n", ckName, cmp.Same)
-				for _, l := range append(cmp.WouldPrune, cmp.WouldAdd...) {
-					fmt.Fprintf(w, "  %s\n", l)
+				p, err := flux.Build(in, ckOpts)
+				if err != nil {
+					return err
+				}
+				checks = flux.ChecksFor(p)
+				if ckCluster != "" {
+					var keep []flux.Check
+					for _, x := range checks {
+						if x.Cluster == ckCluster {
+							keep = append(keep, x)
+						}
+					}
+					checks = keep
+				}
+				if len(checks) == 0 {
+					return fmt.Errorf("no layers to check; a fleet is checked one cluster at a time, so pass --cluster with one of the plan's clusters")
 				}
 			}
-			if !cmp.OK() {
+			w := c.OutOrStdout()
+			bad := 0
+			for _, ck := range checks {
+				r, err := flux.RunCheck(flux.Run, ck, ckDeep)
+				if err != nil {
+					fmt.Fprintf(w, "%s: %v\n", ck.Kustomization, err)
+					bad++
+					continue
+				}
+				fmt.Fprintf(w, "%s: %d objects match what the layer applied\n", ck.Kustomization, r.Inventory.Same)
+				for _, l := range append(r.Inventory.WouldPrune, r.Inventory.WouldAdd...) {
+					fmt.Fprintf(w, "  %s\n", l)
+				}
+				if ckDeep && len(r.Fields) == 0 && r.Inventory.OK() {
+					fmt.Fprintf(w, "  and every field the release sets already has that value on the cluster\n")
+				}
+				for _, d := range r.Fields {
+					fmt.Fprintf(w, "  %s\n", d)
+					if h := flux.ByHand(d.Managers); len(h) > 0 {
+						fmt.Fprintf(w, "    %s has written this object, so this is likely a hand edit rather than the source moving on\n", strings.Join(h, ", "))
+					}
+				}
+				if !r.OK() {
+					bad++
+				}
+			}
+			if len(checks) > 1 {
+				fmt.Fprintf(w, "\n%d of %d clean\n", len(checks)-bad, len(checks))
+			}
+			if bad > 0 {
 				return errProblems{}
 			}
 			return nil
 		},
 	}
+	check.Flags().BoolVar(&ckDeep, "fields", false, "also compare every field the release sets with the object on the cluster, and say who has written it")
+	check.Flags().StringVar(&ckCluster, "cluster", "", "the cluster being checked, when reading a fleet repository")
+	check.Flags().StringVar(&ckOpts.Prefix, "prefix", "flux", "the prefix the plan used in ConfigHub")
+	check.Flags().StringVar(&ckOpts.ClustersDir, "clusters", "clusters", "the directory holding one directory per cluster")
+	check.Flags().StringVar(&ckOpts.RepoRoot, "repo-root", "", "the checkout Flux paths are relative to")
 	check.Flags().StringVar(&ckNS, "namespace", "flux-system", "the namespace the Kustomizations live in")
 	check.Flags().StringVar(&ckName, "kustomization", "", "the layer to read the inventory of")
 	check.Flags().StringVar(&ckSpace, "space", "", "the ConfigHub Space holding the variant")

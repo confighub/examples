@@ -11,8 +11,23 @@ It is deliberately two phases, because they carry very different risk:
 flowchart LR
   p["cub flux plan<br/>offline, no account"] --> a["apply.sh<br/>fills ConfigHub<br/>no cluster touched"]
   a --> h["handover.sh<br/>swaps each layer's source<br/>one cluster at a time"]
-  a -.->|"delete the Spaces<br/>and you are back"| p
+  a -.->|"cleanup.sh<br/>takes it back out"| p
 ```
+
+**Onboarding** fills ConfigHub while Flux carries on reconciling Git.
+Afterwards ConfigHub holds a complete parallel copy that nothing reads, and
+`cleanup.sh` — written beside `apply.sh` — takes it all back out. It is a
+script rather than a line in this guide for a reason: ConfigHub refuses to
+delete a Space while a Target, a worker, a Release or a Tag still references
+it, each refusal names only the first blocker, and a Space and its release
+Target reference each other. Finding that order took seven attempts; the script
+has it.
+
+**Handover** is the step that changes which source feeds your clusters, and it
+is not undone by deleting Spaces — a repointed layer whose Space is gone has no
+source at all, and with `prune: true` it empties itself. Put each layer's
+`sourceRef` back to its `GitRepository` first, which `cleanup.sh` checks before
+it does anything.
 
 You need `cub` logged in (`cub auth login`), `kustomize` on your PATH,
 `kubectl` access to each cluster, and the plugin:
@@ -196,16 +211,75 @@ it is always an explicit choice, and can be false. Where a layer sets
 `targetNamespace`, the check is told, so an object whose manifest names no
 namespace is matched where it actually lands rather than counted as missing.
 
+**You run it the way you ran `plan`.** `check` takes the same fleet directory
+and works the layers out for itself — there is no per-Kustomization flag to get
+right, and no list to keep in step with the repository:
+
+```bash
+cub flux check ./my-fleet --cluster prod-1
+```
+
+```text
+infrastructure: 12 objects match what the layer applied
+apps: 3 objects match what the layer applied
+2 of 2 clean
+```
+
+It exits non-zero if any layer is not clean, so it drops into CI as it is.
+`--kube-context` names the cluster to read; without it kubectl uses whatever
+context is current, which during a handover is very likely the wrong one.
+
 For charts, the plan reports what the Workshop Catalog has decided, per chart,
 version **and values base**. A `HelmRelease` pinned to a range is named rather
 than refused: the object is stored as it is, helm-controller goes on resolving
 it, and the handover does not change that. It would be fatal only if the chart
 were being flattened, which this does not do.
 
-**What none of this can see:** a hand edit to an object on the cluster. The
-object sets still match. `cub scout compare` reads Kubernetes `managedFields`
-and attributes each field path to whoever last wrote it, which is the tool for
-that question.
+## Three questions, not one: objects, identities, fields
+
+A handover is safe when swapping the source changes nothing. "Nothing" breaks
+into three questions, and each needs a different thing to be read.
+
+```mermaid
+flowchart TB
+  q1["**Same objects?**<br/>status.inventory vs the release"] --> a1["catches an object the release<br/>would add, or that Flux would prune"]
+  q2["**Same identities?**<br/>metadata.uid, before and after"] --> a2["catches a delete-and-recreate<br/>wearing the same name"]
+  q3["**Same values?**<br/>every field the release sets,<br/>vs the live object"] --> a3["catches a hand edit the object<br/>set cannot see"]
+```
+
+The object-set check is above. The third question is `--fields`:
+
+```bash
+cub flux check ./my-fleet --fields
+```
+
+For every object the release holds, it reads the live object and compares
+**only the fields the release sets**. That restriction is the whole design:
+Kubernetes fills in defaults a release never mentions and controllers own
+others, so comparing everything the cluster holds would report noise as drift.
+It is the same rule a reconciler applies.
+
+Each difference carries Kubernetes' own record of who has written that object.
+For a layer whose Deployment someone had scaled by hand, that reads:
+
+```text
+Deployment apptique-dev/frontend .spec.replicas: cluster has 4, the release
+holds 2 (written on this object by kubectl-scale, kustomize-controller)
+```
+
+`managedFields` is that record, and `kubectl get -o json` **strips it** unless
+asked — the plugin passes `--show-managed-fields`, without which attribution
+comes back silently empty. The managers are not ordered by time: kubectl leaves
+the timestamp off some writes, so naming a last writer would be a guess where a
+fact belongs.
+
+Flux's own drift detection can do this too, and where it is enabled it will
+correct a hand edit rather than report it. `--fields` answers a different
+question: not "does the cluster match Git" but "would the release I am about to
+hand this layer change anything", per field, before the source moves.
+
+`cub scout compare` remains the broader tool: it works across a fleet without a
+plan, and infers ownership where nothing declares it.
 
 ## The bootstrap stays
 
