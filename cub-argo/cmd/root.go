@@ -143,6 +143,7 @@ func newRoot() *cobra.Command {
 	apply.Flags().StringVar(&out, "out", "", "directory for the files and the scripts")
 
 	var checkNS, checkApp, checkSpace, checkUnit, checkDest, kubeContext string
+	var checkDeep bool
 	var checkJSON bool
 	check := &cobra.Command{
 		Use:   "check --application <name> --space <space> --unit <unit>",
@@ -166,6 +167,13 @@ func newRoot() *cobra.Command {
 				return err
 			}
 			cmp := argo.CompareInventory(live, held, checkDest)
+			var fields []argo.FieldDiff
+			if checkDeep {
+				fields, err = argo.CompareFields(argo.Run, checkDest, stored)
+				if err != nil {
+					return err
+				}
+			}
 			w := c.OutOrStdout()
 			argo.KubeContext = kubeContext
 			if checkJSON {
@@ -176,6 +184,17 @@ func newRoot() *cobra.Command {
 				}
 			} else {
 				fmt.Fprintf(w, "%s: %d objects match what Argo owns\n", checkApp, cmp.Same)
+				if checkDeep {
+					if len(fields) == 0 {
+						fmt.Fprintf(w, "  and every field the release sets already has that value on the cluster\n")
+					}
+					for _, d := range fields {
+						fmt.Fprintf(w, "  %s\n", d)
+						if h := argo.ByHand(d.Managers); len(h) > 0 {
+							fmt.Fprintf(w, "    %s has written this object, so this is likely a hand edit rather than the source moving on\n", strings.Join(h, ", "))
+						}
+					}
+				}
 				for _, l := range cmp.WouldPrune {
 					fmt.Fprintf(w, "  %s\n", l)
 				}
@@ -186,12 +205,13 @@ func newRoot() *cobra.Command {
 					fmt.Fprintf(w, "  note: %s\n", l)
 				}
 			}
-			if !cmp.OK() {
+			if !cmp.OK() || len(fields) > 0 {
 				return errProblems{}
 			}
 			return nil
 		},
 	}
+	check.Flags().BoolVar(&checkDeep, "fields", false, "also compare every field the release sets with the object on the cluster, and say who last wrote it")
 	check.Flags().StringVar(&checkNS, "namespace", "argocd", "the namespace Argo CD's Applications live in")
 	check.Flags().StringVar(&checkApp, "application", "", "the Application to read the owned objects of")
 	check.Flags().StringVar(&checkSpace, "space", "", "the ConfigHub Space holding the variant")

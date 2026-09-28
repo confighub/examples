@@ -106,6 +106,10 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 		add(`k -n "$ns" get application %s -o jsonpath='{.spec.source.repoURL}' | grep -q '^oci://' && echo %s || \`,
 			s.Parent, q(s.Parent+" already reads ConfigHub"))
 		add(`  k -n "$ns" patch application %s --type merge -p "{\"spec\":{\"source\":{\"repoURL\":\"oci://${addr}\",\"path\":\".\",\"targetRevision\":\"latest\"}}}"`, s.Parent)
+		add("# Argo caches the digest it resolved for a tag, so a repoint alone can")
+		add("# leave it serving the release it read before. A hard refresh re-resolves")
+		add("# the tag, and is what argobot issues on every release.published.")
+		add(`k -n "$ns" annotate application %s argocd.argoproj.io/refresh=hard --overwrite`, s.Parent)
 		add(`k -n "$ns" wait --for=jsonpath='{.status.sync.status}'=Synced application/%s --timeout=3m`, s.Parent)
 		step++
 	}
@@ -154,7 +158,7 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 					continue
 				}
 				add("same %s %s %s", q(v.Space), q(c.Name), q(v.Path))
-				add(`cub argo check ${ARGOCD_CONTEXT:+--kube-context "$ARGOCD_CONTEXT"} --namespace "$ns" --application %s --space %s --unit %s --destination-namespace %s`,
+				add(`cub argo check ${ARGOCD_CONTEXT:+--kube-context "$ARGOCD_CONTEXT"} --fields --namespace "$ns" --application %s --space %s --unit %s --destination-namespace %s`,
 					q(v.Application), q(v.Space), q(c.Name), q(v.Namespace))
 			}
 		}
