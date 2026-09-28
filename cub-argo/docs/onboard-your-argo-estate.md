@@ -194,6 +194,59 @@ not a gate, and cub-scout's absence is not a failure.
 deployed. Every step is a patch for exactly that reason. To go back, patch each
 source to its Git `repoURL` and path.
 
+## What the plugin checks for you, and what it cannot
+
+Three of these run on your behalf. The fourth is yours, and the plan says so
+rather than pretending otherwise.
+
+```mermaid
+flowchart TB
+  a["Does ConfigHub hold what the overlay renders?<br/>kustomize build vs cub unit data"] --> b["Does ConfigHub hold what Argo owns?<br/>Application.status.resources vs the release"]
+  b --> c["Has the Workshop Catalog decided about each chart?<br/>a verdict per chart, version and values base"]
+  c --> d["Do your values leave that verdict's scope?<br/>partly checkable, the rest is yours"]
+```
+
+**Would the swap change the cluster?** `cub argo check` reads
+`Application.status.resources` — Argo's own record of what it reconciles, not
+an inference from labels — and compares it with what the release holds. It names
+any object Argo owns that the release lacks, and says what would happen to it:
+
+```text
+prod-1-apptique: 3 objects match what Argo owns
+  ServiceAccount storefront-prod/frontend: Argo owns it and the release does
+  not hold it, and this Application prunes, so it would be DELETED from the cluster
+```
+
+Whether that reads DELETED or "left on the cluster, managed by nothing" comes
+from the Application's own `spec.syncPolicy.automated.prune`. `handover.sh`
+runs this for every variant before anything moves, passing the cluster's
+context so it reads the estate being handed over rather than whichever context
+happens to be current.
+
+**Has the chart been audited?** Where an overlay inflates a Helm chart, the
+plan reports what the Workshop Catalog has already decided about it — one
+verdict per chart, version **and values base**, because a verdict is not a
+property of a chart. The Catalog's own data makes the point: `cloudpirates/redis`
+0.34.11 is `unsafe-to-flatten` on its default base and `safe-to-flatten` on
+`reuse-existing-secret`, because the default leaves `auth.existingSecret` unset,
+so the Secret template renders, mints a password and fires a lookup.
+
+A chart the Catalog has not audited is reported as undecided, and a verdict for
+another version is reported as not carrying. Neither reads as safe.
+
+**Do your own values leave that verdict's scope?** Each verdict names the values
+changes that take a variant out of it. Where the scope names a path and you set
+it, the plan says the verdict does not carry. Much of the scope is written for a
+reader — "authentication or TLS enabled", "certificates supplied from outside
+the render" — and that part is handed back to you explicitly rather than passed
+over in silence.
+
+**What none of this can see:** whether anyone edited an object on the cluster by
+hand. The object sets still match, so the check passes. `cub scout compare` is
+the tool for that — it reads Kubernetes `managedFields` and attributes each
+field path to whoever last wrote it. `handover.sh` also asks cub-scout what no
+controller claims in your namespaces, which is a cross-check rather than a gate.
+
 ## Making a change afterwards
 
 ConfigHub now holds each app's base, so a change starts there. It is made once
@@ -258,12 +311,41 @@ label.
 
 ## What has and has not been checked
 
-Every render in the example's script was run here against kustomize 5.8.1, the
-Helm-in-Kustomize app included, and the plugin's tests keep each rendered path
-and each file the script reads honest. Both scripts are checked as valid bash.
+Nothing in this guide is claimed without something having run.
 
-**Not yet rehearsed on a cluster.** The hazards in `handover.sh` are read from
-manifests, not from watching it work, and the Argo repository Secret's type for
-a plain OCI source is marked in the script as the one field to verify first.
-`cub sveltos`'s equivalent was measured on kind before it was written up; this
-one should be too. Start with one non-production estate.
+**Checked here, offline:** every render in the example's script runs against
+kustomize 5.8.1 and gives the same bytes twice over. Both generated scripts are
+valid bash. `plan` reads every Argo example in this repository. One command,
+`scripts/verify-gitops-plugins.sh`, runs all of that and has twice caught
+defects nobody was looking for.
+
+**Checked on a live cluster:** `cub argo check` was run against Argo CD v3.5.3
+on kind, syncing this repository's `beginner-applicationset` example, with the
+render stored in ConfigHub. It reported four matching objects; with one object
+removed from the release it caught the difference and exited non-zero.
+
+That rehearsal found two bugs no test had:
+
+- The message said an object would be "left on the cluster, managed by nothing"
+  when the Application prunes and Argo would have **deleted** it. The code read
+  the per-resource `requiresPruning` flag, which describes what is out of sync
+  *now* — and with everything in sync it is absent on every entry, which is
+  exactly the state a handover is checked in. It reads
+  `spec.syncPolicy.automated.prune` instead.
+- The check read whichever kubectl context happened to be current. On a fleet
+  handed over cluster by cluster, it could have reported on one cluster while
+  another was being changed, and passed. It now takes `--kube-context`, and
+  `handover.sh` passes it.
+
+Every unit test passed throughout both bugs, because the fakes were written
+from the same wrong beliefs as the code.
+
+**Not yet run:** the handover itself. Every check in front of it has been
+exercised against a real cluster; repointing a live Application at ConfigHub
+has not. Until that is recorded, read `handover.sh` before running it, and
+start with one non-production estate.
+
+**Not claimed at all:** that a plain directory of manifests can be onboarded
+(`kustomize build` will not read one, though Argo will — the plan says so),
+that git, SCM-provider, pull-request, merge or plugin generators are resolved,
+or that an Application whose source is a Helm chart can be governed yet.

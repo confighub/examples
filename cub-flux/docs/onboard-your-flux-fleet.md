@@ -170,6 +170,43 @@ go into the bootstrap directory. That is the same shape `cub sveltos` uses: a
 small hand-managed bootstrap that names ConfigHub, and everything else flowing
 from ConfigHub.
 
+## What the plugin checks for you, and what it cannot
+
+```mermaid
+flowchart TB
+  a["Does ConfigHub hold what the layer renders?<br/>kustomize build vs cub unit data"] --> b["Does ConfigHub hold what the layer applied?<br/>status.inventory vs the release"]
+  b --> c["Has the Workshop Catalog decided about each chart?<br/>a verdict per chart, version and values base"]
+```
+
+The first reads Git on both sides, so it catches Git moving since `apply.sh`
+ran and nothing else. The second is the one that can see your cluster:
+`cub flux check` reads the Kustomization's `status.inventory` — the
+controller's own record of what it applied — and compares it with what the
+release holds.
+
+```text
+apps: 3 objects match what the layer applied
+  ServiceAccount apptique-dev/frontend: the layer applied it and the release
+  does not hold it, and this layer prunes, so Flux would DELETE it from the cluster
+```
+
+Whether that says DELETE or "left on the cluster, managed by nothing" comes
+from the layer's own `spec.prune`, which the Kustomization CRD **requires** — so
+it is always an explicit choice, and can be false. Where a layer sets
+`targetNamespace`, the check is told, so an object whose manifest names no
+namespace is matched where it actually lands rather than counted as missing.
+
+For charts, the plan reports what the Workshop Catalog has decided, per chart,
+version **and values base**. A `HelmRelease` pinned to a range is named rather
+than refused: the object is stored as it is, helm-controller goes on resolving
+it, and the handover does not change that. It would be fatal only if the chart
+were being flattened, which this does not do.
+
+**What none of this can see:** a hand edit to an object on the cluster. The
+object sets still match. `cub scout compare` reads Kubernetes `managedFields`
+and attributes each field path to whoever last wrote it, which is the tool for
+that question.
+
 ## The bootstrap stays
 
 `flux-system` is never repointed. It reconciles `gotk-components.yaml` — the
@@ -229,12 +266,32 @@ refusals come from the server.
 
 ## What has and has not been checked
 
-All fourteen renders in the example's script were run here against kustomize
-5.8.1. Both scripts are checked as valid bash, and tests keep the bootstrap
-untouched, the swap order in `dependsOn` order, and every rendered path honest.
+**Checked here, offline:** all fourteen renders in the example's script run
+against kustomize 5.8.1 and give the same bytes twice. Both generated scripts
+are valid bash. Tests keep the bootstrap untouched and the swap in `dependsOn`
+order. `scripts/verify-gitops-plugins.sh` runs the lot.
 
-**Not yet rehearsed on a cluster.** The hazards are read from manifests, not
-from watching it work. `cub sveltos`'s equivalent was measured on kind before
-it was written up — every Helm release at the revision it had, all 20 pods the
-same by UID — and this one should be too. Start with one non-production
-cluster, and read `handover.sh` before you run it.
+**Checked on a live cluster:** `cub flux check` was run against Flux v2.8.6 on
+kind, reconciling this repository's `flux/beginner` example from the public
+repo. The inventory ids arrived exactly as `<namespace>_<name>_<group>_<kind>`,
+with an empty namespace for the cluster-scoped `Namespace`. It reported four
+matching objects, and caught a deletion when the release held one fewer.
+
+That rehearsal found two bugs:
+
+- The check read whichever kubectl context was current. On a fleet handed over
+  one cluster at a time — which is how this works — it could have reported on
+  the wrong cluster and passed. It takes `--kube-context` now, and
+  `handover.sh` passes `$FLUX_CONTEXT`.
+- It assumed every layer prunes. `spec.prune` is required on the CRD, so a
+  layer can and does set it false, and then an object is left behind rather
+  than deleted. Those are different outcomes and are now said differently.
+
+**Not yet run:** the handover itself. Swapping a live `sourceRef` to an
+`OCIRepository` has not been recorded. Read `handover.sh` before running it,
+and start with one non-production cluster.
+
+**Not claimed at all:** live exports as input (`plan` reads a fleet
+repository), `OCIRepository` or `Bucket` sources as layer inputs,
+`substituteFrom` values, or rendering Helm charts — the `HelmRelease` is stored
+as it is and helm-controller goes on resolving it.
