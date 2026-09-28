@@ -87,6 +87,31 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 		}
 	}
 	add("")
+	add("# And the question the comparison above cannot reach: does what ConfigHub")
+	add("# would deliver equal what this layer has actually applied? Flux's own")
+	add("# status.inventory is the record. Every layer here prunes, so an object it")
+	add("# applied that the release does not hold is deleted the moment the source")
+	add("# is swapped, whether or not it was ever in Git.")
+	for _, c := range p.Components {
+		for _, st := range c.Stages {
+			for _, v := range st.Variants {
+				ns, _, _ := strings.Cut(v.Kustomization, "/")
+				name := v.Kustomization[strings.Index(v.Kustomization, "/")+1:]
+				add(`[ "$cluster" = %s ] && cub flux check --namespace %s --kustomization %s --space %s --unit %s`,
+					q(v.Cluster), q(ns), q(name), q(v.Space), q(c.Name))
+			}
+		}
+	}
+	add("")
+	add("# What no controller claims in this fleet, as a cross-check. cub-scout")
+	add("# infers ownership where the inventory is Flux's own record, so this is")
+	add("# not a gate: it finds what was applied by hand and would be left behind.")
+	add(`if cub scout --help >/dev/null 2>&1; then`)
+	add(`  cub scout map list -q "owner=Native" || true`)
+	add("else")
+	add(`  echo "  cub-scout is not installed; skipping the unclaimed-resource cross-check"`)
+	add("fi")
+	add("")
 
 	add(`step "2/4 Add the gateway to flux-system: the credential and one OCIRepository per layer"`)
 	add("# These cannot come from ConfigHub: a Kustomization cannot read a source that")

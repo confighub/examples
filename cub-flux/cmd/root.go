@@ -143,6 +143,55 @@ func newRoot() *cobra.Command {
 	apply.Flags().StringVar(&af.RepoRoot, "repo-root", "", "the checkout Flux paths are relative to")
 	apply.Flags().StringVar(&out, "out", "", "directory for the files and the scripts")
 
+	var ckNS, ckName, ckSpace, ckUnit, ckTarget string
+	var ckJSON bool
+	check := &cobra.Command{
+		Use:   "check --kustomization <name> --space <space> --unit <unit>",
+		Short: "Compare what a layer applied with what the release holds; changes nothing",
+		Args:  cobra.NoArgs,
+		RunE: func(c *cobra.Command, _ []string) error {
+			if ckName == "" || ckSpace == "" || ckUnit == "" {
+				return fmt.Errorf("check needs --kustomization, --space and --unit")
+			}
+			owned, err := flux.LiveInventory(flux.Run, ckNS, ckName)
+			if err != nil {
+				return err
+			}
+			data, err := flux.Run("cub", "unit", "data", "--space", ckSpace, ckUnit)
+			if err != nil {
+				return err
+			}
+			held, err := flux.ObjectsIn(data)
+			if err != nil {
+				return err
+			}
+			cmp := flux.CompareInventory(owned, held, ckTarget)
+			w := c.OutOrStdout()
+			if ckJSON {
+				enc := json.NewEncoder(w)
+				enc.SetIndent("", "  ")
+				if err := enc.Encode(cmp); err != nil {
+					return err
+				}
+			} else {
+				fmt.Fprintf(w, "%s: %d objects match what the layer applied\n", ckName, cmp.Same)
+				for _, l := range append(cmp.WouldPrune, cmp.WouldAdd...) {
+					fmt.Fprintf(w, "  %s\n", l)
+				}
+			}
+			if !cmp.OK() {
+				return errProblems{}
+			}
+			return nil
+		},
+	}
+	check.Flags().StringVar(&ckNS, "namespace", "flux-system", "the namespace the Kustomizations live in")
+	check.Flags().StringVar(&ckName, "kustomization", "", "the layer to read the inventory of")
+	check.Flags().StringVar(&ckSpace, "space", "", "the ConfigHub Space holding the variant")
+	check.Flags().StringVar(&ckUnit, "unit", "", "the unit in that Space")
+	check.Flags().StringVar(&ckTarget, "target-namespace", "", "the layer's targetNamespace, where objects without one land")
+	check.Flags().BoolVar(&ckJSON, "json", false, "print the comparison as JSON")
+
 	versionCmd := &cobra.Command{
 		Use:   "version",
 		Short: "Print the plugin version",
@@ -152,7 +201,7 @@ func newRoot() *cobra.Command {
 		},
 	}
 
-	root.AddCommand(plan, apply, versionCmd)
+	root.AddCommand(plan, apply, check, versionCmd)
 	return root
 }
 

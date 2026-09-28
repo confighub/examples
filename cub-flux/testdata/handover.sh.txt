@@ -66,6 +66,31 @@ same() {
 [ "$cluster" = 'prod-1' ] && same 'flux-tenants-prod-1' 'tenants' 'gitops/flux/expert-fleet/tenants/prod'
 [ "$cluster" = 'dev-1' ] && same 'flux-image-automation-dev-1' 'image-automation' 'gitops/flux/expert-fleet/image-automation'
 
+# And the question the comparison above cannot reach: does what ConfigHub
+# would deliver equal what this layer has actually applied? Flux's own
+# status.inventory is the record. Every layer here prunes, so an object it
+# applied that the release does not hold is deleted the moment the source
+# is swapped, whether or not it was ever in Git.
+[ "$cluster" = 'dev-1' ] && cub flux check --namespace 'flux-system' --kustomization 'infrastructure' --space 'flux-infrastructure-dev-1' --unit 'infrastructure'
+[ "$cluster" = 'staging-1' ] && cub flux check --namespace 'flux-system' --kustomization 'infrastructure' --space 'flux-infrastructure-staging-1' --unit 'infrastructure'
+[ "$cluster" = 'prod-1' ] && cub flux check --namespace 'flux-system' --kustomization 'infrastructure' --space 'flux-infrastructure-prod-1' --unit 'infrastructure'
+[ "$cluster" = 'dev-1' ] && cub flux check --namespace 'flux-system' --kustomization 'apps' --space 'flux-apps-dev-1' --unit 'apps'
+[ "$cluster" = 'staging-1' ] && cub flux check --namespace 'flux-system' --kustomization 'apps' --space 'flux-apps-staging-1' --unit 'apps'
+[ "$cluster" = 'prod-1' ] && cub flux check --namespace 'flux-system' --kustomization 'apps' --space 'flux-apps-prod-1' --unit 'apps'
+[ "$cluster" = 'dev-1' ] && cub flux check --namespace 'flux-system' --kustomization 'tenants' --space 'flux-tenants-dev-1' --unit 'tenants'
+[ "$cluster" = 'staging-1' ] && cub flux check --namespace 'flux-system' --kustomization 'tenants' --space 'flux-tenants-staging-1' --unit 'tenants'
+[ "$cluster" = 'prod-1' ] && cub flux check --namespace 'flux-system' --kustomization 'tenants' --space 'flux-tenants-prod-1' --unit 'tenants'
+[ "$cluster" = 'dev-1' ] && cub flux check --namespace 'flux-system' --kustomization 'image-automation' --space 'flux-image-automation-dev-1' --unit 'image-automation'
+
+# What no controller claims in this fleet, as a cross-check. cub-scout
+# infers ownership where the inventory is Flux's own record, so this is
+# not a gate: it finds what was applied by hand and would be left behind.
+if cub scout --help >/dev/null 2>&1; then
+  cub scout map list -q "owner=Native" || true
+else
+  echo "  cub-scout is not installed; skipping the unclaimed-resource cross-check"
+fi
+
 step "2/4 Add the gateway to flux-system: the credential and one OCIRepository per layer"
 # These cannot come from ConfigHub: a Kustomization cannot read a source that
 # does not exist yet. They are committed to the bootstrap directory, which is
