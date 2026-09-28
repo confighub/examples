@@ -306,3 +306,55 @@ func TestUnpinnedHelmReleaseIsNamedNotRefused(t *testing.T) {
 		t.Errorf("the note should say what would close it:\n%s", joined)
 	}
 }
+
+// A layer's targetNamespace is where an object whose manifest names no
+// namespace lands. Without it the check cannot tell such an object from one
+// the layer does not apply at all, and would report every one of them as both
+// deleted and added.
+func TestTargetNamespaceIsCarriedToTheCheck(t *testing.T) {
+	const dir = "../../../gitops/flux/beginner"
+	if _, err := os.Stat(dir); err != nil {
+		t.Skip("example not present")
+	}
+	in, err := Load(nil, []string{dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := Build(in, Options{RepoRoot: repoRoot(t)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]string{}
+	for _, c := range p.Components {
+		for _, st := range c.Stages {
+			for _, v := range st.Variants {
+				got[c.Name+"/"+v.Cluster] = v.TargetNamespace
+			}
+		}
+	}
+	if got["apps/dev"] != "apptique-dev" {
+		t.Errorf("apps on dev sets targetNamespace apptique-dev, got %q", got["apps/dev"])
+	}
+	if got["infrastructure/dev"] != "" {
+		t.Errorf("infrastructure sets none, got %q", got["infrastructure/dev"])
+	}
+
+	// And the handover has to pass it, or reading it was pointless.
+	dirOut := t.TempDir()
+	if _, err := WriteApply(p, "flux", dirOut); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(dirOut, "handover.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(data)
+	if !strings.Contains(s, "--target-namespace 'apptique-dev'") {
+		t.Error("handover.sh must pass --target-namespace for the apps layer")
+	}
+	for _, line := range strings.Split(s, "\n") {
+		if strings.Contains(line, "kustomization 'infrastructure'") && strings.Contains(line, "target-namespace") {
+			t.Errorf("infrastructure sets none, so the flag should be absent: %s", line)
+		}
+	}
+}

@@ -86,17 +86,21 @@ type Stage struct {
 // under its own name so Flux keeps its inventory, and what its overlay
 // changes from the base.
 type Variant struct {
-	Cluster       string            `json:"cluster"`
-	Space         string            `json:"space"`
-	Target        string            `json:"target"`
-	Kustomization string            `json:"kustomization"`
-	Path          string            `json:"path"`
-	Departures    []string          `json:"departures"`
-	Images        map[string]string `json:"images,omitempty"`
-	stage         string
-	layer         map[string]any
-	overlay       map[string]any
-	resourceDirs  []string
+	Cluster       string `json:"cluster"`
+	Space         string `json:"space"`
+	Target        string `json:"target"`
+	Kustomization string `json:"kustomization"`
+	Path          string `json:"path"`
+	// TargetNamespace is where the layer puts an object whose manifest names
+	// no namespace. Without it a check cannot tell one of those apart from an
+	// object the layer does not apply at all.
+	TargetNamespace string            `json:"targetNamespace,omitempty"`
+	Departures      []string          `json:"departures"`
+	Images          map[string]string `json:"images,omitempty"`
+	stage           string
+	layer           map[string]any
+	overlay         map[string]any
+	resourceDirs    []string
 }
 
 // Source is a Flux source and the branch each cluster reads it at.
@@ -355,13 +359,14 @@ func (b *builder) variant(c *Component, cl Cluster, d Doc) *Variant {
 	spec := obj(d.Value["spec"])
 	path := strings.TrimPrefix(filepath.ToSlash(filepath.Clean(str(spec["path"]))), "./")
 	v := &Variant{
-		Cluster:       cl.Name,
-		Space:         fmt.Sprintf("%s-%s-%s", b.opts.Prefix, c.Name, cl.Name),
-		Target:        fmt.Sprintf("%s-targets/%s", b.opts.Prefix, cl.Name),
-		Kustomization: str(get(d.Value, "metadata", "namespace")) + "/" + str(get(d.Value, "metadata", "name")),
-		Path:          path,
-		stage:         cl.Stage,
-		layer:         d.Value,
+		Cluster:         cl.Name,
+		Space:           fmt.Sprintf("%s-%s-%s", b.opts.Prefix, c.Name, cl.Name),
+		Target:          fmt.Sprintf("%s-targets/%s", b.opts.Prefix, cl.Name),
+		Kustomization:   str(get(d.Value, "metadata", "namespace")) + "/" + str(get(d.Value, "metadata", "name")),
+		Path:            path,
+		TargetNamespace: str(spec["targetNamespace"]),
+		stage:           cl.Stage,
+		layer:           d.Value,
 	}
 	local := filepath.Join(b.root, filepath.FromSlash(path))
 	if info, err := os.Stat(local); err != nil || !info.IsDir() {

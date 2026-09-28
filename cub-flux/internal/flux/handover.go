@@ -97,8 +97,12 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 			for _, v := range st.Variants {
 				ns, _, _ := strings.Cut(v.Kustomization, "/")
 				name := v.Kustomization[strings.Index(v.Kustomization, "/")+1:]
-				add(`[ "$cluster" = %s ] && cub flux check --namespace %s --kustomization %s --space %s --unit %s`,
-					q(v.Cluster), q(ns), q(name), q(v.Space), q(c.Name))
+				target := ""
+				if v.TargetNamespace != "" {
+					target = " --target-namespace " + q(v.TargetNamespace)
+				}
+				add(`[ "$cluster" = %s ] && cub flux check --namespace %s --kustomization %s --space %s --unit %s%s`,
+					q(v.Cluster), q(ns), q(name), q(v.Space), q(c.Name), target)
 			}
 		}
 	}
