@@ -100,6 +100,7 @@ Writes to Git by itself
   - ImageUpdateAutomation apptique-dev commits to branch main, path gitops/flux/expert-fleet/apps/dev, running on dev-1
 
 Not in Git
+  - which chart edge-router runs: HelmRelease edge-router pins it to "2.4.x", so helm-controller decides at reconcile time and what runs can change with no change in ConfigHub. Pin one exact version to close that, and to make a flattening verdict possible
   - what the HelmReleases in infrastructure render: the charts are pulled at reconcile time
   - apps: ${cluster_name}, ${environment}, supplied per cluster by postBuild
 

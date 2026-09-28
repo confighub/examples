@@ -288,3 +288,21 @@ func TestHandoverLeavesTheBootstrapAlone(t *testing.T) {
 		t.Error("infrastructure must be swapped before apps, which dependsOn it")
 	}
 }
+
+// A HelmRelease pinned to a range is a governance gap, not a reason to refuse
+// onboarding: the object is stored as it is, helm-controller goes on resolving
+// it, and the handover does not change that. It would be fatal only if the
+// chart were flattened, which needs one exact version.
+func TestUnpinnedHelmReleaseIsNamedNotRefused(t *testing.T) {
+	p := planOf(t, example, repoRoot(t))
+	if len(p.Problems) > 0 {
+		t.Errorf("the example pins edge-router to 2.4.x and must still onboard: %v", p.Problems)
+	}
+	joined := strings.Join(p.NotInGit, "\n")
+	if !strings.Contains(joined, "edge-router") || !strings.Contains(joined, "2.4.x") {
+		t.Errorf("the range should be named under what is not in Git:\n%s", joined)
+	}
+	if !strings.Contains(joined, "Pin one exact version") {
+		t.Errorf("the note should say what would close it:\n%s", joined)
+	}
+}

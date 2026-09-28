@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/confighub/examples/cub-flux/internal/catalog"
 )
 
 // Options shape the plan.
@@ -604,8 +606,27 @@ func (b *builder) helmReleases(c *Component) []string {
 			continue
 		}
 		spec := obj(get(d.Value, "spec", "chart", "spec"))
+		chart, version := str(spec["chart"]), str(spec["version"])
 		out = append(out, fmt.Sprintf("%s: chart %s %s from %s %s", str(get(d.Value, "metadata", "name")),
-			str(spec["chart"]), str(spec["version"]), str(get(spec, "sourceRef", "kind")), str(get(spec, "sourceRef", "name"))))
+			chart, version, str(get(spec, "sourceRef", "kind")), str(get(spec, "sourceRef", "name"))))
+
+		// A range is not a problem to fix before onboarding: the HelmRelease is
+		// stored as it is, helm-controller goes on resolving it, and the
+		// handover does not change that. It is a governance gap worth naming,
+		// because what runs can change with nothing changing in ConfigHub. It
+		// would be fatal only if this chart were flattened, which needs one
+		// exact version, and that is why no verdict can be looked up for it.
+		if version == "" || strings.ContainsAny(version, "x*^~><= ") {
+			b.plan.NotInGit = appendOnce(b.plan.NotInGit, fmt.Sprintf(
+				"which chart %s runs: HelmRelease %s pins it to %q, so helm-controller decides at reconcile time and what runs can change with no change in ConfigHub. Pin one exact version to close that, and to make a flattening verdict possible",
+				chart, str(get(d.Value, "metadata", "name")), version))
+			continue
+		}
+		// What the Workshop Catalog has already decided about this chart, per
+		// audited values base.
+		for _, line := range catalog.Describe(chart, version) {
+			b.plan.NotInGit = appendOnce(b.plan.NotInGit, line)
+		}
 	}
 	sort.Strings(out)
 	if len(out) > 0 {
