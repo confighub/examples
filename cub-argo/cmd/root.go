@@ -152,7 +152,7 @@ func newRoot() *cobra.Command {
 			if checkApp == "" || checkSpace == "" || checkUnit == "" {
 				return fmt.Errorf("check needs --application, --space and --unit")
 			}
-			owned, err := argo.LiveInventory(argo.Run, checkNS, checkApp)
+			live, err := argo.LiveInventory(argo.Run, checkNS, checkApp)
 			if err != nil {
 				return err
 			}
@@ -164,7 +164,7 @@ func newRoot() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			cmp := argo.CompareInventory(owned, held, checkDest)
+			cmp := argo.CompareInventory(live, held, checkDest)
 			w := c.OutOrStdout()
 			if checkJSON {
 				enc := json.NewEncoder(w)

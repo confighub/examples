@@ -19,7 +19,7 @@ func fake(out map[string]string) Runner {
 	}
 }
 
-const appStatus = `{"status":{"resources":[
+const appStatus = `{"spec":{"syncPolicy":{"automated":{"prune":true}}},"status":{"resources":[
  {"group":"apps","kind":"Deployment","namespace":"storefront-prod","name":"frontend","requiresPruning":true},
  {"group":"","kind":"Service","namespace":"storefront-prod","name":"frontend","requiresPruning":true},
  {"group":"","kind":"ConfigMap","namespace":"storefront-prod","name":"legacy-tuning","requiresPruning":true},
@@ -30,7 +30,7 @@ const appStatus = `{"status":{"resources":[
 // added to the cluster through an earlier Git state. Argo prunes, so moving
 // the source would delete it. This is what a render-side check cannot see.
 func TestInventoryFindsWhatWouldBePruned(t *testing.T) {
-	owned, err := LiveInventory(fake(map[string]string{"get application": appStatus}), "argocd", "prod-1-apptique")
+	live, err := LiveInventory(fake(map[string]string{"get application": appStatus}), "argocd", "prod-1-apptique")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +46,7 @@ metadata: {name: frontend, namespace: storefront-prod}
 	if err != nil {
 		t.Fatal(err)
 	}
-	c := CompareInventory(owned, stored, "storefront-prod")
+	c := CompareInventory(live, stored, "storefront-prod")
 	if c.OK() {
 		t.Fatal("the ConfigMap would be deleted; the comparison should not pass")
 	}
@@ -65,7 +65,7 @@ metadata: {name: frontend, namespace: storefront-prod}
 // An object the release holds that Argo does not own would appear on the
 // cluster. That is a change too, and the handover should say so first.
 func TestInventoryFindsWhatWouldBeAdded(t *testing.T) {
-	owned, err := LiveInventory(fake(map[string]string{"get application": appStatus}), "argocd", "a")
+	live, err := LiveInventory(fake(map[string]string{"get application": appStatus}), "argocd", "a")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,7 +89,7 @@ metadata: {name: frontend, namespace: storefront-prod}
 	if err != nil {
 		t.Fatal(err)
 	}
-	c := CompareInventory(owned, stored, "storefront-prod")
+	c := CompareInventory(live, stored, "storefront-prod")
 	if len(c.WouldPrune) != 0 {
 		t.Errorf("everything Argo owns is held now, got %v", c.WouldPrune)
 	}
@@ -101,7 +101,7 @@ metadata: {name: frontend, namespace: storefront-prod}
 // A rendered object with no namespace lands in the Application's destination,
 // which is where Argo reports it.
 func TestNamespaceFromTheDestination(t *testing.T) {
-	owned, err := LiveInventory(fake(map[string]string{"get application": appStatus}), "argocd", "a")
+	live, err := LiveInventory(fake(map[string]string{"get application": appStatus}), "argocd", "a")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +121,7 @@ metadata: {name: legacy-tuning}
 	if err != nil {
 		t.Fatal(err)
 	}
-	c := CompareInventory(owned, stored, "storefront-prod")
+	c := CompareInventory(live, stored, "storefront-prod")
 	if !c.OK() {
 		t.Errorf("all three match once the destination namespace is applied: %+v", c)
 	}
@@ -136,5 +136,28 @@ func TestEmptyInventoryIsRefused(t *testing.T) {
 	_, err := LiveInventory(fake(map[string]string{"get application": `{"status":{}}`}), "argocd", "a")
 	if err == nil || !strings.Contains(err.Error(), "owning nothing") {
 		t.Errorf("an empty inventory should be refused, got %v", err)
+	}
+}
+
+// An Application that does not prune leaves an object it owns behind rather
+// than deleting it. The two are different enough to say differently, and the
+// per-resource requiresPruning flag cannot tell them apart: it describes what
+// is out of sync today, and is absent while everything is in sync.
+func TestPruneComesFromTheSyncPolicy(t *testing.T) {
+	const noPrune = `{"spec":{"syncPolicy":{"automated":{"prune":false}}},"status":{"resources":[
+	 {"group":"","kind":"ConfigMap","namespace":"n","name":"left-behind"}]}}`
+	live, err := LiveInventory(fake(map[string]string{"get application": noPrune}), "argocd", "a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if live.Prunes {
+		t.Error("this Application does not prune")
+	}
+	c := CompareInventory(live, nil, "n")
+	if len(c.WouldPrune) != 1 || strings.Contains(c.WouldPrune[0], "DELETED") {
+		t.Errorf("without prune the object is left behind, not deleted: %v", c.WouldPrune)
+	}
+	if !strings.Contains(c.WouldPrune[0], "managed by nothing") {
+		t.Errorf("want the consequence named, got %v", c.WouldPrune)
 	}
 }

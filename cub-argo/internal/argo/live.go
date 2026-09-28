@@ -56,15 +56,32 @@ func (o Owned) String() string {
 	return o.Kind + " " + o.Namespace + "/" + o.Name
 }
 
+// Live is what Argo CD says about an Application right now.
+type Live struct {
+	Owned []Owned
+	// Prunes is spec.syncPolicy.automated.prune. It decides what happens to an
+	// object Argo owns that a new source does not hold, so it is the signal a
+	// handover turns on. The per-resource requiresPruning flag describes the
+	// state today, where nothing is out of sync, and is absent in that case.
+	Prunes bool
+}
+
 // LiveInventory reads what Argo CD says an Application owns right now. This is
 // the Application's own record, not an inference from labels: status.resources
-// is what Argo will reconcile and, where it prunes, what it would delete.
-func LiveInventory(run Runner, namespace, app string) ([]Owned, error) {
+// is what Argo will reconcile.
+func LiveInventory(run Runner, namespace, app string) (Live, error) {
 	out, err := run("kubectl", "-n", namespace, "get", "application", app, "-o", "json")
 	if err != nil {
-		return nil, fmt.Errorf("reading what Argo says %s owns: %w", app, err)
+		return Live{}, fmt.Errorf("reading what Argo says %s owns: %w", app, err)
 	}
 	var a struct {
+		Spec struct {
+			SyncPolicy struct {
+				Automated *struct {
+					Prune bool `json:"prune"`
+				} `json:"automated"`
+			} `json:"syncPolicy"`
+		} `json:"spec"`
 		Status struct {
 			Resources []struct {
 				Group           string `json:"group"`
@@ -77,16 +94,16 @@ func LiveInventory(run Runner, namespace, app string) ([]Owned, error) {
 		} `json:"status"`
 	}
 	if err := json.Unmarshal(out, &a); err != nil {
-		return nil, fmt.Errorf("reading Application %s: %w", app, err)
+		return Live{}, fmt.Errorf("reading Application %s: %w", app, err)
 	}
 	if len(a.Status.Resources) == 0 {
-		return nil, fmt.Errorf("Application %s reports owning nothing. It may not have synced yet; a handover cannot be checked against an empty inventory", app)
+		return Live{}, fmt.Errorf("Application %s reports owning nothing. It may not have synced yet; a handover cannot be checked against an empty inventory", app)
 	}
-	var out2 []Owned
+	l := Live{Prunes: a.Spec.SyncPolicy.Automated != nil && a.Spec.SyncPolicy.Automated.Prune}
 	for _, r := range a.Status.Resources {
-		out2 = append(out2, Owned{Group: r.Group, Kind: r.Kind, Namespace: r.Namespace, Name: r.Name, Hook: r.Hook, Pruning: r.RequiresPruning})
+		l.Owned = append(l.Owned, Owned{Group: r.Group, Kind: r.Kind, Namespace: r.Namespace, Name: r.Name, Hook: r.Hook, Pruning: r.RequiresPruning})
 	}
-	return out2, nil
+	return l, nil
 }
 
 // ObjectsIn reads the object set out of rendered YAML: what a release would
@@ -143,7 +160,8 @@ func (c InventoryComparison) OK() bool { return len(c.WouldPrune) == 0 && len(c.
 // holds. A namespace the release leaves to the destination matches an object
 // the controller reports in that destination namespace, because that is where
 // it landed.
-func CompareInventory(owned, stored []Owned, destNamespace string) InventoryComparison {
+func CompareInventory(live Live, stored []Owned, destNamespace string) InventoryComparison {
+	owned := live.Owned
 	var c InventoryComparison
 
 	// One stored object can be found under two keys: as written, and with the
@@ -171,8 +189,8 @@ func CompareInventory(owned, stored []Owned, destNamespace string) InventoryComp
 			continue
 		}
 		what := "so it would be left on the cluster, managed by nothing"
-		if o.Pruning {
-			what = "and Argo prunes it, so it would be DELETED from the cluster"
+		if live.Prunes || o.Pruning {
+			what = "and this Application prunes, so it would be DELETED from the cluster"
 		}
 		c.WouldPrune = append(c.WouldPrune, fmt.Sprintf("%s: Argo owns it and the release does not hold it, %s", o, what))
 	}
