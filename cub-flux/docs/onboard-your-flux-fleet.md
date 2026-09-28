@@ -17,11 +17,10 @@ flowchart LR
 **Onboarding** fills ConfigHub while Flux carries on reconciling Git.
 Afterwards ConfigHub holds a complete parallel copy that nothing reads, and
 `cleanup.sh` — written beside `apply.sh` — takes it all back out. It is a
-script rather than a line in this guide for a reason: ConfigHub refuses to
-delete a Space while a Target, a worker, a Release or a Tag still references
-it, each refusal names only the first blocker, and a Space and its release
-Target reference each other. Finding that order took seven attempts; the script
-has it.
+script rather than a line in this guide because the order is not guessable: a
+variant's Release points at a Tag in its base Space, so the variants have to go
+before the bases they were promoted from. Each Space then goes in one
+`cub space delete --recursive --detach`, which takes its contents with it.
 
 **Handover** is the step that changes which source feeds your clusters, and it
 is not undone by deleting Spaces — a repointed layer whose Space is gone has no
@@ -179,6 +178,27 @@ hold is **deleted** the moment the source is swapped — whether or not it was
 ever in Git. Only this question can see it, and the script stops rather than
 pruning.
 
+**The swap moves two fields, not one.** `sourceRef` is the obvious one. `path`
+is the one that costs an afternoon: it is a path *inside the artifact*, and the
+two kinds of artifact are shaped differently.
+
+```mermaid
+flowchart LR
+  subgraph g["GitRepository artifact = the repository tree"]
+    g1["gitops/flux/beginner/apps/dev/<br/>kustomization.yaml"]
+  end
+  subgraph o["OCIRepository artifact = the rendered manifests"]
+    o1["./<br/>the objects themselves"]
+  end
+  g -->|"sourceRef: GitRepository to OCIRepository<br/>path: ./gitops/.../apps/dev to ./"| o
+```
+
+Change only `sourceRef` and Flux looks for the old Git path inside the new
+artifact, finds nothing, and reports `kustomization path not found`. The same
+is true going back: restoring `sourceRef` while leaving `path: ./` is a worse
+place than where you started, which is why `handover.sh` prints both fields for
+the way back.
+
 **Step 2 has to come from Git.** A `Kustomization` cannot read a source that
 does not exist yet, so the gateway credential and the `OCIRepository` objects
 go into the bootstrap directory. That is the same shape `cub sveltos` uses: a
@@ -264,7 +284,8 @@ For a layer whose Deployment someone had scaled by hand, that reads:
 
 ```text
 Deployment apptique-dev/frontend .spec.replicas: cluster has 4, the release
-holds 2 (written on this object by kubectl-scale, kustomize-controller)
+holds 1 (written on this object by kube-controller-manager, kustomize-controller, kubectl)
+  kubectl has written this object, so this is likely a hand edit rather than the source moving on
 ```
 
 `managedFields` is that record, and `kubectl get -o json` **strips it** unless
@@ -273,8 +294,10 @@ comes back silently empty. The managers are not ordered by time: kubectl leaves
 the timestamp off some writes, so naming a last writer would be a guess where a
 fact belongs.
 
-Flux's own drift detection can do this too, and where it is enabled it will
-correct a hand edit rather than report it. `--fields` answers a different
+`kustomize-controller` writes with server-side Apply, so it owns the fields it
+sets and the record above is precise about who owns what. Flux's own drift
+detection then corrects a hand edit rather than reporting it: measured, the
+scale above was put back on the next reconcile. `--fields` answers a different
 question: not "does the cluster match Git" but "would the release I am about to
 hand this layer change anything", per field, before the source moves.
 
@@ -361,9 +384,60 @@ That rehearsal found two bugs:
   layer can and does set it false, and then an object is left behind rather
   than deleted. Those are different outcomes and are now said differently.
 
-**Not yet run:** the handover itself. Swapping a live `sourceRef` to an
-`OCIRepository` has not been recorded. Read `handover.sh` before running it,
-and start with one non-production cluster.
+**The handover has now been run, end to end.** Flux v2.8.6 on a kind cluster,
+reconciling this repository's `flux/beginner` example from GitHub, handed over
+to a self-hosted ConfigHub v0.6.2 and then handed back.
+
+What was verified afterwards:
+
+| Question | Answer |
+| --- | --- |
+| Same objects? | `status.inventory` identical, all four entries |
+| Same identities? | every UID unchanged, **including the Pod's** |
+| Same workload? | `deployment.kubernetes.io/revision` still 1, so no rollout |
+| Right content? | the digest Flux stored equals the release digest ConfigHub published, byte for byte |
+| Still clean? | `cub flux check --fields` reports 2 of 2 clean from the new source |
+
+That rehearsal found five bugs, none of which reading the code would have
+found:
+
+- **`spec.path` was left pointing into the Git tree.** A path is relative to
+  the artifact, and a Git artifact is the repository while a ConfigHub artifact
+  is the rendered manifests at its root. Flux reported
+  `kustomization path not found: stat /tmp/kustomization-.../<git path>`, which
+  reads as a missing directory rather than as the one field the swap forgot.
+  The patch now sets `path: ./` with the `sourceRef`.
+- **The credential was the wrong kind of Secret.** An `OCIRepository` reads its
+  `secretRef` as a `kubernetes.io/dockerconfigjson`. A generic Secret holding
+  `username` and `password` — which is what a `GitRepository` takes — fails
+  with `failed to determine artifact digest: ... 401 Unauthorized`, naming the
+  registry, so it reads like a bad password.
+- **The `OCIRepository` URL had no repository path.** The gateway serves one
+  repository per Space, at `/space/<space>`, and a layer's Space differs per
+  cluster. The script now resolves the variant Space for the cluster being
+  handed over.
+- **The rollback advice was incomplete.** "Patch each `sourceRef` back" would
+  have left `path: ./` in place, which finds no kustomization — a worse place
+  than where you started. The script now prints both fields, per layer, with
+  the real values.
+- **`cleanup.sh` deleted nothing at all.** Its seven-step order was measured
+  against ConfigHub v0.5.1, and v0.6.2 has Attestations, which it did not know
+  to remove. It is now one `cub space delete --recursive --detach` per Space,
+  which cannot fall behind a new entity type the same way.
+
+**A published release arrives on its own.** This is where Flux and Argo CD
+differ, and it is worth knowing before you choose how to operate either. A
+release published to ConfigHub at 17:16:22 was picked up by the
+`OCIRepository` at 17:16:31 — nine seconds, on its own one-minute interval —
+and applied to the cluster by 17:17:15. No annotation, no forced
+reconciliation. Argo CD caches the digest it resolved for a tag and needs a
+hard refresh; Flux re-resolves it.
+
+**Flux corrects a hand edit itself.** A `kubectl scale` to 4 replicas was put
+back to 1 on the next reconcile. `--fields` caught it in the window before
+that, and named `kubectl` among the managers — recorded against the `scale`
+subresource, with no timestamp, which is why the managers are reported
+unordered.
 
 **Not claimed at all:** live exports as input (`plan` reads a fleet
 repository), `OCIRepository` or `Bucket` sources as layer inputs,

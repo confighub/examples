@@ -25,8 +25,10 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("# no workload is recreated. It goes top down, because a parent pointed at a")
 	add("# Space that holds nothing prunes the children it applied.")
 	add("#")
-	add("# This has not been rehearsed on a cluster. Read every step before running")
-	add("# it, and start with one non-production estate.")
+	add("# Rehearsed on Argo CD v3.5.3: a repoint preserved every UID, including the")
+	add("# Pod's, with the rollout revision unchanged. Your estate is not that one.")
+	add("# Read every step before running it, and start with one non-production")
+	add("# estate.")
 	add("set -euo pipefail")
 	add(`cd "$(dirname "$0")"`)
 	add(`k() { kubectl ${ARGOCD_CONTEXT:+--context "$ARGOCD_CONTEXT"} "$@"; }`)
@@ -43,7 +45,10 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("")
 
 	add(`step "0/5 Check before changing anything"`)
-	add(`cub space list --quiet >/dev/null || { echo "cub is not logged in: run cub auth login"; exit 1; }`)
+	// cub auth status, not a list call: a list goes through the entity API and
+	// fails on a client/server version skew while the session is fine. See the
+	// note in ApplyScript.
+	add(`cub auth status >/dev/null 2>&1 || { echo "cub is not logged in: run cub auth login"; exit 1; }`)
 	add(`image=$(k get deployment argocd-repo-server -n "$ns" -o jsonpath='{.spec.template.spec.containers[0].image}')`)
 	add(`version=${image##*:}; version=${version#v}`)
 	add(`if [ "$(printf '%%s\n' 3.1 "${version%%.*}.${version#*.}" | sort -V | head -1)" != 3.1 ]; then`)

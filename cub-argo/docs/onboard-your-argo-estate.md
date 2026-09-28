@@ -17,10 +17,10 @@ flowchart LR
 **Onboarding** fills ConfigHub while Argo carries on syncing Git. Afterwards
 ConfigHub holds a complete parallel copy that nothing reads, and `cleanup.sh`
 — written beside `apply.sh` — takes it all back out. It is a script rather than
-a line in this guide for a reason: ConfigHub refuses to delete a Space while a
-Target, a worker, a Release or a Tag still references it, each refusal names
-only the first blocker, and a Space and its release Target reference each
-other. Finding that order took seven attempts; the script has it.
+a line in this guide because the order is not guessable: a variant's Release
+points at a Tag in its base Space, so the variants have to go before the bases
+they were promoted from. Each Space then goes in one
+`cub space delete --recursive --detach`.
 
 **Handover** is the step that changes which source feeds your clusters, and it
 is not undone by deleting Spaces — put each Application's source back to Git

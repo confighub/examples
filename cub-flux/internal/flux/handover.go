@@ -29,8 +29,10 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("# Run apply.sh first. Each layer keeps its Kustomization, its name and its")
 	add("# inventory; only the source changes, so nothing is reinstalled.")
 	add("#")
-	add("# This has not been rehearsed on a cluster. Read every step before running")
-	add("# it, and start with one non-production cluster.")
+	add("# Rehearsed end to end on Flux v2.8.6 against ConfigHub v0.6.2: every UID")
+	add("# survived, including the Pod's, and the rollout revision did not change.")
+	add("# Your fleet is not that one. Read every step before running it, and start")
+	add("# with one non-production cluster.")
 	add("set -euo pipefail")
 	add(`cd "$(dirname "$0")"`)
 	add(`k() { kubectl ${FLUX_CONTEXT:+--context "$FLUX_CONTEXT"} "$@"; }`)
@@ -43,7 +45,10 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("")
 
 	add(`step "0/4 Check before changing anything"`)
-	add(`cub space list --quiet >/dev/null || { echo "cub is not logged in: run cub auth login"; exit 1; }`)
+	// cub auth status, not a list call: a list goes through the entity API and
+	// fails on a client/server version skew while the session is fine. See the
+	// note in ApplyScript.
+	add(`cub auth status >/dev/null 2>&1 || { echo "cub is not logged in: run cub auth login"; exit 1; }`)
 	add(`k get namespace "$ns" >/dev/null || { echo "no $ns namespace: is this the right cluster?"; exit 1; }`)
 	add("# flux-system reconciles the Flux controllers themselves. It is the way back")
 	add("# if anything here goes wrong, so it stays on Git and is never repointed.")
@@ -123,20 +128,48 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("# the one part of this fleet that stays on Git.")
 	add(`addr=${CONFIGHUB_OCI:-}`)
 	add(`if [ -z "$addr" ]; then`)
-	add(`  echo "Find the gateway address with: cub target get --space %s $cluster"`, targets)
-	add(`  echo "then re-run with CONFIGHUB_OCI=<address> CLUSTER=$cluster bash handover.sh"; exit 1`)
+	// The Target does not carry the gateway's host: apply.sh creates it with
+	// empty parameters, and cub reports none. So this asks rather than guessing,
+	// and says where the answer comes from for both kinds of installation.
+	add(`  echo "Set CONFIGHUB_OCI to the gateway host this cluster reaches, without a scheme."`)
+	add(`  echo "  ConfigHub cloud:  oci.hub.confighub.com"`)
+	add(`  echo "  self-hosted:      the host and port of the confighub-oci-server service,"`)
+	add(`  echo "                    as reachable FROM this cluster, not from your laptop."`)
+	add(`  echo "Then: CONFIGHUB_OCI=<host> CLUSTER=$cluster bash handover.sh"; exit 1`)
 	add("fi")
-	add("# The ID and secret go from cub into the Secret through file descriptors,")
-	add("# never to disk, the command line, or the terminal.")
-	add(`k create secret generic confighub-%s --namespace "$ns" \`, targets)
-	add(`  --from-file=username=<(cub worker get --space %s server-worker -o jq=.BridgeWorker.BridgeWorkerID | tr -d '\n') \`, targets)
-	add(`  --from-file=password=<(cub worker get --space %s server-worker --include-secret -o jq=.BridgeWorker.Secret | tr -d '\n') \`, targets)
+	// A docker-registry Secret, not a generic one. Measured against Flux
+	// v2.8.6: an OCIRepository reads its secretRef as a dockerconfigjson, and
+	// an Opaque Secret carrying username and password -- which is what a
+	// GitRepository takes -- leaves it failing with
+	//   failed to determine artifact digest: ... 401 Unauthorized
+	// while the very same credentials work by hand. The error names the
+	// registry, so it reads like a bad password rather than a wrong Secret
+	// shape, which is what makes this worth a comment.
+	add("# The ID and secret go from cub into the Secret through command substitution")
+	add("# and are never written to disk. --dry-run | apply keeps this re-runnable.")
+	add(`k create secret docker-registry confighub-%s --namespace "$ns" \`, targets)
+	add(`  --docker-server="$addr" \`)
+	add(`  --docker-username="$(cub worker get --space %s server-worker -o jq=.BridgeWorker.BridgeWorkerID | tr -d '\"\n')" \`, targets)
+	add(`  --docker-password="$(cub worker get --space %s server-worker --include-secret -o jq=.BridgeWorker.Secret | tr -d '\"\n')" \`, targets)
 	add(`  --dry-run=client -o yaml | k apply -f -`)
 	add("")
 	add("# One OCIRepository per layer, each reading that layer's release for this")
 	add("# cluster. Commit these to the bootstrap directory so flux-system keeps them.")
 	add(`mkdir -p bootstrap`)
+	// The gateway serves one repository per Space, at /space/<space>. A layer's
+	// Space differs per cluster, so each OCIRepository has to name the variant
+	// Space for the cluster this run is handing over -- an address without it
+	// is not a repository the gateway has, and the layer never becomes Ready.
 	for _, c := range p.Components {
+		v := shellName(c.Name)
+		add(`case "$cluster" in`)
+		for _, st := range c.Stages {
+			for _, va := range st.Variants {
+				add(`  %s) space_%s='%s' ;;`, va.Cluster, v, va.Space)
+			}
+		}
+		add(`  *) echo "no %s variant for cluster $cluster"; exit 1 ;;`, c.Name)
+		add(`esac`)
 		add(`cat > bootstrap/ocirepository-%s.yaml <<YAML`, c.Name)
 		add("apiVersion: source.toolkit.fluxcd.io/v1")
 		add("kind: OCIRepository")
@@ -145,7 +178,7 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 		add(`  namespace: ${ns}`)
 		add("spec:")
 		add("  interval: 1m")
-		add(`  url: oci://${addr}`)
+		add(`  url: oci://${addr}/space/${space_%s}`, v)
 		add("  ref:")
 		add("    tag: latest")
 		add("  secretRef:")
@@ -162,7 +195,14 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	for _, step := range p.Order {
 		for _, name := range step {
 			add(`echo "-- %s"`, name)
-			add(`k -n "$ns" patch kustomization %s --type merge -p '{"spec":{"sourceRef":{"kind":"OCIRepository","name":"%s"}}}'`, name, name)
+			// spec.path moves with the source. It is a path inside the
+			// artifact, and a Git artifact is the repository tree while a
+			// ConfigHub artifact is the rendered manifests at its root. Leaving
+			// the Git path behind fails with, measured on Flux v2.8.6:
+			//   kustomization path not found: stat /tmp/kustomization-.../<git path>
+			// which reads as a missing directory rather than as the one field
+			// the swap forgot, and the layer never becomes Ready.
+			add(`k -n "$ns" patch kustomization %s --type merge -p '{"spec":{"sourceRef":{"kind":"OCIRepository","name":"%s"},"path":"./"}}'`, name, name)
 			add(`k -n "$ns" wait --for=condition=Ready kustomization/%s --timeout=5m`, name)
 		}
 	}
@@ -196,7 +236,30 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("echo")
 	add("echo %s", q("Done once every layer is Ready from an OCIRepository:"))
 	add("echo %s", q("  kubectl -n $ns get kustomizations -o custom-columns=NAME:.metadata.name,SOURCE:.spec.sourceRef.kind,READY:.status.conditions[0].status"))
-	add("echo %s", q("Nothing was deleted. To go back, patch each sourceRef to the fleet GitRepository."))
+	// The way back restores two fields, not one. Saying only "sourceRef" here
+	// would leave a reader with a layer pointing at Git and a path of "./",
+	// which finds no kustomization and is a worse place than they started.
+	add("echo %s", q("Nothing was deleted. To go back, restore BOTH fields on each layer:"))
+	src := "<your GitRepository>"
+	if len(p.Sources) > 0 {
+		src = p.Sources[0].Name
+	}
+	for _, c := range p.Components {
+		for _, st := range c.Stages {
+			for _, v := range st.Variants {
+				ns, name := "flux-system", v.Kustomization
+				if i := strings.Index(name, "/"); i >= 0 {
+					ns, name = name[:i], name[i+1:]
+				}
+				add(`[ "$cluster" = %s ] && echo %s`, v.Cluster,
+					q(fmt.Sprintf(`  kubectl -n %s patch kustomization %s --type merge -p '{"spec":{"sourceRef":{"kind":"GitRepository","name":"%s"},"path":"%s"}}'`,
+						ns, name, src, v.Path)))
+			}
+		}
+	}
+	// The last command decides the script's exit status, and a [ ] that is
+	// false would make a wholly successful handover exit 1.
+	add("true")
 	return strings.Join(L, "\n") + "\n"
 }
 
@@ -213,4 +276,15 @@ func repoRelOr(rel string) string {
 		return "."
 	}
 	return rel
+}
+
+// shellName is a component name usable as a shell variable. Component names
+// carry hyphens; shell variable names cannot.
+func shellName(s string) string {
+	return strings.Map(func(r rune) rune {
+		if r == '-' || r == '.' || r == '/' {
+			return '_'
+		}
+		return r
+	}, s)
 }
