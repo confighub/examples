@@ -144,15 +144,25 @@ applied, and nothing is recreated.
 
 ```mermaid
 flowchart LR
-  s1["1 · prove each layer<br/>holds what Git renders"] --> s2["2 · add the gateway<br/>credential and one<br/>OCIRepository per layer<br/>to flux-system"]
+  s1["1 · check against Git<br/>and against what the<br/>layer actually applied"] --> s2["2 · add the gateway<br/>credential and one<br/>OCIRepository per layer<br/>to flux-system"]
   s2 --> s3["3 · swap each sourceRef<br/>in dependsOn order"]
   s3 --> s4["4 · suspend image automation<br/>and say what is left"]
 ```
 
-**Step 1 is the one that protects you.** Every layer has `prune: true`, so
-anything a release does not hold is deleted from the cluster. The script
-compares what ConfigHub holds against what `kustomize build` produces from Git,
-and stops on any difference rather than pruning it.
+**Step 1 asks two different questions, and only the second can see the
+cluster.**
+
+The first compares what ConfigHub holds against what `kustomize build` produces
+from Git *now*. Both sides come from Git, so this catches Git moving since
+`apply.sh` ran — and nothing else. On its own it would pass while the cluster
+held something Git has never described.
+
+The second is `cub flux check`, and it reads Flux's own
+`status.inventory`: the record of what that layer actually applied. Every layer
+has `prune: true`, so an object in that inventory which the release does not
+hold is **deleted** the moment the source is swapped — whether or not it was
+ever in Git. Only this question can see it, and the script stops rather than
+pruning.
 
 **Step 2 has to come from Git.** A `Kustomization` cannot read a source that
 does not exist yet, so the gateway credential and the `OCIRepository` objects

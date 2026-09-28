@@ -168,10 +168,26 @@ like any other change. Each ApplicationSet's template is repointed last, and it
 goes on generating the same Applications under the same names, so Argo's
 tracking does not change and no workload is recreated.
 
-**What the script checks before it changes anything:** that Argo CD is v3.1 or
+**What the script checks before it changes anything.** That Argo CD is v3.1 or
 newer, which is where an `oci://` source is read natively, and that your
-AppProjects allow the gateway under `sourceRepos`. Until they do, every repoint
-is refused.
+AppProjects allow the gateway under `sourceRepos` — until they do, every repoint
+is refused. Then two comparisons, and only the second can see your cluster:
+
+| Question | What it compares | What it can catch |
+|---|---|---|
+| Does ConfigHub hold what the overlay renders? | `kustomize build` against `cub unit data` | Git moving since `apply.sh` ran. Both sides come from Git, so nothing more |
+| Does ConfigHub hold what Argo actually owns? | `Application.status.resources` against the release | An object on the cluster that Git has never described. Where Argo prunes, that object is **deleted** when the source moves |
+
+The second is `cub argo check`, and it runs for every variant before anything
+is repointed. It reads Argo's own record — not an inference from labels — and
+`requiresPruning` is Argo's own answer to what it would delete. Objects the
+release holds but Argo does not own are named too, as additions. Sync hooks are
+a note, since Argo runs rather than holds them.
+
+Afterwards the script asks `cub scout map list -q "owner=Native ..."` for what
+no controller claims in those namespaces: things applied by hand, which neither
+record mentions and which a handover leaves behind. That one is a cross-check,
+not a gate, and cub-scout's absence is not a failure.
 
 **Nothing is deleted.** `root` and `storefront` carry
 `resources-finalizer.argocd.argoproj.io`, which deletes everything they
