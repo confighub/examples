@@ -83,6 +83,7 @@ func newRoot() *cobra.Command {
 				}
 			} else {
 				fmt.Fprint(out, argo.Render(p))
+				fmt.Fprint(out, nextAfterPlan(len(p.Problems) > 0))
 			}
 			if len(p.Problems) > 0 {
 				return errProblems{}
@@ -124,15 +125,11 @@ func newRoot() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			shown := script
-			if cwd, err := os.Getwd(); err == nil {
-				if rel, err := filepath.Rel(cwd, script); err == nil {
-					shown = rel
-				}
-			}
+			shown := shortestPath(script)
 			fmt.Fprint(w, argo.Render(p))
 			fmt.Fprintf(w, "\nWrote %s and the files it reads. Read it, then run it:\n  bash %s\n", shown, shown)
 			fmt.Fprintf(w, "\nThat fills ConfigHub and changes no cluster. Then move the estate onto it:\n  ARGOCD_CONTEXT=<kubectl context> bash %s\n", filepath.Join(filepath.Dir(shown), "handover.sh"))
+			fmt.Fprintf(w, "\nBefore the handover, nothing reads what apply.sh made, and\n  bash %s\ntakes it all back out.\n", filepath.Join(filepath.Dir(shown), "cleanup.sh"))
 			return nil
 		},
 	}
@@ -262,4 +259,45 @@ func Execute() {
 		}
 		os.Exit(1)
 	}
+}
+
+// nextAfterPlan names the command to run next, with the arguments this run was
+// given. A plan that ends in a table leaves a reader to work out what to type;
+// this is the one line that saves them doing it, and it repeats their own flags
+// rather than a generic example so it can be pasted as it stands.
+func nextAfterPlan(problems bool) string {
+	if problems {
+		return "\nNext: fix the problems above, then run this again. apply refuses a plan with any.\n"
+	}
+	var b strings.Builder
+	b.WriteString("\nNext\n  ")
+	for i, a := range os.Args {
+		if i == 0 {
+			b.WriteString("cub argo")
+			continue
+		}
+		if a == "plan" {
+			b.WriteString(" apply")
+			continue
+		}
+		b.WriteString(" " + a)
+	}
+	b.WriteString(" --out ./argo-onboarding\n")
+	b.WriteString("  That writes apply.sh, handover.sh and cleanup.sh. It runs nothing.\n")
+	return b.String()
+}
+
+// shortestPath is the path a person would rather read. A relative path is
+// usually shorter, but not when the output directory is nowhere near the
+// working directory, where it becomes a run of ".." longer than the absolute.
+func shortestPath(p string) string {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return p
+	}
+	rel, err := filepath.Rel(cwd, p)
+	if err != nil || len(rel) >= len(p) {
+		return p
+	}
+	return rel
 }
