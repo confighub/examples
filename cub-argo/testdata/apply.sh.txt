@@ -87,10 +87,18 @@ cub space create argo-root-children --component argo-root-children --label Compo
 cub unit create --space argo-root-children platform-addons-appset control/argo-root-children/platform-addons-appset.yaml --target argo-targets/argocd --change-desc 'Onboard platform-addons-appset: what the root app of apps syncs' --allow-exists --quiet
 cub unit create --space argo-root-children projects control/argo-root-children/projects.yaml --target argo-targets/argocd --change-desc 'Onboard projects: what the root app of apps syncs' --allow-exists --quiet
 cub unit create --space argo-root-children storefront-app-of-apps control/argo-root-children/storefront-app-of-apps.yaml --target argo-targets/argocd --change-desc 'Onboard storefront-app-of-apps: what the root app of apps syncs' --allow-exists --quiet
+tid=$(cub target get --space argo-targets argocd -o jq=.Target.TargetID | tr -d '"')
+[ -n "$tid" ] || { echo "no argocd Target in argo-targets: run step 1 first"; exit 1; }
+echo "{\"ReleaseTargetID\":\"$tid\"}" | cub space update --patch argo-root-children --from-stdin --quiet
+cub release publish argo-root-children --quiet 2>&1 | grep -v 'no changes were made' || true
 cub component create argo-storefront-children --allow-exists --quiet
 cub space create argo-storefront-children --component argo-storefront-children --label Component=argo-storefront-children --label Role=control --allow-exists --quiet
 cub unit create --space argo-storefront-children apptique control/argo-storefront-children/apptique.yaml --target argo-targets/argocd --change-desc 'Onboard apptique: what the storefront app of apps syncs' --allow-exists --quiet
 cub unit create --space argo-storefront-children checkout-cache control/argo-storefront-children/checkout-cache.yaml --target argo-targets/argocd --change-desc 'Onboard checkout-cache: what the storefront app of apps syncs' --allow-exists --quiet
+tid=$(cub target get --space argo-targets argocd -o jq=.Target.TargetID | tr -d '"')
+[ -n "$tid" ] || { echo "no argocd Target in argo-targets: run step 1 first"; exit 1; }
+echo "{\"ReleaseTargetID\":\"$tid\"}" | cub space update --patch argo-storefront-children --from-stdin --quiet
+cub release publish argo-storefront-children --quiet 2>&1 | grep -v 'no changes were made' || true
 
 step "3/5 One component per app: a base holding what its overlay renders to, and a rollout workflow"
 cub component create argo-apptique --allow-exists --quiet

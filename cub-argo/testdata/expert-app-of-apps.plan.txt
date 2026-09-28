@@ -1,5 +1,7 @@
 Argo CD estate: 3 clusters, 3 components, 9 variants
-Read 37 objects; skipped 2 files that are not Kubernetes YAML (such as Helm templates)
+Read 37 objects; skipped 2 file(s) that did not parse as Kubernetes YAML:
+  apps/checkout-cache/base/charts/checkout-cache/templates/deployment.yaml
+  apps/checkout-cache/base/charts/checkout-cache/templates/service.yaml
 
 Control tree (stays as it is: this is the management record)
   Application root                           wave   0  root, applied by hand

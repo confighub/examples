@@ -2,6 +2,7 @@ package argo
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 )
 
@@ -107,6 +108,13 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add(`  echo "Find it with: cub target get --space %s argocd"`, targets)
 	add(`  echo "then re-run with CONFIGHUB_OCI=<address> bash handover.sh"; exit 1`)
 	add("fi")
+	// repo-creds, not repository. Argo matches a "repository" Secret to an
+	// Application by its url, and these repoURLs carry a /space/<space> path
+	// that oci://<host> does not match -- so the credential was ignored, Argo
+	// fell back to anonymous https, and it failed with "cannot get digest for
+	// revision latest" over a scheme nobody asked for. repo-creds is the
+	// prefix form: one credential for every Space under the gateway. Measured
+	// on Argo CD v3.5.3.
 	add("# The repository Secret's shape was verified against Argo CD v3.5.3:")
 	add("#   type: oci, url with the oci:// scheme, the worker as username and")
 	add("#   password. The Application's repoURL needs the scheme too — without it")
@@ -126,7 +134,7 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("  name: confighub-%s", targets)
 	add(`  namespace: ${ns}`)
 	add("  labels:")
-	add("    argocd.argoproj.io/secret-type: repository")
+	add("    argocd.argoproj.io/secret-type: repo-creds")
 	add("stringData:")
 	add("  type: oci")
 	add(`  url: oci://${addr}`)
@@ -137,10 +145,48 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("")
 
 	cs := p.controlSpaces(prefix)
+	// Which control Space holds each parent as a Unit, once its own parent has
+	// been repointed. A parent in this map is synced from ConfigHub by the time
+	// its turn comes, so it cannot be patched on the cluster.
+	ownedBy := map[string]string{}
+	parentOf := map[string]string{}
+	unitOf := map[string]string{}
+	for _, outer := range cs {
+		for _, f := range outer.Files {
+			unit := strings.TrimSuffix(filepath.Base(f), filepath.Ext(f))
+			for _, inner := range cs {
+				if inner.Parent == unit || strings.HasPrefix(unit, inner.Parent+"-") {
+					ownedBy[inner.Parent] = outer.Space
+					parentOf[inner.Parent] = outer.Parent
+					// The Unit is named for the file, which is not always the
+					// Application's own name: storefront lives in
+					// storefront-app-of-apps.yaml.
+					unitOf[inner.Parent] = unit
+				}
+			}
+		}
+	}
 	step := 2
 	for _, s := range cs {
 		add(`step "%d/5 Repoint %s at %s"`, step, s.Parent, s.Space)
 		add("# Its children are Units there by now, released to the argocd Target.")
+		// A parent that is itself a child of an already-repointed parent is no
+		// longer ours to patch: the grandparent syncs it from ConfigHub with
+		// prune on, so a kubectl patch here is applied and then reverted on the
+		// next reconcile -- measured, and it looks like it worked for about a
+		// minute. The change has to be made to the Unit that defines it.
+		if ownedBy[s.Parent] != "" {
+			add(`echo "%s is a Unit in %s now, which %s syncs from ConfigHub."`, s.Parent, ownedBy[s.Parent], parentOf[s.Parent])
+			add(`echo "Patching it here would be undone on the next reconcile. Change it where it"`)
+			add(`echo "is defined, then let it flow down:"`)
+			add(`echo "  cub unit data --space %s %s > %s.yaml"`, ownedBy[s.Parent], unitOf[s.Parent], unitOf[s.Parent])
+			add(`echo "  # set spec.source.repoURL to oci://${addr}/space/%s, path '.', targetRevision latest"`, s.Space)
+			add(`echo "  cub unit update --space %s %s %s.yaml"`, ownedBy[s.Parent], unitOf[s.Parent], unitOf[s.Parent])
+			add(`echo "  cub release publish %s"`, ownedBy[s.Parent])
+			add(`echo "That is a reviewed change, which is the point of it being a Unit."`)
+			step++
+			continue
+		}
 		// addr was resolved once in step 1, from CONFIGHUB_OCI or the Target.
 		// Re-reading it here overwrote a good CONFIGHUB_OCI with the Target's
 		// empty answer, and the repoint went in as oci:///space/<space> -- a
@@ -157,7 +203,23 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 		add("# leave it serving the release it read before. A hard refresh re-resolves")
 		add("# the tag, and is what argobot issues on every release.published.")
 		add(`k -n "$ns" annotate application %s argocd.argoproj.io/refresh=hard --overwrite`, s.Parent)
-		add(`k -n "$ns" wait --for=jsonpath='{.status.sync.status}'=Synced application/%s --timeout=3m`, s.Parent)
+		// Not --for=Synced. A parent reports OutOfSync while any child still
+		// differs, and during a handover its children are exactly what is being
+		// moved -- so waiting for Synced here waits for something that cannot
+		// happen yet, and times out on a repoint that worked. What matters is
+		// that Argo could READ the new source: sync.status leaves Unknown.
+		add(`for _ in $(seq 1 36); do`)
+		add(`  st=$(k -n "$ns" get application %s -o jsonpath='{.status.sync.status}' 2>/dev/null)`, s.Parent)
+		add(`  [ -n "$st" ] && [ "$st" != Unknown ] && break`)
+		add(`  sleep 5`)
+		add(`done`)
+		add(`st=$(k -n "$ns" get application %s -o jsonpath='{.status.sync.status}')`, s.Parent)
+		add(`if [ "$st" = Unknown ] || [ -z "$st" ]; then`)
+		add(`  echo "%s could not read %s:" >&2`, s.Parent, s.Space)
+		add(`  k -n "$ns" get application %s -o jsonpath='{.status.conditions[*].message}' >&2; echo >&2`, s.Parent)
+		add(`  exit 1`)
+		add("fi")
+		add(`echo "  %s reads %s ($st; a parent reads OutOfSync until its children move too)"`, s.Parent, s.Space)
 		step++
 	}
 

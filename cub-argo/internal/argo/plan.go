@@ -225,6 +225,44 @@ func Build(in *Input, opts Options) (*Plan, error) {
 		standalone = append(standalone, a)
 	}
 	b.tree(standalone, appsets, projects)
+	// A file that would not parse is not the same as a file that is not
+	// Kubernetes YAML, and the difference has teeth. A control Space holds the
+	// children of an app of apps byte for byte; a child that was skipped is
+	// simply absent from it, and the parent, which prunes, DELETES the objects
+	// that file defined from the cluster the moment its source is repointed.
+	//
+	// Measured: one broken indent in projects.yaml dropped it silently, and the
+	// repointed root removed both live AppProjects. It was reported as "skipped
+	// 1 file that is not Kubernetes YAML" -- a count, under a banner that reads
+	// as benign.
+	if len(in.Skipped) > 0 {
+		// The two path forms differ: a node's File is relative to the repository
+		// root, while a skipped file is relative to the input directory. Compare
+		// on the tail they share rather than joining either to a root.
+		var controlDirs []string
+		for _, cs := range p.controlSpaces("x") {
+			for _, f := range cs.Files {
+				controlDirs = append(controlDirs, filepath.ToSlash(filepath.Dir(f)))
+			}
+		}
+		for _, sk := range in.Skipped {
+			skDir := filepath.ToSlash(filepath.Dir(sk))
+			inControl := false
+			for _, d := range controlDirs {
+				if d == skDir || strings.HasSuffix(d, "/"+skDir) || strings.HasSuffix(skDir, "/"+d) {
+					inControl = true
+				}
+			}
+			if inControl {
+				p.Problems = append(p.Problems, fmt.Sprintf(
+					"%s sits beside objects an app of apps syncs, and could not be read as Kubernetes YAML. "+
+						"It would be missing from the Space that replaces that directory, and the parent prunes, "+
+						"so whatever it defines would be DELETED from the cluster at handover. Fix the file, or "+
+						"move it out of the directory the parent syncs.", sk))
+			}
+		}
+	}
+
 	b.windows(projects)
 	b.unselected()
 	b.handover(appsets, standalone, projects)

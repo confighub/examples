@@ -257,6 +257,19 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 					s.Space, unit, s.Space, filepath.Base(f), targets,
 					q(fmt.Sprintf("Onboard %s: what the %s app of apps syncs", unit, s.Parent)))
 			}
+			// A control Space needs a release Target of its own and a published
+			// Release, or the parent repointed at it reads tag "latest" from a
+			// repository that has none. Measured: without this the handover
+			// fails with "<space>:latest: not found", which reads as a wrong
+			// address rather than as an empty Space. Units carry the argocd
+			// Target; the Space does not get one from that, and
+			// `cub release publish` refuses a Space without a ReleaseTargetID.
+			add(`tid=$(cub target get --space %s argocd -o jq=.Target.TargetID | tr -d '"')`, targets)
+			add(`[ -n "$tid" ] || { echo "no argocd Target in %s: run step 1 first"; exit 1; }`, targets)
+			add(`echo "{\"ReleaseTargetID\":\"$tid\"}" | cub space update --patch %s --from-stdin --quiet`, s.Space)
+			// These Spaces are the app-of-apps tree itself, not a staged
+			// rollout, so they have no ChangeWorkflow and publish directly.
+			add(`cub release publish %s --quiet 2>&1 | grep -v 'no changes were made' || true`, s.Space)
 		}
 		add("")
 	}

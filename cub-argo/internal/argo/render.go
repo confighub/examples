@@ -18,7 +18,13 @@ func Render(p *Plan) string {
 	}
 	w("Argo CD estate: %d clusters, %d components, %d variants\n", len(p.Clusters), len(p.Components), variants)
 	if len(p.Inputs.Skipped) > 0 {
-		w("Read %d objects; skipped %d files that are not Kubernetes YAML (such as Helm templates)\n", p.Inputs.Objects, len(p.Inputs.Skipped))
+		// Named, not counted. A count under a banner saying "such as Helm
+		// templates" reads as benign, and one of these was a file the estate
+		// actually syncs that had a broken indent.
+		w("Read %d objects; skipped %d file(s) that did not parse as Kubernetes YAML:\n", p.Inputs.Objects, len(p.Inputs.Skipped))
+		for _, sk := range p.Inputs.Skipped {
+			w("  %s\n", sk)
+		}
 	} else {
 		w("Read %d objects\n", p.Inputs.Objects)
 	}

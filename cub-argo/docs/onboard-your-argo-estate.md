@@ -345,39 +345,76 @@ a plan, and infers ownership where nothing declares it. `handover.sh` asks
 cub-scout what no controller claims in your namespaces, as a cross-check rather
 than a gate.
 
-## What the Argo handover has and has not been through
+## What the Argo handover has been through
 
-`cleanup.sh` is rehearsed: the expert estate onboarded and removed cleanly,
-control Spaces included, first pass.
+Rehearsed on Argo CD v3.5.3 against a self-hosted ConfigHub v0.6.2. Both
+parents — `root` and `storefront` — now read ConfigHub, and **every UID is
+unchanged**: the AppProjects, the ApplicationSet and the child Application are
+the same objects they were before.
 
-The handover itself is **partly** rehearsed, on Argo CD v3.5.3. These were found
-by running it and are fixed:
+Eleven bugs came out of that, and none of them would have been found by reading
+the code. The ones worth knowing about as an operator:
 
-- **`sourceRepos` cannot be widened with `kubectl`.** The AppProjects are
-  themselves synced by the root Application with `selfHeal: true`, so a patch is
-  reverted within minutes and the repoint is refused again with no sign of why.
-  The change has to be committed where Argo reads it.
-- **The allow-entry needs `/**`, not `/*`.** Argo's glob does not cross `/`, and
-  the gateway address has two path segments (`/space/<space>`). With `/*` the
-  repoint fails as `not permitted in project`.
-- **The repoURL needs `/space/<space>`.** The gateway serves one repository per
-  Space, and two parents are repointed at two different Spaces, so one address
-  without the Space could only ever be right for one of them.
-- **Step 2 clobbered the gateway address** by re-resolving it from the Target,
-  which carries none. The repoint went in as `oci:///space/<space>` — no host —
-  which Argo reports as `not permitted in project` rather than as malformed.
-- **`${VAR:+  key: "true"}` loses its quotes** to shell quote removal, and the
-  API server rejects the Secret with `cannot unmarshal bool into ... stringData`.
-- **The gate pointed at a command that reports nothing.** `cub target get` does
-  not carry the gateway host; apply.sh creates the Target with empty parameters.
+**`sourceRepos` cannot be widened with `kubectl`.** The AppProjects are
+themselves synced by the root Application, so a patch is reverted and the
+repoint is refused again with no sign of why. Commit it where Argo reads it.
+The allow-entry also needs `/**`, not `/*` — Argo's glob does not cross `/`,
+and the gateway address has two path segments.
 
-**Still failing, and not yet explained:** with the repoURL, the AppProject and
-the `type: oci` Secret all correct, `argocd-repo-server` cannot resolve the tag
-— `cannot get digest for revision latest`, over **https**, although the Secret
-sets `insecureOCIForceHttp: true`. Setting the Secret's `url` to the full
-`/space/<space>` did not change it. So a plain-HTTP self-hosted gateway is not
-proven to work with Argo CD here. Treat the Argo handover as unfinished until
-this is resolved; the Flux handover is rehearsed end to end and is not affected.
+**The credential is a `repo-creds` Secret, not a `repository` one.** Argo
+matches a `repository` Secret to an Application by url, and these repoURLs carry
+a `/space/<space>` path that `oci://<host>` does not match. The credential was
+silently ignored, Argo fell back to anonymous **https**, and it failed with
+`cannot get digest for revision latest` over a scheme nobody had asked for.
+`repo-creds` is the prefix form: one credential for every Space under the
+gateway.
+
+**A control Space needs its own release Target and a published Release.**
+Without one, the parent repointed at it reads tag `latest` from a repository
+that has none, and fails with `<space>:latest: not found` — which reads as a
+wrong address rather than as an empty Space.
+
+**A child app of apps is repointed in ConfigHub, not on the cluster.** Once its
+parent reads ConfigHub, the parent owns it: a `kubectl patch` of the child is
+applied and then reverted on the next reconcile, and it looks like it worked for
+about a minute. `handover.sh` now prints the `cub unit update` and
+`cub release publish` to run instead — which is the reviewed path, and is the
+point of the child being a Unit.
+
+```mermaid
+flowchart TB
+  a["root repointed<br/>with kubectl"] --> b["root now syncs<br/>argo-root-children"]
+  b --> c["storefront is a Unit there"]
+  c --> d["patch storefront with kubectl<br/>= reverted on next reconcile"]
+  c --> e["cub unit update + release publish<br/>= flows down, and is reviewed"]
+```
+
+**Waiting for `Synced` on a parent is the wrong gate.** A parent reports
+`OutOfSync` while any child still differs, and during a handover its children
+are exactly what is being moved. The script now waits for Argo to have *read*
+the new source — `sync.status` leaving `Unknown` — and says so.
+
+**A file that will not parse is now a refused plan, not a footnote.** This one
+cost two live AppProjects. A broken indent in `projects.yaml` meant the plugin
+skipped it, reported it only as a count under a banner reading "not Kubernetes
+YAML (such as Helm templates)", and the control Space was built without it. The
+repointed parent, which prunes, then deleted both AppProjects from the cluster.
+`plan` now names every skipped file, and refuses outright when one sits in a
+directory an app of apps syncs:
+
+```text
+Problems to fix first
+  - bootstrap/children/projects.yaml sits beside objects an app of apps syncs, and
+    could not be read as Kubernetes YAML. It would be missing from the Space that
+    replaces that directory, and the parent prunes, so whatever it defines would be
+    DELETED from the cluster at handover.
+```
+
+**Not covered by this rehearsal:** the ApplicationSet-generated Applications.
+The expert example expects three registered clusters and the rehearsal had one,
+so `dev-1-apptique` and its siblings never existed to check. Step 4 of
+`handover.sh` reports them as missing, correctly. The gateway was also plain
+HTTP, which needed `CONFIGHUB_OCI_PLAIN_HTTP`; a TLS gateway is untested here.
 
 ## A published release does not arrive on its own
 

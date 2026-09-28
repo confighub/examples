@@ -75,7 +75,7 @@ metadata:
   name: confighub-argo-targets
   namespace: ${ns}
   labels:
-    argocd.argoproj.io/secret-type: repository
+    argocd.argoproj.io/secret-type: repo-creds
 stringData:
   type: oci
   url: oci://${addr}
@@ -92,16 +92,28 @@ k -n "$ns" get application root -o jsonpath='{.spec.source.repoURL}' | grep -q '
 # leave it serving the release it read before. A hard refresh re-resolves
 # the tag, and is what argobot issues on every release.published.
 k -n "$ns" annotate application root argocd.argoproj.io/refresh=hard --overwrite
-k -n "$ns" wait --for=jsonpath='{.status.sync.status}'=Synced application/root --timeout=3m
+for _ in $(seq 1 36); do
+  st=$(k -n "$ns" get application root -o jsonpath='{.status.sync.status}' 2>/dev/null)
+  [ -n "$st" ] && [ "$st" != Unknown ] && break
+  sleep 5
+done
+st=$(k -n "$ns" get application root -o jsonpath='{.status.sync.status}')
+if [ "$st" = Unknown ] || [ -z "$st" ]; then
+  echo "root could not read argo-root-children:" >&2
+  k -n "$ns" get application root -o jsonpath='{.status.conditions[*].message}' >&2; echo >&2
+  exit 1
+fi
+echo "  root reads argo-root-children ($st; a parent reads OutOfSync until its children move too)"
 step "3/5 Repoint storefront at argo-storefront-children"
 # Its children are Units there by now, released to the argocd Target.
-k -n "$ns" get application storefront -o jsonpath='{.spec.source.repoURL}' | grep -q '^oci://' && echo 'storefront already reads ConfigHub' || \
-  k -n "$ns" patch application storefront --type merge -p "{\"spec\":{\"source\":{\"repoURL\":\"oci://${addr}/space/argo-storefront-children\",\"path\":\".\",\"targetRevision\":\"latest\"}}}"
-# Argo caches the digest it resolved for a tag, so a repoint alone can
-# leave it serving the release it read before. A hard refresh re-resolves
-# the tag, and is what argobot issues on every release.published.
-k -n "$ns" annotate application storefront argocd.argoproj.io/refresh=hard --overwrite
-k -n "$ns" wait --for=jsonpath='{.status.sync.status}'=Synced application/storefront --timeout=3m
+echo "storefront is a Unit in argo-root-children now, which root syncs from ConfigHub."
+echo "Patching it here would be undone on the next reconcile. Change it where it"
+echo "is defined, then let it flow down:"
+echo "  cub unit data --space argo-root-children storefront-app-of-apps > storefront-app-of-apps.yaml"
+echo "  # set spec.source.repoURL to oci://${addr}/space/argo-storefront-children, path '.', targetRevision latest"
+echo "  cub unit update --space argo-root-children storefront-app-of-apps storefront-app-of-apps.yaml"
+echo "  cub release publish argo-root-children"
+echo "That is a reviewed change, which is the point of it being a Unit."
 step "4/5 Prove nothing on the clusters would change"
 # Two questions, and only the second can see the cluster.
 #
