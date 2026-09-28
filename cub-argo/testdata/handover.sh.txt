@@ -1,0 +1,252 @@
+#!/usr/bin/env bash
+# Move this Argo CD estate onto ConfigHub. Written by `cub argo apply`.
+# Read it, then run it:
+#
+#   ARGOCD_CONTEXT=<kubectl context of the cluster Argo CD runs on> bash handover.sh
+#
+# Run apply.sh first. Every step here is a patch, never a delete: the
+# objects, their names and Argo's tracking of what they own all survive, so
+# no workload is recreated. It goes top down, because a parent pointed at a
+# Space that holds nothing prunes the children it applied.
+#
+# Rehearsed on Argo CD v3.5.3: a repoint preserved every UID, including the
+# Pod's, with the rollout revision unchanged. Your estate is not that one.
+# Read every step before running it, and start with one non-production
+# estate.
+set -euo pipefail
+cd "$(dirname "$0")"
+k() { kubectl ${ARGOCD_CONTEXT:+--context "$ARGOCD_CONTEXT"} "$@"; }
+step() { printf '\n== %s\n' "$*"; }
+ns=${ARGOCD_NAMESPACE:-argocd}
+# The comparison before the template repoint renders from the repository.
+REPO_ROOT=${REPO_ROOT:-'<repo>'}
+
+# The gateway address a repointed source reads. cub reports it for a Target.
+gateway() { cub target get --space argo-targets "$1" -o jq=.Target.Parameters.OCIRepository 2>/dev/null || true; }
+
+step "0/5 Check before changing anything"
+cub auth status >/dev/null 2>&1 || { echo "cub is not logged in: run cub auth login"; exit 1; }
+image=$(k get deployment argocd-repo-server -n "$ns" -o jsonpath='{.spec.template.spec.containers[0].image}')
+version=${image##*:}; version=${version#v}
+if [ "$(printf '%s\n' 3.1 "${version%.*}.${version#*.}" | sort -V | head -1)" != 3.1 ]; then
+  echo "Argo CD runs $version; an oci:// source is read natively from v3.1, so this handover is not available here"; exit 1
+fi
+# Until the gateway is allowed as a source, every repoint below is refused.
+still_blocked=""
+k -n "$ns" get appproject platform -o jsonpath='{.spec.sourceRepos}' 2>/dev/null | grep -q -e 'oci://' -e '"\*"' || still_blocked="$still_blocked platform"
+k -n "$ns" get appproject storefront -o jsonpath='{.spec.sourceRepos}' 2>/dev/null | grep -q -e 'oci://' -e '"\*"' || still_blocked="$still_blocked storefront"
+if [ -n "$still_blocked" ]; then
+echo 'first, add the gateway'\''s oci:// address to sourceRepos on AppProject platform (allows only https://github.com/confighub/examples) and storefront (allows only https://github.com/confighub/examples): until then every repoint below is refused'
+echo "  The address is oci://<gateway host>, the same CONFIGHUB_OCI this script takes:"
+echo "    ConfigHub cloud:  oci://oci.hub.confighub.com"
+echo "    self-hosted:      oci:// plus the host and port of confighub-oci-server,"
+echo "                      as reachable FROM this cluster, not from your laptop."
+echo
+echo "Change it in GIT, not with kubectl: these AppProjects are synced by an"
+echo "Application with selfHeal on, so a patch here is undone within minutes."
+echo "Commit the oci:// entry to the file that defines them, let Argo sync it,"
+echo "then re-run this script. It re-reads the cluster and will carry on."
+read -r -p "Press Return once sourceRepos allows it, or Ctrl-C to stop. " _ || true
+else
+  echo "sourceRepos already allows an oci:// source on every AppProject this needs."
+fi
+
+step "1/5 The credential Argo reads the gateway with"
+# A repository Secret for the gateway, holding the Targets' server worker.
+# The ID and secret go from cub into the Secret through file descriptors,
+# never to disk, the command line, or the terminal.
+addr=${CONFIGHUB_OCI:-$(gateway argocd)}
+if [ -z "$addr" ]; then
+  echo "Could not read the gateway address from Target argo-targets/argocd."
+  echo "Find it with: cub target get --space argo-targets argocd"
+  echo "then re-run with CONFIGHUB_OCI=<address> bash handover.sh"; exit 1
+fi
+# The repository Secret's shape was verified against Argo CD v3.5.3:
+#   type: oci, url with the oci:// scheme, the worker as username and
+#   password. The Application's repoURL needs the scheme too — without it
+#   Argo treats the address as a git repository and fails on "list refs".
+# insecureOCIForceHttp is only for a gateway served over plain HTTP.
+plain_http=""
+[ -n "${CONFIGHUB_OCI_PLAIN_HTTP:-}" ] && plain_http='  insecureOCIForceHttp: "true"'
+cat <<YAML | k apply -f -
+apiVersion: v1
+kind: Secret
+metadata:
+  name: confighub-argo-targets
+  namespace: ${ns}
+  labels:
+    argocd.argoproj.io/secret-type: repo-creds
+stringData:
+  type: oci
+  url: oci://${addr}
+  username: "$(cub worker get --space argo-targets server-worker -o jq=.BridgeWorker.BridgeWorkerID | tr -d '\n')"
+  password: "$(cub worker get --space argo-targets server-worker --include-secret -o jq=.BridgeWorker.Secret | tr -d '\n')"
+${plain_http}
+YAML
+
+step "2/5 Repoint root at argo-root-children"
+# Its children are Units there by now, released to the argocd Target.
+k -n "$ns" get application root -o jsonpath='{.spec.source.repoURL}' | grep -q '^oci://' && echo 'root already reads ConfigHub' || \
+  k -n "$ns" patch application root --type merge -p "{\"spec\":{\"source\":{\"repoURL\":\"oci://${addr}/space/argo-root-children\",\"path\":\".\",\"targetRevision\":\"latest\"}}}"
+# Argo caches the digest it resolved for a tag, so a repoint alone can
+# leave it serving the release it read before. A hard refresh re-resolves
+# the tag, and is what argobot issues on every release.published.
+k -n "$ns" annotate application root argocd.argoproj.io/refresh=hard --overwrite
+for _ in $(seq 1 36); do
+  st=$(k -n "$ns" get application root -o jsonpath='{.status.sync.status}' 2>/dev/null)
+  [ -n "$st" ] && [ "$st" != Unknown ] && break
+  sleep 5
+done
+st=$(k -n "$ns" get application root -o jsonpath='{.status.sync.status}')
+if [ "$st" = Unknown ] || [ -z "$st" ]; then
+  echo "root could not read argo-root-children:" >&2
+  k -n "$ns" get application root -o jsonpath='{.status.conditions[*].message}' >&2; echo >&2
+  exit 1
+fi
+echo "  root reads argo-root-children ($st; a parent reads OutOfSync until its children move too)"
+step "3/5 Repoint storefront at argo-storefront-children"
+# Its children are Units there by now, released to the argocd Target.
+echo "storefront is a Unit in argo-root-children now, which root syncs from ConfigHub."
+echo "Patching it here would be undone on the next reconcile. Change it where it"
+echo "is defined, then let it flow down:"
+echo "  cub unit data --space argo-root-children storefront-app-of-apps > storefront-app-of-apps.yaml"
+echo "  # set spec.source.repoURL to oci://${addr}/space/argo-storefront-children, path '.', targetRevision latest"
+echo "  cub unit update --space argo-root-children storefront-app-of-apps storefront-app-of-apps.yaml"
+echo "  cub release publish argo-root-children"
+echo "That is a reviewed change, which is the point of it being a Unit."
+step "4/5 Prove nothing on the clusters would change"
+# Two questions, and only the second can see the cluster.
+#
+# Does what ConfigHub holds equal what the overlay renders today? That
+# compares two things both derived from Git, so it catches Git moving
+# since apply.sh, and nothing else.
+command -v kustomize >/dev/null || { echo "kustomize is not on PATH; this step re-renders with it"; exit 1; }
+[ -d "$REPO_ROOT" ] || { echo "REPO_ROOT=$REPO_ROOT is not a directory: point it at the repository checkout"; exit 1; }
+echo "  rendering with $(kustomize version)"
+if ! git -C "$REPO_ROOT" diff --quiet 2>/dev/null; then
+  echo "  note: $REPO_ROOT has uncommitted changes, so this renders something Argo is not applying" >&2
+fi
+same() {
+  local fresh got rc=0
+  fresh=$(mktemp); got=$(mktemp)
+  kustomize build ${KUSTOMIZE_FLAGS:-} "$REPO_ROOT/$3" > "$fresh" || { rm -f "$fresh" "$got"; return 1; }
+  cub unit data --space "$1" "$2" > "$got" || { rm -f "$fresh" "$got"; return 1; }
+  if diff -q <(grep -v '^\s*#' "$fresh") <(grep -v '^\s*#' "$got") >/dev/null; then
+    echo "  $1 holds what $3 renders today"
+  else
+    echo "  $1 DIFFERS from what $3 renders today. Re-run apply.sh, then read the diff." >&2
+    diff -u <(grep -v '^\s*#' "$fresh") <(grep -v '^\s*#' "$got") | head -40 >&2
+    rc=1
+  fi
+  rm -f "$fresh" "$got"; return $rc
+}
+
+# And the one that matters: does what ConfigHub would deliver equal what
+# Argo owns on the cluster right now? Argo's own status.resources is the
+# record, so this sees objects that are on the cluster and not in Git at
+# all. Where Argo prunes, those would be deleted the moment the source
+# moves. No render-side check can see them.
+same 'argo-apptique-dev-1' 'apptique' 'gitops/argo/expert-app-of-apps/apps/apptique/overlays/dev'
+cub argo check ${ARGOCD_CONTEXT:+--kube-context "$ARGOCD_CONTEXT"} --fields --namespace "$ns" --application 'dev-1-apptique' --space 'argo-apptique-dev-1' --unit 'apptique' --destination-namespace 'storefront-dev'
+same 'argo-apptique-staging-1' 'apptique' 'gitops/argo/expert-app-of-apps/apps/apptique/overlays/staging'
+cub argo check ${ARGOCD_CONTEXT:+--kube-context "$ARGOCD_CONTEXT"} --fields --namespace "$ns" --application 'staging-1-apptique' --space 'argo-apptique-staging-1' --unit 'apptique' --destination-namespace 'storefront-staging'
+same 'argo-apptique-prod-1' 'apptique' 'gitops/argo/expert-app-of-apps/apps/apptique/overlays/prod'
+cub argo check ${ARGOCD_CONTEXT:+--kube-context "$ARGOCD_CONTEXT"} --fields --namespace "$ns" --application 'prod-1-apptique' --space 'argo-apptique-prod-1' --unit 'apptique' --destination-namespace 'storefront-prod'
+same 'argo-checkout-cache-dev-1' 'checkout-cache' 'gitops/argo/expert-app-of-apps/apps/checkout-cache/overlays/dev'
+cub argo check ${ARGOCD_CONTEXT:+--kube-context "$ARGOCD_CONTEXT"} --fields --namespace "$ns" --application 'dev-1-checkout-cache' --space 'argo-checkout-cache-dev-1' --unit 'checkout-cache' --destination-namespace 'storefront-dev'
+same 'argo-checkout-cache-staging-1' 'checkout-cache' 'gitops/argo/expert-app-of-apps/apps/checkout-cache/overlays/staging'
+cub argo check ${ARGOCD_CONTEXT:+--kube-context "$ARGOCD_CONTEXT"} --fields --namespace "$ns" --application 'staging-1-checkout-cache' --space 'argo-checkout-cache-staging-1' --unit 'checkout-cache' --destination-namespace 'storefront-staging'
+same 'argo-checkout-cache-prod-1' 'checkout-cache' 'gitops/argo/expert-app-of-apps/apps/checkout-cache/overlays/prod'
+cub argo check ${ARGOCD_CONTEXT:+--kube-context "$ARGOCD_CONTEXT"} --fields --namespace "$ns" --application 'prod-1-checkout-cache' --space 'argo-checkout-cache-prod-1' --unit 'checkout-cache' --destination-namespace 'storefront-prod'
+same 'argo-platform-addons-cluster-baseline-dev-1' 'platform-addons-cluster-baseline' 'gitops/argo/expert-app-of-apps/apps/platform/cluster-baseline/overlays/dev'
+cub argo check ${ARGOCD_CONTEXT:+--kube-context "$ARGOCD_CONTEXT"} --fields --namespace "$ns" --application 'dev-1-cluster-baseline' --space 'argo-platform-addons-cluster-baseline-dev-1' --unit 'platform-addons-cluster-baseline' --destination-namespace 'platform-system'
+same 'argo-platform-addons-cluster-baseline-staging-1' 'platform-addons-cluster-baseline' 'gitops/argo/expert-app-of-apps/apps/platform/cluster-baseline/overlays/staging'
+cub argo check ${ARGOCD_CONTEXT:+--kube-context "$ARGOCD_CONTEXT"} --fields --namespace "$ns" --application 'staging-1-cluster-baseline' --space 'argo-platform-addons-cluster-baseline-staging-1' --unit 'platform-addons-cluster-baseline' --destination-namespace 'platform-system'
+same 'argo-platform-addons-cluster-baseline-prod-1' 'platform-addons-cluster-baseline' 'gitops/argo/expert-app-of-apps/apps/platform/cluster-baseline/overlays/prod'
+cub argo check ${ARGOCD_CONTEXT:+--kube-context "$ARGOCD_CONTEXT"} --fields --namespace "$ns" --application 'prod-1-cluster-baseline' --space 'argo-platform-addons-cluster-baseline-prod-1' --unit 'platform-addons-cluster-baseline' --destination-namespace 'platform-system'
+
+# What no controller claims on these namespaces, as a cross-check. This
+# is cub-scout inferring ownership, not a gate: it finds what was applied
+# by hand and would be left behind, which neither record above reports.
+if command -v cub-scout >/dev/null || cub scout --help >/dev/null 2>&1; then
+  cub scout map list -q 'owner=Native AND namespace=storefront-dev' || true
+  cub scout map list -q 'owner=Native AND namespace=storefront-staging' || true
+  cub scout map list -q 'owner=Native AND namespace=storefront-prod' || true
+  cub scout map list -q 'owner=Native AND namespace=platform-system' || true
+else
+  echo "  cub-scout is not installed; skipping the unclaimed-resource cross-check"
+fi
+
+step "5/5 Retire each ApplicationSet, then point its Applications at their Spaces"
+# An ApplicationSet generates one Application per cluster from ONE shared
+# template, so it cannot give each cluster its own Space by editing that
+# template with a literal. ConfigHub already holds the fleet enumerated --
+# one variant Space per cluster, staged -- so the generator has nothing left
+# to generate. It is retired, and each Application it made is pointed at its
+# own Space: a literal address, one cluster at a time, which is what makes a
+# staged rollout possible at all.
+#
+# Measured on Argo CD v3.5.3: patching a generated Application while its
+# ApplicationSet is live is reverted in under a second, so the generator has
+# to stand down FIRST. applicationsSync: create-only is what stands it down;
+# the controller then creates but never updates or deletes what it made.
+
+echo '-- apptique'
+echo 'apptique is a Unit in argo-storefront-children. Retire it where ConfigHub keeps it, so the change is reviewed and survives the next sync:'
+echo '  cub unit data --space argo-storefront-children apptique > apptique.yaml'
+echo '  # set spec.syncPolicy.applicationsSync: create-only'
+echo '  #   and annotate it argo.confighub.com/retired: "retired at handover; see cleanup.sh"'
+echo '  cub unit update --space argo-storefront-children apptique apptique.yaml'
+echo '  cub release publish argo-storefront-children'
+echo '  # then wait for the parent to sync it down before patching anything:'
+echo '  kubectl -n $ns get applicationset apptique -o jsonpath='\''{.spec.syncPolicy.applicationsSync}'\'''
+echo 'Once it reads create-only, point each Application at its own Space:'
+echo '  kubectl -n $ns patch application dev-1-apptique --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-apptique-dev-1","path":".","targetRevision":"latest"}}}'\''   # stage canary'
+echo '  kubectl -n $ns patch application staging-1-apptique --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-apptique-staging-1","path":".","targetRevision":"latest"}}}'\''   # stage secondary'
+echo '  kubectl -n $ns patch application prod-1-apptique --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-apptique-prod-1","path":".","targetRevision":"latest"}}}'\''   # stage primary'
+
+echo '-- checkout-cache'
+echo 'checkout-cache is a Unit in argo-storefront-children. Retire it where ConfigHub keeps it, so the change is reviewed and survives the next sync:'
+echo '  cub unit data --space argo-storefront-children checkout-cache > checkout-cache.yaml'
+echo '  # set spec.syncPolicy.applicationsSync: create-only'
+echo '  #   and annotate it argo.confighub.com/retired: "retired at handover; see cleanup.sh"'
+echo '  cub unit update --space argo-storefront-children checkout-cache checkout-cache.yaml'
+echo '  cub release publish argo-storefront-children'
+echo '  # then wait for the parent to sync it down before patching anything:'
+echo '  kubectl -n $ns get applicationset checkout-cache -o jsonpath='\''{.spec.syncPolicy.applicationsSync}'\'''
+echo 'Once it reads create-only, point each Application at its own Space:'
+echo '  kubectl -n $ns patch application dev-1-checkout-cache --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-checkout-cache-dev-1","path":".","targetRevision":"latest"}}}'\''   # stage canary'
+echo '  kubectl -n $ns patch application staging-1-checkout-cache --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-checkout-cache-staging-1","path":".","targetRevision":"latest"}}}'\''   # stage secondary'
+echo '  kubectl -n $ns patch application prod-1-checkout-cache --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-checkout-cache-prod-1","path":".","targetRevision":"latest"}}}'\''   # stage primary'
+
+echo '-- platform-addons'
+echo 'platform-addons is a Unit in argo-root-children. Retire it where ConfigHub keeps it, so the change is reviewed and survives the next sync:'
+echo '  cub unit data --space argo-root-children platform-addons-appset > platform-addons-appset.yaml'
+echo '  # set spec.syncPolicy.applicationsSync: create-only'
+echo '  #   and annotate it argo.confighub.com/retired: "retired at handover; see cleanup.sh"'
+echo '  cub unit update --space argo-root-children platform-addons-appset platform-addons-appset.yaml'
+echo '  cub release publish argo-root-children'
+echo '  # then wait for the parent to sync it down before patching anything:'
+echo '  kubectl -n $ns get applicationset platform-addons -o jsonpath='\''{.spec.syncPolicy.applicationsSync}'\'''
+echo 'Once it reads create-only, point each Application at its own Space:'
+echo '  kubectl -n $ns patch application dev-1-cluster-baseline --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-platform-addons-cluster-baseline-dev-1","path":".","targetRevision":"latest"}}}'\''   # stage canary'
+echo '  kubectl -n $ns patch application staging-1-cluster-baseline --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-platform-addons-cluster-baseline-staging-1","path":".","targetRevision":"latest"}}}'\''   # stage secondary'
+echo '  kubectl -n $ns patch application prod-1-cluster-baseline --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-platform-addons-cluster-baseline-prod-1","path":".","targetRevision":"latest"}}}'\''   # stage primary'
+
+echo 'Each Application keeps its name and its UID, so nothing is orphaned and no'
+echo 'workload restarts. The retired ApplicationSets stay in place, inert. Removing'
+echo 'them is a separate, later decision: cleanup.sh has the one safe way.'
+echo 'Note: AppProject storefront denies syncing prod-1-apptique, prod-1-checkout-cache on schedule "0 9 * * 1-5" for 9h. The repoint lands, but its first sync waits for the window to close.'
+
+echo
+echo 'Done once every Application reports Synced from an oci:// source:'
+echo '  kubectl -n $ns get applications -o custom-columns=NAME:.metadata.name,SOURCE:.spec.source.repoURL,SYNC:.status.sync.status'
+echo 'Nothing was deleted. To go back, patch each source to its Git repoURL and path.'
+echo
+echo 'One more thing, measured on Argo CD v3.5.3: publishing a new release does NOT'
+echo 'reach the cluster on its own. Argo caches the digest it resolved for the tag, and'
+echo 'was still serving the previous release 90 seconds later. A hard refresh re-resolves'
+echo 'the tag to a digest and the release lands:'
+echo '  kubectl -n $ns annotate application <name> argocd.argoproj.io/refresh=hard --overwrite'
+echo 'argobot does this for you, reacting to ConfigHub'\''s release.published event. Without'
+echo 'it, or without that annotation, an approved release sits unread on the gateway.'

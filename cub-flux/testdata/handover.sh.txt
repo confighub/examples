@@ -1,0 +1,237 @@
+#!/usr/bin/env bash
+# Move this Flux fleet onto ConfigHub. Written by `cub flux apply`.
+# Read it, then run it, one cluster at a time:
+#
+#   FLUX_CONTEXT=<kubectl context of one cluster> bash handover.sh
+#
+# Run apply.sh first. Each layer keeps its Kustomization, its name and its
+# inventory; only the source changes, so nothing is reinstalled.
+#
+# Rehearsed end to end on Flux v2.8.6 against ConfigHub v0.6.2: every UID
+# survived, including the Pod's, and the rollout revision did not change.
+# Your fleet is not that one. Read every step before running it, and start
+# with one non-production cluster.
+set -euo pipefail
+cd "$(dirname "$0")"
+k() { kubectl ${FLUX_CONTEXT:+--context "$FLUX_CONTEXT"} "$@"; }
+step() { printf '\n== %s\n' "$*"; }
+ns=${FLUX_NAMESPACE:-flux-system}
+cluster=${CLUSTER:-}
+# The comparison below re-renders from the repository, so it needs it.
+REPO_ROOT=${REPO_ROOT:-'<repo>'}
+[ -n "$cluster" ] || { echo "set CLUSTER=<one of: dev-1, staging-1, prod-1> so the right Target is used"; exit 1; }
+
+step "0/4 Check before changing anything"
+cub auth status >/dev/null 2>&1 || { echo "cub is not logged in: run cub auth login"; exit 1; }
+k get namespace "$ns" >/dev/null || { echo "no $ns namespace: is this the right cluster?"; exit 1; }
+# flux-system reconciles the Flux controllers themselves. It is the way back
+# if anything here goes wrong, so it stays on Git and is never repointed.
+echo 'Left alone: gitops/flux/expert-fleet/clusters/dev/flux-system'
+echo 'Left alone: gitops/flux/expert-fleet/clusters/prod/flux-system'
+echo 'Left alone: gitops/flux/expert-fleet/clusters/staging/flux-system'
+
+step "1/4 Prove each layer holds what Git renders today"
+# Every layer prunes, so anything a release does not hold is deleted from
+# the cluster. This renders from the repository now rather than trusting
+# what apply.sh left in render/: Git may have moved since, and a stale
+# comparison would pass while the cluster applies something else.
+command -v kustomize >/dev/null || { echo "kustomize is not on PATH; this step re-renders with it"; exit 1; }
+[ -d "$REPO_ROOT" ] || { echo "REPO_ROOT=$REPO_ROOT is not a directory: point it at the repository checkout"; exit 1; }
+echo "  rendering with $(kustomize version)"
+if ! git -C "$REPO_ROOT" diff --quiet 2>/dev/null; then
+  echo "  note: $REPO_ROOT has uncommitted changes, so this renders something Flux is not applying" >&2
+fi
+# same <space> <unit> <path>
+same() {
+  local fresh got rc=0
+  fresh=$(mktemp); got=$(mktemp)
+  kustomize build ${KUSTOMIZE_FLAGS:-} "$REPO_ROOT/$3" > "$fresh" || { rm -f "$fresh" "$got"; return 1; }
+  cub unit data --space "$1" "$2" > "$got" || { rm -f "$fresh" "$got"; return 1; }
+  if diff -q <(grep -v '^\s*#' "$fresh") <(grep -v '^\s*#' "$got") >/dev/null; then
+    echo "  $1 holds what $3 renders today"
+  else
+    echo "  $1 DIFFERS from what $3 renders today. Swapping its source would prune the difference." >&2
+    echo "  Re-run apply.sh to bring ConfigHub up to date, then read the diff before swapping." >&2
+    diff -u <(grep -v '^\s*#' "$fresh") <(grep -v '^\s*#' "$got") | head -40 >&2
+    rc=1
+  fi
+  rm -f "$fresh" "$got"; return $rc
+}
+[ "$cluster" = 'dev-1' ] && same 'flux-infrastructure-dev-1' 'infrastructure' 'gitops/flux/expert-fleet/infrastructure/dev'
+[ "$cluster" = 'staging-1' ] && same 'flux-infrastructure-staging-1' 'infrastructure' 'gitops/flux/expert-fleet/infrastructure/staging'
+[ "$cluster" = 'prod-1' ] && same 'flux-infrastructure-prod-1' 'infrastructure' 'gitops/flux/expert-fleet/infrastructure/prod'
+[ "$cluster" = 'dev-1' ] && same 'flux-apps-dev-1' 'apps' 'gitops/flux/expert-fleet/apps/dev'
+[ "$cluster" = 'staging-1' ] && same 'flux-apps-staging-1' 'apps' 'gitops/flux/expert-fleet/apps/staging'
+[ "$cluster" = 'prod-1' ] && same 'flux-apps-prod-1' 'apps' 'gitops/flux/expert-fleet/apps/prod'
+[ "$cluster" = 'dev-1' ] && same 'flux-tenants-dev-1' 'tenants' 'gitops/flux/expert-fleet/tenants/dev'
+[ "$cluster" = 'staging-1' ] && same 'flux-tenants-staging-1' 'tenants' 'gitops/flux/expert-fleet/tenants/staging'
+[ "$cluster" = 'prod-1' ] && same 'flux-tenants-prod-1' 'tenants' 'gitops/flux/expert-fleet/tenants/prod'
+[ "$cluster" = 'dev-1' ] && same 'flux-image-automation-dev-1' 'image-automation' 'gitops/flux/expert-fleet/image-automation'
+
+# And the question the comparison above cannot reach: does what ConfigHub
+# would deliver equal what this layer has actually applied? Flux's own
+# status.inventory is the record. Every layer here prunes, so an object it
+# applied that the release does not hold is deleted the moment the source
+# is swapped, whether or not it was ever in Git.
+[ "$cluster" = 'dev-1' ] && cub flux check ${FLUX_CONTEXT:+--kube-context "$FLUX_CONTEXT"} --namespace 'flux-system' --kustomization 'infrastructure' --space 'flux-infrastructure-dev-1' --unit 'infrastructure'
+[ "$cluster" = 'staging-1' ] && cub flux check ${FLUX_CONTEXT:+--kube-context "$FLUX_CONTEXT"} --namespace 'flux-system' --kustomization 'infrastructure' --space 'flux-infrastructure-staging-1' --unit 'infrastructure'
+[ "$cluster" = 'prod-1' ] && cub flux check ${FLUX_CONTEXT:+--kube-context "$FLUX_CONTEXT"} --namespace 'flux-system' --kustomization 'infrastructure' --space 'flux-infrastructure-prod-1' --unit 'infrastructure'
+[ "$cluster" = 'dev-1' ] && cub flux check ${FLUX_CONTEXT:+--kube-context "$FLUX_CONTEXT"} --namespace 'flux-system' --kustomization 'apps' --space 'flux-apps-dev-1' --unit 'apps'
+[ "$cluster" = 'staging-1' ] && cub flux check ${FLUX_CONTEXT:+--kube-context "$FLUX_CONTEXT"} --namespace 'flux-system' --kustomization 'apps' --space 'flux-apps-staging-1' --unit 'apps'
+[ "$cluster" = 'prod-1' ] && cub flux check ${FLUX_CONTEXT:+--kube-context "$FLUX_CONTEXT"} --namespace 'flux-system' --kustomization 'apps' --space 'flux-apps-prod-1' --unit 'apps'
+[ "$cluster" = 'dev-1' ] && cub flux check ${FLUX_CONTEXT:+--kube-context "$FLUX_CONTEXT"} --namespace 'flux-system' --kustomization 'tenants' --space 'flux-tenants-dev-1' --unit 'tenants'
+[ "$cluster" = 'staging-1' ] && cub flux check ${FLUX_CONTEXT:+--kube-context "$FLUX_CONTEXT"} --namespace 'flux-system' --kustomization 'tenants' --space 'flux-tenants-staging-1' --unit 'tenants'
+[ "$cluster" = 'prod-1' ] && cub flux check ${FLUX_CONTEXT:+--kube-context "$FLUX_CONTEXT"} --namespace 'flux-system' --kustomization 'tenants' --space 'flux-tenants-prod-1' --unit 'tenants'
+[ "$cluster" = 'dev-1' ] && cub flux check ${FLUX_CONTEXT:+--kube-context "$FLUX_CONTEXT"} --namespace 'flux-system' --kustomization 'image-automation' --space 'flux-image-automation-dev-1' --unit 'image-automation'
+
+# What no controller claims in this fleet, as a cross-check. cub-scout
+# infers ownership where the inventory is Flux's own record, so this is
+# not a gate: it finds what was applied by hand and would be left behind.
+if cub scout --help >/dev/null 2>&1; then
+  cub scout map list -q "owner=Native" || true
+else
+  echo "  cub-scout is not installed; skipping the unclaimed-resource cross-check"
+fi
+
+step "2/4 Add the gateway to flux-system: the credential and one OCIRepository per layer"
+# These cannot come from ConfigHub: a Kustomization cannot read a source that
+# does not exist yet. They are committed to the bootstrap directory, which is
+# the one part of this fleet that stays on Git.
+addr=${CONFIGHUB_OCI:-}
+if [ -z "$addr" ]; then
+  echo "Set CONFIGHUB_OCI to the gateway host this cluster reaches, without a scheme."
+  echo "  ConfigHub cloud:  oci.hub.confighub.com"
+  echo "  self-hosted:      the host and port of the confighub-oci-server service,"
+  echo "                    as reachable FROM this cluster, not from your laptop."
+  echo "Then: CONFIGHUB_OCI=<host> CLUSTER=$cluster bash handover.sh"; exit 1
+fi
+# The ID and secret go from cub into the Secret through command substitution
+# and are never written to disk. --dry-run | apply keeps this re-runnable.
+k create secret docker-registry confighub-flux-targets --namespace "$ns" \
+  --docker-server="$addr" \
+  --docker-username="$(cub worker get --space flux-targets server-worker -o jq=.BridgeWorker.BridgeWorkerID | tr -d '\"\n')" \
+  --docker-password="$(cub worker get --space flux-targets server-worker --include-secret -o jq=.BridgeWorker.Secret | tr -d '\"\n')" \
+  --dry-run=client -o yaml | k apply -f -
+
+# One OCIRepository per layer, each reading that layer's release for this
+# cluster. Commit these to the bootstrap directory so flux-system keeps them.
+mkdir -p bootstrap
+case "$cluster" in
+  dev-1) space_infrastructure='flux-infrastructure-dev-1' ;;
+  staging-1) space_infrastructure='flux-infrastructure-staging-1' ;;
+  prod-1) space_infrastructure='flux-infrastructure-prod-1' ;;
+  *) echo "no infrastructure variant for cluster $cluster"; exit 1 ;;
+esac
+cat > bootstrap/ocirepository-infrastructure.yaml <<YAML
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: OCIRepository
+metadata:
+  name: infrastructure
+  namespace: ${ns}
+spec:
+  interval: 1m
+  url: oci://${addr}/space/${space_infrastructure}
+  ref:
+    tag: latest
+  secretRef:
+    name: confighub-flux-targets
+YAML
+case "$cluster" in
+  dev-1) space_apps='flux-apps-dev-1' ;;
+  staging-1) space_apps='flux-apps-staging-1' ;;
+  prod-1) space_apps='flux-apps-prod-1' ;;
+  *) echo "no apps variant for cluster $cluster"; exit 1 ;;
+esac
+cat > bootstrap/ocirepository-apps.yaml <<YAML
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: OCIRepository
+metadata:
+  name: apps
+  namespace: ${ns}
+spec:
+  interval: 1m
+  url: oci://${addr}/space/${space_apps}
+  ref:
+    tag: latest
+  secretRef:
+    name: confighub-flux-targets
+YAML
+case "$cluster" in
+  dev-1) space_tenants='flux-tenants-dev-1' ;;
+  staging-1) space_tenants='flux-tenants-staging-1' ;;
+  prod-1) space_tenants='flux-tenants-prod-1' ;;
+  *) echo "no tenants variant for cluster $cluster"; exit 1 ;;
+esac
+cat > bootstrap/ocirepository-tenants.yaml <<YAML
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: OCIRepository
+metadata:
+  name: tenants
+  namespace: ${ns}
+spec:
+  interval: 1m
+  url: oci://${addr}/space/${space_tenants}
+  ref:
+    tag: latest
+  secretRef:
+    name: confighub-flux-targets
+YAML
+case "$cluster" in
+  dev-1) space_image_automation='flux-image-automation-dev-1' ;;
+  *) echo "no image-automation variant for cluster $cluster"; exit 1 ;;
+esac
+cat > bootstrap/ocirepository-image-automation.yaml <<YAML
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: OCIRepository
+metadata:
+  name: image-automation
+  namespace: ${ns}
+spec:
+  interval: 1m
+  url: oci://${addr}/space/${space_image_automation}
+  ref:
+    tag: latest
+  secretRef:
+    name: confighub-flux-targets
+YAML
+k apply -f bootstrap/
+echo "Commit bootstrap/ into the flux-system path so these survive a reconcile."
+
+step "3/4 Swap each layer's sourceRef, deepest dependency first"
+# The Kustomization keeps its name, so Flux keeps the inventory of what it
+# applied, and nothing is recreated.
+echo "-- infrastructure"
+k -n "$ns" patch kustomization infrastructure --type merge -p '{"spec":{"sourceRef":{"kind":"OCIRepository","name":"infrastructure"},"path":"./"}}'
+k -n "$ns" wait --for=condition=Ready kustomization/infrastructure --timeout=5m
+echo "-- apps"
+k -n "$ns" patch kustomization apps --type merge -p '{"spec":{"sourceRef":{"kind":"OCIRepository","name":"apps"},"path":"./"}}'
+k -n "$ns" wait --for=condition=Ready kustomization/apps --timeout=5m
+echo "-- tenants"
+k -n "$ns" patch kustomization tenants --type merge -p '{"spec":{"sourceRef":{"kind":"OCIRepository","name":"tenants"},"path":"./"}}'
+k -n "$ns" wait --for=condition=Ready kustomization/tenants --timeout=5m
+echo "-- image-automation"
+k -n "$ns" patch kustomization image-automation --type merge -p '{"spec":{"sourceRef":{"kind":"OCIRepository","name":"image-automation"},"path":"./"}}'
+k -n "$ns" wait --for=condition=Ready kustomization/image-automation --timeout=5m
+
+step "4/4 What is left, and what it means"
+k -n "$ns" patch imageupdateautomation apptique-dev --type merge -p '{"spec":{"suspend":true}}' 2>/dev/null || true
+echo 'Suspended ImageUpdateAutomation apptique-dev: it committed tags to Git, which no longer feeds this cluster. A tag bump is now a change on the base, promoted like any other.'
+echo 'Tenant left as it is: team-checkout/team-checkout runs as ServiceAccount team-checkout, reading GitRepository team-checkout; governed as part of tenants. Repointing it would move that team from Git access to ConfigHub access, which is a decision about delegation, not a step in a handover.'
+echo 'GitRepository fleet-repo promoted by branch. That is now the workflow'\''s stages: a change is promoted and approved per cluster, not merged between branches.'
+echo 'GitRepository team-checkout promoted by branch. That is now the workflow'\''s stages: a change is promoted and approved per cluster, not merged between branches.'
+
+echo
+echo 'Done once every layer is Ready from an OCIRepository:'
+echo '  kubectl -n $ns get kustomizations -o custom-columns=NAME:.metadata.name,SOURCE:.spec.sourceRef.kind,READY:.status.conditions[0].status'
+echo 'Nothing was deleted. To go back, restore BOTH fields on each layer:'
+[ "$cluster" = dev-1 ] && echo '  kubectl -n flux-system patch kustomization infrastructure --type merge -p '\''{"spec":{"sourceRef":{"kind":"GitRepository","name":"platform-charts"},"path":"gitops/flux/expert-fleet/infrastructure/dev"}}'\'''
+[ "$cluster" = staging-1 ] && echo '  kubectl -n flux-system patch kustomization infrastructure --type merge -p '\''{"spec":{"sourceRef":{"kind":"GitRepository","name":"platform-charts"},"path":"gitops/flux/expert-fleet/infrastructure/staging"}}'\'''
+[ "$cluster" = prod-1 ] && echo '  kubectl -n flux-system patch kustomization infrastructure --type merge -p '\''{"spec":{"sourceRef":{"kind":"GitRepository","name":"platform-charts"},"path":"gitops/flux/expert-fleet/infrastructure/prod"}}'\'''
+[ "$cluster" = dev-1 ] && echo '  kubectl -n flux-system patch kustomization apps --type merge -p '\''{"spec":{"sourceRef":{"kind":"GitRepository","name":"platform-charts"},"path":"gitops/flux/expert-fleet/apps/dev"}}'\'''
+[ "$cluster" = staging-1 ] && echo '  kubectl -n flux-system patch kustomization apps --type merge -p '\''{"spec":{"sourceRef":{"kind":"GitRepository","name":"platform-charts"},"path":"gitops/flux/expert-fleet/apps/staging"}}'\'''
+[ "$cluster" = prod-1 ] && echo '  kubectl -n flux-system patch kustomization apps --type merge -p '\''{"spec":{"sourceRef":{"kind":"GitRepository","name":"platform-charts"},"path":"gitops/flux/expert-fleet/apps/prod"}}'\'''
+[ "$cluster" = dev-1 ] && echo '  kubectl -n flux-system patch kustomization tenants --type merge -p '\''{"spec":{"sourceRef":{"kind":"GitRepository","name":"platform-charts"},"path":"gitops/flux/expert-fleet/tenants/dev"}}'\'''
+[ "$cluster" = staging-1 ] && echo '  kubectl -n flux-system patch kustomization tenants --type merge -p '\''{"spec":{"sourceRef":{"kind":"GitRepository","name":"platform-charts"},"path":"gitops/flux/expert-fleet/tenants/staging"}}'\'''
+[ "$cluster" = prod-1 ] && echo '  kubectl -n flux-system patch kustomization tenants --type merge -p '\''{"spec":{"sourceRef":{"kind":"GitRepository","name":"platform-charts"},"path":"gitops/flux/expert-fleet/tenants/prod"}}'\'''
+[ "$cluster" = dev-1 ] && echo '  kubectl -n flux-system patch kustomization image-automation --type merge -p '\''{"spec":{"sourceRef":{"kind":"GitRepository","name":"platform-charts"},"path":"gitops/flux/expert-fleet/image-automation"}}'\'''
+true
