@@ -474,19 +474,27 @@ func TestUnrepeatableRenderIsCaught(t *testing.T) {
 }
 
 func TestChartReproducibility(t *testing.T) {
+	// What counts as one exact version is chartrender's rule, shared with
+	// cub sveltos. These cases pin it, so a change there shows up here rather
+	// than quietly changing what this plugin accepts.
 	cases := []struct {
 		c    chart
 		want bool
 	}{
 		{chart{name: "a", version: "0.3.1"}, true},                                      // vendored, exact
+		{chart{name: "a", version: "v1.2.3"}, true},                                     // a v prefix is still exact
+		{chart{name: "a", version: "1.2.3-rc.1"}, true},                                 // a prerelease is exact
+		{chart{name: "a", version: "1.2"}, false},                                       // Helm resolves this to the newest 1.2.x
 		{chart{name: "a", version: "0.3.x"}, false},                                     // a range
 		{chart{name: "a", version: "^1.2.0"}, false},                                    // a range
-		{chart{name: "a"}, false},                                                       // no version at all
+		{chart{name: "a", version: ">=1.0.0"}, false},                                   // a range
+		{chart{name: "a", version: "latest"}, false},                                    // not a version at all
+		{chart{name: "a"}, false},                                                       // no version
 		{chart{name: "a", version: "0.3.1", repo: "https://charts.example.com"}, false}, // pulled at render time
 	}
 	for _, c := range cases {
 		if got := c.c.reproducible(); got != c.want {
-			t.Errorf("%+v: reproducible = %v, want %v", c.c, got, c.want)
+			t.Errorf("version %q from repo %q: reproducible = %v, want %v", c.c.version, c.c.repo, got, c.want)
 		}
 	}
 }

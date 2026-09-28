@@ -1,5 +1,7 @@
 github.com/confighub/sdk/core v0.6.5 h1:DEVNCn8fcxsNpScDBoDyxdwHuG8c0yRTiY1ektgnxrc=
 github.com/confighub/sdk/core v0.6.5/go.mod h1:mmn13NSzaXdktf1FO1cM5Gk1CS76Jz1AXnKtXr/g3zM=
+github.com/confighub/sveltos-confighub v0.5.2-0.20260928111757-b806aff549de h1:mJKQWwDtoWa/a65TE3YrmDlYjqEyb29yI8JoSGOYIR0=
+github.com/confighub/sveltos-confighub v0.5.2-0.20260928111757-b806aff549de/go.mod h1:hr5xX5N4E6Eq1HXyTsnHu4bs9QTzkf0D1J2dK8aOgYY=
 github.com/cpuguy83/go-md2man/v2 v2.0.6/go.mod h1:oOW0eioCTA6cOiMLiUPZOpcVxMig6NIQQ7OS05n1F4g=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=

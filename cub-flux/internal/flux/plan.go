@@ -10,6 +10,8 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/confighub/sveltos-confighub/chartrender"
+
 	"github.com/confighub/examples/cub-flux/internal/catalog"
 )
 
@@ -616,7 +618,7 @@ func (b *builder) helmReleases(c *Component) []string {
 		// because what runs can change with nothing changing in ConfigHub. It
 		// would be fatal only if this chart were flattened, which needs one
 		// exact version, and that is why no verdict can be looked up for it.
-		if version == "" || strings.ContainsAny(version, "x*^~><= ") {
+		if !chartrender.ExactVersion(version) {
 			b.plan.NotInGit = appendOnce(b.plan.NotInGit, fmt.Sprintf(
 				"which chart %s runs: HelmRelease %s pins it to %q, so helm-controller decides at reconcile time and what runs can change with no change in ConfigHub. Pin one exact version to close that, and to make a flattening verdict possible",
 				chart, str(get(d.Value, "metadata", "name")), version))

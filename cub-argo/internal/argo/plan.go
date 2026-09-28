@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/confighub/sveltos-confighub/chartrender"
+
 	"github.com/confighub/examples/cub-argo/internal/catalog"
 )
 
@@ -651,8 +653,11 @@ type chart struct {
 // reproducible reports whether rendering this chart twice must give the same
 // bytes. A chart vendored in the repository at an exact version does; one
 // pulled from a remote repository, or pinned to a range, does not.
+//
+// What counts as one exact version is chartrender's, not this plugin's, so
+// cub sveltos, cub argo and cub flux all mean the same thing by it.
 func (c chart) reproducible() bool {
-	return c.repo == "" && c.version != "" && !strings.ContainsAny(c.version, "x*^~><= ")
+	return c.repo == "" && chartrender.ExactVersion(c.version)
 }
 
 func (c chart) why() string {
