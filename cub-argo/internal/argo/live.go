@@ -17,8 +17,16 @@ import (
 // kubectl, cub and cub-scout with one.
 type Runner func(name string, args ...string) ([]byte, error)
 
+// KubeContext, when set, is the kubectl context every kubectl call here uses.
+// Without it kubectl uses whatever context happens to be current, which during
+// a handover is very likely the wrong cluster.
+var KubeContext string
+
 // Run runs a command on this machine.
 func Run(name string, args ...string) ([]byte, error) {
+	if name == "kubectl" && KubeContext != "" {
+		args = append([]string{"--context", KubeContext}, args...)
+	}
 	cmd := exec.Command(name, args...)
 	var stderr strings.Builder
 	cmd.Stderr = &stderr

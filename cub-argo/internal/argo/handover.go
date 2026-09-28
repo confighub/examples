@@ -144,7 +144,7 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 					continue
 				}
 				add("same %s %s %s", q(v.Space), q(c.Name), q(v.Path))
-				add(`cub argo check --namespace "$ns" --application %s --space %s --unit %s --destination-namespace %s`,
+				add(`cub argo check ${ARGOCD_CONTEXT:+--kube-context "$ARGOCD_CONTEXT"} --namespace "$ns" --application %s --space %s --unit %s --destination-namespace %s`,
 					q(v.Application), q(v.Space), q(c.Name), q(v.Namespace))
 			}
 		}

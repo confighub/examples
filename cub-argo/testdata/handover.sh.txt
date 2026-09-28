@@ -100,23 +100,23 @@ same() {
 # all. Where Argo prunes, those would be deleted the moment the source
 # moves. No render-side check can see them.
 same 'argo-apptique-dev-1' 'apptique' 'gitops/argo/expert-app-of-apps/apps/apptique/overlays/dev'
-cub argo check --namespace "$ns" --application 'dev-1-apptique' --space 'argo-apptique-dev-1' --unit 'apptique' --destination-namespace 'storefront-dev'
+cub argo check ${ARGOCD_CONTEXT:+--kube-context "$ARGOCD_CONTEXT"} --namespace "$ns" --application 'dev-1-apptique' --space 'argo-apptique-dev-1' --unit 'apptique' --destination-namespace 'storefront-dev'
 same 'argo-apptique-staging-1' 'apptique' 'gitops/argo/expert-app-of-apps/apps/apptique/overlays/staging'
-cub argo check --namespace "$ns" --application 'staging-1-apptique' --space 'argo-apptique-staging-1' --unit 'apptique' --destination-namespace 'storefront-staging'
+cub argo check ${ARGOCD_CONTEXT:+--kube-context "$ARGOCD_CONTEXT"} --namespace "$ns" --application 'staging-1-apptique' --space 'argo-apptique-staging-1' --unit 'apptique' --destination-namespace 'storefront-staging'
 same 'argo-apptique-prod-1' 'apptique' 'gitops/argo/expert-app-of-apps/apps/apptique/overlays/prod'
-cub argo check --namespace "$ns" --application 'prod-1-apptique' --space 'argo-apptique-prod-1' --unit 'apptique' --destination-namespace 'storefront-prod'
+cub argo check ${ARGOCD_CONTEXT:+--kube-context "$ARGOCD_CONTEXT"} --namespace "$ns" --application 'prod-1-apptique' --space 'argo-apptique-prod-1' --unit 'apptique' --destination-namespace 'storefront-prod'
 same 'argo-checkout-cache-dev-1' 'checkout-cache' 'gitops/argo/expert-app-of-apps/apps/checkout-cache/overlays/dev'
-cub argo check --namespace "$ns" --application 'dev-1-checkout-cache' --space 'argo-checkout-cache-dev-1' --unit 'checkout-cache' --destination-namespace 'storefront-dev'
+cub argo check ${ARGOCD_CONTEXT:+--kube-context "$ARGOCD_CONTEXT"} --namespace "$ns" --application 'dev-1-checkout-cache' --space 'argo-checkout-cache-dev-1' --unit 'checkout-cache' --destination-namespace 'storefront-dev'
 same 'argo-checkout-cache-staging-1' 'checkout-cache' 'gitops/argo/expert-app-of-apps/apps/checkout-cache/overlays/staging'
-cub argo check --namespace "$ns" --application 'staging-1-checkout-cache' --space 'argo-checkout-cache-staging-1' --unit 'checkout-cache' --destination-namespace 'storefront-staging'
+cub argo check ${ARGOCD_CONTEXT:+--kube-context "$ARGOCD_CONTEXT"} --namespace "$ns" --application 'staging-1-checkout-cache' --space 'argo-checkout-cache-staging-1' --unit 'checkout-cache' --destination-namespace 'storefront-staging'
 same 'argo-checkout-cache-prod-1' 'checkout-cache' 'gitops/argo/expert-app-of-apps/apps/checkout-cache/overlays/prod'
-cub argo check --namespace "$ns" --application 'prod-1-checkout-cache' --space 'argo-checkout-cache-prod-1' --unit 'checkout-cache' --destination-namespace 'storefront-prod'
+cub argo check ${ARGOCD_CONTEXT:+--kube-context "$ARGOCD_CONTEXT"} --namespace "$ns" --application 'prod-1-checkout-cache' --space 'argo-checkout-cache-prod-1' --unit 'checkout-cache' --destination-namespace 'storefront-prod'
 same 'argo-platform-addons-cluster-baseline-dev-1' 'platform-addons-cluster-baseline' 'gitops/argo/expert-app-of-apps/apps/platform/cluster-baseline/overlays/dev'
-cub argo check --namespace "$ns" --application 'dev-1-cluster-baseline' --space 'argo-platform-addons-cluster-baseline-dev-1' --unit 'platform-addons-cluster-baseline' --destination-namespace 'platform-system'
+cub argo check ${ARGOCD_CONTEXT:+--kube-context "$ARGOCD_CONTEXT"} --namespace "$ns" --application 'dev-1-cluster-baseline' --space 'argo-platform-addons-cluster-baseline-dev-1' --unit 'platform-addons-cluster-baseline' --destination-namespace 'platform-system'
 same 'argo-platform-addons-cluster-baseline-staging-1' 'platform-addons-cluster-baseline' 'gitops/argo/expert-app-of-apps/apps/platform/cluster-baseline/overlays/staging'
-cub argo check --namespace "$ns" --application 'staging-1-cluster-baseline' --space 'argo-platform-addons-cluster-baseline-staging-1' --unit 'platform-addons-cluster-baseline' --destination-namespace 'platform-system'
+cub argo check ${ARGOCD_CONTEXT:+--kube-context "$ARGOCD_CONTEXT"} --namespace "$ns" --application 'staging-1-cluster-baseline' --space 'argo-platform-addons-cluster-baseline-staging-1' --unit 'platform-addons-cluster-baseline' --destination-namespace 'platform-system'
 same 'argo-platform-addons-cluster-baseline-prod-1' 'platform-addons-cluster-baseline' 'gitops/argo/expert-app-of-apps/apps/platform/cluster-baseline/overlays/prod'
-cub argo check --namespace "$ns" --application 'prod-1-cluster-baseline' --space 'argo-platform-addons-cluster-baseline-prod-1' --unit 'platform-addons-cluster-baseline' --destination-namespace 'platform-system'
+cub argo check ${ARGOCD_CONTEXT:+--kube-context "$ARGOCD_CONTEXT"} --namespace "$ns" --application 'prod-1-cluster-baseline' --space 'argo-platform-addons-cluster-baseline-prod-1' --unit 'platform-addons-cluster-baseline' --destination-namespace 'platform-system'
 
 # What no controller claims on these namespaces, as a cross-check. This
 # is cub-scout inferring ownership, not a gate: it finds what was applied

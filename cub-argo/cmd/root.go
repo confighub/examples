@@ -142,13 +142,14 @@ func newRoot() *cobra.Command {
 	apply.Flags().StringVar(&af.RepoRoot, "repo-root", "", "the checkout Applications' source paths are relative to")
 	apply.Flags().StringVar(&out, "out", "", "directory for the files and the scripts")
 
-	var checkNS, checkApp, checkSpace, checkUnit, checkDest string
+	var checkNS, checkApp, checkSpace, checkUnit, checkDest, kubeContext string
 	var checkJSON bool
 	check := &cobra.Command{
 		Use:   "check --application <name> --space <space> --unit <unit>",
 		Short: "Compare what Argo owns on the cluster with what the release holds; changes nothing",
 		Args:  cobra.NoArgs,
 		RunE: func(c *cobra.Command, _ []string) error {
+			argo.KubeContext = kubeContext
 			if checkApp == "" || checkSpace == "" || checkUnit == "" {
 				return fmt.Errorf("check needs --application, --space and --unit")
 			}
@@ -166,6 +167,7 @@ func newRoot() *cobra.Command {
 			}
 			cmp := argo.CompareInventory(live, held, checkDest)
 			w := c.OutOrStdout()
+			argo.KubeContext = kubeContext
 			if checkJSON {
 				enc := json.NewEncoder(w)
 				enc.SetIndent("", "  ")
@@ -195,6 +197,7 @@ func newRoot() *cobra.Command {
 	check.Flags().StringVar(&checkSpace, "space", "", "the ConfigHub Space holding the variant")
 	check.Flags().StringVar(&checkUnit, "unit", "", "the unit in that Space")
 	check.Flags().StringVar(&checkDest, "destination-namespace", "", "the Application's destination namespace, where objects without one land")
+	check.Flags().StringVar(&kubeContext, "kube-context", "", "the kubectl context of the cluster to read; without it kubectl's current context is used, which may be another cluster")
 	check.Flags().BoolVar(&checkJSON, "json", false, "print the comparison as JSON")
 
 	versionCmd := &cobra.Command{

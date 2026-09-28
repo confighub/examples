@@ -143,17 +143,18 @@ func newRoot() *cobra.Command {
 	apply.Flags().StringVar(&af.RepoRoot, "repo-root", "", "the checkout Flux paths are relative to")
 	apply.Flags().StringVar(&out, "out", "", "directory for the files and the scripts")
 
-	var ckNS, ckName, ckSpace, ckUnit, ckTarget string
+	var ckNS, ckName, ckSpace, ckUnit, ckTarget, kubeContext string
 	var ckJSON bool
 	check := &cobra.Command{
 		Use:   "check --kustomization <name> --space <space> --unit <unit>",
 		Short: "Compare what a layer applied with what the release holds; changes nothing",
 		Args:  cobra.NoArgs,
 		RunE: func(c *cobra.Command, _ []string) error {
+			flux.KubeContext = kubeContext
 			if ckName == "" || ckSpace == "" || ckUnit == "" {
 				return fmt.Errorf("check needs --kustomization, --space and --unit")
 			}
-			owned, err := flux.LiveInventory(flux.Run, ckNS, ckName)
+			live, err := flux.LiveInventory(flux.Run, ckNS, ckName)
 			if err != nil {
 				return err
 			}
@@ -165,8 +166,9 @@ func newRoot() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			cmp := flux.CompareInventory(owned, held, ckTarget)
+			cmp := flux.CompareInventory(live, held, ckTarget)
 			w := c.OutOrStdout()
+			flux.KubeContext = kubeContext
 			if ckJSON {
 				enc := json.NewEncoder(w)
 				enc.SetIndent("", "  ")
@@ -190,6 +192,7 @@ func newRoot() *cobra.Command {
 	check.Flags().StringVar(&ckSpace, "space", "", "the ConfigHub Space holding the variant")
 	check.Flags().StringVar(&ckUnit, "unit", "", "the unit in that Space")
 	check.Flags().StringVar(&ckTarget, "target-namespace", "", "the layer's targetNamespace, where objects without one land")
+	check.Flags().StringVar(&kubeContext, "kube-context", "", "the kubectl context of the cluster to read; without it kubectl's current context is used, which may be another cluster")
 	check.Flags().BoolVar(&ckJSON, "json", false, "print the comparison as JSON")
 
 	versionCmd := &cobra.Command{

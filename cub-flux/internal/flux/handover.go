@@ -101,7 +101,7 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 				if v.TargetNamespace != "" {
 					target = " --target-namespace " + q(v.TargetNamespace)
 				}
-				add(`[ "$cluster" = %s ] && cub flux check --namespace %s --kustomization %s --space %s --unit %s%s`,
+				add(`[ "$cluster" = %s ] && cub flux check ${FLUX_CONTEXT:+--kube-context "$FLUX_CONTEXT"} --namespace %s --kustomization %s --space %s --unit %s%s`,
 					q(v.Cluster), q(ns), q(name), q(v.Space), q(c.Name), target)
 			}
 		}

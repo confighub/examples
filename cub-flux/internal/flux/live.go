@@ -17,8 +17,16 @@ import (
 // kubectl, cub and cub-scout with one.
 type Runner func(name string, args ...string) ([]byte, error)
 
+// KubeContext, when set, is the kubectl context every kubectl call here uses.
+// Without it kubectl uses whatever context happens to be current, which during
+// a handover is very likely the wrong cluster.
+var KubeContext string
+
 // Run runs a command on this machine.
 func Run(name string, args ...string) ([]byte, error) {
+	if name == "kubectl" && KubeContext != "" {
+		args = append([]string{"--context", KubeContext}, args...)
+	}
 	cmd := exec.Command(name, args...)
 	var stderr strings.Builder
 	cmd.Stderr = &stderr
@@ -50,15 +58,27 @@ func (o Owned) String() string {
 	return o.Kind + " " + o.Namespace + "/" + o.Name
 }
 
+// Live is what a Flux Kustomization says about itself right now.
+type Live struct {
+	Owned []Owned
+	// Prunes is spec.prune, which the CRD requires, so it is always an
+	// explicit choice and can be false. It decides whether an object the layer
+	// applied and a new source does not hold is deleted or merely left behind.
+	Prunes bool
+}
+
 // LiveInventory reads what a Flux Kustomization says it applied. This is the
-// controller's own record: status.inventory is what it will prune from if the
-// source stops holding an object, so it is what a handover has to match.
-func LiveInventory(run Runner, namespace, name string) ([]Owned, error) {
+// controller's own record: status.inventory is what it garbage-collects from,
+// so it is what a handover has to match.
+func LiveInventory(run Runner, namespace, name string) (Live, error) {
 	out, err := run("kubectl", "-n", namespace, "get", "kustomization", name, "-o", "json")
 	if err != nil {
-		return nil, fmt.Errorf("reading what %s applied: %w", name, err)
+		return Live{}, fmt.Errorf("reading what %s applied: %w", name, err)
 	}
 	var k struct {
+		Spec struct {
+			Prune bool `json:"prune"`
+		} `json:"spec"`
 		Status struct {
 			Inventory struct {
 				Entries []struct {
@@ -69,21 +89,21 @@ func LiveInventory(run Runner, namespace, name string) ([]Owned, error) {
 		} `json:"status"`
 	}
 	if err := json.Unmarshal(out, &k); err != nil {
-		return nil, fmt.Errorf("reading Kustomization %s: %w", name, err)
+		return Live{}, fmt.Errorf("reading Kustomization %s: %w", name, err)
 	}
 	entries := k.Status.Inventory.Entries
 	if len(entries) == 0 {
-		return nil, fmt.Errorf("Kustomization %s reports an empty inventory. It may not have reconciled yet, and a handover cannot be checked against nothing", name)
+		return Live{}, fmt.Errorf("Kustomization %s reports an empty inventory. It may not have reconciled yet, and a handover cannot be checked against nothing", name)
 	}
-	var owned []Owned
+	l := Live{Prunes: k.Spec.Prune}
 	for _, e := range entries {
 		o, err := parseID(e.ID)
 		if err != nil {
-			return nil, err
+			return Live{}, err
 		}
-		owned = append(owned, o)
+		l.Owned = append(l.Owned, o)
 	}
-	return owned, nil
+	return l, nil
 }
 
 // parseID reads Flux's inventory id, which is
@@ -147,7 +167,8 @@ func (c InventoryComparison) OK() bool { return len(c.WouldPrune) == 0 && len(c.
 // CompareInventory compares what the layer applied with what the release
 // holds. targetNamespace, when the Kustomization sets one, is where an object
 // without a namespace of its own lands.
-func CompareInventory(owned, stored []Owned, targetNamespace string) InventoryComparison {
+func CompareInventory(live Live, stored []Owned, targetNamespace string) InventoryComparison {
+	owned := live.Owned
 	var c InventoryComparison
 	at := map[string]int{}
 	for i, o := range stored {
@@ -165,10 +186,12 @@ func CompareInventory(owned, stored []Owned, targetNamespace string) InventoryCo
 			c.Same++
 			continue
 		}
-		// Flux prunes by default, and every layer in this plan has prune on,
-		// so an object it applied that a release does not hold is deleted.
+		what := "so it would be left on the cluster, managed by nothing"
+		if live.Prunes {
+			what = "and this layer prunes, so Flux would DELETE it from the cluster"
+		}
 		c.WouldPrune = append(c.WouldPrune,
-			fmt.Sprintf("%s: the layer applied it and the release does not hold it, so Flux would DELETE it from the cluster", o))
+			fmt.Sprintf("%s: the layer applied it and the release does not hold it, %s", o, what))
 	}
 	for i, s := range stored {
 		if used[i] {

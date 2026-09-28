@@ -19,7 +19,7 @@ func fake(out map[string]string) Runner {
 }
 
 // Flux's own inventory, in its own id form.
-const inv = `{"status":{"inventory":{"entries":[
+const inv = `{"spec":{"prune":true},"status":{"inventory":{"entries":[
  {"id":"apptique-prod_frontend_apps_Deployment","v":"v1"},
  {"id":"apptique-prod_frontend__Service","v":"v1"},
  {"id":"apptique-prod_legacy-tuning__ConfigMap","v":"v1"},
@@ -27,12 +27,12 @@ const inv = `{"status":{"inventory":{"entries":[
 ]}}}`
 
 func TestInventoryIDsAreRead(t *testing.T) {
-	owned, err := LiveInventory(fake(map[string]string{"get kustomization": inv}), "flux-system", "apps")
+	live, err := LiveInventory(fake(map[string]string{"get kustomization": inv}), "flux-system", "apps")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(owned) != 4 {
-		t.Fatalf("want 4 entries, got %d", len(owned))
+	if len(live.Owned) != 4 {
+		t.Fatalf("want 4 entries, got %d", len(live.Owned))
 	}
 	want := map[string]bool{
 		"apps|Deployment|apptique-prod|frontend": true,
@@ -40,7 +40,7 @@ func TestInventoryIDsAreRead(t *testing.T) {
 		"|ConfigMap|apptique-prod|legacy-tuning": true,
 		"|Namespace||apptique-prod":              true, // cluster-scoped: no namespace
 	}
-	for _, o := range owned {
+	for _, o := range live.Owned {
 		if !want[o.Key()] {
 			t.Errorf("unexpected key %q", o.Key())
 		}
@@ -50,7 +50,7 @@ func TestInventoryIDsAreRead(t *testing.T) {
 // The layer applied a ConfigMap the release does not hold. Every layer prunes,
 // so swapping the source deletes it. No render-side check can see this.
 func TestInventoryFindsWhatWouldBePruned(t *testing.T) {
-	owned, err := LiveInventory(fake(map[string]string{"get kustomization": inv}), "flux-system", "apps")
+	live, err := LiveInventory(fake(map[string]string{"get kustomization": inv}), "flux-system", "apps")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +70,7 @@ metadata: {name: apptique-prod}
 	if err != nil {
 		t.Fatal(err)
 	}
-	c := CompareInventory(owned, stored, "")
+	c := CompareInventory(live, stored, "")
 	if c.OK() {
 		t.Fatal("the ConfigMap would be deleted; this must not pass")
 	}
@@ -84,7 +84,7 @@ metadata: {name: apptique-prod}
 
 // A Kustomization with targetNamespace puts namespace-less objects there.
 func TestTargetNamespace(t *testing.T) {
-	owned, err := LiveInventory(fake(map[string]string{"get kustomization": inv}), "flux-system", "apps")
+	live, err := LiveInventory(fake(map[string]string{"get kustomization": inv}), "flux-system", "apps")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +108,7 @@ metadata: {name: apptique-prod}
 	if err != nil {
 		t.Fatal(err)
 	}
-	c := CompareInventory(owned, stored, "apptique-prod")
+	c := CompareInventory(live, stored, "apptique-prod")
 	if !c.OK() {
 		t.Errorf("all four match once targetNamespace applies: %+v", c)
 	}
@@ -127,5 +127,27 @@ func TestMalformedInventoryID(t *testing.T) {
 	_, err := LiveInventory(fake(map[string]string{"get kustomization": `{"status":{"inventory":{"entries":[{"id":"nope","v":"v1"}]}}}`}), "flux-system", "apps")
 	if err == nil || !strings.Contains(err.Error(), "is not <namespace>_<name>_<group>_<kind>") {
 		t.Errorf("want the id form named, got %v", err)
+	}
+}
+
+// spec.prune is required on the Kustomization CRD, so it is always an explicit
+// choice and can be false. A layer that does not prune leaves an object behind
+// rather than deleting it, and the two must be said differently.
+func TestPruneComesFromTheSpec(t *testing.T) {
+	const noPrune = `{"spec":{"prune":false},"status":{"inventory":{"entries":[
+	 {"id":"n_left-behind__ConfigMap","v":"v1"}]}}}`
+	live, err := LiveInventory(fake(map[string]string{"get kustomization": noPrune}), "flux-system", "a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if live.Prunes {
+		t.Error("this layer does not prune")
+	}
+	c := CompareInventory(live, nil, "")
+	if len(c.WouldPrune) != 1 || strings.Contains(c.WouldPrune[0], "DELETE") {
+		t.Errorf("without prune the object is left behind, not deleted: %v", c.WouldPrune)
+	}
+	if !strings.Contains(c.WouldPrune[0], "managed by nothing") {
+		t.Errorf("want the consequence named, got %v", c.WouldPrune)
 	}
 }
