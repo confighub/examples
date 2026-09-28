@@ -44,16 +44,26 @@ if [ -z "$addr" ]; then
   echo "Find it with: cub target get --space argo-targets argocd"
   echo "then re-run with CONFIGHUB_OCI=<address> bash handover.sh"; exit 1
 fi
-# The repository Secret's type for a plain OCI source is the one field here
-# that has not been checked against a live Argo CD. Verify it against your
-# version's repository-Secret docs before trusting this step.
-k create secret generic confighub-argo-targets --namespace "$ns" \
-  --from-literal=type=helm --from-literal=enableOCI=true \
-  --from-literal=url="${addr%%/*}" \
-  --from-file=username=<(cub worker get --space argo-targets server-worker -o jq=.BridgeWorker.BridgeWorkerID | tr -d '\n') \
-  --from-file=password=<(cub worker get --space argo-targets server-worker --include-secret -o jq=.BridgeWorker.Secret | tr -d '\n') \
-  --dry-run=client -o yaml | k apply -f -
-k -n "$ns" label secret confighub-argo-targets argocd.argoproj.io/secret-type=repository --overwrite
+# The repository Secret's shape was verified against Argo CD v3.5.3:
+#   type: oci, url with the oci:// scheme, the worker as username and
+#   password. The Application's repoURL needs the scheme too — without it
+#   Argo treats the address as a git repository and fails on "list refs".
+# insecureOCIForceHttp is only for a gateway served over plain HTTP.
+cat <<YAML | k apply -f -
+apiVersion: v1
+kind: Secret
+metadata:
+  name: confighub-argo-targets
+  namespace: ${ns}
+  labels:
+    argocd.argoproj.io/secret-type: repository
+stringData:
+  type: oci
+  url: oci://${addr}
+  username: "$(cub worker get --space argo-targets server-worker -o jq=.BridgeWorker.BridgeWorkerID | tr -d '\n')"
+  password: "$(cub worker get --space argo-targets server-worker --include-secret -o jq=.BridgeWorker.Secret | tr -d '\n')"
+${CONFIGHUB_OCI_PLAIN_HTTP:+  insecureOCIForceHttp: "true"}
+YAML
 
 step "2/5 Repoint root at argo-root-children"
 # Its children are Units there by now, released to the argocd Target.
@@ -155,3 +165,11 @@ echo
 echo 'Done once every Application reports Synced from an oci:// source:'
 echo '  kubectl -n $ns get applications -o custom-columns=NAME:.metadata.name,SOURCE:.spec.source.repoURL,SYNC:.status.sync.status'
 echo 'Nothing was deleted. To go back, patch each source to its Git repoURL and path.'
+echo
+echo 'One more thing, measured on Argo CD v3.5.3: publishing a new release does NOT'
+echo 'reach the cluster on its own. Argo caches the digest it resolved for the tag, and'
+echo 'was still serving the previous release 90 seconds later. A hard refresh re-resolves'
+echo 'the tag to a digest and the release lands:'
+echo '  kubectl -n $ns annotate application <name> argocd.argoproj.io/refresh=hard --overwrite'
+echo 'argobot does this for you, reacting to ConfigHub'\''s release.published event. Without'
+echo 'it, or without that annotation, an approved release sits unread on the gateway.'

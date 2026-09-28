@@ -189,6 +189,22 @@ no controller claims in those namespaces: things applied by hand, which neither
 record mentions and which a handover leaves behind. That one is a cross-check,
 not a gate, and cub-scout's absence is not a failure.
 
+**The repository Secret, verified against Argo CD v3.5.3.** The Application's
+`repoURL` and the Secret's `url` both need the `oci://` scheme — without it Argo
+treats the address as a git repository and fails with `list refs: invalid auth
+method`. The Secret's `type` is `oci`, and the worker is the username and
+password:
+
+```yaml
+stringData:
+  type: oci
+  url: oci://<gateway>/space/<space>
+  username: <the Targets' server worker id>
+  password: <its secret>
+  # only for a gateway served over plain HTTP:
+  insecureOCIForceHttp: "true"
+```
+
 **Nothing is deleted.** `root` and `storefront` carry
 `resources-finalizer.argocd.argoproj.io`, which deletes everything they
 deployed. Every step is a patch for exactly that reason. To go back, patch each
@@ -246,6 +262,35 @@ hand. The object sets still match, so the check passes. `cub scout compare` is
 the tool for that — it reads Kubernetes `managedFields` and attributes each
 field path to whoever last wrote it. `handover.sh` also asks cub-scout what no
 controller claims in your namespaces, which is a cross-check rather than a gate.
+
+## A published release does not arrive on its own
+
+This one is measured, and it surprised us. After `handover.sh`, an Application
+reads `oci://<gateway>` at `targetRevision: latest` — and Argo **caches the
+digest it resolved for that tag**. On Argo CD v3.5.3 a newly published release
+was still unread ninety seconds later: the Application sat at the previous
+digest, and the cluster ran the previous replica count.
+
+A hard refresh re-resolves the tag to a digest, and the release lands at once:
+
+```bash
+kubectl -n argocd annotate application <name> argocd.argoproj.io/refresh=hard --overwrite
+```
+
+```mermaid
+flowchart LR
+  p["cub release publish"] --> g["ConfigHub gateway<br/>new digest under :latest"]
+  g -.->|"Argo does not notice:<br/>the old digest is cached"| a["Application"]
+  g ==>|"hard refresh<br/>re-resolves tag to digest"| a
+  a --> c["the cluster"]
+```
+
+**[argobot](https://github.com/confighub/argobot) does this for you.** It
+subscribes to ConfigHub's `release.published` event and issues exactly that
+hard refresh, so an approved release reaches the cluster immediately. Without
+argobot, or without that annotation in whatever promotes your releases, an
+approved release sits unread on the gateway and the approval gate you built
+governs nothing.
 
 ## Making a change afterwards
 
@@ -340,10 +385,19 @@ That rehearsal found two bugs no test had:
 Every unit test passed throughout both bugs, because the fakes were written
 from the same wrong beliefs as the code.
 
-**Not yet run:** the handover itself. Every check in front of it has been
-exercised against a real cluster; repointing a live Application at ConfigHub
-has not. Until that is recorded, read `handover.sh` before running it, and
-start with one non-production estate.
+**The delivery path has now been run end to end.** A ConfigHub release was
+published to the OCI gateway, an Argo CD v3.5.3 Application was pointed at it,
+and it reported `Synced` and `Healthy` at the exact manifest digest
+`cub release list` showed. The workloads came up. Two things were learned that
+way and are now in the script and this guide: the repository Secret's shape,
+and that a second release does not arrive without a hard refresh.
+
+**Still not run:** a handover of an estate that was *already live under Argo* —
+repointing an Application that is currently syncing from Git, rather than
+creating one that reads ConfigHub from the start. The checks in front of that
+step have been exercised against real clusters, and the delivery path it
+repoints onto has been exercised, but the repoint itself has not. Read
+`handover.sh` before running it, and start with one non-production estate.
 
 **Not claimed at all:** that a plain directory of manifests can be onboarded
 (`kustomize build` will not read one, though Argo will — the plan says so),
