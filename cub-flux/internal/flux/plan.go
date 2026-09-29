@@ -61,6 +61,9 @@ type Cluster struct {
 	Name  string `json:"name"`
 	Dir   string `json:"dir"`
 	Stage string `json:"stage"`
+	// Path is the cluster's directory from the repository root, where the
+	// files flux-system applies for it live.
+	Path string `json:"path,omitempty"`
 }
 
 // Component is one layer (a Flux Kustomization name) across the clusters: a
@@ -239,7 +242,7 @@ func (b *builder) readClusters() map[string]map[string]Doc {
 		if len(byName) == 0 {
 			continue
 		}
-		b.clusters = append(b.clusters, Cluster{Name: name, Dir: e.Name()})
+		b.clusters = append(b.clusters, Cluster{Name: name, Dir: e.Name(), Path: b.rel(cdir)})
 		layers[name] = byName
 	}
 	if len(b.clusters) == 0 && len(p.Problems) == 0 {

@@ -19,6 +19,25 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	targets := prefix + "-targets"
 	var L []string
 	add := func(f string, a ...any) { L = append(L, fmt.Sprintf(f, a...)) }
+	// A layer is touched only on the clusters that have it. image-automation,
+	// for one, runs on dev alone, and a Kustomization a cluster does not have
+	// would stop the run with every earlier layer already moved.
+	on := map[string][]string{}
+	for _, c := range p.Components {
+		for _, st := range c.Stages {
+			for _, v := range st.Variants {
+				name := v.Kustomization[strings.Index(v.Kustomization, "/")+1:]
+				on[name] = append(on[name], v.Cluster)
+			}
+		}
+	}
+	onlyWhereLayer := func(name, line string) {
+		if cs := on[name]; len(cs) > 0 && len(cs) < len(p.Clusters) {
+			add(`case "$cluster" in %s) %s ;; esac`, strings.Join(cs, "|"), line)
+		} else {
+			L = append(L, line)
+		}
+	}
 
 	add("#!/usr/bin/env bash")
 	add("# Move this Flux fleet onto ConfigHub. Written by `cub flux apply`.")
@@ -63,6 +82,37 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	for _, b := range p.Boundary {
 		add("echo %s", q("Left alone: "+b))
 	}
+	// A layer a Kustomization applies belongs to that Kustomization. In a fleet
+	// made with flux bootstrap, flux-system applies clusters/<name>/, which holds
+	// every layer, and a kubectl patch of a layer lasts only until flux-system
+	// reconciles. Measured on Flux v2.8.6: a patched sourceRef went back to the
+	// Git value, and a patched field Git never sets was removed, on the next
+	// reconcile. So the patch below would move a layer and then quietly move it
+	// back. The change has to go where that owner reads, which is Git.
+	add("# A layer another Kustomization applies cannot be moved with kubectl: its")
+	add("# owner puts it back on its next reconcile. Find any before changing anything.")
+	raw := func(s string) { L = append(L, s) }
+	raw(`owned=""`)
+	raw(`owner_of() { k -n "$ns" get kustomization "$1" -o jsonpath='{.metadata.labels.kustomize\.toolkit\.fluxcd\.io/name}' 2>/dev/null || true; }`)
+	for _, step := range p.Order {
+		for _, name := range step {
+			onlyWhereLayer(name, fmt.Sprintf(`o=$(owner_of %s); [ -z "$o" ] || owned="$owned %s(applied-by-$o)"`, q(name), name))
+		}
+	}
+	raw(`if [ -n "$owned" ]; then`)
+	raw(`  echo "These layers are applied by another Kustomization:$owned" >&2`)
+	raw(`  echo "A kubectl patch of them is undone when that Kustomization reconciles, so this" >&2`)
+	raw(`  echo "script changes nothing. In a fleet made with flux bootstrap, hand them over in" >&2`)
+	add(`  case "$cluster" in`)
+	for _, c := range p.Clusters {
+		add(`    %s) dir=%s ;;`, c.Name, q(c.Path))
+	}
+	add(`  esac`)
+	raw(`  echo "Git instead: in the file under $dir/ that defines each layer, set" >&2`)
+	raw(`  echo "  sourceRef: {kind: OCIRepository, name: <layer>}  and  path: ./" >&2`)
+	raw(`  echo "and commit that together with step 2's bootstrap/$cluster/ files." >&2`)
+	raw(`  exit 1`)
+	raw(`fi`)
 	add("")
 
 	add(`step "1/4 Prove each layer holds what Git renders today"`)
@@ -206,7 +256,6 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("# must not overwrite the original with a half-moved state. If anything below")
 	add("# stops the script, the layers already moved are named, with the commands")
 	add("# that put them back. Nothing is rolled back automatically.")
-	raw := func(s string) { L = append(L, s) }
 	raw(`state="handover-state/$cluster.txt"; log="handover-state/$cluster.log"`)
 	raw(`mkdir -p handover-state; touch "$state"`)
 	raw(`log() { printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >> "$log"; }`)
@@ -269,25 +318,9 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	raw(`  fi`)
 	raw(`  log "Ready $1"`)
 	raw(`}`)
-	// A layer moves only on the clusters that have it. image-automation, for
-	// one, runs on dev alone, and patching a Kustomization a cluster does not
-	// have stops the run with every earlier layer already moved.
-	on := map[string][]string{}
-	for _, c := range p.Components {
-		for _, st := range c.Stages {
-			for _, v := range st.Variants {
-				name := v.Kustomization[strings.Index(v.Kustomization, "/")+1:]
-				on[name] = append(on[name], v.Cluster)
-			}
-		}
-	}
 	for _, step := range p.Order {
 		for _, name := range step {
-			if cs := on[name]; len(cs) > 0 && len(cs) < len(p.Clusters) {
-				add(`case "$cluster" in %s) swap %s ;; esac`, strings.Join(cs, "|"), q(name))
-			} else {
-				add("swap %s", q(name))
-			}
+			onlyWhereLayer(name, "swap "+q(name))
 		}
 	}
 	raw(`current=""`)
@@ -323,7 +356,7 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 		raw(`      *" $owner "*) where="its ConfigHub unit, which $owner now reads" ;;`)
 		raw(`      *) where="Git, which $owner still reads" ;;`)
 		raw(`    esac`)
-		raw(`    echo "  ImageUpdateAutomation $1 reads suspended now, but Kustomization $owner applies it and may undo this when it reconciles. Set spec.suspend: true in $where."`)
+		raw(`    echo "  ImageUpdateAutomation $1 reads suspended now, but Kustomization $owner applies it and will undo this when it next reconciles. To make it last, set spec.suspend: true in $where."`)
 		raw(`    held="$held $1"`)
 		raw(`  else`)
 		raw(`    echo "  Suspended ImageUpdateAutomation $1: spec.suspend reads true."`)

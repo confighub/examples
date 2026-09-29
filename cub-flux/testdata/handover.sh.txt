@@ -32,6 +32,28 @@ k get namespace "$ns" >/dev/null || { echo "no $ns namespace: is this the right 
 echo 'Left alone: gitops/flux/expert-fleet/clusters/dev/flux-system'
 echo 'Left alone: gitops/flux/expert-fleet/clusters/prod/flux-system'
 echo 'Left alone: gitops/flux/expert-fleet/clusters/staging/flux-system'
+# A layer another Kustomization applies cannot be moved with kubectl: its
+# owner puts it back on its next reconcile. Find any before changing anything.
+owned=""
+owner_of() { k -n "$ns" get kustomization "$1" -o jsonpath='{.metadata.labels.kustomize\.toolkit\.fluxcd\.io/name}' 2>/dev/null || true; }
+o=$(owner_of 'infrastructure'); [ -z "$o" ] || owned="$owned infrastructure(applied-by-$o)"
+o=$(owner_of 'apps'); [ -z "$o" ] || owned="$owned apps(applied-by-$o)"
+o=$(owner_of 'tenants'); [ -z "$o" ] || owned="$owned tenants(applied-by-$o)"
+case "$cluster" in dev-1) o=$(owner_of 'image-automation'); [ -z "$o" ] || owned="$owned image-automation(applied-by-$o)" ;; esac
+if [ -n "$owned" ]; then
+  echo "These layers are applied by another Kustomization:$owned" >&2
+  echo "A kubectl patch of them is undone when that Kustomization reconciles, so this" >&2
+  echo "script changes nothing. In a fleet made with flux bootstrap, hand them over in" >&2
+  case "$cluster" in
+    dev-1) dir='gitops/flux/expert-fleet/clusters/dev' ;;
+    staging-1) dir='gitops/flux/expert-fleet/clusters/staging' ;;
+    prod-1) dir='gitops/flux/expert-fleet/clusters/prod' ;;
+  esac
+  echo "Git instead: in the file under $dir/ that defines each layer, set" >&2
+  echo "  sourceRef: {kind: OCIRepository, name: <layer>}  and  path: ./" >&2
+  echo "and commit that together with step 2's bootstrap/$cluster/ files." >&2
+  exit 1
+fi
 
 step "1/4 Prove each layer holds what Git renders today"
 # Every layer prunes, so anything a release does not hold is deleted from
@@ -298,7 +320,7 @@ suspend_automation() {
       *" $owner "*) where="its ConfigHub unit, which $owner now reads" ;;
       *) where="Git, which $owner still reads" ;;
     esac
-    echo "  ImageUpdateAutomation $1 reads suspended now, but Kustomization $owner applies it and may undo this when it reconciles. Set spec.suspend: true in $where."
+    echo "  ImageUpdateAutomation $1 reads suspended now, but Kustomization $owner applies it and will undo this when it next reconciles. To make it last, set spec.suspend: true in $where."
     held="$held $1"
   else
     echo "  Suspended ImageUpdateAutomation $1: spec.suspend reads true."

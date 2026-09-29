@@ -17,12 +17,14 @@ import (
 //	IUA_PATCH_FAIL          the image automation patch is denied
 //	IUA_SUSPEND             what spec.suspend reads back (default true)
 //	IUA_OWNER               the Kustomization label on it (default none)
+//	LAYER_OWNER             the Kustomization label on every layer (default none)
 const stubKubectl = `#!/usr/bin/env bash
 echo "$*" >> "$STUB_LOG"
 a=" $* "
 case "$a" in
   *" config current-context "*) echo ctx-current ;;
   *" get namespace "*) ;;
+  *" get kustomization "*labels*) echo "${LAYER_OWNER:-}" ;;
   *" get kustomization "*metadata.name*)
     name=$(sed 's/.* get kustomization \([^ ]*\) .*/\1/' <<<"$a")
     echo "$name|GitRepository|fleet-repo||./gitops/$name" ;;
@@ -170,8 +172,8 @@ func TestImageAutomationSuspension(t *testing.T) {
 		{"suspended", "", false, "Suspended ImageUpdateAutomation apptique-dev: spec.suspend reads true"},
 		// The image-automation layer is itself handed over, so after this run
 		// the object's owner reads ConfigHub, and that is where the fix goes.
-		{"owned by a moved layer", "IUA_OWNER=image-automation", false, "Set spec.suspend: true in its ConfigHub unit"},
-		{"owned by a layer still on Git", "IUA_OWNER=flux-system", false, "Set spec.suspend: true in Git, which flux-system still reads"},
+		{"owned by a moved layer", "IUA_OWNER=image-automation", false, "set spec.suspend: true in its ConfigHub unit"},
+		{"owned by a layer still on Git", "IUA_OWNER=flux-system", false, "set spec.suspend: true in Git, which flux-system still reads"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			env := []string{"FLUX_CONTEXT=ctx-a"}
@@ -207,5 +209,21 @@ func TestHandoverOnAClusterWithoutEveryLayer(t *testing.T) {
 	}
 	if !strings.Contains(r.log, "patch kustomization apps ") {
 		t.Errorf("apps should still move on staging:\n%s", r.log)
+	}
+}
+
+// In a fleet made with flux bootstrap, flux-system applies every layer, and a
+// kubectl patch of one is undone on its next reconcile (measured on Flux
+// v2.8.6). The script must find that before it changes anything.
+func TestHandoverRefusesLayersAnotherKustomizationOwns(t *testing.T) {
+	r := runHandover(t, "FLUX_CONTEXT=ctx-a", "LAYER_OWNER=flux-system")
+	if r.err == nil {
+		t.Fatalf("owned layers must stop the run:\n%s", r.out)
+	}
+	if !strings.Contains(r.out, "apps(applied-by-flux-system)") || !strings.Contains(r.out, "hand them over in") {
+		t.Errorf("should name the owned layers and the Git route:\n%s", r.out)
+	}
+	if strings.Contains(r.log, " patch ") || strings.Contains(r.log, " apply ") || strings.Contains(r.log, " create ") {
+		t.Errorf("nothing may change before the refusal:\n%s", r.log)
 	}
 }

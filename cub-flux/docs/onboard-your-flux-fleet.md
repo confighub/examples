@@ -340,10 +340,12 @@ flowchart TB
   fs -->|"applies"| l
 ```
 
-One consequence has not been tested. In a bootstrapped fleet `flux-system`
-also reconciles the directory that holds each layer's `Kustomization`, so it
-may own the very objects `handover.sh` patches; see "What has and has not been
-checked".
+**A bootstrapped fleet cannot be handed over with kubectl.** There,
+`flux-system` also applies the directory that holds each layer's
+`Kustomization`, so it owns the very objects `handover.sh` would patch, and it
+puts them back on its next reconcile. `handover.sh` checks for that first and,
+if any layer has an owner, stops before it changes anything; see "What has and
+has not been checked".
 
 Also left alone: SOPS keys and any Secret, and the `team-checkout` tenant —
 repointing it would move that team from Git access to ConfigHub access, which
@@ -432,7 +434,7 @@ That rehearsal found two bugs:
 - The check read whichever kubectl context was current. On a fleet handed over
   one cluster at a time — which is how this works — it could have reported on
   the wrong cluster and passed. It takes `--kube-context` now, and
-  `handover.sh` passes `$FLUX_CONTEXT`.
+  `handover.sh` passes the context it fixed at the start.
 - It assumed every layer prunes. `spec.prune` is required on the CRD, so a
   layer can and does set it false, and then an object is left behind rather
   than deleted. Those are different outcomes and are now said differently.
@@ -441,8 +443,8 @@ That rehearsal found two bugs:
 reconciling this repository's `flux/beginner` example from GitHub, handed over
 to a self-hosted ConfigHub v0.6.2 and then handed back. Flux was set up with
 `flux install`, and the layer `Kustomization`s were applied with `kubectl
-apply`; it was not set up with `flux bootstrap`. See "Not yet tested" below
-before you rely on the result.
+apply`; it was not set up with `flux bootstrap`. That matters: see
+"Measured: a fleet set up the way `flux bootstrap` sets it up" below.
 
 What was verified afterwards:
 
@@ -495,16 +497,29 @@ that, and named `kubectl` among the managers — recorded against the `scale`
 subresource, with no timestamp, which is why the managers are reported
 unordered.
 
-**Not yet tested: a fleet set up with `flux bootstrap`.** Because the rehearsal
-applied the layer `Kustomization`s by hand, nothing owned them, and the
-`kubectl patch` of each `sourceRef` and `path` in `handover.sh` was never
-contested. In a bootstrapped fleet `flux-system` reconciles `clusters/<name>/`,
-and that directory holds those very `Kustomization`s. So a `kubectl patch` of a
-layer may be reverted on `flux-system`'s next reconcile, and the layer would
-quietly go back to Git. This is the ownership problem `cub argo` met: a parent
-that owns a child puts a patch back. Until the handover has been run against a
-bootstrapped fleet, treat it as unproven there, and after each swap read the
-`sourceRef` back once a reconcile interval has passed.
+**Measured: a fleet set up the way `flux bootstrap` sets it up.** Flux v2.8.6
+on kind, with a `flux-system` `Kustomization` applying `flux/beginner`'s
+`clusters/dev/` from Git, which is what `gotk-sync.yaml` does. Every layer then
+carries the label `kustomize.toolkit.fluxcd.io/name: flux-system`. A `kubectl
+patch` of the `apps` layer's `sourceRef` was back to its Git value after one
+`flux reconcile ks flux-system`. A patched field Git never sets, `spec.suspend`,
+was removed too, along with the `kubectl-patch` entry in `managedFields`. So a
+kubectl handover of a bootstrapped fleet would move each layer and, within
+`flux-system`'s interval, quietly move it back. This is the ownership problem
+`cub argo` met: whatever applies an object puts a patch back.
+
+`handover.sh` now reads that label on every layer before it changes anything,
+and stops if any layer has an owner. Run against that cluster, it named both
+layers and exited with every `Kustomization`'s `resourceVersion` unchanged.
+What it does not yet do is the handover itself for such a fleet. That has to be
+a Git change: in the files under the cluster's directory, each layer's
+`sourceRef` becomes its `OCIRepository` and its `path` becomes `./`, committed
+with the `bootstrap/<cluster>/` files, so that `flux-system` makes the change
+itself. That path has not been built or run.
+
+The same goes for image automation. Its `Kustomization` removes a suspend made
+with kubectl, which is why `handover.sh` says where `suspend: true` has to be
+set for it to last.
 
 **Not claimed at all:** live exports as input (`plan` reads a fleet
 repository), `OCIRepository` or `Bucket` sources as layer inputs,
