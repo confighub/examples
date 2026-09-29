@@ -56,8 +56,10 @@ func (r Result) OK() bool {
 }
 
 // RunCheck compares one Application with what ConfigHub holds for it. With
-// fields, it also compares every field the release sets.
-func RunCheck(run Runner, c Check, fields bool) (Result, error) {
+// fields, it also compares every field the release sets. The Application is
+// read with run, on the cluster Argo CD runs on; its objects are read with the
+// runner workloads gives for the Application's destination, which may refuse.
+func RunCheck(run Runner, c Check, fields bool, workloads func(Destination) (Runner, error)) (Result, error) {
 	ns := checkNamespace
 	live, err := LiveInventory(run, ns, c.Application)
 	if err != nil {
@@ -73,7 +75,11 @@ func RunCheck(run Runner, c Check, fields bool) (Result, error) {
 	}
 	r := Result{Check: c, Inventory: CompareInventory(live, held, c.Namespace)}
 	if fields {
-		fc, err := CompareFields(run, c.Namespace, stored)
+		at, err := workloads(live.Destination)
+		if err != nil {
+			return Result{}, err
+		}
+		fc, err := CompareFields(at, c.Namespace, stored)
 		if err != nil {
 			return Result{}, err
 		}

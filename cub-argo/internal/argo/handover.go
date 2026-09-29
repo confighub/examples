@@ -21,6 +21,9 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("#")
 	add("#   ARGOCD_CONTEXT=<kubectl context of the cluster Argo CD runs on> bash handover.sh")
 	add("#")
+	add("# with DEST_CONTEXT_<cluster>=<kubectl context> for each cluster Argo deploys")
+	add("# to other than its own: step 0 names any that are missing.")
+	add("#")
 	add("# Run apply.sh first. Every step here is a patch, never a delete: the")
 	add("# objects, their names and Argo's tracking of what they own all survive, so")
 	add("# no workload is recreated. It goes top down, because a parent pointed at a")
@@ -66,6 +69,38 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add(`if [ "$(printf '%%s\n' 3.1 "${version%%.*}.${version#*.}" | sort -V | head -1)" != 3.1 ]; then`)
 	add(`  echo "Argo CD runs $version; an oci:// source is read natively from v3.1, so this handover is not available here"; exit 1`)
 	add("fi")
+	// The field comparison reads each Application's objects on the cluster it
+	// deploys to. For every cluster other than Argo's own, that takes a context
+	// this script cannot guess, so each is asked for by name up front.
+	server := map[string]string{}
+	for _, c := range p.Clusters {
+		server[c.Name] = c.Server
+	}
+	var remote []string
+	seenRemote := map[string]bool{}
+	for _, c := range p.Components {
+		if c.Kind != "ApplicationSet" {
+			continue
+		}
+		for _, st := range c.Stages {
+			for _, v := range st.Variants {
+				if v.Path == "" || v.Path == "(multi-source)" || v.Cluster == "in-cluster" || seenRemote[v.Cluster] {
+					continue
+				}
+				seenRemote[v.Cluster] = true
+				remote = append(remote, v.Cluster)
+			}
+		}
+	}
+	if len(remote) > 0 {
+		add("# Each Application's objects are read on the cluster it deploys to, so each")
+		add("# cluster other than Argo CD's own needs its kubectl context:")
+		add(`missing=""`)
+		for _, cl := range remote {
+			add(`[ -n "${%s:-}" ] || missing="$missing %s"`, destVar(cl), destVar(cl))
+		}
+		add(`[ -z "$missing" ] || { echo "set the kubectl context of each cluster Argo deploys to:$missing"; exit 1; }`)
+	}
 
 	// The projects gate every repoint, so they are checked before anything moves.
 	var blocked []string
@@ -278,8 +313,14 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 					continue
 				}
 				add("same %s %s %s", q(v.Space), q(c.Name), q(v.Path))
-				add(`cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application %s --space %s --unit %s --destination-namespace %s`,
-					q(v.Application), q(v.Space), q(c.Name), q(v.Namespace))
+				dest := ""
+				if v.Cluster != "in-cluster" {
+					// The plan knows which Argo destination this cluster is, so
+					// the context is bound to it rather than trusted by name.
+					dest = fmt.Sprintf(` --destination-context "$%s" --destination %s`, destVar(v.Cluster), q(server[v.Cluster]))
+				}
+				add(`cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application %s --space %s --unit %s --destination-namespace %s%s`,
+					q(v.Application), q(v.Space), q(c.Name), q(v.Namespace), dest)
 			}
 		}
 	}
@@ -383,3 +424,14 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 // goes on the object, so it is visible both in ConfigHub and to whoever next
 // reads the cluster and wonders why a generator is generating nothing.
 const retiredAnnotation = "argo.confighub.com/retired"
+
+// destVar is the environment variable naming the kubectl context of a cluster
+// Argo deploys to.
+func destVar(cluster string) string {
+	return "DEST_CONTEXT_" + strings.Map(func(r rune) rune {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
+			return r
+		}
+		return '_'
+	}, cluster)
+}

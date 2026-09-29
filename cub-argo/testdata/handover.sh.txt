@@ -4,6 +4,9 @@
 #
 #   ARGOCD_CONTEXT=<kubectl context of the cluster Argo CD runs on> bash handover.sh
 #
+# with DEST_CONTEXT_<cluster>=<kubectl context> for each cluster Argo deploys
+# to other than its own: step 0 names any that are missing.
+#
 # Run apply.sh first. Every step here is a patch, never a delete: the
 # objects, their names and Argo's tracking of what they own all survive, so
 # no workload is recreated. It goes top down, because a parent pointed at a
@@ -34,6 +37,13 @@ version=${image##*:}; version=${version#v}
 if [ "$(printf '%s\n' 3.1 "${version%.*}.${version#*.}" | sort -V | head -1)" != 3.1 ]; then
   echo "Argo CD runs $version; an oci:// source is read natively from v3.1, so this handover is not available here"; exit 1
 fi
+# Each Application's objects are read on the cluster it deploys to, so each
+# cluster other than Argo CD's own needs its kubectl context:
+missing=""
+[ -n "${DEST_CONTEXT_dev_1:-}" ] || missing="$missing DEST_CONTEXT_dev_1"
+[ -n "${DEST_CONTEXT_staging_1:-}" ] || missing="$missing DEST_CONTEXT_staging_1"
+[ -n "${DEST_CONTEXT_prod_1:-}" ] || missing="$missing DEST_CONTEXT_prod_1"
+[ -z "$missing" ] || { echo "set the kubectl context of each cluster Argo deploys to:$missing"; exit 1; }
 # Until the gateway is allowed as a source, every repoint below is refused.
 still_blocked=""
 k -n "$ns" get appproject platform -o jsonpath='{.spec.sourceRepos}' 2>/dev/null | grep -q -e 'oci://' -e '"\*"' || still_blocked="$still_blocked platform"
@@ -150,23 +160,23 @@ same() {
 # all. Where Argo prunes, those would be deleted the moment the source
 # moves. No render-side check can see them.
 same 'argo-apptique-dev-1' 'apptique' 'gitops/argo/expert-app-of-apps/apps/apptique/overlays/dev'
-cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'dev-1-apptique' --space 'argo-apptique-dev-1' --unit 'apptique' --destination-namespace 'storefront-dev'
+cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'dev-1-apptique' --space 'argo-apptique-dev-1' --unit 'apptique' --destination-namespace 'storefront-dev' --destination-context "$DEST_CONTEXT_dev_1" --destination 'https://dev-1.example.invalid'
 same 'argo-apptique-staging-1' 'apptique' 'gitops/argo/expert-app-of-apps/apps/apptique/overlays/staging'
-cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'staging-1-apptique' --space 'argo-apptique-staging-1' --unit 'apptique' --destination-namespace 'storefront-staging'
+cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'staging-1-apptique' --space 'argo-apptique-staging-1' --unit 'apptique' --destination-namespace 'storefront-staging' --destination-context "$DEST_CONTEXT_staging_1" --destination 'https://staging-1.example.invalid'
 same 'argo-apptique-prod-1' 'apptique' 'gitops/argo/expert-app-of-apps/apps/apptique/overlays/prod'
-cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'prod-1-apptique' --space 'argo-apptique-prod-1' --unit 'apptique' --destination-namespace 'storefront-prod'
+cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'prod-1-apptique' --space 'argo-apptique-prod-1' --unit 'apptique' --destination-namespace 'storefront-prod' --destination-context "$DEST_CONTEXT_prod_1" --destination 'https://prod-1.example.invalid'
 same 'argo-checkout-cache-dev-1' 'checkout-cache' 'gitops/argo/expert-app-of-apps/apps/checkout-cache/overlays/dev'
-cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'dev-1-checkout-cache' --space 'argo-checkout-cache-dev-1' --unit 'checkout-cache' --destination-namespace 'storefront-dev'
+cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'dev-1-checkout-cache' --space 'argo-checkout-cache-dev-1' --unit 'checkout-cache' --destination-namespace 'storefront-dev' --destination-context "$DEST_CONTEXT_dev_1" --destination 'https://dev-1.example.invalid'
 same 'argo-checkout-cache-staging-1' 'checkout-cache' 'gitops/argo/expert-app-of-apps/apps/checkout-cache/overlays/staging'
-cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'staging-1-checkout-cache' --space 'argo-checkout-cache-staging-1' --unit 'checkout-cache' --destination-namespace 'storefront-staging'
+cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'staging-1-checkout-cache' --space 'argo-checkout-cache-staging-1' --unit 'checkout-cache' --destination-namespace 'storefront-staging' --destination-context "$DEST_CONTEXT_staging_1" --destination 'https://staging-1.example.invalid'
 same 'argo-checkout-cache-prod-1' 'checkout-cache' 'gitops/argo/expert-app-of-apps/apps/checkout-cache/overlays/prod'
-cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'prod-1-checkout-cache' --space 'argo-checkout-cache-prod-1' --unit 'checkout-cache' --destination-namespace 'storefront-prod'
+cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'prod-1-checkout-cache' --space 'argo-checkout-cache-prod-1' --unit 'checkout-cache' --destination-namespace 'storefront-prod' --destination-context "$DEST_CONTEXT_prod_1" --destination 'https://prod-1.example.invalid'
 same 'argo-platform-addons-cluster-baseline-dev-1' 'platform-addons-cluster-baseline' 'gitops/argo/expert-app-of-apps/apps/platform/cluster-baseline/overlays/dev'
-cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'dev-1-cluster-baseline' --space 'argo-platform-addons-cluster-baseline-dev-1' --unit 'platform-addons-cluster-baseline' --destination-namespace 'platform-system'
+cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'dev-1-cluster-baseline' --space 'argo-platform-addons-cluster-baseline-dev-1' --unit 'platform-addons-cluster-baseline' --destination-namespace 'platform-system' --destination-context "$DEST_CONTEXT_dev_1" --destination 'https://dev-1.example.invalid'
 same 'argo-platform-addons-cluster-baseline-staging-1' 'platform-addons-cluster-baseline' 'gitops/argo/expert-app-of-apps/apps/platform/cluster-baseline/overlays/staging'
-cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'staging-1-cluster-baseline' --space 'argo-platform-addons-cluster-baseline-staging-1' --unit 'platform-addons-cluster-baseline' --destination-namespace 'platform-system'
+cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'staging-1-cluster-baseline' --space 'argo-platform-addons-cluster-baseline-staging-1' --unit 'platform-addons-cluster-baseline' --destination-namespace 'platform-system' --destination-context "$DEST_CONTEXT_staging_1" --destination 'https://staging-1.example.invalid'
 same 'argo-platform-addons-cluster-baseline-prod-1' 'platform-addons-cluster-baseline' 'gitops/argo/expert-app-of-apps/apps/platform/cluster-baseline/overlays/prod'
-cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'prod-1-cluster-baseline' --space 'argo-platform-addons-cluster-baseline-prod-1' --unit 'platform-addons-cluster-baseline' --destination-namespace 'platform-system'
+cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'prod-1-cluster-baseline' --space 'argo-platform-addons-cluster-baseline-prod-1' --unit 'platform-addons-cluster-baseline' --destination-namespace 'platform-system' --destination-context "$DEST_CONTEXT_prod_1" --destination 'https://prod-1.example.invalid'
 
 # What no controller claims on these namespaces, as a cross-check. This
 # is cub-scout inferring ownership, not a gate: it finds what was applied

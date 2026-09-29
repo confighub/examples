@@ -140,6 +140,7 @@ func newRoot() *cobra.Command {
 	apply.Flags().StringVar(&out, "out", "", "directory for the files and the scripts")
 
 	var checkNS, checkApp, checkSpace, checkUnit, checkDest, kubeContext, checkStages string
+	var destContext, destDeclared string
 	var checkDeep bool
 	var cf argo.Options
 	var checkJSON bool
@@ -189,9 +190,17 @@ Nothing is changed either way.`,
 			}
 			w := c.OutOrStdout()
 			bad := 0
+			workloads := func(d argo.Destination) (argo.Runner, error) {
+				ctx, err := argo.ResolveDestination(d, kubeContext,
+					argo.DestinationAccess{Context: destContext, Declared: destDeclared}, argo.ServerOf)
+				if err != nil {
+					return nil, err
+				}
+				return argo.RunIn(ctx), nil
+			}
 			var results []argo.Result
 			for _, ck := range checks {
-				r, err := argo.RunCheck(argo.Run, ck, checkDeep)
+				r, err := argo.RunCheck(argo.Run, ck, checkDeep, workloads)
 				if err != nil {
 					if checkJSON {
 						return fmt.Errorf("%s: %w", ck.Application, err)
@@ -264,7 +273,9 @@ Nothing is changed either way.`,
 	check.Flags().StringVar(&checkSpace, "space", "", "the ConfigHub Space holding the variant")
 	check.Flags().StringVar(&checkUnit, "unit", "", "the unit in that Space")
 	check.Flags().StringVar(&checkDest, "destination-namespace", "", "the Application's destination namespace, where objects without one land")
-	check.Flags().StringVar(&kubeContext, "kube-context", "", "the kubectl context of the cluster to read; without it kubectl's current context is used, which may be another cluster")
+	check.Flags().StringVar(&destContext, "destination-context", "", "with --fields, the kubectl context of the cluster the Application deploys to, where its objects are read; not needed when Argo CD deploys to its own cluster")
+	check.Flags().StringVar(&destDeclared, "destination", "", "the Argo destination (server address or cluster name) --destination-context reaches, when kubectl reaches it by another address")
+	check.Flags().StringVar(&kubeContext, "kube-context", "", "the kubectl context of the cluster Argo CD runs on, where Applications are read; without it kubectl's current context is used, which may be another cluster")
 	check.Flags().BoolVar(&checkJSON, "json", false, "print the comparison as JSON")
 
 	versionCmd := &cobra.Command{

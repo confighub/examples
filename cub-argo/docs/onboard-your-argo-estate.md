@@ -135,8 +135,13 @@ in ConfigHub since.
 This is the step that moves your clusters, so read it first:
 
 ```bash
-ARGOCD_CONTEXT=<kubectl context of the cluster Argo CD runs on> bash onboard/handover.sh
+ARGOCD_CONTEXT=<kubectl context of the cluster Argo CD runs on> \
+  DEST_CONTEXT_prod_1=<kubectl context of prod-1> ... \
+  bash onboard/handover.sh
 ```
+
+One `DEST_CONTEXT_<cluster>` for each cluster Argo deploys to other than its
+own; step 0 names any that are missing.
 
 Each layer is **repointed**, never orphaned or deleted. That matters because an
 app of apps does not own its children through `ownerReferences` — it owns them
@@ -322,6 +327,29 @@ object:
 Deployment apptique-dev/frontend .spec.replicas: cluster has 4, the release
 holds 2 (written on this object by kubectl-scale, argocd-controller)
 ```
+
+**It reads each object where it runs.** The Application is read on the cluster
+Argo CD runs on, and the objects it deploys on the cluster it deploys them to.
+Those are the same cluster only when the destination is Argo's own
+(`in-cluster`). For any other, pass that cluster's context:
+
+```bash
+cub argo check ./my-estate --cluster prod-1 --fields \
+  --kube-context <Argo CD's cluster> --destination-context <prod-1's context>
+```
+
+The check accepts that context only if kubectl reaches it at the address the
+Application deploys to. A kind cluster, say, is `127.0.0.1:<port>` from your
+laptop and something else from inside Argo, and then you say which destination
+it is with `--destination <server>`. Without either, it refuses rather than read
+the management cluster, where an object of the same name would be compared and
+could pass. `handover.sh` asks for one `DEST_CONTEXT_<cluster>` per cluster up
+front and passes the destination the plan found.
+
+An object the check cannot read, because it is forbidden, timed out or the
+cluster is unreachable, is listed and counted: the check says how many of the
+release's objects it compared, and reading fewer than all of them is never
+clean.
 
 `managedFields` is that record, and `kubectl get -o json` **strips it** unless
 asked — the plugin passes `--show-managed-fields`, without which attribution
