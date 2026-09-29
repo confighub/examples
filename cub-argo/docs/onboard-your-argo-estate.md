@@ -328,6 +328,15 @@ Deployment apptique-dev/frontend .spec.replicas: cluster has 4, the release
 holds 2 (written on this object by kubectl-scale, argocd-controller)
 ```
 
+**It checks the release, not the head.** A handover delivers a published
+release, and a unit changed since the last publish holds something the cluster
+will not get. So `check` reads the newest published release, or the one
+`--release sha256:...` names, finds the revision of the unit it bundled, and
+compares that. It prints the release number and manifest digest, and says so
+when the unit's head has moved past it. `handover.sh` records each digest
+before checking it, and prints it beside each repoint, so the digest Argo then reports in
+`status.sync.revision` can be compared with the one that was checked.
+
 **It reads each object where it runs.** The Application is read on the cluster
 Argo CD runs on, and the objects it deploys on the cluster it deploys them to.
 Those are the same cluster only when the destination is Argo's own

@@ -160,23 +160,32 @@ same() {
 # all. Where Argo prunes, those would be deleted the moment the source
 # moves. No render-side check can see them.
 same 'argo-apptique-dev-1' 'apptique' 'gitops/argo/expert-app-of-apps/apps/apptique/overlays/dev'
-cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'dev-1-apptique' --space 'argo-apptique-dev-1' --unit 'apptique' --destination-namespace 'storefront-dev' --destination-context "$DEST_CONTEXT_dev_1" --destination 'https://dev-1.example.invalid'
+digest_argo_apptique_dev_1=$(cub release get --space 'argo-apptique-dev-1' --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')
+cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'dev-1-apptique' --space 'argo-apptique-dev-1' --unit 'apptique' --destination-namespace 'storefront-dev' --destination-context "$DEST_CONTEXT_dev_1" --destination 'https://dev-1.example.invalid' --release "$digest_argo_apptique_dev_1"
 same 'argo-apptique-staging-1' 'apptique' 'gitops/argo/expert-app-of-apps/apps/apptique/overlays/staging'
-cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'staging-1-apptique' --space 'argo-apptique-staging-1' --unit 'apptique' --destination-namespace 'storefront-staging' --destination-context "$DEST_CONTEXT_staging_1" --destination 'https://staging-1.example.invalid'
+digest_argo_apptique_staging_1=$(cub release get --space 'argo-apptique-staging-1' --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')
+cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'staging-1-apptique' --space 'argo-apptique-staging-1' --unit 'apptique' --destination-namespace 'storefront-staging' --destination-context "$DEST_CONTEXT_staging_1" --destination 'https://staging-1.example.invalid' --release "$digest_argo_apptique_staging_1"
 same 'argo-apptique-prod-1' 'apptique' 'gitops/argo/expert-app-of-apps/apps/apptique/overlays/prod'
-cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'prod-1-apptique' --space 'argo-apptique-prod-1' --unit 'apptique' --destination-namespace 'storefront-prod' --destination-context "$DEST_CONTEXT_prod_1" --destination 'https://prod-1.example.invalid'
+digest_argo_apptique_prod_1=$(cub release get --space 'argo-apptique-prod-1' --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')
+cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'prod-1-apptique' --space 'argo-apptique-prod-1' --unit 'apptique' --destination-namespace 'storefront-prod' --destination-context "$DEST_CONTEXT_prod_1" --destination 'https://prod-1.example.invalid' --release "$digest_argo_apptique_prod_1"
 same 'argo-checkout-cache-dev-1' 'checkout-cache' 'gitops/argo/expert-app-of-apps/apps/checkout-cache/overlays/dev'
-cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'dev-1-checkout-cache' --space 'argo-checkout-cache-dev-1' --unit 'checkout-cache' --destination-namespace 'storefront-dev' --destination-context "$DEST_CONTEXT_dev_1" --destination 'https://dev-1.example.invalid'
+digest_argo_checkout_cache_dev_1=$(cub release get --space 'argo-checkout-cache-dev-1' --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')
+cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'dev-1-checkout-cache' --space 'argo-checkout-cache-dev-1' --unit 'checkout-cache' --destination-namespace 'storefront-dev' --destination-context "$DEST_CONTEXT_dev_1" --destination 'https://dev-1.example.invalid' --release "$digest_argo_checkout_cache_dev_1"
 same 'argo-checkout-cache-staging-1' 'checkout-cache' 'gitops/argo/expert-app-of-apps/apps/checkout-cache/overlays/staging'
-cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'staging-1-checkout-cache' --space 'argo-checkout-cache-staging-1' --unit 'checkout-cache' --destination-namespace 'storefront-staging' --destination-context "$DEST_CONTEXT_staging_1" --destination 'https://staging-1.example.invalid'
+digest_argo_checkout_cache_staging_1=$(cub release get --space 'argo-checkout-cache-staging-1' --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')
+cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'staging-1-checkout-cache' --space 'argo-checkout-cache-staging-1' --unit 'checkout-cache' --destination-namespace 'storefront-staging' --destination-context "$DEST_CONTEXT_staging_1" --destination 'https://staging-1.example.invalid' --release "$digest_argo_checkout_cache_staging_1"
 same 'argo-checkout-cache-prod-1' 'checkout-cache' 'gitops/argo/expert-app-of-apps/apps/checkout-cache/overlays/prod'
-cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'prod-1-checkout-cache' --space 'argo-checkout-cache-prod-1' --unit 'checkout-cache' --destination-namespace 'storefront-prod' --destination-context "$DEST_CONTEXT_prod_1" --destination 'https://prod-1.example.invalid'
+digest_argo_checkout_cache_prod_1=$(cub release get --space 'argo-checkout-cache-prod-1' --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')
+cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'prod-1-checkout-cache' --space 'argo-checkout-cache-prod-1' --unit 'checkout-cache' --destination-namespace 'storefront-prod' --destination-context "$DEST_CONTEXT_prod_1" --destination 'https://prod-1.example.invalid' --release "$digest_argo_checkout_cache_prod_1"
 same 'argo-platform-addons-cluster-baseline-dev-1' 'platform-addons-cluster-baseline' 'gitops/argo/expert-app-of-apps/apps/platform/cluster-baseline/overlays/dev'
-cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'dev-1-cluster-baseline' --space 'argo-platform-addons-cluster-baseline-dev-1' --unit 'platform-addons-cluster-baseline' --destination-namespace 'platform-system' --destination-context "$DEST_CONTEXT_dev_1" --destination 'https://dev-1.example.invalid'
+digest_argo_platform_addons_cluster_baseline_dev_1=$(cub release get --space 'argo-platform-addons-cluster-baseline-dev-1' --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')
+cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'dev-1-cluster-baseline' --space 'argo-platform-addons-cluster-baseline-dev-1' --unit 'platform-addons-cluster-baseline' --destination-namespace 'platform-system' --destination-context "$DEST_CONTEXT_dev_1" --destination 'https://dev-1.example.invalid' --release "$digest_argo_platform_addons_cluster_baseline_dev_1"
 same 'argo-platform-addons-cluster-baseline-staging-1' 'platform-addons-cluster-baseline' 'gitops/argo/expert-app-of-apps/apps/platform/cluster-baseline/overlays/staging'
-cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'staging-1-cluster-baseline' --space 'argo-platform-addons-cluster-baseline-staging-1' --unit 'platform-addons-cluster-baseline' --destination-namespace 'platform-system' --destination-context "$DEST_CONTEXT_staging_1" --destination 'https://staging-1.example.invalid'
+digest_argo_platform_addons_cluster_baseline_staging_1=$(cub release get --space 'argo-platform-addons-cluster-baseline-staging-1' --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')
+cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'staging-1-cluster-baseline' --space 'argo-platform-addons-cluster-baseline-staging-1' --unit 'platform-addons-cluster-baseline' --destination-namespace 'platform-system' --destination-context "$DEST_CONTEXT_staging_1" --destination 'https://staging-1.example.invalid' --release "$digest_argo_platform_addons_cluster_baseline_staging_1"
 same 'argo-platform-addons-cluster-baseline-prod-1' 'platform-addons-cluster-baseline' 'gitops/argo/expert-app-of-apps/apps/platform/cluster-baseline/overlays/prod'
-cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'prod-1-cluster-baseline' --space 'argo-platform-addons-cluster-baseline-prod-1' --unit 'platform-addons-cluster-baseline' --destination-namespace 'platform-system' --destination-context "$DEST_CONTEXT_prod_1" --destination 'https://prod-1.example.invalid'
+digest_argo_platform_addons_cluster_baseline_prod_1=$(cub release get --space 'argo-platform-addons-cluster-baseline-prod-1' --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')
+cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'prod-1-cluster-baseline' --space 'argo-platform-addons-cluster-baseline-prod-1' --unit 'platform-addons-cluster-baseline' --destination-namespace 'platform-system' --destination-context "$DEST_CONTEXT_prod_1" --destination 'https://prod-1.example.invalid' --release "$digest_argo_platform_addons_cluster_baseline_prod_1"
 
 # What no controller claims on these namespaces, as a cross-check. This
 # is cub-scout inferring ownership, not a gate: it finds what was applied
@@ -215,8 +224,11 @@ echo '  # then wait for the parent to sync it down before patching anything:'
 printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'get applicationset apptique -o jsonpath='\''{.spec.syncPolicy.applicationsSync}'\'''
 echo 'Once it reads create-only, point each Application at its own Space:'
 printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'patch application dev-1-apptique --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-apptique-dev-1","path":".","targetRevision":"latest"}}}'\''   # stage canary'
+echo "    # checked at ${digest_argo_apptique_dev_1:-?}; once synced, its status.sync.revision should name that digest, or a newer release went out unchecked"
 printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'patch application staging-1-apptique --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-apptique-staging-1","path":".","targetRevision":"latest"}}}'\''   # stage secondary'
+echo "    # checked at ${digest_argo_apptique_staging_1:-?}; once synced, its status.sync.revision should name that digest, or a newer release went out unchecked"
 printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'patch application prod-1-apptique --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-apptique-prod-1","path":".","targetRevision":"latest"}}}'\''   # stage primary'
+echo "    # checked at ${digest_argo_apptique_prod_1:-?}; once synced, its status.sync.revision should name that digest, or a newer release went out unchecked"
 
 echo '-- checkout-cache'
 echo 'checkout-cache is a Unit in argo-storefront-children. Retire it where ConfigHub keeps it, so the change is reviewed and survives the next sync:'
@@ -229,8 +241,11 @@ echo '  # then wait for the parent to sync it down before patching anything:'
 printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'get applicationset checkout-cache -o jsonpath='\''{.spec.syncPolicy.applicationsSync}'\'''
 echo 'Once it reads create-only, point each Application at its own Space:'
 printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'patch application dev-1-checkout-cache --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-checkout-cache-dev-1","path":".","targetRevision":"latest"}}}'\''   # stage canary'
+echo "    # checked at ${digest_argo_checkout_cache_dev_1:-?}; once synced, its status.sync.revision should name that digest, or a newer release went out unchecked"
 printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'patch application staging-1-checkout-cache --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-checkout-cache-staging-1","path":".","targetRevision":"latest"}}}'\''   # stage secondary'
+echo "    # checked at ${digest_argo_checkout_cache_staging_1:-?}; once synced, its status.sync.revision should name that digest, or a newer release went out unchecked"
 printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'patch application prod-1-checkout-cache --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-checkout-cache-prod-1","path":".","targetRevision":"latest"}}}'\''   # stage primary'
+echo "    # checked at ${digest_argo_checkout_cache_prod_1:-?}; once synced, its status.sync.revision should name that digest, or a newer release went out unchecked"
 
 echo '-- platform-addons'
 echo 'platform-addons is a Unit in argo-root-children. Retire it where ConfigHub keeps it, so the change is reviewed and survives the next sync:'
@@ -243,8 +258,11 @@ echo '  # then wait for the parent to sync it down before patching anything:'
 printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'get applicationset platform-addons -o jsonpath='\''{.spec.syncPolicy.applicationsSync}'\'''
 echo 'Once it reads create-only, point each Application at its own Space:'
 printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'patch application dev-1-cluster-baseline --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-platform-addons-cluster-baseline-dev-1","path":".","targetRevision":"latest"}}}'\''   # stage canary'
+echo "    # checked at ${digest_argo_platform_addons_cluster_baseline_dev_1:-?}; once synced, its status.sync.revision should name that digest, or a newer release went out unchecked"
 printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'patch application staging-1-cluster-baseline --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-platform-addons-cluster-baseline-staging-1","path":".","targetRevision":"latest"}}}'\''   # stage secondary'
+echo "    # checked at ${digest_argo_platform_addons_cluster_baseline_staging_1:-?}; once synced, its status.sync.revision should name that digest, or a newer release went out unchecked"
 printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'patch application prod-1-cluster-baseline --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-platform-addons-cluster-baseline-prod-1","path":".","targetRevision":"latest"}}}'\''   # stage primary'
+echo "    # checked at ${digest_argo_platform_addons_cluster_baseline_prod_1:-?}; once synced, its status.sync.revision should name that digest, or a newer release went out unchecked"
 
 echo 'Each Application keeps its name and its UID, so nothing is orphaned and no'
 echo 'workload restarts. The retired ApplicationSets stay in place, inert. Removing'

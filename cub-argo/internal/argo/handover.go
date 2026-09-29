@@ -319,8 +319,11 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 					// the context is bound to it rather than trusted by name.
 					dest = fmt.Sprintf(` --destination-context "$%s" --destination %s`, destVar(v.Cluster), q(server[v.Cluster]))
 				}
-				add(`cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application %s --space %s --unit %s --destination-namespace %s%s`,
-					q(v.Application), q(v.Space), q(c.Name), q(v.Namespace), dest)
+				// Bound to one release by digest, so the check says which bytes
+				// it passed, and the repoint below can be compared with them.
+				add(`%s=$(cub release get --space %s --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')`, digestVar(v.Space), q(v.Space))
+				add(`cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application %s --space %s --unit %s --destination-namespace %s%s --release "$%s"`,
+					q(v.Application), q(v.Space), q(c.Name), q(v.Namespace), dest, digestVar(v.Space))
 			}
 		}
 	}
@@ -388,6 +391,9 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 				show(fmt.Sprintf(
 					"patch application %s --type merge -p '{\"spec\":{\"source\":{\"repoURL\":\"oci://<gateway>/space/%s\",\"path\":\".\",\"targetRevision\":\"latest\"}}}'   # stage %s",
 					v.Application, v.Space, st.Name))
+				if v.Path != "" && v.Path != "(multi-source)" {
+					add(`echo "    # checked at ${%s:-?}; once synced, its status.sync.revision should name that digest, or a newer release went out unchecked"`, digestVar(v.Space))
+				}
 			}
 		}
 	}
@@ -434,4 +440,15 @@ func destVar(cluster string) string {
 		}
 		return '_'
 	}, cluster)
+}
+
+// digestVar is the shell variable holding the release digest a variant was
+// checked at.
+func digestVar(space string) string {
+	return "digest_" + strings.Map(func(r rune) rune {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
+			return r
+		}
+		return '_'
+	}, space)
 }

@@ -12,6 +12,9 @@ type Check struct {
 	Namespace string `json:"namespace"`
 	// Cluster is only for saying which one this is.
 	Cluster string `json:"cluster,omitempty"`
+	// Release names the release to compare against by its manifest digest;
+	// empty is the newest published one.
+	Release string `json:"release,omitempty"`
 }
 
 // ChecksFor is every Application a plan would govern, so `cub argo check`
@@ -41,6 +44,7 @@ func ChecksFor(p *Plan) []Check {
 // Result is what one Check found.
 type Result struct {
 	Check     Check               `json:"check"`
+	Release   Release             `json:"release"`
 	Inventory InventoryComparison `json:"inventory"`
 	Fields    *FieldCheck         `json:"fields,omitempty"`
 	// Stale is every object Argo lists among the Application's resources that
@@ -65,15 +69,15 @@ func RunCheck(run Runner, c Check, fields bool, workloads func(Destination) (Run
 	if err != nil {
 		return Result{}, err
 	}
-	stored, err := run("cub", "unit", "data", "--space", c.Space, c.Unit)
+	rel, stored, err := ReleasedData(run, c.Space, c.Unit, c.Release)
 	if err != nil {
-		return Result{}, fmt.Errorf("reading %s/%s from ConfigHub: %w", c.Space, c.Unit, err)
+		return Result{}, err
 	}
 	held, err := ObjectsIn(stored)
 	if err != nil {
 		return Result{}, err
 	}
-	r := Result{Check: c, Inventory: CompareInventory(live, held, c.Namespace)}
+	r := Result{Check: c, Release: rel, Inventory: CompareInventory(live, held, c.Namespace)}
 	if fields {
 		at, err := workloads(live.Destination)
 		if err != nil {

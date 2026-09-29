@@ -140,7 +140,7 @@ func newRoot() *cobra.Command {
 	apply.Flags().StringVar(&out, "out", "", "directory for the files and the scripts")
 
 	var checkNS, checkApp, checkSpace, checkUnit, checkDest, kubeContext, checkStages string
-	var destContext, destDeclared string
+	var destContext, destDeclared, checkRelease string
 	var checkDeep bool
 	var cf argo.Options
 	var checkJSON bool
@@ -190,6 +190,9 @@ Nothing is changed either way.`,
 			}
 			w := c.OutOrStdout()
 			bad := 0
+			for i := range checks {
+				checks[i].Release = checkRelease
+			}
 			workloads := func(d argo.Destination) (argo.Runner, error) {
 				ctx, err := argo.ResolveDestination(d, kubeContext,
 					argo.DestinationAccess{Context: destContext, Declared: destDeclared}, argo.ServerOf)
@@ -215,6 +218,10 @@ Nothing is changed either way.`,
 				if checkJSON {
 					results = append(results, r)
 					continue
+				}
+				fmt.Fprintf(w, "%s: release %d (%s) holds %s at revision %d\n", ck.Application, r.Release.Num, r.Release.ManifestDigest, ck.Unit, r.Release.UnitRevision)
+				if a := r.Release.HeadAhead(); a != "" {
+					fmt.Fprintf(w, "  note: %s\n", a)
 				}
 				fmt.Fprintf(w, "%s: %d objects match what Argo owns\n", ck.Application, r.Inventory.Same)
 				for _, l := range append(r.Inventory.WouldPrune, r.Inventory.WouldAdd...) {
@@ -273,6 +280,7 @@ Nothing is changed either way.`,
 	check.Flags().StringVar(&checkSpace, "space", "", "the ConfigHub Space holding the variant")
 	check.Flags().StringVar(&checkUnit, "unit", "", "the unit in that Space")
 	check.Flags().StringVar(&checkDest, "destination-namespace", "", "the Application's destination namespace, where objects without one land")
+	check.Flags().StringVar(&checkRelease, "release", "", "the release to compare against, by manifest digest (sha256:...); without it, the newest published release")
 	check.Flags().StringVar(&destContext, "destination-context", "", "with --fields, the kubectl context of the cluster the Application deploys to, where its objects are read; not needed when Argo CD deploys to its own cluster")
 	check.Flags().StringVar(&destDeclared, "destination", "", "the Argo destination (server address or cluster name) --destination-context reaches, when kubectl reaches it by another address")
 	check.Flags().StringVar(&kubeContext, "kube-context", "", "the kubectl context of the cluster Argo CD runs on, where Applications are read; without it kubectl's current context is used, which may be another cluster")

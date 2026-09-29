@@ -140,7 +140,7 @@ func newRoot() *cobra.Command {
 	apply.Flags().StringVar(&af.RepoRoot, "repo-root", "", "the checkout Flux paths are relative to")
 	apply.Flags().StringVar(&out, "out", "", "directory for the files and the scripts")
 
-	var ckNS, ckName, ckSpace, ckUnit, ckTarget, kubeContext, ckCluster string
+	var ckNS, ckName, ckSpace, ckUnit, ckTarget, kubeContext, ckCluster, ckRelease string
 	var ckJSON, ckDeep bool
 	var ckOpts flux.Options
 	check := &cobra.Command{
@@ -194,6 +194,9 @@ One cluster at a time: pass --kube-context for the cluster to read.`,
 					return fmt.Errorf("no layers to check; a fleet is checked one cluster at a time, so pass --cluster with one of the plan's clusters")
 				}
 			}
+			for i := range checks {
+				checks[i].Release = ckRelease
+			}
 			w := c.OutOrStdout()
 			bad := 0
 			var results []flux.Result
@@ -213,6 +216,10 @@ One cluster at a time: pass --kube-context for the cluster to read.`,
 				if ckJSON {
 					results = append(results, r)
 					continue
+				}
+				fmt.Fprintf(w, "%s: release %d (%s) holds %s at revision %d\n", ck.Kustomization, r.Release.Num, r.Release.ManifestDigest, ck.Unit, r.Release.UnitRevision)
+				if a := r.Release.HeadAhead(); a != "" {
+					fmt.Fprintf(w, "  note: %s\n", a)
 				}
 				fmt.Fprintf(w, "%s: %d objects match what the layer applied\n", ck.Kustomization, r.Inventory.Same)
 				for _, l := range append(r.Inventory.WouldPrune, r.Inventory.WouldAdd...) {
@@ -267,6 +274,7 @@ One cluster at a time: pass --kube-context for the cluster to read.`,
 	check.Flags().StringVar(&ckName, "kustomization", "", "the layer to read the inventory of")
 	check.Flags().StringVar(&ckSpace, "space", "", "the ConfigHub Space holding the variant")
 	check.Flags().StringVar(&ckUnit, "unit", "", "the unit in that Space")
+	check.Flags().StringVar(&ckRelease, "release", "", "the release to compare against, by manifest digest (sha256:...); without it, the newest published release")
 	check.Flags().StringVar(&ckTarget, "target-namespace", "", "the layer's targetNamespace, where objects without one land")
 	check.Flags().StringVar(&kubeContext, "kube-context", "", "the kubectl context of the cluster to read; without it kubectl's current context is used, which may be another cluster")
 	check.Flags().BoolVar(&ckJSON, "json", false, "print the comparison as JSON")

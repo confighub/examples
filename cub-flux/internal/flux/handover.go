@@ -164,8 +164,15 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 				if v.TargetNamespace != "" {
 					target = " --target-namespace " + q(v.TargetNamespace)
 				}
-				add(`[ "$cluster" = %s ] && cub flux check --kube-context "$ctx" --namespace %s --kustomization %s --space %s --unit %s%s`,
-					q(v.Cluster), q(ns), q(name), q(v.Space), q(c.Name), target)
+				// The check is bound to one release, named by digest, and the
+				// swap below confirms Flux fetched that same one before it moves
+				// the layer: a release published in between would otherwise go
+				// out unchecked.
+				add(`if [ "$cluster" = %s ]; then`, q(v.Cluster))
+				add(`  digest_%s=$(cub release get --space %s --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')`, shellName(name), q(v.Space))
+				add(`  cub flux check --kube-context "$ctx" --namespace %s --kustomization %s --space %s --unit %s%s --release "$digest_%s"`,
+					q(ns), q(name), q(v.Space), q(c.Name), target, shellName(name))
+				add(`fi`)
 			}
 		}
 	}
@@ -303,6 +310,16 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	raw(`  current=$1`)
 	raw(`  echo "-- $1"`)
 	raw(`  record "$1"`)
+	raw(`  local var want fetched`)
+	raw(`  var="digest_$(printf '%s' "$1" | tr -- '-./' '___')"; want=${!var:-}`)
+	raw(`  [ -n "$want" ] || { echo "  $1: no checked release digest was recorded for it" >&2; return 1; }`)
+	raw(`  k -n "$ns" wait --for=condition=Ready "ocirepository/$1" --timeout=2m`)
+	raw(`  fetched=$(k -n "$ns" get ocirepository "$1" -o jsonpath='{.status.artifact.revision}')`)
+	raw(`  if [ "${fetched##*@}" != "$want" ]; then`)
+	raw(`    log "NOT moved $1: checked $want, OCIRepository fetched $fetched"`)
+	raw(`    echo "  $1: the release was checked at $want, but Flux fetched $fetched. A release was published since; re-run to check that one." >&2`)
+	raw(`    return 1`)
+	raw(`  fi`)
 	// spec.path moves with the source. It is a path inside the artifact, and a
 	// Git artifact is the repository tree while a ConfigHub artifact is the
 	// rendered manifests at its root. Leaving the Git path behind fails with,
@@ -316,7 +333,7 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	raw(`    log "NOT Ready $1: $(k -n "$ns" get kustomization "$1" -o jsonpath='{.status.conditions[?(@.type=="Ready")].message}' 2>&1 || true)"`)
 	raw(`    return 1`)
 	raw(`  fi`)
-	raw(`  log "Ready $1"`)
+	raw(`  log "Ready $1 at $(k -n "$ns" get kustomization "$1" -o jsonpath='{.status.lastAppliedRevision}')"`)
 	raw(`}`)
 	for _, step := range p.Order {
 		for _, name := range step {

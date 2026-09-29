@@ -18,6 +18,7 @@ import (
 //	IUA_SUSPEND             what spec.suspend reads back (default true)
 //	IUA_OWNER               the Kustomization label on it (default none)
 //	LAYER_OWNER             the Kustomization label on every layer (default none)
+//	FETCHED                 the digest the OCIRepository fetched (default the checked one)
 const stubKubectl = `#!/usr/bin/env bash
 echo "$*" >> "$STUB_LOG"
 a=" $* "
@@ -29,6 +30,8 @@ case "$a" in
     name=$(sed 's/.* get kustomization \([^ ]*\) .*/\1/' <<<"$a")
     echo "$name|GitRepository|fleet-repo||./gitops/$name" ;;
   *" get kustomization "*conditions*) echo "the artifact could not be fetched" ;;
+  *" get kustomization "*lastAppliedRevision*) echo "latest@${FETCHED:-sha256:checked}" ;;
+  *" get ocirepository "*) echo "latest@${FETCHED:-sha256:checked}" ;;
   *" patch kustomization "*)
     [ -n "${FAIL_PATCH:-}" ] && [[ "$a" == *" patch kustomization $FAIL_PATCH "* ]] && exit 1 ;;
   *" wait "*)
@@ -47,6 +50,7 @@ const stubCub = `#!/usr/bin/env bash
 case " $* " in
   *" scout "*) exit 1 ;;
   *" unit data "*) echo "kind: Same" ;;
+  *" release get "*) echo '"sha256:checked"' ;;
   *" worker get "*) echo '"id"' ;;
 esac
 exit 0
@@ -225,5 +229,32 @@ func TestHandoverRefusesLayersAnotherKustomizationOwns(t *testing.T) {
 	}
 	if strings.Contains(r.log, " patch ") || strings.Contains(r.log, " apply ") || strings.Contains(r.log, " create ") {
 		t.Errorf("nothing may change before the refusal:\n%s", r.log)
+	}
+}
+
+// A release published between the check and the swap would go out unchecked.
+// The swap confirms Flux fetched the digest that was checked, and moves
+// nothing if not (confighub/helm-expt#2021).
+func TestHandoverStopsWhenTheReleaseMovedAfterTheCheck(t *testing.T) {
+	r := runHandover(t, "FLUX_CONTEXT=ctx-a", "FETCHED=sha256:newer")
+	if r.err == nil {
+		t.Fatalf("a release other than the checked one must stop the run:\n%s", r.out)
+	}
+	if !strings.Contains(r.out, "checked at sha256:checked, but Flux fetched latest@sha256:newer") {
+		t.Errorf("should name both digests:\n%s", r.out)
+	}
+	if strings.Contains(r.log, "patch kustomization") {
+		t.Errorf("no layer may move:\n%s", r.log)
+	}
+}
+
+// The check is run against the digest the script recorded, not "latest".
+func TestHandoverChecksTheRecordedRelease(t *testing.T) {
+	r := runHandover(t, "FLUX_CONTEXT=ctx-a")
+	if r.err != nil {
+		t.Fatalf("%v\n%s", r.err, r.out)
+	}
+	if !strings.Contains(r.state, "Ready apps at latest@sha256:checked") {
+		t.Errorf("the applied revision should be recorded:\n%s", r.state)
 	}
 }

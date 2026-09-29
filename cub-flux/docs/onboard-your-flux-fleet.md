@@ -249,6 +249,16 @@ it is always an explicit choice, and can be false. Where a layer sets
 `targetNamespace`, the check is told, so an object whose manifest names no
 namespace is matched where it actually lands rather than counted as missing.
 
+**It checks the release, not the head.** A handover delivers a published
+release, and a unit changed since the last publish holds something the cluster
+will not get. So `check` reads the newest published release, or the one
+`--release sha256:...` names, finds the revision of the unit it bundled, and
+compares that. It prints the release number and manifest digest, and says so
+when the unit's head has moved past it. `handover.sh` records each digest
+before checking it, and before a layer moves, confirms the `OCIRepository` fetched that same
+digest; if a newer release was published in between, it stops with nothing
+moved.
+
 **You run it the way you ran `plan`.** `check` takes the same fleet directory
 and works the layers out for itself — there is no per-Kustomization flag to get
 right, and no list to keep in step with the repository:

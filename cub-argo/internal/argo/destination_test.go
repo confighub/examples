@@ -26,7 +26,9 @@ func deployWith(replicas int) string {
 func TestFieldsAreReadOnTheDestination(t *testing.T) {
 	mgmt := fake(map[string]string{
 		"get application": remoteApp,
-		"unit data":       releaseOneReplica,
+		"release get":     releaseJSON,
+		"revision list":   `[{"Revision":{"RevisionNum":1}}]`,
+		"revision data":   releaseOneReplica,
 		"get deployment":  deployWith(4), // same name, on the management cluster
 	})
 	var readOn string
@@ -48,7 +50,7 @@ func TestFieldsAreReadOnTheDestination(t *testing.T) {
 
 // A destination that cannot be reached is not a clean check.
 func TestUnreachableDestinationIsNotClean(t *testing.T) {
-	mgmt := fake(map[string]string{"get application": remoteApp, "unit data": releaseOneReplica})
+	mgmt := fake(map[string]string{"get application": remoteApp, "release get": releaseJSON, "revision list": `[{"Revision":{"RevisionNum":1}}]`, "revision data": releaseOneReplica})
 	workloads := func(Destination) (Runner, error) {
 		return func(string, ...string) ([]byte, error) {
 			return nil, fmt.Errorf("kubectl -n apptique get: Unable to connect to the server: dial tcp: i/o timeout")
@@ -66,7 +68,7 @@ func TestUnreachableDestinationIsNotClean(t *testing.T) {
 // A refusal to resolve the destination fails the check rather than falling
 // back to the management cluster.
 func TestUnresolvedDestinationFailsTheCheck(t *testing.T) {
-	mgmt := fake(map[string]string{"get application": remoteApp, "unit data": releaseOneReplica, "get deployment": deployWith(1)})
+	mgmt := fake(map[string]string{"get application": remoteApp, "release get": releaseJSON, "revision list": `[{"Revision":{"RevisionNum":1}}]`, "revision data": releaseOneReplica, "get deployment": deployWith(1)})
 	workloads := func(d Destination) (Runner, error) {
 		return nil, fmt.Errorf("no context for %s", d)
 	}

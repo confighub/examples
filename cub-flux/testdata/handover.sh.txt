@@ -98,16 +98,46 @@ same() {
 # status.inventory is the record. Every layer here prunes, so an object it
 # applied that the release does not hold is deleted the moment the source
 # is swapped, whether or not it was ever in Git.
-[ "$cluster" = 'dev-1' ] && cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'infrastructure' --space 'flux-infrastructure-dev-1' --unit 'infrastructure'
-[ "$cluster" = 'staging-1' ] && cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'infrastructure' --space 'flux-infrastructure-staging-1' --unit 'infrastructure'
-[ "$cluster" = 'prod-1' ] && cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'infrastructure' --space 'flux-infrastructure-prod-1' --unit 'infrastructure'
-[ "$cluster" = 'dev-1' ] && cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'apps' --space 'flux-apps-dev-1' --unit 'apps'
-[ "$cluster" = 'staging-1' ] && cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'apps' --space 'flux-apps-staging-1' --unit 'apps'
-[ "$cluster" = 'prod-1' ] && cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'apps' --space 'flux-apps-prod-1' --unit 'apps'
-[ "$cluster" = 'dev-1' ] && cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'tenants' --space 'flux-tenants-dev-1' --unit 'tenants'
-[ "$cluster" = 'staging-1' ] && cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'tenants' --space 'flux-tenants-staging-1' --unit 'tenants'
-[ "$cluster" = 'prod-1' ] && cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'tenants' --space 'flux-tenants-prod-1' --unit 'tenants'
-[ "$cluster" = 'dev-1' ] && cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'image-automation' --space 'flux-image-automation-dev-1' --unit 'image-automation'
+if [ "$cluster" = 'dev-1' ]; then
+  digest_infrastructure=$(cub release get --space 'flux-infrastructure-dev-1' --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')
+  cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'infrastructure' --space 'flux-infrastructure-dev-1' --unit 'infrastructure' --release "$digest_infrastructure"
+fi
+if [ "$cluster" = 'staging-1' ]; then
+  digest_infrastructure=$(cub release get --space 'flux-infrastructure-staging-1' --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')
+  cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'infrastructure' --space 'flux-infrastructure-staging-1' --unit 'infrastructure' --release "$digest_infrastructure"
+fi
+if [ "$cluster" = 'prod-1' ]; then
+  digest_infrastructure=$(cub release get --space 'flux-infrastructure-prod-1' --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')
+  cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'infrastructure' --space 'flux-infrastructure-prod-1' --unit 'infrastructure' --release "$digest_infrastructure"
+fi
+if [ "$cluster" = 'dev-1' ]; then
+  digest_apps=$(cub release get --space 'flux-apps-dev-1' --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')
+  cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'apps' --space 'flux-apps-dev-1' --unit 'apps' --release "$digest_apps"
+fi
+if [ "$cluster" = 'staging-1' ]; then
+  digest_apps=$(cub release get --space 'flux-apps-staging-1' --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')
+  cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'apps' --space 'flux-apps-staging-1' --unit 'apps' --release "$digest_apps"
+fi
+if [ "$cluster" = 'prod-1' ]; then
+  digest_apps=$(cub release get --space 'flux-apps-prod-1' --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')
+  cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'apps' --space 'flux-apps-prod-1' --unit 'apps' --release "$digest_apps"
+fi
+if [ "$cluster" = 'dev-1' ]; then
+  digest_tenants=$(cub release get --space 'flux-tenants-dev-1' --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')
+  cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'tenants' --space 'flux-tenants-dev-1' --unit 'tenants' --release "$digest_tenants"
+fi
+if [ "$cluster" = 'staging-1' ]; then
+  digest_tenants=$(cub release get --space 'flux-tenants-staging-1' --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')
+  cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'tenants' --space 'flux-tenants-staging-1' --unit 'tenants' --release "$digest_tenants"
+fi
+if [ "$cluster" = 'prod-1' ]; then
+  digest_tenants=$(cub release get --space 'flux-tenants-prod-1' --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')
+  cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'tenants' --space 'flux-tenants-prod-1' --unit 'tenants' --release "$digest_tenants"
+fi
+if [ "$cluster" = 'dev-1' ]; then
+  digest_image_automation=$(cub release get --space 'flux-image-automation-dev-1' --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')
+  cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'image-automation' --space 'flux-image-automation-dev-1' --unit 'image-automation' --release "$digest_image_automation"
+fi
 
 # What no controller claims in this fleet, as a cross-check. cub-scout
 # infers ownership where the inventory is Flux's own record, so this is
@@ -277,13 +307,23 @@ swap() {
   current=$1
   echo "-- $1"
   record "$1"
+  local var want fetched
+  var="digest_$(printf '%s' "$1" | tr -- '-./' '___')"; want=${!var:-}
+  [ -n "$want" ] || { echo "  $1: no checked release digest was recorded for it" >&2; return 1; }
+  k -n "$ns" wait --for=condition=Ready "ocirepository/$1" --timeout=2m
+  fetched=$(k -n "$ns" get ocirepository "$1" -o jsonpath='{.status.artifact.revision}')
+  if [ "${fetched##*@}" != "$want" ]; then
+    log "NOT moved $1: checked $want, OCIRepository fetched $fetched"
+    echo "  $1: the release was checked at $want, but Flux fetched $fetched. A release was published since; re-run to check that one." >&2
+    return 1
+  fi
   k -n "$ns" patch kustomization "$1" --type merge -p "{\"spec\":{\"sourceRef\":{\"kind\":\"OCIRepository\",\"name\":\"$1\"},\"path\":\"./\"}}"
   moved="$moved $1"; log "patched $1"
   if ! k -n "$ns" wait --for=condition=Ready "kustomization/$1" --timeout=5m; then
     log "NOT Ready $1: $(k -n "$ns" get kustomization "$1" -o jsonpath='{.status.conditions[?(@.type=="Ready")].message}' 2>&1 || true)"
     return 1
   fi
-  log "Ready $1"
+  log "Ready $1 at $(k -n "$ns" get kustomization "$1" -o jsonpath='{.status.lastAppliedRevision}')"
 }
 swap 'infrastructure'
 swap 'apps'
