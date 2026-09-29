@@ -48,12 +48,18 @@ func ChecksFor(p *Plan) []Check {
 type Result struct {
 	Check     Check               `json:"check"`
 	Inventory InventoryComparison `json:"inventory"`
-	Fields    []FieldDiff         `json:"fields,omitempty"`
+	Fields    *FieldCheck         `json:"fields,omitempty"`
+	// Stale is every object the layer's inventory lists as applied that the
+	// cluster says is not there: the controller's record is behind, so it is
+	// not a record a handover can be checked against.
+	Stale []string `json:"staleInventory,omitempty"`
 }
 
 // OK reports whether swapping this layer's source would leave the cluster as
 // it is.
-func (r Result) OK() bool { return r.Inventory.OK() && len(r.Fields) == 0 }
+func (r Result) OK() bool {
+	return r.Inventory.OK() && len(r.Stale) == 0 && (r.Fields == nil || r.Fields.Clean())
+}
 
 // RunCheck compares one layer with what ConfigHub holds for it. With fields,
 // it also compares every field the release sets.
@@ -73,12 +79,31 @@ func RunCheck(run Runner, c Check, fields bool) (Result, error) {
 	}
 	r := Result{Check: c, Inventory: CompareInventory(live, held, c.Namespace)}
 	if fields {
-		r.Fields, err = CompareFields(run, c.Namespace, stored)
+		fc, err := CompareFields(run, c.Namespace, stored)
 		if err != nil {
 			return Result{}, err
 		}
+		r.Fields = &fc
+		r.Stale = staleIn(live, fc.Absent)
 	}
 	return r, nil
+}
+
+// staleIn names the absent objects the inventory still lists. An absent object
+// the inventory does not list is one the release would add, which the
+// inventory comparison already says.
+func staleIn(live Live, absent []Owned) []string {
+	listed := map[string]bool{}
+	for _, o := range live.Owned {
+		listed[o.Key()] = true
+	}
+	var out []string
+	for _, o := range absent {
+		if listed[o.Key()] {
+			out = append(out, fmt.Sprintf("%s: the layer's inventory lists it as applied, and the cluster does not have it, so that inventory is out of date", o))
+		}
+	}
+	return out
 }
 
 // checkNamespace is where Flux's Kustomizations live. It is a package variable

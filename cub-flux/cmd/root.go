@@ -196,29 +196,58 @@ One cluster at a time: pass --kube-context for the cluster to read.`,
 			}
 			w := c.OutOrStdout()
 			bad := 0
+			var results []flux.Result
 			for _, ck := range checks {
 				r, err := flux.RunCheck(flux.Run, ck, ckDeep)
 				if err != nil {
+					if ckJSON {
+						return fmt.Errorf("%s: %w", ck.Kustomization, err)
+					}
 					fmt.Fprintf(w, "%s: %v\n", ck.Kustomization, err)
 					bad++
+					continue
+				}
+				if !r.OK() {
+					bad++
+				}
+				if ckJSON {
+					results = append(results, r)
 					continue
 				}
 				fmt.Fprintf(w, "%s: %d objects match what the layer applied\n", ck.Kustomization, r.Inventory.Same)
 				for _, l := range append(r.Inventory.WouldPrune, r.Inventory.WouldAdd...) {
 					fmt.Fprintf(w, "  %s\n", l)
 				}
-				if ckDeep && len(r.Fields) == 0 && r.Inventory.OK() {
-					fmt.Fprintf(w, "  and every field the release sets already has that value on the cluster\n")
+				for _, l := range r.Stale {
+					fmt.Fprintf(w, "  %s\n", l)
 				}
-				for _, d := range r.Fields {
-					fmt.Fprintf(w, "  %s\n", d)
-					if h := flux.ByHand(d.Managers); len(h) > 0 {
-						fmt.Fprintf(w, "    %s has written this object, so this is likely a hand edit rather than the source moving on\n", strings.Join(h, ", "))
+				if f := r.Fields; f != nil {
+					for _, u := range f.Unreadable {
+						fmt.Fprintf(w, "  could not read %s\n", u)
+					}
+					if f.Compared < f.Total {
+						fmt.Fprintf(w, "  fields compared on %d of the %d objects the release holds, so this is not a clean check\n", f.Compared, f.Total)
+					} else if f.Clean() && r.Inventory.OK() && len(r.Stale) == 0 {
+						fmt.Fprintf(w, "  and every field the release sets, on all %d objects, already has that value on the cluster\n", f.Total)
+					}
+					for _, d := range f.Diffs {
+						fmt.Fprintf(w, "  %s\n", d)
+						if h := flux.ByHand(d.Managers); len(h) > 0 {
+							fmt.Fprintf(w, "    %s has written this object, so this is likely a hand edit rather than the source moving on\n", strings.Join(h, ", "))
+						}
 					}
 				}
-				if !r.OK() {
-					bad++
+			}
+			if ckJSON {
+				enc := json.NewEncoder(w)
+				enc.SetIndent("", "  ")
+				if err := enc.Encode(results); err != nil {
+					return err
 				}
+				if bad > 0 {
+					return errProblems{}
+				}
+				return nil
 			}
 			if len(checks) > 1 {
 				fmt.Fprintf(w, "\n%d of %d clean\n", len(checks)-bad, len(checks))

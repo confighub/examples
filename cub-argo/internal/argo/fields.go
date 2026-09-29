@@ -35,24 +35,50 @@ func (d FieldDiff) String() string {
 	return s
 }
 
+// FieldCheck is what comparing fields found, and how much of the release it
+// could compare. An object the check could not read is not an object that
+// matched, so a check that read less than the whole release is not clean.
+type FieldCheck struct {
+	Diffs []FieldDiff `json:"diffs,omitempty"`
+	// Total is how many objects the release holds; Compared is how many were
+	// read off the cluster and compared field by field.
+	Total    int `json:"total"`
+	Compared int `json:"compared"`
+	// Unreadable is every object kubectl could not read for a reason other
+	// than its absence: forbidden, timed out, an unknown kind. Nothing is
+	// known about those fields, so they are neither clean nor drift.
+	Unreadable []string `json:"unreadable,omitempty"`
+	// Absent is every object the cluster positively said it does not have.
+	Absent []Owned `json:"absent,omitempty"`
+}
+
+// Clean reports whether every object was read and none differs.
+func (f FieldCheck) Clean() bool {
+	return len(f.Diffs) == 0 && len(f.Unreadable) == 0 && len(f.Absent) == 0 && f.Compared == f.Total
+}
+
 // CompareFields reads each object the release holds off the cluster and
-// compares the fields the release sets. An object the release holds that is
-// not on the cluster is reported by CompareInventory, not here.
-func CompareFields(run Runner, namespace string, release []byte) ([]FieldDiff, error) {
+// compares the fields the release sets.
+func CompareFields(run Runner, namespace string, release []byte) (FieldCheck, error) {
+	var fc FieldCheck
 	docs, err := documentsIn(release)
 	if err != nil {
-		return nil, err
+		return fc, err
 	}
-	var out []FieldDiff
 	for _, d := range docs {
 		meta, _ := d["metadata"].(map[string]any)
 		kind, name := str(d["kind"]), str(meta["name"])
 		if kind == "" || name == "" {
 			continue
 		}
+		fc.Total++
 		ns := str(meta["namespace"])
 		if ns == "" {
 			ns = namespace
+		}
+		label := kind + " " + name
+		if ns != "" {
+			label = kind + " " + ns + "/" + name
 		}
 		// kubectl strips managedFields from -o json unless asked, and that is
 		// the only record of who wrote each field.
@@ -62,30 +88,35 @@ func CompareFields(run Runner, namespace string, release []byte) ([]FieldDiff, e
 		}
 		raw, err := run("kubectl", args...)
 		if err != nil {
-			// Absent objects are the inventory check's business, not this one.
+			// Only the API server saying NotFound means the object is not
+			// there. Forbidden, a timeout or a kind the server does not know
+			// say nothing about it either way.
+			if strings.Contains(err.Error(), "(NotFound)") {
+				fc.Absent = append(fc.Absent, Owned{Group: groupOf(str(d["apiVersion"])), Kind: kind, Namespace: ns, Name: name})
+			} else {
+				fc.Unreadable = append(fc.Unreadable, label+": "+err.Error())
+			}
 			continue
 		}
 		var live map[string]any
 		if err := json.Unmarshal(raw, &live); err != nil {
-			return nil, fmt.Errorf("reading %s %s: %w", kind, name, err)
+			fc.Unreadable = append(fc.Unreadable, label+": not JSON: "+err.Error())
+			continue
 		}
+		fc.Compared++
 		who := managersOf(live)
-		label := kind + " " + name
-		if ns != "" {
-			label = kind + " " + ns + "/" + name
-		}
 		for _, diff := range walkFields("", d, live) {
 			diff.Object, diff.Managers = label, who
-			out = append(out, diff)
+			fc.Diffs = append(fc.Diffs, diff)
 		}
 	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].Object != out[j].Object {
-			return out[i].Object < out[j].Object
+	sort.Slice(fc.Diffs, func(i, j int) bool {
+		if fc.Diffs[i].Object != fc.Diffs[j].Object {
+			return fc.Diffs[i].Object < fc.Diffs[j].Object
 		}
-		return out[i].Path < out[j].Path
+		return fc.Diffs[i].Path < fc.Diffs[j].Path
 	})
-	return out, nil
+	return fc, nil
 }
 
 // walkFields compares only what the release sets. metadata and status are left

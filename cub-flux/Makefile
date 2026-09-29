@@ -21,7 +21,7 @@ fmt:
 
 # Rewrite the golden plan after an intended change, then review the diff.
 golden:
-	$(GO) test ./internal/argo -run Golden -update
+	$(GO) test ./internal/flux -run Golden -update
 
 # Plan the expert Argo CD example in this repo. Offline; changes nothing.
 example: build

@@ -15,7 +15,10 @@
 # estate.
 set -euo pipefail
 cd "$(dirname "$0")"
-k() { kubectl ${ARGOCD_CONTEXT:+--context "$ARGOCD_CONTEXT"} "$@"; }
+ctx=${ARGOCD_CONTEXT:-$(kubectl config current-context 2>/dev/null || true)}
+[ -n "$ctx" ] || { echo "no kubectl context: set ARGOCD_CONTEXT to the cluster Argo CD runs on"; exit 1; }
+echo "every kubectl call below uses context $ctx"
+k() { kubectl --context "$ctx" "$@"; }
 step() { printf '\n== %s\n' "$*"; }
 ns=${ARGOCD_NAMESPACE:-argocd}
 # The comparison before the template repoint renders from the repository.
@@ -147,23 +150,23 @@ same() {
 # all. Where Argo prunes, those would be deleted the moment the source
 # moves. No render-side check can see them.
 same 'argo-apptique-dev-1' 'apptique' 'gitops/argo/expert-app-of-apps/apps/apptique/overlays/dev'
-cub argo check ${ARGOCD_CONTEXT:+--kube-context "$ARGOCD_CONTEXT"} --fields --namespace "$ns" --application 'dev-1-apptique' --space 'argo-apptique-dev-1' --unit 'apptique' --destination-namespace 'storefront-dev'
+cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'dev-1-apptique' --space 'argo-apptique-dev-1' --unit 'apptique' --destination-namespace 'storefront-dev'
 same 'argo-apptique-staging-1' 'apptique' 'gitops/argo/expert-app-of-apps/apps/apptique/overlays/staging'
-cub argo check ${ARGOCD_CONTEXT:+--kube-context "$ARGOCD_CONTEXT"} --fields --namespace "$ns" --application 'staging-1-apptique' --space 'argo-apptique-staging-1' --unit 'apptique' --destination-namespace 'storefront-staging'
+cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'staging-1-apptique' --space 'argo-apptique-staging-1' --unit 'apptique' --destination-namespace 'storefront-staging'
 same 'argo-apptique-prod-1' 'apptique' 'gitops/argo/expert-app-of-apps/apps/apptique/overlays/prod'
-cub argo check ${ARGOCD_CONTEXT:+--kube-context "$ARGOCD_CONTEXT"} --fields --namespace "$ns" --application 'prod-1-apptique' --space 'argo-apptique-prod-1' --unit 'apptique' --destination-namespace 'storefront-prod'
+cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'prod-1-apptique' --space 'argo-apptique-prod-1' --unit 'apptique' --destination-namespace 'storefront-prod'
 same 'argo-checkout-cache-dev-1' 'checkout-cache' 'gitops/argo/expert-app-of-apps/apps/checkout-cache/overlays/dev'
-cub argo check ${ARGOCD_CONTEXT:+--kube-context "$ARGOCD_CONTEXT"} --fields --namespace "$ns" --application 'dev-1-checkout-cache' --space 'argo-checkout-cache-dev-1' --unit 'checkout-cache' --destination-namespace 'storefront-dev'
+cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'dev-1-checkout-cache' --space 'argo-checkout-cache-dev-1' --unit 'checkout-cache' --destination-namespace 'storefront-dev'
 same 'argo-checkout-cache-staging-1' 'checkout-cache' 'gitops/argo/expert-app-of-apps/apps/checkout-cache/overlays/staging'
-cub argo check ${ARGOCD_CONTEXT:+--kube-context "$ARGOCD_CONTEXT"} --fields --namespace "$ns" --application 'staging-1-checkout-cache' --space 'argo-checkout-cache-staging-1' --unit 'checkout-cache' --destination-namespace 'storefront-staging'
+cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'staging-1-checkout-cache' --space 'argo-checkout-cache-staging-1' --unit 'checkout-cache' --destination-namespace 'storefront-staging'
 same 'argo-checkout-cache-prod-1' 'checkout-cache' 'gitops/argo/expert-app-of-apps/apps/checkout-cache/overlays/prod'
-cub argo check ${ARGOCD_CONTEXT:+--kube-context "$ARGOCD_CONTEXT"} --fields --namespace "$ns" --application 'prod-1-checkout-cache' --space 'argo-checkout-cache-prod-1' --unit 'checkout-cache' --destination-namespace 'storefront-prod'
+cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'prod-1-checkout-cache' --space 'argo-checkout-cache-prod-1' --unit 'checkout-cache' --destination-namespace 'storefront-prod'
 same 'argo-platform-addons-cluster-baseline-dev-1' 'platform-addons-cluster-baseline' 'gitops/argo/expert-app-of-apps/apps/platform/cluster-baseline/overlays/dev'
-cub argo check ${ARGOCD_CONTEXT:+--kube-context "$ARGOCD_CONTEXT"} --fields --namespace "$ns" --application 'dev-1-cluster-baseline' --space 'argo-platform-addons-cluster-baseline-dev-1' --unit 'platform-addons-cluster-baseline' --destination-namespace 'platform-system'
+cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'dev-1-cluster-baseline' --space 'argo-platform-addons-cluster-baseline-dev-1' --unit 'platform-addons-cluster-baseline' --destination-namespace 'platform-system'
 same 'argo-platform-addons-cluster-baseline-staging-1' 'platform-addons-cluster-baseline' 'gitops/argo/expert-app-of-apps/apps/platform/cluster-baseline/overlays/staging'
-cub argo check ${ARGOCD_CONTEXT:+--kube-context "$ARGOCD_CONTEXT"} --fields --namespace "$ns" --application 'staging-1-cluster-baseline' --space 'argo-platform-addons-cluster-baseline-staging-1' --unit 'platform-addons-cluster-baseline' --destination-namespace 'platform-system'
+cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'staging-1-cluster-baseline' --space 'argo-platform-addons-cluster-baseline-staging-1' --unit 'platform-addons-cluster-baseline' --destination-namespace 'platform-system'
 same 'argo-platform-addons-cluster-baseline-prod-1' 'platform-addons-cluster-baseline' 'gitops/argo/expert-app-of-apps/apps/platform/cluster-baseline/overlays/prod'
-cub argo check ${ARGOCD_CONTEXT:+--kube-context "$ARGOCD_CONTEXT"} --fields --namespace "$ns" --application 'prod-1-cluster-baseline' --space 'argo-platform-addons-cluster-baseline-prod-1' --unit 'platform-addons-cluster-baseline' --destination-namespace 'platform-system'
+cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'prod-1-cluster-baseline' --space 'argo-platform-addons-cluster-baseline-prod-1' --unit 'platform-addons-cluster-baseline' --destination-namespace 'platform-system'
 
 # What no controller claims on these namespaces, as a cross-check. This
 # is cub-scout inferring ownership, not a gate: it finds what was applied
@@ -199,11 +202,11 @@ echo '  #   and annotate it argo.confighub.com/retired: "retired at handover; se
 echo '  cub unit update --space argo-storefront-children apptique apptique.yaml'
 echo '  cub release publish argo-storefront-children'
 echo '  # then wait for the parent to sync it down before patching anything:'
-echo '  kubectl -n $ns get applicationset apptique -o jsonpath='\''{.spec.syncPolicy.applicationsSync}'\'''
+printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'get applicationset apptique -o jsonpath='\''{.spec.syncPolicy.applicationsSync}'\'''
 echo 'Once it reads create-only, point each Application at its own Space:'
-echo '  kubectl -n $ns patch application dev-1-apptique --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-apptique-dev-1","path":".","targetRevision":"latest"}}}'\''   # stage canary'
-echo '  kubectl -n $ns patch application staging-1-apptique --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-apptique-staging-1","path":".","targetRevision":"latest"}}}'\''   # stage secondary'
-echo '  kubectl -n $ns patch application prod-1-apptique --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-apptique-prod-1","path":".","targetRevision":"latest"}}}'\''   # stage primary'
+printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'patch application dev-1-apptique --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-apptique-dev-1","path":".","targetRevision":"latest"}}}'\''   # stage canary'
+printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'patch application staging-1-apptique --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-apptique-staging-1","path":".","targetRevision":"latest"}}}'\''   # stage secondary'
+printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'patch application prod-1-apptique --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-apptique-prod-1","path":".","targetRevision":"latest"}}}'\''   # stage primary'
 
 echo '-- checkout-cache'
 echo 'checkout-cache is a Unit in argo-storefront-children. Retire it where ConfigHub keeps it, so the change is reviewed and survives the next sync:'
@@ -213,11 +216,11 @@ echo '  #   and annotate it argo.confighub.com/retired: "retired at handover; se
 echo '  cub unit update --space argo-storefront-children checkout-cache checkout-cache.yaml'
 echo '  cub release publish argo-storefront-children'
 echo '  # then wait for the parent to sync it down before patching anything:'
-echo '  kubectl -n $ns get applicationset checkout-cache -o jsonpath='\''{.spec.syncPolicy.applicationsSync}'\'''
+printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'get applicationset checkout-cache -o jsonpath='\''{.spec.syncPolicy.applicationsSync}'\'''
 echo 'Once it reads create-only, point each Application at its own Space:'
-echo '  kubectl -n $ns patch application dev-1-checkout-cache --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-checkout-cache-dev-1","path":".","targetRevision":"latest"}}}'\''   # stage canary'
-echo '  kubectl -n $ns patch application staging-1-checkout-cache --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-checkout-cache-staging-1","path":".","targetRevision":"latest"}}}'\''   # stage secondary'
-echo '  kubectl -n $ns patch application prod-1-checkout-cache --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-checkout-cache-prod-1","path":".","targetRevision":"latest"}}}'\''   # stage primary'
+printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'patch application dev-1-checkout-cache --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-checkout-cache-dev-1","path":".","targetRevision":"latest"}}}'\''   # stage canary'
+printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'patch application staging-1-checkout-cache --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-checkout-cache-staging-1","path":".","targetRevision":"latest"}}}'\''   # stage secondary'
+printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'patch application prod-1-checkout-cache --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-checkout-cache-prod-1","path":".","targetRevision":"latest"}}}'\''   # stage primary'
 
 echo '-- platform-addons'
 echo 'platform-addons is a Unit in argo-root-children. Retire it where ConfigHub keeps it, so the change is reviewed and survives the next sync:'
@@ -227,11 +230,11 @@ echo '  #   and annotate it argo.confighub.com/retired: "retired at handover; se
 echo '  cub unit update --space argo-root-children platform-addons-appset platform-addons-appset.yaml'
 echo '  cub release publish argo-root-children'
 echo '  # then wait for the parent to sync it down before patching anything:'
-echo '  kubectl -n $ns get applicationset platform-addons -o jsonpath='\''{.spec.syncPolicy.applicationsSync}'\'''
+printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'get applicationset platform-addons -o jsonpath='\''{.spec.syncPolicy.applicationsSync}'\'''
 echo 'Once it reads create-only, point each Application at its own Space:'
-echo '  kubectl -n $ns patch application dev-1-cluster-baseline --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-platform-addons-cluster-baseline-dev-1","path":".","targetRevision":"latest"}}}'\''   # stage canary'
-echo '  kubectl -n $ns patch application staging-1-cluster-baseline --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-platform-addons-cluster-baseline-staging-1","path":".","targetRevision":"latest"}}}'\''   # stage secondary'
-echo '  kubectl -n $ns patch application prod-1-cluster-baseline --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-platform-addons-cluster-baseline-prod-1","path":".","targetRevision":"latest"}}}'\''   # stage primary'
+printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'patch application dev-1-cluster-baseline --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-platform-addons-cluster-baseline-dev-1","path":".","targetRevision":"latest"}}}'\''   # stage canary'
+printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'patch application staging-1-cluster-baseline --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-platform-addons-cluster-baseline-staging-1","path":".","targetRevision":"latest"}}}'\''   # stage secondary'
+printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'patch application prod-1-cluster-baseline --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-platform-addons-cluster-baseline-prod-1","path":".","targetRevision":"latest"}}}'\''   # stage primary'
 
 echo 'Each Application keeps its name and its UID, so nothing is orphaned and no'
 echo 'workload restarts. The retired ApplicationSets stay in place, inert. Removing'
@@ -240,13 +243,13 @@ echo 'Note: AppProject storefront denies syncing prod-1-apptique, prod-1-checkou
 
 echo
 echo 'Done once every Application reports Synced from an oci:// source:'
-echo '  kubectl -n $ns get applications -o custom-columns=NAME:.metadata.name,SOURCE:.spec.source.repoURL,SYNC:.status.sync.status'
+printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'get applications -o custom-columns=NAME:.metadata.name,SOURCE:.spec.source.repoURL,SYNC:.status.sync.status'
 echo 'Nothing was deleted. To go back, patch each source to its Git repoURL and path.'
 echo
 echo 'One more thing, measured on Argo CD v3.5.3: publishing a new release does NOT'
 echo 'reach the cluster on its own. Argo caches the digest it resolved for the tag, and'
 echo 'was still serving the previous release 90 seconds later. A hard refresh re-resolves'
 echo 'the tag to a digest and the release lands:'
-echo '  kubectl -n $ns annotate application <name> argocd.argoproj.io/refresh=hard --overwrite'
+printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'annotate application <name> argocd.argoproj.io/refresh=hard --overwrite'
 echo 'argobot does this for you, reacting to ConfigHub'\''s release.published event. Without'
 echo 'it, or without that annotation, an approved release sits unread on the gateway.'

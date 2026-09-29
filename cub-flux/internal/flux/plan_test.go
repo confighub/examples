@@ -271,19 +271,19 @@ func TestHandoverLeavesTheBootstrapAlone(t *testing.T) {
 		t.Error("flux-system reconciles the Flux controllers; it must never be repointed")
 	}
 	for _, want := range []string{
-		"OCIRepository",            // one per layer, applied to the bootstrap
-		"confighub-flux-targets",   // the gateway credential
-		"imageupdateautomation",    // suspended: it commits to a Git nobody reads
-		"patch kustomization apps", // a layer that does move
-		"same ",                    // the byte-equality check before any swap
+		"OCIRepository",          // one per layer, applied to the bootstrap
+		"confighub-flux-targets", // the gateway credential
+		"imageupdateautomation",  // suspended: it commits to a Git nobody reads
+		"swap 'apps'",            // a layer that does move
+		"same ",                  // the byte-equality check before any swap
 	} {
 		if !regexp.MustCompile(regexp.QuoteMeta(want)).MatchString(s) {
 			t.Errorf("handover.sh is missing %q", want)
 		}
 	}
 	// Layers are swapped in dependency order: infrastructure before apps.
-	infra := regexp.MustCompile(`patch kustomization infrastructure`).FindStringIndex(s)
-	apps := regexp.MustCompile(`patch kustomization apps`).FindStringIndex(s)
+	infra := regexp.MustCompile(`(?m)^swap 'infrastructure'`).FindStringIndex(s)
+	apps := regexp.MustCompile(`(?m)^swap 'apps'`).FindStringIndex(s)
 	if infra == nil || apps == nil || infra[0] > apps[0] {
 		t.Error("infrastructure must be swapped before apps, which dependsOn it")
 	}

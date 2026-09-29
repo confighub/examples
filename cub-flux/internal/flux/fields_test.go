@@ -1,6 +1,7 @@
 package flux
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -30,7 +31,8 @@ spec:
         - name: frontend
           image: nginx:1.27-alpine
 `)
-	diffs, err := CompareFields(fake(map[string]string{"get deployment": liveDeploy}), "apptique-dev", release)
+	fc, err := CompareFields(fake(map[string]string{"get deployment": liveDeploy}), "apptique-dev", release)
+	diffs := fc.Diffs
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +66,8 @@ spec:
         - name: frontend
           image: nginx:1.27-alpine
 `)
-	diffs, err := CompareFields(fake(map[string]string{"get deployment": liveDeploy}), "apptique-dev", release)
+	fc, err := CompareFields(fake(map[string]string{"get deployment": liveDeploy}), "apptique-dev", release)
+	diffs := fc.Diffs
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +101,8 @@ spec:
         - name: frontend
           image: nginx:1.26-alpine
 `)
-	diffs, err := CompareFields(fake(map[string]string{"get deployment": liveDeploy}), "apptique-dev", release)
+	fc, err := CompareFields(fake(map[string]string{"get deployment": liveDeploy}), "apptique-dev", release)
+	diffs := fc.Diffs
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,5 +111,84 @@ spec:
 	}
 	if !strings.Contains(diffs[0].String(), "1.27-alpine") || !strings.Contains(diffs[0].String(), "1.26-alpine") {
 		t.Errorf("both values should be shown: %s", diffs[0])
+	}
+}
+
+// A read that fails for any reason but absence says nothing about the object's
+// fields, so it can never add up to a clean check (confighub/helm-expt#2020).
+func TestFailedReadsAreNotClean(t *testing.T) {
+	release := []byte(`
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: frontend, namespace: apptique-dev}
+spec: {replicas: 4}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: tuning, namespace: apptique-dev}
+data: {a: "1"}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: frontend, namespace: apptique-dev}
+spec: {type: ClusterIP}
+`)
+	for _, tc := range []struct {
+		name   string
+		err    string
+		absent bool
+	}{
+		{"forbidden", `Error from server (Forbidden): configmaps "tuning" is forbidden: User "ci" cannot get resource "configmaps"`, false},
+		{"timeout", `Unable to connect to the server: net/http: TLS handshake timeout`, false},
+		{"unknown kind", `error: the server doesn't have a resource type "configmap"`, false},
+		{"not found", `Error from server (NotFound): configmaps "tuning" not found`, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			run := func(name string, args ...string) ([]byte, error) {
+				key := strings.Join(args, " ")
+				switch {
+				case strings.Contains(key, "get deployment"):
+					return []byte(liveDeploy), nil
+				case strings.Contains(key, "get service"):
+					return []byte(`{"kind":"Service","metadata":{"name":"frontend"},"spec":{"type":"ClusterIP"}}`), nil
+				}
+				return nil, fmt.Errorf("%s", tc.err)
+			}
+			fc, err := CompareFields(run, "apptique-dev", release)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if fc.Clean() {
+				t.Fatalf("one of three objects was not read; this cannot be clean: %+v", fc)
+			}
+			if fc.Total != 3 || fc.Compared != 2 {
+				t.Errorf("want 2 of 3 compared, got %d of %d", fc.Compared, fc.Total)
+			}
+			if len(fc.Diffs) != 0 {
+				t.Errorf("the objects that were read match: %v", fc.Diffs)
+			}
+			if tc.absent != (len(fc.Absent) == 1) || tc.absent == (len(fc.Unreadable) == 1) {
+				t.Errorf("absent=%v, want %v; unreadable=%v", fc.Absent, tc.absent, fc.Unreadable)
+			}
+		})
+	}
+}
+
+// An object the inventory lists and the cluster does not have is a stale
+// record, not a match; one the inventory does not list is the release adding
+// it, which the inventory comparison already reports.
+func TestAbsentObjectMarksAStaleInventory(t *testing.T) {
+	live := Live{Owned: []Owned{{Kind: "ConfigMap", Namespace: "apptique-dev", Name: "tuning"}}}
+	absent := []Owned{
+		{Kind: "ConfigMap", Namespace: "apptique-dev", Name: "tuning"},
+		{Kind: "ConfigMap", Namespace: "apptique-dev", Name: "new-one"},
+	}
+	got := staleIn(live, absent)
+	if len(got) != 1 || !strings.Contains(got[0], "tuning") {
+		t.Errorf("only tuning is listed and missing: %v", got)
+	}
+	r := Result{Inventory: InventoryComparison{Same: 1}, Fields: &FieldCheck{Total: 1, Compared: 1}, Stale: got}
+	if r.OK() {
+		t.Error("a stale inventory cannot pass")
 	}
 }

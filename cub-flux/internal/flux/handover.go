@@ -35,13 +35,20 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("# with one non-production cluster.")
 	add("set -euo pipefail")
 	add(`cd "$(dirname "$0")"`)
-	add(`k() { kubectl ${FLUX_CONTEXT:+--context "$FLUX_CONTEXT"} "$@"; }`)
+	// The context is fixed once, here, and every kubectl call and every printed
+	// recovery command names it. Left to kubectl, a context switched in another
+	// terminal mid-run would move the rest of the handover to another cluster,
+	// and a printed rollback would be run against whichever one is current.
+	add(`ctx=${FLUX_CONTEXT:-$(kubectl config current-context 2>/dev/null || true)}`)
+	add(`[ -n "$ctx" ] || { echo "no kubectl context: set FLUX_CONTEXT to the cluster to hand over"; exit 1; }`)
+	add(`k() { kubectl --context "$ctx" "$@"; }`)
 	add(`step() { printf '\n== %%s\n' "$*"; }`)
 	add(`ns=${FLUX_NAMESPACE:-flux-system}`)
 	add(`cluster=${CLUSTER:-}`)
 	add("# The comparison below re-renders from the repository, so it needs it.")
 	add("REPO_ROOT=${REPO_ROOT:-%s}", q(repoRelOr(repoRel)))
-	add(`[ -n "$cluster" ] || { echo "set CLUSTER=<one of: %s> so the right Target is used"; exit 1; }`, clusterNames(p))
+	add(`case "$cluster" in %s) ;; *) echo "set CLUSTER=<one of: %s> so the right Target is used"; exit 1 ;; esac`,
+		strings.ReplaceAll(clusterNames(p), ", ", "|"), clusterNames(p))
 	add("")
 
 	add(`step "0/4 Check before changing anything"`)
@@ -49,6 +56,7 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	// fails on a client/server version skew while the session is fine. See the
 	// note in ApplyScript.
 	add(`cub auth status >/dev/null 2>&1 || { echo "cub is not logged in: run cub auth login"; exit 1; }`)
+	add(`echo "  every kubectl call below uses context $ctx"`)
 	add(`k get namespace "$ns" >/dev/null || { echo "no $ns namespace: is this the right cluster?"; exit 1; }`)
 	add("# flux-system reconciles the Flux controllers themselves. It is the way back")
 	add("# if anything here goes wrong, so it stays on Git and is never repointed.")
@@ -106,7 +114,7 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 				if v.TargetNamespace != "" {
 					target = " --target-namespace " + q(v.TargetNamespace)
 				}
-				add(`[ "$cluster" = %s ] && cub flux check ${FLUX_CONTEXT:+--kube-context "$FLUX_CONTEXT"} --namespace %s --kustomization %s --space %s --unit %s%s`,
+				add(`[ "$cluster" = %s ] && cub flux check --kube-context "$ctx" --namespace %s --kustomization %s --space %s --unit %s%s`,
 					q(v.Cluster), q(ns), q(name), q(v.Space), q(c.Name), target)
 			}
 		}
@@ -155,7 +163,7 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("")
 	add("# One OCIRepository per layer, each reading that layer's release for this")
 	add("# cluster. Commit these to the bootstrap directory so flux-system keeps them.")
-	add(`mkdir -p bootstrap`)
+	add(`mkdir -p "bootstrap/$cluster"`)
 	// The gateway serves one repository per Space, at /space/<space>. A layer's
 	// Space differs per cluster, so each OCIRepository has to name the variant
 	// Space for the cluster this run is handing over -- an address without it
@@ -168,9 +176,10 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 				add(`  %s) space_%s='%s' ;;`, va.Cluster, v, va.Space)
 			}
 		}
-		add(`  *) echo "no %s variant for cluster $cluster"; exit 1 ;;`, c.Name)
+		// A cluster without this layer needs no source for it.
+		add(`  *) space_%s='' ;;`, v)
 		add(`esac`)
-		add(`cat > bootstrap/ocirepository-%s.yaml <<YAML`, c.Name)
+		add(`[ -z "$space_%s" ] || cat > "bootstrap/$cluster/ocirepository-%s.yaml" <<YAML`, v, c.Name)
 		add("apiVersion: source.toolkit.fluxcd.io/v1")
 		add("kind: OCIRepository")
 		add("metadata:")
@@ -185,35 +194,152 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 		add("    name: confighub-%s", targets)
 		add("YAML")
 	}
-	add(`k apply -f bootstrap/`)
-	add(`echo "Commit bootstrap/ into the flux-system path so these survive a reconcile."`)
+	add(`k apply -f "bootstrap/$cluster/"`)
+	add(`echo "Commit bootstrap/$cluster/ into this cluster's flux-system path so these survive a reconcile."`)
 	add("")
 
 	add(`step "3/4 Swap each layer's sourceRef, deepest dependency first"`)
 	add("# The Kustomization keeps its name, so Flux keeps the inventory of what it")
 	add("# applied, and nothing is recreated.")
-	for _, step := range p.Order {
-		for _, name := range step {
-			add(`echo "-- %s"`, name)
-			// spec.path moves with the source. It is a path inside the
-			// artifact, and a Git artifact is the repository tree while a
-			// ConfigHub artifact is the rendered manifests at its root. Leaving
-			// the Git path behind fails with, measured on Flux v2.8.6:
-			//   kustomization path not found: stat /tmp/kustomization-.../<git path>
-			// which reads as a missing directory rather than as the one field
-			// the swap forgot, and the layer never becomes Ready.
-			add(`k -n "$ns" patch kustomization %s --type merge -p '{"spec":{"sourceRef":{"kind":"OCIRepository","name":"%s"},"path":"./"}}'`, name, name)
-			add(`k -n "$ns" wait --for=condition=Ready kustomization/%s --timeout=5m`, name)
+	add("#")
+	add("# Before a layer changes, its sourceRef and path are recorded, once: a re-run")
+	add("# must not overwrite the original with a half-moved state. If anything below")
+	add("# stops the script, the layers already moved are named, with the commands")
+	add("# that put them back. Nothing is rolled back automatically.")
+	raw := func(s string) { L = append(L, s) }
+	raw(`state="handover-state/$cluster.txt"; log="handover-state/$cluster.log"`)
+	raw(`mkdir -p handover-state; touch "$state"`)
+	raw(`log() { printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >> "$log"; }`)
+	raw(`moved=""; current=""; finished=0; incomplete=""; held=""`)
+	raw(`# record <layer>: name|kind|source|source namespace|path, as the cluster had it`)
+	raw(`record() {`)
+	raw(`  grep -q "^$1|" "$state" && return 0`)
+	raw(`  local was`)
+	raw(`  was=$(k -n "$ns" get kustomization "$1" -o jsonpath='{.metadata.name}{"|"}{.spec.sourceRef.kind}{"|"}{.spec.sourceRef.name}{"|"}{.spec.sourceRef.namespace}{"|"}{.spec.path}')`)
+	raw(`  case "$was" in`)
+	raw(`    *"|OCIRepository|"*) echo "  $1 already reads an OCIRepository, and no original was recorded for it here" >&2 ;;`)
+	raw(`    *) printf '%s\n' "$was" >> "$state"; log "recorded $was" ;;`)
+	raw(`  esac`)
+	raw(`}`)
+	raw(`# way_back [all]: the commands that restore BOTH fields, for the layers this`)
+	raw(`# run moved, or with "all" for every layer recorded for this cluster.`)
+	raw(`way_back() {`)
+	raw(`  local name kind src srcns path ref`)
+	raw(`  while IFS='|' read -r name kind src srcns path; do`)
+	raw(`    case " $moved " in *" $name "*) ;; *) [ "${1:-}" = all ] || continue ;; esac`)
+	raw(`    ref="\"kind\":\"$kind\",\"name\":\"$src\""`)
+	raw(`    [ -z "$srcns" ] || ref="$ref,\"namespace\":\"$srcns\""`)
+	raw(`    echo "  kubectl --context '$ctx' -n '$ns' patch kustomization $name --type merge -p '{\"spec\":{\"sourceRef\":{$ref},\"path\":\"$path\"}}'"`)
+	raw(`  done < "$state"`)
+	raw(`}`)
+	raw(`stopped() {`)
+	raw(`  local rc=$?`)
+	raw(`  [ "$finished" = 1 ] && return`)
+	raw(`  echo >&2`)
+	raw(`  if [ -z "$moved" ]; then`)
+	raw(`    echo "Stopped (exit $rc) before any layer's source was changed." >&2`)
+	raw(`    return`)
+	raw(`  fi`)
+	raw(`  log "stopped at ${current:-?}, exit $rc"`)
+	raw(`  echo "HANDOVER STOPPED at ${current:-?} (exit $rc), on context $ctx." >&2`)
+	raw(`  echo "These layers were moved and now read ConfigHub:$moved" >&2`)
+	raw(`  echo "Nothing is rolled back automatically. To put them back on Git:" >&2`)
+	raw(`  way_back >&2`)
+	raw(`  echo "Each layer's original is in $state; what happened is in $log." >&2`)
+	raw(`  echo "The gateway Secret and OCIRepositories from step 2 stay; they feed nothing unless a layer reads them." >&2`)
+	raw(`}`)
+	raw(`trap stopped EXIT`)
+	raw(`# swap <layer>`)
+	raw(`swap() {`)
+	raw(`  current=$1`)
+	raw(`  echo "-- $1"`)
+	raw(`  record "$1"`)
+	// spec.path moves with the source. It is a path inside the artifact, and a
+	// Git artifact is the repository tree while a ConfigHub artifact is the
+	// rendered manifests at its root. Leaving the Git path behind fails with,
+	// measured on Flux v2.8.6:
+	//   kustomization path not found: stat /tmp/kustomization-.../<git path>
+	// which reads as a missing directory rather than as the one field the swap
+	// forgot, and the layer never becomes Ready.
+	raw(`  k -n "$ns" patch kustomization "$1" --type merge -p "{\"spec\":{\"sourceRef\":{\"kind\":\"OCIRepository\",\"name\":\"$1\"},\"path\":\"./\"}}"`)
+	raw(`  moved="$moved $1"; log "patched $1"`)
+	raw(`  if ! k -n "$ns" wait --for=condition=Ready "kustomization/$1" --timeout=5m; then`)
+	raw(`    log "NOT Ready $1: $(k -n "$ns" get kustomization "$1" -o jsonpath='{.status.conditions[?(@.type=="Ready")].message}' 2>&1 || true)"`)
+	raw(`    return 1`)
+	raw(`  fi`)
+	raw(`  log "Ready $1"`)
+	raw(`}`)
+	// A layer moves only on the clusters that have it. image-automation, for
+	// one, runs on dev alone, and patching a Kustomization a cluster does not
+	// have stops the run with every earlier layer already moved.
+	on := map[string][]string{}
+	for _, c := range p.Components {
+		for _, st := range c.Stages {
+			for _, v := range st.Variants {
+				name := v.Kustomization[strings.Index(v.Kustomization, "/")+1:]
+				on[name] = append(on[name], v.Cluster)
+			}
 		}
 	}
+	for _, step := range p.Order {
+		for _, name := range step {
+			if cs := on[name]; len(cs) > 0 && len(cs) < len(p.Clusters) {
+				add(`case "$cluster" in %s) swap %s ;; esac`, strings.Join(cs, "|"), q(name))
+			} else {
+				add("swap %s", q(name))
+			}
+		}
+	}
+	raw(`current=""`)
 	add("")
 
 	add(`step "4/4 What is left, and what it means"`)
-	for _, a := range p.Automation {
-		name := strings.Fields(a)[1]
-		add(`k -n "$ns" patch imageupdateautomation %s --type merge -p '{"spec":{"suspend":true}}' 2>/dev/null || true`, name)
-		add("echo %s", q(fmt.Sprintf(
-			"Suspended ImageUpdateAutomation %s: it committed tags to Git, which no longer feeds this cluster. A tag bump is now a change on the base, promoted like any other.", name)))
+	if len(p.Automation) > 0 {
+		add("# A patch is not a suspension until the cluster says so: read it back. And")
+		add("# an object a Kustomization applies from Git is that Kustomization's, so a")
+		add("# patch on the cluster may not outlast its next reconcile.")
+		raw(`suspend_automation() {`)
+		raw(`  local got owner where`)
+		raw(`  if ! got=$(k -n "$ns" get imageupdateautomation "$1" -o name 2>&1); then`)
+		raw(`    case "$got" in`)
+		raw(`      *NotFound*|*"not found"*) echo "  ImageUpdateAutomation $1 is not on this cluster; nothing to suspend."; return 0 ;;`)
+		raw(`    esac`)
+		raw(`    echo "  ImageUpdateAutomation $1 could not be read, so it was NOT suspended: $got" >&2`)
+		raw(`    incomplete="$incomplete $1"; log "NOT suspended $1: unreadable: $got"; return 0`)
+		raw(`  fi`)
+		raw(`  if ! k -n "$ns" patch imageupdateautomation "$1" --type merge -p '{"spec":{"suspend":true}}'; then`)
+		raw(`    echo "  ImageUpdateAutomation $1 was NOT suspended: the patch failed. It still commits tags to Git." >&2`)
+		raw(`    incomplete="$incomplete $1"; log "NOT suspended $1: patch failed"; return 0`)
+		raw(`  fi`)
+		raw(`  got=$(k -n "$ns" get imageupdateautomation "$1" -o jsonpath='{.spec.suspend}' 2>&1) || got="unreadable ($got)"`)
+		raw(`  if [ "$got" != true ]; then`)
+		raw(`    echo "  ImageUpdateAutomation $1 was NOT suspended: spec.suspend reads $got after the patch." >&2`)
+		raw(`    incomplete="$incomplete $1"; log "NOT suspended $1: spec.suspend=$got"; return 0`)
+		raw(`  fi`)
+		raw(`  log "suspended $1"`)
+		raw(`  owner=$(k -n "$ns" get imageupdateautomation "$1" -o jsonpath='{.metadata.labels.kustomize\.toolkit\.fluxcd\.io/name}' 2>/dev/null || true)`)
+		raw(`  if [ -n "$owner" ]; then`)
+		raw(`    case " $moved " in`)
+		raw(`      *" $owner "*) where="its ConfigHub unit, which $owner now reads" ;;`)
+		raw(`      *) where="Git, which $owner still reads" ;;`)
+		raw(`    esac`)
+		raw(`    echo "  ImageUpdateAutomation $1 reads suspended now, but Kustomization $owner applies it and may undo this when it reconciles. Set spec.suspend: true in $where."`)
+		raw(`    held="$held $1"`)
+		raw(`  else`)
+		raw(`    echo "  Suspended ImageUpdateAutomation $1: spec.suspend reads true."`)
+		raw(`  fi`)
+		raw(`}`)
+		for _, a := range p.Automation {
+			name := strings.Fields(a)[1]
+			// Only where the plan found it running: elsewhere there is nothing
+			// to suspend, and a failed patch there is not a failed handover.
+			if _, on, ok := strings.Cut(a, ", running on "); ok {
+				add(`case "$cluster" in %s) suspend_automation %s ;; esac`, strings.ReplaceAll(on, ", ", "|"), q(name))
+			} else {
+				add("suspend_automation %s", q(name))
+			}
+		}
+		add("echo %s", q("Image automation committed tags to Git, which no longer feeds this cluster. A tag bump is now a change on the base, promoted like any other."))
 	}
 	for _, t := range p.Tenants {
 		add("echo %s", q("Tenant left as it is: "+t+
@@ -233,32 +359,22 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 		}
 	}
 	add("")
+	raw(`finished=1`)
 	add("echo")
-	add("echo %s", q("Done once every layer is Ready from an OCIRepository:"))
-	add("echo %s", q("  kubectl -n $ns get kustomizations -o custom-columns=NAME:.metadata.name,SOURCE:.spec.sourceRef.kind,READY:.status.conditions[0].status"))
-	// The way back restores two fields, not one. Saying only "sourceRef" here
-	// would leave a reader with a layer pointing at Git and a path of "./",
-	// which finds no kustomization and is a worse place than they started.
-	add("echo %s", q("Nothing was deleted. To go back, restore BOTH fields on each layer:"))
-	src := "<your GitRepository>"
-	if len(p.Sources) > 0 {
-		src = p.Sources[0].Name
-	}
-	for _, c := range p.Components {
-		for _, st := range c.Stages {
-			for _, v := range st.Variants {
-				ns, name := "flux-system", v.Kustomization
-				if i := strings.Index(name, "/"); i >= 0 {
-					ns, name = name[:i], name[i+1:]
-				}
-				add(`[ "$cluster" = %s ] && echo %s`, v.Cluster,
-					q(fmt.Sprintf(`  kubectl -n %s patch kustomization %s --type merge -p '{"spec":{"sourceRef":{"kind":"GitRepository","name":"%s"},"path":"%s"}}'`,
-						ns, name, src, v.Path)))
-			}
-		}
-	}
-	// The last command decides the script's exit status, and a [ ] that is
-	// false would make a wholly successful handover exit 1.
+	add("echo %s", q("Every layer is Ready from an OCIRepository. To see them:"))
+	raw(`echo "  kubectl --context '$ctx' -n $ns get kustomizations -o custom-columns=NAME:.metadata.name,SOURCE:.spec.sourceRef.kind,READY:.status.conditions[0].status"`)
+	// The way back restores two fields, not one, and restores them to what the
+	// cluster had rather than to what the plan guessed: layers can read
+	// different GitRepositories, and only the cluster knows which.
+	add("echo %s", q("Nothing was deleted. To go back, restore BOTH fields on each layer, as recorded before it moved:"))
+	raw(`way_back all`)
+	raw(`if [ -n "$held" ]; then`)
+	raw(`  echo "Suspended on the cluster only, until Git says so too:$held"`)
+	raw(`fi`)
+	raw(`if [ -n "$incomplete" ]; then`)
+	raw(`  echo "HANDOVER INCOMPLETE: every layer moved, but this image automation is still running:$incomplete" >&2`)
+	raw(`  exit 1`)
+	raw(`fi`)
 	add("true")
 	return strings.Join(L, "\n") + "\n"
 }

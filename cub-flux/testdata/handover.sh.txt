@@ -13,16 +13,19 @@
 # with one non-production cluster.
 set -euo pipefail
 cd "$(dirname "$0")"
-k() { kubectl ${FLUX_CONTEXT:+--context "$FLUX_CONTEXT"} "$@"; }
+ctx=${FLUX_CONTEXT:-$(kubectl config current-context 2>/dev/null || true)}
+[ -n "$ctx" ] || { echo "no kubectl context: set FLUX_CONTEXT to the cluster to hand over"; exit 1; }
+k() { kubectl --context "$ctx" "$@"; }
 step() { printf '\n== %s\n' "$*"; }
 ns=${FLUX_NAMESPACE:-flux-system}
 cluster=${CLUSTER:-}
 # The comparison below re-renders from the repository, so it needs it.
 REPO_ROOT=${REPO_ROOT:-'<repo>'}
-[ -n "$cluster" ] || { echo "set CLUSTER=<one of: dev-1, staging-1, prod-1> so the right Target is used"; exit 1; }
+case "$cluster" in dev-1|staging-1|prod-1) ;; *) echo "set CLUSTER=<one of: dev-1, staging-1, prod-1> so the right Target is used"; exit 1 ;; esac
 
 step "0/4 Check before changing anything"
 cub auth status >/dev/null 2>&1 || { echo "cub is not logged in: run cub auth login"; exit 1; }
+echo "  every kubectl call below uses context $ctx"
 k get namespace "$ns" >/dev/null || { echo "no $ns namespace: is this the right cluster?"; exit 1; }
 # flux-system reconciles the Flux controllers themselves. It is the way back
 # if anything here goes wrong, so it stays on Git and is never repointed.
@@ -73,16 +76,16 @@ same() {
 # status.inventory is the record. Every layer here prunes, so an object it
 # applied that the release does not hold is deleted the moment the source
 # is swapped, whether or not it was ever in Git.
-[ "$cluster" = 'dev-1' ] && cub flux check ${FLUX_CONTEXT:+--kube-context "$FLUX_CONTEXT"} --namespace 'flux-system' --kustomization 'infrastructure' --space 'flux-infrastructure-dev-1' --unit 'infrastructure'
-[ "$cluster" = 'staging-1' ] && cub flux check ${FLUX_CONTEXT:+--kube-context "$FLUX_CONTEXT"} --namespace 'flux-system' --kustomization 'infrastructure' --space 'flux-infrastructure-staging-1' --unit 'infrastructure'
-[ "$cluster" = 'prod-1' ] && cub flux check ${FLUX_CONTEXT:+--kube-context "$FLUX_CONTEXT"} --namespace 'flux-system' --kustomization 'infrastructure' --space 'flux-infrastructure-prod-1' --unit 'infrastructure'
-[ "$cluster" = 'dev-1' ] && cub flux check ${FLUX_CONTEXT:+--kube-context "$FLUX_CONTEXT"} --namespace 'flux-system' --kustomization 'apps' --space 'flux-apps-dev-1' --unit 'apps'
-[ "$cluster" = 'staging-1' ] && cub flux check ${FLUX_CONTEXT:+--kube-context "$FLUX_CONTEXT"} --namespace 'flux-system' --kustomization 'apps' --space 'flux-apps-staging-1' --unit 'apps'
-[ "$cluster" = 'prod-1' ] && cub flux check ${FLUX_CONTEXT:+--kube-context "$FLUX_CONTEXT"} --namespace 'flux-system' --kustomization 'apps' --space 'flux-apps-prod-1' --unit 'apps'
-[ "$cluster" = 'dev-1' ] && cub flux check ${FLUX_CONTEXT:+--kube-context "$FLUX_CONTEXT"} --namespace 'flux-system' --kustomization 'tenants' --space 'flux-tenants-dev-1' --unit 'tenants'
-[ "$cluster" = 'staging-1' ] && cub flux check ${FLUX_CONTEXT:+--kube-context "$FLUX_CONTEXT"} --namespace 'flux-system' --kustomization 'tenants' --space 'flux-tenants-staging-1' --unit 'tenants'
-[ "$cluster" = 'prod-1' ] && cub flux check ${FLUX_CONTEXT:+--kube-context "$FLUX_CONTEXT"} --namespace 'flux-system' --kustomization 'tenants' --space 'flux-tenants-prod-1' --unit 'tenants'
-[ "$cluster" = 'dev-1' ] && cub flux check ${FLUX_CONTEXT:+--kube-context "$FLUX_CONTEXT"} --namespace 'flux-system' --kustomization 'image-automation' --space 'flux-image-automation-dev-1' --unit 'image-automation'
+[ "$cluster" = 'dev-1' ] && cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'infrastructure' --space 'flux-infrastructure-dev-1' --unit 'infrastructure'
+[ "$cluster" = 'staging-1' ] && cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'infrastructure' --space 'flux-infrastructure-staging-1' --unit 'infrastructure'
+[ "$cluster" = 'prod-1' ] && cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'infrastructure' --space 'flux-infrastructure-prod-1' --unit 'infrastructure'
+[ "$cluster" = 'dev-1' ] && cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'apps' --space 'flux-apps-dev-1' --unit 'apps'
+[ "$cluster" = 'staging-1' ] && cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'apps' --space 'flux-apps-staging-1' --unit 'apps'
+[ "$cluster" = 'prod-1' ] && cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'apps' --space 'flux-apps-prod-1' --unit 'apps'
+[ "$cluster" = 'dev-1' ] && cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'tenants' --space 'flux-tenants-dev-1' --unit 'tenants'
+[ "$cluster" = 'staging-1' ] && cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'tenants' --space 'flux-tenants-staging-1' --unit 'tenants'
+[ "$cluster" = 'prod-1' ] && cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'tenants' --space 'flux-tenants-prod-1' --unit 'tenants'
+[ "$cluster" = 'dev-1' ] && cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'image-automation' --space 'flux-image-automation-dev-1' --unit 'image-automation'
 
 # What no controller claims in this fleet, as a cross-check. cub-scout
 # infers ownership where the inventory is Flux's own record, so this is
@@ -115,14 +118,14 @@ k create secret docker-registry confighub-flux-targets --namespace "$ns" \
 
 # One OCIRepository per layer, each reading that layer's release for this
 # cluster. Commit these to the bootstrap directory so flux-system keeps them.
-mkdir -p bootstrap
+mkdir -p "bootstrap/$cluster"
 case "$cluster" in
   dev-1) space_infrastructure='flux-infrastructure-dev-1' ;;
   staging-1) space_infrastructure='flux-infrastructure-staging-1' ;;
   prod-1) space_infrastructure='flux-infrastructure-prod-1' ;;
-  *) echo "no infrastructure variant for cluster $cluster"; exit 1 ;;
+  *) space_infrastructure='' ;;
 esac
-cat > bootstrap/ocirepository-infrastructure.yaml <<YAML
+[ -z "$space_infrastructure" ] || cat > "bootstrap/$cluster/ocirepository-infrastructure.yaml" <<YAML
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: OCIRepository
 metadata:
@@ -140,9 +143,9 @@ case "$cluster" in
   dev-1) space_apps='flux-apps-dev-1' ;;
   staging-1) space_apps='flux-apps-staging-1' ;;
   prod-1) space_apps='flux-apps-prod-1' ;;
-  *) echo "no apps variant for cluster $cluster"; exit 1 ;;
+  *) space_apps='' ;;
 esac
-cat > bootstrap/ocirepository-apps.yaml <<YAML
+[ -z "$space_apps" ] || cat > "bootstrap/$cluster/ocirepository-apps.yaml" <<YAML
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: OCIRepository
 metadata:
@@ -160,9 +163,9 @@ case "$cluster" in
   dev-1) space_tenants='flux-tenants-dev-1' ;;
   staging-1) space_tenants='flux-tenants-staging-1' ;;
   prod-1) space_tenants='flux-tenants-prod-1' ;;
-  *) echo "no tenants variant for cluster $cluster"; exit 1 ;;
+  *) space_tenants='' ;;
 esac
-cat > bootstrap/ocirepository-tenants.yaml <<YAML
+[ -z "$space_tenants" ] || cat > "bootstrap/$cluster/ocirepository-tenants.yaml" <<YAML
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: OCIRepository
 metadata:
@@ -178,9 +181,9 @@ spec:
 YAML
 case "$cluster" in
   dev-1) space_image_automation='flux-image-automation-dev-1' ;;
-  *) echo "no image-automation variant for cluster $cluster"; exit 1 ;;
+  *) space_image_automation='' ;;
 esac
-cat > bootstrap/ocirepository-image-automation.yaml <<YAML
+[ -z "$space_image_automation" ] || cat > "bootstrap/$cluster/ocirepository-image-automation.yaml" <<YAML
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: OCIRepository
 metadata:
@@ -194,44 +197,130 @@ spec:
   secretRef:
     name: confighub-flux-targets
 YAML
-k apply -f bootstrap/
-echo "Commit bootstrap/ into the flux-system path so these survive a reconcile."
+k apply -f "bootstrap/$cluster/"
+echo "Commit bootstrap/$cluster/ into this cluster's flux-system path so these survive a reconcile."
 
 step "3/4 Swap each layer's sourceRef, deepest dependency first"
 # The Kustomization keeps its name, so Flux keeps the inventory of what it
 # applied, and nothing is recreated.
-echo "-- infrastructure"
-k -n "$ns" patch kustomization infrastructure --type merge -p '{"spec":{"sourceRef":{"kind":"OCIRepository","name":"infrastructure"},"path":"./"}}'
-k -n "$ns" wait --for=condition=Ready kustomization/infrastructure --timeout=5m
-echo "-- apps"
-k -n "$ns" patch kustomization apps --type merge -p '{"spec":{"sourceRef":{"kind":"OCIRepository","name":"apps"},"path":"./"}}'
-k -n "$ns" wait --for=condition=Ready kustomization/apps --timeout=5m
-echo "-- tenants"
-k -n "$ns" patch kustomization tenants --type merge -p '{"spec":{"sourceRef":{"kind":"OCIRepository","name":"tenants"},"path":"./"}}'
-k -n "$ns" wait --for=condition=Ready kustomization/tenants --timeout=5m
-echo "-- image-automation"
-k -n "$ns" patch kustomization image-automation --type merge -p '{"spec":{"sourceRef":{"kind":"OCIRepository","name":"image-automation"},"path":"./"}}'
-k -n "$ns" wait --for=condition=Ready kustomization/image-automation --timeout=5m
+#
+# Before a layer changes, its sourceRef and path are recorded, once: a re-run
+# must not overwrite the original with a half-moved state. If anything below
+# stops the script, the layers already moved are named, with the commands
+# that put them back. Nothing is rolled back automatically.
+state="handover-state/$cluster.txt"; log="handover-state/$cluster.log"
+mkdir -p handover-state; touch "$state"
+log() { printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >> "$log"; }
+moved=""; current=""; finished=0; incomplete=""; held=""
+# record <layer>: name|kind|source|source namespace|path, as the cluster had it
+record() {
+  grep -q "^$1|" "$state" && return 0
+  local was
+  was=$(k -n "$ns" get kustomization "$1" -o jsonpath='{.metadata.name}{"|"}{.spec.sourceRef.kind}{"|"}{.spec.sourceRef.name}{"|"}{.spec.sourceRef.namespace}{"|"}{.spec.path}')
+  case "$was" in
+    *"|OCIRepository|"*) echo "  $1 already reads an OCIRepository, and no original was recorded for it here" >&2 ;;
+    *) printf '%s\n' "$was" >> "$state"; log "recorded $was" ;;
+  esac
+}
+# way_back [all]: the commands that restore BOTH fields, for the layers this
+# run moved, or with "all" for every layer recorded for this cluster.
+way_back() {
+  local name kind src srcns path ref
+  while IFS='|' read -r name kind src srcns path; do
+    case " $moved " in *" $name "*) ;; *) [ "${1:-}" = all ] || continue ;; esac
+    ref="\"kind\":\"$kind\",\"name\":\"$src\""
+    [ -z "$srcns" ] || ref="$ref,\"namespace\":\"$srcns\""
+    echo "  kubectl --context '$ctx' -n '$ns' patch kustomization $name --type merge -p '{\"spec\":{\"sourceRef\":{$ref},\"path\":\"$path\"}}'"
+  done < "$state"
+}
+stopped() {
+  local rc=$?
+  [ "$finished" = 1 ] && return
+  echo >&2
+  if [ -z "$moved" ]; then
+    echo "Stopped (exit $rc) before any layer's source was changed." >&2
+    return
+  fi
+  log "stopped at ${current:-?}, exit $rc"
+  echo "HANDOVER STOPPED at ${current:-?} (exit $rc), on context $ctx." >&2
+  echo "These layers were moved and now read ConfigHub:$moved" >&2
+  echo "Nothing is rolled back automatically. To put them back on Git:" >&2
+  way_back >&2
+  echo "Each layer's original is in $state; what happened is in $log." >&2
+  echo "The gateway Secret and OCIRepositories from step 2 stay; they feed nothing unless a layer reads them." >&2
+}
+trap stopped EXIT
+# swap <layer>
+swap() {
+  current=$1
+  echo "-- $1"
+  record "$1"
+  k -n "$ns" patch kustomization "$1" --type merge -p "{\"spec\":{\"sourceRef\":{\"kind\":\"OCIRepository\",\"name\":\"$1\"},\"path\":\"./\"}}"
+  moved="$moved $1"; log "patched $1"
+  if ! k -n "$ns" wait --for=condition=Ready "kustomization/$1" --timeout=5m; then
+    log "NOT Ready $1: $(k -n "$ns" get kustomization "$1" -o jsonpath='{.status.conditions[?(@.type=="Ready")].message}' 2>&1 || true)"
+    return 1
+  fi
+  log "Ready $1"
+}
+swap 'infrastructure'
+swap 'apps'
+swap 'tenants'
+case "$cluster" in dev-1) swap 'image-automation' ;; esac
+current=""
 
 step "4/4 What is left, and what it means"
-k -n "$ns" patch imageupdateautomation apptique-dev --type merge -p '{"spec":{"suspend":true}}' 2>/dev/null || true
-echo 'Suspended ImageUpdateAutomation apptique-dev: it committed tags to Git, which no longer feeds this cluster. A tag bump is now a change on the base, promoted like any other.'
+# A patch is not a suspension until the cluster says so: read it back. And
+# an object a Kustomization applies from Git is that Kustomization's, so a
+# patch on the cluster may not outlast its next reconcile.
+suspend_automation() {
+  local got owner where
+  if ! got=$(k -n "$ns" get imageupdateautomation "$1" -o name 2>&1); then
+    case "$got" in
+      *NotFound*|*"not found"*) echo "  ImageUpdateAutomation $1 is not on this cluster; nothing to suspend."; return 0 ;;
+    esac
+    echo "  ImageUpdateAutomation $1 could not be read, so it was NOT suspended: $got" >&2
+    incomplete="$incomplete $1"; log "NOT suspended $1: unreadable: $got"; return 0
+  fi
+  if ! k -n "$ns" patch imageupdateautomation "$1" --type merge -p '{"spec":{"suspend":true}}'; then
+    echo "  ImageUpdateAutomation $1 was NOT suspended: the patch failed. It still commits tags to Git." >&2
+    incomplete="$incomplete $1"; log "NOT suspended $1: patch failed"; return 0
+  fi
+  got=$(k -n "$ns" get imageupdateautomation "$1" -o jsonpath='{.spec.suspend}' 2>&1) || got="unreadable ($got)"
+  if [ "$got" != true ]; then
+    echo "  ImageUpdateAutomation $1 was NOT suspended: spec.suspend reads $got after the patch." >&2
+    incomplete="$incomplete $1"; log "NOT suspended $1: spec.suspend=$got"; return 0
+  fi
+  log "suspended $1"
+  owner=$(k -n "$ns" get imageupdateautomation "$1" -o jsonpath='{.metadata.labels.kustomize\.toolkit\.fluxcd\.io/name}' 2>/dev/null || true)
+  if [ -n "$owner" ]; then
+    case " $moved " in
+      *" $owner "*) where="its ConfigHub unit, which $owner now reads" ;;
+      *) where="Git, which $owner still reads" ;;
+    esac
+    echo "  ImageUpdateAutomation $1 reads suspended now, but Kustomization $owner applies it and may undo this when it reconciles. Set spec.suspend: true in $where."
+    held="$held $1"
+  else
+    echo "  Suspended ImageUpdateAutomation $1: spec.suspend reads true."
+  fi
+}
+case "$cluster" in dev-1) suspend_automation 'apptique-dev' ;; esac
+echo 'Image automation committed tags to Git, which no longer feeds this cluster. A tag bump is now a change on the base, promoted like any other.'
 echo 'Tenant left as it is: team-checkout/team-checkout runs as ServiceAccount team-checkout, reading GitRepository team-checkout; governed as part of tenants. Repointing it would move that team from Git access to ConfigHub access, which is a decision about delegation, not a step in a handover.'
 echo 'GitRepository fleet-repo promoted by branch. That is now the workflow'\''s stages: a change is promoted and approved per cluster, not merged between branches.'
 echo 'GitRepository team-checkout promoted by branch. That is now the workflow'\''s stages: a change is promoted and approved per cluster, not merged between branches.'
 
+finished=1
 echo
-echo 'Done once every layer is Ready from an OCIRepository:'
-echo '  kubectl -n $ns get kustomizations -o custom-columns=NAME:.metadata.name,SOURCE:.spec.sourceRef.kind,READY:.status.conditions[0].status'
-echo 'Nothing was deleted. To go back, restore BOTH fields on each layer:'
-[ "$cluster" = dev-1 ] && echo '  kubectl -n flux-system patch kustomization infrastructure --type merge -p '\''{"spec":{"sourceRef":{"kind":"GitRepository","name":"platform-charts"},"path":"gitops/flux/expert-fleet/infrastructure/dev"}}'\'''
-[ "$cluster" = staging-1 ] && echo '  kubectl -n flux-system patch kustomization infrastructure --type merge -p '\''{"spec":{"sourceRef":{"kind":"GitRepository","name":"platform-charts"},"path":"gitops/flux/expert-fleet/infrastructure/staging"}}'\'''
-[ "$cluster" = prod-1 ] && echo '  kubectl -n flux-system patch kustomization infrastructure --type merge -p '\''{"spec":{"sourceRef":{"kind":"GitRepository","name":"platform-charts"},"path":"gitops/flux/expert-fleet/infrastructure/prod"}}'\'''
-[ "$cluster" = dev-1 ] && echo '  kubectl -n flux-system patch kustomization apps --type merge -p '\''{"spec":{"sourceRef":{"kind":"GitRepository","name":"platform-charts"},"path":"gitops/flux/expert-fleet/apps/dev"}}'\'''
-[ "$cluster" = staging-1 ] && echo '  kubectl -n flux-system patch kustomization apps --type merge -p '\''{"spec":{"sourceRef":{"kind":"GitRepository","name":"platform-charts"},"path":"gitops/flux/expert-fleet/apps/staging"}}'\'''
-[ "$cluster" = prod-1 ] && echo '  kubectl -n flux-system patch kustomization apps --type merge -p '\''{"spec":{"sourceRef":{"kind":"GitRepository","name":"platform-charts"},"path":"gitops/flux/expert-fleet/apps/prod"}}'\'''
-[ "$cluster" = dev-1 ] && echo '  kubectl -n flux-system patch kustomization tenants --type merge -p '\''{"spec":{"sourceRef":{"kind":"GitRepository","name":"platform-charts"},"path":"gitops/flux/expert-fleet/tenants/dev"}}'\'''
-[ "$cluster" = staging-1 ] && echo '  kubectl -n flux-system patch kustomization tenants --type merge -p '\''{"spec":{"sourceRef":{"kind":"GitRepository","name":"platform-charts"},"path":"gitops/flux/expert-fleet/tenants/staging"}}'\'''
-[ "$cluster" = prod-1 ] && echo '  kubectl -n flux-system patch kustomization tenants --type merge -p '\''{"spec":{"sourceRef":{"kind":"GitRepository","name":"platform-charts"},"path":"gitops/flux/expert-fleet/tenants/prod"}}'\'''
-[ "$cluster" = dev-1 ] && echo '  kubectl -n flux-system patch kustomization image-automation --type merge -p '\''{"spec":{"sourceRef":{"kind":"GitRepository","name":"platform-charts"},"path":"gitops/flux/expert-fleet/image-automation"}}'\'''
+echo 'Every layer is Ready from an OCIRepository. To see them:'
+echo "  kubectl --context '$ctx' -n $ns get kustomizations -o custom-columns=NAME:.metadata.name,SOURCE:.spec.sourceRef.kind,READY:.status.conditions[0].status"
+echo 'Nothing was deleted. To go back, restore BOTH fields on each layer, as recorded before it moved:'
+way_back all
+if [ -n "$held" ]; then
+  echo "Suspended on the cluster only, until Git says so too:$held"
+fi
+if [ -n "$incomplete" ]; then
+  echo "HANDOVER INCOMPLETE: every layer moved, but this image automation is still running:$incomplete" >&2
+  exit 1
+fi
 true

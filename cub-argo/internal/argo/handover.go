@@ -32,7 +32,18 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("# estate.")
 	add("set -euo pipefail")
 	add(`cd "$(dirname "$0")"`)
-	add(`k() { kubectl ${ARGOCD_CONTEXT:+--context "$ARGOCD_CONTEXT"} "$@"; }`)
+	// The context is fixed once, here: a context switched in another terminal
+	// mid-run would otherwise move the rest of the handover to another cluster.
+	add(`ctx=${ARGOCD_CONTEXT:-$(kubectl config current-context 2>/dev/null || true)}`)
+	add(`[ -n "$ctx" ] || { echo "no kubectl context: set ARGOCD_CONTEXT to the cluster Argo CD runs on"; exit 1; }`)
+	add(`echo "every kubectl call below uses context $ctx"`)
+	add(`k() { kubectl --context "$ctx" "$@"; }`)
+	// show prints a kubectl command for a person to run later, naming the
+	// context and namespace this run used rather than leaving them to whatever
+	// is current when it is pasted.
+	show := func(rest string) {
+		add(`printf '  kubectl --context %%s -n %%s %%s\n' "$ctx" "$ns" %s`, q(rest))
+	}
 	add(`step() { printf '\n== %%s\n' "$*"; }`)
 	add(`ns=${ARGOCD_NAMESPACE:-argocd}`)
 	add("# The comparison before the template repoint renders from the repository.")
@@ -267,7 +278,7 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 					continue
 				}
 				add("same %s %s %s", q(v.Space), q(c.Name), q(v.Path))
-				add(`cub argo check ${ARGOCD_CONTEXT:+--kube-context "$ARGOCD_CONTEXT"} --fields --namespace "$ns" --application %s --space %s --unit %s --destination-namespace %s`,
+				add(`cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application %s --space %s --unit %s --destination-namespace %s`,
 					q(v.Application), q(v.Space), q(c.Name), q(v.Namespace))
 			}
 		}
@@ -328,14 +339,14 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 			add("echo %s", q(fmt.Sprintf("  cub unit update --space %s %s %s.yaml", home.Space, home.Unit, home.Unit)))
 			add("echo %s", q(fmt.Sprintf("  cub release publish %s", home.Space)))
 			add("echo %s", q("  # then wait for the parent to sync it down before patching anything:"))
-			add("echo %s", q(fmt.Sprintf("  kubectl -n $ns get applicationset %s -o jsonpath='{.spec.syncPolicy.applicationsSync}'", c.Source)))
+			show(fmt.Sprintf("get applicationset %s -o jsonpath='{.spec.syncPolicy.applicationsSync}'", c.Source))
 		}
 		add("echo %s", q("Once it reads create-only, point each Application at its own Space:"))
 		for _, st := range c.Stages {
 			for _, v := range st.Variants {
-				add("echo %s", q(fmt.Sprintf(
-					"  kubectl -n $ns patch application %s --type merge -p '{\"spec\":{\"source\":{\"repoURL\":\"oci://<gateway>/space/%s\",\"path\":\".\",\"targetRevision\":\"latest\"}}}'   # stage %s",
-					v.Application, v.Space, st.Name)))
+				show(fmt.Sprintf(
+					"patch application %s --type merge -p '{\"spec\":{\"source\":{\"repoURL\":\"oci://<gateway>/space/%s\",\"path\":\".\",\"targetRevision\":\"latest\"}}}'   # stage %s",
+					v.Application, v.Space, st.Name))
 			}
 		}
 	}
@@ -355,14 +366,14 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("")
 	add("echo")
 	add("echo %s", q("Done once every Application reports Synced from an oci:// source:"))
-	add("echo %s", q("  kubectl -n $ns get applications -o custom-columns=NAME:.metadata.name,SOURCE:.spec.source.repoURL,SYNC:.status.sync.status"))
+	show("get applications -o custom-columns=NAME:.metadata.name,SOURCE:.spec.source.repoURL,SYNC:.status.sync.status")
 	add("echo %s", q("Nothing was deleted. To go back, patch each source to its Git repoURL and path."))
 	add("echo")
 	add("echo %s", q("One more thing, measured on Argo CD v3.5.3: publishing a new release does NOT"))
 	add("echo %s", q("reach the cluster on its own. Argo caches the digest it resolved for the tag, and"))
 	add("echo %s", q("was still serving the previous release 90 seconds later. A hard refresh re-resolves"))
 	add("echo %s", q("the tag to a digest and the release lands:"))
-	add("echo %s", q("  kubectl -n $ns annotate application <name> argocd.argoproj.io/refresh=hard --overwrite"))
+	show("annotate application <name> argocd.argoproj.io/refresh=hard --overwrite")
 	add("echo %s", q("argobot does this for you, reacting to ConfigHub's release.published event. Without"))
 	add("echo %s", q("it, or without that annotation, an approved release sits unread on the gateway."))
 	return strings.Join(L, "\n") + "\n"
