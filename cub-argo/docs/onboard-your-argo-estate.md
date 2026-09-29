@@ -28,10 +28,14 @@ first, which `cleanup.sh` checks before it does anything.
 
 You need the `cub` CLI logged in to your organization (`cub auth login`),
 `kustomize` on your PATH, `kubectl` access to the cluster Argo CD runs on, and
-the plugin:
+the plugin. The plugin lives in this repository rather than in one of its own,
+so build it from a checkout (it needs Go):
 
 ```bash
-cub plugin install confighub/cub-argo
+git clone https://github.com/confighub/examples
+cd examples/cub-argo
+make install-plugin
+cub plugin list   # cub-argo should be listed, status ok
 ```
 
 ## The words you will meet
@@ -118,7 +122,9 @@ logged in and `kustomize` is present, then:
    workflow its changes follow.
 4. Creates each cluster's variant, bound to its Target, holding what that
    cluster's overlay renders.
-5. Releases the first version stage by stage: promote, approve, publish.
+5. Releases the first version stage by stage: promote, approve, publish. One
+   operator does all three, as the workflow is generated (see "Making a change
+   afterwards").
 
 Nothing above touches a cluster. The whole script is safe to re-run: it picks
 up where ConfigHub says each step stands, and never writes over a change made
@@ -373,7 +379,12 @@ This is the same move `cub sveltos` makes when it drops a profile's
 producing an Application on its own and becomes a variant you add in ConfigHub —
 a reviewed change rather than an automatic one, which is the point.
 
-**Measured on Argo CD v3.5.3**, and each of these changes what the script does:
+**Measured on Argo CD v3.5.3**, and each of these changes what the script does.
+The measurements were made on one cluster, with the source swapped by path. They
+were not made against real ConfigHub variant Spaces, one per registered
+cluster, which the expert example needs and which takes a rig of at least two
+clusters to prove. Treat the sequence as measured in parts, not as run end to
+end:
 
 - **Patching a generated Application while its ApplicationSet is live is
   reverted in under a second.** The generator stands down first, with
@@ -477,7 +488,10 @@ Problems to fix first
 **Not covered by this rehearsal:** the ApplicationSet-generated Applications.
 The expert example expects three registered clusters and the rehearsal had one,
 so `dev-1-apptique` and its siblings never existed to check. Step 4 of
-`handover.sh` reports them as missing, correctly. The gateway was also plain
+`handover.sh` reports them as missing, correctly. That includes the retire and
+repoint sequence in "ApplicationSets are retired, not repointed", whose
+measurements came from a path swap on a single cluster rather than from this
+script. It has not been run against variant Spaces on several clusters. The gateway was also plain
 HTTP, which needed `CONFIGHUB_OCI_PLAIN_HTTP`; a TLS gateway is untested here.
 
 ## A published release does not arrive on its own
@@ -529,7 +543,9 @@ cub release publish argo-apptique-dev-1 --revision ChangeOrder:argo-apptique-bas
 
 ConfigHub refuses to promote into the next stage until this one has released
 the change, and refuses each release until the change is approved in its stage.
-Both refusals come from the server, in its own words.
+Both refusals come from the server, in its own words. As generated, though, one
+person can give that approval; the paragraph below the diagram says what that
+does and does not show.
 
 ```mermaid
 flowchart LR
@@ -538,9 +554,28 @@ flowchart LR
   c2 -->|"released, then approved"| c3["primary<br/>prod-1"]
 ```
 
-The generated workflow lets the person who promotes a change also approve it,
-which one person trying this needs. Once a second person can approve, set
-`AllowAuthors: false` in each app's `change-workflow.yaml`.
+The generated workflow is a single-operator one. It declares the `approval`
+attestation with `AllowAuthors: true`, and `apply.sh` promotes, approves and
+publishes as the same actor. That is a reviewed workflow for one person trying
+this: every step is recorded and the server still refuses to skip a stage. But
+an approval recorded that way is not evidence that a separate reviewer looked at
+the change.
+
+To require one, use what `cub changeworkflow create --help` describes for an
+attestation prerequisite in a workflow file. `AllowAuthors: false` (by default
+an author of the change does not count) stops the person who wrote the change
+approving it. `Count: 2` asks for that many distinct users recording a pass.
+`FromUserIDs: [<user id>]` names who may approve, and `MaxAge: 72h` lets an
+approval lapse. Reviewers record theirs with `cub variant approve
+--change-order <space>/<order> --stage <stage>`, and `--reject --note "<why>"`
+records a refusal, which blocks. Edit the `<component>/change-workflow.yaml`
+that `cub argo apply` wrote and put it on the live workflow with `cub
+changeworkflow update --space <base Space> rollout --filename
+<component>/change-workflow.yaml`; it applies to change orders created afterwards, not to
+one already under way. This has not been run here. The help shows no other
+enforcement and does not say what stops one person holding two logins, so the
+separation still comes from who holds which credentials: the person running
+`apply.sh` should not be a user who can approve.
 
 ## When a cluster joins
 
