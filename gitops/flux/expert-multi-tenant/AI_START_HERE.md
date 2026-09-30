@@ -146,7 +146,8 @@ Pause after this stage.
 ```
 
 This re-renders every layer locally and checks the structure: the platform
-bootstrap has no impersonation and reads the `flux-system` source, every
+bootstrap runs as `kustomize-controller`, never as a team, and reads the
+`flux-system` source, every
 team has its own namespace, RBAC, quota and NetworkPolicy, no team's Role
 can write NetworkPolicies, quotas, LimitRanges, Namespaces, RBAC or Flux
 objects, every RoleBinding names only its own team's ServiceAccount in

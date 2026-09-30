@@ -13,13 +13,13 @@ LOYALTY_WORKLOADS_SPACE="${GITOPS_FLUX_MULTI_TENANT_LOYALTY_WORKLOADS_SPACE:-git
 
 echo "This removes local rendered output only. It does not delete anything in ConfigHub."
 echo "To remove the ConfigHub Spaces this example created, run:"
-echo "  cub space delete $PLATFORM_SPACE"
-echo "  cub space delete $STOREFRONT_BOOTSTRAP_SPACE"
-echo "  cub space delete $STOREFRONT_WORKLOADS_SPACE"
-echo "  cub space delete $PAYMENTS_BOOTSTRAP_SPACE"
-echo "  cub space delete $PAYMENTS_WORKLOADS_SPACE"
-echo "  cub space delete $LOYALTY_BOOTSTRAP_SPACE"
-echo "  cub space delete $LOYALTY_WORKLOADS_SPACE"
+echo "  cub space delete --recursive --detach $PLATFORM_SPACE"
+echo "  cub space delete --recursive --detach $STOREFRONT_BOOTSTRAP_SPACE"
+echo "  cub space delete --recursive --detach $STOREFRONT_WORKLOADS_SPACE"
+echo "  cub space delete --recursive --detach $PAYMENTS_BOOTSTRAP_SPACE"
+echo "  cub space delete --recursive --detach $PAYMENTS_WORKLOADS_SPACE"
+echo "  cub space delete --recursive --detach $LOYALTY_BOOTSTRAP_SPACE"
+echo "  cub space delete --recursive --detach $LOYALTY_WORKLOADS_SPACE"
 
 rm -rf "$VAR_DIR"
 
