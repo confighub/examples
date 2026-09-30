@@ -237,8 +237,8 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 	add("cub worker create --space %s server-worker --is-server-worker --org-role none --allow-exists --quiet", targets)
 	add("# The cluster Argo CD itself runs on: the control objects are released here.")
 	add("cub target create argocd '{}' server-worker --space %s --provider OCI --toolchain Any --allow-exists --quiet", targets)
-	for _, c := range p.Clusters {
-		add("cub target create %s '{}' server-worker --space %s --provider OCI --toolchain Any --allow-exists --quiet", c.Name, targets)
+	for _, c := range p.targetClusters() {
+		add("cub target create %s '{}' server-worker --space %s --provider OCI --toolchain Any --allow-exists --quiet", c, targets)
 	}
 	add("")
 
@@ -471,4 +471,27 @@ func (p *Plan) inflatesHelm() bool {
 		}
 	}
 	return false
+}
+
+// targetClusters is every cluster a variant is addressed to: each cluster
+// Secret, and Argo CD's own cluster, which has no Secret, when an Application
+// deploys there.
+func (p *Plan) targetClusters() []string {
+	var out []string
+	seen := map[string]bool{}
+	for _, c := range p.Clusters {
+		seen[c.Name] = true
+		out = append(out, c.Name)
+	}
+	for _, c := range p.Components {
+		for _, st := range c.Stages {
+			for _, v := range st.Variants {
+				if v.Cluster == "in-cluster" && !seen[v.Cluster] {
+					seen[v.Cluster] = true
+					out = append(out, v.Cluster)
+				}
+			}
+		}
+	}
+	return out
 }

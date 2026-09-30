@@ -16,7 +16,14 @@ func Render(p *Plan) string {
 			variants += len(st.Variants)
 		}
 	}
-	w("Argo CD estate: %d clusters, %d components, %d variants\n", len(p.Clusters), len(p.Components), variants)
+	clusters := fmt.Sprintf("%d clusters", len(p.Clusters))
+	switch n := len(p.targetClusters()); {
+	case n == 1 && len(p.Clusters) == 0:
+		clusters = "1 cluster, Argo CD's own (in-cluster)"
+	case n > len(p.Clusters):
+		clusters = fmt.Sprintf("%d clusters, one of them Argo CD's own (in-cluster)", n)
+	}
+	w("Argo CD estate: %s, %d components, %d variants\n", clusters, len(p.Components), variants)
 	if len(p.Inputs.Skipped) > 0 {
 		// Named, not counted. A count under a banner saying "such as Helm
 		// templates" reads as benign, and one of these was a file the estate

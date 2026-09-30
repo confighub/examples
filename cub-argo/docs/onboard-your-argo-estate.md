@@ -792,9 +792,44 @@ stopped twice on a `409` from ConfigHub, at its first start and after half an
 hour, when its polls collided; that is confighub/argobot#15. In a cluster its
 Deployment restarts it, and a missed refresh costs only immediacy.
 
-Without argobot, or without that annotation in whatever promotes your releases,
-an approved release sits unread on the gateway and the approval gate you built
-governs nothing.
+**Without argobot, `cub argo status` does both,** from wherever you run it, as
+the cub user you run it as: it asks Argo for that hard refresh once per release,
+and writes the same live status.
+
+```bash
+cub argo status <what you planned, with the same flags> --kube-context <argo cluster> --watch --hard-refresh
+```
+
+Without one or the other, an approved release sits unread on the gateway and
+the approval gate you built governs nothing.
+
+## What ConfigHub hears back: live status
+
+ConfigHub learns what a cluster runs from one annotation on each Space,
+`confighub.com/live-status`. Its Healthy gate reads it, its change orders
+advance on it, and its UI shows it. argobot writes it where it runs. Without
+argobot, `cub argo status` writes it, in the same shape, from each Application
+that reads its Space:
+
+| Word | When `cub argo status` says it |
+| --- | --- |
+| `Synced` | Argo says Synced, and the digest it synced is the newest published release of that Space. Argo synced at an older release is `OutOfSync`, naming both releases; at a digest that is no release, `Unknown` |
+| health | Argo CD's own, which covers every resource the Application owns |
+| `revision` | the digest in `status.sync.revision`, never inferred |
+| `Unknown` | Argo has not compared the Application with its ConfigHub source yet, or reports an error condition |
+
+Given the same input as `plan`, it reports every variant and every app of apps
+whose children moved into a control Space. An Application still reading Git is
+not reported, and one that has gone back to Git has its old reading replaced by
+one that closes the gate. A read that fails writes nothing. It writes only when
+a reading changes, or when the one ConfigHub holds is older than `--refresh`
+(10 minutes), which shows the reporter is alive. A reading another reporter
+wrote, argobot say, is left alone while it is fresh, so the two do not
+overwrite each other.
+
+`--dry-run` shows what it would write; `--json` prints what it read and did.
+The run that proved it, from handover to a reviewed release to the way back,
+is [docs/runs/2026-09-30-status-and-in-cluster.md](runs/2026-09-30-status-and-in-cluster.md).
 
 ## Making a change afterwards
 
@@ -961,6 +996,15 @@ generated. See "Run against a live estate on three clusters" above. And on
 cluster joining after the retirement, and argobot refreshing and reporting
 status: see "Each Application becomes a Unit", "A published release does not
 arrive on its own" and "When a cluster joins".
+
+**Since run: live status, and an estate on Argo CD's own cluster.** On
+2026-09-30, `beginner-applicationset`, which deploys only to `in-cluster` and
+has no cluster Secret, was planned from a live export, onboarded, handed over
+with every UID unchanged, and given a reviewed release. `cub argo status` wrote
+`Synced` at release 1, `OutOfSync` while Argo held release 1 after release 2
+was published, and `Synced` at release 2's digest once `--hard-refresh` asked
+Argo to read it. Handed back to Git, the reading was replaced by one that
+closes the gate. See [the run log](runs/2026-09-30-status-and-in-cluster.md).
 
 **Not claimed at all:** that a plain directory of manifests can be onboarded
 (`kustomize build` will not read one, though Argo will — the plan says so),

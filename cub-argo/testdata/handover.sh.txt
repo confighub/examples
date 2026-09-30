@@ -52,7 +52,7 @@ record_source() {
 way_back() {
   local name url path rev
   [ -s handover-state/applications.txt ] && echo "  0. First the way back move-applications.sh prints, for each Application it made a Unit: restoring an ApplicationSet while its Applications are Units sets it and their parent against each other."
-  echo "  1. Any ApplicationSet you retired in step 5: restore its Unit to the revision before create-only, and publish its Space; the controller then puts its Applications back on the template's Git source."
+  echo "  1. Any ApplicationSet you retired (the 'Retire each ApplicationSet' step): if it is a Unit, restore that Unit to the revision before create-only and publish its Space; if it was applied by hand, set its spec.syncPolicy.applicationsSync back to what it was on the cluster. Either way the controller then puts its Applications back on the template's Git source."
   echo "  2. Any app of apps repointed through its Unit: restore that Unit to the revision before the repoint, and publish its Space."
   echo "  3. Then each parent patched here:"
   while IFS='|' read -r name url path rev; do
@@ -243,10 +243,10 @@ cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'p
 # is cub-scout inferring ownership, not a gate: it finds what was applied
 # by hand and would be left behind, which neither record above reports.
 if command -v cub-scout >/dev/null || cub scout --help >/dev/null 2>&1; then
-  cub scout map list -q 'owner=Native AND namespace=storefront-dev' || true
-  cub scout map list -q 'owner=Native AND namespace=storefront-staging' || true
-  cub scout map list -q 'owner=Native AND namespace=storefront-prod' || true
-  cub scout map list -q 'owner=Native AND namespace=platform-system' || true
+  cub scout map list -q 'owner=Native AND namespace=storefront-dev AND name!=kube-root-ca.crt' || true
+  cub scout map list -q 'owner=Native AND namespace=storefront-staging AND name!=kube-root-ca.crt' || true
+  cub scout map list -q 'owner=Native AND namespace=storefront-prod AND name!=kube-root-ca.crt' || true
+  cub scout map list -q 'owner=Native AND namespace=platform-system AND name!=kube-root-ca.crt' || true
 else
   echo "  cub-scout is not installed; skipping the unclaimed-resource cross-check"
 fi
@@ -350,5 +350,7 @@ echo 'the tag to a digest and the release lands:'
 printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'annotate application <name> argocd.argoproj.io/refresh=hard --overwrite' | sed "s|<gateway>|${addr:-<gateway>}|")"
 echo 'argobot does this for you: argobot.sh runs it beside Argo CD with the Targets'\'' worker,'
 echo 'so it refreshes each Application reading a Space when that Space publishes, and writes'
-echo 'each Application'\''s live status back to its Space. Without it, or without that'
-echo 'annotation, an approved release sits unread on the gateway.'
+echo 'each Application'\''s live status back to its Space. Without argobot, keep this running'
+echo 'beside the cluster instead: it asks for that refresh once per release, and writes the'
+echo 'same live status, which is what the Healthy gate and change orders read:'
+echo "  cub argo status <what you planned, with the same flags> --prefix argo --kube-context $ctx --watch --hard-refresh"
