@@ -203,14 +203,8 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 	add("# A server-hosted worker has no process behind it and no role in the")
 	add("# organization; it holds the Targets and is the credential Flux reads with.")
 	add("cub worker create --space %s server-worker --is-server-worker --org-role none --allow-exists --quiet", targets)
-	add("# Each Target names its cluster's layers Space and the Secret the layers pull")
-	add("# with, the signal a Flux-aware `cub variant create` reads to add a new")
-	add("# variant's layer there (the Flux counterpart of confighub.com/argo-apps-space).")
 	for _, c := range p.Clusters {
-		ann := fmt.Sprintf("--annotation confighub.com/flux-layers-space=%s --annotation confighub.com/flux-pull-secret=confighub-%s",
-			DeliverySpace(prefix, c.Name), targets)
-		add("cub target create %s '{}' server-worker --space %s --provider OCI --toolchain Any %s --allow-exists --quiet", c.Name, targets, ann)
-		add("echo '{}' | cub target update --patch --space %s %s %s --from-stdin --quiet", targets, c.Name, ann)
+		add("cub target create %s '{}' server-worker --space %s --provider OCI --toolchain Any --allow-exists --quiet", c.Name, targets)
 	}
 	add("")
 
@@ -270,10 +264,13 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 	add("")
 
 	add(`step "3/5 One variant per cluster, each holding what its own path renders to"`)
+	add("# Step 5 makes each layer's Unit itself, so a cub that would add one when")
+	add("# it makes a variant for a Flux cluster is told not to.")
+	add(`no_flux_layer=; case "$(cub variant create --help 2>&1)" in *--no-flux-layer*) no_flux_layer=--no-flux-layer ;; esac`)
 	for _, c := range p.Components {
 		for _, st := range c.Stages {
 			for _, v := range st.Variants {
-				add("cub variant create %s %s --stage %s --space-pattern template:%s --target %s/%s --space-label Role=deployment --space-label Cluster=%s --allow-exists --quiet",
+				add("cub variant create %s %s --stage %s --space-pattern template:%s --target %s/%s --space-label Role=deployment --space-label Cluster=%s $no_flux_layer --allow-exists --quiet",
 					v.Cluster, c.Base, st.Name, v.Space, targets, v.Cluster, v.Cluster)
 				add("render %s %s", q(v.Path), q(v.Space))
 				add("cub unit update --space %s %s render/%s.yaml --change-desc %s --quiet",
@@ -354,8 +351,14 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 	raw(`  all_released() { local s; for s in "$@"; do released "$s" || return 1; done; }`)
 	raw(`  publish_layers() { out=$(cub release publish "$1" --quiet 2>&1) || case "$out" in *"no changes"*) ;; *) echo "$out" >&2; return 1 ;; esac; }`)
 	for _, cl := range p.Clusters {
-		space := DeliverySpace(prefix, cl.Name)
+		space := cl.layers(prefix)
 		raw(fmt.Sprintf(`  cub space create %s --release-target %s/%s --label Role=layers --label Cluster=%s --allow-exists --quiet`, space, targets, cl.Name, cl.Name))
+		// Once the Space exists, the Target names it, and the Secret its layers
+		// pull with: the signal a Flux-aware `cub variant create` reads to add a
+		// variant made outside this plan as a layer here (the Flux counterpart of
+		// confighub.com/argo-apps-space).
+		ann := fmt.Sprintf("--annotation confighub.com/flux-layers-space=%s --annotation confighub.com/flux-pull-secret=confighub-%s", space, targets)
+		raw(fmt.Sprintf(`  echo '{}' | cub target update --patch --space %s %s %s --from-stdin --quiet`, targets, cl.Name, ann))
 		for _, c := range p.Components {
 			for _, st := range c.Stages {
 				for _, v := range st.Variants {

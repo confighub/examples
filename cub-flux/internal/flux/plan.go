@@ -74,6 +74,15 @@ type Cluster struct {
 	LayersSpace string `json:"layersSpace,omitempty"`
 }
 
+// layers is the Space holding the cluster's layers: the one its root reads
+// once it is handed over, and the one handover.sh will point it at otherwise.
+func (c Cluster) layers(prefix string) string {
+	if c.LayersSpace != "" {
+		return c.LayersSpace
+	}
+	return DeliverySpace(prefix, c.Name)
+}
+
 // Component is one layer (a Flux Kustomization name) across the clusters: a
 // base inferred from the overlays, and one variant per cluster.
 type Component struct {

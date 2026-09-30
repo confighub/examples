@@ -198,3 +198,26 @@ func TestCleanupRemovesHandedOverVariants(t *testing.T) {
 		t.Errorf("the handed-over variant must go, and before its base:\n%s", s)
 	}
 }
+
+// From review on #262: a handed-over cluster's Target names the Space its root
+// reads, even when that is not the one this prefix would name, and step 5 fills
+// that Space rather than making another. The annotation waits for step 5, so a
+// Flux-aware `cub variant create` never meets a layers Space that is not there.
+func TestTargetNamesTheLayersSpaceTheRootReads(t *testing.T) {
+	const fleet = "gitops/flux/beginner"
+	p := planAt(t, handedOver(t, fleet, "dev", "old-dev-layers"), fleet)
+	s := ApplyScript(p, "flux", ".")
+	if !strings.Contains(s, "cub target update --patch --space flux-targets dev --annotation confighub.com/flux-layers-space=old-dev-layers ") {
+		t.Errorf("dev's Target should name old-dev-layers:\n%s", s)
+	}
+	if strings.Contains(s, "flux-dev-layers") {
+		t.Errorf("nothing should make or name flux-dev-layers for a root reading old-dev-layers")
+	}
+	step5 := strings.Index(s, `step "5/5`)
+	if a := strings.Index(s, "confighub.com/flux-layers-space="); a < step5 {
+		t.Errorf("the Target is annotated before step 5 makes the layers Space")
+	}
+	if !strings.Contains(s, " $no_flux_layer --allow-exists") {
+		t.Errorf("apply.sh makes the layer Units itself, so variant create must be told not to")
+	}
+}
