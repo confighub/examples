@@ -36,9 +36,12 @@ apps Space and a root Application, and `cub variant create` then adds one
 Application per variant Space. Here the root is a Flux `Kustomization`, and each
 layer is a Unit in the cluster's Space.
 
-You need `cub` logged in (`cub auth login`), `kustomize` on your PATH,
-`kubectl` access to each cluster, and the plugin. The plugin lives in this repository rather than in one of its own,
-so build it from a checkout (it needs Go):
+The plan below needs the `cub` CLI and this plugin, but no ConfigHub account,
+login, `kustomize`, or cluster access. To continue beyond the plan, log in with
+`cub auth login` before running commands that write to ConfigHub; `kustomize`
+must be on your PATH for `apply.sh`, and `kubectl` must have access to each
+cluster for handover or join. The plugin lives in this repository rather than
+in one of its own, so build it from a checkout (which needs Go):
 
 ```bash
 git clone https://github.com/confighub/examples
