@@ -358,14 +358,11 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 		// pull with: the signal a Flux-aware `cub variant create` reads to add a
 		// variant made outside this plan as a layer here (the Flux counterpart of
 		// confighub.com/argo-apps-space).
-		// A root that pulls anonymously has no Secret; null removes one an
-		// earlier run named, as the patch merges.
-		secret := "null"
-		if s := cl.pullSecret(prefix); s != "" {
-			secret = strconv.Quote(s)
+		// A handed-over cluster's Space is there already, and its Target is
+		// annotated below, with or without the gateway.
+		if cl.LayersSpace == "" {
+			raw("  " + annotateTarget(cl, prefix, targets))
 		}
-		ann := fmt.Sprintf(`{"Annotations":{"confighub.com/flux-layers-space":%s,"confighub.com/flux-pull-secret":%s}}`, strconv.Quote(space), secret)
-		raw(fmt.Sprintf(`  echo %s | cub target update --patch --space %s %s --from-stdin --quiet`, q(ann), targets, cl.Name))
 		for _, c := range p.Components {
 			for _, st := range c.Stages {
 				for _, v := range st.Variants {
@@ -391,6 +388,11 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 		raw(fmt.Sprintf(`  if [ -z "${PROPOSE_ONLY:-}" ] || all_released %s; then publish_layers %s; else echo "  %s waits: not every variant of %s is released yet"; fi`, strings.Join(spaces, " "), space, space, cl.Name))
 	}
 	raw(`fi`)
+	for _, cl := range p.Clusters {
+		if cl.LayersSpace != "" {
+			add("%s", annotateTarget(cl, prefix, targets))
+		}
+	}
 	add("")
 	add("echo")
 	var requiring []*Component
@@ -441,4 +443,16 @@ func (p *Plan) handedOver() bool {
 		}
 	}
 	return false
+}
+
+// annotateTarget names the cluster's layers Space on its Target, and the
+// Secret its layers pull with. A root that pulls anonymously has no Secret;
+// null removes one an earlier run named, as the patch merges.
+func annotateTarget(cl Cluster, prefix, targets string) string {
+	secret := "null"
+	if s := cl.pullSecret(prefix); s != "" {
+		secret = strconv.Quote(s)
+	}
+	ann := fmt.Sprintf(`{"Annotations":{"confighub.com/flux-layers-space":%s,"confighub.com/flux-pull-secret":%s}}`, strconv.Quote(cl.layers(prefix)), secret)
+	return fmt.Sprintf(`echo %s | cub target update --patch --space %s %s --from-stdin --quiet`, q(ann), targets, cl.Name)
 }

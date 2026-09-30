@@ -306,10 +306,11 @@ func (b *builder) readClusters() map[string]map[string]Doc {
 			// The root names its cluster. A root made before it did is read by
 			// its Space's name, under this prefix or the one its Secret was
 			// made under.
+			// The Secret's prefix goes first: this one may extend it.
 			prefixes := []string{b.opts.Prefix}
 			if old, ok := strings.CutPrefix(pullSecret, "confighub-"); ok {
 				if old, ok = strings.CutSuffix(old, "-targets"); ok && old != b.opts.Prefix {
-					prefixes = append(prefixes, old)
+					prefixes = []string{old, b.opts.Prefix}
 				}
 			}
 			if rootName != "" && len(byName) == 0 {

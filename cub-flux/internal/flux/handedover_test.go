@@ -228,6 +228,10 @@ func TestTargetNamesTheLayersSpaceTheRootReads(t *testing.T) {
 	if strings.Contains(s, "flux-dev-layers") {
 		t.Errorf("nothing should make or name flux-dev-layers for a root reading old-dev-layers")
 	}
+	// Outside the gateway guard: the Space the root reads is there already.
+	if i, g := strings.Index(s, `echo '{"Annotations":{"confighub.com/flux-layers-space":"old-dev-layers"`), strings.LastIndex(s, "\nfi\n"); i < g {
+		t.Errorf("a handed-over cluster's Target is annotated without CONFIGHUB_OCI too")
+	}
 	step5 := strings.Index(s, `step "5/5`)
 	if a := strings.Index(s, `"confighub.com/flux-layers-space":`); a < step5 {
 		t.Errorf("the Target is annotated before step 5 makes the layers Space")
@@ -323,5 +327,35 @@ func TestUnlabelledRootUnderAnotherPrefix(t *testing.T) {
 	}
 	if !found {
 		t.Errorf("clusters/dev is dev-1, from old-dev-1-layers under the prefix old")
+	}
+}
+
+// From review on #262: a prefix may extend the one a root was made under
+// (team-dev after team), so the Secret's prefix is tried first.
+func TestUnlabelledRootUnderAShorterPrefix(t *testing.T) {
+	const fleet = "gitops/flux/expert-fleet"
+	root := handedOver(t, fleet, "dev", "team-dev-1-layers")
+	file := filepath.Join(root, fleet, "clusters", "dev", RootName+".yaml")
+	y, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(file, []byte(strings.Replace(string(y), "name: confighub-flux-targets", "name: confighub-team-targets", 1)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	in, err := Load(nil, []string{filepath.Join(root, fleet)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := Build(in, Options{Prefix: "team-dev", RepoRoot: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var found bool
+	for _, c := range p.Clusters {
+		found = found || (c.Name == "dev-1" && c.LayersSpace == "team-dev-1-layers")
+	}
+	if !found {
+		t.Errorf("clusters/dev is dev-1 under team, not 1 under team-dev: %+v", p.Clusters)
 	}
 }
