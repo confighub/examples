@@ -686,17 +686,97 @@ spec:
 	}
 }
 
-// A path with no kustomization.yaml renders for Argo but not for the script.
-func TestPlainDirectoryIsReported(t *testing.T) {
+// A path with no kustomization is a plain directory, and is read as Argo CD
+// reads it: every whole object there, rendered by the scripts through a
+// kustomization that lists them.
+func TestPlainDirectoryIsReadAsArgoReadsIt(t *testing.T) {
 	root, dir := copyExample(t)
-	if err := os.Remove(filepath.Join(dir, "apps", "apptique", "overlays", "prod", "kustomization.yaml")); err != nil {
+	overlay := filepath.Join(dir, "apps", "apptique", "overlays", "prod")
+	if err := os.Remove(filepath.Join(overlay, "kustomization.yaml")); err != nil {
 		t.Fatal(err)
 	}
 	opts := staged
 	opts.RepoRoot = root
 	p := planOf(t, dir, opts)
-	if !hasProblem(p, "has no kustomization.yaml", "plain directory") {
-		t.Errorf("want a plain-directory problem, got %v", p.Problems)
+	if hasProblem(p, "overlays/prod") {
+		t.Errorf("a directory of whole objects is read, not refused: %v", p.Problems)
+	}
+	noted := false
+	for _, c := range p.Components {
+		for _, n := range c.Notes {
+			noted = noted || strings.Contains(n, "a plain directory of manifests, read as Argo CD reads it")
+		}
+	}
+	if !noted {
+		t.Error("the component should say it is a plain directory")
+	}
+	if s := ApplyScript(p, "argo", "."); !strings.Contains(s, "--load-restrictor LoadRestrictionsNone") {
+		t.Error("apply.sh must render a plain directory through a kustomization that lists its files")
+	}
+
+	// A patch left beside the objects is not an object, and Argo fails on it.
+	if err := os.WriteFile(filepath.Join(overlay, "replicas-patch.yaml"), []byte("spec:\n  replicas: 3\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if p := planOf(t, dir, opts); !hasProblem(p, "replicas-patch.yaml in it is not a whole Kubernetes object") {
+		t.Errorf("want the patch named, got %v", p.Problems)
+	}
+	if err := os.Remove(filepath.Join(overlay, "replicas-patch.yaml")); err != nil {
+		t.Fatal(err)
+	}
+
+	// Jsonnet is evaluated by Argo, and not by the script.
+	if err := os.WriteFile(filepath.Join(overlay, "extra.jsonnet"), []byte("{}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if p := planOf(t, dir, opts); !hasProblem(p, "jsonnet files (extra.jsonnet)") {
+		t.Errorf("want the jsonnet named, got %v", p.Problems)
+	}
+}
+
+// What a plain directory holds, as Argo CD would read it.
+func TestManifestFiles(t *testing.T) {
+	dir := t.TempDir()
+	for _, f := range []string{"a.yaml", "b.yml", "c.json", "README.md", ".hidden.yaml", "sub/d.yaml", ".git/e.yaml", "lib.jsonnet"} {
+		path := filepath.Join(dir, filepath.FromSlash(f))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte("{}"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	files, jsonnet := manifestFiles(dir, false)
+	if got := strings.Join(files, ","); got != "a.yaml,b.yml,c.json" {
+		t.Errorf("top level only: got %s", got)
+	}
+	if got := strings.Join(jsonnet, ","); got != "lib.jsonnet" {
+		t.Errorf("jsonnet: got %s", got)
+	}
+	files, _ = manifestFiles(dir, true)
+	if got := strings.Join(files, ","); got != "a.yaml,b.yml,c.json,sub/d.yaml" {
+		t.Errorf("recursive, hidden left out: got %s", got)
+	}
+}
+
+// The beginner app of apps syncs plain directories, and now onboards.
+func TestBeginnerAppOfAppsOnboards(t *testing.T) {
+	const dir = "../../../gitops/argo/beginner-app-of-apps"
+	if _, err := os.Stat(dir); err != nil {
+		t.Skip("example not present")
+	}
+	p := planOf(t, dir, Options{RepoRoot: repoRoot(t)})
+	if len(p.Problems) > 0 {
+		t.Errorf("want a clean plan, got %v", p.Problems)
+	}
+	// Its paths name no shared base. Measured: without a base unit the
+	// variant is cloned empty, and apply.sh failed at "unit apptique-dev not
+	// found" when it wrote the variant's render.
+	s := ApplyScript(p, "argo", ".")
+	for _, c := range p.Components {
+		if !strings.Contains(s, "cub unit create --space "+c.Base+" "+c.Name+" render/"+c.Name+"-base.yaml") {
+			t.Errorf("apply.sh must give %s a base unit for its variants to overwrite", c.Base)
+		}
 	}
 }
 

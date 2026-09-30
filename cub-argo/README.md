@@ -94,9 +94,15 @@ Reads cluster, list and matrix (two generators) generators; Go templates
 (`goTemplate`) and `{{param}}` templates; label selectors with `In`, `NotIn`,
 `Exists` and `DoesNotExist`; sync waves; sync windows; overlay image tags.
 
+Reads a source path as Argo does: a kustomization is built with kustomize, and
+a plain directory of manifests is read file by file, recursively with
+`directory.recurse`. Argo CD's own cluster, `in-cluster`, needs no cluster
+Secret.
+
 Leaves out, and says so: git, SCM provider, pull request, merge and plugin
 generators; templates that use Sprig functions; multi-source Applications'
-paths. It does not render Kustomize or Helm; for that, use the
+paths; Helm chart sources; plain directories read with include, exclude or
+jsonnet. It does not render Kustomize or Helm; for that, use the
 [ConfigHub Workshop](https://confighub.github.io/helm-expt/) or `cub gen`.
 
 ## After the handover: live status
