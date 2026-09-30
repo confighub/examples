@@ -3,6 +3,26 @@
 Each release is tagged `cub-flux-v<version>` in confighub/examples and installs
 with `cub plugin install confighub/examples@cub-flux-v<version> --name flux`.
 
+## 0.2.0, unreleased
+
+- **Plain layers onboard.** A layer path with no kustomization is read as
+  kustomize-controller reads it: every `.yaml` and `.yml` below it, a
+  subdirectory with its own kustomization taken whole. `apply.sh` and
+  `handover.sh` render it the same way; before, the plan passed it and
+  `apply.sh` failed. The plan names any file there that is not Kubernetes YAML.
+- **Layers whose clusters share no base.** The base starts from the first
+  cluster's render, so each variant has a unit to update, and a partial first
+  run resumes.
+- **`cleanup.sh` checks for itself.** Given `FLUX_CONTEXT` or `FLUX_CONTEXTS`,
+  it reads each cluster's OCIRepositories and refuses while any reads a Space it
+  would delete, and removes the pull Secret once it has deleted them.
+- **The way back is complete.** It now removes the OCIRepositories the root
+  applied, last; before, they stayed behind reading ConfigHub.
+- **The cub-scout cross-check reads the right cluster**, and only where the
+  layers put things.
+- **`e2e/run.sh`** runs the whole journey on a kind cluster of its own and
+  compares every UID at each move.
+
 ## 0.1.0, 2026-09-30
 
 The first release. A Flux fleet onboards, hands over and reports back:

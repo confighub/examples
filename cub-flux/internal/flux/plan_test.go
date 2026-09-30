@@ -384,3 +384,82 @@ func TestChecksAreDerivedFromThePlan(t *testing.T) {
 		seen[key] = true
 	}
 }
+
+// A layer path with no kustomization is read as kustomize-controller reads it:
+// every .yaml and .yml below it, a subdirectory with its own kustomization
+// taken whole. The scripts render it the same way, through their own build().
+// Before, the plan passed it and apply.sh failed in kustomize build.
+func TestPlainLayerIsReadAsFluxReadsIt(t *testing.T) {
+	root, dir := copyExample(t)
+	dev := filepath.Join(dir, "apps", "dev")
+	if err := os.Remove(filepath.Join(dev, "kustomization.yaml")); err != nil {
+		t.Fatal(err)
+	}
+	for f, body := range map[string]string{
+		"nested/cm.yaml":                 "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: nested\n  namespace: apptique-dev\n",
+		"kustomized/kustomization.yaml":  "resources: [cm.yaml]\n",
+		"kustomized/cm.yaml":             "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: whole\n  namespace: apptique-dev\n",
+		"kustomized/deeper/ignored.yaml": "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: not-listed\n",
+		"README.md":                      "not a manifest\n",
+		".hidden.yaml":                   "not: kubernetes\n",
+	} {
+		path := filepath.Join(dev, filepath.FromSlash(f))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	p := planOf(t, dir, root)
+	for _, pr := range p.Problems {
+		if strings.Contains(pr, "apps/dev") {
+			t.Errorf("a plain layer of objects is read, not refused: %s", pr)
+		}
+	}
+	files, dirs := fluxManifests(dev)
+	if got := strings.Join(files, ","); got != "namespace.yaml,nested/cm.yaml" {
+		t.Errorf("files: %s", got)
+	}
+	if got := strings.Join(dirs, ","); got != "kustomized" {
+		t.Errorf("whole directories: %s", got)
+	}
+
+	// The script's own build() renders it, if bash and kustomize are here.
+	if _, err := exec.LookPath("kustomize"); err != nil {
+		t.Skip("no kustomize")
+	}
+	script := ApplyScript(p, "flux", ".")
+	start := strings.Index(script, "build() {")
+	end := strings.Index(script[start:], "\n}\n")
+	fn := script[start : start+end+3]
+	out, err := exec.Command("bash", "-c", "set -euo pipefail\n"+fn+"\nbuild "+dev).CombinedOutput()
+	if err != nil {
+		t.Fatalf("%v\n%s", err, out)
+	}
+	for _, want := range []string{"name: apptique-dev", "name: nested", "name: whole"} {
+		if !strings.Contains(string(out), want) {
+			t.Errorf("render should hold %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(string(out), "not-listed") {
+		t.Errorf("a directory with its own kustomization is built as it says, not walked:\n%s", out)
+	}
+
+	// A file Flux cannot decode fails its build, so the plan says so.
+	if err := os.WriteFile(filepath.Join(dev, "values.yaml"), []byte("replicas: 3\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if p := planOf(t, dir, root); !hasProblemText(p, "values.yaml is not Kubernetes YAML") {
+		t.Errorf("want the stray file named: %v", p.Problems)
+	}
+}
+
+func hasProblemText(p *Plan, s string) bool {
+	for _, pr := range p.Problems {
+		if strings.Contains(pr, s) {
+			return true
+		}
+	}
+	return false
+}

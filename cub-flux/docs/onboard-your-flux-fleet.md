@@ -146,8 +146,11 @@ promoted from. Each Space then goes in one
 **Handover and join** (step 4) change which source feeds a cluster. Neither is
 undone by deleting Spaces: a layer whose Space is gone has no source at all,
 and with `prune: true` it empties itself. Put each layer's `sourceRef` back to
-its `GitRepository` first, which `cleanup.sh` asks about before it does
-anything.
+its `GitRepository` first. Given the clusters' contexts (`FLUX_CONTEXT`, or
+`FLUX_CONTEXTS="ctx-a ctx-b"`), `cleanup.sh` reads each cluster's
+OCIRepositories and refuses, naming them, while any still reads a Space it
+would delete; without them, it asks. Once it deletes, it also removes the pull
+Secret `handover.sh` or `join.sh` wrote on each of those clusters.
 
 ## What the plugin sees in your repository
 
@@ -171,6 +174,15 @@ flowchart LR
 `flux-system` is the parent of every layer, the same relationship an Argo app
 of apps has with its children. It is also the one part of the fleet this
 handover never touches — see [the bootstrap stays](#the-bootstrap-stays).
+
+A layer's path is read as kustomize-controller reads it. With a
+kustomization, it is built with kustomize. Without one it is a plain layer,
+and Flux generates a kustomization over every `.yaml` and `.yml` below the
+path, recursively, taking a subdirectory with a kustomization of its own
+whole. The scripts render a plain layer the same way, and a layer whose
+clusters share no one base starts its base from the first cluster's render. A
+file in a plain layer that is not Kubernetes YAML fails Flux's build, so the
+plan names it.
 
 ## 1. See the plan
 

@@ -178,10 +178,20 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 	add("# Each layer is rendered by kustomize here rather than by the plugin, so")
 	add("# what ConfigHub stores is exactly what Flux builds today. postBuild")
 	add("# substitution is Flux's, applied on the cluster, so it is left in place.")
+	for _, l := range buildFunc {
+		add("%s", l)
+	}
+	add("# A variant cloned while its base held no unit holds none either, as after")
+	add("# a first run that stopped part way. It gets a clone, linked to the base, so")
+	add("# a change made on the base still reaches it.")
+	add("has_unit() {")
+	add(`  cub unit get --space "$1" "$2" >/dev/null 2>&1 && return 0`)
+	add(`  cub unit create --space "$1" "$2" --upstream-space "$3" --upstream-unit "$2" --target "$4" --quiet`)
+	add("}")
 	add("render() {")
 	add("  mkdir -p render")
-	add(`  kustomize build ${KUSTOMIZE_FLAGS:-} "$REPO_ROOT/$1" > "render/$2.yaml"`)
-	add(`  [ -s "render/$2.yaml" ] || { echo "kustomize build $REPO_ROOT/$1 rendered nothing" >&2; return 1; }`)
+	add(`  build "$REPO_ROOT/$1" > "render/$2.yaml"`)
+	add(`  [ -s "render/$2.yaml" ] || { echo "$REPO_ROOT/$1 rendered nothing" >&2; return 1; }`)
 	add("}")
 	add("")
 
@@ -217,6 +227,14 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 			add("render %s %s", q(c.BaseDir), q(c.Name+"-base"))
 			add("cub unit create --space %s %s render/%s-base.yaml --change-desc %s --allow-exists --quiet",
 				c.Base, c.Name, c.Name, q(fmt.Sprintf("Onboard the %s layer from %s", c.Name, c.BaseDir)))
+		} else if v := c.firstVariant(); v != nil {
+			// No one base every cluster builds on, so the base starts as the
+			// first cluster's render. Each variant is then overwritten with its
+			// own; without a unit here there would be nothing in them to
+			// overwrite, and the update would fail.
+			add("render %s %s", q(v.Path), q(c.Name+"-base"))
+			add("cub unit create --space %s %s render/%s-base.yaml --change-desc %s --allow-exists --quiet",
+				c.Base, c.Name, c.Name, q(fmt.Sprintf("Onboard the %s layer from %s, its first cluster's path: the clusters share no one base", c.Name, v.Path)))
 		}
 		// The first release of every variant is made before anything reads
 		// ConfigHub, so it cannot wait for Healthy. A change order keeps the
@@ -274,6 +292,7 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 				add("cub variant create %s %s --stage %s --space-pattern template:%s --target %s/%s --space-label Role=deployment --space-label Cluster=%s $no_flux_layer --allow-exists --quiet",
 					v.Cluster, c.Base, st.Name, v.Space, targets, v.Cluster, v.Cluster)
 				add("render %s %s", q(v.Path), q(v.Space))
+				add("has_unit %s %s %s %s/%s", v.Space, c.Name, c.Base, targets, v.Cluster)
 				add("cub unit update --space %s %s render/%s.yaml --change-desc %s --quiet",
 					v.Space, c.Name, v.Space, q(fmt.Sprintf("What %s renders for %s", v.Path, v.Cluster)))
 				add("holds %s 1", v.Space)
@@ -455,4 +474,50 @@ func annotateTarget(cl Cluster, prefix, targets string) string {
 	}
 	ann := fmt.Sprintf(`{"Annotations":{"confighub.com/flux-layers-space":%s,"confighub.com/flux-pull-secret":%s}}`, strconv.Quote(cl.layers(prefix)), secret)
 	return fmt.Sprintf(`echo %s | cub target update --patch --space %s %s --from-stdin --quiet`, q(ann), targets, cl.Name)
+}
+
+// firstVariant is the first cluster's variant, in stage order.
+func (c *Component) firstVariant() *Variant {
+	for _, st := range c.Stages {
+		if len(st.Variants) > 0 {
+			return &st.Variants[0]
+		}
+	}
+	return nil
+}
+
+// buildFunc is the shell function both scripts render a layer with, so what
+// apply.sh stores and what handover.sh compares it with are made the same way.
+// A path with a kustomization is built as kustomize-controller builds it. One
+// without is read as kustomize-controller reads it: it generates a
+// kustomization over every .yaml and .yml file below the path, recursively,
+// taking a subdirectory that has a kustomization of its own whole rather than
+// descending into it. Hidden files and directories are left out. The listing
+// is built by kustomize, so the render is normalized as an overlay's is. A
+// path that is not there goes to kustomize too, which says so in its words.
+var buildFunc = []string{
+	`build() {`,
+	`  has_k() { [ -e "$1/kustomization.yaml" ] || [ -e "$1/kustomization.yml" ] || [ -e "$1/Kustomization" ]; }`,
+	`  if has_k "$1" || [ ! -d "$1" ]; then kustomize build ${KUSTOMIZE_FLAGS:-} "$1"; return; fi`,
+	`  # list <dir> <as>: what Flux would list under dir, named as <as>/...`,
+	`  list() {`,
+	`    local f`,
+	`    for f in "$1"/*; do`,
+	`      [ -e "$f" ] || continue`,
+	`      if [ -d "$f" ]; then`,
+	`        if has_k "$f"; then echo "- $2/${f##*/}"; else list "$f" "$2/${f##*/}"; fi`,
+	`      else`,
+	`        case "$f" in *.yaml|*.yml) echo "- $2/${f##*/}" ;; esac`,
+	`      fi`,
+	`    done`,
+	`  }`,
+	`  # kustomize takes a directory resource only by a relative path, so the`,
+	`  # layer is linked beside the kustomization that lists it.`,
+	`  local k rc=0`,
+	`  k=$(mktemp -d)`,
+	`  ln -s "$(cd "$1" && pwd)" "$k/src" || { rm -rf "$k"; return 1; }`,
+	`  { echo "resources:"; LC_ALL=C list "$k/src" src; } > "$k/kustomization.yaml"`,
+	`  kustomize build ${KUSTOMIZE_FLAGS:-} --load-restrictor LoadRestrictionsNone "$k" || rc=$?`,
+	`  rm -rf "$k"; return $rc`,
+	`}`,
 }
