@@ -54,7 +54,9 @@ you covered and which definitions you could not resolve.
    one line in it, how many Applications or targets re-render? Resolve selectors
    against the target inventory if there is one. If you cannot resolve a selector,
    say so — do not assume it matches everything. Then do the same for one cluster's
-   own values file and show me the numbers side by side.
+   own values file and show me the numbers side by side. For each of those files,
+   also count the values it holds, and multiply: targets reached times values in
+   the file is the blast radius if the whole file changes.
 7. Do the charts pin their dependencies? Check for `Chart.lock` and for version
    ranges. If a dependency is a range and the lock file is not committed, tell me
    what happens to a rollout when a new version is published halfway through.

@@ -1,1 +1,6 @@
-replicas: 2
+replicas: 3
+nodeSelector: {pool: general}
+tolerations:
+- {key: dedicated, operator: Equal, value: monitoring, effect: NoSchedule}
+retention: 15d
+storage: {size: 200Gi, snapshot: daily}

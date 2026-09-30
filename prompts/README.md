@@ -12,12 +12,20 @@ Nothing here talks to ConfigHub, and nothing here needs an account.
   about your configuration repository: looking at Helm values, Argo CD ApplicationSets, Flux
   Kustomizations, Kustomize overlays or similar. What is allowed to drift, how
   variety is declared, how far one edit reaches, and what is half promoted.
-- [`scout/`](./scout/README.md) — the reference implementation of the same
-  questions as a single read-only Python script, with tests. Where the prompt
-  and scout disagree, trust scout.
-- To try either on a repo with known answers first, use
+- [`config-repo-seven-questions.md`](./config-repo-seven-questions.md) — From the
+  blog post "Is your config repo a database?". Seven questions about habits that
+  quietly stand in for a database's job: filenames as keys, approving templates
+  rather than what they render, promotion by find-and-replace, rollout state that
+  lives in people's heads, reach you can only grep for, rate limits instead of
+  constraints, and drift policy left at the defaults.
+- [`scout/`](./scout/README.md) — the seven questions as fixed checks in one
+  read-only Python script, with tests. Same repo, same answer, every run. Covers
+  Argo CD ApplicationSets with Helm best, and says NOT OBSERVED where it cannot
+  resolve something.
+- To try any of these on a repo with known answers first, use
   [`gitops/argo/intermediate-git-as-database`](../gitops/argo/intermediate-git-as-database/README.md):
-  a small fleet with one planted instance of each question and an answer sheet.
+  a small, valid Argo CD fleet with one planted instance of each of the seven and
+  an answer sheet.
 
 ## How to run one
 

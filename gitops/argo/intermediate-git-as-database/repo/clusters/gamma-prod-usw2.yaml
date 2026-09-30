@@ -1,6 +1,15 @@
-global:
+apiVersion: v1
+kind: Secret
+metadata:
   name: gamma-prod-usw2
-  org: gamma
-  env: prod
-  region: usw2
-  provider: aws
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: cluster
+    org: gamma
+    env: prod
+    region: usw2
+    provider: aws
+type: Opaque
+stringData:
+  name: gamma-prod-usw2
+  server: https://gamma-prod-usw2.k8s.example.invalid

@@ -1,6 +1,15 @@
-global:
+apiVersion: v1
+kind: Secret
+metadata:
   name: acme-dev-use1
-  org: acme
-  env: dev
-  region: use1
-  provider: azure
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: cluster
+    org: acme
+    env: dev
+    region: use1
+    provider: azure
+type: Opaque
+stringData:
+  name: acme-dev-use1
+  server: https://acme-dev-use1.k8s.example.invalid
