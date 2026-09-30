@@ -91,10 +91,23 @@ func TestStatusMapping(t *testing.T) {
 		{"workloads nobody checked", func(k map[string]any) {
 			spec(k)["wait"] = false
 		}, "Synced", "Unknown", "Succeeded", d2, false, "Ready means applied, not healthy"},
-		{"healthChecks count as checked", func(k map[string]any) {
+		{"healthChecks covering every workload count as checked", func(k map[string]any) {
 			spec(k)["wait"] = false
+			spec(k)["healthChecks"] = []any{map[string]any{"kind": "Deployment", "name": "frontend", "namespace": "apptique-dev"}}
+		}, "Synced", "Healthy", "Succeeded", d2, true, "release 2 applied"},
+		{"healthChecks in the targetNamespace by default", func(k map[string]any) {
+			spec(k)["wait"] = false
+			spec(k)["targetNamespace"] = "apptique-dev"
 			spec(k)["healthChecks"] = []any{map[string]any{"kind": "Deployment", "name": "frontend"}}
 		}, "Synced", "Healthy", "Succeeded", d2, true, "release 2 applied"},
+		{"healthChecks covering one workload of two", func(k map[string]any) {
+			spec(k)["wait"] = false
+			spec(k)["healthChecks"] = []any{map[string]any{"kind": "Deployment", "name": "frontend", "namespace": "apptique-dev"}}
+			status(k)["inventory"] = map[string]any{"entries": []any{
+				map[string]any{"id": "apptique-dev_frontend_apps_Deployment", "v": "v1"},
+				map[string]any{"id": "apptique-dev_cart_apps_Deployment", "v": "v1"},
+			}}
+		}, "Synced", "Unknown", "Succeeded", d2, false, "Deployment apptique-dev/cart"},
 		{"no workloads, nothing to check", func(k map[string]any) {
 			spec(k)["wait"] = false
 			status(k)["inventory"] = map[string]any{"entries": []any{map[string]any{"id": "_apptique-dev__Namespace", "v": "v1"}}}
@@ -286,5 +299,29 @@ func TestLeftSpaceReplacesOurStaleReading(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// One Space that cannot be read must not stop the others being reported.
+func TestReportStatusCarriesOnPastAnUnreadableSpace(t *testing.T) {
+	now := time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)
+	st := LiveStatus{Source: StatusSource, SyncStatus: "Synced", HealthStatus: "Healthy", OperationPhase: "Succeeded", ObservedAt: now.Format(time.RFC3339)}
+	run := func(name string, args ...string) ([]byte, error) {
+		if strings.Contains(strings.Join(args, " "), "space get gone") {
+			return nil, fmt.Errorf("space gone not found")
+		}
+		return []byte(heldSpace(t, nil)), nil
+	}
+	var wrote []string
+	write := func(space string, _ []byte) error { wrote = append(wrote, space); return nil }
+	outs, err := ReportStatus(run, write, []Reading{
+		{Check: Check{Kustomization: "a", Space: "gone"}, Status: st},
+		{Check: Check{Kustomization: "b", Space: "here"}, Status: st},
+	}, time.Minute, false, now)
+	if err == nil || !strings.Contains(err.Error(), "gone") {
+		t.Errorf("the unreadable Space should be reported: %v", err)
+	}
+	if len(wrote) != 1 || wrote[0] != "here" || len(outs) != 1 {
+		t.Errorf("the next Space should still be written: wrote %v, outcomes %v", wrote, outs)
 	}
 }

@@ -370,6 +370,15 @@ func layersFor(c *cobra.Command, args []string, name, space, unit, target, clust
 	if err != nil {
 		return nil, err
 	}
+	// Every kubectl call reads one context, so a run covers one cluster: a
+	// fleet-wide run would read one cluster and report it as all of them.
+	if cluster == "" && len(p.Clusters) > 1 {
+		var names []string
+		for _, cl := range p.Clusters {
+			names = append(names, cl.Name)
+		}
+		return nil, fmt.Errorf("this fleet has %d clusters and a run reads one: pass --cluster, one of %s, with --kube-context for it", len(p.Clusters), strings.Join(names, ", "))
+	}
 	checks := flux.ChecksFor(p)
 	if cluster != "" {
 		var keep []flux.Check

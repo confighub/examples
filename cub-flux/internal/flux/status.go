@@ -153,10 +153,15 @@ type kustomization struct {
 		Generation int64 `json:"generation"`
 	} `json:"metadata"`
 	Spec struct {
-		Suspend      bool  `json:"suspend"`
-		Wait         bool  `json:"wait"`
-		HealthChecks []any `json:"healthChecks"`
-		SourceRef    struct {
+		Suspend      bool `json:"suspend"`
+		Wait         bool `json:"wait"`
+		HealthChecks []struct {
+			Kind      string `json:"kind"`
+			Name      string `json:"name"`
+			Namespace string `json:"namespace"`
+		} `json:"healthChecks"`
+		TargetNamespace string `json:"targetNamespace"`
+		SourceRef       struct {
 			Kind      string `json:"kind"`
 			Name      string `json:"name"`
 			Namespace string `json:"namespace"`
@@ -184,14 +189,33 @@ func (k kustomization) condition(t string) *condition {
 	return nil
 }
 
-// runsWorkloads reports whether the layer applied anything that runs.
-func (k kustomization) runsWorkloads() bool {
+// unchecked is every workload the layer applied that Flux was not asked to
+// check. With spec.wait, Flux checks everything it applied. Without it, only
+// what healthChecks names is checked, and a list naming one Deployment says
+// nothing about the next.
+func (k kustomization) unchecked() []string {
+	if k.Spec.Wait {
+		return nil
+	}
+	checked := map[string]bool{}
+	for _, h := range k.Spec.HealthChecks {
+		ns := h.Namespace
+		if ns == "" {
+			ns = k.Spec.TargetNamespace
+		}
+		checked[h.Kind+"|"+ns+"|"+h.Name] = true
+	}
+	var out []string
 	for _, e := range k.Status.Inventory.Entries {
-		if o, err := parseID(e.ID); err == nil && workloadKinds[o.Kind] {
-			return true
+		o, err := parseID(e.ID)
+		if err != nil || !workloadKinds[o.Kind] {
+			continue
+		}
+		if !checked[o.Kind+"|"+o.Namespace+"|"+o.Name] {
+			out = append(out, o.String())
 		}
 	}
-	return false
+	return out
 }
 
 // status maps a Kustomization onto ConfigHub's words.
@@ -223,9 +247,10 @@ func (k kustomization) status(releases []release) LiveStatus {
 			Message: "applying " + digestOf(a)}
 	}
 	health, why := "Healthy", ""
-	if k.runsWorkloads() && !k.Spec.Wait && len(k.Spec.HealthChecks) == 0 {
-		// Ready then means applied, not running: Flux was not asked to look.
-		health, why = "Unknown", "; Ready means applied, not healthy, because this layer sets neither spec.wait nor healthChecks"
+	if u := k.unchecked(); len(u) > 0 {
+		// Ready then means applied, not running, for what Flux was not asked
+		// to look at.
+		health, why = "Unknown", "; Ready means applied, not healthy, for "+strings.Join(u, ", ")+": neither spec.wait nor a health check covers it"
 	}
 	var this, newest *release
 	for i := range releases {
@@ -342,11 +367,15 @@ type Outcome struct {
 // still running, so an unchanged reading is written again now and then.
 func ReportStatus(run Runner, write Writer, readings []Reading, refresh time.Duration, dryRun bool, now time.Time) ([]Outcome, error) {
 	var out []Outcome
+	// A Space that cannot be read or written is reported, and the rest are
+	// still reported: one deleted Space must not freeze every reading after it.
+	var errs []string
 	for _, r := range readings {
 		o := Outcome{Reading: r}
 		held, ok, err := HeldStatus(run, r.Check.Space)
 		if err != nil {
-			return out, err
+			errs = append(errs, err.Error())
+			continue
 		}
 		if r.Skip != "" {
 			// A layer that has left this Space, handed back to Git say, leaves
@@ -383,10 +412,14 @@ func ReportStatus(run Runner, write Writer, readings []Reading, refresh time.Dur
 			return out, err
 		}
 		if err := write(r.Check.Space, patch); err != nil {
-			return out, fmt.Errorf("writing the live status of %s: %w", r.Check.Space, err)
+			errs = append(errs, fmt.Sprintf("writing the live status of %s: %v", r.Check.Space, err))
+			continue
 		}
 		o.Did = "written"
 		out = append(out, o)
+	}
+	if len(errs) > 0 {
+		return out, fmt.Errorf("%s", strings.Join(errs, "; "))
 	}
 	return out, nil
 }
