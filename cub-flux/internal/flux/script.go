@@ -203,8 +203,14 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 	add("# A server-hosted worker has no process behind it and no role in the")
 	add("# organization; it holds the Targets and is the credential Flux reads with.")
 	add("cub worker create --space %s server-worker --is-server-worker --org-role none --allow-exists --quiet", targets)
+	add("# Each Target names its cluster's layers Space and the Secret the layers pull")
+	add("# with, the signal a Flux-aware `cub variant create` reads to add a new")
+	add("# variant's layer there (the Flux counterpart of confighub.com/argo-apps-space).")
 	for _, c := range p.Clusters {
-		add("cub target create %s '{}' server-worker --space %s --provider OCI --toolchain Any --allow-exists --quiet", c.Name, targets)
+		ann := fmt.Sprintf("--annotation confighub.com/flux-layers-space=%s --annotation confighub.com/flux-pull-secret=confighub-%s",
+			DeliverySpace(prefix, c.Name), targets)
+		add("cub target create %s '{}' server-worker --space %s --provider OCI --toolchain Any %s --allow-exists --quiet", c.Name, targets, ann)
+		add("echo '{}' | cub target update --patch --space %s %s %s --from-stdin --quiet", targets, c.Name, ann)
 	}
 	add("")
 

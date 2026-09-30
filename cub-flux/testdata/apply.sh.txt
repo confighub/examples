@@ -92,9 +92,15 @@ cub space create flux-targets --allow-exists --quiet
 # A server-hosted worker has no process behind it and no role in the
 # organization; it holds the Targets and is the credential Flux reads with.
 cub worker create --space flux-targets server-worker --is-server-worker --org-role none --allow-exists --quiet
-cub target create dev-1 '{}' server-worker --space flux-targets --provider OCI --toolchain Any --allow-exists --quiet
-cub target create staging-1 '{}' server-worker --space flux-targets --provider OCI --toolchain Any --allow-exists --quiet
-cub target create prod-1 '{}' server-worker --space flux-targets --provider OCI --toolchain Any --allow-exists --quiet
+# Each Target names its cluster's layers Space and the Secret the layers pull
+# with, the signal a Flux-aware `cub variant create` reads to add a new
+# variant's layer there (the Flux counterpart of confighub.com/argo-apps-space).
+cub target create dev-1 '{}' server-worker --space flux-targets --provider OCI --toolchain Any --annotation confighub.com/flux-layers-space=flux-dev-1-layers --annotation confighub.com/flux-pull-secret=confighub-flux-targets --allow-exists --quiet
+echo '{}' | cub target update --patch --space flux-targets dev-1 --annotation confighub.com/flux-layers-space=flux-dev-1-layers --annotation confighub.com/flux-pull-secret=confighub-flux-targets --from-stdin --quiet
+cub target create staging-1 '{}' server-worker --space flux-targets --provider OCI --toolchain Any --annotation confighub.com/flux-layers-space=flux-staging-1-layers --annotation confighub.com/flux-pull-secret=confighub-flux-targets --allow-exists --quiet
+echo '{}' | cub target update --patch --space flux-targets staging-1 --annotation confighub.com/flux-layers-space=flux-staging-1-layers --annotation confighub.com/flux-pull-secret=confighub-flux-targets --from-stdin --quiet
+cub target create prod-1 '{}' server-worker --space flux-targets --provider OCI --toolchain Any --annotation confighub.com/flux-layers-space=flux-prod-1-layers --annotation confighub.com/flux-pull-secret=confighub-flux-targets --allow-exists --quiet
+echo '{}' | cub target update --patch --space flux-targets prod-1 --annotation confighub.com/flux-layers-space=flux-prod-1-layers --annotation confighub.com/flux-pull-secret=confighub-flux-targets --from-stdin --quiet
 
 step "2/5 One component per layer: a base holding what it renders to, and a rollout workflow"
 cub component create flux-infrastructure --allow-exists --quiet
