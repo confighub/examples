@@ -85,4 +85,5 @@ its own, see
 [`flux/expert-multi-tenant`](../flux/expert-multi-tenant/README.md): one
 shared cluster, a platform-owned bootstrap layer, and three teams, each with
 its own namespace, ServiceAccount, RoleBinding, quota and NetworkPolicy, and
-a break-it step showing a tenant escape refused.
+a break-it step for a tenant escape, caught offline by the verifier (a live
+cluster would refuse it).

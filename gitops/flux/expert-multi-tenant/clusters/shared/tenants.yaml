@@ -15,7 +15,12 @@ spec:
   timeout: 5m
   path: ./gitops/flux/expert-multi-tenant/tenants/base
   prune: true
-  wait: true
+  # Not "wait: true". This layer applies each team's GitRepository and
+  # Kustomization, and with wait on it would only be Ready once every team's
+  # own app is healthy. One team's broken Deployment would then mark the
+  # platform layer failed. The platform layer is done when its own objects
+  # (namespaces, RBAC, quotas, policies, the team's sync objects) are applied.
+  wait: false
   sourceRef:
     kind: GitRepository
     name: flux-system

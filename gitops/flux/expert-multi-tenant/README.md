@@ -83,9 +83,59 @@ understand the repo yet:
 | Which namespaces? | `flux-system`, `team-storefront`, `team-payments`, `team-loyalty`. |
 | Who owns what? | The platform owns `clusters/shared/` and every team's `rbac.yaml` and `guardrails.yaml`. Each team owns its own `workloads/` folder and nothing above it. |
 | What identity applies each layer? | The platform bootstrap runs with the cluster's own trusted identity. Each team's `workloads/` is applied as that team's own ServiceAccount only. |
-| What stops one team reaching another team's namespace? | The RoleBinding: each ServiceAccount's grant is a Role in its own namespace, bound by a RoleBinding in that same namespace, so no other namespace is reachable, and the NetworkPolicy denies cross-namespace traffic even where RBAC is not the deciding factor. |
+| What stops one team reaching another team's namespace? | The RoleBinding: each ServiceAccount's grant is a Role in its own namespace, bound by a RoleBinding in that same namespace, so no other namespace is reachable, and the NetworkPolicy admits ingress only from pods in the same namespace, where the cluster's CNI enforces NetworkPolicy. That also blocks an ingress controller running in another namespace, and it does not restrict egress. |
 | What stops a team loosening its own guardrails? | Its Role: it grants only get, list and watch on NetworkPolicies, ResourceQuotas and LimitRanges, and nothing on RBAC, Namespaces or Flux objects. A team cannot add a second, wider NetworkPolicy, raise its quota, widen its own grant, or rewrite its own `sync.yaml`. |
 | Which values does ConfigHub see per team? | Two components, in two Spaces: `tenant-bootstrap` (platform-authored) in that team's bootstrap Space, and `tenant-workloads` (team-authored) in that team's own workloads Space. A ConfigHub Space belongs to exactly one Component, so the platform's and the team's configuration are never uploaded into the same Space. |
+
+## Repository write access is the real boundary
+
+The table above says each team owns only its `workloads/` folder. Nothing in
+this repo enforces that. All three teams' GitRepositories and the platform's
+`flux-system` source read the same repo and the same branch (`main`, see each
+`sync.yaml`). The `tenants` Kustomization, which runs with the cluster's own
+identity, applies `rbac.yaml`, `guardrails.yaml` and `sync.yaml` from that
+same repo. So anyone who can push to it can edit a RoleBinding, bind
+themselves to `cluster-admin`, and have the platform apply it.
+
+The Role, the RoleBinding and the NetworkPolicy hold against a team's
+Kustomization. They do not hold against a person with write access to the
+repo. Pick one of these:
+
+- one repository per team for `workloads/`, with the platform's repo
+  writable by the platform team only;
+- one repository with branch protection and a `CODEOWNERS` file that gives
+  `clusters/` and `tenants/` (outside each `workloads/`) to the platform team
+  and each `workloads/` folder to its own team.
+
+This example uses one repo because it is small. The verifier cannot check
+who may push.
+
+## Controller flags this depends on
+
+The isolation holds only when Flux's controllers run with the multi-tenancy
+lockdown flags:
+
+- `--no-cross-namespace-refs=true` on kustomize-controller (and on
+  helm-controller, if a team uses `HelmRelease`), so a team's Kustomization
+  cannot name a source or another object in a namespace that is not its own.
+- `--default-service-account=<name>` on kustomize-controller (and
+  helm-controller). Without it, a Kustomization with no `serviceAccountName`
+  is applied with the controller's own identity, which is cluster-admin. That
+  is the "missing serviceAccountName" break below: one deleted line and a team
+  runs with the platform's rights. With the flag set, such a Kustomization
+  runs as the named account in its own namespace instead, and its apply is
+  refused unless that account has been granted something.
+
+The platform's `tenants` Kustomization also sets no `serviceAccountName`, so
+on a cluster with `--default-service-account` it needs one too: a
+platform-owned ServiceAccount that can create namespaces and RBAC. This
+example does not ship that account. Check the exact behavior for your Flux
+version.
+
+`./verify.sh` is the offline stand-in. It checks the manifests in this repo.
+It does not read controller flags and cannot tell you whether a cluster runs
+with them. The patch that sets them is documented in
+[`clusters/shared/flux-system/README.md`](./clusters/shared/flux-system/README.md).
 
 ## What this example does not do
 
@@ -118,8 +168,10 @@ that team's platform-authored bootstrap and one for that team's own
 workloads. A ConfigHub Space belongs to exactly one Component, so a team's
 bootstrap and its workloads always go to separate Spaces; that separation
 is also what lets the platform's Spaces and the team's Space carry
-different, correct `Owner` and `Environment` labels. This mutates
-ConfigHub. It does not touch a live cluster.
+different, correct `Owner` and `Environment` labels. `cub variant upload`
+makes one Unit per rendered resource, so each Namespace, Role, Deployment and
+so on becomes its own Unit; `./verify.sh` prints how many resources each
+render holds. This mutates ConfigHub. It does not touch a live cluster.
 
 ## Mutation boundaries
 
@@ -148,11 +200,14 @@ whether the tool you are testing catches it before Kubernetes does:
    Kustomization as not `Ready`. `./verify.sh` catches the same
    misconfiguration offline: it checks that every team's `targetNamespace`
    matches the namespace its own RoleBinding grants.
-2. **Missing impersonation.** Remove `serviceAccountName: team-loyalty` from
-   `tenants/base/team-loyalty/sync.yaml`. The Kustomization would now
-   reconcile with the platform's own trusted identity instead of
-   `team-loyalty`'s narrow one, the opposite failure: too much access
-   rather than a refusal. `./verify.sh` catches the missing field.
+2. **Missing serviceAccountName.** Remove `serviceAccountName: team-loyalty`
+   from `tenants/base/team-loyalty/sync.yaml`. On a cluster without
+   `--default-service-account`, the Kustomization would now reconcile with
+   the controller's own cluster-admin identity instead of `team-loyalty`'s
+   narrow one, the opposite failure: too much access rather than a refusal.
+   With that flag set it would run as the default account and fail instead
+   (see "Controller flags this depends on"). `./verify.sh` catches the
+   missing field either way.
 3. **Guardrail removed.** Delete the `NetworkPolicy` from
    `tenants/base/team-storefront/guardrails.yaml`. Nothing about the RBAC
    boundary changes, but `team-storefront` can now receive traffic from
@@ -168,13 +223,24 @@ whether the tool you are testing catches it before Kubernetes does:
    NetworkPolicies, ResourceQuotas, LimitRanges, Namespaces, RBAC or Flux
    objects.
 
+5. **Foreign subject.** In `tenants/base/team-storefront/rbac.yaml`, add a
+   second subject to the RoleBinding: `kind: ServiceAccount`, `name:
+   team-payments`, `namespace: team-payments`. The RoleBinding still points
+   at `team-storefront`'s own Role, and the manifests still render. But
+   `team-payments`'s Kustomization would now hold `team-storefront`'s rights
+   in `team-storefront`'s namespace. `./verify.sh` catches it: every
+   RoleBinding in a team's bootstrap must sit in that team's namespace and
+   name only that team's own ServiceAccount, and the error names the team
+   and the foreign subject.
+
 Undo any edit with `git checkout -- .` before moving on.
 
 ## What proof this example gives, and what it does not
 
 This example is offline and point-in-time. `./verify.sh` proves that the
 manifests are structurally consistent: every team's `targetNamespace`
-matches its own RoleBinding, every guardrail is present, no team's Role
+matches its own RoleBinding, every RoleBinding names only its own team's
+ServiceAccount in its own namespace, every guardrail is present, no team's Role
 can write the platform's guardrails, RBAC or Flux objects, and every
 Kustomization path resolves. It does not run `flux bootstrap`, does not
 apply anything to a cluster, and does not prove that Kubernetes would
@@ -190,15 +256,13 @@ Space, separately from whatever a live cluster reports back.
   without changing anything.
 - Show that each team's guardrails (quota and NetworkPolicy) apply to that
   team's own namespace and no other.
-- **Access reduction across teams**: `pilot access-plan` reads the RBAC this
-  repo declares for all three teams and reports where a team's access is
-  wider than its own namespace, so an over-broad grant is visible before
-  anyone has to wait for a live refusal to find it. On this example it
-  reports each team reaching only its own namespace.
-- Given the tenant-escape edit above, say plainly that it would be refused,
-  name what refuses it (the RoleBinding scope, not this repo's rendering),
-  and say what this example can and cannot prove about it offline. Today
-  `verify.sh` catches this edit; `pilot access-plan` does not flag it yet.
+- Given the tenant-escape edit above, say plainly that it would be refused
+  on a live cluster, name what refuses it (the RoleBinding scope, not this
+  repo's rendering), and say what this example can and cannot prove about it
+  offline. Today `verify.sh` catches this edit.
+- Planned: a Pilot access-plan command that reads the RBAC this repo declares
+  across teams. It does not exist in Pilot 0.6.0, and this example does not
+  rely on it.
 
 ## Attribution
 

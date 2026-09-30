@@ -13,6 +13,10 @@ spec:
   url: https://github.com/confighub/examples
   ref:
     branch: main
+  # source-controller matches this with go-git's gitignore matcher, which
+  # re-includes the workloads/ path below the excluded "/*". Plain
+  # "git check-ignore" would not: git cannot re-include a path whose parent
+  # directory is excluded.
   ignore: |
     /*
     !/gitops/flux/expert-multi-tenant/tenants/base/team-payments/workloads/
