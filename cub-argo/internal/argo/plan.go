@@ -525,7 +525,13 @@ func (b *builder) variant(c *Component, app map[string]any, cl *Cluster, fields 
 			p.Problems = append(p.Problems, fmt.Sprintf("%s on %s: source path %s does not exist in this checkout, so Argo CD would fail to sync %s", c.Name, clusterName, v.Path, v.Application))
 		} else {
 			v.Images = overlayImages(local)
-			if _, err := os.Stat(filepath.Join(local, "kustomization.yaml")); err != nil {
+			// A Chart.yaml makes Argo CD render the path with Helm: a chart
+			// kept in the repository, not a plain directory of manifests.
+			if _, err := os.Stat(filepath.Join(local, "Chart.yaml")); err == nil {
+				p.Problems = appendOnce(p.Problems, fmt.Sprintf(
+					"%s: %s is a Helm chart (it has a Chart.yaml), which Argo CD renders with helm template. The script renders with kustomize build, which does not read a chart. Onboarding a chart kept in the repository is not supported yet",
+					c.Name, v.Path))
+			} else if _, err := os.Stat(filepath.Join(local, "kustomization.yaml")); err != nil {
 				if _, err := os.Stat(filepath.Join(local, "kustomization.yml")); err != nil {
 					p.Problems = appendOnce(p.Problems, fmt.Sprintf(
 						"%s: %s has no kustomization.yaml. Argo CD reads a plain directory of manifests, and so does Flux, but the script renders with kustomize build, which does not. Onboarding a plain directory is not supported yet",

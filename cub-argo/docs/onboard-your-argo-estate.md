@@ -751,4 +751,5 @@ generated. See "Run against a live estate on three clusters" above.
 **Not claimed at all:** that a plain directory of manifests can be onboarded
 (`kustomize build` will not read one, though Argo will — the plan says so),
 that git, SCM-provider, pull-request, merge or plugin generators are resolved,
-or that an Application whose source is a Helm chart can be governed yet.
+or that an Application whose source is a Helm chart, from a chart repository or
+a chart kept in the repository, can be governed yet (the plan says so).

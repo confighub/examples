@@ -554,15 +554,103 @@ func TestGitGeneratorNeedsTheCheckout(t *testing.T) {
 
 // An ApplicationSet that matches nothing used to vanish from the plan.
 func TestApplicationSetThatSelectsNothingIsReported(t *testing.T) {
-	const dir = "../../../gitops/argo/intermediate-git-as-database"
+	in, err := Load(strings.NewReader(`
+apiVersion: v1
+kind: Secret
+metadata: {name: acme-prod-use1, namespace: argocd, labels: {argocd.argoproj.io/secret-type: cluster, org: acme, env: prod}}
+stringData: {name: acme-prod-use1, server: https://acme-prod-use1}
+---
+apiVersion: v1
+kind: Secret
+metadata: {name: gamma-prod-use1, namespace: argocd, labels: {argocd.argoproj.io/secret-type: cluster, org: gamma, env: prod}}
+stringData: {name: gamma-prod-use1, server: https://gamma-prod-use1}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata: {name: canary, namespace: argocd}
+spec:
+  goTemplate: true
+  generators:
+  - clusters:
+      selector:
+        matchLabels: {env: canary}
+  - clusters:
+      selector:
+        matchLabels: {env: prod}
+        matchExpressions:
+        - {key: org, operator: NotIn, values: [acme, gamma]}
+  template:
+    metadata: {name: 'canary-{{.name}}'}
+    spec:
+      project: default
+      source: {repoURL: https://git.example.invalid/fleet.git, path: apps/canary, targetRevision: main}
+      destination: {server: '{{.server}}', namespace: canary}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata: {name: mon, namespace: argocd}
+spec:
+  goTemplate: true
+  generators:
+  - clusters:
+      selector:
+        matchLabels: {env: prod}
+  template:
+    metadata: {name: 'mon-{{.name}}'}
+    spec:
+      project: default
+      source: {repoURL: https://git.example.invalid/fleet.git, path: apps/mon, targetRevision: main}
+      destination: {server: '{{.server}}', namespace: monitoring}
+`), []string{"-"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := Build(in, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasProblem(p, "ApplicationSet canary", "selects nothing here", "none of the 2 clusters") {
+		t.Errorf("ApplicationSet canary matched no cluster and should be reported: %v", p.Problems)
+	}
+	if hasProblem(p, "ApplicationSet mon", "selects nothing") {
+		t.Errorf("ApplicationSet mon selects both clusters and should not be reported: %v", p.Problems)
+	}
+}
+
+// The intermediate example's repo/ directory is its own fleet repository
+// (fleet-config.git), so source paths resolve against it, not against this
+// checkout. There, node-tuning's in-repo chart exists, and it is reported as a
+// chart rather than a plain directory or a missing path.
+func TestInRepoChartResolvesAgainstTheFleetCheckout(t *testing.T) {
+	const dir = "../../../gitops/argo/intermediate-git-as-database/repo"
 	if _, err := os.Stat(dir); err != nil {
 		t.Skip("example not present")
 	}
-	p := planOf(t, dir, Options{RepoRoot: repoRoot(t)})
-	for _, want := range []string{"canary", "mon"} {
-		if !hasProblem(p, "ApplicationSet "+want, "selects nothing here") {
-			t.Errorf("ApplicationSet %s matched no cluster and should be reported: %v", want, p.Problems)
+	root, err := filepath.Abs(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := planOf(t, dir, Options{RepoRoot: root})
+	if hasProblem(p, "does not exist in this checkout") {
+		t.Errorf("charts/node-tuning is in the fleet repository and should resolve: %v", p.Problems)
+	}
+	if hasProblem(p, "selects nothing") {
+		t.Errorf("both ApplicationSets select clusters in this fleet: %v", p.Problems)
+	}
+	if !hasProblem(p, "node-tuning: charts/node-tuning is a Helm chart") {
+		t.Errorf("an in-repo chart path should be reported as a chart: %v", p.Problems)
+	}
+	if hasProblem(p, "plain directory") {
+		t.Errorf("a chart path is not a plain directory: %v", p.Problems)
+	}
+	variants := map[string]int{}
+	for _, c := range p.Components {
+		for _, s := range c.Stages {
+			variants[c.Name] += len(s.Variants)
 		}
+	}
+	if variants["mon"] != 24 || variants["node-tuning"] != 1 {
+		t.Errorf("want mon on 24 clusters and node-tuning on 1, got %v", variants)
 	}
 }
 
