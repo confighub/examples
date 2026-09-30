@@ -140,7 +140,7 @@ assert.deepEqual(firstAppDiff.summary, { added: 0, removed: 0, changed: 1, uncha
 assert.deepEqual(firstAppDiff.changes[0].fields, [{ path: '/spec/replicas', operation: 'replace', before: 1, after: 2 }]);
 
 assert.deepEqual(findExamples().map(entry => entry.id), [
-  'app-only-provider-config', 'argo-beginner-applicationset', 'config-repo-scout', 'first-app-realistic', 'flux-beginner', 'governed-helm-change', 'gpu-layered-recipe', 'layered-platform-recipe'
+  'app-only-provider-config', 'argo-beginner-applicationset', 'config-repo-scout', 'first-app-realistic', 'flux-beginner', 'governed-helm-change', 'gpu-layered-recipe', 'kubara-kind-lab', 'layered-platform-recipe'
 ]);
 assert.equal(findExamples({ query: 'what an app looks like' })[0].id, 'first-app-realistic');
 assert.equal(findExamples({ query: 'existing Argo repository' })[0].id, 'argo-beginner-applicationset');
@@ -154,6 +154,8 @@ assert.equal(findExamples({ query: 'helm values', includeAll: true })[0].id, 'go
 assert.equal(findExamples({ query: 'app settings' })[0].id, 'app-only-provider-config');
 assert.equal(findExamples({ query: 'platform' })[0].id, 'layered-platform-recipe');
 assert.equal(findExamples({ query: 'gpu' })[0].id, 'gpu-layered-recipe');
+assert.equal(findExamples({ query: 'kubara' })[0].id, 'kubara-kind-lab');
+assert.equal(findExamples({ query: 'Kubara platform into ConfigHub' })[0].id, 'kubara-kind-lab');
 assert.ok(catalog.entries.every(entry => getExample(entry.id)?.source.url === entry.source.url));
 assert.ok(findExamples().every(eligible));
 

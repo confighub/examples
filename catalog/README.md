@@ -2,7 +2,7 @@
 
 **Looking for an example? Start with the [main README](../README.md).** It is
 the public directory. This folder documents optional command-line search over
-a selected set of ten examples, not a second complete collection. The JSON
+a selected set of eleven examples, not a second complete collection. The JSON
 records include requirements and proof limits for tooling and maintainers.
 
 This small search index helps people and agents find a public guide for a

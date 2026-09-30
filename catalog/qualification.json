@@ -342,6 +342,78 @@
         "sed": "unknown",
         "shasum": "6.02"
       }
+    },
+    "kubara-kind-lab": {
+      "source_revision": "86884faae853b12e552354d0b7cb898bc8df59fa",
+      "working_directory": "a new empty directory",
+      "commands": [
+        {
+          "command": "cub kubara init --out platform --hub hub:dev --spoke spoke:prod --services cert-manager,metrics-server,traefik,homer-dashboard --repository http://git.git-server.svc.cluster.local/platform.git --email lab@example.com",
+          "exit_code": 0,
+          "output_projection": {
+            "wrote": [
+              "platform/config.yaml",
+              "platform/.env.example",
+              "platform/confighub-intent.yaml"
+            ],
+            "note": "left out homer-dashboard on spoke (a spoke; it runs only on hub)"
+          }
+        },
+        {
+          "command": "cp platform/.env.example platform/.env",
+          "exit_code": 0
+        },
+        {
+          "command": "(cd platform && kubara --work-dir . --config-file config.yaml --env-file .env generate --helm)",
+          "exit_code": 0,
+          "kubara_versions": [
+            "v0.15.0",
+            "v0.16.0"
+          ],
+          "output_projection": {
+            "result": "All files generated successfully."
+          }
+        },
+        {
+          "command": "cub kubara plan platform",
+          "exit_code": 0,
+          "output_projection": {
+            "catalogs": [
+              "oci://ghcr.io/kubara-io/catalogs/bootstrap:3.0.0",
+              "oci://ghcr.io/kubara-io/catalogs/general:3.0.0"
+            ],
+            "stages": {
+              "dev": [
+                "hub"
+              ],
+              "prod": [
+                "spoke"
+              ]
+            },
+            "components": [
+              "argo-cd",
+              "bootstrap-crds",
+              "cert-manager",
+              "homer-dashboard",
+              "metrics-server",
+              "traefik"
+            ],
+            "spaces": 16,
+            "workshop_evidence": "0 of 7 upstream charts checked at the exact version Kubara pins; 7 checked at another version; 0 from another repository; 0 not in the Workshop Catalog.",
+            "last_line": "Offline: no account, no cluster, nothing changed.",
+            "plan_sha256": "sha256:e3cae7f0ce5fec5349a903e1fed7bc6e499e5c726898a42556e15ade01806daa",
+            "same_plan_on_kubara": [
+              "v0.15.0",
+              "v0.16.0"
+            ]
+          }
+        }
+      ],
+      "tested_tool_versions": {
+        "cub": "v0.6.8",
+        "cub-kubara": "0.2.3",
+        "kubara": "v0.15.0"
+      }
     }
   }
 }
