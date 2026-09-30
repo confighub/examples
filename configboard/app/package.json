@@ -12,10 +12,10 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@confighub/api": "^0.5.0",
+    "@confighub/api": "^0.6.5",
     "@confighub/examples-webkit": "file:../../webkit",
-    "@confighub/react-auth": "^0.5.0",
-    "@confighub/rtk-query": "^0.5.0",
+    "@confighub/react-auth": "^0.6.5",
+    "@confighub/rtk-query": "^0.6.5",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
     "@mui/icons-material": "^6.5.0",

@@ -125,9 +125,11 @@ jq '.scenarios[] | {title, changed_field, route, decision, source_file, next_act
 ```
 
 The expected decisions are `ALLOW` for the feature flag, `ESCALATE` for Redis
-caching, and `BLOCK` for the datasource override. The Redis case should name
-`pom.xml` and `src/main/resources/application.yaml` as the source files to
-change or link through a PR.
+caching, and `BLOCK` for the datasource override. In the Redis case,
+`source_file` should be `src/main/resources/application.yaml`, and
+`next_actions[].files` should list both `pom.xml` and
+`src/main/resources/application.yaml` as the files to change or link through a
+PR.
 
 If you have studied the model here and want to move to real tooling, that is
 the bridge.
