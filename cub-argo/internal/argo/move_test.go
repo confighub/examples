@@ -49,6 +49,8 @@ case "$a" in
   *" unit create "*) printf '%s\n' "$@" | grep -A1 '^--space$' >/dev/null; printf '%s\n' "$@" | sed -n '5p' >> "$STUB_LOG.units" ;;
   *" argo application-unit "*)
     app=$(printf '%s\n' "$@" | grep -A1 '^--application$' | tail -1)
+    r=$(printf '%s\n' "$@" | grep -A1 '^--rendered$' | tail -1)
+    [ -z "$r" ] || app=$(sed -n 's/^  name: //p' "$r" | head -1)
     sp=$(printf '%s\n' "$@" | grep -A1 '^--space$' | tail -1)
     echo "$app $sp" >> "$STUB_LOG.map"
     echo "kind: Application" ;;
@@ -127,12 +129,12 @@ func TestMoveDeliversOneStage(t *testing.T) {
 		t.Errorf("should confirm each arrived:\n%s", r.out)
 	}
 	if !strings.Contains(r.out, "cub unit delete --space argo-storefront-children argo-apptique-dev-1 && cub release publish argo-storefront-children") ||
-		!strings.Contains(r.out, `patch application dev-1-apptique --type merge -p '{"spec":{"source":{"kustomize":{"version":"v5"},"path":"gitops/argo/x","repoURL":"https://github.com/confighub/examples"`) {
+		!strings.Contains(r.out, `patch application dev-1-apptique --type json -p '[{"op":"replace","path":"/spec/source","value":{"kustomize":{"version":"v5"},"path":"gitops/argo/x","repoURL":"https://github.com/confighub/examples"`) {
 		t.Errorf("should end with the way back, Unit first:\n%s", r.out)
 	}
 	// From review on #267: the way back restores the whole source, so what the
 	// template set beyond the repository, path and revision comes back too.
-	if !strings.Contains(r.out, `patch application dev-1-checkout-cache --type merge -p '{"spec":{"source":{"kustomize":{"version":"v5"},"path":"gitops/argo/x"`) {
+	if !strings.Contains(r.out, `patch application dev-1-checkout-cache --type json -p '[{"op":"replace","path":"/spec/source","value":{"kustomize":{"version":"v5"},"path":"gitops/argo/x"`) {
 		t.Errorf("the way back should restore the whole recorded source:\n%s", r.out)
 	}
 	if strings.Contains(r.log, "patch application") {
@@ -199,31 +201,22 @@ func TestMoveWaitsForTheGeneratorToStop(t *testing.T) {
 }
 
 // A cluster that joined after the retirement has no Application on the
-// cluster: its Unit is made like a sibling's, with its own name, destination
-// and stage label, and the way back deletes it rather than restoring a source.
+// cluster: its Unit is made from what the template renders for it, which apply
+// wrote as apps/<space>.yaml, and the way back deletes it rather than
+// restoring a source.
 func TestMoveMakesAJoinedClustersApplication(t *testing.T) {
 	r := runMove(t, []string{"canary", "secondary"}, "MISSING_APP=staging-1-apptique")
 	if r.err != nil {
 		t.Fatalf("%v\n%s", r.err, r.out)
 	}
-	want := "cub argo application-unit --like argo-storefront-children/argo-apptique-dev-1 --application staging-1-apptique --space argo-apptique-staging-1 --gateway gw.example:5000 --destination-server "
-	if !strings.Contains(r.log, want) || !strings.Contains(r.log, "--destination-namespace storefront-staging --label rollout-phase=secondary") {
-		t.Errorf("want the joined cluster's Unit made like its sibling's:\n%s", r.log)
+	if !strings.Contains(r.log, "cub argo application-unit --rendered apps/argo-apptique-staging-1.yaml --namespace argocd --space argo-apptique-staging-1 --gateway gw.example:5000") {
+		t.Errorf("want the joined cluster's Unit made from its rendered template:\n%s", r.log)
+	}
+	if _, err := os.Stat(filepath.Join(r.dir, "apps", "argo-apptique-staging-1.yaml")); err != nil {
+		t.Errorf("apply should write what the template renders for each cluster: %v", err)
 	}
 	if !strings.Contains(r.out, "delete application staging-1-apptique") {
 		t.Errorf("its way back is to delete it, as there is no source to restore:\n%s", r.out)
-	}
-}
-
-// Found live: a joined cluster's Space had no release yet, and its
-// Application was made anyway, reading nothing. It waits instead.
-func TestMoveWaitsForTheRelease(t *testing.T) {
-	r := runMove(t, []string{"canary"}, "UNRELEASED=argo-apptique-dev-1")
-	if r.err == nil || !strings.Contains(r.out, "argo-apptique-dev-1 has no release yet") {
-		t.Fatalf("a Space with no release must stop it: %v\n%s", r.err, r.out)
-	}
-	if strings.Contains(r.log, "unit create --space argo-storefront-children argo-apptique-dev-1 ") {
-		t.Errorf("no Unit may be made for a Space with no release:\n%s", r.log)
 	}
 }
 

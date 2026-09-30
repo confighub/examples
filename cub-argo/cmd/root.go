@@ -317,8 +317,7 @@ thing, to ConfigHub: each verdict as a LiveCheck attestation.`,
 		},
 	}
 
-	var auCtx, auNS, auApp, auSpace, auGateway, auLike, auServer, auDestNS string
-	var auLabels []string
+	var auCtx, auNS, auApp, auSpace, auGateway, auRendered string
 	appUnit := &cobra.Command{
 		Use:   "application-unit",
 		Short: "Print the Unit that delivers an Application from its Space; reads the cluster, changes nothing",
@@ -330,30 +329,23 @@ option Prune=false, so no parent ever deletes it.
 move-applications.sh runs this for each Application a retired ApplicationSet
 made, and stores what it prints in the control Space the parent reads. For a
 cluster that joined after the ApplicationSet was retired, nothing generated its
-Application: --like makes it from a sibling's Unit instead.`,
+Application: --rendered makes it from what the template renders for that
+cluster, which apply writes as apps/<space>.yaml.`,
 		Args: cobra.NoArgs,
 		RunE: func(c *cobra.Command, _ []string) error {
-			if auApp == "" || auSpace == "" || auGateway == "" {
-				return fmt.Errorf("needs --application, --space and --gateway")
+			if (auApp == "" && auRendered == "") || auSpace == "" || auGateway == "" {
+				return fmt.Errorf("needs --application (or --rendered), --space and --gateway")
 			}
 			argo.KubeContext = auCtx
 			argo.SetApplicationNamespace(auNS)
 			var b []byte
 			var err error
-			if auLike != "" {
-				space, unit, ok := strings.Cut(auLike, "/")
-				if !ok || auServer == "" {
-					return fmt.Errorf("--like takes <space>/<unit>, and needs --destination-server")
+			if auRendered != "" {
+				data, rerr := os.ReadFile(auRendered)
+				if rerr != nil {
+					return rerr
 				}
-				labels := map[string]string{}
-				for _, l := range auLabels {
-					k, v, ok := strings.Cut(l, "=")
-					if !ok {
-						return fmt.Errorf("--label takes key=value, not %q", l)
-					}
-					labels[k] = v
-				}
-				b, err = argo.ApplicationUnitLike(argo.Run, space, unit, auApp, auServer, auDestNS, labels, auGateway, auSpace)
+				b, err = argo.ApplicationUnitRendered(data, auNS, auGateway, auSpace)
 			} else {
 				b, err = argo.ApplicationUnit(argo.Run, auApp, auGateway, auSpace)
 			}
@@ -369,10 +361,7 @@ Application: --like makes it from a sibling's Unit instead.`,
 	appUnit.Flags().StringVar(&auApp, "application", "", "the Application to deliver")
 	appUnit.Flags().StringVar(&auSpace, "space", "", "the variant's Space, which it will read")
 	appUnit.Flags().StringVar(&auGateway, "gateway", "", "the gateway address the cluster reaches, host[:port]")
-	appUnit.Flags().StringVar(&auLike, "like", "", "for an Application not on the cluster yet: make it like this sibling's Unit, <space>/<unit>")
-	appUnit.Flags().StringVar(&auServer, "destination-server", "", "with --like, the new Application's destination server")
-	appUnit.Flags().StringVar(&auDestNS, "destination-namespace", "", "with --like, the new Application's destination namespace")
-	appUnit.Flags().StringArrayVar(&auLabels, "label", nil, "with --like, a label to set on the new Application, key=value (repeatable)")
+	appUnit.Flags().StringVar(&auRendered, "rendered", "", "for an Application not on the cluster yet: the file apply wrote with what its ApplicationSet's template renders for its cluster (apps/<space>.yaml)")
 
 	root.AddCommand(plan, apply, check, appUnit, versionCmd)
 	return root

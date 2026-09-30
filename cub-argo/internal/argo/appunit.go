@@ -154,52 +154,56 @@ func withOption(have, opt string) string {
 	return strings.Join(opts, ",")
 }
 
-// ApplicationUnitLike makes the Unit for an Application that is not on the
-// cluster yet, from a sibling's Unit: a cluster that joined after its
-// ApplicationSet was retired, so nothing generated its Application. The
-// sibling is the same component on another cluster, delivered already; the
-// name, destination and labels are the new cluster's, as the plan works them
-// out from the ApplicationSet's template.
-func ApplicationUnitLike(run Runner, likeSpace, likeUnit, application, server, destNamespace string, labels map[string]string, gateway, space string) ([]byte, error) {
-	out, err := run("cub", "unit", "data", "--space", likeSpace, likeUnit)
-	if err != nil {
-		return nil, fmt.Errorf("reading %s/%s, the Unit to make %s like: %w", likeSpace, likeUnit, application, err)
+// ApplicationUnitRendered makes the Unit for an Application that is not on
+// the cluster yet: a cluster that joined after its ApplicationSet was
+// retired, so nothing generated its Application. It starts from what the
+// ApplicationSet's template renders for that cluster (apps/<space>.yaml, which
+// apply writes), so every templated field is the new cluster's own.
+func ApplicationUnitRendered(rendered []byte, namespace, gateway, space string) ([]byte, error) {
+	var app map[string]any
+	if err := yaml.Unmarshal(rendered, &app); err != nil {
+		return nil, fmt.Errorf("reading the rendered Application: %w", err)
 	}
-	var like map[string]any
-	if err := yaml.Unmarshal(out, &like); err != nil {
-		return nil, fmt.Errorf("reading %s/%s: %w", likeSpace, likeUnit, err)
+	if app == nil {
+		return nil, fmt.Errorf("the rendered Application is empty")
 	}
-	if str(like["kind"]) != "Application" {
-		return nil, fmt.Errorf("%s/%s does not hold an Application", likeSpace, likeUnit)
+	app["apiVersion"], app["kind"] = "argoproj.io/v1alpha1", "Application"
+	meta := obj(app["metadata"])
+	if meta == nil {
+		return nil, fmt.Errorf("the rendered Application has no metadata")
 	}
-	meta := obj(like["metadata"])
-	meta["name"] = application
-	if len(labels) > 0 {
-		l := obj(meta["labels"])
-		if l == nil {
-			l = map[string]any{}
-		}
-		for k, v := range labels {
-			l[k] = v
-		}
-		meta["labels"] = l
+	// The ApplicationSet controller puts what it generates in its own
+	// namespace when the template names none.
+	if str(meta["namespace"]) == "" {
+		meta["namespace"] = namespace
 	}
-	spec := obj(like["spec"])
-	dest := map[string]any{"server": server}
-	if destNamespace != "" {
-		dest["namespace"] = destNamespace
-	}
-	spec["destination"] = dest
-	u, err := applicationUnit(like, gateway, space)
+	u, err := applicationUnit(app, gateway, space)
 	if err != nil {
 		return nil, err
 	}
+	name := str(meta["name"])
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("# %s, delivered from ConfigHub: it reads the Space %s.\n", application, space))
-	b.WriteString(fmt.Sprintf("# Made by `cub argo application-unit` like %s/%s, for a cluster that joined after\n# its ApplicationSet was retired.\n", likeSpace, likeUnit))
+	b.WriteString(fmt.Sprintf("# %s, delivered from ConfigHub: it reads the Space %s.\n", name, space))
+	b.WriteString("# Made by `cub argo application-unit` from what its ApplicationSet's template\n# renders for this cluster, which joined after the ApplicationSet was retired.\n")
 	enc := yaml.NewEncoder(&b)
 	enc.SetIndent(2)
 	if err := enc.Encode(u); err != nil {
+		return nil, err
+	}
+	if err := enc.Close(); err != nil {
+		return nil, err
+	}
+	return []byte(b.String()), nil
+}
+
+// renderedApplication is what apply writes for each variant an
+// ApplicationSet generates.
+func renderedApplication(app map[string]any) ([]byte, error) {
+	var b strings.Builder
+	b.WriteString("# What the ApplicationSet's template renders for this cluster, written by\n# `cub argo apply`. move-applications.sh makes a joined cluster's Unit from it.\n")
+	enc := yaml.NewEncoder(&b)
+	enc.SetIndent(2)
+	if err := enc.Encode(app); err != nil {
 		return nil, err
 	}
 	if err := enc.Close(); err != nil {

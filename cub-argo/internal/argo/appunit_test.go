@@ -116,3 +116,26 @@ func jsonEq(a, b any) bool {
 	y, _ := json.Marshal(b)
 	return string(x) == string(y)
 }
+
+// A joined cluster's Application comes from its own rendered template, so
+// every templated field (a project picked by a cluster label, say) is its own;
+// the namespace the controller would give it is filled in.
+func TestApplicationUnitFromTheRenderedTemplate(t *testing.T) {
+	rendered := []byte("metadata:\n  name: prod-1-apptique\n  labels: {rollout-phase: primary}\nspec:\n  project: team-prod\n  destination: {server: https://prod, namespace: storefront-prod}\n  source: {repoURL: https://github.com/x, path: apps/prod, kustomize: {version: v5}}\n")
+	b, err := ApplicationUnitRendered(rendered, "argocd", "gw:5000", "argo-apptique-prod-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var u map[string]any
+	if err := yaml.Unmarshal(b, &u); err != nil {
+		t.Fatal(err)
+	}
+	for path, want := range map[string]string{"metadata.namespace": "argocd", "spec.project": "team-prod", "spec.destination.server": "https://prod", "metadata.labels.rollout-phase": "primary", "spec.source.repoURL": "oci://gw:5000/space/argo-apptique-prod-1", "kind": "Application"} {
+		if got := str(get(u, strings.Split(path, ".")...)); got != want {
+			t.Errorf("%s = %q, want %q", path, got, want)
+		}
+	}
+	if get(u, "spec", "source", "kustomize") != nil {
+		t.Errorf("the source should hold nothing but the Space")
+	}
+}

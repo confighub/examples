@@ -279,11 +279,11 @@ printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'get appl
 echo 'Once it reads create-only, deliver each Application from its own Space, one stage at a time:'
 echo '  bash move-applications.sh <stage>'
 echo 'It makes each one a Unit in argo-storefront-children, reading its Space, and checks it arrived. By hand, it is:'
-printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'patch application dev-1-apptique --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-apptique-dev-1","path":".","targetRevision":"latest"}}}'\''   # stage canary' | sed "s|<gateway>|${addr:-<gateway>}|")"
+printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'patch application dev-1-apptique --type json -p '\''[{"op":"replace","path":"/spec/source","value":{"repoURL":"oci://<gateway>/space/argo-apptique-dev-1","path":".","targetRevision":"latest"}}]'\''   # stage canary' | sed "s|<gateway>|${addr:-<gateway>}|")"
 echo "    # checked at ${digest_argo_apptique_dev_1:-?}; once synced, its status.sync.revision should name that digest, or a newer release went out unchecked"
-printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'patch application staging-1-apptique --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-apptique-staging-1","path":".","targetRevision":"latest"}}}'\''   # stage secondary' | sed "s|<gateway>|${addr:-<gateway>}|")"
+printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'patch application staging-1-apptique --type json -p '\''[{"op":"replace","path":"/spec/source","value":{"repoURL":"oci://<gateway>/space/argo-apptique-staging-1","path":".","targetRevision":"latest"}}]'\''   # stage secondary' | sed "s|<gateway>|${addr:-<gateway>}|")"
 echo "    # checked at ${digest_argo_apptique_staging_1:-?}; once synced, its status.sync.revision should name that digest, or a newer release went out unchecked"
-printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'patch application prod-1-apptique --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-apptique-prod-1","path":".","targetRevision":"latest"}}}'\''   # stage primary' | sed "s|<gateway>|${addr:-<gateway>}|")"
+printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'patch application prod-1-apptique --type json -p '\''[{"op":"replace","path":"/spec/source","value":{"repoURL":"oci://<gateway>/space/argo-apptique-prod-1","path":".","targetRevision":"latest"}}]'\''   # stage primary' | sed "s|<gateway>|${addr:-<gateway>}|")"
 echo "    # checked at ${digest_argo_apptique_prod_1:-?}; once synced, its status.sync.revision should name that digest, or a newer release went out unchecked"
 
 echo '-- checkout-cache'
@@ -301,11 +301,11 @@ printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'get appl
 echo 'Once it reads create-only, deliver each Application from its own Space, one stage at a time:'
 echo '  bash move-applications.sh <stage>'
 echo 'It makes each one a Unit in argo-storefront-children, reading its Space, and checks it arrived. By hand, it is:'
-printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'patch application dev-1-checkout-cache --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-checkout-cache-dev-1","path":".","targetRevision":"latest"}}}'\''   # stage canary' | sed "s|<gateway>|${addr:-<gateway>}|")"
+printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'patch application dev-1-checkout-cache --type json -p '\''[{"op":"replace","path":"/spec/source","value":{"repoURL":"oci://<gateway>/space/argo-checkout-cache-dev-1","path":".","targetRevision":"latest"}}]'\''   # stage canary' | sed "s|<gateway>|${addr:-<gateway>}|")"
 echo "    # checked at ${digest_argo_checkout_cache_dev_1:-?}; once synced, its status.sync.revision should name that digest, or a newer release went out unchecked"
-printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'patch application staging-1-checkout-cache --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-checkout-cache-staging-1","path":".","targetRevision":"latest"}}}'\''   # stage secondary' | sed "s|<gateway>|${addr:-<gateway>}|")"
+printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'patch application staging-1-checkout-cache --type json -p '\''[{"op":"replace","path":"/spec/source","value":{"repoURL":"oci://<gateway>/space/argo-checkout-cache-staging-1","path":".","targetRevision":"latest"}}]'\''   # stage secondary' | sed "s|<gateway>|${addr:-<gateway>}|")"
 echo "    # checked at ${digest_argo_checkout_cache_staging_1:-?}; once synced, its status.sync.revision should name that digest, or a newer release went out unchecked"
-printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'patch application prod-1-checkout-cache --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-checkout-cache-prod-1","path":".","targetRevision":"latest"}}}'\''   # stage primary' | sed "s|<gateway>|${addr:-<gateway>}|")"
+printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'patch application prod-1-checkout-cache --type json -p '\''[{"op":"replace","path":"/spec/source","value":{"repoURL":"oci://<gateway>/space/argo-checkout-cache-prod-1","path":".","targetRevision":"latest"}}]'\''   # stage primary' | sed "s|<gateway>|${addr:-<gateway>}|")"
 echo "    # checked at ${digest_argo_checkout_cache_prod_1:-?}; once synced, its status.sync.revision should name that digest, or a newer release went out unchecked"
 
 echo '-- platform-addons'
@@ -323,11 +323,11 @@ printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'get appl
 echo 'Once it reads create-only, deliver each Application from its own Space, one stage at a time:'
 echo '  bash move-applications.sh <stage>'
 echo 'It makes each one a Unit in argo-root-children, reading its Space, and checks it arrived. By hand, it is:'
-printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'patch application dev-1-cluster-baseline --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-platform-addons-cluster-baseline-dev-1","path":".","targetRevision":"latest"}}}'\''   # stage canary' | sed "s|<gateway>|${addr:-<gateway>}|")"
+printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'patch application dev-1-cluster-baseline --type json -p '\''[{"op":"replace","path":"/spec/source","value":{"repoURL":"oci://<gateway>/space/argo-platform-addons-cluster-baseline-dev-1","path":".","targetRevision":"latest"}}]'\''   # stage canary' | sed "s|<gateway>|${addr:-<gateway>}|")"
 echo "    # checked at ${digest_argo_platform_addons_cluster_baseline_dev_1:-?}; once synced, its status.sync.revision should name that digest, or a newer release went out unchecked"
-printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'patch application staging-1-cluster-baseline --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-platform-addons-cluster-baseline-staging-1","path":".","targetRevision":"latest"}}}'\''   # stage secondary' | sed "s|<gateway>|${addr:-<gateway>}|")"
+printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'patch application staging-1-cluster-baseline --type json -p '\''[{"op":"replace","path":"/spec/source","value":{"repoURL":"oci://<gateway>/space/argo-platform-addons-cluster-baseline-staging-1","path":".","targetRevision":"latest"}}]'\''   # stage secondary' | sed "s|<gateway>|${addr:-<gateway>}|")"
 echo "    # checked at ${digest_argo_platform_addons_cluster_baseline_staging_1:-?}; once synced, its status.sync.revision should name that digest, or a newer release went out unchecked"
-printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'patch application prod-1-cluster-baseline --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-platform-addons-cluster-baseline-prod-1","path":".","targetRevision":"latest"}}}'\''   # stage primary' | sed "s|<gateway>|${addr:-<gateway>}|")"
+printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'patch application prod-1-cluster-baseline --type json -p '\''[{"op":"replace","path":"/spec/source","value":{"repoURL":"oci://<gateway>/space/argo-platform-addons-cluster-baseline-prod-1","path":".","targetRevision":"latest"}}]'\''   # stage primary' | sed "s|<gateway>|${addr:-<gateway>}|")"
 echo "    # checked at ${digest_argo_platform_addons_cluster_baseline_prod_1:-?}; once synced, its status.sync.revision should name that digest, or a newer release went out unchecked"
 
 echo 'Each Application keeps its name and its UID, so nothing is orphaned and no'

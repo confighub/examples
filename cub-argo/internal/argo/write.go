@@ -42,6 +42,21 @@ func WriteApply(p *Plan, prefix, dir string) (string, error) {
 			continue
 		}
 		files = append(files, outFile{filepath.Join(c.Name, "change-workflow.yaml"), []byte(Workflow(c)), 0o644})
+		// What each ApplicationSet's template renders for each cluster: a
+		// cluster that joins after the retirement has no Application on the
+		// cluster to read, so move-applications.sh makes its Unit from this.
+		for _, st := range c.Stages {
+			for _, v := range st.Variants {
+				if c.Kind != "ApplicationSet" || v.app == nil {
+					continue
+				}
+				data, err := renderedApplication(v.app)
+				if err != nil {
+					return "", fmt.Errorf("writing what %s renders for %s: %w", c.Source, v.Cluster, err)
+				}
+				files = append(files, outFile{filepath.Join("apps", v.Space+".yaml"), data, 0o644})
+			}
+		}
 	}
 
 	// apply.sh renders from the repository, so it needs the way back to it.

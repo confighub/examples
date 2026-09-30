@@ -26,15 +26,6 @@ func MoveScript(p *Plan, prefix string) string {
 		c    *Component
 		home unitHome
 		v    Variant
-		// like is a sibling of v, the same component on another cluster: a
-		// cluster that joins after the retirement has no Application to
-		// read, so its Unit is made like the sibling's.
-		like  Variant
-		stage string
-	}
-	server := map[string]string{}
-	for _, cl := range p.Clusters {
-		server[cl.Name] = cl.Server
 	}
 	byStage := map[string][]move{}
 	var sets []*Component
@@ -54,15 +45,7 @@ func MoveScript(p *Plan, prefix string) string {
 					byHand = append(byHand, v.Application)
 					continue
 				}
-				m := move{c: c, home: home, v: v, stage: st.Name}
-				for _, st2 := range c.Stages {
-					for _, w := range st2.Variants {
-						if m.like.Space == "" && w.Space != v.Space && w.Path != "(multi-source)" {
-							m.like = w
-						}
-					}
-				}
-				byStage[st.Name] = append(byStage[st.Name], m)
+				byStage[st.Name] = append(byStage[st.Name], move{c, home, v})
 			}
 		}
 	}
@@ -115,7 +98,8 @@ func MoveScript(p *Plan, prefix string) string {
 	add(`  printf '%%s|%%s|%%s|%%s\n' "$1" "$2" "$3" "$(k -n "$ns" get application "$1" -o jsonpath='{.metadata.uid}{"|"}{.spec.source.repoURL}{"|"}{.spec.source.path}{"|"}{.spec.source.targetRevision}')" >> "$state"`)
 	add(`}`)
 	add("# The way back, per Application: take its Unit out and publish, which leaves")
-	add("# the Application where it is (Prune=false), then put its source back.")
+	add("# the Application where it is (Prune=false), then put its source back. A")
+	add("# replace, not a merge: a merge would keep what the move added.")
 	add(`way_back() {`)
 	add(`  local app space home uid url path rev`)
 	add(`  while IFS='|' read -r app space home uid url path rev; do`)
@@ -128,9 +112,9 @@ func MoveScript(p *Plan, prefix string) string {
 	add(`      continue`)
 	add(`    fi`)
 	add(`    if [ -s "handover-state/source-$app.json" ]; then`)
-	add(`      echo "  kubectl --context '$ctx' -n '$ns' patch application $app --type merge -p '{\"spec\":{\"source\":$(cat "handover-state/source-$app.json")}}'"`)
+	add(`      echo "  kubectl --context '$ctx' -n '$ns' patch application $app --type json -p '[{\"op\":\"replace\",\"path\":\"/spec/source\",\"value\":$(cat "handover-state/source-$app.json")}]'"`)
 	add(`    else`)
-	add(`      echo "  kubectl --context '$ctx' -n '$ns' patch application $app --type merge -p '{\"spec\":{\"source\":{\"repoURL\":\"$url\",\"path\":\"$path\",\"targetRevision\":\"$rev\"}}}'"`)
+	add(`      echo "  kubectl --context '$ctx' -n '$ns' patch application $app --type json -p '[{\"op\":\"replace\",\"path\":\"/spec/source\",\"value\":{\"repoURL\":\"$url\",\"path\":\"$path\",\"targetRevision\":\"$rev\"}}]'"`)
 	add(`    fi`)
 	add(`  done < "$state"`)
 	add(`}`)
@@ -164,10 +148,11 @@ func MoveScript(p *Plan, prefix string) string {
 	}
 	add("")
 
-	add("# deliver <application> <space> <control space> <sibling space> <server> <namespace> [<label>]:")
-	add("# the Application as a Unit there. A Unit already there is left as it is, so a")
-	add("# re-run carries on. An Application not on the cluster is one whose cluster")
-	add("# joined after the retirement: it is made like its sibling's Unit.")
+	add("# deliver <application> <space> <control space>: the Application as a Unit")
+	add("# there. A Unit already there is left as it is, so a re-run carries on. An")
+	add("# Application not on the cluster is one whose cluster joined after the")
+	add("# retirement: it is made from what the template renders for that cluster,")
+	add("# apps/<space>.yaml, which cub argo apply wrote beside this script.")
 	add(`deliver() {`)
 	add(`  if cub unit get --space "$3" "$2" >/dev/null 2>&1; then echo "  $1 is a Unit in $3 already"; return 0; fi`)
 	add("  # An Application reading a Space with no release fails to fetch until one is")
@@ -177,11 +162,10 @@ func MoveScript(p *Plan, prefix string) string {
 	add(`    record "$1" "$2" "$3"`)
 	add(`    cub argo application-unit --kube-context "$ctx" --namespace "$ns" --application "$1" --space "$2" --gateway "$addr" > "render/app-$2.yaml"`)
 	add(`  else`)
-	add(`    [ -n "$4" ] || { echo "  $1 is not on the cluster and has no sibling to be made like" >&2; return 1; }`)
-	add(`    cub unit get --space "$3" "$4" >/dev/null 2>&1 || { echo "  $1 is not on the cluster, and $4, which it is made like, is not a Unit in $3 yet: move its stage first" >&2; return 1; }`)
-	add(`    echo "  $1 is not on the cluster: its cluster joined after the retirement, so it is made like $4"`)
+	add(`    [ -s "apps/$2.yaml" ] || { echo "  $1 is not on the cluster, and apps/$2.yaml is missing: plan and apply again with the cluster in the input" >&2; return 1; }`)
+	add(`    echo "  $1 is not on the cluster: its cluster joined after the retirement, so it is made from what the template renders for it"`)
 	add(`    record "$1" "$2" "$3" new`)
-	add(`    cub argo application-unit --like "$3/$4" --application "$1" --space "$2" --gateway "$addr" --destination-server "$5" --destination-namespace "$6" ${7:+--label "$7"} > "render/app-$2.yaml"`)
+	add(`    cub argo application-unit --rendered "apps/$2.yaml" --namespace "$ns" --space "$2" --gateway "$addr" > "render/app-$2.yaml"`)
 	add(`  fi`)
 	add(`  cub unit create --space "$3" "$2" "render/app-$2.yaml" --target %s/argocd --change-desc "Deliver $1 from its Space $2" --quiet`, targets)
 	add(`  moved="$moved $1"`)
@@ -236,11 +220,7 @@ func MoveScript(p *Plan, prefix string) string {
 		touched := map[string]bool{}
 		var order []string
 		for _, m := range ms {
-			label := ""
-			if p.StageLabel != "" {
-				label = p.StageLabel + "=" + m.stage
-			}
-			add(`    deliver %s %s %s %s %s %s %s`, q(m.v.Application), q(m.v.Space), q(m.home.Space), q(m.like.Space), q(server[m.v.Cluster]), q(m.v.Namespace), q(label))
+			add(`    deliver %s %s %s`, q(m.v.Application), q(m.v.Space), q(m.home.Space))
 			if !touched[m.home.Space] {
 				touched[m.home.Space] = true
 				order = append(order, m.home.Space)

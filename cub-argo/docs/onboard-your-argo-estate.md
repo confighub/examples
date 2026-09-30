@@ -697,9 +697,10 @@ annotation above. Set `ARGOBOT_VERSION` to a release with #14 once there is one.
 **Run live on 2026-09-30,** argobot built with #14, against the estate above:
 it wrote live status for all eight Applications; a change released to canary
 reached `dev-1` in 2 seconds, and to `staging-1` in 2 more once promoted and
-approved, against the 90 seconds and more above. Its first start failed on a
-`409` creating three event cursors at once, and the second succeeded; that is
-reported to argobot.
+approved, against the 90 seconds and more above. With three Targets it also
+stopped twice on a `409` from ConfigHub, at its first start and after half an
+hour, when its polls collided; that is confighub/argobot#15. In a cluster its
+Deployment restarts it, and a missed refresh costs only immediacy.
 
 Without argobot, or without that annotation in whatever promotes your releases,
 an approved release sits unread on the gateway and the approval gate you built
