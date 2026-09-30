@@ -1,6 +1,7 @@
 package flux
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 )
@@ -120,4 +121,56 @@ func SetControllerNamespace(ns string) {
 	if ns != "" {
 		checkNamespace = ns
 	}
+}
+
+// ChecksFromLayersSpace is every layer of a handed-over cluster, read from its
+// layers Space: once the cluster's directory in Git holds only the root, the
+// layers are defined there and nowhere else. Each Unit holds the layer's
+// Kustomization and the OCIRepository naming its variant Space, whose Unit is
+// named after the layer too.
+func ChecksFromLayersSpace(run Runner, cluster, space string) ([]Check, error) {
+	out, err := run("cub", "unit", "list", "--space", space, "-o", "json")
+	if err != nil {
+		return nil, fmt.Errorf("listing the layers of %s in %s: %w", cluster, space, err)
+	}
+	var units []struct {
+		Unit struct {
+			Slug string `json:"Slug"`
+		} `json:"Unit"`
+	}
+	if err := json.Unmarshal(out, &units); err != nil {
+		return nil, fmt.Errorf("listing the layers of %s in %s: %w", cluster, space, err)
+	}
+	var checks []Check
+	for _, u := range units {
+		data, err := run("cub", "unit", "data", "--space", space, u.Unit.Slug)
+		if err != nil {
+			return nil, fmt.Errorf("reading layer %s of %s: %w", u.Unit.Slug, cluster, err)
+		}
+		docs, err := documentsIn(data)
+		if err != nil {
+			return nil, fmt.Errorf("reading layer %s of %s: %w", u.Unit.Slug, cluster, err)
+		}
+		c := Check{Unit: u.Unit.Slug, Cluster: cluster}
+		for _, d := range docs {
+			switch str(d["kind"]) {
+			case "Kustomization":
+				c.Kustomization = str(get(d, "metadata", "name"))
+				c.Namespace = str(get(d, "spec", "targetNamespace"))
+			case "OCIRepository":
+				url := str(get(d, "spec", "url"))
+				if i := strings.Index(url, "/space/"); i >= 0 {
+					c.Space = strings.TrimSuffix(url[i+len("/space/"):], "/")
+				}
+			}
+		}
+		if c.Kustomization == "" || c.Space == "" {
+			return nil, fmt.Errorf("layer %s of %s in %s holds no Kustomization reading a variant Space", u.Unit.Slug, cluster, space)
+		}
+		checks = append(checks, c)
+	}
+	if len(checks) == 0 {
+		return nil, fmt.Errorf("%s holds no layers for %s", space, cluster)
+	}
+	return checks, nil
 }

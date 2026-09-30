@@ -108,6 +108,25 @@ every UID and the rollout revision identical
 
 A test covers it.
 
-## Not covered
+## Not covered at the time, since fixed
 
-**`cub flux plan`, `check` and `status` after a bootstrapped handover.** They derive layers from the cluster directory. After the commit, that directory no longer defines this cluster's layers, so they need `--kustomization`, `--space` and `--unit` until they read the layers Space instead.
+**`cub flux plan`, `check` and `status` after a bootstrapped handover.** They
+derived layers from the cluster directory, which after the commit holds only the
+root. Worse, `plan` took the root for a layer, with a base rendered from the
+repository root, which `apply.sh` would then have created.
+
+Now the plan recognises the root and marks the cluster handed over. It names
+the cluster from the root's layers Space, since the layers that carried
+`cluster_name` are gone. `check` and `status` read that cluster's layers from
+the Space. A second bootstrapped run on the same rig, prefix `rh-ho`, showed:
+
+```text
+  dev is handed over: its layers are Units in rh-ho-dev-layers, read by its ConfigHub root, and this plan leaves them there
+apps: release 1 (sha256:a98a1860959d) holds apps at revision 3
+apps: 4 objects match what the layer applied
+  and every field the release sets, on all 4 objects, already has that value on the cluster
+infrastructure: 1 objects match what the layer applied
+2 of 2 clean
+apps -> rh-ho-apps-dev: Synced/Healthy/Succeeded at sha256:a98a1860959d: release 1 applied (written; the Healthy gate would pass)
+dev is handed over already: its layers are Units in rh-ho-dev-layers, read by its ConfigHub root.
+```

@@ -28,6 +28,11 @@ func Render(p *Plan) string {
 		cl = append(cl, fmt.Sprintf("%s (clusters/%s)", c.Name, c.Dir))
 	}
 	w("\nClusters, one stage each, in order: %s\n", strings.Join(cl, ", "))
+	for _, c := range p.Clusters {
+		if c.LayersSpace != "" {
+			w("  %s is handed over: its layers are Units in %s, read by its ConfigHub root, and this plan leaves them there\n", c.Name, c.LayersSpace)
+		}
+	}
 
 	if len(p.Order) > 0 {
 		var steps []string

@@ -68,6 +68,10 @@ type Cluster struct {
 	// Path is the cluster's directory from the repository root, where the
 	// files flux-system applies for it live.
 	Path string `json:"path,omitempty"`
+	// LayersSpace, when set, says the cluster is handed over: its directory
+	// holds the ConfigHub root, and its layers are Units in this Space rather
+	// than files in Git.
+	LayersSpace string `json:"layersSpace,omitempty"`
 }
 
 // Component is one layer (a Flux Kustomization name) across the clusters: a
@@ -244,14 +248,51 @@ func (b *builder) readClusters() map[string]map[string]Doc {
 		}
 		byName := map[string]Doc{}
 		name := e.Name()
+		layersSpace := ""
 		for _, d := range b.docs {
-			if !under(d.File, cdir) || under(d.File, boot) || !strings.HasPrefix(str(d.Value["apiVersion"]), kustomizeToolkit) {
+			if !under(d.File, cdir) || under(d.File, boot) {
 				continue
 			}
-			byName[str(get(d.Value, "metadata", "name"))] = d
+			api, kind := str(d.Value["apiVersion"]), str(d.Value["kind"])
+			dname := str(get(d.Value, "metadata", "name"))
+			// The ConfigHub root is not a layer. Its source says which Space
+			// holds this cluster's layers, and that Space's name says which
+			// cluster it is: the layers that carried cluster_name are gone.
+			if dname == RootName {
+				if kind == "OCIRepository" {
+					url := str(get(d.Value, "spec", "url"))
+					if i := strings.Index(url, "/space/"); i >= 0 {
+						layersSpace = strings.TrimSuffix(url[i+len("/space/"):], "/")
+					}
+				} else if layersSpace == "" {
+					layersSpace = DeliverySpace(b.opts.Prefix, name)
+				}
+				continue
+			}
+			if !strings.HasPrefix(api, kustomizeToolkit) {
+				continue
+			}
+			byName[dname] = d
 			if cn := str(get(d.Value, "spec", "postBuild", "substitute", "cluster_name")); cn != "" {
 				name = cn
 			}
+		}
+		if layersSpace != "" {
+			if cn, ok := strings.CutPrefix(layersSpace, b.opts.Prefix+"-"); ok {
+				if cn, ok = strings.CutSuffix(cn, "-layers"); ok && len(byName) == 0 {
+					name = cn
+				}
+			}
+			if len(byName) > 0 {
+				var still []string
+				for n := range byName {
+					still = append(still, n)
+				}
+				sort.Strings(still)
+				p.Problems = append(p.Problems, fmt.Sprintf("%s holds the ConfigHub root and still defines %s: the handover commit is half made. Finish it, removing those files, or revert it", b.rel(cdir), strings.Join(still, ", ")))
+			}
+			b.clusters = append(b.clusters, Cluster{Name: name, Dir: e.Name(), Path: b.rel(cdir), LayersSpace: layersSpace})
+			continue
 		}
 		if len(byName) == 0 {
 			continue
@@ -349,7 +390,15 @@ func (b *builder) components(layers map[string]map[string]Doc) {
 				c.Stages = append(c.Stages, s)
 			}
 		}
-		if len(variants) < len(b.clusters) {
+		// A handed-over cluster runs its layers from ConfigHub, not from this
+		// repository, so it is left out of saying where a layer runs.
+		inGit := 0
+		for _, cl := range b.clusters {
+			if cl.LayersSpace == "" {
+				inGit++
+			}
+		}
+		if len(variants) < inGit {
 			var on []string
 			for _, v := range variants {
 				on = append(on, v.Cluster)

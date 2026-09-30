@@ -724,6 +724,14 @@ server that the cluster reads and the test pushes to, and ConfigHub v0.6.8.
 - The revert way back put the layers back under `flux-system` from Git, and
   removed the root with nothing else deleted.
 
+**After the handover,** the cluster's directory holds only the root. `plan`
+reports that cluster as handed over, names its layers Space, and plans nothing
+for it; `apply.sh` leaves its Spaces as they are. `check` and `status` read
+its layers from that Space, so they work on it as before. `handover.sh` and
+`join.sh` say it is handed over already, and stop. A directory holding the
+root beside layer files still in Git is a half-made commit, and a problem
+the plan names.
+
 The run is recorded in
 [docs/runs/2026-09-30-bootstrapped-handover.md](runs/2026-09-30-bootstrapped-handover.md),
 with the one bug it found (a rerun that did not finish) and what it does not
