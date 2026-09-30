@@ -146,7 +146,7 @@ func newRoot() *cobra.Command {
 	var checkJSON, checkRecord bool
 	check := &cobra.Command{
 		Use:   "check [dir|input.yaml|-]",
-		Short: "Compare what Argo owns on the cluster with what ConfigHub holds; changes nothing",
+		Short: "Compare what Argo owns on the cluster with what ConfigHub holds; changes nothing unless --record",
 		Long: `Compare the estate on the cluster with what ConfigHub holds for it.
 
 Given the same input as plan, it works out every Application to check and
@@ -159,7 +159,8 @@ change one: every field the release sets against the object on the cluster,
 naming who has written it, which is how a hand edit is told from the source
 moving on.
 
-Nothing is changed either way.`,
+Nothing on a cluster is changed either way. With --record it writes one
+thing, to ConfigHub: each verdict as a LiveCheck attestation.`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
 			if checkRecord && !checkDeep {

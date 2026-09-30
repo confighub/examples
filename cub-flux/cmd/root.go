@@ -151,7 +151,7 @@ func newRoot() *cobra.Command {
 	var ckOpts flux.Options
 	check := &cobra.Command{
 		Use:   "check [fleet-repo-dir]",
-		Short: "Compare what each layer applied with what ConfigHub holds; changes nothing",
+		Short: "Compare what each layer applied with what ConfigHub holds; changes nothing unless --record",
 		Long: `Compare the fleet on a cluster with what ConfigHub holds for it.
 
 Given the same input as plan, it works out every layer to check and checks
@@ -162,6 +162,9 @@ Flux's own status.inventory against the release. And with --fields, would it
 change one: every field the release sets against the object on the cluster,
 naming who has written it, which is how a hand edit is told from the source
 moving on.
+
+Nothing on a cluster is changed. With --record it writes one thing, to
+ConfigHub: each verdict as a LiveCheck attestation.
 
 One cluster at a time: pass --kube-context for the cluster to read.`,
 		Args: cobra.MaximumNArgs(1),
