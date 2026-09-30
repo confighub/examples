@@ -6,8 +6,14 @@ import (
 )
 
 // ArgobotVersion is the argobot release argobot.sh installs unless told
-// otherwise.
+// otherwise. It reports status for a moved estate, but its refresh looks for
+// an Application named after the Space, which a moved estate does not have;
+// confighub/argobot#14 finds them by source, and is not in a release yet.
 const ArgobotVersion = "v0.1.7"
+
+// argobotBySource is the first release that refreshes by source; "" until
+// there is one.
+const argobotBySource = ""
 
 // ArgobotScript writes argobot.sh, which runs argobot beside Argo CD with the
 // Targets' server worker as its identity, the one `cub cluster up` gives it.
@@ -66,6 +72,11 @@ func ArgobotScript(prefix string) string {
 	add(`k -n argobot set env deployment/argobot CONFIGHUB_URL="$url" ARGO_NAMESPACE="$ns"`)
 	add(`k -n argobot set image deployment/argobot argobot="ghcr.io/confighub/argobot:$version"`)
 	add(`k -n argobot rollout status deployment/argobot --timeout=5m`)
+	if argobotBySource == "" {
+		add("# No argobot release refreshes by source yet (confighub/argobot#14). Set")
+		add("# ARGOBOT_VERSION to one that does once there is one.")
+		add(`[ -n "${ARGOBOT_VERSION:-}" ] || { echo; echo "note: argobot $version reports each Application's live status, but does NOT refresh these"; echo "Applications on a release: they keep Argo's names, and it looks for one named after the Space."; echo "Until a release has confighub/argobot#14, a published release waits for Argo's own poll, or:"; echo "  kubectl --context $ctx -n $ns annotate application <name> argocd.argoproj.io/refresh=hard --overwrite"; }`)
+	}
 	add("")
 	add(`echo "argobot $version runs as %s/server-worker. What it does:"`, targets)
 	add(`echo "  kubectl --context $ctx -n argobot logs deploy/argobot"`)

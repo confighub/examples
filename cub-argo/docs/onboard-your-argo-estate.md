@@ -506,7 +506,9 @@ checks each Application reads its Space, has synced that Space's newest release,
 and is the same object it was (by UID). A stage whose Space has no release yet
 is refused before anything is made. The way back is printed at the end and if it
 stops: take the Unit out and publish — the Application stays, as `Prune=false`
-says — then put its recorded source back.
+says — then put its recorded source back: all of it, from
+`handover-state/source-<application>.json`, since a template can set more than
+the repository, path and revision.
 
 **Run live on 2026-09-30,** Argo CD v3.5.3, ConfigHub v0.6.8: canary, then
 secondary, six Applications across `dev-1` and `staging-1`, including the
@@ -686,8 +688,11 @@ Targets:
 
 Both find an Application by the Space its source reads, since a moved estate
 keeps Argo's names (`dev-1-apptique` reads `argo-apptique-dev-1`). The status
-does that in every argobot; the refresh needs confighub/argobot#14, and an
-argobot without it looks only for an Application named after the Space.
+does that in every argobot. The refresh needs confighub/argobot#14, which no
+argobot release has yet: one without it looks only for an Application named
+after the Space, so `argobot.sh` installs a release that reports status and
+says, when it finishes, that releases still wait for Argo's poll or the
+annotation above. Set `ARGOBOT_VERSION` to a release with #14 once there is one.
 
 **Run live on 2026-09-30,** argobot built with #14, against the estate above:
 it wrote live status for all eight Applications; a change released to canary

@@ -24,6 +24,7 @@ case "$a" in
   *" get applicationset "*) echo "${APPSET_SYNC:-create-only}" ;;
   *" get application ${MISSING_APP:-none} ") exit 1 ;;
   *"metadata.uid}{"*) echo "u-1|https://github.com/confighub/examples|gitops/argo/x|main" ;;
+  *" -o jsonpath={.spec.source} "*) echo '{"kustomize":{"version":"v5"},"path":"gitops/argo/x","repoURL":"https://github.com/confighub/examples","targetRevision":"main"}' ;;
   *"{.metadata.uid}"*) echo "${UID_AFTER:-u-1}" ;;
   *"spec.source.repoURL"*)
     case "$app" in
@@ -126,8 +127,13 @@ func TestMoveDeliversOneStage(t *testing.T) {
 		t.Errorf("should confirm each arrived:\n%s", r.out)
 	}
 	if !strings.Contains(r.out, "cub unit delete --space argo-storefront-children argo-apptique-dev-1 && cub release publish argo-storefront-children") ||
-		!strings.Contains(r.out, `patch application dev-1-apptique --type merge -p '{"spec":{"source":{"repoURL":"https://github.com/confighub/examples"`) {
+		!strings.Contains(r.out, `patch application dev-1-apptique --type merge -p '{"spec":{"source":{"kustomize":{"version":"v5"},"path":"gitops/argo/x","repoURL":"https://github.com/confighub/examples"`) {
 		t.Errorf("should end with the way back, Unit first:\n%s", r.out)
+	}
+	// From review on #267: the way back restores the whole source, so what the
+	// template set beyond the repository, path and revision comes back too.
+	if !strings.Contains(r.out, `patch application dev-1-checkout-cache --type merge -p '{"spec":{"source":{"kustomize":{"version":"v5"},"path":"gitops/argo/x"`) {
+		t.Errorf("the way back should restore the whole recorded source:\n%s", r.out)
 	}
 	if strings.Contains(r.log, "patch application") {
 		t.Errorf("nothing is patched on the cluster; the parent applies the Unit:\n%s", r.log)
