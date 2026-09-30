@@ -550,10 +550,24 @@ func (b *builder) variant(c *Component, app map[string]any, cl *Cluster, fields 
 			p.Problems = append(p.Problems, fmt.Sprintf("%s on %s: source path %s does not exist in this checkout, so Argo CD would fail to sync %s", c.Name, clusterName, v.Path, v.Application))
 		} else {
 			v.Images = overlayImages(local)
-			// Argo CD picks the tool from the files at the path: a
+			// An Application that names its tool gets that tool, whatever is
+			// at the path. Otherwise Argo CD picks it from the files: a
 			// kustomization wins, then a Chart.yaml (Helm), then a plain
 			// directory of manifests.
-			if !hasKustomization(local) {
+			src := obj(get(app, "spec", "source"))
+			switch {
+			case src["plugin"] != nil:
+				p.Problems = appendOnce(p.Problems, fmt.Sprintf(
+					"%s: %s is rendered by a config management plugin (spec.source.plugin), which the script cannot reproduce, so what ConfigHub stored could differ from what Argo applies",
+					c.Name, v.Path))
+			case src["directory"] != nil:
+				b.plainDirectory(c, &v, app, local)
+			case src["kustomize"] != nil && !hasKustomization(local):
+				p.Problems = appendOnce(p.Problems, fmt.Sprintf(
+					"%s: %s sets spec.source.kustomize but holds no kustomization.yaml, so kustomize would build nothing from it",
+					c.Name, v.Path))
+			case src["kustomize"] != nil:
+			case !hasKustomization(local):
 				if _, err := os.Stat(filepath.Join(local, "Chart.yaml")); err == nil {
 					p.Problems = appendOnce(p.Problems, fmt.Sprintf(
 						"%s: %s is a Helm chart (it has a Chart.yaml), which Argo CD renders with helm template. The script renders with kustomize build, which does not read a chart. Onboarding a chart kept in the repository is not supported yet",

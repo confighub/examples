@@ -980,3 +980,38 @@ func TestInClusterTargetIsMarkedForTheAppsSpace(t *testing.T) {
 		t.Errorf("want the in-cluster Target marked:\n%s", want)
 	}
 }
+
+// An Application that names its tool gets it: a Chart.yaml beside the files
+// does not make a source with spec.source.directory or kustomize a chart.
+// From review on #265.
+func TestExplicitSourceTypeWinsOverAChartYaml(t *testing.T) {
+	root, dir := copyExample(t)
+	overlay := filepath.Join(dir, "apps", "apptique", "overlays", "prod")
+	if err := os.WriteFile(filepath.Join(overlay, "Chart.yaml"), []byte("apiVersion: v2\nname: x\nversion: 0.1.0\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(overlay, "kustomization.yaml")); err != nil {
+		t.Fatal(err)
+	}
+	opts := staged
+	opts.RepoRoot = root
+	appset := filepath.Join(dir, "apps-of-apps", "storefront", "apptique.yaml")
+	data, err := os.ReadFile(appset)
+	if err != nil {
+		t.Skip("the example's ApplicationSet has moved")
+	}
+	if p := planOf(t, dir, opts); !hasProblem(p, "is a Helm chart") {
+		t.Fatalf("without a named tool, a Chart.yaml makes it a chart: %v", p.Problems)
+	}
+	named := strings.Replace(string(data), "        path: ", "        directory: {recurse: false}\n        path: ", 1)
+	if named == string(data) {
+		t.Skip("the example's source has changed shape")
+	}
+	if err := os.WriteFile(appset, []byte(named), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p := planOf(t, dir, opts)
+	if hasProblem(p, "is a Helm chart") {
+		t.Errorf("spec.source.directory names the tool, so it is not a chart: %v", p.Problems)
+	}
+}
