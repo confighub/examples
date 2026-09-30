@@ -24,8 +24,9 @@ The first release. A Flux fleet onboards, hands over and reports back:
   fleet repository and releases it once a person approves.
 - **Evidence.** `cub flux check --fields --record` records each verdict as a
   LiveCheck attestation on the revision it checked.
-- **Targets marked for Flux.** Each cluster's Target names its layers Space and
-  pull Secret, for a Flux-aware `cub variant create` (confighubai/confighub#5562).
+- **Targets marked for Flux.** Each cluster's Target records its layers Space and
+  pull Secret, for a future `cub variant create` that adds a new variant's layer
+  there.
 
 Run end to end on Flux v2.8.6 in kind against ConfigHub v0.6.8: see the guide's
 "What has and has not been checked".

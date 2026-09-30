@@ -4,8 +4,8 @@
 would govern. It follows the shape of
 [`cub sveltos`](https://github.com/confighub/sveltos-confighub): one base per
 ApplicationSet, one variant per Application it generates, each addressed to
-one cluster, and a Target per cluster. The root Application, its app of apps
-and the AppProjects stay as they are, as the management record.
+one cluster, and a Target per cluster. The AppProjects and the tree's shape
+stay; `root` and each app of apps are repointed at ConfigHub, not recreated.
 
 The commands and scripts, in order; the first two change nothing:
 
@@ -14,9 +14,9 @@ The commands and scripts, in order; the first two change nothing:
 | `plan` | shows the estate ConfigHub would govern | no, and no account either |
 | `apply --out` | writes the files and the scripts below | no, it runs nothing |
 | `apply.sh` | fills ConfigHub with a parallel copy nothing reads | no |
-| `handover.sh` | repoints each layer's source at ConfigHub, top down | yes, this is the step that moves it |
-| `move-applications.sh` | makes each Application an ApplicationSet generated a Unit reading its own Space, one stage at a time | yes, through the parent that syncs it |
-| `argobot.sh` | runs argobot beside Argo CD: releases land when published, and live status goes back to each Space | yes, it installs argobot |
+| `handover.sh` | repoints `root` at ConfigHub, prints the reviewed edit for each app of apps, and checks every Application's release against the cluster before any workload's source moves | yes, this is the step that moves it |
+| `move-applications.sh` | makes each Application that an ApplicationSet generated a Unit reading its own Space, one stage at a time | yes, through the parent that syncs it |
+| `argobot.sh` | runs argobot beside Argo CD: live status goes back to each Space (and releases land at once, with an argobot that has confighub/argobot#14) | yes, it installs argobot |
 
 **Start with the guide: [Onboard your Argo CD estate](docs/onboard-your-argo-estate.md).**
 

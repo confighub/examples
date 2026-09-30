@@ -54,10 +54,15 @@ func newRoot() *cobra.Command {
          listing exactly what its overlay changes, a Target per cluster, and
          the stage order. Offline: no account, no cluster, nothing changes.
 
-  apply  writes the plan as files beside two scripts: apply.sh, which fills
-         ConfigHub and touches no cluster, and handover.sh, which swaps each
-         layer's sourceRef, one cluster at a time. Nothing runs until you run
-         them.`,
+  apply  writes the plan as files beside its scripts: apply.sh, which fills
+         ConfigHub and touches no cluster; handover.sh, which puts one root on
+         a cluster running the layers from Git and lets it take each layer
+         over; join.sh, which does the same for a new cluster; and cleanup.sh.
+         Nothing runs until you run them.
+
+  status reports what each layer applied to ConfigHub as live status.
+  watch  proposes each cluster added to the fleet repository.
+  check  compares what a layer applied with what ConfigHub holds.`,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
@@ -122,7 +127,7 @@ func newRoot() *cobra.Command {
 	plan.Flags().StringVar(&stages, "stages", "", "the clusters in rollout order, by directory or cluster name, comma-separated (default dev, staging, prod, then the rest)")
 	plan.Flags().StringVar(&opts.ClustersDir, "clusters", "clusters", "the directory holding one directory per cluster, relative to the input")
 	plan.Flags().StringVar(&opts.RepoRoot, "repo-root", "", "the checkout Flux paths are relative to (default: the .git above the input)")
-	plan.Flags().StringSliceVar(&opts.Require, "require", nil, "what each stage after the first also waits for in the stage before it: Healthy, which `cub flux status` reports")
+	plan.Flags().StringSliceVar(&opts.Require, "require", nil, "what each stage after the first also waits for in the stage before it: Healthy, which cub flux status reports")
 	plan.Flags().BoolVar(&asJSON, "json", false, "print the plan as JSON")
 	plan.Flags().StringVar(&planFormat, "format", "ascii", "plan output format: ascii, json (same schema as --json), or preview-json (plugin-preview v1)")
 	plan.Flags().StringVar(&exportedAt, "exported-at", "", "RFC3339 export timestamp for --format preview-json (default: current UTC time)")
@@ -167,7 +172,7 @@ func newRoot() *cobra.Command {
 	apply.Flags().StringVar(&applyStages, "stages", "", "the clusters in rollout order, comma-separated")
 	apply.Flags().StringVar(&af.ClustersDir, "clusters", "clusters", "the directory holding one directory per cluster")
 	apply.Flags().StringVar(&af.RepoRoot, "repo-root", "", "the checkout Flux paths are relative to")
-	apply.Flags().StringSliceVar(&af.Require, "require", nil, "what each stage after the first also waits for in the stage before it: Healthy, which `cub flux status` reports")
+	apply.Flags().StringSliceVar(&af.Require, "require", nil, "what each stage after the first also waits for in the stage before it: Healthy, which cub flux status reports")
 	apply.Flags().StringVar(&out, "out", "", "directory for the files and the scripts")
 
 	var ckNS, ckName, ckSpace, ckUnit, ckTarget, kubeContext, ckCluster, ckRelease string

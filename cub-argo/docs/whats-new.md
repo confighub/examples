@@ -12,11 +12,12 @@ The first release. An Argo CD estate onboards, hands over and reports back:
   ApplicationSet, one variant per generated Application, staged by a cluster
   label. `cub argo apply` writes `apply.sh`, which fills ConfigHub while Argo
   carries on reading Git, and `cleanup.sh`, which takes it back out.
-- **Hand over without recreating anything.** `handover.sh` proves nothing on any
-  cluster would change — every object Argo owns, and every field the release
-  sets, read on the cluster each Application deploys to — then points `root`
-  and each app of apps at ConfigHub. It records each source first and prints
-  the way back, leaves first.
+- **Hand over without recreating anything.** `handover.sh` points `root` at
+  ConfigHub and prints the reviewed edit that does the same for each app of
+  apps. Before any workload's source moves, it checks every Application's
+  release against the cluster it deploys to: every object Argo owns, and every
+  field the release sets. It records each source first and prints the way
+  back, leaves first.
 - **A delivery object per variant.** `move-applications.sh` makes each
   Application an ApplicationSet generated into a Unit named after its
   variant's Space, reading it, one stage at a time; retired ApplicationSets

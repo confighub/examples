@@ -44,6 +44,34 @@ flowchart LR
   l2 -.->|"cub flux status"| v1
 ```
 
+## The words you will meet
+
+- **Layer**: one Flux `Kustomization` — `infrastructure`, `apps`, `tenants`.
+  A handover makes a layer read ConfigHub.
+- **Base**: the directory every cluster's overlay builds on, stored once. A
+  change to the layer is made here.
+- **Variant**: one cluster's copy, holding what that cluster's overlay renders
+  differently — its namespace, image tag, patches and `postBuild` values.
+- **Departure**: a field in which a variant differs from its base.
+- **Layers Space**: one per cluster, `<prefix>-<cluster>-layers`, released to
+  that cluster's Target. It holds one Unit per layer.
+- **Root**: the one `OCIRepository` and `Kustomization`, both named
+  `confighub-root`, that a cluster keeps in `flux-system` to read its layers
+  Space.
+- **Unit**: one piece of configuration in ConfigHub — a layer's manifests, or
+  one layer's `OCIRepository` and `Kustomization`.
+- **Release**: a published, immutable version of a Space. A cluster reads
+  releases, never work in progress; each has a digest, which Flux reports as
+  the revision it applied.
+- **Space**: ConfigHub's folder for configuration. Each base and each variant
+  gets one; your organization has a quota of them.
+- **Component**: the group of one base and its variants. There is one per
+  layer.
+- **Target**: a named destination, one per cluster. A variant's releases go to
+  its cluster's Target.
+- **Change order**: one change moving through the stages, with an approval
+  recorded in each. **Workflow**: the stages and what each waits for.
+
 ## Install
 
 ```bash
@@ -75,13 +103,19 @@ Run from the root of your fleet repository. Each script is written by
 
 | # | Run | What happens | Touches a cluster? | The way back |
 | --- | --- | --- | --- | --- |
-| 1 | `cub flux plan .` | shows the fleet ConfigHub would govern | no | nothing to undo |
-| 2 | `cub flux apply . --out onboard` | writes the files and scripts | no | delete `onboard/` |
+| 1 | `cub flux plan . --require Healthy` | shows the fleet ConfigHub would govern ([1](#1-see-the-plan)) | no | nothing to undo |
+| 2 | `cub flux apply . --require Healthy --out onboard` | writes the files and scripts ([2](#2-write-the-steps-read-them-run-them)) | no | delete `onboard/` |
 | 3 | `CONFIGHUB_OCI=<gateway> bash onboard/apply.sh` | fills ConfigHub: bases, variants, stages, first releases, each cluster's layers Space. Flux still reads Git | no | `bash onboard/cleanup.sh` |
-| 4 | `CONFIGHUB_OCI=<gateway> CLUSTER=dev FLUX_CONTEXT=<context> bash onboard/handover.sh` | for a cluster already running the layers from Git: puts the root on it, and the root takes each layer over | yes | printed when it stops, and at the end |
-| 4′ | `CONFIGHUB_OCI=<gateway> CLUSTER=<new> FLUX_CONTEXT=<context> bash onboard/join.sh` | for a new cluster with Flux and nothing else: the root brings every layer | yes | printed at the end |
-| 5 | `cub flux status . --cluster dev --kube-context <context> --watch` | keeps ConfigHub told what each layer applied | writes to ConfigHub only | stop it |
-| 6 | `CONFIGHUB_OCI=<gateway> cub flux watch . --out onboard --pull` | proposes each cluster added to `clusters/` | no; a person approves | stop it |
+| 4 | `CONFIGHUB_OCI=<gateway> CLUSTER=<cluster> FLUX_CONTEXT=<context> bash onboard/handover.sh` | for a cluster already running the layers from Git: puts the root on it, and the root takes each layer over ([3](#3-hand-one-cluster-over)) | yes | printed when it stops, and at the end |
+| 4′ | `CONFIGHUB_OCI=<gateway> CLUSTER=<cluster> FLUX_CONTEXT=<context> bash onboard/join.sh` | for a new cluster with Flux and nothing else: the root brings every layer ([4](#4-join-a-new-cluster)) | yes | printed at the end |
+| 5 | `cub flux status . --cluster <cluster> --kube-context <context> --watch` | keeps ConfigHub told what each layer applied, which `--require Healthy` waits for ([5](#5-tell-confighub-what-the-cluster-is-running)) | writes to ConfigHub only | stop it |
+| 6 | `CONFIGHUB_OCI=<gateway> cub flux watch . --require Healthy --out onboard --pull` | proposes each cluster added to `clusters/` ([4](#4-join-a-new-cluster)) | no; a person approves | stop it |
+
+`<cluster>` is the name `cub flux plan` prints: in `dev-1 (clusters/dev)` it is
+`dev-1`, not the directory. `<gateway>` is ConfigHub's OCI host as your clusters
+reach it, without a scheme: `oci.hub.confighub.com` on ConfigHub cloud. Leave out
+`--require Healthy` in steps 1, 2 and 6 to promote on approval alone; `watch`
+must be given what the plan used.
 
 Fleets bootstrapped from Git are handed over too: `handover.sh` suspends
 `flux-system` for the handover, then pauses for you to commit the layers'
@@ -137,25 +171,6 @@ flowchart LR
 `flux-system` is the parent of every layer, the same relationship an Argo app
 of apps has with its children. It is also the one part of the fleet this
 handover never touches — see [the bootstrap stays](#the-bootstrap-stays).
-
-## The words you will meet
-
-- **Layer**: one Flux `Kustomization` — `infrastructure`, `apps`, `tenants`.
-  A handover makes a layer read ConfigHub.
-- **Base**: the directory every cluster's overlay builds on, stored once. A
-  change to the layer is made here.
-- **Variant**: one cluster's copy, holding what that cluster's overlay renders
-  differently — its namespace, image tag, patches and `postBuild` values.
-- **Departure**: a field in which a variant differs from its base.
-- **Layers Space**: one per cluster, `<prefix>-<cluster>-layers`, released to
-  that cluster's Target. It holds one Unit per layer.
-- **Root**: the one `OCIRepository` and `Kustomization`, both named
-  `confighub-root`, that a cluster keeps in `flux-system` to read its layers
-  Space.
-- **Space**, **Component**, **Target**, **Change order**, **Workflow**: as in
-  [`cub sveltos`](https://github.com/confighub/sveltos-confighub) — a Space per
-  base and per variant, a Target per cluster, and stages a change is promoted
-  and approved through.
 
 ## 1. See the plan
 

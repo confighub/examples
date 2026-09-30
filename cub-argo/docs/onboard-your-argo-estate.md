@@ -19,7 +19,9 @@ anything, and the first two commands change nothing at all.
   configuration you review, not objects on a cluster.
 - **ConfigHub knows what is running.** argobot, beside Argo CD, writes each
   Application's live state back to its variant — sync, health, the digest it
-  runs — and makes a published release land at once.
+  runs. With an argobot that has confighub/argobot#14, not yet released, it
+  also makes each published release land at once; until then a release waits
+  for Argo's own poll.
 - **Nothing is recreated.** Every Application keeps its name and its UID, and so
   does every workload. Every step that touches a cluster checks that first and
   prints its way back.
@@ -46,6 +48,27 @@ flowchart LR
   ab -.->|"live status"| v1
 ```
 
+## The words you will meet
+
+- **Layer**: one thing in your Argo tree that syncs a source — the root
+  Application, an app of apps, an ApplicationSet. A handover repoints layers.
+- **Base**: the shared render an app's overlays build on, stored once in
+  ConfigHub. A change to the app is made here.
+- **Variant**: a copy of the base for one cluster, holding only what that
+  cluster's overlay renders differently.
+- **Departure**: a field in which a variant differs from its base.
+- **Unit**: one piece of configuration in ConfigHub — the manifests of one app,
+  or one Argo CD Application.
+- **Release**: a published, immutable version of a Space. A cluster reads
+  releases, never work in progress; each has a digest.
+- **Space**: ConfigHub's folder for configuration. The base and each variant
+  get one; your organization has a quota of them.
+- **Component**: the group of one base and its variants. There is one per app.
+- **Target**: a named destination, one per cluster, plus one for the cluster
+  Argo CD itself runs on. A variant's releases go to its cluster's Target.
+- **Change order**: one change moving through the stages, with an approval
+  recorded in each. **Workflow**: the stages and what each waits for.
+
 ## Install
 
 ```bash
@@ -68,7 +91,7 @@ What each step needs:
 | --- | --- |
 | `cub argo plan`, `cub argo apply` | the plugin. No account, no cluster |
 | `apply.sh` | `cub auth login`, and `kustomize` on your PATH |
-| `handover.sh`, `move-applications.sh` | `kubectl` access to the cluster Argo CD runs on, and to each cluster it deploys to; Argo CD v3.1 or newer |
+| `handover.sh`, `move-applications.sh` | `kubectl` access to the cluster Argo CD runs on, and to each cluster it deploys to; Argo CD v3.1 or newer; an `oci://<gateway>/**` entry in each AppProject's `sourceRepos`, committed to Git (`handover.sh` stops and says so until it is) |
 | `argobot.sh` | the same, and ConfigHub's address as that cluster reaches it |
 
 ## The whole journey on one page
@@ -78,17 +101,22 @@ Run from the root of the repository Argo CD syncs. Each script is written by
 
 | # | Run | What happens | Touches a cluster? | The way back |
 | --- | --- | --- | --- | --- |
-| 1 | `cub argo plan . clusters.json --stage-label rollout-phase --stages canary,secondary,primary` | shows the estate ConfigHub would govern | no | nothing to undo |
-| 2 | `cub argo apply . clusters.json … --out onboard` | writes the files and scripts | no | delete `onboard/` |
+| 1 | `cub argo plan . clusters.json --stage-label rollout-phase --stages canary,secondary,primary` | shows the estate ConfigHub would govern ([1](#1-see-the-plan)) | no | nothing to undo |
+| 2 | `cub argo apply . clusters.json --stage-label rollout-phase --stages canary,secondary,primary --out onboard` | writes the files and scripts ([2](#2-write-the-steps-read-them-run-them)) | no | delete `onboard/` |
 | 3 | `bash onboard/apply.sh` | fills ConfigHub: bases, variants, stages, first releases. Argo still reads Git | no | `bash onboard/cleanup.sh` |
-| 4 | `bash onboard/handover.sh` | proves nothing on any cluster would change, then points `root` and each app of apps at ConfigHub | yes | printed when it stops, and at the end |
-| 5 | retire each ApplicationSet, as step 5 of `handover.sh` prints | a reviewed edit to its Unit: stop it generating | yes | restore the Unit's earlier revision |
-| 6 | `bash onboard/move-applications.sh canary`, then `secondary`, then `primary` | each generated Application becomes a Unit reading its own Space, one stage at a time | yes | printed when it stops, and at the end |
-| 7 | `bash onboard/argobot.sh` | runs argobot: releases land at once, and live status comes back | installs argobot | `kubectl delete namespace argobot` |
+| 4 | `ARGOCD_CONTEXT=<context> DEST_CONTEXT_<cluster>=<context> CONFIGHUB_OCI=<gateway> bash onboard/handover.sh` | points `root` at ConfigHub, prints the reviewed edit that does the same for each app of apps, then checks every Application's release against what Argo owns on its cluster — before any workload's source moves ([3](#3-hand-the-estate-over)) | yes | printed when it stops, and at the end |
+| 5 | retire each ApplicationSet, as the "Retire each ApplicationSet" step of `handover.sh` prints | a reviewed edit to its Unit, so it generates nothing more ([why](#applicationsets-are-retired-not-repointed)) | yes | restore the Unit's earlier revision |
+| 6 | `ARGOCD_CONTEXT=<context> CONFIGHUB_OCI=<gateway> bash onboard/move-applications.sh canary`, then `secondary`, then `primary` | each generated Application becomes a Unit reading its own Space, one stage at a time ([more](#each-application-becomes-a-unit)) | yes | printed when it stops, and at the end |
+| 7 | `ARGOCD_CONTEXT=<context> CONFIGHUB_URL=<ConfigHub address> bash onboard/argobot.sh` | runs argobot: live status comes back ([more](#a-published-release-does-not-arrive-on-its-own)) | installs argobot | `kubectl delete namespace argobot` |
 
 `clusters.json` is your cluster Secrets, exported without their credentials:
 see [When a cluster joins](#when-a-cluster-joins) for the one command that does
-it safely.
+it safely. `<gateway>` is ConfigHub's OCI host as your clusters reach it, without
+a scheme: `oci.hub.confighub.com` on ConfigHub cloud. `DEST_CONTEXT_<cluster>`
+is one variable per cluster Argo deploys to other than its own, with `-` in the
+cluster's name written `_` (`DEST_CONTEXT_prod_1`); step 0 of `handover.sh` names
+any that are missing. `CONFIGHUB_URL` is ConfigHub's address as the Argo CD
+cluster reaches it, such as `https://hub.confighub.com`.
 
 After that, a change is made in ConfigHub: [Making a change
 afterwards](#making-a-change-afterwards). A new cluster is plan, apply and
@@ -114,24 +142,7 @@ from. Each Space then goes in one `cub space delete --recursive --detach`.
 
 **Handover** (steps 4–6) changes which source feeds your clusters, and it is not
 undone by deleting Spaces — put each Application's source back to Git first,
-which `cleanup.sh` checks before it does anything.
-
-## The words you will meet
-
-- **Layer**: one thing in your Argo tree that syncs a source — the root
-  Application, an app of apps, an ApplicationSet. A handover repoints layers.
-- **Base**: the shared render an app's overlays build on, stored once in
-  ConfigHub. A change to the app is made here.
-- **Variant**: a copy of the base for one cluster, holding only what that
-  cluster's overlay renders differently.
-- **Departure**: a field in which a variant differs from its base.
-- **Space**: ConfigHub's folder for configuration. The base and each variant
-  get one; your organization has a quota of them.
-- **Component**: the group of one base and its variants. There is one per app.
-- **Target**: a named destination, one per cluster, plus one for the cluster
-  Argo CD itself runs on. A variant's releases go to its cluster's Target.
-- **Change order**: one change moving through the stages, with an approval
-  recorded in each. **Workflow**: the stages and what each waits for.
+which `cleanup.sh` asks about before it does anything.
 
 ## 1. See the plan
 
@@ -544,7 +555,7 @@ been run end to end against real variant Spaces on two registered clusters; see
   template, source and owner included, within seconds. So a retired
   ApplicationSet also generates nothing: its generators become
   `[{list: {elements: []}}]`. `create-only` never deletes, so every
-  Application it made stays where it is. `handover.sh` step 5 prints both edits,
+  Application it made stays where it is. `handover.sh`'s "Retire each ApplicationSet" step prints both edits,
   to its Unit, and `move-applications.sh` refuses to start until both are live.
 
 ### Each Application becomes a Unit

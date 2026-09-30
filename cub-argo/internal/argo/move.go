@@ -149,8 +149,8 @@ func MoveScript(p *Plan, prefix string) string {
 		add("# A live generator reverts any change to what it made, within a second; and a")
 		add("# create-only one that still generates takes back each Application once it")
 		add("# stands alone, which it does after its move. Measured on Argo CD v3.5.3.")
-		add(`[ "$(k -n "$ns" get applicationset %s -o jsonpath='{.spec.syncPolicy.applicationsSync}')" = create-only ] || { echo "ApplicationSet %s is not retired yet. Retire it through its Unit in %s, as handover.sh step 5 prints, then run this again."; exit 1; }`, c.Source, c.Source, home.Space)
-		add(`[ "$(k -n "$ns" get applicationset %s -o jsonpath='{.spec.generators}')" = '[{"list":{"elements":[]}}]' ] || { echo "ApplicationSet %s still generates. Set its generators to [{list: {elements: []}}] through its Unit in %s, as handover.sh step 5 prints, then run this again."; exit 1; }`, c.Source, c.Source, home.Space)
+		add(`[ "$(k -n "$ns" get applicationset %s -o jsonpath='{.spec.syncPolicy.applicationsSync}')" = create-only ] || { echo "ApplicationSet %s is not retired yet. Retire it through its Unit in %s, as the \"Retire each ApplicationSet\" step of handover.sh prints, then run this again."; exit 1; }`, c.Source, c.Source, home.Space)
+		add(`[ "$(k -n "$ns" get applicationset %s -o jsonpath='{.spec.generators}')" = '[{"list":{"elements":[]}}]' ] || { echo "ApplicationSet %s still generates. Set its generators to [{list: {elements: []}}] through its Unit in %s, as the \"Retire each ApplicationSet\" step of handover.sh prints, then run this again."; exit 1; }`, c.Source, c.Source, home.Space)
 	}
 	add("")
 

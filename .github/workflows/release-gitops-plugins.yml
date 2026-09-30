@@ -147,6 +147,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           plugin="${{ needs.which.outputs.plugin }}"
-          gh release create "${{ needs.which.outputs.tag }}" dist/* \
-            --title "cub ${plugin#cub-} ${{ needs.which.outputs.version }}" \
-            --notes-file notes.md --latest=false
+          tag="${{ needs.which.outputs.tag }}"
+          # A run for a tag that already has a release (workflow_dispatch)
+          # replaces its assets and notes rather than failing.
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" dist/* --clobber
+            gh release edit "$tag" --notes-file notes.md
+          else
+            gh release create "$tag" dist/* \
+              --title "cub ${plugin#cub-} ${{ needs.which.outputs.version }}" \
+              --notes-file notes.md --latest=false
+          fi
