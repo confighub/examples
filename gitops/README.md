@@ -21,7 +21,7 @@ change it safely before anything touches a live cluster.
 | App-of-apps plus ApplicationSets, cluster labels, staged rollout, sync windows | Argo CD | Expert | Ready | [`argo/expert-app-of-apps`](./argo/expert-app-of-apps/README.md) |
 | Bootstrap plus clusters plus apps, namespace per team, branch promotion, post-build substitution | Flux | Expert | Ready | [`flux/expert-fleet`](./flux/expert-fleet/README.md) |
 | Several teams on one cluster | Flux | Expert | Ready | [`flux/expert-multi-tenant`](./flux/expert-multi-tenant/README.md) |
-| Drift, failed sync, and bad-commit states | Argo CD and Flux | Expert | Planned | not yet added |
+| Drift, failed sync, and bad-commit states | Argo CD and Flux | Expert | Ready | [`expert-broken-states`](./expert-broken-states/README.md) |
 
 "Ready" means the example is fully built: it has a README, an AI guide, a
 machine-readable contract, and scripts that render and can upload into
@@ -66,8 +66,9 @@ for the Argo and Flux beginner and expert descriptions.
   NetworkPolicy. `flux/expert-fleet` also includes one tenant, on its own
   dedicated cluster, if you want the fleet-plus-tenancy shape instead.
 - **I want to see what a broken GitOps state looks like (drift, a failed
-  sync, a bad commit) and how it gets caught.** No broken-state example
-  exists yet; it is planned (see the table above).
+  sync, a bad commit) and how it gets caught.** Start with
+  [`expert-broken-states`](./expert-broken-states/README.md): one app,
+  delivered by both Argo CD and Flux, in three documented states.
 
 If none of these match, the two beginner examples are still the fastest way
 to see how this repo's ConfigHub upload and verification flow works: read

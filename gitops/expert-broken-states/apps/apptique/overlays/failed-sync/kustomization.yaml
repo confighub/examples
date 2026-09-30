@@ -1,0 +1,29 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# This overlay is the "failed sync" state: the healthy app plus one extra
+# resource, a RedisCache custom resource whose CRD is not installed. See
+# redis-cache.yaml and ../../../scenarios/02-failed-sync/README.md.
+#
+# It builds on ../healthy, so it has the same namespace
+# (apptique-broken-states), the same labels and the same Deployment,
+# Service and ServiceAccount. Pointing the existing Argo CD Application or
+# Flux Kustomization at this overlay adds the RedisCache to the running
+# app in place, the way a real commit would, and the scenario's
+# diagnostics read that same namespace.
+#
+# The inherited resources keep the healthy overlay's "scenario: healthy"
+# label, because they are the healthy resources. The added RedisCache
+# carries "scenario: failed-sync" in redis-cache.yaml.
+#
+# setup.sh never uploads this overlay and nothing in this example applies
+# it to a cluster. verify.sh renders it locally to show the exact broken
+# resource, offline.
+
+# Applied to every resource, so the added RedisCache lands in the same
+# namespace as the inherited healthy resources (which already have it).
+namespace: apptique-broken-states
+
+resources:
+  - ../healthy
+  - redis-cache.yaml

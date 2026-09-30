@@ -1,0 +1,39 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# This overlay is the "bad commit" state: the healthy app with one field
+# changed. Everything still renders, applies cleanly and reports healthy,
+# and the app is unreachable anyway. See
+# ../../../scenarios/03-bad-commit/README.md.
+#
+# It builds on ../healthy, so it has the same namespace
+# (apptique-broken-states), the same labels and the same Deployment. The
+# one change is the frontend Service's targetPort: 80 becomes 8080. The
+# nginx container still listens on 80, and its readiness and liveness
+# probes still check 80, so the pods start, pass their probes and go Ready,
+# and the Deployment rolls out. Kubernetes has no rule that a Service's
+# targetPort must match a port the container declares or listens on, so
+# nothing fails to apply. The Service's endpoints are the Ready pods, on
+# port 8080, where nothing is listening: every request through the Service
+# is refused.
+#
+# It keeps the healthy overlay's "scenario: healthy" label on every
+# resource. Relabelling would add lines to the diff, and the point of this
+# overlay is that the diff is the one targetPort line.
+#
+# setup.sh never uploads this overlay and nothing in this example applies
+# it to a cluster. verify.sh renders it locally to show the exact broken
+# field, offline. scenarios/03-bad-commit/README.md has an optional,
+# person-run step that uploads it to ConfigHub.
+
+resources:
+  - ../healthy
+
+patches:
+  - target:
+      kind: Service
+      name: frontend
+    patch: |
+      - op: replace
+        path: /spec/ports/0/targetPort
+        value: 8080
