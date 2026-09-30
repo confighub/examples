@@ -302,3 +302,26 @@ func TestRootClusterLabelIsAString(t *testing.T) {
 		}
 	}
 }
+
+// From review on #262: a root made before roots named their cluster, under
+// another prefix, is read by its Space's name under the prefix its Secret
+// was made under.
+func TestUnlabelledRootUnderAnotherPrefix(t *testing.T) {
+	const fleet = "gitops/flux/expert-fleet"
+	root := handedOver(t, fleet, "dev", "old-dev-1-layers")
+	file := filepath.Join(root, fleet, "clusters", "dev", RootName+".yaml")
+	y, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(file, []byte(strings.Replace(string(y), "name: confighub-flux-targets", "name: confighub-old-targets", 1)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var found bool
+	for _, c := range planAt(t, root, fleet).Clusters {
+		found = found || (c.Name == "dev-1" && c.LayersSpace == "old-dev-1-layers")
+	}
+	if !found {
+		t.Errorf("clusters/dev is dev-1, from old-dev-1-layers under the prefix old")
+	}
+}

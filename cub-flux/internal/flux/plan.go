@@ -303,13 +303,25 @@ func (b *builder) readClusters() map[string]map[string]Doc {
 			}
 		}
 		if layersSpace != "" {
-			// The root names its cluster; a root made before it did is read by
-			// its Space's name, which this prefix must have made.
+			// The root names its cluster. A root made before it did is read by
+			// its Space's name, under this prefix or the one its Secret was
+			// made under.
+			prefixes := []string{b.opts.Prefix}
+			if old, ok := strings.CutPrefix(pullSecret, "confighub-"); ok {
+				if old, ok = strings.CutSuffix(old, "-targets"); ok && old != b.opts.Prefix {
+					prefixes = append(prefixes, old)
+				}
+			}
 			if rootName != "" && len(byName) == 0 {
 				name = rootName
-			} else if cn, ok := strings.CutPrefix(layersSpace, b.opts.Prefix+"-"); ok {
-				if cn, ok = strings.CutSuffix(cn, "-layers"); ok && len(byName) == 0 {
-					name = cn
+			} else if len(byName) == 0 {
+				for _, pre := range prefixes {
+					if cn, ok := strings.CutPrefix(layersSpace, pre+"-"); ok {
+						if cn, ok = strings.CutSuffix(cn, "-layers"); ok {
+							name = cn
+							break
+						}
+					}
 				}
 			}
 			if len(byName) > 0 {
