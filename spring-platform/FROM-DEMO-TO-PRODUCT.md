@@ -156,7 +156,8 @@ cub-gen springboot set-embedded-config \
   --configmap my-service-config \
   feature.myservice.reservationMode optimistic
 
-# Step 5: Initiative GUI proof
+# Step 5: Initiative GUI proof, from the cub-gen repo root
+cd /path/to/cub-gen
 ./examples/springboot-paas/demo-initiative-gui.sh
 jq '.scenarios[] | {title, changed_field, route, decision, source_file, next_actions}' \
   .tmp/springboot-initiative-gui/initiative-card.json

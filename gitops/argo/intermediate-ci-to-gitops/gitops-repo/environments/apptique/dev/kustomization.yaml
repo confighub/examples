@@ -1,0 +1,30 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: apptique-dev
+
+resources:
+  - ../base
+  - namespace.yaml
+
+labels:
+  - pairs:
+      environment: dev
+
+# CI writes here. Every merge of the app repo's build-and-open-gitops-pr
+# workflow (see ../../app-repo/.github/workflows/) lands as a change to the
+# "newTag" value below, nothing else. That one line is the entire "deploy":
+# app-repo never touches a cluster, it only proposes a pull request against
+# this line.
+images:
+  - name: ghcr.io/confighub/apptique-frontend
+    newTag: v1.4.0
+
+patches:
+  - target:
+      kind: Deployment
+      name: frontend
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 1

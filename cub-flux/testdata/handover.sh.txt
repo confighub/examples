@@ -1,0 +1,481 @@
+#!/usr/bin/env bash
+# Move this Flux fleet onto ConfigHub. Written by `cub flux apply`.
+# Read it, then run it, one cluster at a time:
+#
+#   FLUX_CONTEXT=<kubectl context of one cluster> bash handover.sh
+#
+# Run apply.sh first. Each layer keeps its Kustomization, its name and its
+# inventory; only the source changes, so nothing is reinstalled.
+#
+# Rehearsed end to end on Flux v2.8.6 against ConfigHub v0.6.2: every UID
+# survived, including the Pod's, and the rollout revision did not change.
+# Your fleet is not that one. Read every step before running it, and start
+# with one non-production cluster.
+set -euo pipefail
+cd "$(dirname "$0")"
+ctx=${FLUX_CONTEXT:-$(kubectl config current-context 2>/dev/null || true)}
+[ -n "$ctx" ] || { echo "no kubectl context: set FLUX_CONTEXT to the cluster to hand over"; exit 1; }
+k() { kubectl --context "$ctx" "$@"; }
+step() { printf '\n== %s\n' "$*"; }
+ns=${FLUX_NAMESPACE:-flux-system}
+cluster=${CLUSTER:-}
+# The comparison below re-renders from the repository, so it needs it.
+REPO_ROOT=${REPO_ROOT:-'<repo>'}
+case "$cluster" in dev-1|staging-1|prod-1) ;; *) echo "set CLUSTER=<one of: dev-1, staging-1, prod-1> so the right Target is used"; exit 1 ;; esac
+
+step "0/4 Check before changing anything"
+cub auth status >/dev/null 2>&1 || { echo "cub is not logged in: run cub auth login"; exit 1; }
+echo "  every kubectl call below uses context $ctx"
+k get namespace "$ns" >/dev/null || { echo "no $ns namespace: is this the right cluster?"; exit 1; }
+# flux-system reconciles the Flux controllers themselves. It is the way back
+# if anything here goes wrong, so it stays on Git and is never repointed.
+echo 'Left alone: gitops/flux/expert-fleet/clusters/dev/flux-system'
+echo 'Left alone: gitops/flux/expert-fleet/clusters/prod/flux-system'
+echo 'Left alone: gitops/flux/expert-fleet/clusters/staging/flux-system'
+# A layer another Kustomization applies from Git (flux-system, in a fleet made
+# with flux bootstrap) cannot simply be taken over: that owner re-applies it,
+# and when the layer later leaves its Git, the owner deletes it, and the layer's
+# pruning deletes everything it runs, unless the root applied it last. Measured
+# on Flux v2.8.6. So such a fleet is handed over with that owner suspended, and
+# the owner resumes only once its Git no longer defines the layers.
+owners=""
+owner_of() { k -n "$ns" get kustomization "$1" -o jsonpath='{.metadata.labels.kustomize\.toolkit\.fluxcd\.io/name}' 2>/dev/null || true; }
+o=$(owner_of 'infrastructure'); case "$o" in ""|confighub-root) ;; *) case " $owners " in *" $o "*) ;; *) owners="$owners $o" ;; esac ;; esac
+o=$(owner_of 'apps'); case "$o" in ""|confighub-root) ;; *) case " $owners " in *" $o "*) ;; *) owners="$owners $o" ;; esac ;; esac
+o=$(owner_of 'tenants'); case "$o" in ""|confighub-root) ;; *) case " $owners " in *" $o "*) ;; *) owners="$owners $o" ;; esac ;; esac
+case "$cluster" in dev-1) o=$(owner_of 'image-automation'); case "$o" in ""|confighub-root) ;; *) case " $owners " in *" $o "*) ;; *) owners="$owners $o" ;; esac ;; esac ;; esac
+case "$cluster" in
+  dev-1) dir='gitops/flux/expert-fleet/clusters/dev' ;;
+  staging-1) dir='gitops/flux/expert-fleet/clusters/staging' ;;
+  prod-1) dir='gitops/flux/expert-fleet/clusters/prod' ;;
+esac
+# The files that define each layer for this cluster: what the commit removes.
+layer_files=""
+[ "$cluster" != 'dev-1' ] || layer_files="$layer_files gitops/flux/expert-fleet/clusters/dev/infrastructure.yaml"
+[ "$cluster" != 'staging-1' ] || layer_files="$layer_files gitops/flux/expert-fleet/clusters/staging/infrastructure.yaml"
+[ "$cluster" != 'prod-1' ] || layer_files="$layer_files gitops/flux/expert-fleet/clusters/prod/infrastructure.yaml"
+[ "$cluster" != 'dev-1' ] || layer_files="$layer_files gitops/flux/expert-fleet/clusters/dev/apps.yaml"
+[ "$cluster" != 'staging-1' ] || layer_files="$layer_files gitops/flux/expert-fleet/clusters/staging/apps.yaml"
+[ "$cluster" != 'prod-1' ] || layer_files="$layer_files gitops/flux/expert-fleet/clusters/prod/apps.yaml"
+[ "$cluster" != 'dev-1' ] || layer_files="$layer_files gitops/flux/expert-fleet/clusters/dev/tenants.yaml"
+[ "$cluster" != 'staging-1' ] || layer_files="$layer_files gitops/flux/expert-fleet/clusters/staging/tenants.yaml"
+[ "$cluster" != 'prod-1' ] || layer_files="$layer_files gitops/flux/expert-fleet/clusters/prod/tenants.yaml"
+[ "$cluster" != 'dev-1' ] || layer_files="$layer_files gitops/flux/expert-fleet/clusters/dev/image-automation.yaml"
+owner=""
+# A re-run finds the layers already the root's. The owner a first run
+# suspended is in its state, and the run carries on from there.
+owner_file="handover-state/$cluster.owner"
+if [ -z "$owners" ] && [ -f "$owner_file" ]; then owners=$(cat "$owner_file"); echo "  continuing: $owners was suspended by an earlier run"; fi
+if [ -n "$owners" ]; then
+  set -- $owners
+  [ $# -eq 1 ] || { echo "The layers are applied by several Kustomizations:$owners. This handover moves them from one owner at a time." >&2; exit 1; }
+  owner=$1
+  [ "$(k -n "$ns" get kustomization "$owner" -o jsonpath='{.spec.sourceRef.kind}')" = GitRepository ] || { echo "Kustomization $owner applies the layers but does not read Git; this handover cannot move them from it." >&2; exit 1; }
+  echo "  the layers are applied by Kustomization $owner from Git: it will be suspended while the root takes them over, and resumed once Git no longer defines them"
+fi
+
+step "1/4 Prove each layer holds what Git renders today"
+# Every layer prunes, so anything a release does not hold is deleted from
+# the cluster. This renders from the repository now rather than trusting
+# what apply.sh left in render/: Git may have moved since, and a stale
+# comparison would pass while the cluster applies something else.
+command -v kustomize >/dev/null || { echo "kustomize is not on PATH; this step re-renders with it"; exit 1; }
+[ -d "$REPO_ROOT" ] || { echo "REPO_ROOT=$REPO_ROOT is not a directory: point it at the repository checkout"; exit 1; }
+echo "  rendering with $(kustomize version)"
+if ! git -C "$REPO_ROOT" diff --quiet 2>/dev/null; then
+  echo "  note: $REPO_ROOT has uncommitted changes, so this renders something Flux is not applying" >&2
+fi
+# same <space> <unit> <path>
+same() {
+  local fresh got rc=0
+  fresh=$(mktemp); got=$(mktemp)
+  kustomize build ${KUSTOMIZE_FLAGS:-} "$REPO_ROOT/$3" > "$fresh" || { rm -f "$fresh" "$got"; return 1; }
+  cub unit data --space "$1" "$2" > "$got" || { rm -f "$fresh" "$got"; return 1; }
+  if diff -q <(grep -v '^\s*#' "$fresh") <(grep -v '^\s*#' "$got") >/dev/null; then
+    echo "  $1 holds what $3 renders today"
+  else
+    echo "  $1 DIFFERS from what $3 renders today. Swapping its source would prune the difference." >&2
+    echo "  Re-run apply.sh to bring ConfigHub up to date, then read the diff before swapping." >&2
+    diff -u <(grep -v '^\s*#' "$fresh") <(grep -v '^\s*#' "$got") | head -40 >&2
+    rc=1
+  fi
+  rm -f "$fresh" "$got"; return $rc
+}
+[ "$cluster" = 'dev-1' ] && same 'flux-infrastructure-dev-1' 'infrastructure' 'gitops/flux/expert-fleet/infrastructure/dev'
+[ "$cluster" = 'staging-1' ] && same 'flux-infrastructure-staging-1' 'infrastructure' 'gitops/flux/expert-fleet/infrastructure/staging'
+[ "$cluster" = 'prod-1' ] && same 'flux-infrastructure-prod-1' 'infrastructure' 'gitops/flux/expert-fleet/infrastructure/prod'
+[ "$cluster" = 'dev-1' ] && same 'flux-apps-dev-1' 'apps' 'gitops/flux/expert-fleet/apps/dev'
+[ "$cluster" = 'staging-1' ] && same 'flux-apps-staging-1' 'apps' 'gitops/flux/expert-fleet/apps/staging'
+[ "$cluster" = 'prod-1' ] && same 'flux-apps-prod-1' 'apps' 'gitops/flux/expert-fleet/apps/prod'
+[ "$cluster" = 'dev-1' ] && same 'flux-tenants-dev-1' 'tenants' 'gitops/flux/expert-fleet/tenants/dev'
+[ "$cluster" = 'staging-1' ] && same 'flux-tenants-staging-1' 'tenants' 'gitops/flux/expert-fleet/tenants/staging'
+[ "$cluster" = 'prod-1' ] && same 'flux-tenants-prod-1' 'tenants' 'gitops/flux/expert-fleet/tenants/prod'
+[ "$cluster" = 'dev-1' ] && same 'flux-image-automation-dev-1' 'image-automation' 'gitops/flux/expert-fleet/image-automation'
+
+# And the question the comparison above cannot reach: does what ConfigHub
+# would deliver equal what this layer has actually applied? Flux's own
+# status.inventory is the record. Every layer here prunes, so an object it
+# applied that the release does not hold is deleted the moment the source
+# is swapped, whether or not it was ever in Git.
+if [ "$cluster" = 'dev-1' ]; then
+  space_infrastructure='flux-infrastructure-dev-1'
+  digest_infrastructure=$(cub release get --space 'flux-infrastructure-dev-1' --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')
+  cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'infrastructure' --space 'flux-infrastructure-dev-1' --unit 'infrastructure' --release "$digest_infrastructure"
+fi
+if [ "$cluster" = 'staging-1' ]; then
+  space_infrastructure='flux-infrastructure-staging-1'
+  digest_infrastructure=$(cub release get --space 'flux-infrastructure-staging-1' --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')
+  cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'infrastructure' --space 'flux-infrastructure-staging-1' --unit 'infrastructure' --release "$digest_infrastructure"
+fi
+if [ "$cluster" = 'prod-1' ]; then
+  space_infrastructure='flux-infrastructure-prod-1'
+  digest_infrastructure=$(cub release get --space 'flux-infrastructure-prod-1' --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')
+  cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'infrastructure' --space 'flux-infrastructure-prod-1' --unit 'infrastructure' --release "$digest_infrastructure"
+fi
+if [ "$cluster" = 'dev-1' ]; then
+  space_apps='flux-apps-dev-1'
+  digest_apps=$(cub release get --space 'flux-apps-dev-1' --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')
+  cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'apps' --space 'flux-apps-dev-1' --unit 'apps' --release "$digest_apps"
+fi
+if [ "$cluster" = 'staging-1' ]; then
+  space_apps='flux-apps-staging-1'
+  digest_apps=$(cub release get --space 'flux-apps-staging-1' --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')
+  cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'apps' --space 'flux-apps-staging-1' --unit 'apps' --release "$digest_apps"
+fi
+if [ "$cluster" = 'prod-1' ]; then
+  space_apps='flux-apps-prod-1'
+  digest_apps=$(cub release get --space 'flux-apps-prod-1' --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')
+  cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'apps' --space 'flux-apps-prod-1' --unit 'apps' --release "$digest_apps"
+fi
+if [ "$cluster" = 'dev-1' ]; then
+  space_tenants='flux-tenants-dev-1'
+  digest_tenants=$(cub release get --space 'flux-tenants-dev-1' --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')
+  cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'tenants' --space 'flux-tenants-dev-1' --unit 'tenants' --release "$digest_tenants"
+fi
+if [ "$cluster" = 'staging-1' ]; then
+  space_tenants='flux-tenants-staging-1'
+  digest_tenants=$(cub release get --space 'flux-tenants-staging-1' --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')
+  cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'tenants' --space 'flux-tenants-staging-1' --unit 'tenants' --release "$digest_tenants"
+fi
+if [ "$cluster" = 'prod-1' ]; then
+  space_tenants='flux-tenants-prod-1'
+  digest_tenants=$(cub release get --space 'flux-tenants-prod-1' --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')
+  cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'tenants' --space 'flux-tenants-prod-1' --unit 'tenants' --release "$digest_tenants"
+fi
+if [ "$cluster" = 'dev-1' ]; then
+  space_image_automation='flux-image-automation-dev-1'
+  digest_image_automation=$(cub release get --space 'flux-image-automation-dev-1' --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')
+  cub flux check --kube-context "$ctx" --namespace 'flux-system' --kustomization 'image-automation' --space 'flux-image-automation-dev-1' --unit 'image-automation' --release "$digest_image_automation"
+fi
+
+# What no controller claims in this fleet, as a cross-check. cub-scout
+# infers ownership where the inventory is Flux's own record, so this is
+# not a gate: it finds what was applied by hand and would be left behind.
+if cub scout --help >/dev/null 2>&1; then
+  cub scout map list -q "owner=Native" || true
+else
+  echo "  cub-scout is not installed; skipping the unclaimed-resource cross-check"
+fi
+
+step "2/4 Add the gateway to flux-system: the credential and the root"
+# These cannot come from ConfigHub: a Kustomization cannot read a source that
+# does not exist yet. They go into the bootstrap directory, which is the one
+# part of this fleet that stays on Git; every layer after them comes from the
+# cluster's layers Space in ConfigHub.
+addr=${CONFIGHUB_OCI:-}
+if [ -z "$addr" ]; then
+  echo "Set CONFIGHUB_OCI to the gateway host this cluster reaches, without a scheme."
+  echo "  ConfigHub cloud:  oci.hub.confighub.com"
+  echo "  self-hosted:      the host and port of the confighub-oci-server service,"
+  echo "                    as reachable FROM this cluster, not from your laptop;"
+  echo "                    set CONFIGHUB_OCI_PLAIN_HTTP=1 if it serves plain HTTP."
+  echo "Then: CONFIGHUB_OCI=<host> CLUSTER=$cluster bash handover.sh"; exit 1
+fi
+# The ID and secret go from cub into the Secret through command substitution
+# and are never written to disk. --dry-run | apply keeps this re-runnable.
+k create secret docker-registry confighub-flux-targets --namespace "$ns" \
+  --docker-server="$addr" \
+  --docker-username="$(cub worker get --space flux-targets server-worker -o jq=.BridgeWorker.BridgeWorkerID | tr -d '\"\n')" \
+  --docker-password="$(cub worker get --space flux-targets server-worker --include-secret -o jq=.BridgeWorker.Secret | tr -d '\"\n')" \
+  --dry-run=client -o yaml | k apply -f -
+
+# The root: one source and one Kustomization, reading this cluster's layers
+# Space, which apply.sh filled and released. It is all this cluster needs
+# from outside ConfigHub, so it goes into the bootstrap directory with the
+# credential; every layer after it comes from ConfigHub.
+mkdir -p "bootstrap/$cluster"
+insecure=false; [ -z "${CONFIGHUB_OCI_PLAIN_HTTP:-}" ] || insecure=true
+layers_space='flux-'"$cluster"'-layers'
+layers_digest=$(cub release get --space "$layers_space" --oci-reference latest -o jq=.Release.ManifestDigest 2>/dev/null | tr -d '"') || true
+[ -n "$layers_digest" ] || { echo "$layers_space has no published release: run apply.sh with CONFIGHUB_OCI set first"; exit 1; }
+echo "  $layers_space is at $layers_digest"
+layers_still_current() { local now; now=$(cub release get --space "$layers_space" --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"'); [ "$now" = "$layers_digest" ] || { echo "  $layers_space was republished since it was read ($layers_digest, now $now); run again to check what is published now" >&2; return 1; }; }
+root_applied_checked() { local a; a=$(k -n "$ns" get kustomization confighub-root -o jsonpath='{.status.lastAppliedRevision}'); [ "${a##*@}" = "$layers_digest" ] || { echo "  the root applied $a, not the checked $layers_digest" >&2; return 1; }; }
+cat <<'YAML' | sed -e "s|__CONFIGHUB_OCI__|$addr|" -e "s|__CONFIGHUB_OCI_INSECURE__|$insecure|" -e "s|__FLUX_NAMESPACE__|$ns|" -e "s|__CLUSTER__|$cluster|" > "bootstrap/$cluster/confighub-root.yaml"
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: OCIRepository
+metadata:
+  name: confighub-root
+  namespace: __FLUX_NAMESPACE__
+  labels:
+    confighub.com/cluster: "__CLUSTER__"
+spec:
+  interval: 1m
+  url: oci://__CONFIGHUB_OCI__/space/flux-__CLUSTER__-layers
+  ref:
+    tag: latest
+  secretRef:
+    name: confighub-flux-targets
+  insecure: __CONFIGHUB_OCI_INSECURE__
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: confighub-root
+  namespace: __FLUX_NAMESPACE__
+  labels:
+    confighub.com/cluster: "__CLUSTER__"
+spec:
+  interval: 10m
+  path: ./
+  prune: true
+  sourceRef:
+    kind: OCIRepository
+    name: confighub-root
+YAML
+echo "Commit bootstrap/$cluster/ into this cluster's flux-system path so the root survives a reconcile."
+
+step "3/4 Hand the layers to the root, which reads them from ConfigHub"
+# Each layer keeps its name, so Flux keeps the inventory of what it applied,
+# and nothing is recreated. The root applies the layer's own Kustomization
+# from ConfigHub, which differs from the one on the cluster only in its
+# sourceRef and path, and so takes it over: that is the whole move.
+#
+# Each layer's sourceRef and path are recorded first. If anything below stops
+# the script, the way back is printed; nothing is rolled back automatically.
+state="handover-state/$cluster.txt"; log="handover-state/$cluster.log"
+mkdir -p handover-state; touch "$state"
+log() { printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >> "$log"; }
+moved=""; current=""; finished=0; incomplete=""; held=""; suspended_owner=""
+# record <layer>: name|kind|source|source namespace|path, as the cluster had it
+record() {
+  grep -q "^$1|" "$state" && return 0
+  local was
+  was=$(k -n "$ns" get kustomization "$1" -o jsonpath='{.metadata.name}{"|"}{.spec.sourceRef.kind}{"|"}{.spec.sourceRef.name}{"|"}{.spec.sourceRef.namespace}{"|"}{.spec.path}')
+  case "$was" in
+    *"|OCIRepository|"*) echo "  $1 already reads an OCIRepository, and no original was recorded for it here" >&2 ;;
+    *) printf '%s\n' "$was" >> "$state"; log "recorded $was" ;;
+  esac
+}
+# way_back [all]: the commands that put the layers back on Git, for the ones
+# this run moved, or with "all" for every layer recorded for this cluster.
+way_back() {
+  local name kind src srcns path ref
+  echo "  # first, so that removing the root cannot delete the layers:"
+  echo "  kubectl --context '$ctx' -n '$ns' patch kustomization confighub-root --type merge -p '{\"spec\":{\"suspend\":true,\"prune\":false}}'"
+  while IFS='|' read -r name kind src srcns path; do
+    case " $moved " in *" $name "*) ;; *) [ "${1:-}" = all ] || continue ;; esac
+    ref="\"kind\":\"$kind\",\"name\":\"$src\""
+    [ -z "$srcns" ] || ref="$ref,\"namespace\":\"$srcns\""
+    echo "  kubectl --context '$ctx' -n '$ns' patch kustomization $name --type merge -p '{\"spec\":{\"sourceRef\":{$ref},\"path\":\"$path\"}}'"
+  done < "$state"
+  echo "  kubectl --context '$ctx' -n '$ns' delete kustomization confighub-root"
+  echo "  kubectl --context '$ctx' -n '$ns' delete ocirepository confighub-root"
+  [ -z "$suspended_owner" ] || echo "  kubectl --context '$ctx' -n '$ns' patch kustomization $suspended_owner --type merge -p '{\"spec\":{\"suspend\":false}}'   # its Git still defines the layers"
+}
+stopped() {
+  local rc=$?
+  [ "$finished" = 1 ] && return
+  echo >&2
+  if [ -z "$moved" ]; then
+    echo "Stopped (exit $rc) before the root was applied: no layer's source was changed." >&2
+    [ -z "$suspended_owner" ] || echo "  $suspended_owner was suspended; resume it: kubectl --context '$ctx' -n '$ns' patch kustomization $suspended_owner --type merge -p '{\"spec\":{\"suspend\":false}}'" >&2
+    return
+  fi
+  log "stopped at ${current:-?}, exit $rc"
+  echo "HANDOVER STOPPED at ${current:-?} (exit $rc), on context $ctx." >&2
+  echo "The root is applied, so these layers read ConfigHub, or are moving to:$moved" >&2
+  echo "Nothing is rolled back automatically. To put them back on Git, in this order:" >&2
+  way_back >&2
+  echo "Each layer's original is in $state; what happened is in $log." >&2
+}
+trap stopped EXIT
+# still_current <layer>: the release checked in step 1 is still the newest.
+still_current() {
+  local dv sv want now
+  dv="digest_$(printf '%s' "$1" | tr -- '-./' '___')"; want=${!dv:-}
+  sv="space_$(printf '%s' "$1" | tr -- '-./' '___')"
+  [ -n "$want" ] || { echo "  $1: no checked release digest was recorded for it" >&2; return 1; }
+  now=$(cub release get --space "${!sv}" --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')
+  [ "$now" = "$want" ] || { echo "  $1: checked release $want, but ${!sv} now publishes $now; re-run to check that one" >&2; return 1; }
+}
+# arrived <layer>: the root has taken it over, it is Ready, and it applied
+# the release that was checked.
+arrived() {
+  current=$1
+  local dv want applied
+  dv="digest_$(printf '%s' "$1" | tr -- '-./' '___')"; want=${!dv:-}
+  k -n "$ns" wait --for=jsonpath='{.spec.sourceRef.kind}'=OCIRepository "kustomization/$1" --timeout=3m >/dev/null
+  if ! k -n "$ns" wait --for=condition=Ready "kustomization/$1" --timeout=5m; then
+    log "NOT Ready $1: $(k -n "$ns" get kustomization "$1" -o jsonpath='{.status.conditions[?(@.type=="Ready")].message}' 2>&1 || true)"
+    return 1
+  fi
+  applied=$(k -n "$ns" get kustomization "$1" -o jsonpath='{.status.lastAppliedRevision}')
+  if [ "${applied##*@}" != "$want" ]; then
+    log "$1 applied $applied, not the checked $want"
+    echo "  $1: Flux applied $applied, but $want was checked: a newer release went out unchecked" >&2
+    return 1
+  fi
+  log "Ready $1 at $applied, from the root"
+}
+# committed: the revision the owner reads no longer defines this cluster's
+# layers, and does define the root.
+committed() {
+  local src srcns rev sha f
+  src=$(k -n "$ns" get kustomization "$owner" -o jsonpath='{.spec.sourceRef.name}')
+  srcns=$(k -n "$ns" get kustomization "$owner" -o jsonpath='{.spec.sourceRef.namespace}')
+  rev=$(k -n "${srcns:-$ns}" get gitrepository "$src" -o jsonpath='{.status.artifact.revision}')
+  sha=${rev##*:}
+  git -C "$REPO_ROOT" cat-file -e "$sha^{commit}" 2>/dev/null || { why="$owner reads $rev, which $REPO_ROOT does not have: pull it there"; return 1; }
+  for f in $layer_files; do
+    if git -C "$REPO_ROOT" cat-file -e "$sha:$f" 2>/dev/null; then why="$rev still has $f"; return 1; fi
+  done
+  git -C "$REPO_ROOT" grep -q "name: confighub-root" "$sha" -- "$dir" || { why="$rev does not define the root under $dir"; return 1; }
+  seen_rev=$rev
+}
+bootstrapped_finish() {
+  local l i why="" seen_rev=""
+  for l in $moved; do
+    [ "$(owner_of "$l")" = confighub-root ] || { echo "  $l is not owned by the root; $owner stays suspended" >&2; return 1; }
+  done
+  if ! committed; then
+    k -n "$ns" annotate --overwrite "gitrepository/$(k -n "$ns" get kustomization "$owner" -o jsonpath='{.spec.sourceRef.name}')" "reconcile.fluxcd.io/requestedAt=$(date +%s)" >/dev/null 2>&1 || true
+    for i in $(seq 1 12); do committed && break; sleep 5; done
+  fi
+  if [ -z "$seen_rev" ]; then
+    log "paused: $why"
+    echo
+    echo "PAUSED: every layer is the root's now, and $owner is suspended. ($why)"
+    echo "Make one commit in the repository $owner reads, and push it:"
+    for l in $layer_files; do echo "  git rm $l"; done
+    echo "  cp $PWD/bootstrap/$cluster/confighub-root.yaml $dir/confighub-root.yaml && git add $dir/confighub-root.yaml"
+    echo "  git commit -m 'Layers of $cluster come from ConfigHub' && git push      # in $REPO_ROOT"
+    echo "Then run this script again. It resumes $owner only once that commit is what $owner reads."
+    echo "Do NOT resume $owner by hand before then: it would re-apply the layers from Git, and then delete them, and everything they run, when the commit lands."
+    echo "To go back instead, in this order:"
+    way_back
+    finished=1
+    exit 2
+  fi
+  log "$owner reads $seen_rev: the layers are gone from its Git and the root is in it"
+  k -n "$ns" patch kustomization "$owner" --type merge -p '{"spec":{"suspend":false}}' >/dev/null
+  k -n "$ns" annotate --overwrite "kustomization/$owner" "reconcile.fluxcd.io/requestedAt=$(date +%s)" >/dev/null
+  for i in $(seq 1 36); do [ "$(k -n "$ns" get kustomization "$owner" -o jsonpath='{.status.lastAppliedRevision}')" = "$seen_rev" ] && break; sleep 5; done
+  suspended_owner=""
+  mv "$owner_file" "$owner_file.resumed"
+  log "resumed $owner at $seen_rev"
+  for l in $moved; do
+    k -n "$ns" get kustomization "$l" >/dev/null || { echo "  $l is gone after $owner resumed" >&2; return 1; }
+    [ "$(owner_of "$l")" = confighub-root ] || { echo "  $l is owned by $(owner_of "$l") after $owner resumed" >&2; return 1; }
+  done
+  [ "$(owner_of confighub-root)" = "$owner" ] && log "the root is now $owner's, from Git" || echo "  note: the root is not yet in $owner's inventory"
+  echo "  $owner resumed at $seen_rev; every layer is still the root's"
+}
+record 'infrastructure'
+record 'apps'
+record 'tenants'
+case "$cluster" in dev-1) record 'image-automation' ;; esac
+still_current 'infrastructure'
+still_current 'apps'
+still_current 'tenants'
+case "$cluster" in dev-1) still_current 'image-automation' ;; esac
+if [ -n "$owner" ]; then
+  if [ "$(k -n "$ns" get kustomization "$owner" -o jsonpath='{.spec.suspend}')" != true ]; then
+    k -n "$ns" patch kustomization "$owner" --type merge -p '{"spec":{"suspend":true}}' >/dev/null
+    log "suspended $owner"
+  fi
+  printf '%s\n' "$owner" > "$owner_file"
+  suspended_owner=$owner
+fi
+layers_still_current
+current=confighub-root
+k apply -f "bootstrap/$cluster/confighub-root.yaml"
+moved="$moved infrastructure"
+moved="$moved apps"
+moved="$moved tenants"
+case "$cluster" in dev-1) moved="$moved image-automation" ;; esac
+log "applied the root; it reads $layers_space"
+k -n "$ns" wait --for=condition=Ready "kustomization/confighub-root" --timeout=5m
+root_applied_checked
+arrived 'infrastructure'
+arrived 'apps'
+arrived 'tenants'
+case "$cluster" in dev-1) arrived 'image-automation' ;; esac
+current=""
+if [ -n "$owner" ]; then
+  bootstrapped_finish
+fi
+
+step "4/4 What is left, and what it means"
+# A patch is not a suspension until the cluster says so: read it back. And
+# an object a Kustomization applies from Git is that Kustomization's, so a
+# patch on the cluster may not outlast its next reconcile.
+suspend_automation() {
+  local got owner where
+  if ! got=$(k -n "$ns" get imageupdateautomation "$1" -o name 2>&1); then
+    case "$got" in
+      *NotFound*|*"not found"*) echo "  ImageUpdateAutomation $1 is not on this cluster; nothing to suspend."; return 0 ;;
+    esac
+    echo "  ImageUpdateAutomation $1 could not be read, so it was NOT suspended: $got" >&2
+    incomplete="$incomplete $1"; log "NOT suspended $1: unreadable: $got"; return 0
+  fi
+  if ! k -n "$ns" patch imageupdateautomation "$1" --type merge -p '{"spec":{"suspend":true}}'; then
+    echo "  ImageUpdateAutomation $1 was NOT suspended: the patch failed. It still commits tags to Git." >&2
+    incomplete="$incomplete $1"; log "NOT suspended $1: patch failed"; return 0
+  fi
+  got=$(k -n "$ns" get imageupdateautomation "$1" -o jsonpath='{.spec.suspend}' 2>&1) || got="unreadable ($got)"
+  if [ "$got" != true ]; then
+    echo "  ImageUpdateAutomation $1 was NOT suspended: spec.suspend reads $got after the patch." >&2
+    incomplete="$incomplete $1"; log "NOT suspended $1: spec.suspend=$got"; return 0
+  fi
+  log "suspended $1"
+  owner=$(k -n "$ns" get imageupdateautomation "$1" -o jsonpath='{.metadata.labels.kustomize\.toolkit\.fluxcd\.io/name}' 2>/dev/null || true)
+  if [ -n "$owner" ]; then
+    case " $moved " in
+      *" $owner "*) where="its ConfigHub unit, which $owner now reads" ;;
+      *) where="Git, which $owner still reads" ;;
+    esac
+    echo "  ImageUpdateAutomation $1 reads suspended now, but Kustomization $owner applies it and will undo this when it next reconciles. To make it last, set spec.suspend: true in $where."
+    held="$held $1"
+  else
+    echo "  Suspended ImageUpdateAutomation $1: spec.suspend reads true."
+  fi
+}
+case "$cluster" in dev-1) suspend_automation 'apptique-dev' ;; esac
+echo 'Image automation committed tags to Git, which no longer feeds this cluster. A tag bump is now a change on the base, promoted like any other.'
+echo 'Tenant left as it is: team-checkout/team-checkout runs as ServiceAccount team-checkout, reading GitRepository team-checkout; governed as part of tenants. Repointing it would move that team from Git access to ConfigHub access, which is a decision about delegation, not a step in a handover.'
+echo 'GitRepository fleet-repo promoted by branch. That is now the workflow'\''s stages: a change is promoted and approved per cluster, not merged between branches.'
+echo 'GitRepository team-checkout promoted by branch. That is now the workflow'\''s stages: a change is promoted and approved per cluster, not merged between branches.'
+
+finished=1
+echo
+echo 'Every layer is Ready from ConfigHub, through the root. To see them:'
+echo "  kubectl --context '$ctx' -n $ns get kustomizations -o custom-columns=NAME:.metadata.name,SOURCE:.spec.sourceRef.kind,READY:.status.conditions[0].status"
+echo 'Nothing was deleted. To go back, in this order: stop the root pruning, restore BOTH fields on each layer as recorded before it moved, then remove the root:'
+if [ -n "$owner" ]; then
+  echo "  The root is in Git now, so the way back is a revert, with the root's pruning off first:"
+  echo "  kubectl --context '$ctx' -n '$ns' patch kustomization $owner --type merge -p '{\"spec\":{\"suspend\":true}}'"
+  echo "  kubectl --context '$ctx' -n '$ns' patch kustomization confighub-root --type merge -p '{\"spec\":{\"suspend\":true,\"prune\":false}}'"
+  echo "  git revert <the commit above> && git push"
+  echo "  kubectl --context '$ctx' -n '$ns' patch kustomization $owner --type merge -p '{\"spec\":{\"suspend\":false}}'   # re-applies the layers from Git, removes the root"
+else
+  way_back all
+fi
+if [ -n "$held" ]; then
+  echo "Suspended on the cluster only, until Git says so too:$held"
+fi
+if [ -n "$incomplete" ]; then
+  echo "HANDOVER INCOMPLETE: every layer moved, but this image automation is still running:$incomplete" >&2
+  exit 1
+fi
+true

@@ -1,0 +1,207 @@
+#!/usr/bin/env bash
+# Fill ConfigHub with this Argo CD estate: one base per component, one
+# variant per cluster, one Target per cluster. Written by `cub argo apply`.
+# Read it, then run it:
+#
+#   bash apply.sh
+#
+# Nothing here touches a cluster. Argo goes on syncing Git throughout, and
+# ConfigHub ends up holding a parallel copy that nothing reads. handover.sh
+# is what moves the estate onto it; until you run that, nothing on any
+# cluster reads what this creates, and cleanup.sh beside this script takes
+# it all back out. ConfigHub refuses a Space while a Target, a worker, a
+# Release or a Tag still points at it, so the order matters and that
+# script has it.
+#
+# cub uses its current context; set CUB_CONTEXT to choose another. Every
+# step is safe to re-run, which is also how a cluster that joined since
+# gets its variants.
+set -euo pipefail
+cd "$(dirname "$0")"
+step() { printf '\n== %s\n' "$*"; }
+# The overlays are rendered from the repository this plan read. Paths below
+# are written from its top, so the script needs to know where that is.
+REPO_ROOT=${REPO_ROOT:-'<repo>'}
+[ -d "$REPO_ROOT" ] || { echo "REPO_ROOT=$REPO_ROOT is not a directory: point it at the repository checkout"; exit 1; }
+
+# Re-running picks up where ConfigHub says each first release stands: a
+# finished change order is skipped, and a variant with nothing new is kept.
+rolled_out() { [ "$(cub changeorder get --space "${1%/*}" "${1#*/}" -o jq=.ChangeOrder.Stage)" = Completed ]; }
+# A variant must hold every unit of its base before it is released: a
+# reconciler removes from a cluster whatever a release no longer holds.
+holds() {
+  local n; n=$(cub unit list --space "$1" -o jq=length)
+  [ "$n" -ge "$2" ] || { echo "$1 holds $n of its $2 units; run this script again" >&2; return 1; }
+}
+# A cluster that joins in a stage the workflow does not have yet adds that
+# stage. Only the stages are patched, so approval settings made since stay.
+stages_are() { [ "$(cub changeworkflow get --space "$1" "$2" -o 'jq=[.ChangeWorkflow.Stages[].Name] | join(",")')" = "$3" ]; }
+# Promoting a large unit can outlast the request, and cub then reports no
+# response while the server finishes. A promotion is idempotent, so it is
+# asked again, and one with nothing left to promote has done it.
+promote() {
+  local out
+  for _ in 1 2 3; do
+    out=$(cub variant promote --change-order "$1" --target-stage "$2" --quiet 2>&1 >/dev/null) && return 0
+    case "$out" in *"nothing left to promote"*) return 0 ;; esac
+    sleep 15
+  done
+  echo "$out" >&2; return 1
+}
+publish() {
+  local out
+  holds "$1" "$3" || return 1
+  out=$(cub release publish "$1" --revision "ChangeOrder:$2" --quiet 2>&1) && return 0
+  case "$out" in *"no changes were made since :latest bundle"*) echo "$1 already released" ;; *) echo "$out" >&2; return 1 ;; esac
+}
+# Each overlay is rendered by kustomize here rather than by the plugin, so
+# what ConfigHub stores is exactly what the delivery tool builds today.
+render() {
+  mkdir -p render
+  kustomize build ${KUSTOMIZE_FLAGS:-} "$REPO_ROOT/$1" > "render/$2.yaml"
+  [ -s "render/$2.yaml" ] || { echo "kustomize build $REPO_ROOT/$1 rendered nothing" >&2; return 1; }
+}
+
+step "0/5 Check before changing anything"
+cub auth status >/dev/null 2>&1 || { echo "cub is not logged in: run cub auth login"; exit 1; }
+cub auth status 2>&1 | grep -i '^Warning:' && echo "  Steps below may fail on that skew rather than on anything here."
+command -v kustomize >/dev/null || { echo "kustomize is not on PATH; the overlays are rendered with it"; exit 1; }
+# A component here inflates a Helm chart through Kustomize, which needs the
+# same flag Argo CD's repo server is configured with.
+KUSTOMIZE_FLAGS=${KUSTOMIZE_FLAGS:---enable-helm}
+
+step "1/5 One named Target per cluster, in argo-targets"
+cub space create argo-targets --allow-exists --quiet
+# A server-hosted worker has no process behind it and no role in the
+# organization; it holds the Targets and is the credential Argo reads with.
+cub worker create --space argo-targets server-worker --is-server-worker --org-role none --allow-exists --quiet
+# The cluster Argo CD itself runs on: the control objects are released here.
+cub target create argocd '{}' server-worker --space argo-targets --provider OCI --toolchain Any --allow-exists --quiet
+cub target create dev-1 '{}' server-worker --space argo-targets --provider OCI --toolchain Any --allow-exists --quiet
+cub target create prod-1 '{}' server-worker --space argo-targets --provider OCI --toolchain Any --allow-exists --quiet
+cub target create staging-1 '{}' server-worker --space argo-targets --provider OCI --toolchain Any --allow-exists --quiet
+
+step "2/5 One Space per app of apps, holding the objects it syncs"
+cub component create argo-root-children --allow-exists --quiet
+cub space create argo-root-children --component argo-root-children --label Component=argo-root-children --label Role=control --allow-exists --quiet
+cub unit create --space argo-root-children platform-addons-appset control/argo-root-children/platform-addons-appset.yaml --target argo-targets/argocd --change-desc 'Onboard platform-addons-appset: what the root app of apps syncs' --allow-exists --quiet
+cub unit create --space argo-root-children projects control/argo-root-children/projects.yaml --target argo-targets/argocd --change-desc 'Onboard projects: what the root app of apps syncs' --allow-exists --quiet
+cub unit create --space argo-root-children storefront-app-of-apps control/argo-root-children/storefront-app-of-apps.yaml --target argo-targets/argocd --change-desc 'Onboard storefront-app-of-apps: what the root app of apps syncs' --allow-exists --quiet
+tid=$(cub target get --space argo-targets argocd -o jq=.Target.TargetID | tr -d '"')
+[ -n "$tid" ] || { echo "no argocd Target in argo-targets: run step 1 first"; exit 1; }
+echo "{\"ReleaseTargetID\":\"$tid\"}" | cub space update --patch argo-root-children --from-stdin --quiet
+cub release publish argo-root-children --quiet 2>&1 | grep -v 'no changes were made' || true
+cub component create argo-storefront-children --allow-exists --quiet
+cub space create argo-storefront-children --component argo-storefront-children --label Component=argo-storefront-children --label Role=control --allow-exists --quiet
+cub unit create --space argo-storefront-children apptique control/argo-storefront-children/apptique.yaml --target argo-targets/argocd --change-desc 'Onboard apptique: what the storefront app of apps syncs' --allow-exists --quiet
+cub unit create --space argo-storefront-children checkout-cache control/argo-storefront-children/checkout-cache.yaml --target argo-targets/argocd --change-desc 'Onboard checkout-cache: what the storefront app of apps syncs' --allow-exists --quiet
+tid=$(cub target get --space argo-targets argocd -o jq=.Target.TargetID | tr -d '"')
+[ -n "$tid" ] || { echo "no argocd Target in argo-targets: run step 1 first"; exit 1; }
+echo "{\"ReleaseTargetID\":\"$tid\"}" | cub space update --patch argo-storefront-children --from-stdin --quiet
+cub release publish argo-storefront-children --quiet 2>&1 | grep -v 'no changes were made' || true
+
+step "3/5 One component per app: a base holding what its overlay renders to, and a rollout workflow"
+cub component create argo-apptique --allow-exists --quiet
+cub space create argo-apptique-base --component argo-apptique --label Component=argo-apptique --label Role=base --allow-exists --quiet
+render 'gitops/argo/expert-app-of-apps/apps/apptique/base' 'apptique-base'
+cub unit create --space argo-apptique-base apptique render/apptique-base.yaml --change-desc 'Onboard apptique from gitops/argo/expert-app-of-apps/apps/apptique/base' --allow-exists --quiet
+cub changeworkflow create --space argo-apptique-base rollout --filename apptique/change-workflow.yaml --allow-exists --quiet
+stages_are argo-apptique-base rollout 'canary,secondary,primary' || echo '{"Stages":[{"Name":"canary","WhereSpace":"Labels.Stage = '\''canary'\''","ReleasePrerequisites":["approval"]},{"Name":"secondary","WhereSpace":"Labels.Stage = '\''secondary'\''","Prerequisites":["Released"],"ReleasePrerequisites":["approval"]},{"Name":"primary","WhereSpace":"Labels.Stage = '\''primary'\''","Prerequisites":["Released"],"ReleasePrerequisites":["approval"]}]}' | cub changeworkflow update --patch --space argo-apptique-base rollout --from-stdin --quiet
+cub component create argo-checkout-cache --allow-exists --quiet
+cub space create argo-checkout-cache-base --component argo-checkout-cache --label Component=argo-checkout-cache --label Role=base --allow-exists --quiet
+render 'gitops/argo/expert-app-of-apps/apps/checkout-cache/base' 'checkout-cache-base'
+cub unit create --space argo-checkout-cache-base checkout-cache render/checkout-cache-base.yaml --change-desc 'Onboard checkout-cache from gitops/argo/expert-app-of-apps/apps/checkout-cache/base' --allow-exists --quiet
+cub changeworkflow create --space argo-checkout-cache-base rollout --filename checkout-cache/change-workflow.yaml --allow-exists --quiet
+stages_are argo-checkout-cache-base rollout 'canary,secondary,primary' || echo '{"Stages":[{"Name":"canary","WhereSpace":"Labels.Stage = '\''canary'\''","ReleasePrerequisites":["approval"]},{"Name":"secondary","WhereSpace":"Labels.Stage = '\''secondary'\''","Prerequisites":["Released"],"ReleasePrerequisites":["approval"]},{"Name":"primary","WhereSpace":"Labels.Stage = '\''primary'\''","Prerequisites":["Released"],"ReleasePrerequisites":["approval"]}]}' | cub changeworkflow update --patch --space argo-checkout-cache-base rollout --from-stdin --quiet
+cub component create argo-platform-addons-cluster-baseline --allow-exists --quiet
+cub space create argo-platform-addons-cluster-baseline-base --component argo-platform-addons-cluster-baseline --label Component=argo-platform-addons-cluster-baseline --label Role=base --allow-exists --quiet
+render 'gitops/argo/expert-app-of-apps/apps/platform/cluster-baseline/base' 'platform-addons-cluster-baseline-base'
+cub unit create --space argo-platform-addons-cluster-baseline-base platform-addons-cluster-baseline render/platform-addons-cluster-baseline-base.yaml --change-desc 'Onboard platform-addons-cluster-baseline from gitops/argo/expert-app-of-apps/apps/platform/cluster-baseline/base' --allow-exists --quiet
+cub changeworkflow create --space argo-platform-addons-cluster-baseline-base rollout --filename platform-addons-cluster-baseline/change-workflow.yaml --allow-exists --quiet
+stages_are argo-platform-addons-cluster-baseline-base rollout 'canary,secondary,primary' || echo '{"Stages":[{"Name":"canary","WhereSpace":"Labels.Stage = '\''canary'\''","ReleasePrerequisites":["approval"]},{"Name":"secondary","WhereSpace":"Labels.Stage = '\''secondary'\''","Prerequisites":["Released"],"ReleasePrerequisites":["approval"]},{"Name":"primary","WhereSpace":"Labels.Stage = '\''primary'\''","Prerequisites":["Released"],"ReleasePrerequisites":["approval"]}]}' | cub changeworkflow update --patch --space argo-platform-addons-cluster-baseline-base rollout --from-stdin --quiet
+
+step "4/5 One variant per cluster, each holding what its overlay renders to"
+cub variant create dev-1 argo-apptique-base --stage canary --space-pattern template:argo-apptique-dev-1 --target argo-targets/dev-1 --space-label Role=deployment --space-label Cluster=dev-1 --allow-exists --quiet
+render 'gitops/argo/expert-app-of-apps/apps/apptique/overlays/dev' 'argo-apptique-dev-1'
+cub unit update --space argo-apptique-dev-1 apptique render/argo-apptique-dev-1.yaml --change-desc 'What gitops/argo/expert-app-of-apps/apps/apptique/overlays/dev renders for dev-1' --quiet
+holds argo-apptique-dev-1 1
+cub variant create staging-1 argo-apptique-base --stage secondary --space-pattern template:argo-apptique-staging-1 --target argo-targets/staging-1 --space-label Role=deployment --space-label Cluster=staging-1 --allow-exists --quiet
+render 'gitops/argo/expert-app-of-apps/apps/apptique/overlays/staging' 'argo-apptique-staging-1'
+cub unit update --space argo-apptique-staging-1 apptique render/argo-apptique-staging-1.yaml --change-desc 'What gitops/argo/expert-app-of-apps/apps/apptique/overlays/staging renders for staging-1' --quiet
+holds argo-apptique-staging-1 1
+cub variant create prod-1 argo-apptique-base --stage primary --space-pattern template:argo-apptique-prod-1 --target argo-targets/prod-1 --space-label Role=deployment --space-label Cluster=prod-1 --allow-exists --quiet
+render 'gitops/argo/expert-app-of-apps/apps/apptique/overlays/prod' 'argo-apptique-prod-1'
+cub unit update --space argo-apptique-prod-1 apptique render/argo-apptique-prod-1.yaml --change-desc 'What gitops/argo/expert-app-of-apps/apps/apptique/overlays/prod renders for prod-1' --quiet
+holds argo-apptique-prod-1 1
+cub variant create dev-1 argo-checkout-cache-base --stage canary --space-pattern template:argo-checkout-cache-dev-1 --target argo-targets/dev-1 --space-label Role=deployment --space-label Cluster=dev-1 --allow-exists --quiet
+render 'gitops/argo/expert-app-of-apps/apps/checkout-cache/overlays/dev' 'argo-checkout-cache-dev-1'
+cub unit update --space argo-checkout-cache-dev-1 checkout-cache render/argo-checkout-cache-dev-1.yaml --change-desc 'What gitops/argo/expert-app-of-apps/apps/checkout-cache/overlays/dev renders for dev-1' --quiet
+holds argo-checkout-cache-dev-1 1
+cub variant create staging-1 argo-checkout-cache-base --stage secondary --space-pattern template:argo-checkout-cache-staging-1 --target argo-targets/staging-1 --space-label Role=deployment --space-label Cluster=staging-1 --allow-exists --quiet
+render 'gitops/argo/expert-app-of-apps/apps/checkout-cache/overlays/staging' 'argo-checkout-cache-staging-1'
+cub unit update --space argo-checkout-cache-staging-1 checkout-cache render/argo-checkout-cache-staging-1.yaml --change-desc 'What gitops/argo/expert-app-of-apps/apps/checkout-cache/overlays/staging renders for staging-1' --quiet
+holds argo-checkout-cache-staging-1 1
+cub variant create prod-1 argo-checkout-cache-base --stage primary --space-pattern template:argo-checkout-cache-prod-1 --target argo-targets/prod-1 --space-label Role=deployment --space-label Cluster=prod-1 --allow-exists --quiet
+render 'gitops/argo/expert-app-of-apps/apps/checkout-cache/overlays/prod' 'argo-checkout-cache-prod-1'
+cub unit update --space argo-checkout-cache-prod-1 checkout-cache render/argo-checkout-cache-prod-1.yaml --change-desc 'What gitops/argo/expert-app-of-apps/apps/checkout-cache/overlays/prod renders for prod-1' --quiet
+holds argo-checkout-cache-prod-1 1
+cub variant create dev-1 argo-platform-addons-cluster-baseline-base --stage canary --space-pattern template:argo-platform-addons-cluster-baseline-dev-1 --target argo-targets/dev-1 --space-label Role=deployment --space-label Cluster=dev-1 --allow-exists --quiet
+render 'gitops/argo/expert-app-of-apps/apps/platform/cluster-baseline/overlays/dev' 'argo-platform-addons-cluster-baseline-dev-1'
+cub unit update --space argo-platform-addons-cluster-baseline-dev-1 platform-addons-cluster-baseline render/argo-platform-addons-cluster-baseline-dev-1.yaml --change-desc 'What gitops/argo/expert-app-of-apps/apps/platform/cluster-baseline/overlays/dev renders for dev-1' --quiet
+holds argo-platform-addons-cluster-baseline-dev-1 1
+cub variant create staging-1 argo-platform-addons-cluster-baseline-base --stage secondary --space-pattern template:argo-platform-addons-cluster-baseline-staging-1 --target argo-targets/staging-1 --space-label Role=deployment --space-label Cluster=staging-1 --allow-exists --quiet
+render 'gitops/argo/expert-app-of-apps/apps/platform/cluster-baseline/overlays/staging' 'argo-platform-addons-cluster-baseline-staging-1'
+cub unit update --space argo-platform-addons-cluster-baseline-staging-1 platform-addons-cluster-baseline render/argo-platform-addons-cluster-baseline-staging-1.yaml --change-desc 'What gitops/argo/expert-app-of-apps/apps/platform/cluster-baseline/overlays/staging renders for staging-1' --quiet
+holds argo-platform-addons-cluster-baseline-staging-1 1
+cub variant create prod-1 argo-platform-addons-cluster-baseline-base --stage primary --space-pattern template:argo-platform-addons-cluster-baseline-prod-1 --target argo-targets/prod-1 --space-label Role=deployment --space-label Cluster=prod-1 --allow-exists --quiet
+render 'gitops/argo/expert-app-of-apps/apps/platform/cluster-baseline/overlays/prod' 'argo-platform-addons-cluster-baseline-prod-1'
+cub unit update --space argo-platform-addons-cluster-baseline-prod-1 platform-addons-cluster-baseline render/argo-platform-addons-cluster-baseline-prod-1.yaml --change-desc 'What gitops/argo/expert-app-of-apps/apps/platform/cluster-baseline/overlays/prod renders for prod-1' --quiet
+holds argo-platform-addons-cluster-baseline-prod-1 1
+
+step "5/5 Release each variant, stage by stage: promote, approve, publish"
+cub changeorder create --space argo-apptique-base onboard-70d46caa --change-workflow argo-apptique-base/rollout --description 'First release of argo-apptique-dev-1, argo-apptique-staging-1, argo-apptique-prod-1' --allow-exists --quiet
+if rolled_out argo-apptique-base/onboard-70d46caa; then
+  echo 'apptique: every variant in this plan is released'
+else
+  promote argo-apptique-base/onboard-70d46caa canary
+  cub variant approve --change-order argo-apptique-base/onboard-70d46caa --stage canary --quiet
+  publish argo-apptique-dev-1 argo-apptique-base/onboard-70d46caa 1
+  promote argo-apptique-base/onboard-70d46caa secondary
+  cub variant approve --change-order argo-apptique-base/onboard-70d46caa --stage secondary --quiet
+  publish argo-apptique-staging-1 argo-apptique-base/onboard-70d46caa 1
+  promote argo-apptique-base/onboard-70d46caa primary
+  cub variant approve --change-order argo-apptique-base/onboard-70d46caa --stage primary --quiet
+  publish argo-apptique-prod-1 argo-apptique-base/onboard-70d46caa 1
+fi
+cub changeorder create --space argo-checkout-cache-base onboard-996c2e5c --change-workflow argo-checkout-cache-base/rollout --description 'First release of argo-checkout-cache-dev-1, argo-checkout-cache-staging-1, argo-checkout-cache-prod-1' --allow-exists --quiet
+if rolled_out argo-checkout-cache-base/onboard-996c2e5c; then
+  echo 'checkout-cache: every variant in this plan is released'
+else
+  promote argo-checkout-cache-base/onboard-996c2e5c canary
+  cub variant approve --change-order argo-checkout-cache-base/onboard-996c2e5c --stage canary --quiet
+  publish argo-checkout-cache-dev-1 argo-checkout-cache-base/onboard-996c2e5c 1
+  promote argo-checkout-cache-base/onboard-996c2e5c secondary
+  cub variant approve --change-order argo-checkout-cache-base/onboard-996c2e5c --stage secondary --quiet
+  publish argo-checkout-cache-staging-1 argo-checkout-cache-base/onboard-996c2e5c 1
+  promote argo-checkout-cache-base/onboard-996c2e5c primary
+  cub variant approve --change-order argo-checkout-cache-base/onboard-996c2e5c --stage primary --quiet
+  publish argo-checkout-cache-prod-1 argo-checkout-cache-base/onboard-996c2e5c 1
+fi
+cub changeorder create --space argo-platform-addons-cluster-baseline-base onboard-70c23c7e --change-workflow argo-platform-addons-cluster-baseline-base/rollout --description 'First release of argo-platform-addons-cluster-baseline-dev-1, argo-platform-addons-cluster-baseline-staging-1, argo-platform-addons-cluster-baseline-prod-1' --allow-exists --quiet
+if rolled_out argo-platform-addons-cluster-baseline-base/onboard-70c23c7e; then
+  echo 'platform-addons-cluster-baseline: every variant in this plan is released'
+else
+  promote argo-platform-addons-cluster-baseline-base/onboard-70c23c7e canary
+  cub variant approve --change-order argo-platform-addons-cluster-baseline-base/onboard-70c23c7e --stage canary --quiet
+  publish argo-platform-addons-cluster-baseline-dev-1 argo-platform-addons-cluster-baseline-base/onboard-70c23c7e 1
+  promote argo-platform-addons-cluster-baseline-base/onboard-70c23c7e secondary
+  cub variant approve --change-order argo-platform-addons-cluster-baseline-base/onboard-70c23c7e --stage secondary --quiet
+  publish argo-platform-addons-cluster-baseline-staging-1 argo-platform-addons-cluster-baseline-base/onboard-70c23c7e 1
+  promote argo-platform-addons-cluster-baseline-base/onboard-70c23c7e primary
+  cub variant approve --change-order argo-platform-addons-cluster-baseline-base/onboard-70c23c7e --stage primary --quiet
+  publish argo-platform-addons-cluster-baseline-prod-1 argo-platform-addons-cluster-baseline-base/onboard-70c23c7e 1
+fi
+
+echo
+echo 'Done. ConfigHub holds this estate and nothing reads it yet.'
+echo 'Argo is still syncing Git. Read handover.sh next: that is the step that moves it.'

@@ -1,0 +1,83 @@
+Argo CD estate: 3 clusters, 3 components, 9 variants
+Read 37 objects; skipped 2 file(s) that did not parse as Kubernetes YAML:
+  apps/checkout-cache/base/charts/checkout-cache/templates/deployment.yaml
+  apps/checkout-cache/base/charts/checkout-cache/templates/service.yaml
+
+Control tree (stays as it is: this is the management record)
+  Application root                           wave   0  root, applied by hand
+    AppProject platform                      wave -10  project
+    AppProject storefront                    wave -10  project, 1 sync window
+    ApplicationSet platform-addons           wave   0  generates 3 Applications
+    Application storefront                   wave  10  app of apps
+      ApplicationSet checkout-cache          wave   0  generates 3 Applications
+      ApplicationSet apptique                wave   5  generates 3 Applications
+
+Stages by rollout-phase: canary, secondary, primary
+
+apptique  (ApplicationSet, owned by storefront, project storefront, wave 5)
+  selects  clusters where storefront=true
+  base     argo-apptique-base  reaches no cluster: its destination is empty
+  each variant differs from the base in metadata.labels.rollout-phase, metadata.name, spec.destination.namespace, spec.destination.server, spec.source.path
+  stage canary
+    dev-1       variant argo-apptique-dev-1  ->  Target argo-targets/dev-1
+                Application dev-1-apptique, namespace storefront-dev
+                gitops/argo/expert-app-of-apps/apps/apptique/overlays/dev
+  stage secondary
+    staging-1   variant argo-apptique-staging-1  ->  Target argo-targets/staging-1
+                Application staging-1-apptique, namespace storefront-staging
+                gitops/argo/expert-app-of-apps/apps/apptique/overlays/staging
+  stage primary
+    prod-1      variant argo-apptique-prod-1  ->  Target argo-targets/prod-1
+                Application prod-1-apptique, namespace storefront-prod
+                gitops/argo/expert-app-of-apps/apps/apptique/overlays/prod
+  in flight  nginx: 1.27-alpine on dev-1, staging-1; 1.26-alpine on prod-1
+
+checkout-cache  (ApplicationSet, owned by storefront, project storefront, wave 0)
+  selects  clusters where storefront=true
+  base     argo-checkout-cache-base  reaches no cluster: its destination is empty
+  each variant differs from the base in metadata.labels.rollout-phase, metadata.name, spec.destination.namespace, spec.destination.server, spec.source.path
+  stage canary
+    dev-1       variant argo-checkout-cache-dev-1  ->  Target argo-targets/dev-1
+                Application dev-1-checkout-cache, namespace storefront-dev
+                gitops/argo/expert-app-of-apps/apps/checkout-cache/overlays/dev
+  stage secondary
+    staging-1   variant argo-checkout-cache-staging-1  ->  Target argo-targets/staging-1
+                Application staging-1-checkout-cache, namespace storefront-staging
+                gitops/argo/expert-app-of-apps/apps/checkout-cache/overlays/staging
+  stage primary
+    prod-1      variant argo-checkout-cache-prod-1  ->  Target argo-targets/prod-1
+                Application prod-1-checkout-cache, namespace storefront-prod
+                gitops/argo/expert-app-of-apps/apps/checkout-cache/overlays/prod
+  note     a Helm chart inflated by Kustomize: Argo CD must run Kustomize with --enable-helm, and the chart's resources do not take the overlay's namespace field
+  note     chart checkout-cache is not in the Workshop Catalog, so whether its objects may stand in for it has not been decided
+
+platform-addons-cluster-baseline  (ApplicationSet platform-addons, owned by root, project platform, wave 0)
+  selects  clusters where env is set x a list of 1
+  base     argo-platform-addons-cluster-baseline-base  reaches no cluster: its destination is empty
+  each variant differs from the base in metadata.labels.rollout-phase, metadata.name, spec.destination.server, spec.source.path
+  stage canary
+    dev-1       variant argo-platform-addons-cluster-baseline-dev-1  ->  Target argo-targets/dev-1
+                Application dev-1-cluster-baseline, namespace platform-system
+                gitops/argo/expert-app-of-apps/apps/platform/cluster-baseline/overlays/dev
+  stage secondary
+    staging-1   variant argo-platform-addons-cluster-baseline-staging-1  ->  Target argo-targets/staging-1
+                Application staging-1-cluster-baseline, namespace platform-system
+                gitops/argo/expert-app-of-apps/apps/platform/cluster-baseline/overlays/staging
+  stage primary
+    prod-1      variant argo-platform-addons-cluster-baseline-prod-1  ->  Target argo-targets/prod-1
+                Application prod-1-cluster-baseline, namespace platform-system
+                gitops/argo/expert-app-of-apps/apps/platform/cluster-baseline/overlays/prod
+
+Sync windows (a published release waits for Argo CD while one is closed)
+  storefront  deny 0 9 * * 1-5 for 9h (UTC), manual sync blocked too
+    covers prod-1-apptique, prod-1-checkout-cache
+
+Handover, when this estate is live (apply will write it as handover.sh; plan runs nothing)
+  1. first, add the gateway's oci:// address to sourceRepos on AppProject platform (allows only https://github.com/confighub/examples) and storefront (allows only https://github.com/confighub/examples): until then every repoint below is refused
+  2. check Argo CD is v3.1 or newer, which is where an oci:// source is read natively; an older one cannot do this at all
+  3. repoint Application root at argo-root-children, which would hold AppProject platform, AppProject storefront, ApplicationSet platform-addons, Application storefront. Publish that Space first: a parent left syncing an empty source prunes its children. Nothing above it syncs it, so patch its spec.source in the cluster.
+  4. repoint Application storefront at argo-storefront-children, which would hold ApplicationSet checkout-cache, ApplicationSet apptique. Publish that Space first: a parent left syncing an empty source prunes its children. It is a Unit in argo-root-children by this point, so repoint it there and promote, and the repoint is reviewed like any other change.
+  5. point the template of ApplicationSet apptique at each cluster's Target, once those Targets carry a release. It goes on generating dev-1-apptique, staging-1-apptique, prod-1-apptique under the same names, so Argo's tracking does not change and nothing is orphaned
+  6. point the template of ApplicationSet checkout-cache at each cluster's Target, once those Targets carry a release. It goes on generating dev-1-checkout-cache, staging-1-checkout-cache, prod-1-checkout-cache under the same names, so Argo's tracking does not change and nothing is orphaned
+  7. point the template of ApplicationSet platform-addons at each cluster's Target, once those Targets carry a release. It goes on generating dev-1-cluster-baseline, staging-1-cluster-baseline, prod-1-cluster-baseline under the same names, so Argo's tracking does not change and nothing is orphaned
+  8. never delete root, storefront: resources-finalizer.argocd.argoproj.io deletes everything it deployed. Every step above is a patch for exactly this reason
