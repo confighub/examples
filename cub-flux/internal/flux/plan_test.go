@@ -232,7 +232,7 @@ func TestScriptsParseAsBash(t *testing.T) {
 		t.Skip("no bash")
 	}
 	dir := writeApply(t)
-	for _, name := range []string{"apply.sh", "handover.sh"} {
+	for _, name := range []string{"apply.sh", "handover.sh", "cleanup.sh"} {
 		out, err := exec.Command("bash", "-n", filepath.Join(dir, name)).CombinedOutput()
 		if err != nil {
 			t.Errorf("%s is not valid bash: %v\n%s", name, err, out)

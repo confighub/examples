@@ -87,6 +87,9 @@ func CleanupScript(p *Plan, prefix string) string {
 	add("# repointed a Application at the gateway, deleting these Spaces takes its")
 	add("# source away.")
 	add("set -uo pipefail")
+	// Every kubectl command printed below names a context: the one given, or a
+	// placeholder that has to be filled in, never whichever happens to be current.
+	add(`ctxflag="--context ${ARGOCD_CONTEXT:-<context of the Argo CD cluster>}"`)
 	add(`cd "$(dirname "$0")"`)
 	add(`step() { printf '\n== %%s\n' "$*"; }`)
 	add(`gone() { cub space get "$1" >/dev/null 2>&1 && return 1 || return 0; }`)
@@ -96,7 +99,7 @@ func CleanupScript(p *Plan, prefix string) string {
 	add("# with prune on that empties the cluster. This will not guess; it asks.")
 	add(`if [ "${I_HAVE_PUT_THE_SOURCES_BACK:-}" != yes ]; then`)
 	add(`  echo "If handover.sh has run, put every Application's source back to Git first:"`)
-	add(`  echo "  kubectl -n argocd get applications -o custom-columns=NAME:.metadata.name,SOURCE:.spec.source.repoURL"`)
+	add(`  echo "  kubectl $ctxflag -n argocd get applications -o custom-columns=NAME:.metadata.name,SOURCE:.spec.source.repoURL"`)
 	add(`  echo "Then re-run with I_HAVE_PUT_THE_SOURCES_BACK=yes bash cleanup.sh"`)
 	add(`  echo`)
 	add(`  echo "If handover.sh has not run, nothing on any cluster reads these Spaces and"`)
@@ -138,7 +141,7 @@ func CleanupScript(p *Plan, prefix string) string {
 		for _, r := range retired {
 			add(`echo "  # %s, which generated: %s"`, r.name, strings.Join(r.apps, ", "))
 			for _, a := range r.apps {
-				add(`echo "  kubectl -n argocd patch application %s --type json -p '[{\"op\":\"remove\",\"path\":\"/metadata/ownerReferences\"}]'"`, a)
+				add(`echo "  kubectl $ctxflag -n argocd patch application %s --type json -p '[{\"op\":\"remove\",\"path\":\"/metadata/ownerReferences\"}]'"`, a)
 			}
 			add(`echo "  # only then, and remove it from %s in ConfigHub too:"`, r.space)
 			add(`echo "  cub unit delete --space %s %s && cub release publish %s"`, r.space, r.unit, r.space)

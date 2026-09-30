@@ -26,6 +26,7 @@ step() { printf '\n== %s\n' "$*"; }
 ns=${ARGOCD_NAMESPACE:-argocd}
 # The comparison before the template repoint renders from the repository.
 REPO_ROOT=${REPO_ROOT:-'<repo>'}
+KUSTOMIZE_FLAGS=${KUSTOMIZE_FLAGS:---enable-helm}
 
 # The gateway address a repointed source reads. cub reports it for a Target.
 gateway() { cub target get --space argo-targets "$1" -o jq=.Target.Parameters.OCIRepository 2>/dev/null || true; }
@@ -221,13 +222,13 @@ echo '  #   and annotate it argo.confighub.com/retired: "retired at handover; se
 echo '  cub unit update --space argo-storefront-children apptique apptique.yaml'
 echo '  cub release publish argo-storefront-children'
 echo '  # then wait for the parent to sync it down before patching anything:'
-printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'get applicationset apptique -o jsonpath='\''{.spec.syncPolicy.applicationsSync}'\'''
+printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'get applicationset apptique -o jsonpath='\''{.spec.syncPolicy.applicationsSync}'\''' | sed "s|<gateway>|${addr:-<gateway>}|")"
 echo 'Once it reads create-only, point each Application at its own Space:'
-printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'patch application dev-1-apptique --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-apptique-dev-1","path":".","targetRevision":"latest"}}}'\''   # stage canary'
+printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'patch application dev-1-apptique --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-apptique-dev-1","path":".","targetRevision":"latest"}}}'\''   # stage canary' | sed "s|<gateway>|${addr:-<gateway>}|")"
 echo "    # checked at ${digest_argo_apptique_dev_1:-?}; once synced, its status.sync.revision should name that digest, or a newer release went out unchecked"
-printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'patch application staging-1-apptique --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-apptique-staging-1","path":".","targetRevision":"latest"}}}'\''   # stage secondary'
+printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'patch application staging-1-apptique --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-apptique-staging-1","path":".","targetRevision":"latest"}}}'\''   # stage secondary' | sed "s|<gateway>|${addr:-<gateway>}|")"
 echo "    # checked at ${digest_argo_apptique_staging_1:-?}; once synced, its status.sync.revision should name that digest, or a newer release went out unchecked"
-printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'patch application prod-1-apptique --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-apptique-prod-1","path":".","targetRevision":"latest"}}}'\''   # stage primary'
+printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'patch application prod-1-apptique --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-apptique-prod-1","path":".","targetRevision":"latest"}}}'\''   # stage primary' | sed "s|<gateway>|${addr:-<gateway>}|")"
 echo "    # checked at ${digest_argo_apptique_prod_1:-?}; once synced, its status.sync.revision should name that digest, or a newer release went out unchecked"
 
 echo '-- checkout-cache'
@@ -238,13 +239,13 @@ echo '  #   and annotate it argo.confighub.com/retired: "retired at handover; se
 echo '  cub unit update --space argo-storefront-children checkout-cache checkout-cache.yaml'
 echo '  cub release publish argo-storefront-children'
 echo '  # then wait for the parent to sync it down before patching anything:'
-printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'get applicationset checkout-cache -o jsonpath='\''{.spec.syncPolicy.applicationsSync}'\'''
+printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'get applicationset checkout-cache -o jsonpath='\''{.spec.syncPolicy.applicationsSync}'\''' | sed "s|<gateway>|${addr:-<gateway>}|")"
 echo 'Once it reads create-only, point each Application at its own Space:'
-printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'patch application dev-1-checkout-cache --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-checkout-cache-dev-1","path":".","targetRevision":"latest"}}}'\''   # stage canary'
+printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'patch application dev-1-checkout-cache --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-checkout-cache-dev-1","path":".","targetRevision":"latest"}}}'\''   # stage canary' | sed "s|<gateway>|${addr:-<gateway>}|")"
 echo "    # checked at ${digest_argo_checkout_cache_dev_1:-?}; once synced, its status.sync.revision should name that digest, or a newer release went out unchecked"
-printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'patch application staging-1-checkout-cache --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-checkout-cache-staging-1","path":".","targetRevision":"latest"}}}'\''   # stage secondary'
+printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'patch application staging-1-checkout-cache --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-checkout-cache-staging-1","path":".","targetRevision":"latest"}}}'\''   # stage secondary' | sed "s|<gateway>|${addr:-<gateway>}|")"
 echo "    # checked at ${digest_argo_checkout_cache_staging_1:-?}; once synced, its status.sync.revision should name that digest, or a newer release went out unchecked"
-printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'patch application prod-1-checkout-cache --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-checkout-cache-prod-1","path":".","targetRevision":"latest"}}}'\''   # stage primary'
+printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'patch application prod-1-checkout-cache --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-checkout-cache-prod-1","path":".","targetRevision":"latest"}}}'\''   # stage primary' | sed "s|<gateway>|${addr:-<gateway>}|")"
 echo "    # checked at ${digest_argo_checkout_cache_prod_1:-?}; once synced, its status.sync.revision should name that digest, or a newer release went out unchecked"
 
 echo '-- platform-addons'
@@ -255,13 +256,13 @@ echo '  #   and annotate it argo.confighub.com/retired: "retired at handover; se
 echo '  cub unit update --space argo-root-children platform-addons-appset platform-addons-appset.yaml'
 echo '  cub release publish argo-root-children'
 echo '  # then wait for the parent to sync it down before patching anything:'
-printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'get applicationset platform-addons -o jsonpath='\''{.spec.syncPolicy.applicationsSync}'\'''
+printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'get applicationset platform-addons -o jsonpath='\''{.spec.syncPolicy.applicationsSync}'\''' | sed "s|<gateway>|${addr:-<gateway>}|")"
 echo 'Once it reads create-only, point each Application at its own Space:'
-printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'patch application dev-1-cluster-baseline --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-platform-addons-cluster-baseline-dev-1","path":".","targetRevision":"latest"}}}'\''   # stage canary'
+printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'patch application dev-1-cluster-baseline --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-platform-addons-cluster-baseline-dev-1","path":".","targetRevision":"latest"}}}'\''   # stage canary' | sed "s|<gateway>|${addr:-<gateway>}|")"
 echo "    # checked at ${digest_argo_platform_addons_cluster_baseline_dev_1:-?}; once synced, its status.sync.revision should name that digest, or a newer release went out unchecked"
-printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'patch application staging-1-cluster-baseline --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-platform-addons-cluster-baseline-staging-1","path":".","targetRevision":"latest"}}}'\''   # stage secondary'
+printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'patch application staging-1-cluster-baseline --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-platform-addons-cluster-baseline-staging-1","path":".","targetRevision":"latest"}}}'\''   # stage secondary' | sed "s|<gateway>|${addr:-<gateway>}|")"
 echo "    # checked at ${digest_argo_platform_addons_cluster_baseline_staging_1:-?}; once synced, its status.sync.revision should name that digest, or a newer release went out unchecked"
-printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'patch application prod-1-cluster-baseline --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-platform-addons-cluster-baseline-prod-1","path":".","targetRevision":"latest"}}}'\''   # stage primary'
+printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'patch application prod-1-cluster-baseline --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-platform-addons-cluster-baseline-prod-1","path":".","targetRevision":"latest"}}}'\''   # stage primary' | sed "s|<gateway>|${addr:-<gateway>}|")"
 echo "    # checked at ${digest_argo_platform_addons_cluster_baseline_prod_1:-?}; once synced, its status.sync.revision should name that digest, or a newer release went out unchecked"
 
 echo 'Each Application keeps its name and its UID, so nothing is orphaned and no'
@@ -271,13 +272,13 @@ echo 'Note: AppProject storefront denies syncing prod-1-apptique, prod-1-checkou
 
 echo
 echo 'Done once every Application reports Synced from an oci:// source:'
-printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'get applications -o custom-columns=NAME:.metadata.name,SOURCE:.spec.source.repoURL,SYNC:.status.sync.status'
+printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'get applications -o custom-columns=NAME:.metadata.name,SOURCE:.spec.source.repoURL,SYNC:.status.sync.status' | sed "s|<gateway>|${addr:-<gateway>}|")"
 echo 'Nothing was deleted. To go back, patch each source to its Git repoURL and path.'
 echo
 echo 'One more thing, measured on Argo CD v3.5.3: publishing a new release does NOT'
 echo 'reach the cluster on its own. Argo caches the digest it resolved for the tag, and'
 echo 'was still serving the previous release 90 seconds later. A hard refresh re-resolves'
 echo 'the tag to a digest and the release lands:'
-printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" 'annotate application <name> argocd.argoproj.io/refresh=hard --overwrite'
+printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'annotate application <name> argocd.argoproj.io/refresh=hard --overwrite' | sed "s|<gateway>|${addr:-<gateway>}|")"
 echo 'argobot does this for you, reacting to ConfigHub'\''s release.published event. Without'
 echo 'it, or without that annotation, an approved release sits unread on the gateway.'

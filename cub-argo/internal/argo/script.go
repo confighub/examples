@@ -223,15 +223,7 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 	// on, and nothing else in the run would explain them.
 	add(`cub auth status 2>&1 | grep -i '^Warning:' && echo "  Steps below may fail on that skew rather than on anything here."`)
 	add(`command -v kustomize >/dev/null || { echo "kustomize is not on PATH; the overlays are rendered with it"; exit 1; }`)
-	helm := false
-	for _, c := range p.Components {
-		for _, n := range c.Notes {
-			if strings.Contains(n, "enable-helm") {
-				helm = true
-			}
-		}
-	}
-	if helm {
+	if p.inflatesHelm() {
 		add("# A component here inflates a Helm chart through Kustomize, which needs the")
 		add("# same flag Argo CD's repo server is configured with.")
 		add(`KUSTOMIZE_FLAGS=${KUSTOMIZE_FLAGS:---enable-helm}`)
@@ -418,4 +410,18 @@ func (p *Plan) unitHomes(prefix string) map[string]unitHome {
 		walk(n)
 	}
 	return out
+}
+
+// inflatesHelm reports whether a component inflates a Helm chart through
+// Kustomize, which every render of it, in apply.sh and handover.sh alike, has
+// to do with --enable-helm, as Argo CD's repo server does.
+func (p *Plan) inflatesHelm() bool {
+	for _, c := range p.Components {
+		for _, n := range c.Notes {
+			if strings.Contains(n, "enable-helm") {
+				return true
+			}
+		}
+	}
+	return false
 }

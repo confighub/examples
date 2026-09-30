@@ -2,6 +2,7 @@ package argo
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -887,8 +888,25 @@ func (b *builder) childrenOf(a object, all []object) []object {
 	dir := filepath.Clean(filepath.Join(b.root, filepath.FromSlash(src)))
 	recurse := get(a.spec(), "source", "directory", "recurse") == true
 	var out []object
+	var declared map[string]string
 	for _, o := range all {
-		if o.file == "" || (o.kind == a.kind && o.name == a.name) {
+		if o.kind == a.kind && o.name == a.name {
+			continue
+		}
+		if o.file == "" || !strings.HasPrefix(filepath.Clean(o.file), filepath.Clean(b.root)+string(filepath.Separator)) {
+			// A live object, read from 'kubectl get', carries no repository
+			// file: at most the export it was read from. It is
+			// this parent's child if the directory the parent syncs declares
+			// it, and that file is then where it comes from: the same file a
+			// repository input would have given it, so the control Space holds
+			// the same bytes either way.
+			if declared == nil {
+				declared = declaredIn(dir, recurse)
+			}
+			if f, ok := declared[o.kind+"/"+o.name]; ok {
+				o.file = f
+				out = append(out, o)
+			}
 			continue
 		}
 		od := filepath.Dir(o.file)
@@ -896,6 +914,46 @@ func (b *builder) childrenOf(a object, all []object) []object {
 			out = append(out, o)
 		}
 	}
+	return out
+}
+
+// declaredIn maps kind/name to the file that declares it, for every object in
+// the YAML files of dir (and below it, with recurse), as Argo CD would read a
+// directory source. A file that is not Kubernetes YAML declares nothing here;
+// the plan reports such files separately.
+func declaredIn(dir string, recurse bool) map[string]string {
+	out := map[string]string{}
+	_ = filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		if d.IsDir() {
+			if path != dir && !recurse {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if ext := filepath.Ext(path); ext != ".yaml" && ext != ".yml" {
+			return nil
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return nil
+		}
+		docs, err := parse(data, path)
+		if err != nil {
+			return nil
+		}
+		for _, doc := range docs {
+			k, n := str(doc.Value["kind"]), str(get(doc.Value, "metadata", "name"))
+			if k != "" && n != "" {
+				if _, seen := out[k+"/"+n]; !seen {
+					out[k+"/"+n] = path
+				}
+			}
+		}
+		return nil
+	})
 	return out
 }
 

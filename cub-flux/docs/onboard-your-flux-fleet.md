@@ -507,6 +507,24 @@ that, and named `kubectl` among the managers — recorded against the `scale`
 subresource, with no timestamp, which is why the managers are reported
 unordered.
 
+**Run again on 2026-09-30, against ConfigHub v0.6.8.** Flux v2.8.6 on kind,
+`flux/beginner`, the `dev` cluster, a self-hosted gateway over plain HTTP
+(`CONFIGHUB_OCI_PLAIN_HTTP=1`, which sets `spec.insecure` on each
+`OCIRepository`).
+
+- `check` compared release 1 of each layer, by digest. With the `apps` unit
+  changed after that release and not published, it still compared release 1,
+  said the head had moved on, and stayed clean, which is what the handover
+  would deliver.
+- The handover moved both layers. The digest Flux applied equalled the Release's
+  `ManifestDigest` for each, and every UID, the Pod's included, and the rollout
+  revision were identical. The printed way back restored both fields as they had
+  been, on the named context, with the UIDs unchanged again.
+- Published between the check and the swap, a new release stopped the run
+  before `apps` moved, naming both digests and the one layer already moved, with
+  its way back. In that run Flux simply had not fetched yet, as it polls, so
+  `handover.sh` now asks it to fetch and waits before calling it a mismatch.
+
 **Measured: a fleet set up the way `flux bootstrap` sets it up.** Flux v2.8.6
 on kind, with a `flux-system` `Kustomization` applying `flux/beginner`'s
 `clusters/dev/` from Git, which is what `gotk-sync.yaml` does. Every layer then

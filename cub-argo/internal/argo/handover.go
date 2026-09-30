@@ -45,7 +45,8 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	// context and namespace this run used rather than leaving them to whatever
 	// is current when it is pasted.
 	show := func(rest string) {
-		add(`printf '  kubectl --context %%s -n %%s %%s\n' "$ctx" "$ns" %s`, q(rest))
+		// <gateway> is filled in once step 1 knows the address.
+		add(`printf '  kubectl --context %%s -n %%s %%s\n' "$ctx" "$ns" "$(printf '%%s' %s | sed "s|<gateway>|${addr:-<gateway>}|")"`, q(rest))
 	}
 	add(`step() { printf '\n== %%s\n' "$*"; }`)
 	add(`ns=${ARGOCD_NAMESPACE:-argocd}`)
@@ -54,6 +55,11 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 		repoRel = "."
 	}
 	add("REPO_ROOT=${REPO_ROOT:-%s}", q(repoRel))
+	if p.inflatesHelm() {
+		// Rendered the way apply.sh rendered it; without the flag the
+		// comparison fails on the chart before it compares anything.
+		add(`KUSTOMIZE_FLAGS=${KUSTOMIZE_FLAGS:---enable-helm}`)
+	}
 	add("")
 	add("# The gateway address a repointed source reads. cub reports it for a Target.")
 	add("gateway() { cub target get --space %s \"$1\" -o jq=.Target.Parameters.OCIRepository 2>/dev/null || true; }", targets)

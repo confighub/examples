@@ -417,11 +417,9 @@ producing an Application on its own and becomes a variant you add in ConfigHub �
 a reviewed change rather than an automatic one, which is the point.
 
 **Measured on Argo CD v3.5.3**, and each of these changes what the script does.
-The measurements were made on one cluster, with the source swapped by path. They
-were not made against real ConfigHub variant Spaces, one per registered
-cluster, which the expert example needs and which takes a rig of at least two
-clusters to prove. Treat the sequence as measured in parts, not as run end to
-end:
+The first measurements used one cluster and a path swap. The sequence has since
+been run end to end against real variant Spaces on two registered clusters; see
+"Run against a live estate on three clusters" below.
 
 - **Patching a generated Application while its ApplicationSet is live is
   reverted in under a second.** The generator stands down first, with
@@ -522,14 +520,49 @@ Problems to fix first
     DELETED from the cluster at handover.
 ```
 
-**Not covered by this rehearsal:** the ApplicationSet-generated Applications.
-The expert example expects three registered clusters and the rehearsal had one,
-so `dev-1-apptique` and its siblings never existed to check. Step 4 of
-`handover.sh` reports them as missing, correctly. That includes the retire and
-repoint sequence in "ApplicationSets are retired, not repointed", whose
-measurements came from a path swap on a single cluster rather than from this
-script. It has not been run against variant Spaces on several clusters. The gateway was also plain
-HTTP, which needed `CONFIGHUB_OCI_PLAIN_HTTP`; a TLS gateway is untested here.
+**Not covered by this first rehearsal:** the ApplicationSet-generated
+Applications, since it had one cluster. They are covered by the three-cluster
+run below. A TLS gateway is still untested: every run here used a plain-HTTP
+gateway, with `CONFIGHUB_OCI_PLAIN_HTTP`.
+
+**Run against a live estate on three clusters.** On 2026-09-30: Argo CD v3.5.3
+on a management kind cluster, two workload clusters registered as `dev-1`
+(canary) and `staging-1` (secondary) with the example's labels, the example's
+`root` synced from GitHub, and a self-hosted ConfigHub v0.6.8. The plan was made
+from a live `kubectl get` export, with the cluster Secrets' credentials removed.
+
+| What | Result |
+| --- | --- |
+| `apply.sh` from the live export | 2 clusters, 3 components, 6 variants, control Spaces for `root` and `storefront` |
+| Step 4, all six generated Applications | each read on its own cluster, clean, against its release's digest |
+| `root`, then `storefront`, repointed | both read their control Spaces; `storefront` through a reviewed Unit change |
+| `apptique` retired through its Unit, then both Applications repointed | the stock controller did not revert either through repeated reconciles |
+| Each Application's `status.sync.revision` | equal to the release digest step 4 checked |
+| Every UID on both clusters, every Application's UID, every rollout revision | identical before, after, and after the rollback |
+
+That run found four things, now fixed or written down:
+
+- **A live export planned `root` and `storefront` as ordinary components**,
+  aimed at an `in-cluster` Target nothing creates, and `apply.sh` failed. The
+  plan found an app of apps' children by file, and an exported object has none.
+  It now reads the directory the parent syncs and matches its children by kind
+  and name, so a live export gives the same control tree as the repository.
+- **`handover.sh` re-rendered a Helm-in-Kustomize overlay without
+  `--enable-helm`**, which `apply.sh` passed. Both use the same rule now.
+- **Roll back from the bottom.** Repointing `root` back to Git put everything
+  back, as the tree is owned top down, and every UID survived. But it also put
+  back the Git copy of the AppProjects, without the gateway in `sourceRepos`,
+  while a generated Application still read the gateway, which was briefly
+  refused. Leaves first, then parents, avoids that.
+- **The example needs two Argo CD settings its README does not name:**
+  `kustomize.buildOptions: --enable-helm` and a registered `kustomize.path.v5`
+  in `argocd-cm`, for `checkout-cache`.
+
+One step was stood in for. `sourceRepos` has to allow the gateway before any
+repoint, and the AppProjects came from GitHub `main`, which a rehearsal cannot
+commit to. The change was made in the `projects` Unit of the root control Space,
+which is what `apply.sh` would have captured from that commit, and on the cluster
+with `root`'s `selfHeal` briefly off.
 
 ## A published release does not arrive on its own
 
@@ -681,12 +714,9 @@ and it reported `Synced` and `Healthy` at the exact manifest digest
 way and are now in the script and this guide: the repository Secret's shape,
 and that a second release does not arrive without a hard refresh.
 
-**Still not run:** a handover of an estate that was *already live under Argo* —
-repointing an Application that is currently syncing from Git, rather than
-creating one that reads ConfigHub from the start. The checks in front of that
-step have been exercised against real clusters, and the delivery path it
-repoints onto has been exercised, but the repoint itself has not. Read
-`handover.sh` before running it, and start with one non-production estate.
+**Since run:** a handover of an estate *already live under Argo*, repointing
+Applications that were syncing from Git, including ones an ApplicationSet
+generated. See "Run against a live estate on three clusters" above.
 
 **Not claimed at all:** that a plain directory of manifests can be onboarded
 (`kustomize build` will not read one, though Argo will — the plan says so),
