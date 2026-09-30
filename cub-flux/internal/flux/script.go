@@ -357,7 +357,10 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 		// pull with: the signal a Flux-aware `cub variant create` reads to add a
 		// variant made outside this plan as a layer here (the Flux counterpart of
 		// confighub.com/argo-apps-space).
-		ann := fmt.Sprintf("--annotation confighub.com/flux-layers-space=%s --annotation confighub.com/flux-pull-secret=confighub-%s", space, targets)
+		ann := "--annotation confighub.com/flux-layers-space=" + space
+		if secret := cl.pullSecret(prefix); secret != "" {
+			ann += " --annotation confighub.com/flux-pull-secret=" + secret
+		}
 		raw(fmt.Sprintf(`  echo '{}' | cub target update --patch --space %s %s %s --from-stdin --quiet`, targets, cl.Name, ann))
 		for _, c := range p.Components {
 			for _, st := range c.Stages {

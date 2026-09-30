@@ -201,14 +201,25 @@ func TestCleanupRemovesHandedOverVariants(t *testing.T) {
 
 // From review on #262: a handed-over cluster's Target names the Space its root
 // reads, even when that is not the one this prefix would name, and step 5 fills
-// that Space rather than making another. The annotation waits for step 5, so a
+// that Space rather than making another; and it names the Secret the root
+// pulls with, not the one this prefix would make. The annotation waits for step 5, so a
 // Flux-aware `cub variant create` never meets a layers Space that is not there.
 func TestTargetNamesTheLayersSpaceTheRootReads(t *testing.T) {
 	const fleet = "gitops/flux/beginner"
-	p := planAt(t, handedOver(t, fleet, "dev", "old-dev-layers"), fleet)
+	root := handedOver(t, fleet, "dev", "old-dev-layers")
+	// A root made under another prefix pulls with that prefix's Secret.
+	file := filepath.Join(root, fleet, "clusters", "dev", RootName+".yaml")
+	y, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(file, []byte(strings.Replace(string(y), "name: confighub-flux-targets", "name: confighub-old-targets", 1)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p := planAt(t, root, fleet)
 	s := ApplyScript(p, "flux", ".")
-	if !strings.Contains(s, "cub target update --patch --space flux-targets dev --annotation confighub.com/flux-layers-space=old-dev-layers ") {
-		t.Errorf("dev's Target should name old-dev-layers:\n%s", s)
+	if !strings.Contains(s, "cub target update --patch --space flux-targets dev --annotation confighub.com/flux-layers-space=old-dev-layers --annotation confighub.com/flux-pull-secret=confighub-old-targets ") {
+		t.Errorf("dev's Target should name old-dev-layers and the Secret its root pulls with:\n%s", s)
 	}
 	if strings.Contains(s, "flux-dev-layers") {
 		t.Errorf("nothing should make or name flux-dev-layers for a root reading old-dev-layers")
