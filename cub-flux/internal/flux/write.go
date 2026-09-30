@@ -26,6 +26,9 @@ func WriteApply(p *Plan, prefix, dir string) (string, error) {
 			continue
 		}
 		files = append(files, outFile{filepath.Join(c.Name, "change-workflow.yaml"), []byte(Workflow(c)), 0o644})
+		if len(c.Require) > 0 {
+			files = append(files, outFile{filepath.Join(c.Name, onboardingWorkflow), []byte(Workflow(c.onboarding())), 0o644})
+		}
 	}
 
 	// apply.sh renders from the repository, so it needs the way back to it.

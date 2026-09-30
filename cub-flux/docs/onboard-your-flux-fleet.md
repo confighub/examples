@@ -223,6 +223,58 @@ go into the bootstrap directory. That is the same shape `cub sveltos` uses: a
 small hand-managed bootstrap that names ConfigHub, and everything else flowing
 from ConfigHub.
 
+## 4. Tell ConfigHub what the cluster is running
+
+Once a layer reads ConfigHub, `cub flux status` reports what Flux applied as
+the Space's live status: the `confighub.com/live-status` annotation that
+ConfigHub's Healthy gate, its change orders and its UI read. It is what argobot
+does for Argo CD and `cub sveltos status` for Sveltos, in the same shape.
+
+```bash
+cub flux status ./my-fleet --cluster dev-1 --kube-context <dev-1> --watch
+```
+
+```mermaid
+flowchart LR
+  k["Kustomization apps<br/>Ready, lastAppliedRevision"] --> s["cub flux status"]
+  r["published releases<br/>of the Space"] --> s
+  s -->|"Synced / Healthy / Succeeded<br/>at the applied digest"| a["Space annotation<br/>confighub.com/live-status"]
+  a --> g["Healthy gate<br/>before the next stage"]
+```
+
+It says only what it can back:
+
+| Reading | When |
+| --- | --- |
+| `Synced` | the digest Flux applied is the **newest** published release of that Space. An older one is `OutOfSync`, with both release numbers |
+| `Healthy` | Flux checked the workloads (`spec.wait` or `healthChecks`), or the layer runs none. Otherwise `Unknown`: `Ready` then means applied, not running |
+| `revision` | the digest Flux reports it applied, never one inferred from times |
+| nothing | the layer reads Git, or another Space. A reading it wrote earlier is replaced with `Unknown`, so a layer handed back to Git does not leave a green gate behind |
+
+A read that fails writes nothing. It writes only when a reading changes, or
+when the one ConfigHub holds is older than `--refresh` (10 minutes), which is
+how a reader tells a running reporter from a stopped one. It runs as the `cub`
+user you run it as, one cluster at a time.
+
+**To make promotions wait for it,** plan and apply with `--require Healthy`.
+Each stage after the first then also waits for the stage before to read Synced,
+Succeeded and Healthy. The first release of every variant is made before
+anything reads ConfigHub, so `apply.sh` makes those under a workflow without
+it, and puts the real one in place once they are done.
+
+**Run live on 2026-09-30** against ConfigHub v0.6.8 and Flux v2.8.6, with
+`--require Healthy`:
+- A change was released to dev and promoted towards prod. ConfigHub refused it
+  twice: "live-status not found for Variant 'dev'" with no reading, and "Variant
+  'dev' is not synced" while Flux still held release 1, which the reporter wrote
+  as `OutOfSync`.
+- Once Flux applied release 2, the reporter wrote Synced/Healthy/Succeeded at
+  that digest, and the promotion went through.
+- The Space's other annotations were untouched. A second pass wrote nothing. `--watch` stopped cleanly on an interrupt.
+
+Replacing a stale reading after a layer returns to Git was added after that run,
+so it is covered by tests, not yet by a live run.
+
 ## What the plugin checks for you, and what it cannot
 
 ```mermaid
