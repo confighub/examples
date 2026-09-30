@@ -33,10 +33,10 @@ Do not continue until I say continue.
 ## What This Example Is For
 
 This is one small app (`apptique`), delivered by an Argo CD Application and
-a Flux Kustomization, in three states: healthy, drift, failed sync, and bad
-commit. Everything renders offline. This example never installs Argo CD or
-Flux, never applies anything, and never touches a cluster. Only the
-healthy state is ever uploaded to ConfigHub.
+a Flux Kustomization, in one healthy state and three broken ones: drift,
+failed sync, and bad commit. Everything renders offline. This example never
+installs Argo CD or Flux, never applies anything, and never touches a
+cluster. Only the healthy state is ever uploaded to ConfigHub.
 
 ## Facts To Get Right Before You Say Anything
 
@@ -132,7 +132,7 @@ What this mutates:
   `gitops-expert-broken-states-flux-control` (the Flux Kustomization and
   GitRepository)
 - creates or updates ConfigHub Space `gitops-expert-broken-states` (the
-  healthy `apptique` Unit)
+  healthy `apptique` Units, one per resource)
 
 A ConfigHub Space belongs to one Component, so the Argo and Flux control
 objects each get their own Space rather than sharing one: uploading a
@@ -152,7 +152,7 @@ GUI checkpoint:
 
 Pause after this stage.
 
-## Stage 5: Verify The Evidence (read-only)
+## Stage 5: Verify The Evidence (offline)
 
 ```bash
 ./verify.sh
@@ -164,8 +164,10 @@ of an unchanged healthy render, the bad-commit overlay's Service
 `targetPort` of 8080 against a container and probes that stay on 80 (both
 broken overlays in the healthy app's own namespace), and that every script
 in this example (including every `scenarios/*/break.sh`) is syntactically
-valid. It does not call
-ConfigHub, so it passes even if you skipped Stage 4.
+valid. It does not change
+ConfigHub or any cluster and does not call ConfigHub, so it passes even if
+you skipped Stage 4. It writes the renders to `var/`, which is not tracked
+by Git.
 
 GUI checkpoint:
 

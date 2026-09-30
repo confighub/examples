@@ -38,7 +38,7 @@ That render is what setup.sh never uploads. To see the real failure, in
 YOUR OWN terminal, against a cluster you control, with this same repo
 checked out and Argo CD or Flux pointed at it:
 
-  # Whether the CRD exists, and what applied anyway in the namespace:
+  # Whether the CRD exists, and what is still running in the namespace:
   kubectl get crd rediscaches.cache.apptique.example
   kubectl -n apptique-broken-states get deployment,service frontend
 

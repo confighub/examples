@@ -103,11 +103,30 @@ as another new revision with `targetPort: 80`.
 ## The way back
 
 Because this is one field, the fix is the same size as the break: revert
-the Service's `targetPort` to 80, publish, and let Argo or Flux re-sync. A
-ChangeSet-wrapped promotion (as the get-started tutorial's "make a change"
-step does) gives this an undo path: `cub changeset create`, patch, promote
-with `--changeset`, close it, then publish; `pilot operate undo` can then
-reverse the whole change if the fix itself turns out wrong.
+the Service's `targetPort` to 80. The controllers in this example read Git,
+so the live fix is a Git revert that Argo CD or Flux then syncs.
+
+If the bad commit was also uploaded to ConfigHub, ConfigHub needs its own
+step. `cub variant upload` records its writes in a ChangeSet and prints a
+restore command at the end. `cub unit update --restore` writes a
+previous revision back into the Unit, and `Before:ChangeSet:<slug>` names
+the state just before that ChangeSet. In YOUR terminal (this mutates
+ConfigHub only):
+
+```bash
+cub unit update --space gitops-expert-broken-states frontend-service \
+  --restore Before:ChangeSet:<slug-printed-by-the-upload>
+```
+
+`--restore -1` (one revision back from head) does the same here, because
+the upload wrote one new revision of this Unit. Running `./setup.sh` again
+also puts the healthy render back, as a new revision. None of these change
+the cluster.
+
+For a change that goes through ConfigHub's full change flow (ChangeSet,
+promote, Release), the [tutorial](../../../../tutorial/README.md) has a
+"change" section and an "undo" section that restores a released revision.
+Run `./tutorial.sh --list` there to see them.
 
 ## How to diagnose this, read-only
 

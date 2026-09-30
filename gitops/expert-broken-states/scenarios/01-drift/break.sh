@@ -20,8 +20,11 @@ with apptique-broken-states already deployed there by Argo CD or Flux:
 
 Then watch:
   - Argo CD: the Application goes OutOfSync, then (with selfHeal) reverts.
-  - Flux: the Kustomization's drift detection reconciles it back on its
-    next interval.
+  - Flux: kustomize-controller applies the desired state again on its next
+    reconcile interval, which sets replicas back to 2.
+
+Only fields the manifest sets are corrected. A hand edit to a field it
+does not set, such as an added annotation, is left alone.
 
 See ./README.md for what each controller reports and what ConfigHub shows.
 EOF_STEPS

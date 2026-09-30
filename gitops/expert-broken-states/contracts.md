@@ -16,14 +16,18 @@ What a tool may assume about this example.
 - mutates: no
 - output shape: JSON object
 - stable fields: `example_name`, `mutates`, `mutates_confighub`, `mutates_live_infra`,
-  `spaces`, `units`, `apps`, `scenarios`, `uploaded_states`, `not_uploaded_states`,
-  `namespaces`, `evaluation_modes`
+  `spaces`, `components`, `unit_per_resource`, `resources`, `apps`, `scenarios`,
+  `uploaded_states`, `not_uploaded_states`, `namespaces`, `evaluation_modes`
 - expected anchors:
   - `.example_name == "gitops-expert-broken-states"`
   - `.mutates == false`
   - `.mutates_confighub == true`
   - `.mutates_live_infra == false`
   - `.spaces | length == 3`
+  - `.components == ["argo-control", "flux-control", "apptique"]`
+  - `.unit_per_resource == true`: `cub variant upload` makes one Unit per
+    rendered resource, so `.resources` lists the resources (as
+    `Kind/name`) that become the Units in each Component's Space
   - `.scenarios == ["drift", "failed-sync", "bad-commit"]`
   - `.uploaded_states == ["healthy"]`
   - `.not_uploaded_states == ["failed-sync", "bad-commit"]`
@@ -72,8 +76,11 @@ without running anything against a cluster:
   `gitops-expert-broken-states-flux-control`,
   `gitops-expert-broken-states`), one per Component: a ConfigHub Space
   belongs to one Component, so the Argo control objects, the Flux control
-  objects, and the healthy `apptique` Unit each get their own Space rather
-  than sharing one
+  objects, and the healthy `apptique` resources each get their own Space
+  rather than sharing one
+- creates one Unit per rendered resource: 1 in the Argo control Space, 2 in
+  the Flux control Space, and 4 in the workload Space (Namespace,
+  ServiceAccount, Service, Deployment)
 - uploads only the healthy overlay; never uploads `failed-sync` or
   `bad-commit`
 - cleanup: `./cleanup.sh` (local files) plus the `cub space delete`
@@ -119,13 +126,16 @@ same Space even though both are "control" objects.
   gitops-expert-broken-states` flags as `setup.sh`, on
   `var/rendered-bad-commit.yaml`
 - undo: run `./setup.sh` again, which re-uploads the healthy render as a
-  new revision with `targetPort: 80`
+  new revision with `targetPort: 80`, or restore the Unit with
+  `cub unit update --restore Before:ChangeSet:<slug>` (the upload prints
+  the slug)
 
 ## Verification Contract
 
 ### `./verify.sh`
 
-- mutates: no
+- mutates: no ConfigHub, cluster or tracked file. It writes its renders to
+  `var/`, which is not tracked by Git; `./cleanup.sh` removes it
 - output shape: plain text
 - stable success text: `All gitops-expert-broken-states checks passed.`
 - proves:
@@ -139,7 +149,7 @@ same Space even though both are "control" objects.
     container and both probes on port 80, sets the Service `targetPort` to
     8080, and differs from the healthy render in exactly one line
   - `setup.sh --explain-json` is valid JSON with the fields and anchors
-    listed above
+    listed above, and its `resources` match what each component renders
   - `bash -n` passes on every script in this example, including
     `scenarios/*/break.sh`
 - does not require ConfigHub, a live cluster, Argo CD, or Flux
@@ -157,6 +167,6 @@ scripts.
 
 | Scenario | Local artifact | Live claim, named as such |
 |---|---|---|
-| `01-drift` | none (drift is inherently a live divergence) | Argo `OutOfSync`/selfHeal revert; Flux drift detection revert |
-| `02-failed-sync` | `apps/apptique/overlays/failed-sync/redis-cache.yaml` | Argo sync error; Flux `Ready=False` |
+| `01-drift` | none (drift is inherently a live divergence) | Argo `OutOfSync`/selfHeal revert of a managed field; Flux reapply on the next interval |
+| `02-failed-sync` | `apps/apptique/overlays/failed-sync/redis-cache.yaml` | Argo `OutOfSync` with a `Failed` sync operation; Flux `Ready=False`, `ReconciliationFailed` |
 | `03-bad-commit` | `apps/apptique/overlays/bad-commit/kustomization.yaml` patch | Argo `Synced`/`Healthy`; Flux `Ready=True`; workload still broken |

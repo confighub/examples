@@ -102,12 +102,13 @@ upload the broken overlays.
 - `./setup.sh`: mutates ConfigHub (creates or updates three Spaces, one per
   Component: an Argo control Space with the Argo Application, a Flux
   control Space with the Flux Kustomization and GitRepository, and a
-  workload Space with the healthy `apptique` Unit). Does not mutate live
+  workload Space with one Unit per healthy `apptique` resource). Does not mutate live
   infrastructure. Never uploads `overlays/failed-sync` or
   `overlays/bad-commit`.
-- `./verify.sh`: read-only. Renders every overlay and both controllers'
-  control objects locally and checks the output; does not call ConfigHub,
-  Argo CD, Flux, or a cluster.
+- `./verify.sh`: does not change ConfigHub or any cluster. Renders every
+  overlay and both controllers' control objects locally and checks the
+  output; does not call ConfigHub, Argo CD, Flux, or a cluster. It writes
+  the renders to `var/`, which is not tracked by Git.
 - `./cleanup.sh`: removes local rendered files. Prints, but does not run,
   the `cub space delete` commands for what `setup.sh` created.
 - `scenarios/*/break.sh`: prints documentation, and for the two scenarios
@@ -121,8 +122,8 @@ Each scenario page states what a person sees, what ConfigHub shows, and a
 read-only way to check, in the person's own terminal:
 
 1. [**Drift**](./scenarios/01-drift/README.md): a hand edit to a live
-   Deployment. Argo CD's `selfHeal` and Flux's drift detection both correct
-   it on their next pass; ConfigHub's stored intent never changed, so it
+   Deployment. Argo CD's `selfHeal` and Flux's reapply on each reconcile
+   interval both correct the fields the manifest sets; ConfigHub's stored intent never changed, so it
    has no way to notice the divergence by itself.
 2. [**Failed sync**](./scenarios/02-failed-sync/README.md): a `RedisCache`
    custom resource with no CRD installed. It renders and uploads cleanly;

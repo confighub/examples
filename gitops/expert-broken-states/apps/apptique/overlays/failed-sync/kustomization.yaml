@@ -12,6 +12,10 @@ kind: Kustomization
 # app in place, the way a real commit would, and the scenario's
 # diagnostics read that same namespace.
 #
+# The inherited resources keep the healthy overlay's "scenario: healthy"
+# label, because they are the healthy resources. The added RedisCache
+# carries "scenario: failed-sync" in redis-cache.yaml.
+#
 # setup.sh never uploads this overlay and nothing in this example applies
 # it to a cluster. verify.sh renders it locally to show the exact broken
 # resource, offline.

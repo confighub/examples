@@ -17,6 +17,10 @@ kind: Kustomization
 # port 8080, where nothing is listening: every request through the Service
 # is refused.
 #
+# It keeps the healthy overlay's "scenario: healthy" label on every
+# resource. Relabelling would add lines to the diff, and the point of this
+# overlay is that the diff is the one targetPort line.
+#
 # setup.sh never uploads this overlay and nothing in this example applies
 # it to a cluster. verify.sh renders it locally to show the exact broken
 # field, offline. scenarios/03-bad-commit/README.md has an optional,

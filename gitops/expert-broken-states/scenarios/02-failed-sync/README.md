@@ -37,20 +37,33 @@ unchanged.
 
 ## What a person sees
 
-- Argo CD: the sync operation fails with an error such as
-  `no matches for kind "RedisCache" in version "cache.apptique.example/v1"`.
-  The Application's sync status shows `Failed` (or stays `OutOfSync` with a
-  sync error), and the other resources in the same sync wave may or may not
-  have applied first, depending on ordering.
-- Flux: the Kustomization's `Ready` condition goes `False`, with a reason
-  such as `ReconciliationFailed` (or `BuildFailed` on older Flux versions),
-  and the message names the missing kind. `flux get kustomizations` in the
+These describe what each controller would report. This example never runs
+either one.
+
+- Argo CD: the Application's sync status is `OutOfSync`, because Git now
+  holds a `RedisCache` the cluster does not have. The sync operation's
+  phase (`status.operationState.phase`) is `Failed`. Argo CD's dry-run
+  validation fails the sync before it applies anything, so nothing from the
+  broken commit is applied. Objects already live from the healthy state
+  keep running. The error would read roughly "the server could not find the
+  requested resource", or that it could not find `RedisCache` in
+  `cache.apptique.example` and to make sure the CRD is installed on the
+  destination cluster. The exact text depends on the Argo CD version. (With
+  the `SkipDryRunOnMissingResource=true` sync option, Argo CD skips that
+  validation for the missing kind and applies the other resources. This
+  Application does not set it.)
+- Flux: kustomize-controller runs a server-side dry-run of the whole
+  apply, and that dry-run fails, so nothing from the new revision is
+  applied. The Kustomization's `Ready` condition goes `False` with reason
+  `ReconciliationFailed`, and the message names the missing kind
+  (`RedisCache`) and that no matches were found for it. This overlay builds
+  cleanly, so this is not a `BuildFailed`. `flux get kustomizations` in the
   person's own terminal shows the failure; this example never runs it.
-- The healthy resources in this same manifest (the Deployment, Service, and
-  ServiceAccount) may already be running. A failed sync on one resource
-  does not necessarily roll back the resources that did apply, which is
-  part of why "failed sync" is a state to name precisely rather than a
-  single pass/fail flag.
+- Either way, the Deployment, Service and ServiceAccount from the healthy
+  state stay as they were, and no `RedisCache` object exists. The failure
+  is in delivery of the new commit, not in the running app, which is part
+  of why "failed sync" is a state to name precisely rather than a single
+  pass/fail flag.
 
 ## What ConfigHub shows
 
@@ -74,7 +87,7 @@ In the person's own terminal:
 # Whether the CRD in question actually exists on this cluster.
 kubectl get crd rediscaches.cache.apptique.example 2>&1 || true
 
-# The healthy resources in the same namespace, which may have applied anyway.
+# The healthy resources in the same namespace, which stay as they were.
 kubectl -n apptique-broken-states get deployment,service frontend
 
 # Argo CD's own read of the Application's sync/health state.
@@ -82,14 +95,13 @@ argocd app get apptique-broken-states -o json
 
 # Flux's own read of the Kustomization's conditions.
 flux get kustomizations apptique-broken-states
-
-# Pilot's read-only six-link trace: ConfigHub Release, controller object,
-# and runtime target, named together instead of checked one at a time.
-pilot delivery-trace --space gitops-expert-broken-states \
-  --cluster-space <cluster-space> --namespace apptique-broken-states \
-  --cub-context <context> --out-dir <receipt-dir>
 ```
 
 None of these mutate anything. This example does not run any of them; they
 are what a person runs, against their own cluster, to see the failure this
 scenario describes.
+
+`pilot delivery-trace` is not used here. It walks a ConfigHub Release, its
+delivery target and its Application Unit down to Argo CD, and this example
+creates no Target or Release. It applies once the Argo side is delivered
+from a ConfigHub Release, and it does not apply to the Flux path.

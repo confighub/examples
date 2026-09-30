@@ -18,6 +18,7 @@ metadata:
   labels:
     app.kubernetes.io/name: apptique
     app.kubernetes.io/part-of: apptique-examples
+    scenario: failed-sync
 spec:
   replicas: 1
   maxMemoryPolicy: allkeys-lru
