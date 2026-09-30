@@ -61,9 +61,6 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 		add(`KUSTOMIZE_FLAGS=${KUSTOMIZE_FLAGS:---enable-helm}`)
 	}
 	add("")
-	add("# The gateway address a repointed source reads. cub reports it for a Target.")
-	add("gateway() { cub target get --space %s \"$1\" -o jq=.Target.Parameters.OCIRepository 2>/dev/null || true; }", targets)
-	add("")
 
 	add("# The state of this run: each parent's source as it was, recorded before it")
 	add("# moves. If anything stops the script after a parent moved, the way back is")
@@ -250,9 +247,7 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 		}
 		add(`if [ -n "$still_blocked" ]; then`)
 		add("echo %s", q(blocked[0]))
-		// Not "cub target get": apply.sh creates the Target with empty parameters
-		// and cub reports no gateway address for it, so that command prints
-		// nothing and reads as a broken install rather than as the wrong query.
+		// A Target does not record the gateway address, so the address is given here.
 		add(`echo "  The address is oci://<gateway host>, the same CONFIGHUB_OCI this script takes:"`)
 		add(`echo "    ConfigHub cloud:  oci://oci.hub.confighub.com"`)
 		add(`echo "    self-hosted:      oci:// plus the host and port of confighub-oci-server,"`)
@@ -274,13 +269,15 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("")
 
 	add(`step "1/%d The credential Argo reads the gateway with"`, total)
-	add("# A repository Secret for the gateway, holding the Targets' server worker.")
+	add("# A repository Secret for the gateway, holding the server worker the Targets grant access to.")
 	add("# The ID and secret go from cub into the Secret through file descriptors,")
 	add("# never to disk, the command line, or the terminal.")
-	add(`addr=${CONFIGHUB_OCI:-$(gateway argocd)}`)
+	add(`addr=${CONFIGHUB_OCI:-}`)
 	add(`if [ -z "$addr" ]; then`)
-	add(`  echo "Could not read the gateway address from Target %s/argocd."`, targets)
-	add(`  echo "Find it with: cub target get --space %s argocd"`, targets)
+	add(`  echo "Set CONFIGHUB_OCI to the gateway address, oci://<gateway host>:"`)
+	add(`  echo "  ConfigHub cloud:  oci://oci.hub.confighub.com"`)
+	add(`  echo "  self-hosted:      oci:// plus the host and port of confighub-oci-server,"`)
+	add(`  echo "                    as reachable FROM this cluster, not from your laptop."`)
 	add(`  echo "then re-run with CONFIGHUB_OCI=<address> bash handover.sh"; exit 1`)
 	add("fi")
 	// repo-creds, not repository. Argo matches a "repository" Secret to an

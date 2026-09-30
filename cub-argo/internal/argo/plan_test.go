@@ -894,7 +894,7 @@ func TestInClusterEstateNeedsNoClusterSecret(t *testing.T) {
 	if got := p.targetClusters(); len(got) != 1 || got[0] != "in-cluster" {
 		t.Errorf("want one Target, in-cluster; got %v", got)
 	}
-	if s := ApplyScript(p, "argo", "."); !strings.Contains(s, "cub target create in-cluster '{}' server-worker --space argo-targets") {
+	if s := ApplyScript(p, "argo", "."); !strings.Contains(s, "cub target create in-cluster --space argo-targets") {
 		t.Error("apply.sh must create the in-cluster Target its variants are addressed to")
 	}
 	if head := strings.SplitN(Render(p), "\n", 2)[0]; !strings.Contains(head, "1 cluster, Argo CD's own (in-cluster)") {

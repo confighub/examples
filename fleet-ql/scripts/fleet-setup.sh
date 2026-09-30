@@ -68,9 +68,7 @@ YAML
 unit_exists()  { $cub unit get  --space "$1" "$2" >/dev/null 2>&1; }
 
 ensure_cluster() { # space cluster
-  $cub worker create oci-worker --is-server-worker --space "$1" --allow-exists >/dev/null 2>&1 || true
-  $cub target create "$2" '{}' oci-worker --space "$1" --provider OCI --toolchain Any \
-    --allow-exists >/dev/null 2>&1 || true
+  $cub target create "$2" --space "$1" --allow-exists >/dev/null 2>&1 || true
 }
 
 for entry in "${COMPONENTS[@]}"; do

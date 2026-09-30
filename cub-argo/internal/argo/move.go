@@ -80,7 +80,7 @@ func MoveScript(p *Plan, prefix string) string {
 	add(`k() { kubectl --context "$ctx" "$@"; }`)
 	add(`ns=${ARGOCD_NAMESPACE:-argocd}`)
 	add(`step() { printf '\n== %%s\n' "$*"; }`)
-	add(`addr=${CONFIGHUB_OCI:-$(cub target get --space %s argocd -o jq=.Target.Parameters.OCIRepository 2>/dev/null || true)}`, targets)
+	add(`addr=${CONFIGHUB_OCI:-}`)
 	add(`addr=${addr#oci://}`)
 	add(`[ -n "$addr" ] || { echo "set CONFIGHUB_OCI to the gateway address the cluster reaches, as handover.sh used"; exit 1; }`)
 	add(`digest() { cub release get --space "$1" --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"'; }`)
