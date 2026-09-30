@@ -90,7 +90,11 @@ ConfigHub mutations if you run without --explain:
 - creates (or updates) Space "$ARGO_CONTROL_SPACE" with the Argo Application
 - creates (or updates) Space "$FLUX_CONTROL_SPACE" with the Flux
   Kustomization and GitRepository
-- creates (or updates) Space "$WORKLOAD_SPACE" with the healthy apptique Unit
+- creates (or updates) Space "$WORKLOAD_SPACE" with the healthy apptique Units
+
+"cub variant upload" makes one Unit per rendered resource, so this creates
+1 Unit in the Argo control Space, 2 in the Flux control Space and 4 in the
+workload Space (the Namespace, ServiceAccount, Service and Deployment).
 
 This example never creates or mutates a live Kubernetes cluster, never
 installs or talks to Argo CD or Flux, and never uploads the failed-sync or
@@ -113,7 +117,13 @@ if [[ "$EXPLAIN_JSON" -eq 1 ]]; then
       mutates_confighub: true,
       mutates_live_infra: false,
       spaces: [$argoControlSpace, $fluxControlSpace, $workloadSpace],
-      units: ["argo-control", "flux-control", "frontend"],
+      components: ["argo-control", "flux-control", "apptique"],
+      unit_per_resource: true,
+      resources: {
+        "argo-control": ["Application/apptique-broken-states"],
+        "flux-control": ["Kustomization/apptique-broken-states", "GitRepository/apptique-examples"],
+        "apptique": ["Namespace/apptique-broken-states", "ServiceAccount/frontend", "Service/frontend", "Deployment/frontend"]
+      },
       apps: ["apptique"],
       scenarios: ["drift", "failed-sync", "bad-commit"],
       uploaded_states: ["healthy"],

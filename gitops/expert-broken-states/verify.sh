@@ -14,6 +14,7 @@ require_cmd() {
 usage() {
   echo "Usage: ./verify.sh" >&2
   echo "Runs offline checks only: no cluster, no Argo CD, no Flux, no ConfigHub calls." >&2
+  echo "Writes the rendered manifests to var/, which is not tracked by Git." >&2
 }
 
 while [[ $# -gt 0 ]]; do
@@ -40,7 +41,7 @@ echo "==> Checking that setup.sh --explain-json is valid JSON with the expected 
 EXPLAIN_JSON_OUT="$("$SCRIPT_DIR/setup.sh" --explain-json)"
 echo "$EXPLAIN_JSON_OUT" | jq . >/dev/null
 
-for field in example_name mutates mutates_confighub mutates_live_infra spaces units apps scenarios uploaded_states not_uploaded_states namespaces evaluation_modes; do
+for field in example_name mutates mutates_confighub mutates_live_infra spaces components unit_per_resource resources apps scenarios uploaded_states not_uploaded_states namespaces evaluation_modes; do
   if ! echo "$EXPLAIN_JSON_OUT" | jq -e "has(\"$field\")" >/dev/null; then
     echo "setup.sh --explain-json is missing field: $field" >&2
     exit 1
@@ -70,6 +71,23 @@ if [[ "$distinct_space_count" -ne 3 ]]; then
   echo "Expected the 3 Spaces to be distinct, got $distinct_space_count distinct values" >&2
   exit 1
 fi
+
+echo "==> Checking that the resources listed in --explain-json match what each component renders"
+# cub variant upload makes one Unit per rendered resource, so the listed
+# resources are the Units each Space will hold.
+kustomize build "$SCRIPT_DIR/argo" > "$VAR_DIR/rendered-argo-control.yaml"
+kustomize build "$SCRIPT_DIR/flux" > "$VAR_DIR/rendered-flux-control.yaml"
+kustomize build "$SCRIPT_DIR/apps/apptique/overlays/healthy" > "$VAR_DIR/rendered-healthy.yaml"
+for pair in "argo-control:rendered-argo-control.yaml" "flux-control:rendered-flux-control.yaml" "apptique:rendered-healthy.yaml"; do
+  component="${pair%%:*}"
+  rendered="$VAR_DIR/${pair#*:}"
+  listed="$(echo "$EXPLAIN_JSON_OUT" | jq -r --arg c "$component" '.resources[$c] | sort | join(",")')"
+  actual="$(awk '/^kind: /{k=$2} /^  name: /{if (k!="") {print k "/" $2; k=""}}' "$rendered" | sort | paste -sd, -)"
+  if [[ "$listed" != "$actual" ]]; then
+    echo "setup.sh --explain-json lists resources [$listed] for $component but its render has [$actual]" >&2
+    exit 1
+  fi
+done
 
 echo "==> Checking that setup.sh --explain runs without mutation"
 "$SCRIPT_DIR/setup.sh" --explain >/dev/null
@@ -173,10 +191,12 @@ echo "==> Checking setup.sh never uploads two Components into the same Space"
 # into the same Space re-links it and overwrites its labels. Guard against
 # that regression by requiring the Argo and Flux control uploads to name
 # two different --space variables.
+# shellcheck disable=SC2016  # the pattern is a literal, not an expansion
 if ! grep -q -- '--space "\$ARGO_CONTROL_SPACE"' "$SCRIPT_DIR/setup.sh"; then
   echo "setup.sh must upload the argo-control Component into \$ARGO_CONTROL_SPACE" >&2
   exit 1
 fi
+# shellcheck disable=SC2016  # the pattern is a literal, not an expansion
 if ! grep -q -- '--space "\$FLUX_CONTROL_SPACE"' "$SCRIPT_DIR/setup.sh"; then
   echo "setup.sh must upload the flux-control Component into \$FLUX_CONTROL_SPACE" >&2
   exit 1
