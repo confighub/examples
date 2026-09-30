@@ -34,8 +34,9 @@ const RootName = "confighub-root"
 // ConfigHub, not the plan's, so the Unit is written with these markers and
 // the scripts fill them in.
 const (
-	gatewayMarker  = "__CONFIGHUB_OCI__"
-	insecureMarker = "__CONFIGHUB_OCI_INSECURE__"
+	gatewayMarker   = "__CONFIGHUB_OCI__"
+	insecureMarker  = "__CONFIGHUB_OCI_INSECURE__"
+	namespaceMarker = "__FLUX_NAMESPACE__"
 )
 
 // DeliveryUnit is the Unit for one layer on one cluster.
@@ -100,7 +101,7 @@ func RootManifests(prefix, cluster string) string {
 kind: OCIRepository
 metadata:
   name: %[1]s
-  namespace: flux-system
+  namespace: %[6]s
 spec:
   interval: 1m
   url: oci://%[2]s/space/%[3]s
@@ -114,7 +115,7 @@ apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
   name: %[1]s
-  namespace: flux-system
+  namespace: %[6]s
 spec:
   interval: 10m
   path: ./
@@ -122,7 +123,7 @@ spec:
   sourceRef:
     kind: OCIRepository
     name: %[1]s
-`, RootName, gatewayMarker, DeliverySpace(prefix, cluster), prefix, insecureMarker)
+`, RootName, gatewayMarker, DeliverySpace(prefix, cluster), prefix, insecureMarker, namespaceMarker)
 }
 
 func deepCopy(v any) any {

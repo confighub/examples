@@ -405,6 +405,7 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	raw(`  printf '%s\n' "$owner" > "$owner_file"`)
 	raw(`  suspended_owner=$owner`)
 	raw(`fi`)
+	raw(`layers_still_current`)
 	raw(`current=` + RootName)
 	raw(`k apply -f "bootstrap/$cluster/` + RootName + `.yaml"`)
 	for _, step := range p.Order {
@@ -414,6 +415,7 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	}
 	raw(`log "applied the root; it reads $layers_space"`)
 	raw(`k -n "$ns" wait --for=condition=Ready "kustomization/` + RootName + `" --timeout=5m`)
+	raw(`root_applied_checked`)
 	for _, step := range p.Order {
 		for _, name := range step {
 			onlyWhereLayer(name, "arrived "+q(name))

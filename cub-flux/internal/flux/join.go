@@ -62,11 +62,13 @@ func JoinScript(p *Plan, prefix string) string {
 	add(`  --docker-password="$(cub worker get --space %s server-worker --include-secret -o jq=.BridgeWorker.Secret | tr -d '\"\n')" \`, targets)
 	add(`  --dry-run=client -o yaml | k apply -f -`)
 	L = append(L, rootLines(prefix)...)
+	add(`layers_still_current`)
 	add(`k apply -f "bootstrap/$cluster/%s.yaml"`, RootName)
 	add("")
 
 	add(`step "3/3 Every layer arrives from ConfigHub"`)
 	add(`k -n "$ns" wait --for=condition=Ready "kustomization/%s" --timeout=5m`, RootName)
+	add(`root_applied_checked`)
 	add(`arrive() {`)
 	add(`  local i; for i in $(seq 1 36); do k -n "$ns" get kustomization "$1" >/dev/null 2>&1 && break; sleep 5; done`)
 	add(`  k -n "$ns" wait --for=condition=Ready "kustomization/$1" --timeout=5m >/dev/null`)
@@ -95,8 +97,17 @@ func rootLines(prefix string) []string {
 		`mkdir -p "bootstrap/$cluster"`,
 		`insecure=false; [ -z "${CONFIGHUB_OCI_PLAIN_HTTP:-}" ] || insecure=true`,
 		`layers_space=` + strings.Replace(q(DeliverySpace(prefix, "__CLUSTER__")), "__CLUSTER__", `'"$cluster"'`, 1),
-		`cub release get --space "$layers_space" --oci-reference latest -o jq=.Release.ManifestDigest >/dev/null 2>&1 || { echo "$layers_space has no published release: run apply.sh with CONFIGHUB_OCI set first"; exit 1; }`,
-		fmt.Sprintf(`cat <<'YAML' | sed -e "s|%s|$addr|" -e "s|%s|$insecure|" -e "s|__CLUSTER__|$cluster|" > "bootstrap/$cluster/%s.yaml"`, gatewayMarker, insecureMarker, RootName),
+		// The root reads the layers Space's latest release, so the release it
+		// is checked against is pinned here: read once, confirmed still the
+		// newest just before the root goes on, and confirmed to be what the
+		// root applied. A republish in between would otherwise go out as if
+		// checked, and a delivery Unit decides prune and targetNamespace.
+		`layers_digest=$(cub release get --space "$layers_space" --oci-reference latest -o jq=.Release.ManifestDigest 2>/dev/null | tr -d '"') || true`,
+		`[ -n "$layers_digest" ] || { echo "$layers_space has no published release: run apply.sh with CONFIGHUB_OCI set first"; exit 1; }`,
+		`echo "  $layers_space is at $layers_digest"`,
+		`layers_still_current() { local now; now=$(cub release get --space "$layers_space" --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"'); [ "$now" = "$layers_digest" ] || { echo "  $layers_space was republished since it was read ($layers_digest, now $now); run again to check what is published now" >&2; return 1; }; }`,
+		`root_applied_checked() { local a; a=$(k -n "$ns" get kustomization ` + RootName + ` -o jsonpath='{.status.lastAppliedRevision}'); [ "${a##*@}" = "$layers_digest" ] || { echo "  the root applied $a, not the checked $layers_digest" >&2; return 1; }; }`,
+		fmt.Sprintf(`cat <<'YAML' | sed -e "s|%s|$addr|" -e "s|%s|$insecure|" -e "s|%s|$ns|" -e "s|__CLUSTER__|$cluster|" > "bootstrap/$cluster/%s.yaml"`, gatewayMarker, insecureMarker, namespaceMarker, RootName),
 		strings.TrimRight(RootManifests(prefix, "__CLUSTER__"), "\n"),
 		"YAML",
 	}

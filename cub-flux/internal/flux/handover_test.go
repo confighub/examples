@@ -89,6 +89,7 @@ case "$1" in build) echo "kind: Same" ;; *) echo v5 ;; esac
 type handoverRun struct {
 	out, log string
 	state    string
+	dir      string
 	err      error
 }
 
@@ -136,7 +137,7 @@ func runHandoverOn(t *testing.T, cluster string, env ...string) handoverRun {
 	out, err := cmd.CombinedOutput()
 	log, _ := os.ReadFile(calls)
 	state, _ := os.ReadFile(filepath.Join(dir, "handover-state", cluster+".log"))
-	return handoverRun{string(out), string(log), string(state), err}
+	return handoverRun{string(out), string(log), string(state), dir, err}
 }
 
 // Every kubectl call, and every command printed for a person to run later,
@@ -254,11 +255,41 @@ func TestHandoverStopsBeforeTheRootWhenAReleaseMoved(t *testing.T) {
 }
 
 // If Flux applied something other than the checked release, the run stops
-// and says so.
+// and says so. The root is checked first: it is what decides how each layer
+// is reconciled.
 func TestHandoverStopsWhenTheAppliedReleaseIsNotTheChecked(t *testing.T) {
 	r := runHandover(t, "FLUX_CONTEXT=ctx-a", "FETCHED=sha256:newer")
-	if r.err == nil || !strings.Contains(r.out, "Flux applied latest@sha256:newer, but sha256:checked was checked") {
+	if r.err == nil || !strings.Contains(r.out, "the root applied latest@sha256:newer, not the checked sha256:checked") {
 		t.Fatalf("want a stop naming both digests: %v\n%s", r.err, r.out)
+	}
+}
+
+// From review on #255: the layers Space republished between being read and
+// the root going on would deliver an unchecked release. It stops first.
+func TestHandoverStopsWhenTheLayersSpaceIsRepublished(t *testing.T) {
+	// dev-1: four variant digests and the layers digest are read, the four
+	// variants re-checked, then the layers Space re-checked: the tenth read.
+	r := runHandover(t, "FLUX_CONTEXT=ctx-a", "RELEASE_MOVES_AFTER=9")
+	if r.err == nil || !strings.Contains(r.out, "was republished since it was read") {
+		t.Fatalf("want a stop before the root: %v\n%s", r.err, r.out)
+	}
+	if strings.Contains(r.log, "confighub-root.yaml") {
+		t.Errorf("the root must not be applied:\n%s", r.log)
+	}
+}
+
+// From review on #255: the root goes in the namespace the script uses.
+func TestRootIsWrittenIntoTheSelectedNamespace(t *testing.T) {
+	r := runHandover(t, "FLUX_CONTEXT=ctx-a", "FLUX_NAMESPACE=flux-ops")
+	if r.err != nil {
+		t.Fatalf("%v\n%s", r.err, r.out)
+	}
+	root, err := os.ReadFile(filepath.Join(r.dir, "bootstrap", "dev-1", "confighub-root.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Count(string(root), "namespace: flux-ops") != 2 || strings.Contains(string(root), "namespace: flux-system") {
+		t.Errorf("both root objects belong in flux-ops:\n%s", root)
 	}
 }
 

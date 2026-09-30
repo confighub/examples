@@ -206,13 +206,17 @@ k create secret docker-registry confighub-flux-targets --namespace "$ns" \
 mkdir -p "bootstrap/$cluster"
 insecure=false; [ -z "${CONFIGHUB_OCI_PLAIN_HTTP:-}" ] || insecure=true
 layers_space='flux-'"$cluster"'-layers'
-cub release get --space "$layers_space" --oci-reference latest -o jq=.Release.ManifestDigest >/dev/null 2>&1 || { echo "$layers_space has no published release: run apply.sh with CONFIGHUB_OCI set first"; exit 1; }
-cat <<'YAML' | sed -e "s|__CONFIGHUB_OCI__|$addr|" -e "s|__CONFIGHUB_OCI_INSECURE__|$insecure|" -e "s|__CLUSTER__|$cluster|" > "bootstrap/$cluster/confighub-root.yaml"
+layers_digest=$(cub release get --space "$layers_space" --oci-reference latest -o jq=.Release.ManifestDigest 2>/dev/null | tr -d '"') || true
+[ -n "$layers_digest" ] || { echo "$layers_space has no published release: run apply.sh with CONFIGHUB_OCI set first"; exit 1; }
+echo "  $layers_space is at $layers_digest"
+layers_still_current() { local now; now=$(cub release get --space "$layers_space" --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"'); [ "$now" = "$layers_digest" ] || { echo "  $layers_space was republished since it was read ($layers_digest, now $now); run again to check what is published now" >&2; return 1; }; }
+root_applied_checked() { local a; a=$(k -n "$ns" get kustomization confighub-root -o jsonpath='{.status.lastAppliedRevision}'); [ "${a##*@}" = "$layers_digest" ] || { echo "  the root applied $a, not the checked $layers_digest" >&2; return 1; }; }
+cat <<'YAML' | sed -e "s|__CONFIGHUB_OCI__|$addr|" -e "s|__CONFIGHUB_OCI_INSECURE__|$insecure|" -e "s|__FLUX_NAMESPACE__|$ns|" -e "s|__CLUSTER__|$cluster|" > "bootstrap/$cluster/confighub-root.yaml"
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: OCIRepository
 metadata:
   name: confighub-root
-  namespace: flux-system
+  namespace: __FLUX_NAMESPACE__
 spec:
   interval: 1m
   url: oci://__CONFIGHUB_OCI__/space/flux-__CLUSTER__-layers
@@ -226,7 +230,7 @@ apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
   name: confighub-root
-  namespace: flux-system
+  namespace: __FLUX_NAMESPACE__
 spec:
   interval: 10m
   path: ./
@@ -389,6 +393,7 @@ if [ -n "$owner" ]; then
   printf '%s\n' "$owner" > "$owner_file"
   suspended_owner=$owner
 fi
+layers_still_current
 current=confighub-root
 k apply -f "bootstrap/$cluster/confighub-root.yaml"
 moved="$moved infrastructure"
@@ -397,6 +402,7 @@ moved="$moved tenants"
 case "$cluster" in dev-1) moved="$moved image-automation" ;; esac
 log "applied the root; it reads $layers_space"
 k -n "$ns" wait --for=condition=Ready "kustomization/confighub-root" --timeout=5m
+root_applied_checked
 arrived 'infrastructure'
 arrived 'apps'
 arrived 'tenants'
