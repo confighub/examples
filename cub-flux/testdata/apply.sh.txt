@@ -17,7 +17,13 @@ step() { printf '\n== %s\n' "$*"; }
 REPO_ROOT=${REPO_ROOT:-'<repo>'}
 [ -d "$REPO_ROOT" ] || { echo "REPO_ROOT=$REPO_ROOT is not a directory: point it at the repository checkout"; exit 1; }
 
-rolled_out() { [ "$(cub changeorder get --space "${1%/*}" "${1#*/}" -o jq=.ChangeOrder.Stage)" = Completed ]; }
+# rolled_out <order> <variant Spaces>: promoted through every stage, and
+# every variant released.
+rolled_out() {
+  local o=$1 s; shift
+  [ "$(cub changeorder get --space "${o%/*}" "${o#*/}" -o jq=.ChangeOrder.Stage)" = Completed ] || return 1
+  for s in "$@"; do cub release get --space "$s" --oci-reference latest -o jq=.Release.ManifestDigest >/dev/null 2>&1 || return 1; done
+}
 # A variant must hold every unit of its base before it is released: Flux
 # prunes from a cluster whatever a release no longer holds.
 holds() {
@@ -34,12 +40,27 @@ promote() {
   done
   echo "$out" >&2; return 1
 }
+# PROPOSE_ONLY=1 approves nothing: each stage is promoted, and a release that
+# needs an approval waits in ConfigHub for a person to give it. Run the script
+# again to publish what was approved. A stage with nothing new for its
+# variants needs no approval, so a joining cluster waits in its own stage
+# only. `cub flux watch` runs the script this way when a cluster joins; the
+# pattern is cub sveltos watch's.
+approve() { [ -n "${PROPOSE_ONLY:-}" ] || cub variant approve --change-order "$1" --stage "$2" --quiet; }
 publish() {
   local out
   holds "$1" "$3" || return 1
   out=$(cub release publish "$1" --revision "ChangeOrder:$2" --quiet 2>&1) && return 0
-  case "$out" in *"no changes were made since :latest bundle"*) echo "$1 already released" ;; *) echo "$out" >&2; return 1 ;; esac
+  case "$out" in
+    *"no changes were made since :latest bundle"*) echo "$1 already released" ;;
+    *"requires "*"attestation(s)"*)
+      [ -n "${PROPOSE_ONLY:-}" ] || { echo "$out" >&2; return 1; }
+      echo "$1 waits for approval: cub variant approve --change-order $2 --stage $4" ;;
+    *) echo "$out" >&2; return 1 ;;
+  esac
 }
+# released <space>: the Space has a published release.
+released() { cub release get --space "$1" --oci-reference latest -o jq=.Release.ManifestDigest >/dev/null 2>&1; }
 # Each layer is rendered by kustomize here rather than by the plugin, so
 # what ConfigHub stores is exactly what Flux builds today. postBuild
 # substitution is Flux's, applied on the cluster, so it is left in place.
@@ -133,54 +154,54 @@ holds flux-image-automation-dev-1 1
 
 step "4/5 Release each variant, stage by stage: promote, approve, publish"
 cub changeorder create --space flux-infrastructure-base onboard-845737c5 --change-workflow flux-infrastructure-base/rollout --description 'First release of flux-infrastructure-dev-1, flux-infrastructure-staging-1, flux-infrastructure-prod-1' --allow-exists --quiet
-if rolled_out flux-infrastructure-base/onboard-845737c5; then
+if rolled_out flux-infrastructure-base/onboard-845737c5 flux-infrastructure-dev-1 flux-infrastructure-staging-1 flux-infrastructure-prod-1; then
   echo 'infrastructure: every variant in this plan is released'
 else
   promote flux-infrastructure-base/onboard-845737c5 dev
-  cub variant approve --change-order flux-infrastructure-base/onboard-845737c5 --stage dev --quiet
-  publish flux-infrastructure-dev-1 flux-infrastructure-base/onboard-845737c5 1
+  approve flux-infrastructure-base/onboard-845737c5 dev
+  publish flux-infrastructure-dev-1 flux-infrastructure-base/onboard-845737c5 1 dev
   promote flux-infrastructure-base/onboard-845737c5 staging
-  cub variant approve --change-order flux-infrastructure-base/onboard-845737c5 --stage staging --quiet
-  publish flux-infrastructure-staging-1 flux-infrastructure-base/onboard-845737c5 1
+  approve flux-infrastructure-base/onboard-845737c5 staging
+  publish flux-infrastructure-staging-1 flux-infrastructure-base/onboard-845737c5 1 staging
   promote flux-infrastructure-base/onboard-845737c5 prod
-  cub variant approve --change-order flux-infrastructure-base/onboard-845737c5 --stage prod --quiet
-  publish flux-infrastructure-prod-1 flux-infrastructure-base/onboard-845737c5 1
+  approve flux-infrastructure-base/onboard-845737c5 prod
+  publish flux-infrastructure-prod-1 flux-infrastructure-base/onboard-845737c5 1 prod
 fi
 cub changeorder create --space flux-apps-base onboard-45c358b9 --change-workflow flux-apps-base/rollout --description 'First release of flux-apps-dev-1, flux-apps-staging-1, flux-apps-prod-1' --allow-exists --quiet
-if rolled_out flux-apps-base/onboard-45c358b9; then
+if rolled_out flux-apps-base/onboard-45c358b9 flux-apps-dev-1 flux-apps-staging-1 flux-apps-prod-1; then
   echo 'apps: every variant in this plan is released'
 else
   promote flux-apps-base/onboard-45c358b9 dev
-  cub variant approve --change-order flux-apps-base/onboard-45c358b9 --stage dev --quiet
-  publish flux-apps-dev-1 flux-apps-base/onboard-45c358b9 1
+  approve flux-apps-base/onboard-45c358b9 dev
+  publish flux-apps-dev-1 flux-apps-base/onboard-45c358b9 1 dev
   promote flux-apps-base/onboard-45c358b9 staging
-  cub variant approve --change-order flux-apps-base/onboard-45c358b9 --stage staging --quiet
-  publish flux-apps-staging-1 flux-apps-base/onboard-45c358b9 1
+  approve flux-apps-base/onboard-45c358b9 staging
+  publish flux-apps-staging-1 flux-apps-base/onboard-45c358b9 1 staging
   promote flux-apps-base/onboard-45c358b9 prod
-  cub variant approve --change-order flux-apps-base/onboard-45c358b9 --stage prod --quiet
-  publish flux-apps-prod-1 flux-apps-base/onboard-45c358b9 1
+  approve flux-apps-base/onboard-45c358b9 prod
+  publish flux-apps-prod-1 flux-apps-base/onboard-45c358b9 1 prod
 fi
 cub changeorder create --space flux-tenants-base onboard-cefd6435 --change-workflow flux-tenants-base/rollout --description 'First release of flux-tenants-dev-1, flux-tenants-staging-1, flux-tenants-prod-1' --allow-exists --quiet
-if rolled_out flux-tenants-base/onboard-cefd6435; then
+if rolled_out flux-tenants-base/onboard-cefd6435 flux-tenants-dev-1 flux-tenants-staging-1 flux-tenants-prod-1; then
   echo 'tenants: every variant in this plan is released'
 else
   promote flux-tenants-base/onboard-cefd6435 dev
-  cub variant approve --change-order flux-tenants-base/onboard-cefd6435 --stage dev --quiet
-  publish flux-tenants-dev-1 flux-tenants-base/onboard-cefd6435 1
+  approve flux-tenants-base/onboard-cefd6435 dev
+  publish flux-tenants-dev-1 flux-tenants-base/onboard-cefd6435 1 dev
   promote flux-tenants-base/onboard-cefd6435 staging
-  cub variant approve --change-order flux-tenants-base/onboard-cefd6435 --stage staging --quiet
-  publish flux-tenants-staging-1 flux-tenants-base/onboard-cefd6435 1
+  approve flux-tenants-base/onboard-cefd6435 staging
+  publish flux-tenants-staging-1 flux-tenants-base/onboard-cefd6435 1 staging
   promote flux-tenants-base/onboard-cefd6435 prod
-  cub variant approve --change-order flux-tenants-base/onboard-cefd6435 --stage prod --quiet
-  publish flux-tenants-prod-1 flux-tenants-base/onboard-cefd6435 1
+  approve flux-tenants-base/onboard-cefd6435 prod
+  publish flux-tenants-prod-1 flux-tenants-base/onboard-cefd6435 1 prod
 fi
 cub changeorder create --space flux-image-automation-base onboard-3ceb6a03 --change-workflow flux-image-automation-base/rollout --description 'First release of flux-image-automation-dev-1' --allow-exists --quiet
-if rolled_out flux-image-automation-base/onboard-3ceb6a03; then
+if rolled_out flux-image-automation-base/onboard-3ceb6a03 flux-image-automation-dev-1; then
   echo 'image-automation: every variant in this plan is released'
 else
   promote flux-image-automation-base/onboard-3ceb6a03 dev
-  cub variant approve --change-order flux-image-automation-base/onboard-3ceb6a03 --stage dev --quiet
-  publish flux-image-automation-dev-1 flux-image-automation-base/onboard-3ceb6a03 1
+  approve flux-image-automation-base/onboard-3ceb6a03 dev
+  publish flux-image-automation-dev-1 flux-image-automation-base/onboard-3ceb6a03 1 dev
 fi
 
 step "5/5 One Space per cluster holding its layers, which one root on that cluster reads"
@@ -200,23 +221,24 @@ else
     cub unit update --space "$1" "$2" "render/$1-$2.yaml" --quiet
   }
   # A release with nothing new is refused, which here means it is current.
+  all_released() { local s; for s in "$@"; do released "$s" || return 1; done; }
   publish_layers() { out=$(cub release publish "$1" --quiet 2>&1) || case "$out" in *"no changes"*) ;; *) echo "$out" >&2; return 1 ;; esac; }
   cub space create flux-dev-1-layers --release-target flux-targets/dev-1 --label Role=layers --label Cluster=dev-1 --allow-exists --quiet
   layer_unit 'flux-dev-1-layers' 'infrastructure' 'layers/dev-1/infrastructure.yaml'
   layer_unit 'flux-dev-1-layers' 'apps' 'layers/dev-1/apps.yaml'
   layer_unit 'flux-dev-1-layers' 'tenants' 'layers/dev-1/tenants.yaml'
   layer_unit 'flux-dev-1-layers' 'image-automation' 'layers/dev-1/image-automation.yaml'
-  publish_layers flux-dev-1-layers
+  if [ -z "${PROPOSE_ONLY:-}" ] || all_released flux-infrastructure-dev-1 flux-apps-dev-1 flux-tenants-dev-1 flux-image-automation-dev-1; then publish_layers flux-dev-1-layers; else echo "  flux-dev-1-layers waits: not every variant of dev-1 is released yet"; fi
   cub space create flux-staging-1-layers --release-target flux-targets/staging-1 --label Role=layers --label Cluster=staging-1 --allow-exists --quiet
   layer_unit 'flux-staging-1-layers' 'infrastructure' 'layers/staging-1/infrastructure.yaml'
   layer_unit 'flux-staging-1-layers' 'apps' 'layers/staging-1/apps.yaml'
   layer_unit 'flux-staging-1-layers' 'tenants' 'layers/staging-1/tenants.yaml'
-  publish_layers flux-staging-1-layers
+  if [ -z "${PROPOSE_ONLY:-}" ] || all_released flux-infrastructure-staging-1 flux-apps-staging-1 flux-tenants-staging-1; then publish_layers flux-staging-1-layers; else echo "  flux-staging-1-layers waits: not every variant of staging-1 is released yet"; fi
   cub space create flux-prod-1-layers --release-target flux-targets/prod-1 --label Role=layers --label Cluster=prod-1 --allow-exists --quiet
   layer_unit 'flux-prod-1-layers' 'infrastructure' 'layers/prod-1/infrastructure.yaml'
   layer_unit 'flux-prod-1-layers' 'apps' 'layers/prod-1/apps.yaml'
   layer_unit 'flux-prod-1-layers' 'tenants' 'layers/prod-1/tenants.yaml'
-  publish_layers flux-prod-1-layers
+  if [ -z "${PROPOSE_ONLY:-}" ] || all_released flux-infrastructure-prod-1 flux-apps-prod-1 flux-tenants-prod-1; then publish_layers flux-prod-1-layers; else echo "  flux-prod-1-layers waits: not every variant of prod-1 is released yet"; fi
 fi
 
 echo

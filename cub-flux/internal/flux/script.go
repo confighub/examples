@@ -115,7 +115,16 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 	add("REPO_ROOT=${REPO_ROOT:-%s}", q(repoRel))
 	add(`[ -d "$REPO_ROOT" ] || { echo "REPO_ROOT=$REPO_ROOT is not a directory: point it at the repository checkout"; exit 1; }`)
 	add("")
-	add(`rolled_out() { [ "$(cub changeorder get --space "${1%%/*}" "${1#*/}" -o jq=.ChangeOrder.Stage)" = Completed ]; }`)
+	// Completed says the order was promoted through every stage, not that its
+	// variants were released: a run stopped between promoting and publishing,
+	// or run with PROPOSE_ONLY, leaves it Completed with a variant unreleased.
+	add("# rolled_out <order> <variant Spaces>: promoted through every stage, and")
+	add("# every variant released.")
+	add(`rolled_out() {`)
+	add(`  local o=$1 s; shift`)
+	add(`  [ "$(cub changeorder get --space "${o%%/*}" "${o#*/}" -o jq=.ChangeOrder.Stage)" = Completed ] || return 1`)
+	add(`  for s in "$@"; do cub release get --space "$s" --oci-reference latest -o jq=.Release.ManifestDigest >/dev/null 2>&1 || return 1; done`)
+	add(`}`)
 	add("# A variant must hold every unit of its base before it is released: Flux")
 	add("# prunes from a cluster whatever a release no longer holds.")
 	add("holds() {")
@@ -132,12 +141,27 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 	add("  done")
 	add(`  echo "$out" >&2; return 1`)
 	add("}")
+	add("# PROPOSE_ONLY=1 approves nothing: each stage is promoted, and a release that")
+	add("# needs an approval waits in ConfigHub for a person to give it. Run the script")
+	add("# again to publish what was approved. A stage with nothing new for its")
+	add("# variants needs no approval, so a joining cluster waits in its own stage")
+	add("# only. `cub flux watch` runs the script this way when a cluster joins; the")
+	add("# pattern is cub sveltos watch's.")
+	add(`approve() { [ -n "${PROPOSE_ONLY:-}" ] || cub variant approve --change-order "$1" --stage "$2" --quiet; }`)
 	add("publish() {")
 	add("  local out")
 	add(`  holds "$1" "$3" || return 1`)
 	add(`  out=$(cub release publish "$1" --revision "ChangeOrder:$2" --quiet 2>&1) && return 0`)
-	add(`  case "$out" in *"no changes were made since :latest bundle"*) echo "$1 already released" ;; *) echo "$out" >&2; return 1 ;; esac`)
+	add(`  case "$out" in`)
+	add(`    *"no changes were made since :latest bundle"*) echo "$1 already released" ;;`)
+	add(`    *"requires "*"attestation(s)"*)`)
+	add(`      [ -n "${PROPOSE_ONLY:-}" ] || { echo "$out" >&2; return 1; }`)
+	add(`      echo "$1 waits for approval: cub variant approve --change-order $2 --stage $4" ;;`)
+	add(`    *) echo "$out" >&2; return 1 ;;`)
+	add(`  esac`)
 	add("}")
+	add("# released <space>: the Space has a published release.")
+	add(`released() { cub release get --space "$1" --oci-reference latest -o jq=.Release.ManifestDigest >/dev/null 2>&1; }`)
 	add("# Each layer is rendered by kustomize here rather than by the plugin, so")
 	add("# what ConfigHub stores is exactly what Flux builds today. postBuild")
 	add("# substitution is Flux's, applied on the cluster, so it is left in place.")
@@ -232,14 +256,14 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 		order := "onboard-" + short(c.Base, strings.Join(all, ","))
 		add("cub changeorder create --space %s %s --change-workflow %s/rollout --description %s --allow-exists --quiet",
 			c.Base, order, c.Base, q("First release of "+strings.Join(all, ", ")))
-		add("if rolled_out %s/%s; then", c.Base, order)
+		add("if rolled_out %s/%s %s; then", c.Base, order, strings.Join(all, " "))
 		add("  echo %s", q(c.Name+": every variant in this plan is released"))
 		add("else")
 		for _, st := range c.Stages {
 			add("  promote %s/%s %s", c.Base, order, st.Name)
-			add("  cub variant approve --change-order %s/%s --stage %s --quiet", c.Base, order, st.Name)
+			add("  approve %s/%s %s", c.Base, order, st.Name)
 			for _, v := range st.Variants {
-				add("  publish %s %s/%s 1", v.Space, c.Base, order)
+				add("  publish %s %s/%s 1 %s", v.Space, c.Base, order, st.Name)
 			}
 		}
 		add("fi")
@@ -263,6 +287,7 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 	raw(`    cub unit update --space "$1" "$2" "render/$1-$2.yaml" --quiet`)
 	raw(`  }`)
 	raw(`  # A release with nothing new is refused, which here means it is current.`)
+	raw(`  all_released() { local s; for s in "$@"; do released "$s" || return 1; done; }`)
 	raw(`  publish_layers() { out=$(cub release publish "$1" --quiet 2>&1) || case "$out" in *"no changes"*) ;; *) echo "$out" >&2; return 1 ;; esac; }`)
 	for _, cl := range p.Clusters {
 		space := DeliverySpace(prefix, cl.Name)
@@ -276,7 +301,20 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 				}
 			}
 		}
-		raw(fmt.Sprintf(`  publish_layers %s`, space))
+		var spaces []string
+		for _, c := range p.Components {
+			for _, st := range c.Stages {
+				for _, v := range st.Variants {
+					if v.Cluster == cl.Name {
+						spaces = append(spaces, v.Space)
+					}
+				}
+			}
+		}
+		// A layer reading a Space with no release yet fails "latest: not
+		// found", so a joining cluster's root has nothing to read until every
+		// one of its variants is released.
+		raw(fmt.Sprintf(`  if [ -z "${PROPOSE_ONLY:-}" ] || all_released %s; then publish_layers %s; else echo "  %s waits: not every variant of %s is released yet"; fi`, strings.Join(spaces, " "), space, space, cl.Name))
 	}
 	raw(`fi`)
 	add("")
