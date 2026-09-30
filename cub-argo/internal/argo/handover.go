@@ -69,10 +69,15 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("# moves. If anything stops the script after a parent moved, the way back is")
 	add("# printed; nothing is rolled back automatically.")
 	add(`state=handover-state/argo.txt; mkdir -p handover-state; touch "$state"; moved=""; finished=0`)
+	add("# While a parent still reads Git, what it reads now is its original, and it")
+	add("# replaces any earlier record: a handover rolled back and started again may")
+	add("# find its source changed. Once it reads the gateway, the record stands, for")
+	add("# the way back from an interrupted run.")
 	add(`record_source() {`)
-	add(`  grep -q "^$1|" "$state" && return 0`)
 	add(`  local was; was=$(k -n "$ns" get application "$1" -o jsonpath='{.metadata.name}{"|"}{.spec.source.repoURL}{"|"}{.spec.source.path}{"|"}{.spec.source.targetRevision}')`)
-	add(`  case "$was" in *"|oci://"*) ;; *) printf '%%s\n' "$was" >> "$state" ;; esac`)
+	add(`  case "$was" in *"|oci://"*) return 0 ;; esac`)
+	add(`  grep -v "^$1|" "$state" > "$state.new" || true; mv "$state.new" "$state"`)
+	add(`  printf '%%s\n' "$was" >> "$state"`)
 	add(`}`)
 	add("# way_back: leaves first, then parents. Measured on Argo CD v3.5.3: moving")
 	add("# root back alone puts everything back, every UID intact, but restores the Git")
@@ -312,12 +317,19 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 		add("fi")
 		// The digest Argo synced is the release it read: it has to be the one
 		// ConfigHub holds as the newest, or a release went out unchecked.
+		// Argo reconciles after the patch in its own time, and its status can
+		// still name the Git revision it synced before: poll for the checked
+		// digest rather than read once.
 		add(`want=$(cub release get --space %s --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')`, s.Space)
-		add(`got=$(k -n "$ns" get application %s -o jsonpath='{.status.sync.revision}')`, s.Parent)
-		add(`if [ -n "$got" ] && [ "$got" != "$want" ]; then`)
-		add(`  echo "  %s synced $got, but %s's newest release is $want" >&2; exit 1`, s.Parent, s.Space)
+		add(`got=""; for _ in $(seq 1 36); do`)
+		add(`  got=$(k -n "$ns" get application %s -o jsonpath='{.status.sync.revision}')`, s.Parent)
+		add(`  [ "$got" = "$want" ] && break`)
+		add(`  sleep 5`)
+		add(`done`)
+		add(`if [ "$got" != "$want" ]; then`)
+		add(`  echo "  %s synced ${got:-nothing it reports}, not %s's newest release $want" >&2; exit 1`, s.Parent, s.Space)
 		add(`fi`)
-		add(`echo "  %s reads %s at ${got:-its latest release} ($st; a parent reads OutOfSync until its children move too)"`, s.Parent, s.Space)
+		add(`echo "  %s reads %s at $got ($st; a parent reads OutOfSync until its children move too)"`, s.Parent, s.Space)
 		step++
 	}
 

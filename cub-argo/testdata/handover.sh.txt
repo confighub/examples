@@ -35,10 +35,15 @@ gateway() { cub target get --space argo-targets "$1" -o jq=.Target.Parameters.OC
 # moves. If anything stops the script after a parent moved, the way back is
 # printed; nothing is rolled back automatically.
 state=handover-state/argo.txt; mkdir -p handover-state; touch "$state"; moved=""; finished=0
+# While a parent still reads Git, what it reads now is its original, and it
+# replaces any earlier record: a handover rolled back and started again may
+# find its source changed. Once it reads the gateway, the record stands, for
+# the way back from an interrupted run.
 record_source() {
-  grep -q "^$1|" "$state" && return 0
   local was; was=$(k -n "$ns" get application "$1" -o jsonpath='{.metadata.name}{"|"}{.spec.source.repoURL}{"|"}{.spec.source.path}{"|"}{.spec.source.targetRevision}')
-  case "$was" in *"|oci://"*) ;; *) printf '%s\n' "$was" >> "$state" ;; esac
+  case "$was" in *"|oci://"*) return 0 ;; esac
+  grep -v "^$1|" "$state" > "$state.new" || true; mv "$state.new" "$state"
+  printf '%s\n' "$was" >> "$state"
 }
 # way_back: leaves first, then parents. Measured on Argo CD v3.5.3: moving
 # root back alone puts everything back, every UID intact, but restores the Git
@@ -154,11 +159,15 @@ if [ "$st" = Unknown ] || [ -z "$st" ]; then
   exit 1
 fi
 want=$(cub release get --space argo-root-children --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')
-got=$(k -n "$ns" get application root -o jsonpath='{.status.sync.revision}')
-if [ -n "$got" ] && [ "$got" != "$want" ]; then
-  echo "  root synced $got, but argo-root-children's newest release is $want" >&2; exit 1
+got=""; for _ in $(seq 1 36); do
+  got=$(k -n "$ns" get application root -o jsonpath='{.status.sync.revision}')
+  [ "$got" = "$want" ] && break
+  sleep 5
+done
+if [ "$got" != "$want" ]; then
+  echo "  root synced ${got:-nothing it reports}, not argo-root-children's newest release $want" >&2; exit 1
 fi
-echo "  root reads argo-root-children at ${got:-its latest release} ($st; a parent reads OutOfSync until its children move too)"
+echo "  root reads argo-root-children at $got ($st; a parent reads OutOfSync until its children move too)"
 step "3/5 Repoint storefront at argo-storefront-children"
 # Its children are Units there by now, released to the argocd Target.
 echo "storefront is a Unit in argo-root-children now, which root syncs from ConfigHub."
