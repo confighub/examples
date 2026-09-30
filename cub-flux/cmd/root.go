@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"strings"
@@ -336,6 +337,87 @@ One cluster at a time, like check. It writes as the cub user it runs as.`,
 	status.Flags().BoolVar(&stDry, "dry-run", false, "show what would be written, and write nothing")
 	status.Flags().BoolVar(&stJSON, "json", false, "print what was read and done as JSON")
 
+	var wOpts flux.Options
+	var wStages, wOut string
+	var wInterval time.Duration
+	var wOnce, wPull bool
+	watch := &cobra.Command{
+		Use:   "watch <fleet-repo-dir> --out <dir>",
+		Short: "Propose each cluster that joins the fleet, and release it once a person approves",
+		Long: `Propose each cluster that joins the fleet, and release it once a person approves.
+
+A cluster joins a Flux fleet when its directory appears under clusters/ in the
+fleet repository. Every --interval this reads the repository again (with
+--pull, after git pull --ff-only), plans it with the options the fleet was
+planned with, and for a cluster ConfigHub does not have yet it writes the plan
+to --out and runs apply.sh with PROPOSE_ONLY=1: the cluster's Target, variants
+and layers Units are made, its first release is promoted, and it waits in
+ConfigHub for a person to approve it:
+
+  cub variant approve --change-order <base>/<order> --stage <stage>
+
+It approves nothing itself. On its next look it runs apply.sh again, which
+publishes what was approved and, once every variant of the cluster is
+released, its layers Space. The cluster is then ready, and join.sh brings it
+on. The watcher does not touch any cluster. It needs CONFIGHUB_OCI, as
+apply.sh does for the layers Spaces. --out/watch.log keeps what each run of
+apply.sh printed.`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(c *cobra.Command, args []string) error {
+			if wOut == "" {
+				return fmt.Errorf("watch needs --out, the directory apply wrote for this fleet")
+			}
+			if os.Getenv("CONFIGHUB_OCI") == "" {
+				return fmt.Errorf("watch needs CONFIGHUB_OCI, the gateway host the clusters reach, to make each joining cluster's layers Space")
+			}
+			wOpts.Stages = split(wStages)
+			plan := func() (*flux.Plan, error) {
+				if wPull {
+					repo := wOpts.RepoRoot
+					if repo == "" {
+						repo = args[0]
+					}
+					if out, err := exec.Command("git", "-C", repo, "pull", "--ff-only", "--quiet").CombinedOutput(); err != nil {
+						return nil, fmt.Errorf("git pull in %s: %s", repo, strings.TrimSpace(string(out)))
+					}
+				}
+				in, err := flux.Load(c.InOrStdin(), args)
+				if err != nil {
+					return nil, err
+				}
+				return flux.Build(in, wOpts)
+			}
+			w := flux.NewWatcher(wOpts.Prefix, wOut, plan)
+			ctx, stop := signal.NotifyContext(c.Context(), os.Interrupt, syscall.SIGTERM)
+			defer stop()
+			for {
+				if err := w.Once(c.OutOrStdout()); err != nil {
+					if wOnce {
+						return err
+					}
+					fmt.Fprintf(c.ErrOrStderr(), "%s\n", err)
+				}
+				if wOnce {
+					return nil
+				}
+				select {
+				case <-ctx.Done():
+					return nil
+				case <-time.After(wInterval):
+				}
+			}
+		},
+	}
+	watch.Flags().StringVar(&wOut, "out", "", "the directory apply wrote for this fleet; the watcher writes the plan there again")
+	watch.Flags().StringVar(&wOpts.Prefix, "prefix", "flux", "the prefix the plan used in ConfigHub")
+	watch.Flags().StringVar(&wStages, "stages", "", "the stage order the fleet was planned with")
+	watch.Flags().StringVar(&wOpts.ClustersDir, "clusters", "clusters", "the directory holding one directory per cluster")
+	watch.Flags().StringVar(&wOpts.RepoRoot, "repo-root", "", "the checkout Flux paths are relative to")
+	watch.Flags().StringSliceVar(&wOpts.Require, "require", nil, "what the fleet was planned to require: Healthy")
+	watch.Flags().DurationVar(&wInterval, "interval", time.Minute, "how often to look")
+	watch.Flags().BoolVar(&wOnce, "once", false, "look once and stop")
+	watch.Flags().BoolVar(&wPull, "pull", false, "git pull --ff-only in the repository before each look")
+
 	versionCmd := &cobra.Command{
 		Use:   "version",
 		Short: "Print the plugin version",
@@ -345,7 +427,7 @@ One cluster at a time, like check. It writes as the cub user it runs as.`,
 		},
 	}
 
-	root.AddCommand(plan, apply, check, status, versionCmd)
+	root.AddCommand(plan, apply, check, status, watch, versionCmd)
 	return root
 }
 

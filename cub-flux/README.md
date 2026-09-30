@@ -17,6 +17,7 @@ that move a cluster:
 | `apply.sh` | fills ConfigHub with a parallel copy nothing reads, and one layers Space per cluster (needs `CONFIGHUB_OCI`) | no |
 | `handover.sh` | on a cluster running the layers from Git, puts one root on the cluster, which takes each layer over | yes, this is the step that moves it |
 | `join.sh` | on a new cluster with Flux and none of the layers, puts the root there and waits for the layers to arrive | yes, it adds to an empty cluster |
+| `watch` | proposes each cluster added to the fleet repository, and releases it once a person approves | no, it runs `apply.sh`; `join.sh` stays yours |
 | `cleanup.sh` | takes what `apply.sh` made back out of ConfigHub, layers Spaces first | no |
 | `check` | compares what each layer applied with the published release | reads it, changes nothing |
 | `status` | reports what Flux applied as ConfigHub live status, which the Healthy gate reads | reads it; writes only to ConfigHub |

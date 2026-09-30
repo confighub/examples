@@ -294,8 +294,43 @@ take that layer over without the checks `handover.sh` makes; use `handover.sh`
 for it. Otherwise it makes the credential Secret, writes and applies the root,
 and waits for each layer to arrive from ConfigHub.
 
-Adding a cluster later is re-running `plan` and `apply`, which makes its layers
-Space, and then `join.sh` for it.
+**A cluster that joins later** is added the way a Flux fleet grows: its
+directory appears under `clusters/`. `cub flux watch` notices, and proposes it
+to ConfigHub, and approves nothing itself:
+
+```bash
+CONFIGHUB_OCI=<gateway host> cub flux watch ./my-fleet --out onboard --pull
+```
+
+```mermaid
+flowchart LR
+  g["clusters/dev-2/<br/>added in Git"] -->|"watch: apply.sh<br/>PROPOSE_ONLY=1"| p["dev-2's variants,<br/>release promoted,<br/>waiting"]
+  p -->|"a person:<br/>cub variant approve"| a["approved"]
+  a -->|"watch: apply.sh again"| r["variants released,<br/>then the layers Space"]
+  r -->|"join.sh"| c["dev-2 runs its<br/>layers from ConfigHub"]
+```
+
+- **Looking.** Every `--interval`, it reads the repository again (`--pull`
+  first runs `git pull --ff-only`) and plans it. A cluster with no Target in
+  ConfigHub is joining.
+- **Proposing.** For a joining cluster it writes the plan to `--out` and runs
+  `apply.sh` with `PROPOSE_ONLY=1`. That makes the cluster's variants, and
+  promotes its first release to its stage. The other clusters' variants
+  report "already released": a stage with nothing new needs no approval.
+- **Waiting for a person.** The watcher prints the `cub variant approve` lines
+  the release waits for.
+- **Releasing.** On its next look, after the approval, it publishes what was
+  approved. Once every variant of the cluster is released, it publishes the
+  cluster's layers Space; before that, a layer would read a Space with no
+  release and fail `latest: not found`.
+- **Handing on.** It records the join on the layers Space
+  (`flux.confighub.com/joined`) and prints the `join.sh` line.
+
+It does not reach into clusters: `join.sh` is still yours to run.
+`--out/watch.log` keeps what each run of `apply.sh` printed. `PROPOSE_ONLY=1
+bash apply.sh` does the same by hand. The pattern is `cub sveltos watch`'s.
+
+Run live on 2026-09-30: [docs/runs/2026-09-30-join-watcher.md](runs/2026-09-30-join-watcher.md).
 
 **Changing how a layer is reconciled** — its interval, `healthChecks`,
 `dependsOn` — is now a change to its Unit in the layers Space, published like
