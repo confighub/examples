@@ -110,6 +110,26 @@ go build -o bin/cub-flux . && cub plugin install ./bin/cub-flux
 # after a git pull: go build -o bin/cub-flux . && cub plugin upgrade flux
 ```
 
+## Prove it on kind
+
+`e2e/run.sh` runs the whole journey for one cluster of `gitops/flux/beginner`
+on a kind cluster of its own, with its own kubeconfig: the layers applied from
+GitHub, `plan`, `apply.sh`, `handover.sh`, `status`, the way back
+`handover.sh` printed, and `cleanup.sh`. It compares every UID at each move and
+stops at the first thing that is not as it should be.
+
+```bash
+CONFIGHUB_OCI=<gateway host:port the kind cluster reaches> CONFIGHUB_OCI_PLAIN_HTTP=1 \
+  bash e2e/run.sh
+```
+
+It passed on 2026-09-30 against Flux v2.8.6 and ConfigHub v0.6.8, and its
+first run found that the way back left the layers' OCIRepositories reading
+ConfigHub; the way back now removes them last. A bootstrapped fleet's handover
+pauses for a commit to the repository `flux-system` reads, which a rig reading
+GitHub cannot make: [docs/runs/2026-09-30-bootstrapped-handover.md](docs/runs/2026-09-30-bootstrapped-handover.md)
+is that run.
+
 ## Develop
 
 ```bash
