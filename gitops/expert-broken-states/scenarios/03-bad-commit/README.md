@@ -109,13 +109,14 @@ so the live fix is a Git revert that Argo CD or Flux then syncs.
 If the bad commit was also uploaded to ConfigHub, ConfigHub needs its own
 step. `cub variant upload` records its writes in a ChangeSet and prints a
 restore command at the end. `cub unit update --restore` writes a
-previous revision back into the Unit, and `Before:ChangeSet:<slug>` names
+previous revision back into the Unit, and `Before:ChangeSet:SLUG` names
 the state just before that ChangeSet. In YOUR terminal (this mutates
-ConfigHub only):
+ConfigHub only), with the ChangeSet slug the upload printed:
 
 ```bash
+CHANGESET=the-slug-the-upload-printed
 cub unit update --space gitops-expert-broken-states frontend-service \
-  --restore Before:ChangeSet:<slug-printed-by-the-upload>
+  --restore "Before:ChangeSet:$CHANGESET"
 ```
 
 `--restore -1` (one revision back from head) does the same here, because
@@ -141,9 +142,12 @@ flux get kustomizations apptique-broken-states
 kubectl -n apptique-broken-states get endpointslices \
   -l kubernetes.io/service-name=frontend
 
-# A request-level check the sync state does not perform.
-kubectl -n apptique-broken-states run probe --rm -i --restart=Never \
-  --image=curlimages/curl -- curl -sS -m 3 http://frontend.apptique-broken-states.svc.cluster.local
+# The mismatch itself, which the sync state does not compare: the port the
+# Service sends to, and the port the container listens on (8080 against 80).
+kubectl -n apptique-broken-states get service frontend \
+  -o jsonpath='{.spec.ports[0].targetPort}{"\n"}'
+kubectl -n apptique-broken-states get deployment frontend \
+  -o jsonpath='{.spec.template.spec.containers[0].ports[0].containerPort}{"\n"}'
 
 # ConfigHub's own stored intent for the Service. It says targetPort 80 if
 # only setup.sh has run, and 8080 if the optional upload above has run.

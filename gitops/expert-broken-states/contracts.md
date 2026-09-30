@@ -127,7 +127,7 @@ same Space even though both are "control" objects.
   `var/rendered-bad-commit.yaml`
 - undo: run `./setup.sh` again, which re-uploads the healthy render as a
   new revision with `targetPort: 80`, or restore the Unit with
-  `cub unit update --restore Before:ChangeSet:<slug>` (the upload prints
+  `cub unit update --restore Before:ChangeSet:SLUG` (the upload prints
   the slug)
 
 ## Verification Contract
