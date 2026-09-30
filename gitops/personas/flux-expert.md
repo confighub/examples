@@ -80,5 +80,10 @@ repositories kept current by automation.
 layers ordered with `dependsOn`, an infrastructure and apps split, a
 HelmRelease from a chart source, image automation on dev only, one tenant
 with its own service account, and a dev to staging to production promotion
-path written into the layout. A several-teams-on-one-cluster example is
-still planned.
+path written into the layout. For the several-teams-on-one-cluster shape on
+its own, see
+[`flux/expert-multi-tenant`](../flux/expert-multi-tenant/README.md): one
+shared cluster, a platform-owned bootstrap layer, and three teams, each with
+its own namespace, ServiceAccount, RoleBinding, quota and NetworkPolicy, and
+a break-it step for a tenant escape, caught offline by the verifier (a live
+cluster would refuse it).

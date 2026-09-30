@@ -1,0 +1,16 @@
+This example's directory structure follows the publicly documented Flux
+multi-tenancy layout:
+
+  fluxcd/flux2-multi-tenancy
+  https://github.com/fluxcd/flux2-multi-tenancy
+  Licensed under the Apache License, Version 2.0
+  (a per-team folder with its own namespace, ServiceAccount, RoleBinding,
+  GitRepository and Kustomization applied with the tenant's own
+  serviceAccountName, bootstrapped by a platform-owned layer that runs with
+  no impersonation)
+
+No file content from that repository is copied here. Every file in this
+directory was written for this example. The application content (the
+storefront, payments-api and loyalty-api Deployments and Services) is
+original to this example, under this repository's own MIT license (see the
+top-level LICENSE file).

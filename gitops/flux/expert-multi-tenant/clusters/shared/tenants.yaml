@@ -1,0 +1,29 @@
+# The platform-owned bootstrap layer. It runs as kustomize-controller, the
+# ServiceAccount Flux installs in flux-system and binds to cluster-admin.
+# Naming it keeps this layer working when the controller runs with
+# --default-service-account (see flux-system/README.md), where a layer with
+# no serviceAccountName would run as an account with no rights. That is what
+# makes this a platform piece and not a tenant piece: it is the only object
+# in this example allowed to create namespaces, RoleBindings and quotas
+# across more than one team.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: tenants
+  namespace: flux-system
+spec:
+  interval: 10m
+  retryInterval: 1m
+  timeout: 5m
+  path: ./gitops/flux/expert-multi-tenant/tenants/base
+  prune: true
+  # Not "wait: true". This layer applies each team's GitRepository and
+  # Kustomization, and with wait on it would only be Ready once every team's
+  # own app is healthy. One team's broken Deployment would then mark the
+  # platform layer failed. The platform layer is done when its own objects
+  # (namespaces, RBAC, quotas, policies, the team's sync objects) are applied.
+  wait: false
+  serviceAccountName: kustomize-controller
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
