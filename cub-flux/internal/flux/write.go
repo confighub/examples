@@ -31,6 +31,18 @@ func WriteApply(p *Plan, prefix, dir string) (string, error) {
 		}
 	}
 
+	for _, c := range p.Components {
+		for _, st := range c.Stages {
+			for _, v := range st.Variants {
+				unit, err := DeliveryUnit(&v, prefix)
+				if err != nil {
+					return "", err
+				}
+				files = append(files, outFile{filepath.FromSlash(layerFile(v.Cluster, c.Name)), []byte(unit), 0o644})
+			}
+		}
+	}
+
 	// apply.sh renders from the repository, so it needs the way back to it.
 	repoRel := "."
 	if p.Inputs.RepoRoot != "" {
@@ -46,6 +58,7 @@ func WriteApply(p *Plan, prefix, dir string) (string, error) {
 	files = append(files,
 		outFile{"apply.sh", []byte(ApplyScript(p, prefix, repoRel)), 0o755},
 		outFile{"handover.sh", []byte(HandoverScript(p, prefix, repoRel)), 0o755},
+		outFile{"join.sh", []byte(JoinScript(p, prefix)), 0o755},
 		outFile{"cleanup.sh", []byte(CleanupScript(p, prefix)), 0o755},
 		outFile{".gitignore", []byte("render/\n"), 0o644},
 	)

@@ -148,7 +148,7 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 	add("}")
 	add("")
 
-	add(`step "0/4 Check before changing anything"`)
+	add(`step "0/5 Check before changing anything"`)
 	// cub auth status, not a list of anything. A list call goes through the
 	// entity API, which fails on a version skew between client and server --
 	// measured: cub v0.6.2 against server v0.5.1 returns "field 'ComponentID'
@@ -162,7 +162,7 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 	add(`command -v kustomize >/dev/null || { echo "kustomize is not on PATH; the layers are rendered with it"; exit 1; }`)
 	add("")
 
-	add(`step "1/4 One named Target per cluster, in %s"`, targets)
+	add(`step "1/5 One named Target per cluster, in %s"`, targets)
 	add("cub space create %s --allow-exists --quiet", targets)
 	add("# A server-hosted worker has no process behind it and no role in the")
 	add("# organization; it holds the Targets and is the credential Flux reads with.")
@@ -172,7 +172,7 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 	}
 	add("")
 
-	add(`step "2/4 One component per layer: a base holding what it renders to, and a rollout workflow"`)
+	add(`step "2/5 One component per layer: a base holding what it renders to, and a rollout workflow"`)
 	for _, c := range p.Components {
 		add("cub component create %s-%s --allow-exists --quiet", prefix, c.Name)
 		add("cub space create %s --component %s-%s --label Component=%s-%s --label Role=base --allow-exists --quiet", c.Base, prefix, c.Name, prefix, c.Name)
@@ -195,7 +195,7 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 	}
 	add("")
 
-	add(`step "3/4 One variant per cluster, each holding what its own path renders to"`)
+	add(`step "3/5 One variant per cluster, each holding what its own path renders to"`)
 	for _, c := range p.Components {
 		for _, st := range c.Stages {
 			for _, v := range st.Variants {
@@ -210,7 +210,7 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 	}
 	add("")
 
-	add(`step "4/4 Release each variant, stage by stage: promote, approve, publish"`)
+	add(`step "4/5 Release each variant, stage by stage: promote, approve, publish"`)
 	for _, c := range p.Components {
 		var all []string
 		for _, st := range c.Stages {
@@ -236,6 +236,41 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 		}
 		add("fi")
 	}
+	add("")
+	add(`step "5/5 One Space per cluster holding its layers, which one root on that cluster reads"`)
+	add("# Each layer's Unit is its own Kustomization, reading its variant's Space,")
+	add("# and the OCIRepository for that Space. The gateway address is the one the")
+	add("# cluster reaches, which only you know; nothing reads these until the root")
+	add("# is on the cluster, which handover.sh puts there.")
+	raw := func(s string) { L = append(L, s) }
+	raw(`if [ -z "${CONFIGHUB_OCI:-}" ]; then`)
+	raw(`  echo "  skipped: set CONFIGHUB_OCI to the gateway host the clusters reach (and CONFIGHUB_OCI_PLAIN_HTTP=1 if it serves plain HTTP), then re-run. handover.sh needs these Spaces."`)
+	raw(`else`)
+	raw(`  insecure=false; [ -z "${CONFIGHUB_OCI_PLAIN_HTTP:-}" ] || insecure=true`)
+	raw(`  mkdir -p render`)
+	raw(`  # layer_unit <space> <unit> <file>`)
+	raw(`  layer_unit() {`)
+	raw(`    sed -e "s|` + gatewayMarker + `|$CONFIGHUB_OCI|" -e "s|` + insecureMarker + `|$insecure|" "$3" > "render/$1-$2.yaml"`)
+	raw(`    cub unit create --space "$1" "$2" "render/$1-$2.yaml" --allow-exists --quiet`)
+	raw(`    cub unit update --space "$1" "$2" "render/$1-$2.yaml" --quiet`)
+	raw(`  }`)
+	raw(`  # A release with nothing new is refused, which here means it is current.`)
+	raw(`  publish_layers() { out=$(cub release publish "$1" --quiet 2>&1) || case "$out" in *"no changes"*) ;; *) echo "$out" >&2; return 1 ;; esac; }`)
+	for _, cl := range p.Clusters {
+		space := DeliverySpace(prefix, cl.Name)
+		raw(fmt.Sprintf(`  cub space create %s --release-target %s/%s --label Role=layers --label Cluster=%s --allow-exists --quiet`, space, targets, cl.Name, cl.Name))
+		for _, c := range p.Components {
+			for _, st := range c.Stages {
+				for _, v := range st.Variants {
+					if v.Cluster == cl.Name {
+						raw(fmt.Sprintf(`  layer_unit %s %s %s`, q(space), q(c.Name), q(layerFile(cl.Name, c.Name))))
+					}
+				}
+			}
+		}
+		raw(fmt.Sprintf(`  publish_layers %s`, space))
+	}
+	raw(`fi`)
 	add("")
 	add("echo")
 	var requiring []*Component
@@ -270,4 +305,9 @@ func (c *Component) onboarding() *Component {
 	o := *c
 	o.Require = nil
 	return &o
+}
+
+// layerFile is where apply writes one layer's delivery Unit for one cluster.
+func layerFile(cluster, layer string) string {
+	return "layers/" + cluster + "/" + layer + ".yaml"
 }

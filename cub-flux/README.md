@@ -7,19 +7,24 @@ so `plan` works backwards: for each layer (a Flux Kustomization such as
 cluster's overlay builds on, and lists exactly what each cluster's overlay
 changes. Those changes are the variant's departures.
 
-Three commands, and the first two change nothing:
+The first two commands change nothing. The scripts `apply` writes are the ones
+that move a cluster:
 
 | Command | What it does | Touches a cluster? |
 |---|---|---|
 | `plan` | shows the fleet ConfigHub would govern | no, and no account either |
-| `apply --out` | writes the workflow files, `apply.sh` and `handover.sh` | no, it runs nothing |
-| `apply.sh` | fills ConfigHub with a parallel copy nothing reads | no |
-| `handover.sh` | swaps each layer's `sourceRef`, one cluster at a time | yes, this is the step that moves it |
+| `apply --out` | writes the workflow files and `apply.sh`, `handover.sh`, `join.sh` and `cleanup.sh` | no, it runs nothing |
+| `apply.sh` | fills ConfigHub with a parallel copy nothing reads, and one layers Space per cluster (needs `CONFIGHUB_OCI`) | no |
+| `handover.sh` | on a cluster running the layers from Git, puts one root on the cluster, which takes each layer over | yes, this is the step that moves it |
+| `join.sh` | on a new cluster with Flux and none of the layers, puts the root there and waits for the layers to arrive | yes, it adds to an empty cluster |
+| `cleanup.sh` | takes what `apply.sh` made back out of ConfigHub, layers Spaces first | no |
 | `check` | compares what each layer applied with the published release | reads it, changes nothing |
 | `status` | reports what Flux applied as ConfigHub live status, which the Healthy gate reads | reads it; writes only to ConfigHub |
 
 `flux-system` is never repointed: it reconciles the Flux controllers
-themselves, so it stays on Git as the recovery path.
+themselves, so it stays on Git as the recovery path. It also holds the root and
+the gateway credential. The shape is the one `cub cluster up` makes for Argo CD:
+a Space per cluster, and one root that reads it.
 
 **Start with the guide: [Onboard your Flux fleet](docs/onboard-your-flux-fleet.md).**
 

@@ -10,7 +10,8 @@ It is deliberately two phases, because they carry very different risk:
 ```mermaid
 flowchart LR
   p["cub flux plan<br/>offline, no account"] --> a["apply.sh<br/>fills ConfigHub<br/>no cluster touched"]
-  a --> h["handover.sh<br/>swaps each layer's source<br/>one cluster at a time"]
+  a --> h["handover.sh<br/>cluster runs the layers from Git:<br/>one root takes each layer over"]
+  a --> j["join.sh<br/>new cluster, Flux only:<br/>the layers arrive from ConfigHub"]
   a -.->|"cleanup.sh<br/>takes it back out"| p
 ```
 
@@ -22,11 +23,18 @@ variant's Release points at a Tag in its base Space, so the variants have to go
 before the bases they were promoted from. Each Space then goes in one
 `cub space delete --recursive --detach`, which takes its contents with it.
 
-**Handover** is the step that changes which source feeds your clusters, and it
-is not undone by deleting Spaces — a repointed layer whose Space is gone has no
-source at all, and with `prune: true` it empties itself. Put each layer's
-`sourceRef` back to its `GitRepository` first, which `cleanup.sh` checks before
-it does anything.
+**Handover and join** are the steps that change which source feeds a cluster.
+`handover.sh` is for a cluster that already runs the layers from Git; `join.sh`
+is for a new cluster that has Flux and none of them. Neither is undone by
+deleting Spaces: a layer whose Space is gone has no source at all, and with
+`prune: true` it empties itself. Put each layer's `sourceRef` back to its
+`GitRepository` first, which `cleanup.sh` asks about before it does anything.
+
+Both give a cluster the same thing: one root, and a ConfigHub Space that says
+what Flux runs there. It is the shape `cub cluster up` makes for Argo CD, an
+apps Space and a root Application, and `cub variant create` then adds one
+Application per variant Space. Here the root is a Flux `Kustomization`, and each
+layer is a Unit in the cluster's Space.
 
 You need `cub` logged in (`cub auth login`), `kustomize` on your PATH,
 `kubectl` access to each cluster, and the plugin. The plugin lives in this repository rather than in one of its own,
@@ -65,12 +73,17 @@ handover never touches — see [the bootstrap stays](#the-bootstrap-stays).
 ## The words you will meet
 
 - **Layer**: one Flux `Kustomization` — `infrastructure`, `apps`, `tenants`.
-  A handover swaps a layer's source.
+  A handover makes a layer read ConfigHub.
 - **Base**: the directory every cluster's overlay builds on, stored once. A
   change to the layer is made here.
 - **Variant**: one cluster's copy, holding what that cluster's overlay renders
   differently — its namespace, image tag, patches and `postBuild` values.
 - **Departure**: a field in which a variant differs from its base.
+- **Layers Space**: one per cluster, `<prefix>-<cluster>-layers`, released to
+  that cluster's Target. It holds one Unit per layer.
+- **Root**: the one `OCIRepository` and `Kustomization`, both named
+  `confighub-root`, that a cluster keeps in `flux-system` to read its layers
+  Space.
 - **Space**, **Component**, **Target**, **Change order**, **Workflow**: as in
   [`cub sveltos`](https://github.com/confighub/sveltos-confighub) — a Space per
   base and per variant, a Target per cluster, and stages a change is promoted
@@ -115,10 +128,21 @@ cub flux apply . --out onboard
 bash onboard/apply.sh
 ```
 
-`apply` writes the workflow files and two scripts, and runs nothing. `apply.sh`
-creates a Target per cluster, renders each layer's base and each cluster's path
-with `kustomize build`, stores them, and releases the first version stage by
-stage. It touches no cluster and is safe to re-run.
+`apply` writes the workflow files and four scripts (`apply.sh`, `handover.sh`,
+`join.sh`, `cleanup.sh`), and runs nothing. `apply.sh` creates a Target per
+cluster, renders each layer's base and each cluster's path with `kustomize
+build`, stores them, and releases the first version stage by stage. It touches
+no cluster and is safe to re-run.
+
+Its last step, 5/5, makes each cluster's layers Space and publishes it. That
+step needs `CONFIGHUB_OCI`, the gateway host as the *cluster* reaches it, and
+`CONFIGHUB_OCI_PLAIN_HTTP=1` if the gateway serves plain HTTP. Without
+`CONFIGHUB_OCI` it skips the step and says so; `handover.sh` and `join.sh` need
+what it makes, so re-run `apply.sh` with it set.
+
+```bash
+CONFIGHUB_OCI=<gateway host> bash onboard/apply.sh
+```
 
 ```mermaid
 flowchart LR
@@ -137,49 +161,81 @@ flowchart LR
 A change made on the base reaches every variant; each variant keeps its own
 departures. Nothing on any cluster has changed yet.
 
+Each Unit in a layers Space is the layer's own `Kustomization` as Git defines
+it, with two fields changed: `sourceRef` names an `OCIRepository`, and `path`
+is `./`. Next to it is that `OCIRepository`. It reads the layer's variant Space,
+`oci://<gateway>/space/<prefix>-<layer>-<cluster>`, at tag `latest`, with the
+credential Secret `confighub-<prefix>-targets`. `insecure` is true only for a
+plain-HTTP gateway.
+
 ## 3. Hand one cluster over
 
+For a cluster that already runs the layers from Git:
+
 ```bash
-CLUSTER=dev-1 FLUX_CONTEXT=<kubectl context> bash onboard/handover.sh
+CONFIGHUB_OCI=<gateway host> CLUSTER=dev-1 FLUX_CONTEXT=<kubectl context> \
+  bash onboard/handover.sh
 ```
 
-Each layer keeps its `Kustomization`, its name and its inventory. Only the
-`sourceRef` changes:
+The script puts one root on the cluster, and the root takes each layer over.
+The layer keeps its `Kustomization`, its name and its inventory:
 
 ```mermaid
 flowchart LR
-  k["Kustomization apps<br/>same name, same inventory"]
-  g["GitRepository fleet-repo<br/>path apps/dev"]
-  o["OCIRepository apps<br/>oci:// the gateway"]
-  k -.->|"before"| g
-  k ==>|"after"| o
+  subgraph cluster["The cluster, in flux-system"]
+    root["confighub-root<br/>OCIRepository + Kustomization<br/>prune: true"]
+    k["Kustomization apps<br/>same name, same inventory"]
+    o["OCIRepository apps"]
+    k --> o
+  end
+  root -->|"reads"| ls["ConfigHub Space flux-dev-1-layers<br/>a Unit per layer"]
+  ls -.->|"holds"| k
+  root ==>|"applies, so takes over"| k
+  o -->|"reads"| vs["ConfigHub Space flux-apps-dev-1<br/>the layer's variant"]
 ```
 
-Because the name does not change, Flux keeps the record of what that layer
-applied, and nothing is recreated.
-
-**If it stops partway, it says where.** The script fixes the kubectl context
-once, at the start, and every command it runs or prints names that context.
-Before a layer moves, its `sourceRef` and `path` are written to
-`handover-state/<cluster>.txt`. If a later layer fails, say `apps` never
-becomes Ready, the script stops and names the layers it already moved, with a
-command for each that puts both fields back as the cluster had them. It rolls
-nothing back by itself. What happened, including why a layer was not Ready, is
-in `handover-state/<cluster>.log`.
-
-A layer moves only on the clusters that have it, so `image-automation` moves on
-`dev-1` alone. The gateway objects for each cluster go into
-`bootstrap/<cluster>/`, so running the script for a second cluster does not
-apply the first one's.
+The root applies a `Kustomization` named `apps` that differs from the one on the
+cluster only in `sourceRef` and `path`. Because the name is the same, Flux keeps
+the record of what that layer applied, and nothing is recreated.
 
 **The order matters, and the script enforces it:**
 
 ```mermaid
 flowchart LR
-  s1["1 · check against Git<br/>and against what the<br/>layer actually applied"] --> s2["2 · add the gateway<br/>credential and one<br/>OCIRepository per layer<br/>to flux-system"]
-  s2 --> s3["3 · swap each sourceRef<br/>in dependsOn order"]
+  s0["0 · refuse a layer that<br/>another Kustomization owns"] --> s1["1 · check against Git<br/>and against what the<br/>layer actually applied"]
+  s1 --> s2["2 · make the credential<br/>and write the root to<br/>bootstrap/cluster/"]
+  s2 --> s3["3 · record each layer,<br/>re-check the releases,<br/>apply the root, wait"]
   s3 --> s4["4 · suspend image automation<br/>and say what is left"]
 ```
+
+Step 3 records each layer's `sourceRef` and `path` as the cluster has them, in
+`handover-state/<cluster>.txt`. It then confirms that each checked release is
+still the newest one, and stops with nothing moved if a newer one was published.
+Only then does it apply the root. It waits for each layer to read its
+`OCIRepository`, be Ready, and have applied the digest that was checked.
+
+**If it stops partway, it says where.** The script fixes the kubectl context
+once, at the start, and every command it runs or prints names that context.
+Before the root is applied, a stop means no layer's source changed, and it says
+so. After that, it names the layers the root is moving and prints the way back.
+It rolls nothing back by itself. What happened, including why a layer was not
+Ready, is in `handover-state/<cluster>.log`.
+
+**The way back is printed in a required order:**
+
+1. Patch `confighub-root` to `suspend: true` and `prune: false`.
+2. Restore `sourceRef` and `path` on each layer, as recorded.
+3. Delete the root `Kustomization`, then its `OCIRepository`.
+
+The order is the point. The root prunes, so deleting it while it still prunes
+would delete the layers it applied. And each layer prunes what it runs, so a
+layer left with no source would empty the cluster.
+
+A layer arrives only on the clusters that have it, so `image-automation` moves
+on `dev-1` alone. The credential and the root for each cluster go into
+`bootstrap/<cluster>/`, so running the script for a second cluster does not
+apply the first one's. The script tells you to commit them into that cluster's
+`flux-system` path so the root survives a reconcile.
 
 **Step 1 asks two different questions, and only the second can see the
 cluster.**
@@ -192,13 +248,13 @@ held something Git has never described.
 The second is `cub flux check`, and it reads Flux's own
 `status.inventory`: the record of what that layer actually applied. Every layer
 has `prune: true`, so an object in that inventory which the release does not
-hold is **deleted** the moment the source is swapped — whether or not it was
+hold is **deleted** the moment the source changes — whether or not it was
 ever in Git. Only this question can see it, and the script stops rather than
 pruning.
 
-**The swap moves two fields, not one.** `sourceRef` is the obvious one. `path`
-is the one that costs an afternoon: it is a path *inside the artifact*, and the
-two kinds of artifact are shaped differently.
+**Two fields change, not one.** `sourceRef` is the obvious one. `path` is the
+one that costs an afternoon: it is a path *inside the artifact*, and the two
+kinds of artifact are shaped differently.
 
 ```mermaid
 flowchart LR
@@ -211,19 +267,41 @@ flowchart LR
   g -->|"sourceRef: GitRepository to OCIRepository<br/>path: ./gitops/.../apps/dev to ./"| o
 ```
 
-Change only `sourceRef` and Flux looks for the old Git path inside the new
-artifact, finds nothing, and reports `kustomization path not found`. The same
-is true going back: restoring `sourceRef` while leaving `path: ./` is a worse
-place than where you started, which is why `handover.sh` prints both fields for
-the way back.
+The Unit sets both. Change only `sourceRef` and Flux looks for the old Git path
+inside the new artifact, finds nothing, and reports `kustomization path not
+found`. The same is true going back: restoring `sourceRef` while leaving `path:
+./` is a worse place than where you started, which is why `handover.sh` prints
+both fields for the way back.
 
-**Step 2 has to come from Git.** A `Kustomization` cannot read a source that
-does not exist yet, so the gateway credential and the `OCIRepository` objects
-go into the bootstrap directory. That is the same shape `cub sveltos` uses: a
-small hand-managed bootstrap that names ConfigHub, and everything else flowing
-from ConfigHub.
+**The root has to come from outside ConfigHub.** A `Kustomization` cannot read a
+source that does not exist yet, so the credential and the root are applied
+from the script and kept in the bootstrap directory. That is the same shape `cub
+sveltos` uses: a small hand-managed bootstrap that names ConfigHub, and
+everything else flowing from ConfigHub.
 
-## 4. Tell ConfigHub what the cluster is running
+## 4. Join a new cluster
+
+For a cluster that has Flux and none of the layers, `join.sh` is the equivalent
+of `cub cluster up` for Argo CD:
+
+```bash
+CONFIGHUB_OCI=<gateway host> CLUSTER=prod FLUX_CONTEXT=<kubectl context> \
+  bash onboard/join.sh
+```
+
+It refuses if any layer already exists on the cluster, because the root would
+take that layer over without the checks `handover.sh` makes; use `handover.sh`
+for it. Otherwise it makes the credential Secret, writes and applies the root,
+and waits for each layer to arrive from ConfigHub.
+
+Adding a cluster later is re-running `plan` and `apply`, which makes its layers
+Space, and then `join.sh` for it.
+
+**Changing how a layer is reconciled** — its interval, `healthChecks`,
+`dependsOn` — is now a change to its Unit in the layers Space, published like
+any other. It is no longer an edit to a `Kustomization` in Git.
+
+## 5. Tell ConfigHub what the cluster is running
 
 Once a layer reads ConfigHub, `cub flux status` reports what Flux applied as
 the Space's live status: the `confighub.com/live-status` annotation that
@@ -307,9 +385,9 @@ will not get. So `check` reads the newest published release, or the one
 `--release sha256:...` names, finds the revision of the unit it bundled, and
 compares that. It prints the release number and manifest digest, and says so
 when the unit's head has moved past it. `handover.sh` records each digest
-before checking it, and before a layer moves, confirms the `OCIRepository` fetched that same
-digest; if a newer release was published in between, it stops with nothing
-moved.
+before checking it. Before it applies the root, it confirms each checked release
+is still the newest, and stops with nothing moved if a newer one was published
+in between. Afterwards it confirms each layer applied the digest it checked.
 
 **You run it the way you ran `plan`.** `check` takes the same fleet directory
 and works the layers out for itself — there is no per-Kustomization flag to get
@@ -337,7 +415,7 @@ were being flattened, which this does not do.
 
 ## Three questions, not one: objects, identities, fields
 
-A handover is safe when swapping the source changes nothing. "Nothing" breaks
+A handover is safe when moving a layer to ConfigHub changes nothing. "Nothing" breaks
 into three questions, and each needs a different thing to be read.
 
 ```mermaid
@@ -391,23 +469,28 @@ Flux controllers themselves. Putting an approval gate in front of that would
 put one between an operator and a Flux upgrade, and if a bad release broke
 `source-controller`, the thing that fixes it would be the thing that is broken.
 
+It now also holds two more things: the root and the gateway credential. They are
+the only part of the delivery that cannot come from ConfigHub, since a
+`Kustomization` cannot read a source that does not exist yet.
+
 ```mermaid
 flowchart TB
   subgraph git["Stays on Git, your recovery path"]
-    fs["flux-system Kustomization<br/>gotk-components.yaml<br/>the gateway Secret<br/>one OCIRepository per layer"]
+    fs["flux-system Kustomization<br/>gotk-components.yaml<br/>the gateway Secret<br/>the root: OCIRepository + Kustomization"]
   end
   subgraph hub["Moves to ConfigHub"]
-    l["infrastructure<br/>apps<br/>tenants"]
+    l["the layers Space:<br/>infrastructure<br/>apps<br/>tenants"]
   end
-  fs -->|"applies"| l
+  fs -->|"the root reads"| l
 ```
 
-**A bootstrapped fleet cannot be handed over with kubectl.** There,
-`flux-system` also applies the directory that holds each layer's
-`Kustomization`, so it owns the very objects `handover.sh` would patch, and it
-puts them back on its next reconcile. `handover.sh` checks for that first and,
-if any layer has an owner, stops before it changes anything; see "What has and
-has not been checked".
+**A bootstrapped fleet is not handed over yet.** There, `flux-system` also
+applies the directory that holds each layer's `Kustomization`, so it owns the
+very objects the root would take over. `handover.sh` reads the owner of every
+layer first and, if another Kustomization owns any of them, stops before it
+changes anything. It accepts `confighub-root` as the owner, so it can be re-run.
+See "Measured: a fleet set up the way `flux bootstrap` sets it up" below for why,
+and for the sequence that is safe.
 
 Also left alone: SOPS keys and any Secret, and the `team-checkout` tenant —
 repointing it would move that team from Git access to ConfigHub access, which
@@ -469,21 +552,22 @@ credentials: the person running `apply.sh` should not be a user who can approve.
 
 ## What this leaves alone
 
-- The `flux-system` bootstrap, the Flux controllers and the gateway objects.
+- The `flux-system` bootstrap, the Flux controllers, the root and the gateway credential.
 - SOPS-encrypted Secrets; their contents do not belong in a review diff.
 - The tenant's own `GitRepository` and `ServiceAccount`.
 - `postBuild` substitution, which stays Flux's and is applied on the cluster.
 - Live exports: `plan` reads a fleet repository, not `kubectl get` output.
-- `OCIRepository` and `Bucket` sources as layer inputs.
+- `OCIRepository` and `Bucket` sources as layer inputs. (The `OCIRepository`
+  objects that handover and join make are outputs, not inputs.)
 - Rendering: it reads kustomization files but does not run kustomize or Helm.
   The scripts do that when you run them.
 
 ## What has and has not been checked
 
 **Checked here, offline:** all fourteen renders in the example's script run
-against kustomize 5.8.1 and give the same bytes twice. Both generated scripts
-are valid bash. Tests keep the bootstrap untouched and the swap in `dependsOn`
-order. `scripts/verify-gitops-plugins.sh` runs the lot.
+against kustomize 5.8.1 and give the same bytes twice. All four generated scripts
+are valid bash. Tests keep the bootstrap untouched, refuse a layer another
+Kustomization owns, and stop before the root is applied when a release has moved. `scripts/verify-gitops-plugins.sh` runs the lot.
 
 **Checked on a live cluster:** `cub flux check` was run against Flux v2.8.6 on
 kind, reconciling this repository's `flux/beginner` example from the public
@@ -501,7 +585,9 @@ That rehearsal found two bugs:
   layer can and does set it false, and then an object is left behind rather
   than deleted. Those are different outcomes and are now said differently.
 
-**The handover has now been run, end to end.** Flux v2.8.6 on a kind cluster,
+**The earlier handover was run, end to end.** This is the first handover, which
+patched each layer's `sourceRef` with kubectl; it has since been replaced by the
+root (below). Flux v2.8.6 on a kind cluster,
 reconciling this repository's `flux/beginner` example from GitHub, handed over
 to a self-hosted ConfigHub v0.6.2 and then handed back. Flux was set up with
 `flux install`, and the layer `Kustomization`s were applied with `kubectl
@@ -559,7 +645,8 @@ that, and named `kubectl` among the managers — recorded against the `scale`
 subresource, with no timestamp, which is why the managers are reported
 unordered.
 
-**Run again on 2026-09-30, against ConfigHub v0.6.8.** Flux v2.8.6 on kind,
+**The kubectl-patch handover, run again on 2026-09-30, against ConfigHub
+v0.6.8.** Flux v2.8.6 on kind,
 `flux/beginner`, the `dev` cluster, a self-hosted gateway over plain HTTP
 (`CONFIGHUB_OCI_PLAIN_HTTP=1`, which sets `spec.insecure` on each
 `OCIRepository`).
@@ -577,29 +664,75 @@ unordered.
   its way back. In that run Flux simply had not fetched yet, as it polls, so
   `handover.sh` now asks it to fetch and waits before calling it a mismatch.
 
+**Run live with the root, also on 2026-09-30.** ConfigHub v0.6.8, Flux v2.8.6,
+kind. The `dev` cluster ran the `beginner` layers, hand-applied and not
+bootstrapped; `prod` was a fresh cluster with only Flux.
+
+| Run | Result |
+| --- | --- |
+| `handover.sh` on `dev` | the root took both layers over. Each arrived Ready at its release digest. Every UID, the Pod's and the layer `Kustomization`s' included, and the rollout revision were identical |
+| `join.sh` on `prod` | both layers arrived from ConfigHub. `frontend` ran 3/3, which is prod's overlay |
+| `cub flux status` | all four layers read Synced, Healthy and Succeeded at their digests |
+| the `apps` interval, 5m to 2m | changed by editing its Unit and publishing. UIDs unchanged |
+| the printed way back, in order | the root was removed. Both layers survived, back on Git and Ready, and every UID was identical |
+
 **Measured: a fleet set up the way `flux bootstrap` sets it up.** Flux v2.8.6
 on kind, with a `flux-system` `Kustomization` applying `flux/beginner`'s
 `clusters/dev/` from Git, which is what `gotk-sync.yaml` does. Every layer then
-carries the label `kustomize.toolkit.fluxcd.io/name: flux-system`. A `kubectl
-patch` of the `apps` layer's `sourceRef` was back to its Git value after one
-`flux reconcile ks flux-system`. A patched field Git never sets, `spec.suspend`,
-was removed too, along with the `kubectl-patch` entry in `managedFields`. So a
-kubectl handover of a bootstrapped fleet would move each layer and, within
-`flux-system`'s interval, quietly move it back. This is the ownership problem
+carries the label `kustomize.toolkit.fluxcd.io/name: flux-system`. With the
+kubectl patch, `flux-system` put the change back: a patched `sourceRef` was back
+to its Git value after one `flux reconcile ks flux-system`, and a patched field
+Git never sets, `spec.suspend`, was removed too. That is the ownership problem
 `cub argo` met: whatever applies an object puts a patch back.
 
-`handover.sh` now reads that label on every layer before it changes anything,
-and stops if any layer has an owner. Run against that cluster, it named both
-layers and exited with every `Kustomization`'s `resourceVersion` unchanged.
-What it does not yet do is the handover itself for such a fleet. That has to be
-a Git change: in the files under the cluster's directory, each layer's
-`sourceRef` becomes its `OCIRepository` and its `path` becomes `./`, committed
-with the `bootstrap/<cluster>/` files, so that `flux-system` makes the change
-itself. That path has not been built or run.
+The root is a second `Kustomization` applying the same layer `Kustomization`s,
+and this was measured with it. Ownership, the `kustomize.toolkit.fluxcd.io/name`
+label, went to whichever of the two reconciled last. What that means depends on
+what happens next, when the layers leave `flux-system`'s source:
 
-The same goes for image automation. Its `Kustomization` removes a suspend made
-with kubectl, which is why `handover.sh` says where `suspend: true` has to be
-set for it to last.
+- If the root had reconciled last, `flux-system` left the layers alone, and
+  their UIDs were identical.
+- If `flux-system` had reconciled last, it **deleted both layers**. Their
+  pruning deleted every workload, and the `infrastructure` layer's pruning even
+  deleted the `GitRepository` the layers read.
+
+So for a bootstrapped fleet, `handover.sh` follows the order that measurement
+leaves safe:
+
+1. It suspends `flux-system`: step 0 finds it owns the layers, and checks that
+   it reads Git.
+2. It applies the root and lets it take the layers over.
+3. It pauses, with exit code 2, for one commit: remove the layer files from
+   `clusters/<name>/`, add the root file, push. It prints the exact `git rm`
+   and `cp` lines.
+4. Run it again. It resumes `flux-system` only once the revision
+   `flux-system` reads no longer has the layer files and does define the root,
+   which it checks in your checkout with `git cat-file` and `git grep`.
+
+Until then it says, in so many words, not to resume `flux-system` by hand. It
+records the owner it suspended, so a rerun carries on from there. After the
+commit, the way back is a revert, with the root's pruning turned off first.
+
+**Run live, 2026-09-30:** Flux v2.8.6 on kind, bootstrapped from a lab Git
+server that the cluster reads and the test pushes to, and ConfigHub v0.6.8.
+- The run paused, and the commit was made as printed.
+- The rerun resumed `flux-system` at that commit. After two more forced
+  reconciles, the ownership chain was: `flux-system` from Git, then
+  `confighub-root`, then the layers from ConfigHub.
+- Every UID, the Pod's, the layers' and the `GitRepository`'s, and the rollout
+  revision were identical.
+- The revert way back put the layers back under `flux-system` from Git, and
+  removed the root with nothing else deleted.
+
+The run is recorded in
+[docs/runs/2026-09-30-bootstrapped-handover.md](runs/2026-09-30-bootstrapped-handover.md),
+with the one bug it found (a rerun that did not finish) and what it does not
+cover.
+
+Suspending first means `flux-system` cannot reconcile the layers after the root
+has. The same goes for image automation: its
+`Kustomization` removes a suspend made with kubectl, which is why `handover.sh`
+says where `suspend: true` has to be set for it to last.
 
 **Not claimed at all:** live exports as input (`plan` reads a fleet
 repository), `OCIRepository` or `Bucket` sources as layer inputs,
