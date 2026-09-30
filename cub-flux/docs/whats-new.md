@@ -3,7 +3,7 @@
 Each release is tagged `cub-flux-v<version>` in confighub/examples and installs
 with `cub plugin install confighub/examples@cub-flux-v<version> --name flux`.
 
-## 0.2.0, unreleased
+## 0.2.0, 2026-09-30
 
 - **Plain layers onboard.** A layer path with no kustomization is read as
   kustomize-controller reads it: every `.yaml` and `.yml` below it, a

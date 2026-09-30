@@ -3,7 +3,7 @@
 Each release is tagged `cub-argo-v<version>` in confighub/examples and installs
 with `cub plugin install confighub/examples@cub-argo-v<version> --name argo`.
 
-## 0.2.0, unreleased
+## 0.2.0, 2026-09-30
 
 - **Live status without argobot.** `cub argo status [--watch] [--hard-refresh]`
   writes what each handed-over Application synced into its Space as
