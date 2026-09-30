@@ -268,12 +268,17 @@ echo '-- apptique'
 echo 'apptique is a Unit in argo-storefront-children. Retire it where ConfigHub keeps it, so the change is reviewed and survives the next sync:'
 echo '  cub unit data --space argo-storefront-children apptique > apptique.yaml'
 echo '  # set spec.syncPolicy.applicationsSync: create-only'
+echo '  #   and spec.generators: [{list: {elements: []}}], so it generates nothing:'
+echo '  #   create-only never deletes, and one that still generates takes each'
+echo '  #   Application back once it stands alone (measured on Argo CD v3.5.3)'
 echo '  #   and annotate it argo.confighub.com/retired: "retired at handover; see cleanup.sh"'
 echo '  cub unit update --space argo-storefront-children apptique apptique.yaml'
 echo '  cub release publish argo-storefront-children'
 echo '  # then wait for the parent to sync it down before patching anything:'
 printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'get applicationset apptique -o jsonpath='\''{.spec.syncPolicy.applicationsSync}'\''' | sed "s|<gateway>|${addr:-<gateway>}|")"
-echo 'Once it reads create-only, point each Application at its own Space:'
+echo 'Once it reads create-only, deliver each Application from its own Space, one stage at a time:'
+echo '  bash move-applications.sh <stage>'
+echo 'It makes each one a Unit in argo-storefront-children, reading its Space, and checks it arrived. By hand, it is:'
 printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'patch application dev-1-apptique --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-apptique-dev-1","path":".","targetRevision":"latest"}}}'\''   # stage canary' | sed "s|<gateway>|${addr:-<gateway>}|")"
 echo "    # checked at ${digest_argo_apptique_dev_1:-?}; once synced, its status.sync.revision should name that digest, or a newer release went out unchecked"
 printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'patch application staging-1-apptique --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-apptique-staging-1","path":".","targetRevision":"latest"}}}'\''   # stage secondary' | sed "s|<gateway>|${addr:-<gateway>}|")"
@@ -285,12 +290,17 @@ echo '-- checkout-cache'
 echo 'checkout-cache is a Unit in argo-storefront-children. Retire it where ConfigHub keeps it, so the change is reviewed and survives the next sync:'
 echo '  cub unit data --space argo-storefront-children checkout-cache > checkout-cache.yaml'
 echo '  # set spec.syncPolicy.applicationsSync: create-only'
+echo '  #   and spec.generators: [{list: {elements: []}}], so it generates nothing:'
+echo '  #   create-only never deletes, and one that still generates takes each'
+echo '  #   Application back once it stands alone (measured on Argo CD v3.5.3)'
 echo '  #   and annotate it argo.confighub.com/retired: "retired at handover; see cleanup.sh"'
 echo '  cub unit update --space argo-storefront-children checkout-cache checkout-cache.yaml'
 echo '  cub release publish argo-storefront-children'
 echo '  # then wait for the parent to sync it down before patching anything:'
 printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'get applicationset checkout-cache -o jsonpath='\''{.spec.syncPolicy.applicationsSync}'\''' | sed "s|<gateway>|${addr:-<gateway>}|")"
-echo 'Once it reads create-only, point each Application at its own Space:'
+echo 'Once it reads create-only, deliver each Application from its own Space, one stage at a time:'
+echo '  bash move-applications.sh <stage>'
+echo 'It makes each one a Unit in argo-storefront-children, reading its Space, and checks it arrived. By hand, it is:'
 printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'patch application dev-1-checkout-cache --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-checkout-cache-dev-1","path":".","targetRevision":"latest"}}}'\''   # stage canary' | sed "s|<gateway>|${addr:-<gateway>}|")"
 echo "    # checked at ${digest_argo_checkout_cache_dev_1:-?}; once synced, its status.sync.revision should name that digest, or a newer release went out unchecked"
 printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'patch application staging-1-checkout-cache --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-checkout-cache-staging-1","path":".","targetRevision":"latest"}}}'\''   # stage secondary' | sed "s|<gateway>|${addr:-<gateway>}|")"
@@ -302,12 +312,17 @@ echo '-- platform-addons'
 echo 'platform-addons is a Unit in argo-root-children. Retire it where ConfigHub keeps it, so the change is reviewed and survives the next sync:'
 echo '  cub unit data --space argo-root-children platform-addons-appset > platform-addons-appset.yaml'
 echo '  # set spec.syncPolicy.applicationsSync: create-only'
+echo '  #   and spec.generators: [{list: {elements: []}}], so it generates nothing:'
+echo '  #   create-only never deletes, and one that still generates takes each'
+echo '  #   Application back once it stands alone (measured on Argo CD v3.5.3)'
 echo '  #   and annotate it argo.confighub.com/retired: "retired at handover; see cleanup.sh"'
 echo '  cub unit update --space argo-root-children platform-addons-appset platform-addons-appset.yaml'
 echo '  cub release publish argo-root-children'
 echo '  # then wait for the parent to sync it down before patching anything:'
 printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'get applicationset platform-addons -o jsonpath='\''{.spec.syncPolicy.applicationsSync}'\''' | sed "s|<gateway>|${addr:-<gateway>}|")"
-echo 'Once it reads create-only, point each Application at its own Space:'
+echo 'Once it reads create-only, deliver each Application from its own Space, one stage at a time:'
+echo '  bash move-applications.sh <stage>'
+echo 'It makes each one a Unit in argo-root-children, reading its Space, and checks it arrived. By hand, it is:'
 printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'patch application dev-1-cluster-baseline --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-platform-addons-cluster-baseline-dev-1","path":".","targetRevision":"latest"}}}'\''   # stage canary' | sed "s|<gateway>|${addr:-<gateway>}|")"
 echo "    # checked at ${digest_argo_platform_addons_cluster_baseline_dev_1:-?}; once synced, its status.sync.revision should name that digest, or a newer release went out unchecked"
 printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'patch application staging-1-cluster-baseline --type merge -p '\''{"spec":{"source":{"repoURL":"oci://<gateway>/space/argo-platform-addons-cluster-baseline-staging-1","path":".","targetRevision":"latest"}}}'\''   # stage secondary' | sed "s|<gateway>|${addr:-<gateway>}|")"
@@ -332,5 +347,7 @@ echo 'reach the cluster on its own. Argo caches the digest it resolved for the t
 echo 'was still serving the previous release 90 seconds later. A hard refresh re-resolves'
 echo 'the tag to a digest and the release lands:'
 printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'annotate application <name> argocd.argoproj.io/refresh=hard --overwrite' | sed "s|<gateway>|${addr:-<gateway>}|")"
-echo 'argobot does this for you, reacting to ConfigHub'\''s release.published event. Without'
-echo 'it, or without that annotation, an approved release sits unread on the gateway.'
+echo 'argobot does this for you: argobot.sh runs it beside Argo CD with the Targets'\'' worker,'
+echo 'so it refreshes each Application reading a Space when that Space publishes, and writes'
+echo 'each Application'\''s live status back to its Space. Without it, or without that'
+echo 'annotation, an approved release sits unread on the gateway.'

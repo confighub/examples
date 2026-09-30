@@ -50,9 +50,12 @@ func newRoot() *cobra.Command {
          one cluster, and the control tree that stays as it is. Offline: no
          account, no cluster, nothing changes.
 
-  apply  writes the plan as files beside two scripts: apply.sh, which fills
-         ConfigHub and touches no cluster, and handover.sh, which repoints each
-         layer's source at ConfigHub, top down. Nothing runs until you run them.`,
+  apply  writes the plan as files beside its scripts: apply.sh, which fills
+         ConfigHub and touches no cluster; handover.sh, which repoints each
+         layer's source at ConfigHub, top down; move-applications.sh, which
+         makes each generated Application a Unit reading its own Space, one
+         stage at a time; and argobot.sh, which runs argobot beside Argo CD.
+         Nothing runs until you run them.`,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
@@ -101,7 +104,7 @@ func newRoot() *cobra.Command {
 	var applyStages, out string
 	apply := &cobra.Command{
 		Use:   "apply <dir|input.yaml|-> [more inputs] --out <dir>",
-		Short: "Write the plan's files and the apply, handover and cleanup scripts; runs nothing",
+		Short: "Write the plan's files and the apply, handover, move-applications, argobot and cleanup scripts; runs nothing",
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
 			if out == "" {
@@ -314,7 +317,64 @@ thing, to ConfigHub: each verdict as a LiveCheck attestation.`,
 		},
 	}
 
-	root.AddCommand(plan, apply, check, versionCmd)
+	var auCtx, auNS, auApp, auSpace, auGateway, auLike, auServer, auDestNS string
+	var auLabels []string
+	appUnit := &cobra.Command{
+		Use:   "application-unit",
+		Short: "Print the Unit that delivers an Application from its Space; reads the cluster, changes nothing",
+		Long: `Read an Application from the cluster Argo CD runs on and print it as the Unit
+that delivers it from ConfigHub: the same name, project, destination and sync
+policy, its source pointed at the variant's Space on the gateway, and the sync
+option Prune=false, so no parent ever deletes it.
+
+move-applications.sh runs this for each Application a retired ApplicationSet
+made, and stores what it prints in the control Space the parent reads. For a
+cluster that joined after the ApplicationSet was retired, nothing generated its
+Application: --like makes it from a sibling's Unit instead.`,
+		Args: cobra.NoArgs,
+		RunE: func(c *cobra.Command, _ []string) error {
+			if auApp == "" || auSpace == "" || auGateway == "" {
+				return fmt.Errorf("needs --application, --space and --gateway")
+			}
+			argo.KubeContext = auCtx
+			argo.SetApplicationNamespace(auNS)
+			var b []byte
+			var err error
+			if auLike != "" {
+				space, unit, ok := strings.Cut(auLike, "/")
+				if !ok || auServer == "" {
+					return fmt.Errorf("--like takes <space>/<unit>, and needs --destination-server")
+				}
+				labels := map[string]string{}
+				for _, l := range auLabels {
+					k, v, ok := strings.Cut(l, "=")
+					if !ok {
+						return fmt.Errorf("--label takes key=value, not %q", l)
+					}
+					labels[k] = v
+				}
+				b, err = argo.ApplicationUnitLike(argo.Run, space, unit, auApp, auServer, auDestNS, labels, auGateway, auSpace)
+			} else {
+				b, err = argo.ApplicationUnit(argo.Run, auApp, auGateway, auSpace)
+			}
+			if err != nil {
+				return err
+			}
+			_, err = c.OutOrStdout().Write(b)
+			return err
+		},
+	}
+	appUnit.Flags().StringVar(&auCtx, "kube-context", "", "the kubectl context of the cluster Argo CD runs on")
+	appUnit.Flags().StringVar(&auNS, "namespace", "argocd", "the namespace Argo CD's Applications live in")
+	appUnit.Flags().StringVar(&auApp, "application", "", "the Application to deliver")
+	appUnit.Flags().StringVar(&auSpace, "space", "", "the variant's Space, which it will read")
+	appUnit.Flags().StringVar(&auGateway, "gateway", "", "the gateway address the cluster reaches, host[:port]")
+	appUnit.Flags().StringVar(&auLike, "like", "", "for an Application not on the cluster yet: make it like this sibling's Unit, <space>/<unit>")
+	appUnit.Flags().StringVar(&auServer, "destination-server", "", "with --like, the new Application's destination server")
+	appUnit.Flags().StringVar(&auDestNS, "destination-namespace", "", "with --like, the new Application's destination namespace")
+	appUnit.Flags().StringArrayVar(&auLabels, "label", nil, "with --like, a label to set on the new Application, key=value (repeatable)")
+
+	root.AddCommand(plan, apply, check, appUnit, versionCmd)
 	return root
 }
 

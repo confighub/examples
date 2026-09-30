@@ -7,14 +7,16 @@ ApplicationSet, one variant per Application it generates, each addressed to
 one cluster, and a Target per cluster. The root Application, its app of apps
 and the AppProjects stay as they are, as the management record.
 
-Three commands, and the first two change nothing:
+The commands and scripts, in order; the first two change nothing:
 
 | Command | What it does | Touches a cluster? |
 |---|---|---|
 | `plan` | shows the estate ConfigHub would govern | no, and no account either |
-| `apply --out` | writes the files, `apply.sh` and `handover.sh` | no, it runs nothing |
+| `apply --out` | writes the files and the scripts below | no, it runs nothing |
 | `apply.sh` | fills ConfigHub with a parallel copy nothing reads | no |
 | `handover.sh` | repoints each layer's source at ConfigHub, top down | yes, this is the step that moves it |
+| `move-applications.sh` | makes each Application an ApplicationSet generated a Unit reading its own Space, one stage at a time | yes, through the parent that syncs it |
+| `argobot.sh` | runs argobot beside Argo CD: releases land when published, and live status goes back to each Space | yes, it installs argobot |
 
 **Start with the guide: [Onboard your Argo CD estate](docs/onboard-your-argo-estate.md).**
 

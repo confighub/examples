@@ -7,7 +7,8 @@ import (
 	"sort"
 )
 
-// WriteApply writes the files apply.sh reads, apply.sh, and handover.sh. It
+// WriteApply writes the files apply.sh reads, apply.sh, handover.sh,
+// move-applications.sh and argobot.sh. It
 // runs nothing and touches nothing outside dir.
 func WriteApply(p *Plan, prefix, dir string) (string, error) {
 	if len(p.Problems) > 0 {
@@ -59,8 +60,12 @@ func WriteApply(p *Plan, prefix, dir string) (string, error) {
 		outFile{"apply.sh", []byte(ApplyScript(p, prefix, repoRel)), 0o755},
 		outFile{"handover.sh", []byte(HandoverScript(p, prefix, repoRel)), 0o755},
 		outFile{"cleanup.sh", []byte(CleanupScript(p, prefix)), 0o755},
+		outFile{"argobot.sh", []byte(ArgobotScript(prefix)), 0o755},
 		outFile{".gitignore", []byte("render/\n"), 0o644},
 	)
+	if s := MoveScript(p, prefix); s != "" {
+		files = append(files, outFile{"move-applications.sh", []byte(s), 0o755})
+	}
 
 	sort.Slice(files, func(i, j int) bool { return files[i].name < files[j].name })
 	for _, f := range files {

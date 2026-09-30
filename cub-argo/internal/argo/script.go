@@ -270,6 +270,18 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 			// rollout, so they have no ChangeWorkflow and publish directly.
 			add(`cub release publish %s --quiet 2>&1 | grep -v 'no changes were made' || true`, s.Space)
 		}
+		// cub variant create adds an Application for a new variant when its
+		// Target names the Space a root reads. The Application it writes
+		// deploys to the cluster Argo CD runs on, so only that cluster's
+		// Target is marked; a variant for another cluster gets its Application
+		// from move-applications.sh, which keeps its destination.
+		for _, c := range p.Clusters {
+			if c.Name == "in-cluster" || c.Server == "https://kubernetes.default.svc" {
+				add("# A variant made later for %s, Argo CD's own cluster, gets its Application", c.Name)
+				add("# in %s, which %s reads, from cub variant create itself.", cs[0].Space, cs[0].Parent)
+				add(`echo '{"Annotations":{"confighub.com/argo-apps-space":"%s"}}' | cub target update --patch --space %s %s --from-stdin --quiet`, cs[0].Space, targets, c.Name)
+			}
+		}
 		add("")
 	}
 
@@ -290,10 +302,14 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 	add("")
 
 	add(`step "4/5 One variant per cluster, each holding what its overlay renders to"`)
+	add("# Each variant's Application is the one Argo CD runs already; after the")
+	add("# handover, move-applications.sh makes it a Unit. So a cub that would add a")
+	add("# second Application when it makes a variant for an Argo cluster is told not to.")
+	add(`no_argo_app=; case "$(cub variant create --help 2>&1)" in *--no-argo-app*) no_argo_app=--no-argo-app ;; esac`)
 	for _, c := range p.Components {
 		for _, st := range c.Stages {
 			for _, v := range st.Variants {
-				add("cub variant create %s %s --stage %s --space-pattern template:%s --target %s/%s --space-label Role=deployment --space-label Cluster=%s --allow-exists --quiet",
+				add("cub variant create %s %s --stage %s --space-pattern template:%s --target %s/%s --space-label Role=deployment --space-label Cluster=%s $no_argo_app --allow-exists --quiet",
 					v.Cluster, c.Base, st.Name, v.Space, targets, v.Cluster, v.Cluster)
 				if v.Path != "" && v.Path != "(multi-source)" {
 					add("render %s %s", q(v.Path), q(v.Space))

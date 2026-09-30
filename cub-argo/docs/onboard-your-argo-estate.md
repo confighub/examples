@@ -184,9 +184,10 @@ that syncs it.
 
 `root` is patched in the cluster, because nothing above it can repoint it under
 review. `storefront` is a Unit by then, so its repoint is promoted and approved
-like any other change. Each ApplicationSet's template is repointed last, and it
-goes on generating the same Applications under the same names, so Argo's
-tracking does not change and no workload is recreated.
+like any other change. Each ApplicationSet is retired last, and
+`move-applications.sh` then makes every Application it generated a Unit reading
+its own Space, stage by stage, under the same name, so Argo's tracking does not
+change and no workload is recreated.
 
 **What the script checks before it changes anything.** That Argo CD is v3.1 or
 newer, which is where an `oci://` source is read natively, and that your
@@ -460,6 +461,60 @@ been run end to end against real variant Spaces on two registered clusters; see
 - **Applications then move one cluster at a time.** Verified: one Application
   repointed while its sibling stayed where it was — the staged rollout a shared
   template cannot express.
+- **`create-only` is not enough once an Application stands alone.** Measured on
+  2026-09-30: `create-only` stops the controller updating the Applications it
+  owns, but one that no longer carries its ownerReference is, to the
+  controller, one it has yet to create, and it "creates" it back to the
+  template, source and owner included, within seconds. So a retired
+  ApplicationSet also generates nothing: its generators become
+  `[{list: {elements: []}}]`. `create-only` never deletes, so every
+  Application it made stays where it is. `handover.sh` step 5 prints both edits,
+  to its Unit, and `move-applications.sh` refuses to start until both are live.
+
+### Each Application becomes a Unit
+
+Once the ApplicationSets are retired, `move-applications.sh` gives each variant
+its delivery object in ConfigHub — the shape `cub variant create` gives a
+variant on a `cub cluster up` cluster: one Application Unit, named after the
+variant's Space, in the Space the parent reads.
+
+```bash
+ARGOCD_CONTEXT=<context> CONFIGHUB_OCI=<gateway> bash onboard/move-applications.sh canary
+# check it, then
+ARGOCD_CONTEXT=<context> CONFIGHUB_OCI=<gateway> bash onboard/move-applications.sh secondary
+```
+
+For each Application in the stage it reads the Application from the cluster and
+stores it (`cub argo application-unit`) as a Unit in the control Space that holds
+its ApplicationSet: the same name, project, destination, labels, finalizer and
+sync policy, the source pointed at the variant's Space and nothing else, and two
+sync options:
+
+- `Prune=false`, so no parent ever deletes it — not when its Unit is removed on
+  the way back, and not when the parent is pointed back at Git, which does not
+  hold it. Deleting an Application with the resources finalizer deletes its
+  workloads.
+- `Replace=true`, so the parent replaces the Application with its Unit rather
+  than merging into it. Measured: `checkout-cache`'s template sets
+  `source.kustomize.version: v5`, which a merge would have kept, and Argo would
+  then have tried to build the rendered bundle as a kustomization. A replace is
+  an update, so the UID stays; it also takes off the ApplicationSet's
+  ownerReference, so the Application stands on its own.
+
+Then it publishes that control Space, waits for the parent to apply it, and
+checks each Application reads its Space, has synced that Space's newest release,
+and is the same object it was (by UID). A stage whose Space has no release yet
+is refused before anything is made. The way back is printed at the end and if it
+stops: take the Unit out and publish — the Application stays, as `Prune=false`
+says — then put its recorded source back.
+
+**Run live on 2026-09-30,** Argo CD v3.5.3, ConfigHub v0.6.8: canary, then
+secondary, six Applications across `dev-1` and `staging-1`, including the
+Helm-inflated `checkout-cache`. Every Application and every Deployment, Service
+and ConfigMap on both clusters kept its UID. The way back was run for one
+Application: with its Unit removed `root` reported it `requiresPruning` and left
+it; patched back it synced Git again, and the retired generator left it alone.
+Moving it again picked up where it was.
 
 ### Removing a retired ApplicationSet later
 
@@ -483,7 +538,9 @@ kubectl -n argocd delete applicationset apptique             # only then
 ```
 
 `cleanup.sh` prints this for each retired ApplicationSet, naming the exact
-Applications, in the order that does not delete them.
+Applications, in the order that does not delete them. An Application
+`move-applications.sh` has moved carries no ownerReference already (its Unit
+replaced it without one), so only those not yet moved need the patch.
 
 ## What the Argo handover has been through
 
@@ -616,11 +673,31 @@ flowchart LR
   a --> c["the cluster"]
 ```
 
-**[argobot](https://github.com/confighub/argobot) does this for you.** It
-subscribes to ConfigHub's `release.published` event and issues exactly that
-hard refresh, so an approved release reaches the cluster immediately. Without
-argobot, or without that annotation in whatever promotes your releases, an
-approved release sits unread on the gateway and the approval gate you built
+**[argobot](https://github.com/confighub/argobot) does this for you, and reports
+back.** `argobot.sh` runs it beside Argo CD with the Targets' server worker as
+its identity, the one `cub cluster up` gives it, so it acts for exactly these
+Targets:
+
+- on each `release.published` it hard-refreshes the Applications reading that
+  Space, so an approved release reaches the cluster at once;
+- it writes each Application's live state — sync, health, operation, the digest
+  it synced — back to the Space it reads, as `confighub.com/live-status`, which
+  the ConfigHub UI and the Healthy gate read.
+
+Both find an Application by the Space its source reads, since a moved estate
+keeps Argo's names (`dev-1-apptique` reads `argo-apptique-dev-1`). The status
+does that in every argobot; the refresh needs confighub/argobot#14, and an
+argobot without it looks only for an Application named after the Space.
+
+**Run live on 2026-09-30,** argobot built with #14, against the estate above:
+it wrote live status for all eight Applications; a change released to canary
+reached `dev-1` in 2 seconds, and to `staging-1` in 2 more once promoted and
+approved, against the 90 seconds and more above. Its first start failed on a
+`409` creating three event cursors at once, and the second succeeded; that is
+reported to argobot.
+
+Without argobot, or without that annotation in whatever promotes your releases,
+an approved release sits unread on the gateway and the approval gate you built
 governs nothing.
 
 ## Making a change afterwards
@@ -679,19 +756,40 @@ separation still comes from who holds which credentials: the person running
 
 ## When a cluster joins
 
-Register the cluster with Argo and label it as you always have. Then plan and
-apply again with a fresh export, and re-run the script:
+Register the cluster with Argo and label it as you always have. Nothing is
+generated for it: its ApplicationSets are retired. Plan and apply again with a
+fresh export of the cluster Secrets, and re-run `apply.sh`:
 
 ```bash
-kubectl get secrets -n argocd -l argocd.argoproj.io/secret-type=cluster -o yaml > clusters.yaml
-cub argo plan . clusters.yaml --stage-label rollout-phase --stages canary,secondary,primary
+kubectl get secrets -n argocd -l argocd.argoproj.io/secret-type=cluster -o json \
+  | jq '.items[] |= (del(.data.config) | del(.metadata.annotations."kubectl.kubernetes.io/last-applied-configuration"))' \
+  > clusters.json
+cub argo plan . clusters.json --stage-label rollout-phase --stages canary,secondary,primary
 ```
 
-The plan shows the new cluster's variants. The script leaves every existing
+Strip both. The plan reads names, servers and labels only, but a Secret made
+with `kubectl apply` keeps its plain `stringData`, bearer token included, in the
+last-applied annotation, so removing `.data.config` alone leaves the token in
+the file. Measured.
+
+The plan shows the new cluster's variants. `apply.sh` leaves every existing
 variant as it is, clones the new one from the base as the base stands today,
 including every change made since, and releases it through its stages with an
-approval in each. Joining is a reviewed change rather than a side effect of a
-label.
+approval in each. Then `move-applications.sh <its stage>` makes its
+Applications: there is none on the cluster to read, so each is made like its
+sibling's Unit (the same component on another cluster), with the name,
+destination and stage label the plan works out from the template. Joining is a
+reviewed change rather than a side effect of a label.
+
+**Run live on 2026-09-30:** `prod-1` registered after the retirement got no
+Application from Git; `apply.sh` released its three variants; `move-applications.sh
+primary` made its three Applications, and `prod-1-cluster-baseline` synced
+Healthy. The two in the `storefront` project waited, correctly, for the
+example's own deny window on `prod-1-*` to close; the script says so.
+
+A change still in flight when a cluster joins stops `apply.sh`: a change order
+across variants at different revisions of a Unit is refused ("the targets are
+at different revisions of it"). Finish or abandon the change first.
 
 ## What this leaves alone
 
@@ -746,7 +844,11 @@ and that a second release does not arrive without a hard refresh.
 
 **Since run:** a handover of an estate *already live under Argo*, repointing
 Applications that were syncing from Git, including ones an ApplicationSet
-generated. See "Run against a live estate on three clusters" above.
+generated. See "Run against a live estate on three clusters" above. And on
+2026-09-30, `move-applications.sh` through three stages, its way back, a
+cluster joining after the retirement, and argobot refreshing and reporting
+status: see "Each Application becomes a Unit", "A published release does not
+arrive on its own" and "When a cluster joins".
 
 **Not claimed at all:** that a plain directory of manifests can be onboarded
 (`kustomize build` will not read one, though Argo will — the plan says so),
