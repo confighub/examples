@@ -184,3 +184,17 @@ func TestApplyLeavesWorkflowsAloneAfterAHandover(t *testing.T) {
 		t.Errorf("dev's existing variant should still take the order")
 	}
 }
+
+// Found live: after a handover, cleanup.sh left the handed-over cluster's
+// variant Spaces, whose releases hold tags in the bases, so the bases could
+// not be deleted either.
+func TestCleanupRemovesHandedOverVariants(t *testing.T) {
+	const fleet = "gitops/flux/beginner"
+	p := planAt(t, handedOver(t, fleet, "dev", "flux-dev-layers"), fleet)
+	s := CleanupScript(p, "flux")
+	v := strings.Index(s, "cub space get flux-apps-dev >/dev/null 2>&1 && { cub space delete flux-apps-dev")
+	b := strings.Index(s, "cub space delete flux-apps-base ")
+	if v < 0 || b < 0 || v > b {
+		t.Errorf("the handed-over variant must go, and before its base:\n%s", s)
+	}
+}

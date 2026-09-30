@@ -48,6 +48,20 @@ func CleanupScript(p *Plan, prefix string) string {
 			}
 		}
 	}
+	// A handed-over cluster has no variants in this plan, but its variant
+	// Spaces are still in ConfigHub, and their releases hold tags in the bases:
+	// left behind, they stop the bases being deleted. They are named the way
+	// every variant is; the ones a cluster never had are skipped.
+	var maybe []string
+	for _, cl := range p.Clusters {
+		if cl.LayersSpace == "" {
+			continue
+		}
+		for _, c := range p.Components {
+			maybe = append(maybe, fmt.Sprintf("%s-%s-%s", prefix, c.Name, cl.Name))
+		}
+	}
+	spaces = append(spaces, maybe...)
 	for _, c := range p.Components {
 		spaces = append(spaces, c.Base)
 	}
@@ -98,7 +112,15 @@ func CleanupScript(p *Plan, prefix string) string {
 	add(`step "2/3 Delete each Space with everything in it"`)
 	add("# --recursive stops at a delete gate. If one blocks a Space, read what it")
 	add("# guards before reaching for --recursive-force.")
+	skipMissing := map[string]bool{}
+	for _, m := range maybe {
+		skipMissing[m] = true
+	}
 	for _, s := range spaces {
+		if skipMissing[s] {
+			add(`cub space get %s >/dev/null 2>&1 && { cub space delete %s --recursive --detach --quiet 2>&1 | grep -v '^$' || true; }`, s, s)
+			continue
+		}
 		add(`cub space delete %s --recursive --detach --quiet 2>&1 | grep -v '^$' || true`, s)
 	}
 	add("")
