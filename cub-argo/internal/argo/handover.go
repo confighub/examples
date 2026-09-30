@@ -590,7 +590,7 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 				add(`mkdir -p handover-state/%s && sed "s|oci://<gateway>/|oci://${addr}/|" %s > handover-state/%s`, filepath.Dir(src), q(src), src)
 				add(`echo "  cub unit update --space %s %s handover-state/%s --change-desc 'Point %s at ConfigHub'"`, space, h.Unit, src, h.Unit)
 			}
-			add(`echo "  cub release publish %s"`, space)
+			add(`echo "  cub release publish %s    # 'no changes were made' means it is published already"`, space)
 			for _, a := range apps {
 				for _, c := range p.Components {
 					for _, st := range c.Stages {
