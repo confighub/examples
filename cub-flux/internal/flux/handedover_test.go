@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"gopkg.in/yaml.v3"
 )
 
 // handedOver copies a fleet and makes one cluster's directory look the way a
@@ -36,8 +38,10 @@ func handedOver(t *testing.T, fleet, clusterDir, layersSpace string, keep ...str
 			}
 		}
 	}
+	// A root as made before roots named their cluster: the plan reads which
+	// cluster it is from the Space's name.
 	rootYAML := strings.NewReplacer(gatewayMarker, "gw.example:5000", insecureMarker, "false",
-		DeliverySpace("flux", "__CLUSTER__"), layersSpace).Replace(RootManifests("flux", "__CLUSTER__"))
+		DeliverySpace("flux", "__CLUSTER__"), layersSpace, "  labels:\n    "+RootClusterLabel+": \"__CLUSTER__\"\n", "").Replace(RootManifests("flux", "__CLUSTER__"))
 	if err := os.WriteFile(filepath.Join(cdir, RootName+".yaml"), []byte(rootYAML), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -196,5 +200,162 @@ func TestCleanupRemovesHandedOverVariants(t *testing.T) {
 	b := strings.Index(s, "cub space delete flux-apps-base ")
 	if v < 0 || b < 0 || v > b {
 		t.Errorf("the handed-over variant must go, and before its base:\n%s", s)
+	}
+}
+
+// From review on #262: a handed-over cluster's Target names the Space its root
+// reads, even when that is not the one this prefix would name, and step 5 fills
+// that Space rather than making another; and it names the Secret the root
+// pulls with, not the one this prefix would make. The annotation waits for step 5, so a
+// Flux-aware `cub variant create` never meets a layers Space that is not there.
+func TestTargetNamesTheLayersSpaceTheRootReads(t *testing.T) {
+	const fleet = "gitops/flux/beginner"
+	root := handedOver(t, fleet, "dev", "old-dev-layers")
+	// A root made under another prefix pulls with that prefix's Secret.
+	file := filepath.Join(root, fleet, "clusters", "dev", RootName+".yaml")
+	y, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(file, []byte(strings.Replace(string(y), "name: confighub-flux-targets", "name: confighub-old-targets", 1)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p := planAt(t, root, fleet)
+	s := ApplyScript(p, "flux", ".")
+	if !strings.Contains(s, `echo '{"Annotations":{"confighub.com/flux-layers-space":"old-dev-layers","confighub.com/flux-pull-secret":"confighub-old-targets"}}' | cub target update --patch --space flux-targets dev `) {
+		t.Errorf("dev's Target should name old-dev-layers and the Secret its root pulls with:\n%s", s)
+	}
+	if strings.Contains(s, "flux-dev-layers") {
+		t.Errorf("nothing should make or name flux-dev-layers for a root reading old-dev-layers")
+	}
+	// Outside the gateway guard: the Space the root reads is there already.
+	if i, g := strings.Index(s, `echo '{"Annotations":{"confighub.com/flux-layers-space":"old-dev-layers"`), strings.LastIndex(s, "\nfi\n"); i < g {
+		t.Errorf("a handed-over cluster's Target is annotated without CONFIGHUB_OCI too")
+	}
+	step5 := strings.Index(s, `step "5/5`)
+	if a := strings.Index(s, `"confighub.com/flux-layers-space":`); a < step5 {
+		t.Errorf("the Target is annotated before step 5 makes the layers Space")
+	}
+	if !strings.Contains(s, " $no_flux_layer --allow-exists") {
+		t.Errorf("apply.sh makes the layer Units itself, so variant create must be told not to")
+	}
+}
+
+// From review on #262: a root that pulls anonymously has no Secret, and one an
+// earlier run named is removed, since the patch merges.
+func TestAnonymousRootClearsThePullSecret(t *testing.T) {
+	const fleet = "gitops/flux/beginner"
+	root := handedOver(t, fleet, "dev", "flux-dev-layers")
+	file := filepath.Join(root, fleet, "clusters", "dev", RootName+".yaml")
+	y, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	anon := strings.Replace(string(y), "  secretRef:\n    name: confighub-flux-targets\n", "", 1)
+	if anon == string(y) {
+		t.Fatal("the root should have had a secretRef to remove")
+	}
+	if err := os.WriteFile(file, []byte(anon), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	s := ApplyScript(planAt(t, root, fleet), "flux", ".")
+	if !strings.Contains(s, `{"Annotations":{"confighub.com/flux-layers-space":"flux-dev-layers","confighub.com/flux-pull-secret":null}}`) {
+		t.Errorf("an anonymous root's Target should lose its pull Secret:\n%s", s)
+	}
+}
+
+// From review on #262: a fleet planned again under another prefix keeps the
+// name its root carries, not its directory's, so the Target it annotates is
+// the one its variants use.
+func TestRootKeepsItsClusterNameUnderAnotherPrefix(t *testing.T) {
+	const fleet = "gitops/flux/expert-fleet"
+	root := handedOver(t, fleet, "dev", "old-dev-1-layers")
+	file := filepath.Join(root, fleet, "clusters", "dev", RootName+".yaml")
+	y := strings.NewReplacer(gatewayMarker, "gw.example:5000", insecureMarker, "false", namespaceMarker, "flux-system").
+		Replace(RootManifests("old", "dev-1"))
+	if err := os.WriteFile(file, []byte(y), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p := planAt(t, root, fleet)
+	var found bool
+	for _, c := range p.Clusters {
+		found = found || (c.Name == "dev-1" && c.LayersSpace == "old-dev-1-layers" && c.PullSecret == "confighub-old-targets")
+	}
+	if !found {
+		t.Fatalf("clusters/dev is dev-1, reading old-dev-1-layers: %+v", p.Clusters)
+	}
+	if s := ApplyScript(p, "flux", "."); !strings.Contains(s, "cub target update --patch --space flux-targets dev-1 ") {
+		t.Errorf("dev-1's Target should be the one annotated")
+	}
+}
+
+// From review on #262: a label value must be a string, and a cluster named
+// 123 would otherwise be a number.
+func TestRootClusterLabelIsAString(t *testing.T) {
+	var docs []map[string]any
+	for _, part := range strings.Split(RootManifests("flux", "123"), "---\n") {
+		var d map[string]any
+		if err := yaml.Unmarshal([]byte(part), &d); err != nil {
+			t.Fatal(err)
+		}
+		docs = append(docs, d)
+	}
+	for _, d := range docs {
+		if v, ok := get(d, "metadata", "labels", RootClusterLabel).(string); !ok || v != "123" {
+			t.Errorf("%s's cluster label is %#v, want the string 123", d["kind"], get(d, "metadata", "labels", RootClusterLabel))
+		}
+	}
+}
+
+// From review on #262: a root made before roots named their cluster, under
+// another prefix, is read by its Space's name under the prefix its Secret
+// was made under.
+func TestUnlabelledRootUnderAnotherPrefix(t *testing.T) {
+	const fleet = "gitops/flux/expert-fleet"
+	root := handedOver(t, fleet, "dev", "old-dev-1-layers")
+	file := filepath.Join(root, fleet, "clusters", "dev", RootName+".yaml")
+	y, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(file, []byte(strings.Replace(string(y), "name: confighub-flux-targets", "name: confighub-old-targets", 1)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var found bool
+	for _, c := range planAt(t, root, fleet).Clusters {
+		found = found || (c.Name == "dev-1" && c.LayersSpace == "old-dev-1-layers")
+	}
+	if !found {
+		t.Errorf("clusters/dev is dev-1, from old-dev-1-layers under the prefix old")
+	}
+}
+
+// From review on #262: a prefix may extend the one a root was made under
+// (team-dev after team), so the Secret's prefix is tried first.
+func TestUnlabelledRootUnderAShorterPrefix(t *testing.T) {
+	const fleet = "gitops/flux/expert-fleet"
+	root := handedOver(t, fleet, "dev", "team-dev-1-layers")
+	file := filepath.Join(root, fleet, "clusters", "dev", RootName+".yaml")
+	y, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(file, []byte(strings.Replace(string(y), "name: confighub-flux-targets", "name: confighub-team-targets", 1)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	in, err := Load(nil, []string{filepath.Join(root, fleet)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := Build(in, Options{Prefix: "team-dev", RepoRoot: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var found bool
+	for _, c := range p.Clusters {
+		found = found || (c.Name == "dev-1" && c.LayersSpace == "team-dev-1-layers")
+	}
+	if !found {
+		t.Errorf("clusters/dev is dev-1 under team, not 1 under team-dev: %+v", p.Clusters)
 	}
 }

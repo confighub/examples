@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -264,10 +265,13 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 	add("")
 
 	add(`step "3/5 One variant per cluster, each holding what its own path renders to"`)
+	add("# Step 5 makes each layer's Unit itself, so a cub that would add one when")
+	add("# it makes a variant for a Flux cluster is told not to.")
+	add(`no_flux_layer=; case "$(cub variant create --help 2>&1)" in *--no-flux-layer*) no_flux_layer=--no-flux-layer ;; esac`)
 	for _, c := range p.Components {
 		for _, st := range c.Stages {
 			for _, v := range st.Variants {
-				add("cub variant create %s %s --stage %s --space-pattern template:%s --target %s/%s --space-label Role=deployment --space-label Cluster=%s --allow-exists --quiet",
+				add("cub variant create %s %s --stage %s --space-pattern template:%s --target %s/%s --space-label Role=deployment --space-label Cluster=%s $no_flux_layer --allow-exists --quiet",
 					v.Cluster, c.Base, st.Name, v.Space, targets, v.Cluster, v.Cluster)
 				add("render %s %s", q(v.Path), q(v.Space))
 				add("cub unit update --space %s %s render/%s.yaml --change-desc %s --quiet",
@@ -348,8 +352,17 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 	raw(`  all_released() { local s; for s in "$@"; do released "$s" || return 1; done; }`)
 	raw(`  publish_layers() { out=$(cub release publish "$1" --quiet 2>&1) || case "$out" in *"no changes"*) ;; *) echo "$out" >&2; return 1 ;; esac; }`)
 	for _, cl := range p.Clusters {
-		space := DeliverySpace(prefix, cl.Name)
+		space := cl.layers(prefix)
 		raw(fmt.Sprintf(`  cub space create %s --release-target %s/%s --label Role=layers --label Cluster=%s --allow-exists --quiet`, space, targets, cl.Name, cl.Name))
+		// Once the Space exists, the Target names it, and the Secret its layers
+		// pull with: the signal a Flux-aware `cub variant create` reads to add a
+		// variant made outside this plan as a layer here (the Flux counterpart of
+		// confighub.com/argo-apps-space).
+		// A handed-over cluster's Space is there already, and its Target is
+		// annotated below, with or without the gateway.
+		if cl.LayersSpace == "" {
+			raw("  " + annotateTarget(cl, prefix, targets))
+		}
 		for _, c := range p.Components {
 			for _, st := range c.Stages {
 				for _, v := range st.Variants {
@@ -375,6 +388,11 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 		raw(fmt.Sprintf(`  if [ -z "${PROPOSE_ONLY:-}" ] || all_released %s; then publish_layers %s; else echo "  %s waits: not every variant of %s is released yet"; fi`, strings.Join(spaces, " "), space, space, cl.Name))
 	}
 	raw(`fi`)
+	for _, cl := range p.Clusters {
+		if cl.LayersSpace != "" {
+			add("%s", annotateTarget(cl, prefix, targets))
+		}
+	}
 	add("")
 	add("echo")
 	var requiring []*Component
@@ -425,4 +443,16 @@ func (p *Plan) handedOver() bool {
 		}
 	}
 	return false
+}
+
+// annotateTarget names the cluster's layers Space on its Target, and the
+// Secret its layers pull with. A root that pulls anonymously has no Secret;
+// null removes one an earlier run named, as the patch merges.
+func annotateTarget(cl Cluster, prefix, targets string) string {
+	secret := "null"
+	if s := cl.pullSecret(prefix); s != "" {
+		secret = strconv.Quote(s)
+	}
+	ann := fmt.Sprintf(`{"Annotations":{"confighub.com/flux-layers-space":%s,"confighub.com/flux-pull-secret":%s}}`, strconv.Quote(cl.layers(prefix)), secret)
+	return fmt.Sprintf(`echo %s | cub target update --patch --space %s %s --from-stdin --quiet`, q(ann), targets, cl.Name)
 }

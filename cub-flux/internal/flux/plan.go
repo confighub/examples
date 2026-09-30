@@ -72,6 +72,27 @@ type Cluster struct {
 	// holds the ConfigHub root, and its layers are Units in this Space rather
 	// than files in Git.
 	LayersSpace string `json:"layersSpace,omitempty"`
+	// PullSecret is the Secret a handed-over root pulls its layers with.
+	PullSecret string `json:"pullSecret,omitempty"`
+}
+
+// layers is the Space holding the cluster's layers: the one its root reads
+// once it is handed over, and the one handover.sh will point it at otherwise.
+func (c Cluster) layers(prefix string) string {
+	if c.LayersSpace != "" {
+		return c.LayersSpace
+	}
+	return DeliverySpace(prefix, c.Name)
+}
+
+// pullSecret is the Secret the cluster's layers pull with: the one its root
+// names once it is handed over, and the one handover.sh will make otherwise.
+// A handed-over root with no secretRef pulls anonymously, so there is none.
+func (c Cluster) pullSecret(prefix string) string {
+	if c.LayersSpace != "" {
+		return c.PullSecret
+	}
+	return "confighub-" + prefix + "-targets"
 }
 
 // Component is one layer (a Flux Kustomization name) across the clusters: a
@@ -248,7 +269,7 @@ func (b *builder) readClusters() map[string]map[string]Doc {
 		}
 		byName := map[string]Doc{}
 		name := e.Name()
-		layersSpace := ""
+		layersSpace, pullSecret, rootName := "", "", ""
 		for _, d := range b.docs {
 			if !under(d.File, cdir) || under(d.File, boot) {
 				continue
@@ -259,11 +280,15 @@ func (b *builder) readClusters() map[string]map[string]Doc {
 			// holds this cluster's layers, and that Space's name says which
 			// cluster it is: the layers that carried cluster_name are gone.
 			if dname == RootName {
+				if cn := str(get(d.Value, "metadata", "labels", RootClusterLabel)); cn != "" {
+					rootName = cn
+				}
 				if kind == "OCIRepository" {
 					url := str(get(d.Value, "spec", "url"))
 					if i := strings.Index(url, "/space/"); i >= 0 {
 						layersSpace = strings.TrimSuffix(url[i+len("/space/"):], "/")
 					}
+					pullSecret = str(get(d.Value, "spec", "secretRef", "name"))
 				} else if layersSpace == "" {
 					layersSpace = DeliverySpace(b.opts.Prefix, name)
 				}
@@ -278,9 +303,26 @@ func (b *builder) readClusters() map[string]map[string]Doc {
 			}
 		}
 		if layersSpace != "" {
-			if cn, ok := strings.CutPrefix(layersSpace, b.opts.Prefix+"-"); ok {
-				if cn, ok = strings.CutSuffix(cn, "-layers"); ok && len(byName) == 0 {
-					name = cn
+			// The root names its cluster. A root made before it did is read by
+			// its Space's name, under this prefix or the one its Secret was
+			// made under.
+			// The Secret's prefix goes first: this one may extend it.
+			prefixes := []string{b.opts.Prefix}
+			if old, ok := strings.CutPrefix(pullSecret, "confighub-"); ok {
+				if old, ok = strings.CutSuffix(old, "-targets"); ok && old != b.opts.Prefix {
+					prefixes = []string{old, b.opts.Prefix}
+				}
+			}
+			if rootName != "" && len(byName) == 0 {
+				name = rootName
+			} else if len(byName) == 0 {
+				for _, pre := range prefixes {
+					if cn, ok := strings.CutPrefix(layersSpace, pre+"-"); ok {
+						if cn, ok = strings.CutSuffix(cn, "-layers"); ok {
+							name = cn
+							break
+						}
+					}
 				}
 			}
 			if len(byName) > 0 {
@@ -291,7 +333,7 @@ func (b *builder) readClusters() map[string]map[string]Doc {
 				sort.Strings(still)
 				p.Problems = append(p.Problems, fmt.Sprintf("%s holds the ConfigHub root and still defines %s: the handover commit is half made. Finish it, removing those files, or revert it", b.rel(cdir), strings.Join(still, ", ")))
 			}
-			b.clusters = append(b.clusters, Cluster{Name: name, Dir: e.Name(), Path: b.rel(cdir), LayersSpace: layersSpace})
+			b.clusters = append(b.clusters, Cluster{Name: name, Dir: e.Name(), Path: b.rel(cdir), LayersSpace: layersSpace, PullSecret: pullSecret})
 			continue
 		}
 		if len(byName) == 0 {
