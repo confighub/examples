@@ -51,6 +51,8 @@ type Result struct {
 	// the cluster says is not there: Argo's record is behind, so it is not a
 	// record a handover can be checked against.
 	Stale []string `json:"staleInventory,omitempty"`
+	// Recorded is the ID of the LiveCheck attestation --record wrote.
+	Recorded string `json:"recorded,omitempty"`
 }
 
 // OK reports whether moving this Application's source would leave the cluster

@@ -147,7 +147,7 @@ func newRoot() *cobra.Command {
 	apply.Flags().StringVar(&out, "out", "", "directory for the files and the scripts")
 
 	var ckNS, ckName, ckSpace, ckUnit, ckTarget, kubeContext, ckCluster, ckRelease string
-	var ckJSON, ckDeep bool
+	var ckJSON, ckDeep, ckRecord bool
 	var ckOpts flux.Options
 	check := &cobra.Command{
 		Use:   "check [fleet-repo-dir]",
@@ -166,6 +166,9 @@ moving on.
 One cluster at a time: pass --kube-context for the cluster to read.`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
+			if ckRecord && !ckDeep {
+				return fmt.Errorf("--record needs --fields: a LiveCheck claims the cluster runs this release, which rests on every field it sets")
+			}
 			flux.KubeContext = kubeContext
 			flux.SetControllerNamespace(ckNS)
 			checks, err := layersFor(c, args, ckName, ckSpace, ckUnit, ckTarget, ckCluster, ckOpts)
@@ -191,11 +194,25 @@ One cluster at a time: pass --kube-context for the cluster to read.`,
 				if !r.OK() {
 					bad++
 				}
+				if ckRecord {
+					id, err := flux.RecordCheck(flux.Run, r)
+					if err != nil {
+						return err
+					}
+					r.Recorded = id
+				}
 				if ckJSON {
 					results = append(results, r)
 					continue
 				}
 				fmt.Fprintf(w, "%s: release %d (%s) holds %s at revision %d\n", ck.Kustomization, r.Release.Num, r.Release.ManifestDigest, ck.Unit, r.Release.UnitRevision)
+				if r.Recorded != "" {
+					verdict := "a Pass"
+					if !r.OK() {
+						verdict = "a rejection"
+					}
+					fmt.Fprintf(w, "  recorded %s: LiveCheck attestation %s on %s/%s revision %d\n", verdict, r.Recorded, ck.Space, ck.Unit, r.Release.UnitRevision)
+				}
 				if a := r.Release.HeadAhead(); a != "" {
 					fmt.Fprintf(w, "  note: %s\n", a)
 				}
@@ -256,6 +273,7 @@ One cluster at a time: pass --kube-context for the cluster to read.`,
 	check.Flags().StringVar(&ckTarget, "target-namespace", "", "the layer's targetNamespace, where objects without one land")
 	check.Flags().StringVar(&kubeContext, "kube-context", "", "the kubectl context of the cluster to read; without it kubectl's current context is used, which may be another cluster")
 	check.Flags().BoolVar(&ckJSON, "json", false, "print the comparison as JSON")
+	check.Flags().BoolVar(&ckRecord, "record", false, "record each verdict in ConfigHub as a LiveCheck attestation on the revision the release bundled: a Pass, or a rejection naming what differs (needs --fields)")
 
 	var stNS, stName, stSpace, stUnit, stTarget, stContext, stCluster string
 	var stJSON, stWatch, stDry bool

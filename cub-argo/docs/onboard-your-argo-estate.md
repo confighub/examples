@@ -337,6 +337,17 @@ when the unit's head has moved past it. `handover.sh` records each digest
 before checking it, and prints it beside each repoint, so the digest Argo then reports in
 `status.sync.revision` can be compared with the one that was checked.
 
+**`--record` keeps the verdict in ConfigHub.** `cub argo check --fields
+--record` writes each Application's verdict as a `LiveCheck` attestation on the Unit
+revision the checked release bundled. A clean check is a Pass. Anything that
+differs is a rejection that names it: an object the release would add or prune,
+a field, or an object it could not read. The claims name the Application and the
+release digest. `LiveCheck` is the type `cub kubara check --record` uses for
+the same claim, so a workflow can require one type whichever plugin checked. It
+needs `--fields`: a claim that the cluster runs this release rests on every
+field the release sets. The recording is the same code as `cub flux`,
+which was run live on 2026-09-30.
+
 **It reads each object where it runs.** The Application is read on the cluster
 Argo CD runs on, and the objects it deploys on the cluster it deploys them to.
 Those are the same cluster only when the destination is Argo's own

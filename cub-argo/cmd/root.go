@@ -143,7 +143,7 @@ func newRoot() *cobra.Command {
 	var destContext, destDeclared, checkRelease string
 	var checkDeep bool
 	var cf argo.Options
-	var checkJSON bool
+	var checkJSON, checkRecord bool
 	check := &cobra.Command{
 		Use:   "check [dir|input.yaml|-]",
 		Short: "Compare what Argo owns on the cluster with what ConfigHub holds; changes nothing",
@@ -162,6 +162,9 @@ moving on.
 Nothing is changed either way.`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
+			if checkRecord && !checkDeep {
+				return fmt.Errorf("--record needs --fields: a LiveCheck claims the cluster runs this release, which rests on every field it sets")
+			}
 			argo.KubeContext = kubeContext
 			argo.SetApplicationNamespace(checkNS)
 			var checks []argo.Check
@@ -215,11 +218,25 @@ Nothing is changed either way.`,
 				if !r.OK() {
 					bad++
 				}
+				if checkRecord {
+					id, err := argo.RecordCheck(argo.Run, r)
+					if err != nil {
+						return err
+					}
+					r.Recorded = id
+				}
 				if checkJSON {
 					results = append(results, r)
 					continue
 				}
 				fmt.Fprintf(w, "%s: release %d (%s) holds %s at revision %d\n", ck.Application, r.Release.Num, r.Release.ManifestDigest, ck.Unit, r.Release.UnitRevision)
+				if r.Recorded != "" {
+					verdict := "a Pass"
+					if !r.OK() {
+						verdict = "a rejection"
+					}
+					fmt.Fprintf(w, "  recorded %s: LiveCheck attestation %s on %s/%s revision %d\n", verdict, r.Recorded, ck.Space, ck.Unit, r.Release.UnitRevision)
+				}
 				if a := r.Release.HeadAhead(); a != "" {
 					fmt.Fprintf(w, "  note: %s\n", a)
 				}
@@ -285,6 +302,7 @@ Nothing is changed either way.`,
 	check.Flags().StringVar(&destDeclared, "destination", "", "the Argo destination (server address or cluster name) --destination-context reaches, when kubectl reaches it by another address")
 	check.Flags().StringVar(&kubeContext, "kube-context", "", "the kubectl context of the cluster Argo CD runs on, where Applications are read; without it kubectl's current context is used, which may be another cluster")
 	check.Flags().BoolVar(&checkJSON, "json", false, "print the comparison as JSON")
+	check.Flags().BoolVar(&checkRecord, "record", false, "record each verdict in ConfigHub as a LiveCheck attestation on the revision the release bundled: a Pass, or a rejection naming what differs (needs --fields)")
 
 	versionCmd := &cobra.Command{
 		Use:   "version",
