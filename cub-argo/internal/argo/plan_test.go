@@ -369,7 +369,7 @@ func TestScriptsParseAsBash(t *testing.T) {
 		t.Skip("no bash")
 	}
 	dir := writeApply(t)
-	for _, name := range []string{"apply.sh", "handover.sh"} {
+	for _, name := range []string{"apply.sh", "handover.sh", "cleanup.sh"} {
 		out, err := exec.Command("bash", "-n", filepath.Join(dir, name)).CombinedOutput()
 		if err != nil {
 			t.Errorf("%s is not valid bash: %v\n%s", name, err, out)
@@ -635,5 +635,54 @@ func TestChecksAreDerivedFromThePlan(t *testing.T) {
 	got := seen["prod-1-apptique"]
 	if got.Space != "argo-apptique-prod-1" || got.Unit != "apptique" || got.Namespace != "storefront-prod" {
 		t.Errorf("prod-1-apptique should carry its Space, unit and destination: %+v", got)
+	}
+}
+
+// A live export ('kubectl get ... -o yaml') carries no repository files, so an
+// app of apps' children are found by what the directory it syncs declares.
+// Before this, a live export planned root and storefront as ordinary
+// components aimed at an "in-cluster" Target nothing creates, and apply.sh
+// failed; found by the live rehearsal against Argo CD v3.5.3.
+func TestLiveExportFindsTheControlTree(t *testing.T) {
+	var export []byte
+	for _, f := range []string{
+		"bootstrap/root-app.yaml",
+		"bootstrap/children/projects.yaml",
+		"bootstrap/children/platform-addons-appset.yaml",
+		"bootstrap/children/storefront-app-of-apps.yaml",
+		"apps-of-apps/storefront/apptique.yaml",
+		"apps-of-apps/storefront/checkout-cache.yaml",
+		"clusters/dev-1.yaml",
+		"clusters/staging-1.yaml",
+	} {
+		b, err := os.ReadFile(filepath.Join(example, f))
+		if err != nil {
+			t.Fatal(err)
+		}
+		export = append(append(export, []byte("\n---\n")...), b...)
+	}
+	file := filepath.Join(t.TempDir(), "estate.yaml")
+	if err := os.WriteFile(file, export, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	in, err := Load(nil, []string{file})
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := Build(in, Options{Prefix: "argo", RepoRoot: repoRoot(t)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range p.Components {
+		if c.Name == "root" || c.Name == "storefront" {
+			t.Errorf("%s is an app of apps, part of the control tree, not a component", c.Name)
+		}
+	}
+	if len(p.Tree) != 1 || p.Tree[0].Name != "root" || len(p.Tree[0].Children) == 0 {
+		t.Fatalf("want root at the top of the control tree with its children, got %+v", p.Tree)
+	}
+	cs := p.controlSpaces("argo")
+	if len(cs) == 0 || len(cs[0].Files) == 0 {
+		t.Errorf("the control Spaces should hold the files the parents sync: %+v", cs)
 	}
 }

@@ -22,10 +22,24 @@ type Runner func(name string, args ...string) ([]byte, error)
 // a handover is very likely the wrong cluster.
 var KubeContext string
 
-// Run runs a command on this machine.
-func Run(name string, args ...string) ([]byte, error) {
-	if name == "kubectl" && KubeContext != "" {
-		args = append([]string{"--context", KubeContext}, args...)
+// Run runs a command on this machine, with kubectl on KubeContext.
+func Run(name string, args ...string) ([]byte, error) { return runWith(KubeContext, name, args...) }
+
+// RunIn is Run with kubectl on the given context instead: the cluster an
+// Application deploys to, which is not always the one Argo CD runs on.
+func RunIn(kubeContext string) Runner {
+	return func(name string, args ...string) ([]byte, error) { return runWith(kubeContext, name, args...) }
+}
+
+// ServerOf is the API server address kubectl uses for a context.
+func ServerOf(kubeContext string) (string, error) {
+	out, err := runWith("", "kubectl", "config", "view", "--minify", "--context", kubeContext, "-o", "jsonpath={.clusters[0].cluster.server}")
+	return strings.TrimSpace(string(out)), err
+}
+
+func runWith(kubeContext, name string, args ...string) ([]byte, error) {
+	if name == "kubectl" && kubeContext != "" {
+		args = append([]string{"--context", kubeContext}, args...)
 	}
 	cmd := exec.Command(name, args...)
 	var stderr strings.Builder
@@ -72,6 +86,9 @@ type Live struct {
 	// handover turns on. The per-resource requiresPruning flag describes the
 	// state today, where nothing is out of sync, and is absent in that case.
 	Prunes bool
+	// Destination is where the Application deploys: the cluster whose
+	// objects a field comparison has to read.
+	Destination Destination
 }
 
 // LiveInventory reads what Argo CD says an Application owns right now. This is
@@ -84,6 +101,10 @@ func LiveInventory(run Runner, namespace, app string) (Live, error) {
 	}
 	var a struct {
 		Spec struct {
+			Destination struct {
+				Server string `json:"server"`
+				Name   string `json:"name"`
+			} `json:"destination"`
 			SyncPolicy struct {
 				Automated *struct {
 					Prune bool `json:"prune"`
@@ -107,7 +128,10 @@ func LiveInventory(run Runner, namespace, app string) (Live, error) {
 	if len(a.Status.Resources) == 0 {
 		return Live{}, fmt.Errorf("Application %s reports owning nothing. It may not have synced yet; a handover cannot be checked against an empty inventory", app)
 	}
-	l := Live{Prunes: a.Spec.SyncPolicy.Automated != nil && a.Spec.SyncPolicy.Automated.Prune}
+	l := Live{
+		Prunes:      a.Spec.SyncPolicy.Automated != nil && a.Spec.SyncPolicy.Automated.Prune,
+		Destination: Destination{Server: a.Spec.Destination.Server, Name: a.Spec.Destination.Name},
+	}
 	for _, r := range a.Status.Resources {
 		l.Owned = append(l.Owned, Owned{Group: r.Group, Kind: r.Kind, Namespace: r.Namespace, Name: r.Name, Hook: r.Hook, Pruning: r.RequiresPruning})
 	}

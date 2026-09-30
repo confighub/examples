@@ -29,10 +29,14 @@ source at all, and with `prune: true` it empties itself. Put each layer's
 it does anything.
 
 You need `cub` logged in (`cub auth login`), `kustomize` on your PATH,
-`kubectl` access to each cluster, and the plugin:
+`kubectl` access to each cluster, and the plugin. The plugin lives in this repository rather than in one of its own,
+so build it from a checkout (it needs Go):
 
 ```bash
-cub plugin install confighub/cub-flux
+git clone https://github.com/confighub/examples
+cd examples/cub-flux
+make install-plugin
+cub plugin list   # cub-flux should be listed, status ok
 ```
 
 ## What the plugin sees in your repository
@@ -154,6 +158,20 @@ flowchart LR
 Because the name does not change, Flux keeps the record of what that layer
 applied, and nothing is recreated.
 
+**If it stops partway, it says where.** The script fixes the kubectl context
+once, at the start, and every command it runs or prints names that context.
+Before a layer moves, its `sourceRef` and `path` are written to
+`handover-state/<cluster>.txt`. If a later layer fails, say `apps` never
+becomes Ready, the script stops and names the layers it already moved, with a
+command for each that puts both fields back as the cluster had them. It rolls
+nothing back by itself. What happened, including why a layer was not Ready, is
+in `handover-state/<cluster>.log`.
+
+A layer moves only on the clusters that have it, so `image-automation` moves on
+`dev-1` alone. The gateway objects for each cluster go into
+`bootstrap/<cluster>/`, so running the script for a second cluster does not
+apply the first one's.
+
 **The order matters, and the script enforces it:**
 
 ```mermaid
@@ -230,6 +248,16 @@ from the layer's own `spec.prune`, which the Kustomization CRD **requires** — 
 it is always an explicit choice, and can be false. Where a layer sets
 `targetNamespace`, the check is told, so an object whose manifest names no
 namespace is matched where it actually lands rather than counted as missing.
+
+**It checks the release, not the head.** A handover delivers a published
+release, and a unit changed since the last publish holds something the cluster
+will not get. So `check` reads the newest published release, or the one
+`--release sha256:...` names, finds the revision of the unit it bundled, and
+compares that. It prints the release number and manifest digest, and says so
+when the unit's head has moved past it. `handover.sh` records each digest
+before checking it, and before a layer moves, confirms the `OCIRepository` fetched that same
+digest; if a newer release was published in between, it stops with nothing
+moved.
 
 **You run it the way you ran `plan`.** `check` takes the same fleet directory
 and works the layers out for itself — there is no per-Kustomization flag to get
@@ -322,6 +350,13 @@ flowchart TB
   fs -->|"applies"| l
 ```
 
+**A bootstrapped fleet cannot be handed over with kubectl.** There,
+`flux-system` also applies the directory that holds each layer's
+`Kustomization`, so it owns the very objects `handover.sh` would patch, and it
+puts them back on its next reconcile. `handover.sh` checks for that first and,
+if any layer has an owner, stops before it changes anything; see "What has and
+has not been checked".
+
 Also left alone: SOPS keys and any Secret, and the `team-checkout` tenant —
 repointing it would move that team from Git access to ConfigHub access, which
 is a decision about delegation rather than a step in a handover. The plan says
@@ -336,6 +371,13 @@ Two habits in a Flux fleet stop working, and the plan names both.
 `handover.sh` suspends it. A tag bump becomes a change on the base, promoted
 and approved like any other.
 
+The script reads `spec.suspend` back before it says so, and a patch that failed
+or did not take makes the handover end as INCOMPLETE rather than done. A
+suspension can still be undone later. The `image-automation` layer applies that
+object, and after the handover that layer reads ConfigHub, so the patch holds
+only until the layer reconciles unless its unit says `suspend: true` too. The
+script says which source to change.
+
 **Promotion by branch.** Production reads the `production` branch, so a
 promotion is a merge. Afterwards the workflow's stages decide instead:
 
@@ -348,7 +390,30 @@ flowchart LR
 
 ConfigHub refuses to promote into the next stage until this one has released
 the change, and refuses each release until it is approved in its stage. Both
-refusals come from the server.
+refusals come from the server. As generated, though, one person can give that
+approval.
+
+The generated workflow is a single-operator one. It declares the `approval`
+attestation with `AllowAuthors: true`, and `apply.sh` promotes, approves and
+publishes as the same actor. That is a reviewed workflow for one person trying
+this: every step is recorded and the server still refuses to skip a stage. But
+an approval recorded that way is not evidence that a separate reviewer looked at
+the change.
+
+To require one, use what `cub changeworkflow create --help` describes for an
+attestation prerequisite in a workflow file. `AllowAuthors: false` (by default
+an author of the change does not count) stops the person who wrote the change
+approving it. `Count: 2` asks for that many distinct users recording a pass.
+`FromUserIDs: [<user id>]` names who may approve, and `MaxAge: 72h` lets an
+approval lapse. Reviewers record theirs with `cub variant approve
+--change-order <space>/<order> --stage <stage>`, and `--reject --note "<why>"`
+records a refusal, which blocks. Edit the `<layer>/change-workflow.yaml` that
+`cub flux apply` wrote and put it on the live workflow with `cub changeworkflow
+update --space <base Space> rollout --filename <layer>/change-workflow.yaml`; it applies to change
+orders created afterwards, not to one already under way. This has not been run
+here. The help shows no other enforcement and does not say what stops one person
+holding two logins, so the separation still comes from who holds which
+credentials: the person running `apply.sh` should not be a user who can approve.
 
 ## What this leaves alone
 
@@ -379,14 +444,17 @@ That rehearsal found two bugs:
 - The check read whichever kubectl context was current. On a fleet handed over
   one cluster at a time — which is how this works — it could have reported on
   the wrong cluster and passed. It takes `--kube-context` now, and
-  `handover.sh` passes `$FLUX_CONTEXT`.
+  `handover.sh` passes the context it fixed at the start.
 - It assumed every layer prunes. `spec.prune` is required on the CRD, so a
   layer can and does set it false, and then an object is left behind rather
   than deleted. Those are different outcomes and are now said differently.
 
 **The handover has now been run, end to end.** Flux v2.8.6 on a kind cluster,
 reconciling this repository's `flux/beginner` example from GitHub, handed over
-to a self-hosted ConfigHub v0.6.2 and then handed back.
+to a self-hosted ConfigHub v0.6.2 and then handed back. Flux was set up with
+`flux install`, and the layer `Kustomization`s were applied with `kubectl
+apply`; it was not set up with `flux bootstrap`. That matters: see
+"Measured: a fleet set up the way `flux bootstrap` sets it up" below.
 
 What was verified afterwards:
 
@@ -438,6 +506,48 @@ back to 1 on the next reconcile. `--fields` caught it in the window before
 that, and named `kubectl` among the managers — recorded against the `scale`
 subresource, with no timestamp, which is why the managers are reported
 unordered.
+
+**Run again on 2026-09-30, against ConfigHub v0.6.8.** Flux v2.8.6 on kind,
+`flux/beginner`, the `dev` cluster, a self-hosted gateway over plain HTTP
+(`CONFIGHUB_OCI_PLAIN_HTTP=1`, which sets `spec.insecure` on each
+`OCIRepository`).
+
+- `check` compared release 1 of each layer, by digest. With the `apps` unit
+  changed after that release and not published, it still compared release 1,
+  said the head had moved on, and stayed clean, which is what the handover
+  would deliver.
+- The handover moved both layers. The digest Flux applied equalled the Release's
+  `ManifestDigest` for each, and every UID, the Pod's included, and the rollout
+  revision were identical. The printed way back restored both fields as they had
+  been, on the named context, with the UIDs unchanged again.
+- Published between the check and the swap, a new release stopped the run
+  before `apps` moved, naming both digests and the one layer already moved, with
+  its way back. In that run Flux simply had not fetched yet, as it polls, so
+  `handover.sh` now asks it to fetch and waits before calling it a mismatch.
+
+**Measured: a fleet set up the way `flux bootstrap` sets it up.** Flux v2.8.6
+on kind, with a `flux-system` `Kustomization` applying `flux/beginner`'s
+`clusters/dev/` from Git, which is what `gotk-sync.yaml` does. Every layer then
+carries the label `kustomize.toolkit.fluxcd.io/name: flux-system`. A `kubectl
+patch` of the `apps` layer's `sourceRef` was back to its Git value after one
+`flux reconcile ks flux-system`. A patched field Git never sets, `spec.suspend`,
+was removed too, along with the `kubectl-patch` entry in `managedFields`. So a
+kubectl handover of a bootstrapped fleet would move each layer and, within
+`flux-system`'s interval, quietly move it back. This is the ownership problem
+`cub argo` met: whatever applies an object puts a patch back.
+
+`handover.sh` now reads that label on every layer before it changes anything,
+and stops if any layer has an owner. Run against that cluster, it named both
+layers and exited with every `Kustomization`'s `resourceVersion` unchanged.
+What it does not yet do is the handover itself for such a fleet. That has to be
+a Git change: in the files under the cluster's directory, each layer's
+`sourceRef` becomes its `OCIRepository` and its `path` becomes `./`, committed
+with the `bootstrap/<cluster>/` files, so that `flux-system` makes the change
+itself. That path has not been built or run.
+
+The same goes for image automation. Its `Kustomization` removes a suspend made
+with kubectl, which is why `handover.sh` says where `suspend: true` has to be
+set for it to last.
 
 **Not claimed at all:** live exports as input (`plan` reads a fleet
 repository), `OCIRepository` or `Bucket` sources as layer inputs,

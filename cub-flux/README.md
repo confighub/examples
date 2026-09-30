@@ -65,6 +65,9 @@ kustomization files but does not run kustomize or Helm.
 
 ## Use it as a cub plugin
 
+The plugin is built from this directory, since it does not live in a
+repository of its own. It needs Go.
+
 ```bash
 make install-plugin   # builds into $CUB_CONFIG/plugins/cub-flux
 cub plugin list       # cub-flux should be listed, status ok

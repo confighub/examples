@@ -28,10 +28,14 @@ first, which `cleanup.sh` checks before it does anything.
 
 You need the `cub` CLI logged in to your organization (`cub auth login`),
 `kustomize` on your PATH, `kubectl` access to the cluster Argo CD runs on, and
-the plugin:
+the plugin. The plugin lives in this repository rather than in one of its own,
+so build it from a checkout (it needs Go):
 
 ```bash
-cub plugin install confighub/cub-argo
+git clone https://github.com/confighub/examples
+cd examples/cub-argo
+make install-plugin
+cub plugin list   # cub-argo should be listed, status ok
 ```
 
 ## The words you will meet
@@ -118,7 +122,9 @@ logged in and `kustomize` is present, then:
    workflow its changes follow.
 4. Creates each cluster's variant, bound to its Target, holding what that
    cluster's overlay renders.
-5. Releases the first version stage by stage: promote, approve, publish.
+5. Releases the first version stage by stage: promote, approve, publish. One
+   operator does all three, as the workflow is generated (see "Making a change
+   afterwards").
 
 Nothing above touches a cluster. The whole script is safe to re-run: it picks
 up where ConfigHub says each step stands, and never writes over a change made
@@ -129,8 +135,13 @@ in ConfigHub since.
 This is the step that moves your clusters, so read it first:
 
 ```bash
-ARGOCD_CONTEXT=<kubectl context of the cluster Argo CD runs on> bash onboard/handover.sh
+ARGOCD_CONTEXT=<kubectl context of the cluster Argo CD runs on> \
+  DEST_CONTEXT_prod_1=<kubectl context of prod-1> ... \
+  bash onboard/handover.sh
 ```
+
+One `DEST_CONTEXT_<cluster>` for each cluster Argo deploys to other than its
+own; step 0 names any that are missing.
 
 Each layer is **repointed**, never orphaned or deleted. That matters because an
 app of apps does not own its children through `ownerReferences` — it owns them
@@ -317,6 +328,38 @@ Deployment apptique-dev/frontend .spec.replicas: cluster has 4, the release
 holds 2 (written on this object by kubectl-scale, argocd-controller)
 ```
 
+**It checks the release, not the head.** A handover delivers a published
+release, and a unit changed since the last publish holds something the cluster
+will not get. So `check` reads the newest published release, or the one
+`--release sha256:...` names, finds the revision of the unit it bundled, and
+compares that. It prints the release number and manifest digest, and says so
+when the unit's head has moved past it. `handover.sh` records each digest
+before checking it, and prints it beside each repoint, so the digest Argo then reports in
+`status.sync.revision` can be compared with the one that was checked.
+
+**It reads each object where it runs.** The Application is read on the cluster
+Argo CD runs on, and the objects it deploys on the cluster it deploys them to.
+Those are the same cluster only when the destination is Argo's own
+(`in-cluster`). For any other, pass that cluster's context:
+
+```bash
+cub argo check ./my-estate --cluster prod-1 --fields \
+  --kube-context <Argo CD's cluster> --destination-context <prod-1's context>
+```
+
+The check accepts that context only if kubectl reaches it at the address the
+Application deploys to. A kind cluster, say, is `127.0.0.1:<port>` from your
+laptop and something else from inside Argo, and then you say which destination
+it is with `--destination <server>`. Without either, it refuses rather than read
+the management cluster, where an object of the same name would be compared and
+could pass. `handover.sh` asks for one `DEST_CONTEXT_<cluster>` per cluster up
+front and passes the destination the plan found.
+
+An object the check cannot read, because it is forbidden, timed out or the
+cluster is unreachable, is listed and counted: the check says how many of the
+release's objects it compared, and reading fewer than all of them is never
+clean.
+
 `managedFields` is that record, and `kubectl get -o json` **strips it** unless
 asked — the plugin passes `--show-managed-fields`, without which attribution
 comes back silently empty. The managers are not ordered by time: kubectl leaves
@@ -373,7 +416,10 @@ This is the same move `cub sveltos` makes when it drops a profile's
 producing an Application on its own and becomes a variant you add in ConfigHub —
 a reviewed change rather than an automatic one, which is the point.
 
-**Measured on Argo CD v3.5.3**, and each of these changes what the script does:
+**Measured on Argo CD v3.5.3**, and each of these changes what the script does.
+The first measurements used one cluster and a path swap. The sequence has since
+been run end to end against real variant Spaces on two registered clusters; see
+"Run against a live estate on three clusters" below.
 
 - **Patching a generated Application while its ApplicationSet is live is
   reverted in under a second.** The generator stands down first, with
@@ -474,11 +520,49 @@ Problems to fix first
     DELETED from the cluster at handover.
 ```
 
-**Not covered by this rehearsal:** the ApplicationSet-generated Applications.
-The expert example expects three registered clusters and the rehearsal had one,
-so `dev-1-apptique` and its siblings never existed to check. Step 4 of
-`handover.sh` reports them as missing, correctly. The gateway was also plain
-HTTP, which needed `CONFIGHUB_OCI_PLAIN_HTTP`; a TLS gateway is untested here.
+**Not covered by this first rehearsal:** the ApplicationSet-generated
+Applications, since it had one cluster. They are covered by the three-cluster
+run below. A TLS gateway is still untested: every run here used a plain-HTTP
+gateway, with `CONFIGHUB_OCI_PLAIN_HTTP`.
+
+**Run against a live estate on three clusters.** On 2026-09-30: Argo CD v3.5.3
+on a management kind cluster, two workload clusters registered as `dev-1`
+(canary) and `staging-1` (secondary) with the example's labels, the example's
+`root` synced from GitHub, and a self-hosted ConfigHub v0.6.8. The plan was made
+from a live `kubectl get` export, with the cluster Secrets' credentials removed.
+
+| What | Result |
+| --- | --- |
+| `apply.sh` from the live export | 2 clusters, 3 components, 6 variants, control Spaces for `root` and `storefront` |
+| Step 4, all six generated Applications | each read on its own cluster, clean, against its release's digest |
+| `root`, then `storefront`, repointed | both read their control Spaces; `storefront` through a reviewed Unit change |
+| `apptique` retired through its Unit, then both Applications repointed | the stock controller did not revert either through repeated reconciles |
+| Each Application's `status.sync.revision` | equal to the release digest step 4 checked |
+| Every UID on both clusters, every Application's UID, every rollout revision | identical before, after, and after the rollback |
+
+That run found four things, now fixed or written down:
+
+- **A live export planned `root` and `storefront` as ordinary components**,
+  aimed at an `in-cluster` Target nothing creates, and `apply.sh` failed. The
+  plan found an app of apps' children by file, and an exported object has none.
+  It now reads the directory the parent syncs and matches its children by kind
+  and name, so a live export gives the same control tree as the repository.
+- **`handover.sh` re-rendered a Helm-in-Kustomize overlay without
+  `--enable-helm`**, which `apply.sh` passed. Both use the same rule now.
+- **Roll back from the bottom.** Repointing `root` back to Git put everything
+  back, as the tree is owned top down, and every UID survived. But it also put
+  back the Git copy of the AppProjects, without the gateway in `sourceRepos`,
+  while a generated Application still read the gateway, which was briefly
+  refused. Leaves first, then parents, avoids that.
+- **The example needs two Argo CD settings its README does not name:**
+  `kustomize.buildOptions: --enable-helm` and a registered `kustomize.path.v5`
+  in `argocd-cm`, for `checkout-cache`.
+
+One step was stood in for. `sourceRepos` has to allow the gateway before any
+repoint, and the AppProjects came from GitHub `main`, which a rehearsal cannot
+commit to. The change was made in the `projects` Unit of the root control Space,
+which is what `apply.sh` would have captured from that commit, and on the cluster
+with `root`'s `selfHeal` briefly off.
 
 ## A published release does not arrive on its own
 
@@ -529,7 +613,9 @@ cub release publish argo-apptique-dev-1 --revision ChangeOrder:argo-apptique-bas
 
 ConfigHub refuses to promote into the next stage until this one has released
 the change, and refuses each release until the change is approved in its stage.
-Both refusals come from the server, in its own words.
+Both refusals come from the server, in its own words. As generated, though, one
+person can give that approval; the paragraph below the diagram says what that
+does and does not show.
 
 ```mermaid
 flowchart LR
@@ -538,9 +624,28 @@ flowchart LR
   c2 -->|"released, then approved"| c3["primary<br/>prod-1"]
 ```
 
-The generated workflow lets the person who promotes a change also approve it,
-which one person trying this needs. Once a second person can approve, set
-`AllowAuthors: false` in each app's `change-workflow.yaml`.
+The generated workflow is a single-operator one. It declares the `approval`
+attestation with `AllowAuthors: true`, and `apply.sh` promotes, approves and
+publishes as the same actor. That is a reviewed workflow for one person trying
+this: every step is recorded and the server still refuses to skip a stage. But
+an approval recorded that way is not evidence that a separate reviewer looked at
+the change.
+
+To require one, use what `cub changeworkflow create --help` describes for an
+attestation prerequisite in a workflow file. `AllowAuthors: false` (by default
+an author of the change does not count) stops the person who wrote the change
+approving it. `Count: 2` asks for that many distinct users recording a pass.
+`FromUserIDs: [<user id>]` names who may approve, and `MaxAge: 72h` lets an
+approval lapse. Reviewers record theirs with `cub variant approve
+--change-order <space>/<order> --stage <stage>`, and `--reject --note "<why>"`
+records a refusal, which blocks. Edit the `<component>/change-workflow.yaml`
+that `cub argo apply` wrote and put it on the live workflow with `cub
+changeworkflow update --space <base Space> rollout --filename
+<component>/change-workflow.yaml`; it applies to change orders created afterwards, not to
+one already under way. This has not been run here. The help shows no other
+enforcement and does not say what stops one person holding two logins, so the
+separation still comes from who holds which credentials: the person running
+`apply.sh` should not be a user who can approve.
 
 ## When a cluster joins
 
@@ -609,12 +714,9 @@ and it reported `Synced` and `Healthy` at the exact manifest digest
 way and are now in the script and this guide: the repository Secret's shape,
 and that a second release does not arrive without a hard refresh.
 
-**Still not run:** a handover of an estate that was *already live under Argo* —
-repointing an Application that is currently syncing from Git, rather than
-creating one that reads ConfigHub from the start. The checks in front of that
-step have been exercised against real clusters, and the delivery path it
-repoints onto has been exercised, but the repoint itself has not. Read
-`handover.sh` before running it, and start with one non-production estate.
+**Since run:** a handover of an estate *already live under Argo*, repointing
+Applications that were syncing from Git, including ones an ApplicationSet
+generated. See "Run against a live estate on three clusters" above.
 
 **Not claimed at all:** that a plain directory of manifests can be onboarded
 (`kustomize build` will not read one, though Argo will — the plan says so),

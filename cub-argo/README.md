@@ -97,6 +97,9 @@ paths. It does not render Kustomize or Helm; for that, use the
 
 ## Use it as a cub plugin
 
+The plugin is built from this directory, since it does not live in a
+repository of its own. It needs Go.
+
 ```bash
 make install-plugin   # builds into $CUB_CONFIG/plugins/cub-argo
 cub plugin list       # cub-argo should be listed, status ok

@@ -140,6 +140,7 @@ func newRoot() *cobra.Command {
 	apply.Flags().StringVar(&out, "out", "", "directory for the files and the scripts")
 
 	var checkNS, checkApp, checkSpace, checkUnit, checkDest, kubeContext, checkStages string
+	var destContext, destDeclared, checkRelease string
 	var checkDeep bool
 	var cf argo.Options
 	var checkJSON bool
@@ -189,12 +190,38 @@ Nothing is changed either way.`,
 			}
 			w := c.OutOrStdout()
 			bad := 0
-			for _, ck := range checks {
-				r, err := argo.RunCheck(argo.Run, ck, checkDeep)
+			for i := range checks {
+				checks[i].Release = checkRelease
+			}
+			workloads := func(d argo.Destination) (argo.Runner, error) {
+				ctx, err := argo.ResolveDestination(d, kubeContext,
+					argo.DestinationAccess{Context: destContext, Declared: destDeclared}, argo.ServerOf)
 				if err != nil {
+					return nil, err
+				}
+				return argo.RunIn(ctx), nil
+			}
+			var results []argo.Result
+			for _, ck := range checks {
+				r, err := argo.RunCheck(argo.Run, ck, checkDeep, workloads)
+				if err != nil {
+					if checkJSON {
+						return fmt.Errorf("%s: %w", ck.Application, err)
+					}
 					fmt.Fprintf(w, "%s: %v\n", ck.Application, err)
 					bad++
 					continue
+				}
+				if !r.OK() {
+					bad++
+				}
+				if checkJSON {
+					results = append(results, r)
+					continue
+				}
+				fmt.Fprintf(w, "%s: release %d (%s) holds %s at revision %d\n", ck.Application, r.Release.Num, r.Release.ManifestDigest, ck.Unit, r.Release.UnitRevision)
+				if a := r.Release.HeadAhead(); a != "" {
+					fmt.Fprintf(w, "  note: %s\n", a)
 				}
 				fmt.Fprintf(w, "%s: %d objects match what Argo owns\n", ck.Application, r.Inventory.Same)
 				for _, l := range append(r.Inventory.WouldPrune, r.Inventory.WouldAdd...) {
@@ -203,18 +230,36 @@ Nothing is changed either way.`,
 				for _, l := range r.Inventory.Notes {
 					fmt.Fprintf(w, "  note: %s\n", l)
 				}
-				if checkDeep && len(r.Fields) == 0 && r.Inventory.OK() {
-					fmt.Fprintf(w, "  and every field the release sets already has that value on the cluster\n")
+				for _, l := range r.Stale {
+					fmt.Fprintf(w, "  %s\n", l)
 				}
-				for _, d := range r.Fields {
-					fmt.Fprintf(w, "  %s\n", d)
-					if h := argo.ByHand(d.Managers); len(h) > 0 {
-						fmt.Fprintf(w, "    %s has written this object, so this is likely a hand edit rather than the source moving on\n", strings.Join(h, ", "))
+				if f := r.Fields; f != nil {
+					for _, u := range f.Unreadable {
+						fmt.Fprintf(w, "  could not read %s\n", u)
+					}
+					if f.Compared < f.Total {
+						fmt.Fprintf(w, "  fields compared on %d of the %d objects the release holds, so this is not a clean check\n", f.Compared, f.Total)
+					} else if f.Clean() && r.Inventory.OK() && len(r.Stale) == 0 {
+						fmt.Fprintf(w, "  and every field the release sets, on all %d objects, already has that value on the cluster\n", f.Total)
+					}
+					for _, d := range f.Diffs {
+						fmt.Fprintf(w, "  %s\n", d)
+						if h := argo.ByHand(d.Managers); len(h) > 0 {
+							fmt.Fprintf(w, "    %s has written this object, so this is likely a hand edit rather than the source moving on\n", strings.Join(h, ", "))
+						}
 					}
 				}
-				if !r.OK() {
-					bad++
+			}
+			if checkJSON {
+				enc := json.NewEncoder(w)
+				enc.SetIndent("", "  ")
+				if err := enc.Encode(results); err != nil {
+					return err
 				}
+				if bad > 0 {
+					return errProblems{}
+				}
+				return nil
 			}
 			if len(checks) > 1 {
 				fmt.Fprintf(w, "\n%d of %d clean\n", len(checks)-bad, len(checks))
@@ -235,7 +280,10 @@ Nothing is changed either way.`,
 	check.Flags().StringVar(&checkSpace, "space", "", "the ConfigHub Space holding the variant")
 	check.Flags().StringVar(&checkUnit, "unit", "", "the unit in that Space")
 	check.Flags().StringVar(&checkDest, "destination-namespace", "", "the Application's destination namespace, where objects without one land")
-	check.Flags().StringVar(&kubeContext, "kube-context", "", "the kubectl context of the cluster to read; without it kubectl's current context is used, which may be another cluster")
+	check.Flags().StringVar(&checkRelease, "release", "", "the release to compare against, by manifest digest (sha256:...); without it, the newest published release")
+	check.Flags().StringVar(&destContext, "destination-context", "", "with --fields, the kubectl context of the cluster the Application deploys to, where its objects are read; not needed when Argo CD deploys to its own cluster")
+	check.Flags().StringVar(&destDeclared, "destination", "", "the Argo destination (server address or cluster name) --destination-context reaches, when kubectl reaches it by another address")
+	check.Flags().StringVar(&kubeContext, "kube-context", "", "the kubectl context of the cluster Argo CD runs on, where Applications are read; without it kubectl's current context is used, which may be another cluster")
 	check.Flags().BoolVar(&checkJSON, "json", false, "print the comparison as JSON")
 
 	versionCmd := &cobra.Command{

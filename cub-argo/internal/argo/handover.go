@@ -21,6 +21,9 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("#")
 	add("#   ARGOCD_CONTEXT=<kubectl context of the cluster Argo CD runs on> bash handover.sh")
 	add("#")
+	add("# with DEST_CONTEXT_<cluster>=<kubectl context> for each cluster Argo deploys")
+	add("# to other than its own: step 0 names any that are missing.")
+	add("#")
 	add("# Run apply.sh first. Every step here is a patch, never a delete: the")
 	add("# objects, their names and Argo's tracking of what they own all survive, so")
 	add("# no workload is recreated. It goes top down, because a parent pointed at a")
@@ -32,7 +35,19 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("# estate.")
 	add("set -euo pipefail")
 	add(`cd "$(dirname "$0")"`)
-	add(`k() { kubectl ${ARGOCD_CONTEXT:+--context "$ARGOCD_CONTEXT"} "$@"; }`)
+	// The context is fixed once, here: a context switched in another terminal
+	// mid-run would otherwise move the rest of the handover to another cluster.
+	add(`ctx=${ARGOCD_CONTEXT:-$(kubectl config current-context 2>/dev/null || true)}`)
+	add(`[ -n "$ctx" ] || { echo "no kubectl context: set ARGOCD_CONTEXT to the cluster Argo CD runs on"; exit 1; }`)
+	add(`echo "every kubectl call below uses context $ctx"`)
+	add(`k() { kubectl --context "$ctx" "$@"; }`)
+	// show prints a kubectl command for a person to run later, naming the
+	// context and namespace this run used rather than leaving them to whatever
+	// is current when it is pasted.
+	show := func(rest string) {
+		// <gateway> is filled in once step 1 knows the address.
+		add(`printf '  kubectl --context %%s -n %%s %%s\n' "$ctx" "$ns" "$(printf '%%s' %s | sed "s|<gateway>|${addr:-<gateway>}|")"`, q(rest))
+	}
 	add(`step() { printf '\n== %%s\n' "$*"; }`)
 	add(`ns=${ARGOCD_NAMESPACE:-argocd}`)
 	add("# The comparison before the template repoint renders from the repository.")
@@ -40,6 +55,11 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 		repoRel = "."
 	}
 	add("REPO_ROOT=${REPO_ROOT:-%s}", q(repoRel))
+	if p.inflatesHelm() {
+		// Rendered the way apply.sh rendered it; without the flag the
+		// comparison fails on the chart before it compares anything.
+		add(`KUSTOMIZE_FLAGS=${KUSTOMIZE_FLAGS:---enable-helm}`)
+	}
 	add("")
 	add("# The gateway address a repointed source reads. cub reports it for a Target.")
 	add("gateway() { cub target get --space %s \"$1\" -o jq=.Target.Parameters.OCIRepository 2>/dev/null || true; }", targets)
@@ -55,6 +75,38 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add(`if [ "$(printf '%%s\n' 3.1 "${version%%.*}.${version#*.}" | sort -V | head -1)" != 3.1 ]; then`)
 	add(`  echo "Argo CD runs $version; an oci:// source is read natively from v3.1, so this handover is not available here"; exit 1`)
 	add("fi")
+	// The field comparison reads each Application's objects on the cluster it
+	// deploys to. For every cluster other than Argo's own, that takes a context
+	// this script cannot guess, so each is asked for by name up front.
+	server := map[string]string{}
+	for _, c := range p.Clusters {
+		server[c.Name] = c.Server
+	}
+	var remote []string
+	seenRemote := map[string]bool{}
+	for _, c := range p.Components {
+		if c.Kind != "ApplicationSet" {
+			continue
+		}
+		for _, st := range c.Stages {
+			for _, v := range st.Variants {
+				if v.Path == "" || v.Path == "(multi-source)" || v.Cluster == "in-cluster" || seenRemote[v.Cluster] {
+					continue
+				}
+				seenRemote[v.Cluster] = true
+				remote = append(remote, v.Cluster)
+			}
+		}
+	}
+	if len(remote) > 0 {
+		add("# Each Application's objects are read on the cluster it deploys to, so each")
+		add("# cluster other than Argo CD's own needs its kubectl context:")
+		add(`missing=""`)
+		for _, cl := range remote {
+			add(`[ -n "${%s:-}" ] || missing="$missing %s"`, destVar(cl), destVar(cl))
+		}
+		add(`[ -z "$missing" ] || { echo "set the kubectl context of each cluster Argo deploys to:$missing"; exit 1; }`)
+	}
 
 	// The projects gate every repoint, so they are checked before anything moves.
 	var blocked []string
@@ -267,8 +319,17 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 					continue
 				}
 				add("same %s %s %s", q(v.Space), q(c.Name), q(v.Path))
-				add(`cub argo check ${ARGOCD_CONTEXT:+--kube-context "$ARGOCD_CONTEXT"} --fields --namespace "$ns" --application %s --space %s --unit %s --destination-namespace %s`,
-					q(v.Application), q(v.Space), q(c.Name), q(v.Namespace))
+				dest := ""
+				if v.Cluster != "in-cluster" {
+					// The plan knows which Argo destination this cluster is, so
+					// the context is bound to it rather than trusted by name.
+					dest = fmt.Sprintf(` --destination-context "$%s" --destination %s`, destVar(v.Cluster), q(server[v.Cluster]))
+				}
+				// Bound to one release by digest, so the check says which bytes
+				// it passed, and the repoint below can be compared with them.
+				add(`%s=$(cub release get --space %s --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')`, digestVar(v.Space), q(v.Space))
+				add(`cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application %s --space %s --unit %s --destination-namespace %s%s --release "$%s"`,
+					q(v.Application), q(v.Space), q(c.Name), q(v.Namespace), dest, digestVar(v.Space))
 			}
 		}
 	}
@@ -328,14 +389,17 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 			add("echo %s", q(fmt.Sprintf("  cub unit update --space %s %s %s.yaml", home.Space, home.Unit, home.Unit)))
 			add("echo %s", q(fmt.Sprintf("  cub release publish %s", home.Space)))
 			add("echo %s", q("  # then wait for the parent to sync it down before patching anything:"))
-			add("echo %s", q(fmt.Sprintf("  kubectl -n $ns get applicationset %s -o jsonpath='{.spec.syncPolicy.applicationsSync}'", c.Source)))
+			show(fmt.Sprintf("get applicationset %s -o jsonpath='{.spec.syncPolicy.applicationsSync}'", c.Source))
 		}
 		add("echo %s", q("Once it reads create-only, point each Application at its own Space:"))
 		for _, st := range c.Stages {
 			for _, v := range st.Variants {
-				add("echo %s", q(fmt.Sprintf(
-					"  kubectl -n $ns patch application %s --type merge -p '{\"spec\":{\"source\":{\"repoURL\":\"oci://<gateway>/space/%s\",\"path\":\".\",\"targetRevision\":\"latest\"}}}'   # stage %s",
-					v.Application, v.Space, st.Name)))
+				show(fmt.Sprintf(
+					"patch application %s --type merge -p '{\"spec\":{\"source\":{\"repoURL\":\"oci://<gateway>/space/%s\",\"path\":\".\",\"targetRevision\":\"latest\"}}}'   # stage %s",
+					v.Application, v.Space, st.Name))
+				if v.Path != "" && v.Path != "(multi-source)" {
+					add(`echo "    # checked at ${%s:-?}; once synced, its status.sync.revision should name that digest, or a newer release went out unchecked"`, digestVar(v.Space))
+				}
 			}
 		}
 	}
@@ -355,14 +419,14 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("")
 	add("echo")
 	add("echo %s", q("Done once every Application reports Synced from an oci:// source:"))
-	add("echo %s", q("  kubectl -n $ns get applications -o custom-columns=NAME:.metadata.name,SOURCE:.spec.source.repoURL,SYNC:.status.sync.status"))
+	show("get applications -o custom-columns=NAME:.metadata.name,SOURCE:.spec.source.repoURL,SYNC:.status.sync.status")
 	add("echo %s", q("Nothing was deleted. To go back, patch each source to its Git repoURL and path."))
 	add("echo")
 	add("echo %s", q("One more thing, measured on Argo CD v3.5.3: publishing a new release does NOT"))
 	add("echo %s", q("reach the cluster on its own. Argo caches the digest it resolved for the tag, and"))
 	add("echo %s", q("was still serving the previous release 90 seconds later. A hard refresh re-resolves"))
 	add("echo %s", q("the tag to a digest and the release lands:"))
-	add("echo %s", q("  kubectl -n $ns annotate application <name> argocd.argoproj.io/refresh=hard --overwrite"))
+	show("annotate application <name> argocd.argoproj.io/refresh=hard --overwrite")
 	add("echo %s", q("argobot does this for you, reacting to ConfigHub's release.published event. Without"))
 	add("echo %s", q("it, or without that annotation, an approved release sits unread on the gateway."))
 	return strings.Join(L, "\n") + "\n"
@@ -372,3 +436,25 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 // goes on the object, so it is visible both in ConfigHub and to whoever next
 // reads the cluster and wonders why a generator is generating nothing.
 const retiredAnnotation = "argo.confighub.com/retired"
+
+// destVar is the environment variable naming the kubectl context of a cluster
+// Argo deploys to.
+func destVar(cluster string) string {
+	return "DEST_CONTEXT_" + strings.Map(func(r rune) rune {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
+			return r
+		}
+		return '_'
+	}, cluster)
+}
+
+// digestVar is the shell variable holding the release digest a variant was
+// checked at.
+func digestVar(space string) string {
+	return "digest_" + strings.Map(func(r rune) rune {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
+			return r
+		}
+		return '_'
+	}, space)
+}

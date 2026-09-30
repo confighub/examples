@@ -78,7 +78,14 @@ func Workflow(c *Component) string {
 	b.WriteString("# so it is declared here as the Attestation each stage's release waits for.\n")
 	b.WriteString("# AllowAuthors belongs to that declaration, not to the workflow: it lets\n")
 	b.WriteString("# whoever promoted a change also approve it, which one person trying this\n")
-	b.WriteString("# out needs. Set it false once a second person can.\n")
+	b.WriteString("# out needs.\n")
+	b.WriteString("#\n")
+	b.WriteString("# As written this is a SINGLE-OPERATOR workflow. An approval recorded under\n")
+	b.WriteString("# it shows the change was approved, not that anyone but its author looked.\n")
+	b.WriteString("# To require a separate reviewer, set AllowAuthors: false (and, if wanted,\n")
+	b.WriteString("# Count: 2 or FromUserIDs), then replace the live workflow with this file:\n")
+	b.WriteString("#   cub changeworkflow update --space <base Space> rollout --filename change-workflow.yaml\n")
+	b.WriteString("# It governs change orders created after that, not one already under way.\n")
 	b.WriteString("Slug: rollout\n")
 	b.WriteString("AttestationPrerequisites:\n")
 	b.WriteString("  - Name: approval\n")
@@ -216,15 +223,7 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 	// on, and nothing else in the run would explain them.
 	add(`cub auth status 2>&1 | grep -i '^Warning:' && echo "  Steps below may fail on that skew rather than on anything here."`)
 	add(`command -v kustomize >/dev/null || { echo "kustomize is not on PATH; the overlays are rendered with it"; exit 1; }`)
-	helm := false
-	for _, c := range p.Components {
-		for _, n := range c.Notes {
-			if strings.Contains(n, "enable-helm") {
-				helm = true
-			}
-		}
-	}
-	if helm {
+	if p.inflatesHelm() {
 		add("# A component here inflates a Helm chart through Kustomize, which needs the")
 		add("# same flag Argo CD's repo server is configured with.")
 		add(`KUSTOMIZE_FLAGS=${KUSTOMIZE_FLAGS:---enable-helm}`)
@@ -411,4 +410,18 @@ func (p *Plan) unitHomes(prefix string) map[string]unitHome {
 		walk(n)
 	}
 	return out
+}
+
+// inflatesHelm reports whether a component inflates a Helm chart through
+// Kustomize, which every render of it, in apply.sh and handover.sh alike, has
+// to do with --enable-helm, as Argo CD's repo server does.
+func (p *Plan) inflatesHelm() bool {
+	for _, c := range p.Components {
+		for _, n := range c.Notes {
+			if strings.Contains(n, "enable-helm") {
+				return true
+			}
+		}
+	}
+	return false
 }

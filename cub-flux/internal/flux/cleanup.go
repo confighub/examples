@@ -60,6 +60,9 @@ func CleanupScript(p *Plan, prefix string) string {
 	add("# repointed a Kustomization at the gateway, deleting these Spaces takes its")
 	add("# source away.")
 	add("set -uo pipefail")
+	// Every kubectl command printed below names a context: the one given, or a
+	// placeholder that has to be filled in, never whichever happens to be current.
+	add(`ctxflag="--context ${FLUX_CONTEXT:-<the cluster>}"`)
 	add(`cd "$(dirname "$0")"`)
 	add(`step() { printf '\n== %%s\n' "$*"; }`)
 	add(`gone() { cub space get "$1" >/dev/null 2>&1 && return 1 || return 0; }`)
@@ -69,7 +72,7 @@ func CleanupScript(p *Plan, prefix string) string {
 	add("# with prune on that empties the cluster. This will not guess; it asks.")
 	add(`if [ "${I_HAVE_PUT_THE_SOURCES_BACK:-}" != yes ]; then`)
 	add(`  echo "If handover.sh has run, put every layer's sourceRef back to its GitRepository first:"`)
-	add(`  echo "  kubectl -n flux-system get kustomizations -o custom-columns=NAME:.metadata.name,KIND:.spec.sourceRef.kind,PATH:.spec.path"`)
+	add(`  echo "  kubectl $ctxflag -n flux-system get kustomizations -o custom-columns=NAME:.metadata.name,KIND:.spec.sourceRef.kind,PATH:.spec.path"`)
 	add(`  echo "  Both sourceRef and path have to go back: handover.sh printed the exact commands."`)
 	add(`  echo "Then re-run with I_HAVE_PUT_THE_SOURCES_BACK=yes bash cleanup.sh"`)
 	add(`  echo`)
