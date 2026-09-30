@@ -82,7 +82,7 @@ understand the repo yet:
 | Which teams are here? | `team-storefront`, `team-payments`, `team-loyalty`. |
 | Which namespaces? | `flux-system`, `team-storefront`, `team-payments`, `team-loyalty`. |
 | Who owns what? | The platform owns `clusters/shared/` and every team's `rbac.yaml` and `guardrails.yaml`. Each team owns its own `workloads/` folder and nothing above it. |
-| What identity applies each layer? | The platform bootstrap runs with the cluster's own trusted identity. Each team's `workloads/` is applied as that team's own ServiceAccount only. |
+| What identity applies each layer? | The platform bootstrap runs as `kustomize-controller`, Flux's own cluster-admin account in `flux-system`. Each team's `workloads/` is applied as that team's own ServiceAccount only. |
 | What stops one team reaching another team's namespace? | The RoleBinding: each ServiceAccount's grant is a Role in its own namespace, bound by a RoleBinding in that same namespace, so no other namespace is reachable, and the NetworkPolicy admits ingress only from pods in the same namespace, where the cluster's CNI enforces NetworkPolicy. That also blocks an ingress controller running in another namespace, and it does not restrict egress. |
 | What stops a team's pods reaching the node? | Pod Security Admission on its Namespace: `baseline` is enforced (and `restricted` warned), so no privileged pods, host namespaces or hostPath mounts. The built-in admission controller does this on Kubernetes 1.25 and later. The ResourceQuota also bounds storage, since the team can create PersistentVolumeClaims. |
 | What stops a team loosening its own guardrails? | Its Role: it grants only get, list and watch on NetworkPolicies, ResourceQuotas and LimitRanges, and nothing on RBAC, Namespaces or Flux objects. A team cannot add a second, wider NetworkPolicy, raise its quota, widen its own grant, or rewrite its own `sync.yaml`. |
@@ -127,11 +127,12 @@ lockdown flags:
   runs as the named account in its own namespace instead, and its apply is
   refused unless that account has been granted something.
 
-The platform's `tenants` Kustomization also sets no `serviceAccountName`, so
-on a cluster with `--default-service-account` it needs one too: a
-platform-owned ServiceAccount that can create namespaces and RBAC. This
-example does not ship that account. Check the exact behavior for your Flux
-version.
+The platform's `tenants` Kustomization names `serviceAccountName:
+kustomize-controller`, the account Flux installs in `flux-system` and binds
+to cluster-admin, so it keeps working with `--default-service-account` on.
+Any other cluster-level Kustomization you add needs the same. Check how your
+Flux version treats the `flux-system` Kustomization that bootstrap
+generates.
 
 `./verify.sh` is the offline stand-in. It checks the manifests in this repo.
 It does not read controller flags and cannot tell you whether a cluster runs

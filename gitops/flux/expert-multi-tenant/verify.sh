@@ -103,8 +103,10 @@ if ! awk '/^  sourceRef:$/{s=1; next} s && /^    name: /{print $2; exit}' "$f" |
   echo "that flux bootstrap generates; no other source is defined in this example." >&2
   exit 1
 fi
-if grep -q "serviceAccountName:" "$f"; then
-  echo "The platform bootstrap Kustomization should not impersonate any tenant" >&2
+if ! grep -q "^  serviceAccountName: kustomize-controller$" "$f"; then
+  echo "The platform bootstrap Kustomization should run as kustomize-controller, the" >&2
+  echo "platform's own account, and never as a tenant. With --default-service-account" >&2
+  echo "on the controller, a layer naming no account runs with no rights." >&2
   exit 1
 fi
 

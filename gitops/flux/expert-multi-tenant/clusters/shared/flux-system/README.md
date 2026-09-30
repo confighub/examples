@@ -17,8 +17,8 @@ relative to the root of that repo.
 
 What matters for reading the repo: the Flux controllers run in the
 `flux-system` namespace on the shared cluster, and the `Kustomization`
-object in the folder above is what they reconcile. It runs with the
-controller's own default identity, not a tenant's, because bootstrapping
+object in the folder above is what they reconcile. It runs as the
+controller's own `kustomize-controller` account, not a tenant's, because bootstrapping
 namespaces and RBAC for every team is the platform team's job, not any one
 team's.
 
@@ -49,6 +49,8 @@ patches:
 `default` is the ServiceAccount named `default` in the namespace of each
 Kustomization or HelmRelease. Nothing here grants it any rights, so a
 Kustomization with no `serviceAccountName` is refused instead of running as
-the controller. The patch is not in a real `kustomization.yaml` in this repo,
+the controller. The platform's `tenants` Kustomization names
+`kustomize-controller`, Flux's own cluster-admin account in `flux-system`,
+so it is not affected. The patch is not in a real `kustomization.yaml` in this repo,
 because that file only exists after bootstrap, so `./verify.sh` neither
 applies nor checks it.

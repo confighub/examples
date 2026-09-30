@@ -36,9 +36,9 @@ A tool may assume all of the following about the files in this directory,
 without running anything against a cluster:
 
 - `clusters/shared` holds exactly one Flux `Kustomization`, named `tenants`,
-  with no `serviceAccountName` set. It is the only object in this example
-  that reconciles with the cluster's own trusted identity rather than a
-  team's.
+  with `serviceAccountName: kustomize-controller`, Flux's own cluster-admin
+  account in `flux-system`. It is the only object in this example that
+  reconciles with the platform's identity rather than a team's.
 - Each of `tenants/base/team-storefront`, `tenants/base/team-payments` and
   `tenants/base/team-loyalty` holds `rbac.yaml` (a `Namespace`, a
   `ServiceAccount`, a namespaced `Role` named `team-<name>-tenant`, and a
