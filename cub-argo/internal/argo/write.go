@@ -7,7 +7,8 @@ import (
 	"sort"
 )
 
-// WriteApply writes the files apply.sh reads, apply.sh, and handover.sh. It
+// WriteApply writes the files apply.sh reads, apply.sh, handover.sh,
+// move-applications.sh and argobot.sh. It
 // runs nothing and touches nothing outside dir.
 func WriteApply(p *Plan, prefix, dir string) (string, error) {
 	if len(p.Problems) > 0 {
@@ -41,6 +42,21 @@ func WriteApply(p *Plan, prefix, dir string) (string, error) {
 			continue
 		}
 		files = append(files, outFile{filepath.Join(c.Name, "change-workflow.yaml"), []byte(Workflow(c)), 0o644})
+		// What each ApplicationSet's template renders for each cluster: a
+		// cluster that joins after the retirement has no Application on the
+		// cluster to read, so move-applications.sh makes its Unit from this.
+		for _, st := range c.Stages {
+			for _, v := range st.Variants {
+				if c.Kind != "ApplicationSet" || v.app == nil {
+					continue
+				}
+				data, err := renderedApplication(v.app)
+				if err != nil {
+					return "", fmt.Errorf("writing what %s renders for %s: %w", c.Source, v.Cluster, err)
+				}
+				files = append(files, outFile{filepath.Join("apps", v.Space+".yaml"), data, 0o644})
+			}
+		}
 	}
 
 	// apply.sh renders from the repository, so it needs the way back to it.
@@ -59,9 +75,19 @@ func WriteApply(p *Plan, prefix, dir string) (string, error) {
 		outFile{"apply.sh", []byte(ApplyScript(p, prefix, repoRel)), 0o755},
 		outFile{"handover.sh", []byte(HandoverScript(p, prefix, repoRel)), 0o755},
 		outFile{"cleanup.sh", []byte(CleanupScript(p, prefix)), 0o755},
+		outFile{"argobot.sh", []byte(ArgobotScript(prefix)), 0o755},
 		outFile{".gitignore", []byte("render/\n"), 0o644},
 	)
+	if s := MoveScript(p, prefix); s != "" {
+		files = append(files, outFile{"move-applications.sh", []byte(s), 0o755})
+	}
 
+	// What the templates render is written afresh each time, so a cluster
+	// that left the plan, or an ApplicationSet that now has a templatePatch,
+	// leaves nothing behind for move-applications.sh to read.
+	if err := os.RemoveAll(filepath.Join(dir, "apps")); err != nil {
+		return "", err
+	}
 	sort.Slice(files, func(i, j int) bool { return files[i].name < files[j].name })
 	for _, f := range files {
 		path := filepath.Join(dir, f.name)

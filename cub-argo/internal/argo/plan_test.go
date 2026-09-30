@@ -305,7 +305,7 @@ func TestHandoverRepointsTopDown(t *testing.T) {
 		"v3.1 or newer",                  // oci:// needs it
 		"repoint Application root",       // hand-applied, patched in the cluster
 		"repoint Application storefront", // a Unit by then, so promoted
-		"template of ApplicationSet",     // generated apps are never touched
+		"retire ApplicationSet",          // generated apps become Units, never recreated
 		"never delete root, storefront",  // the finalizer
 	} {
 		if !strings.Contains(joined, want) {

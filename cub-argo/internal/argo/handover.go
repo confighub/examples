@@ -85,6 +85,7 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("# refused until it moves too. Undoing from the bottom avoids that.")
 	add(`way_back() {`)
 	add(`  local name url path rev`)
+	add(`  [ -s handover-state/applications.txt ] && echo "  0. First the way back move-applications.sh prints, for each Application it made a Unit: restoring an ApplicationSet while its Applications are Units sets it and their parent against each other."`)
 	add(`  echo "  1. Any ApplicationSet you retired in step 5: restore its Unit to the revision before create-only, and publish its Space; the controller then puts its Applications back on the template's Git source."`)
 	add(`  echo "  2. Any app of apps repointed through its Unit: restore that Unit to the revision before the repoint, and publish its Space."`)
 	add(`  echo "  3. Then each parent patched here:"`)
@@ -443,17 +444,31 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 				"%s is a Unit in %s. Retire it where ConfigHub keeps it, so the change is reviewed and survives the next sync:", c.Source, home.Space)))
 			add("echo %s", q(fmt.Sprintf("  cub unit data --space %s %s > %s.yaml", home.Space, home.Unit, home.Unit)))
 			add("echo %s", q("  # set spec.syncPolicy.applicationsSync: create-only"))
+			add("echo %s", q("  #   and spec.generators: [{list: {elements: []}}], so it generates nothing:"))
+			add("echo %s", q("  #   create-only never deletes, and one that still generates takes each"))
+			add("echo %s", q("  #   Application back once it stands alone (measured on Argo CD v3.5.3)"))
 			add("echo %s", q(fmt.Sprintf("  #   and annotate it %s: \"retired at handover; see cleanup.sh\"", retiredAnnotation)))
 			add("echo %s", q(fmt.Sprintf("  cub unit update --space %s %s %s.yaml", home.Space, home.Unit, home.Unit)))
 			add("echo %s", q(fmt.Sprintf("  cub release publish %s", home.Space)))
 			add("echo %s", q("  # then wait for the parent to sync it down before patching anything:"))
 			show(fmt.Sprintf("get applicationset %s -o jsonpath='{.spec.syncPolicy.applicationsSync}'", c.Source))
 		}
-		add("echo %s", q("Once it reads create-only, point each Application at its own Space:"))
+		if known {
+			add("echo %s", q("Once it reads create-only, deliver each Application from its own Space, one stage at a time:"))
+			add("echo %s", q("  bash move-applications.sh <stage>"))
+			add("echo %s", q("It makes each one a Unit in "+home.Space+", reading its Space, and checks it arrived. By hand, it is:"))
+		} else {
+			add("echo %s", q("Once it reads create-only, point each Application at its own Space:"))
+		}
 		for _, st := range c.Stages {
 			for _, v := range st.Variants {
-				show(fmt.Sprintf(
-					"patch application %s --type merge -p '{\"spec\":{\"source\":{\"repoURL\":\"oci://<gateway>/space/%s\",\"path\":\".\",\"targetRevision\":\"latest\"}}}'   # stage %s",
+				// A multi-source Application has no /spec/source to replace:
+				// its sources go, and one source takes their place.
+				ops := `{"op":"replace","path":"/spec/source","value":{"repoURL":"oci://<gateway>/space/%s","path":".","targetRevision":"latest"}}`
+				if v.Path == "(multi-source)" {
+					ops = `{"op":"remove","path":"/spec/sources"},{"op":"add","path":"/spec/source","value":{"repoURL":"oci://<gateway>/space/%s","path":".","targetRevision":"latest"}}`
+				}
+				show(fmt.Sprintf("patch application %s --type json -p '["+ops+"]'   # stage %s",
 					v.Application, v.Space, st.Name))
 				if v.Path != "" && v.Path != "(multi-source)" {
 					add(`echo "    # checked at ${%s:-?}; once synced, its status.sync.revision should name that digest, or a newer release went out unchecked"`, digestVar(v.Space))
@@ -487,8 +502,10 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("echo %s", q("was still serving the previous release 90 seconds later. A hard refresh re-resolves"))
 	add("echo %s", q("the tag to a digest and the release lands:"))
 	show("annotate application <name> argocd.argoproj.io/refresh=hard --overwrite")
-	add("echo %s", q("argobot does this for you, reacting to ConfigHub's release.published event. Without"))
-	add("echo %s", q("it, or without that annotation, an approved release sits unread on the gateway."))
+	add("echo %s", q("argobot does this for you: argobot.sh runs it beside Argo CD with the Targets' worker,"))
+	add("echo %s", q("so it refreshes each Application reading a Space when that Space publishes, and writes"))
+	add("echo %s", q("each Application's live status back to its Space. Without it, or without that"))
+	add("echo %s", q("annotation, an approved release sits unread on the gateway."))
 	return strings.Join(L, "\n") + "\n"
 }
 

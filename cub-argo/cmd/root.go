@@ -50,9 +50,12 @@ func newRoot() *cobra.Command {
          one cluster, and the control tree that stays as it is. Offline: no
          account, no cluster, nothing changes.
 
-  apply  writes the plan as files beside two scripts: apply.sh, which fills
-         ConfigHub and touches no cluster, and handover.sh, which repoints each
-         layer's source at ConfigHub, top down. Nothing runs until you run them.`,
+  apply  writes the plan as files beside its scripts: apply.sh, which fills
+         ConfigHub and touches no cluster; handover.sh, which repoints each
+         layer's source at ConfigHub, top down; move-applications.sh, which
+         makes each generated Application a Unit reading its own Space, one
+         stage at a time; and argobot.sh, which runs argobot beside Argo CD.
+         Nothing runs until you run them.`,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
@@ -101,7 +104,7 @@ func newRoot() *cobra.Command {
 	var applyStages, out string
 	apply := &cobra.Command{
 		Use:   "apply <dir|input.yaml|-> [more inputs] --out <dir>",
-		Short: "Write the plan's files and the apply, handover and cleanup scripts; runs nothing",
+		Short: "Write the plan's files and the apply, handover, move-applications, argobot and cleanup scripts; runs nothing",
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
 			if out == "" {
@@ -314,7 +317,57 @@ thing, to ConfigHub: each verdict as a LiveCheck attestation.`,
 		},
 	}
 
-	root.AddCommand(plan, apply, check, versionCmd)
+	var auCtx, auNS, auApp, auSpace, auGateway, auRendered string
+	var auSettled bool
+	appUnit := &cobra.Command{
+		Use:   "application-unit",
+		Short: "Print the Unit that delivers an Application from its Space; reads the cluster, changes nothing",
+		Long: `Read an Application from the cluster Argo CD runs on and print it as the Unit
+that delivers it from ConfigHub: the same name, project, destination and sync
+policy, its source pointed at the variant's Space on the gateway, and the sync
+option Prune=false, so no parent ever deletes it.
+
+move-applications.sh runs this for each Application a retired ApplicationSet
+made, and stores what it prints in the control Space the parent reads. For a
+cluster that joined after the ApplicationSet was retired, nothing generated its
+Application: --rendered makes it from what the template renders for that
+cluster, which apply writes as apps/<space>.yaml.`,
+		Args: cobra.NoArgs,
+		RunE: func(c *cobra.Command, _ []string) error {
+			if (auApp == "" && auRendered == "") || auSpace == "" || auGateway == "" {
+				return fmt.Errorf("needs --application (or --rendered), --space and --gateway")
+			}
+			argo.KubeContext = auCtx
+			argo.SetApplicationNamespace(auNS)
+			var b []byte
+			var err error
+			if auRendered != "" {
+				data, rerr := os.ReadFile(auRendered)
+				if rerr != nil {
+					return rerr
+				}
+				b, err = argo.ApplicationUnitRendered(data, auNS, auGateway, auSpace)
+			} else if auSettled {
+				b, err = argo.SettledApplicationUnit(argo.Run, auApp, auGateway, auSpace)
+			} else {
+				b, err = argo.ApplicationUnit(argo.Run, auApp, auGateway, auSpace)
+			}
+			if err != nil {
+				return err
+			}
+			_, err = c.OutOrStdout().Write(b)
+			return err
+		},
+	}
+	appUnit.Flags().StringVar(&auCtx, "kube-context", "", "the kubectl context of the cluster Argo CD runs on")
+	appUnit.Flags().StringVar(&auNS, "namespace", "argocd", "the namespace Argo CD's Applications live in")
+	appUnit.Flags().StringVar(&auApp, "application", "", "the Application to deliver")
+	appUnit.Flags().StringVar(&auSpace, "space", "", "the variant's Space, which it will read")
+	appUnit.Flags().StringVar(&auGateway, "gateway", "", "the gateway address the cluster reaches, host[:port]")
+	appUnit.Flags().BoolVar(&auSettled, "settled", false, "the Application reads its Space already: leave out Replace=true, which would erase its status on every sync of the parent")
+	appUnit.Flags().StringVar(&auRendered, "rendered", "", "for an Application not on the cluster yet: the file apply wrote with what its ApplicationSet's template renders for its cluster (apps/<space>.yaml)")
+
+	root.AddCommand(plan, apply, check, appUnit, versionCmd)
 	return root
 }
 

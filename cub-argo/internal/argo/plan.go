@@ -104,6 +104,9 @@ type Variant struct {
 	// Application's own name where one cluster carries several.
 	Key   string `json:"key,omitempty"`
 	stage string
+	// app is the Application the ApplicationSet's template renders for this
+	// cluster, which is what a cluster joining after the retirement is given.
+	app map[string]any
 }
 
 // Window is an AppProject sync window and the planned Applications it covers.
@@ -407,6 +410,14 @@ func (b *builder) appset(o object) {
 			}
 			variants = append(variants, b.variant(c, ra.app, cl, ra.fields))
 		}
+		if _, patched := spec["templatePatch"]; patched {
+			// Rendered from spec.template alone, a joined cluster's Application
+			// would miss what the patch adds, so none is written for it.
+			for i := range variants {
+				variants[i].app = nil
+			}
+			c.Notes = append(c.Notes, "uses templatePatch, which the plan does not render: a cluster that joins after the handover gets its Application by hand")
+		}
 		b.finish(c, variants)
 		if strings.EqualFold(str(get(spec, "strategy", "type")), "RollingSync") {
 			c.Notes = append(c.Notes, "orders its own rollout with RollingSync; the ChangeWorkflow would own the order, so handover turns it off")
@@ -482,6 +493,7 @@ func (b *builder) variant(c *Component, app map[string]any, cl *Cluster, fields 
 		Target:      fmt.Sprintf("%s-targets/%s", b.opts.Prefix, clusterName),
 		Application: str(get(app, "metadata", "name")),
 		Namespace:   str(get(app, "spec", "destination", "namespace")),
+		app:         app,
 		Path:        str(get(app, "spec", "source", "path")),
 	}
 	if cl == nil {
@@ -1144,8 +1156,8 @@ func (b *builder) handover(appsets, apps []object, projects []object) {
 		walk(n, nil)
 	}
 
-	// Each ApplicationSet keeps generating its Applications; only the template's
-	// source moves, so no generated Application is orphaned or renamed.
+	// Each ApplicationSet is retired, and each Application it generated is then
+	// delivered from its own Space as a Unit, so none is orphaned or renamed.
 	for _, c := range p.Components {
 		if c.Kind != "ApplicationSet" {
 			continue
@@ -1158,7 +1170,7 @@ func (b *builder) handover(appsets, apps []object, projects []object) {
 		}
 		if hasParent["ApplicationSet/"+c.Source] {
 			p.Handover = append(p.Handover, fmt.Sprintf(
-				"point the template of ApplicationSet %s at each cluster's Target, once those Targets carry a release. It goes on generating %s under the same names, so Argo's tracking does not change and nothing is orphaned",
+				"retire ApplicationSet %s through its Unit (applicationsSync: create-only, and generators that generate nothing), then run move-applications.sh stage by stage: %s each become a Unit reading its own Space, under the same name, so Argo's tracking does not change and nothing is orphaned",
 				c.Source, strings.Join(names, ", ")))
 			continue
 		}
