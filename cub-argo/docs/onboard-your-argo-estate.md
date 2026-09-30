@@ -26,10 +26,12 @@ they were promoted from. Each Space then goes in one
 is not undone by deleting Spaces — put each Application's source back to Git
 first, which `cleanup.sh` checks before it does anything.
 
-You need the `cub` CLI logged in to your organization (`cub auth login`),
-`kustomize` on your PATH, `kubectl` access to the cluster Argo CD runs on, and
-the plugin. The plugin lives in this repository rather than in one of its own,
-so build it from a checkout (it needs Go):
+The `plan` command needs the `cub` CLI and plugin, but no login, `kustomize`,
+or cluster access. To run the generated `apply.sh`, log into your organization
+(`cub auth login`) and have `kustomize` on your PATH. To run `handover.sh`, you
+also need `kubectl` access to the cluster Argo CD runs on and to each destination
+cluster. The plugin lives in this repository rather than in one of its own, so
+build it from a checkout (it needs Go):
 
 ```bash
 git clone https://github.com/confighub/examples
