@@ -2,10 +2,96 @@
 
 You already describe your fleet in Flux's own terms: a bootstrap that
 reconciles itself, and layered `Kustomization`s that reconcile each other in
-`dependsOn` order. This guide turns that into a governed fleet in ConfigHub,
-and the first two commands change nothing at all.
+`dependsOn` order. This guide turns that into a governed fleet in ConfigHub
+without recreating anything, and the first two commands change nothing at all.
 
-It is deliberately two phases, because they carry very different risk:
+## What you end up with
+
+- **Each layer once, each cluster a variant.** ConfigHub holds each layer's
+  shared base once — `infrastructure`, `apps`, `tenants` — and one variant per
+  cluster holding only what that cluster's overlay does differently. A change
+  is made once, in the base, and moves through your stages with an approval in
+  each.
+- **One root per cluster.** Each cluster runs one Flux `Kustomization`,
+  `confighub-root`, reading that cluster's layers Space in ConfigHub. The
+  layers Space holds one Unit per layer: its `OCIRepository` and
+  `Kustomization`, reading the layer's variant. The same shape `cub cluster up`
+  gives Argo CD, an apps Space and a root Application.
+- **ConfigHub knows what is running.** `cub flux status` writes what each layer
+  applied — the exact release digest, and whether its workloads are ready,
+  where the layer checks them with `wait` or `healthChecks` — back to its
+  variant, and `--require Healthy` makes the next stage wait for it.
+- **New clusters are proposed, not surprised.** `cub flux watch` notices a
+  cluster added to the fleet repository, proposes it in ConfigHub, and releases
+  it once a person approves.
+- **Nothing is recreated.** Every step that touches a cluster checks that each
+  object stays the same object, and prints its way back.
+
+```mermaid
+flowchart LR
+  subgraph ch["ConfigHub"]
+    b["apps base<br/>one edit"] --> v1["variant dev"]
+    b --> v2["variant prod"]
+    ls["dev's layers Space<br/>one Unit per layer"]
+  end
+  subgraph dev["cluster dev"]
+    fs["flux-system<br/>stays as it is"]
+    r["confighub-root"] --> l1["infrastructure"]
+    r --> l2["apps"]
+  end
+  ls ==>|"root reads"| r
+  v1 ==>|"apps reads"| l2
+  l2 -.->|"cub flux status"| v1
+```
+
+## Install
+
+```bash
+cub plugin install confighub/examples@cub-flux-v0.1.0 --name flux
+cub plugin list   # flux should be listed, status ok
+```
+
+Upgrade later by naming the new release: `cub plugin upgrade flux@cub-flux-v<version>`.
+To build from source instead (needs Go):
+
+```bash
+git clone https://github.com/confighub/examples
+cd examples/cub-flux
+go build -o bin/cub-flux . && cub plugin install ./bin/cub-flux
+```
+
+What each step needs:
+
+| Step | Needs |
+| --- | --- |
+| `cub flux plan`, `cub flux apply` | the plugin. No account, no cluster |
+| `apply.sh` | `cub auth login`, `kustomize` on your PATH, and the gateway address the clusters reach (`CONFIGHUB_OCI`) |
+| `handover.sh`, `join.sh`, `cub flux status` | `kubectl` access to that cluster |
+
+## The whole journey on one page
+
+Run from the root of your fleet repository. Each script is written by
+`cub flux apply`, beside the files it reads; read each one before running it.
+
+| # | Run | What happens | Touches a cluster? | The way back |
+| --- | --- | --- | --- | --- |
+| 1 | `cub flux plan .` | shows the fleet ConfigHub would govern | no | nothing to undo |
+| 2 | `cub flux apply . --out onboard` | writes the files and scripts | no | delete `onboard/` |
+| 3 | `CONFIGHUB_OCI=<gateway> bash onboard/apply.sh` | fills ConfigHub: bases, variants, stages, first releases, each cluster's layers Space. Flux still reads Git | no | `bash onboard/cleanup.sh` |
+| 4 | `CONFIGHUB_OCI=<gateway> CLUSTER=dev FLUX_CONTEXT=<context> bash onboard/handover.sh` | for a cluster already running the layers from Git: puts the root on it, and the root takes each layer over | yes | printed when it stops, and at the end |
+| 4′ | `CONFIGHUB_OCI=<gateway> CLUSTER=<new> FLUX_CONTEXT=<context> bash onboard/join.sh` | for a new cluster with Flux and nothing else: the root brings every layer | yes | printed at the end |
+| 5 | `cub flux status . --cluster dev --kube-context <context> --watch` | keeps ConfigHub told what each layer applied | writes to ConfigHub only | stop it |
+| 6 | `CONFIGHUB_OCI=<gateway> cub flux watch . --out onboard --pull` | proposes each cluster added to `clusters/` | no; a person approves | stop it |
+
+Fleets bootstrapped from Git are handed over too: `handover.sh` suspends
+`flux-system` for the handover, then pauses for you to commit the layers'
+removal from Git, and resumes when you run it again. See [Hand one cluster
+over](#3-hand-one-cluster-over).
+
+After that, a change is made in ConfigHub: see [What changes about the way you
+work](#what-changes-about-the-way-you-work).
+
+## Two phases, very different risk
 
 ```mermaid
 flowchart LR
@@ -15,40 +101,19 @@ flowchart LR
   a -.->|"cleanup.sh<br/>takes it back out"| p
 ```
 
-**Onboarding** fills ConfigHub while Flux carries on reconciling Git.
-Afterwards ConfigHub holds a complete parallel copy that nothing reads, and
-`cleanup.sh` — written beside `apply.sh` — takes it all back out. It is a
-script rather than a line in this guide because the order is not guessable: a
-variant's Release points at a Tag in its base Space, so the variants have to go
-before the bases they were promoted from. Each Space then goes in one
+**Onboarding** (steps 1–3) fills ConfigHub while Flux carries on reconciling
+Git. Afterwards ConfigHub holds a complete parallel copy that nothing reads,
+and `cleanup.sh` takes it all back out. It is a script rather than a line in
+this guide because the order is not guessable: a variant's Release points at a
+Tag in its base Space, so the variants have to go before the bases they were
+promoted from. Each Space then goes in one
 `cub space delete --recursive --detach`, which takes its contents with it.
 
-**Handover and join** are the steps that change which source feeds a cluster.
-`handover.sh` is for a cluster that already runs the layers from Git; `join.sh`
-is for a new cluster that has Flux and none of them. Neither is undone by
-deleting Spaces: a layer whose Space is gone has no source at all, and with
-`prune: true` it empties itself. Put each layer's `sourceRef` back to its
-`GitRepository` first, which `cleanup.sh` asks about before it does anything.
-
-Both give a cluster the same thing: one root, and a ConfigHub Space that says
-what Flux runs there. It is the shape `cub cluster up` makes for Argo CD, an
-apps Space and a root Application, and `cub variant create` then adds one
-Application per variant Space. Here the root is a Flux `Kustomization`, and each
-layer is a Unit in the cluster's Space.
-
-The plan below needs the `cub` CLI and this plugin, but no ConfigHub account,
-login, `kustomize`, or cluster access. To continue beyond the plan, log in with
-`cub auth login` before running commands that write to ConfigHub; `kustomize`
-must be on your PATH for `apply.sh`, and `kubectl` must have access to each
-cluster for handover or join. The plugin lives in this repository rather than
-in one of its own, so build it from a checkout (which needs Go):
-
-```bash
-git clone https://github.com/confighub/examples
-cd examples/cub-flux
-go build -o bin/cub-flux . && cub plugin install ./bin/cub-flux
-cub plugin list   # flux should be listed, status ok
-```
+**Handover and join** (step 4) change which source feeds a cluster. Neither is
+undone by deleting Spaces: a layer whose Space is gone has no source at all,
+and with `prune: true` it empties itself. Put each layer's `sourceRef` back to
+its `GitRepository` first, which `cleanup.sh` asks about before it does
+anything.
 
 ## What the plugin sees in your repository
 

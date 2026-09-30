@@ -1,0 +1,152 @@
+name: release-gitops-plugins
+
+# Publishes cub argo and cub flux, which live in this repository, as GitHub
+# releases of it: one tag family per plugin.
+#
+#   git tag cub-argo-v0.1.0 && git push origin cub-argo-v0.1.0
+#   cub plugin install confighub/examples@cub-argo-v0.1.0 --name argo
+#
+#   git tag cub-flux-v0.1.0 && git push origin cub-flux-v0.1.0
+#   cub plugin install confighub/examples@cub-flux-v0.1.0 --name flux
+#
+# The tag names the plugin, so a release holds one plugin's binaries only: cub
+# picks the asset for its platform by <os>-<arch> in the name, and a release
+# with both plugins in it would give it two to choose from. --name is needed
+# because cub names a plugin installed from a repository after the repository.
+# Upgrade by naming the new tag: cub plugin upgrade argo@cub-argo-v0.2.0.
+#
+# Write the version's section of <plugin>/docs/whats-new.md ("## 0.1.0, <date>")
+# before tagging: it becomes the release's notes.
+
+on:
+  push:
+    tags: ['cub-argo-v*', 'cub-flux-v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: an existing tag to (re)publish, such as cub-argo-v0.1.0
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  which:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.p.outputs.tag }}
+      plugin: ${{ steps.p.outputs.plugin }}
+      version: ${{ steps.p.outputs.version }}
+    steps:
+      - id: p
+        run: |
+          tag="${{ github.event.inputs.tag || github.ref_name }}"
+          case "$tag" in
+            cub-argo-v*) plugin=cub-argo ;;
+            cub-flux-v*) plugin=cub-flux ;;
+            *) echo "tag $tag names no plugin"; exit 1 ;;
+          esac
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "plugin=$plugin" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#"$plugin"-v}" >> "$GITHUB_OUTPUT"
+
+  test:
+    needs: which
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ needs.which.outputs.plugin }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.which.outputs.tag }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: ${{ needs.which.outputs.plugin }}/go.mod
+          cache-dependency-path: ${{ needs.which.outputs.plugin }}/go.sum
+      - run: go vet ./...
+      - run: go test ./...
+
+  build:
+    needs: [which, test]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+    defaults:
+      run:
+        working-directory: ${{ needs.which.outputs.plugin }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.which.outputs.tag }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: ${{ needs.which.outputs.plugin }}/go.mod
+          cache-dependency-path: ${{ needs.which.outputs.plugin }}/go.sum
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: '0'
+        run: |
+          plugin="${{ needs.which.outputs.plugin }}"
+          pkg="github.com/confighub/examples/${plugin}/cmd"
+          ldflags="-s -w \
+            -X ${pkg}.version=${{ needs.which.outputs.version }} \
+            -X ${pkg}.commit=${GITHUB_SHA} \
+            -X ${pkg}.date=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          out="${plugin}-${GOOS}-${GOARCH}"
+          go build -trimpath -ldflags "$ldflags" -o "$out" .
+          shasum -a 256 "$out" > "$out.sha256"
+          echo "ASSET=$out" >> "$GITHUB_ENV"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ASSET }}
+          path: |
+            ${{ needs.which.outputs.plugin }}/${{ env.ASSET }}
+            ${{ needs.which.outputs.plugin }}/${{ env.ASSET }}.sha256
+
+  release:
+    needs: [which, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.which.outputs.tag }}
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Notes
+        run: |
+          plugin="${{ needs.which.outputs.plugin }}"
+          version="${{ needs.which.outputs.version }}"
+          notes="$plugin/docs/whats-new.md"
+          {
+            if [ -f "$notes" ]; then
+              awk -v v="## $version," 'index($0, v) == 1 {on=1; next} /^## / && on {exit} on' "$notes"
+            fi
+            echo
+            echo "Install:"
+            echo
+            echo '```bash'
+            echo "cub plugin install confighub/examples@${{ needs.which.outputs.tag }} --name ${plugin#cub-}"
+            echo '```'
+          } > notes.md
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          plugin="${{ needs.which.outputs.plugin }}"
+          gh release create "${{ needs.which.outputs.tag }}" dist/* \
+            --title "cub ${plugin#cub-} ${{ needs.which.outputs.version }}" \
+            --notes-file notes.md --latest=false

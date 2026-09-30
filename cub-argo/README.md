@@ -97,16 +97,23 @@ generators; templates that use Sprig functions; multi-source Applications'
 paths. It does not render Kustomize or Helm; for that, use the
 [ConfigHub Workshop](https://confighub.github.io/helm-expt/) or `cub gen`.
 
-## Use it as a cub plugin
+## Install
 
-The plugin is built from this directory, since it does not live in a
-repository of its own. It needs Go.
+```bash
+cub plugin install confighub/examples@cub-argo-v0.1.0 --name argo
+cub plugin list       # argo should be listed, status ok
+cub argo plan ../gitops/argo/expert-app-of-apps --stage-label rollout-phase --stages canary,secondary,primary
+```
+
+Releases are tagged `cub-argo-v<version>` in this repository; upgrade by
+naming one: `cub plugin upgrade argo@cub-argo-v<version>`. What each release
+changed is in [docs/whats-new.md](docs/whats-new.md).
+
+To build from source instead (needs Go):
 
 ```bash
 go build -o bin/cub-argo . && cub plugin install ./bin/cub-argo
-cub plugin list       # argo should be listed, status ok
 # after a git pull: go build -o bin/cub-argo . && cub plugin upgrade argo
-cub argo plan ../gitops/argo/expert-app-of-apps --stage-label rollout-phase --stages canary,secondary,primary
 ```
 
 ## Develop
@@ -116,6 +123,5 @@ make test      # unit tests, the golden plan, and two break-it cases
 make golden    # rewrite the golden plan after an intended change
 ```
 
-Where it goes next: rehearse `handover.sh` on kind and publish the
-measurement, the way `cub sveltos` did, and move the planning core it shares
-with `cub sveltos` into one library.
+Where it goes next: move the planning core it shares with `cub sveltos` into
+one library.
