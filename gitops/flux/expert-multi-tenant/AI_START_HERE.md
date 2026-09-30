@@ -44,8 +44,10 @@ reconciles anything, and never touches a cluster.
 - Three teams: `team-storefront` (Deployment + Service), `team-payments`
   (Deployment + Service), `team-loyalty` (Deployment only).
 - The platform bootstrap Kustomization (`clusters/shared/tenants.yaml`) sets
-  no `serviceAccountName`. That is deliberate: it is the one layer allowed
-  to create RBAC and namespaces for every team.
+  `serviceAccountName: kustomize-controller`, Flux's own cluster-admin
+  account in `flux-system`. That is deliberate: it is the one layer allowed
+  to create RBAC and namespaces for every team, and naming the account keeps
+  it working when the controller runs with `--default-service-account`.
 - Each team's own Kustomization (in `sync.yaml`) sets `serviceAccountName`
   to its own ServiceAccount and `targetNamespace` to its own namespace.
   Those two values must agree with the team's own RoleBinding, or a real

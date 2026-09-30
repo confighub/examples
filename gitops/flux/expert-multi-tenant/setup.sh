@@ -68,7 +68,7 @@ Nothing will be mutated.
 
 Conceptual model (one cluster, one platform layer, three tenants):
 
-  clusters/shared/tenants.yaml   -> tenants/base   (platform bootstrap, no serviceAccountName)
+  clusters/shared/tenants.yaml   -> tenants/base   (platform bootstrap, as kustomize-controller)
     tenants/base/team-storefront/
       rbac.yaml, guardrails.yaml   -> Namespace, ServiceAccount, Role, RoleBinding, ResourceQuota, NetworkPolicy
       sync.yaml                    -> the tenant's own GitRepository + Kustomization,

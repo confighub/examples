@@ -44,13 +44,23 @@ patches:
     target:
       kind: Deployment
       name: "(kustomize-controller|helm-controller)"
+  # The root Kustomization bootstrap generates names no account either, so
+  # with the flag above it would run as flux-system/default, with no rights,
+  # and never reach tenants.yaml. It runs as kustomize-controller instead.
+  - patch: |
+      - op: add
+        path: /spec/serviceAccountName
+        value: kustomize-controller
+    target:
+      kind: Kustomization
+      name: flux-system
 ```
 
 `default` is the ServiceAccount named `default` in the namespace of each
 Kustomization or HelmRelease. Nothing here grants it any rights, so a
 Kustomization with no `serviceAccountName` is refused instead of running as
-the controller. The platform's `tenants` Kustomization names
-`kustomize-controller`, Flux's own cluster-admin account in `flux-system`,
-so it is not affected. The patch is not in a real `kustomization.yaml` in this repo,
+the controller. The root `flux-system` Kustomization (by the second patch) and the
+platform's `tenants` Kustomization both name `kustomize-controller`, Flux's
+own cluster-admin account in `flux-system`, so neither is affected. The patch is not in a real `kustomization.yaml` in this repo,
 because that file only exists after bootstrap, so `./verify.sh` neither
 applies nor checks it.

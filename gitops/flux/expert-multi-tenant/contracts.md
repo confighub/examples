@@ -115,7 +115,7 @@ without running anything against a cluster:
     same Space)
   - `kustomize build` succeeds for the cluster layer and every team's
     bootstrap and workloads
-  - the platform bootstrap Kustomization sets no `serviceAccountName`
+  - the platform bootstrap Kustomization runs as `kustomize-controller`
   - the platform bootstrap Kustomization reads the `flux-system` source
   - every team has its own `Namespace`, `ServiceAccount`, `Role` and
     `RoleBinding`, and the RoleBinding points at that team's own Role
@@ -147,8 +147,8 @@ without running anything against a cluster:
 
 - mutates: no
 - output shape: Kubernetes YAML stream
-- proves: one Flux Kustomization, `tenants`, with no impersonation, pointed
-  at `tenants/base`
+- proves: one Flux Kustomization, `tenants`, running as
+  `kustomize-controller` and no team, pointed at `tenants/base`
 
 ### `kustomize build tenants/base/team-payments`
 

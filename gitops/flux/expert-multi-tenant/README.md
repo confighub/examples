@@ -27,8 +27,8 @@ happens?"
 ## What this example shows
 
 - **A platform-owned bootstrap layer**: `clusters/shared/tenants.yaml` sets
-  no `serviceAccountName`, so it reconciles with the cluster's own trusted
-  identity. This is the only object in this example allowed to create
+  `serviceAccountName: kustomize-controller`, so it reconciles as Flux's own
+  cluster-admin account in `flux-system`. This is the only object in this example allowed to create
   namespaces, RoleBindings, quotas and network policies across more than
   one team.
 - **Three teams, the same shape three times**: `team-storefront`,
@@ -61,7 +61,7 @@ happens?"
 gitops/flux/expert-multi-tenant/
   clusters/shared/
     flux-system/README.md        # what flux bootstrap writes, and why it is not here
-    tenants.yaml                 # the one layer: platform bootstrap, no serviceAccountName
+    tenants.yaml                 # the one layer: platform bootstrap, as kustomize-controller
   tenants/base/
     team-storefront/
       rbac.yaml                  # Namespace, ServiceAccount, Role, RoleBinding (platform-owned)
@@ -130,9 +130,9 @@ lockdown flags:
 The platform's `tenants` Kustomization names `serviceAccountName:
 kustomize-controller`, the account Flux installs in `flux-system` and binds
 to cluster-admin, so it keeps working with `--default-service-account` on.
-Any other cluster-level Kustomization you add needs the same. Check how your
-Flux version treats the `flux-system` Kustomization that bootstrap
-generates.
+The root `flux-system` Kustomization that bootstrap generates needs the same,
+and the documented patch sets it. Any other cluster-level Kustomization you
+add does too.
 
 `./verify.sh` is the offline stand-in. It checks the manifests in this repo.
 It does not read controller flags and cannot tell you whether a cluster runs
