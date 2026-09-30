@@ -101,8 +101,9 @@ The plugin is built from this directory, since it does not live in a
 repository of its own. It needs Go.
 
 ```bash
-make install-plugin   # builds into $CUB_CONFIG/plugins/cub-argo
-cub plugin list       # cub-argo should be listed, status ok
+go build -o bin/cub-argo . && cub plugin install ./bin/cub-argo
+cub plugin list       # argo should be listed, status ok
+# after a git pull: go build -o bin/cub-argo . && cub plugin upgrade argo
 cub argo plan ../gitops/argo/expert-app-of-apps --stage-label rollout-phase --stages canary,secondary,primary
 ```
 

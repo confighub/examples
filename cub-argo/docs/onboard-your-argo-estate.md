@@ -34,8 +34,8 @@ so build it from a checkout (it needs Go):
 ```bash
 git clone https://github.com/confighub/examples
 cd examples/cub-argo
-make install-plugin
-cub plugin list   # cub-argo should be listed, status ok
+go build -o bin/cub-argo . && cub plugin install ./bin/cub-argo
+cub plugin list   # argo should be listed, status ok
 ```
 
 ## The words you will meet

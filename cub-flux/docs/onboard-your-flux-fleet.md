@@ -43,8 +43,8 @@ so build it from a checkout (it needs Go):
 ```bash
 git clone https://github.com/confighub/examples
 cd examples/cub-flux
-make install-plugin
-cub plugin list   # cub-flux should be listed, status ok
+go build -o bin/cub-flux . && cub plugin install ./bin/cub-flux
+cub plugin list   # flux should be listed, status ok
 ```
 
 ## What the plugin sees in your repository

@@ -29,16 +29,15 @@ example: build
 
 # Install as a local cub plugin, so `cub flux` works. A plugin is a directory
 # named for the repository, holding the binary and the manifest that names it.
-PLUGIN_DIR ?= $(or $(CUB_CONFIG),$(HOME)/.confighub)/plugins/cub-flux
-
-install-plugin:
-	mkdir -p "$(PLUGIN_DIR)"
-	$(GO) build -o "$(PLUGIN_DIR)/cub-flux" .
-	printf 'name: flux\nversion: 0.1.0\ncommands:\n    - name: flux\n      summary: Read a Flux fleet repository and plan it into ConfigHub, one variant per cluster\n      entrypoint: cub-flux\n' > "$(PLUGIN_DIR)/cub-plugin.yaml"
+# Install as a cub plugin through cub's own route: the binary's install hook
+# writes cub-plugin.yaml, so the manifest cannot drift from the commands it
+# implements, and a rebuild is picked up with `cub plugin upgrade flux`.
+install-plugin: build
+	cub plugin upgrade flux >/dev/null 2>&1 || cub plugin install ./$(BIN)
 	@echo "Installed. Check it with: cub plugin list"
 
 uninstall-plugin:
-	rm -rf "$(PLUGIN_DIR)"
+	cub plugin uninstall flux
 
 clean:
 	rm -rf bin

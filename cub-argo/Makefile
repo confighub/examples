@@ -29,16 +29,15 @@ example: build
 
 # Install as a local cub plugin, so `cub argo` works. A plugin is a directory
 # named for the repository, holding the binary and the manifest that names it.
-PLUGIN_DIR ?= $(or $(CUB_CONFIG),$(HOME)/.confighub)/plugins/cub-argo
-
-install-plugin:
-	mkdir -p "$(PLUGIN_DIR)"
-	$(GO) build -o "$(PLUGIN_DIR)/cub-argo" .
-	printf 'name: argo\nversion: 0.1.0\ncommands:\n    - name: argo\n      summary: Read an Argo CD estate and plan it into ConfigHub, one variant per cluster\n      entrypoint: cub-argo\n' > "$(PLUGIN_DIR)/cub-plugin.yaml"
+# Install as a cub plugin through cub's own route: the binary's install hook
+# writes cub-plugin.yaml, so the manifest cannot drift from the commands it
+# implements, and a rebuild is picked up with `cub plugin upgrade argo`.
+install-plugin: build
+	cub plugin upgrade argo >/dev/null 2>&1 || cub plugin install ./$(BIN)
 	@echo "Installed. Check it with: cub plugin list"
 
 uninstall-plugin:
-	rm -rf "$(PLUGIN_DIR)"
+	cub plugin uninstall argo
 
 clean:
 	rm -rf bin

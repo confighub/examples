@@ -77,8 +77,9 @@ The plugin is built from this directory, since it does not live in a
 repository of its own. It needs Go.
 
 ```bash
-make install-plugin   # builds into $CUB_CONFIG/plugins/cub-flux
-cub plugin list       # cub-flux should be listed, status ok
+go build -o bin/cub-flux . && cub plugin install ./bin/cub-flux
+cub plugin list       # flux should be listed, status ok
+# after a git pull: go build -o bin/cub-flux . && cub plugin upgrade flux
 cub flux plan ../gitops/flux/expert-fleet
 ```
 
