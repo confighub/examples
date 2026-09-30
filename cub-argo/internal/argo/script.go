@@ -285,11 +285,17 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 		// deploys to the cluster Argo CD runs on, so only that cluster's
 		// Target is marked; a variant for another cluster gets its Application
 		// from move-applications.sh, which keeps its destination.
+		// Every Target the plan makes, so Argo CD's own cluster is marked
+		// whether it has a cluster Secret or, as usual, none.
+		server := map[string]string{}
 		for _, c := range p.Clusters {
-			if c.Name == "in-cluster" || c.Server == "https://kubernetes.default.svc" {
-				add("# A variant made later for %s, Argo CD's own cluster, gets its Application", c.Name)
+			server[c.Name] = c.Server
+		}
+		for _, name := range p.targetClusters() {
+			if name == "in-cluster" || server[name] == localServer {
+				add("# A variant made later for %s, Argo CD's own cluster, gets its Application", name)
 				add("# in %s, which %s reads, from cub variant create itself.", cs[0].Space, cs[0].Parent)
-				add(`echo '{"Annotations":{"confighub.com/argo-apps-space":"%s"}}' | cub target update --patch --space %s %s --from-stdin --quiet`, cs[0].Space, targets, c.Name)
+				add(`echo '{"Annotations":{"confighub.com/argo-apps-space":"%s"}}' | cub target update --patch --space %s %s --from-stdin --quiet`, cs[0].Space, targets, name)
 			}
 		}
 		add("")

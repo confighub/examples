@@ -965,3 +965,18 @@ spec:
 		t.Errorf("a Secret for Argo CD's own cluster stands in for it: got %s", got)
 	}
 }
+
+// Argo CD's own cluster needs no Secret, and its Target is still the one core
+// cub variant create adds an Application for, in the root's control Space.
+func TestInClusterTargetIsMarkedForTheAppsSpace(t *testing.T) {
+	const dir = "../../../gitops/argo/beginner-app-of-apps"
+	if _, err := os.Stat(dir); err != nil {
+		t.Skip("example not present")
+	}
+	p := planOf(t, dir, Options{RepoRoot: repoRoot(t)})
+	s := ApplyScript(p, "argo", ".")
+	want := `echo '{"Annotations":{"confighub.com/argo-apps-space":"argo-apptique-apps-children"}}' | cub target update --patch --space argo-targets in-cluster`
+	if !strings.Contains(s, want) {
+		t.Errorf("want the in-cluster Target marked:\n%s", want)
+	}
+}
