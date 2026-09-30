@@ -85,7 +85,7 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("# refused until it moves too. Undoing from the bottom avoids that.")
 	add(`way_back() {`)
 	add(`  local name url path rev`)
-	add(`  echo "  1. Any ApplicationSet you retired in step 5: restore its Unit to the revision before create-only, and publish its Space; the controller then puts its Applications back on the template's Git source."`)
+	add(`  echo "  1. Any ApplicationSet you retired (the 'Retire each ApplicationSet' step): if it is a Unit, restore that Unit to the revision before create-only and publish its Space; if it was applied by hand, set its spec.syncPolicy.applicationsSync back to what it was on the cluster. Either way the controller then puts its Applications back on the template's Git source."`)
 	add(`  echo "  2. Any app of apps repointed through its Unit: restore that Unit to the revision before the repoint, and publish its Space."`)
 	add(`  echo "  3. Then each parent patched here:"`)
 	add(`  while IFS='|' read -r name url path rev; do`)
@@ -404,7 +404,9 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 					continue
 				}
 				seen[v.Namespace] = true
-				add(`  cub scout map list -q %s || true`, q("owner=Native AND namespace="+v.Namespace))
+				// Kubernetes puts kube-root-ca.crt in every namespace, so it is
+				// never something a handover leaves behind.
+				add(`  cub scout map list -q %s || true`, q("owner=Native AND namespace="+v.Namespace+" AND name!=kube-root-ca.crt"))
 			}
 		}
 	}
@@ -488,7 +490,10 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("echo %s", q("the tag to a digest and the release lands:"))
 	show("annotate application <name> argocd.argoproj.io/refresh=hard --overwrite")
 	add("echo %s", q("argobot does this for you, reacting to ConfigHub's release.published event. Without"))
-	add("echo %s", q("it, or without that annotation, an approved release sits unread on the gateway."))
+	add("echo %s", q("argobot, keep this running beside the cluster: it asks for that refresh once per"))
+	add("echo %s", q("release, and writes what Argo synced into each Space as ConfigHub live status, which"))
+	add("echo %s", q("is what the Healthy gate and change orders read:"))
+	add(`echo "  cub argo status <what you planned, with the same flags> --prefix %s --kube-context $ctx --watch --hard-refresh"`, prefix)
 	return strings.Join(L, "\n") + "\n"
 }
 

@@ -7,14 +7,18 @@ ApplicationSet, one variant per Application it generates, each addressed to
 one cluster, and a Target per cluster. The root Application, its app of apps
 and the AppProjects stay as they are, as the management record.
 
-Three commands, and the first two change nothing:
+`plan` and `apply` change nothing; the scripts `apply` writes are what move
+the estate, and nothing runs until you run them:
 
 | Command | What it does | Touches a cluster? |
 |---|---|---|
 | `plan` | shows the estate ConfigHub would govern | no, and no account either |
-| `apply --out` | writes the files, `apply.sh` and `handover.sh` | no, it runs nothing |
+| `apply --out` | writes the files, `apply.sh`, `handover.sh` and `cleanup.sh` | no, it runs nothing |
 | `apply.sh` | fills ConfigHub with a parallel copy nothing reads | no |
-| `handover.sh` | repoints each layer's source at ConfigHub, top down | yes, this is the step that moves it |
+| `check` | compares what Argo owns on the cluster with what ConfigHub holds; `handover.sh` runs it before it moves anything | no (`--record` writes a LiveCheck to ConfigHub) |
+| `handover.sh` | repoints each Application's source at ConfigHub, top down | yes, this is the step that moves it |
+| `status` | writes what each handed-over Application synced into its Space as ConfigHub live status, once or with `--watch` | only with `--hard-refresh`, which asks Argo to read a new release |
+| `cleanup.sh` | the way back out of ConfigHub, once each source is back on Git | no |
 
 **Start with the guide: [Onboard your Argo CD estate](docs/onboard-your-argo-estate.md).**
 
@@ -95,6 +99,23 @@ generators; templates that use Sprig functions; multi-source Applications'
 paths. It does not render Kustomize or Helm; for that, use the
 [ConfigHub Workshop](https://confighub.github.io/helm-expt/) or `cub gen`.
 
+## After the handover: live status
+
+An estate onboarded here has no argobot, so nothing else tells ConfigHub what
+Argo CD synced. Keep this running beside the cluster:
+
+```bash
+cub argo status ../gitops/argo/expert-app-of-apps --stage-label rollout-phase \
+  --stages canary,secondary,primary --kube-context <argo cluster> --watch --hard-refresh
+```
+
+It writes each Space's `confighub.com/live-status`, which ConfigHub's Healthy
+gate, its change orders and its UI read. A reading says `Synced` only when Argo
+synced the newest published release of that Space, at that release's digest.
+`--hard-refresh` asks Argo, once per release, to read a release it has cached
+past; without it, a newly approved release sits unread on the gateway.
+`--dry-run` shows what would be written; `--json` prints it for scripts.
+
 ## Use it as a cub plugin
 
 The plugin is built from this directory, since it does not live in a
@@ -114,6 +135,5 @@ make test      # unit tests, the golden plan, and two break-it cases
 make golden    # rewrite the golden plan after an intended change
 ```
 
-Where it goes next: rehearse `handover.sh` on kind and publish the
-measurement, the way `cub sveltos` did, and move the planning core it shares
-with `cub sveltos` into one library.
+What has been run live, and what it found, is in the guide's "What the Argo
+handover has been through" and in [docs/runs](docs/runs).

@@ -154,6 +154,9 @@ type builder struct {
 	plan     *Plan
 	clusters []Cluster
 	stageOf  map[string]string
+	// missedCluster is set when a generator selected no cluster or an
+	// Application named a destination no cluster Secret matches.
+	missedCluster bool
 }
 
 // Build plans an Argo CD estate. It reads nothing but the input and, when a
@@ -206,11 +209,6 @@ func Build(in *Input, opts Options) (*Plan, error) {
 			"Pass --repo-root <checkout> to check them")
 	}
 
-	if len(b.clusters) == 0 {
-		p.Problems = append(p.Problems, "no Argo CD cluster Secrets in the input: add them with "+
-			"'kubectl get secrets -n argocd -l argocd.argoproj.io/secret-type=cluster -o yaml' "+
-			"(the plan reads names, servers and labels, never credentials)")
-	}
 	b.stages()
 
 	for _, o := range appsets {
@@ -262,6 +260,15 @@ func Build(in *Input, opts Options) (*Plan, error) {
 						"move it out of the directory the parent syncs.", sk))
 			}
 		}
+	}
+
+	// Argo CD's own cluster needs no Secret, so an estate deploying only
+	// there plans without any. Only when something looked for a cluster and
+	// found none is the missing export the likely reason.
+	if len(b.clusters) == 0 && b.missedCluster {
+		p.Problems = append(p.Problems, "no Argo CD cluster Secrets in the input: add them with "+
+			"'kubectl get secrets -n argocd -l argocd.argoproj.io/secret-type=cluster -o yaml' "+
+			"(the plan reads names, servers and labels, never credentials)")
 	}
 
 	b.windows(projects)
@@ -348,6 +355,7 @@ func (b *builder) appset(o object) {
 	}
 
 	if len(sets) == 0 {
+		b.missedCluster = true
 		p.Problems = append(p.Problems, fmt.Sprintf(
 			"ApplicationSet %s selects nothing here, so it would govern no cluster. Its generator (%s) matched none of the %d clusters in the input; export the cluster Secrets it selects on, or say why it is empty",
 			o.name, strings.Join(descs, "; "), len(b.clusters)))
@@ -464,8 +472,9 @@ func (b *builder) clusterFor(app map[string]any) *Cluster {
 			return &c
 		}
 	}
-	if server == "https://kubernetes.default.svc" || name == "in-cluster" {
-		return &Cluster{Name: "in-cluster", Server: "https://kubernetes.default.svc"}
+	if server == localServer || name == "in-cluster" {
+		c := localCluster()
+		return &c
 	}
 	return nil
 }
@@ -485,6 +494,7 @@ func (b *builder) variant(c *Component, app map[string]any, cl *Cluster, fields 
 		Path:        str(get(app, "spec", "source", "path")),
 	}
 	if cl == nil {
+		b.missedCluster = true
 		p.Problems = append(p.Problems, fmt.Sprintf("%s: Application %s names a destination no cluster Secret in the input matches", c.Name, v.Application))
 	} else if cl.Name == "in-cluster" && len(p.Stages) > 0 {
 		v.stage = p.Stages[0]

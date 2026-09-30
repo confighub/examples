@@ -799,3 +799,89 @@ func TestLiveExportFindsTheControlTree(t *testing.T) {
 		t.Errorf("the control Spaces should hold the files the parents sync: %+v", cs)
 	}
 }
+
+// Argo CD's own cluster has no Secret. An estate that deploys only there plans
+// without any, and apply.sh makes it a Target like any other cluster.
+func TestInClusterEstateNeedsNoClusterSecret(t *testing.T) {
+	const dir = "../../../gitops/argo/beginner-applicationset"
+	if _, err := os.Stat(dir); err != nil {
+		t.Skip("example not present")
+	}
+	p := planOf(t, dir, Options{RepoRoot: repoRoot(t)})
+	if len(p.Problems) > 0 {
+		t.Fatalf("an in-cluster estate should plan cleanly: %v", p.Problems)
+	}
+	if got := p.targetClusters(); len(got) != 1 || got[0] != "in-cluster" {
+		t.Errorf("want one Target, in-cluster; got %v", got)
+	}
+	if s := ApplyScript(p, "argo", "."); !strings.Contains(s, "cub target create in-cluster '{}' server-worker --space argo-targets") {
+		t.Error("apply.sh must create the in-cluster Target its variants are addressed to")
+	}
+	if head := strings.SplitN(Render(p), "\n", 2)[0]; !strings.Contains(head, "1 cluster, Argo CD's own (in-cluster)") {
+		t.Errorf("the header should count Argo CD's own cluster: %s", head)
+	}
+}
+
+// A cluster generator with an empty selector includes Argo CD's own cluster,
+// as the ApplicationSet controller does; a selector excludes it, since it has
+// no labels; and a Secret for it is not counted twice.
+func TestClusterGeneratorAndTheLocalCluster(t *testing.T) {
+	const remote = `
+apiVersion: v1
+kind: Secret
+metadata: {name: c1, namespace: argocd, labels: {argocd.argoproj.io/secret-type: cluster, env: prod}}
+stringData: {name: c1, server: https://c1}
+`
+	const local = `
+---
+apiVersion: v1
+kind: Secret
+metadata: {name: local, namespace: argocd, labels: {argocd.argoproj.io/secret-type: cluster, env: prod}}
+stringData: {name: local, server: https://kubernetes.default.svc}
+`
+	appset := func(selector string) string {
+		return `
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata: {name: mon, namespace: argocd}
+spec:
+  generators: [{clusters: {` + selector + `}}]
+  template:
+    metadata: {name: '{{name}}-mon'}
+    spec:
+      project: default
+      source: {repoURL: https://git.example/fleet.git, path: mon, targetRevision: main}
+      destination: {server: '{{server}}', namespace: mon}
+`
+	}
+	clustersOf := func(doc string) []string {
+		t.Helper()
+		in, err := Load(strings.NewReader(doc), []string{"-"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		p, err := Build(in, Options{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out []string
+		for _, c := range p.Components {
+			for _, st := range c.Stages {
+				for _, v := range st.Variants {
+					out = append(out, v.Cluster)
+				}
+			}
+		}
+		return out
+	}
+	if got := strings.Join(clustersOf(remote+appset("")), ","); got != "c1,in-cluster" {
+		t.Errorf("an empty selector includes Argo CD's own cluster: got %s", got)
+	}
+	if got := strings.Join(clustersOf(remote+appset("selector: {matchLabels: {env: prod}}")), ","); got != "c1" {
+		t.Errorf("a selector cannot match Argo CD's own cluster, which has no labels: got %s", got)
+	}
+	if got := strings.Join(clustersOf(remote+local+appset("")), ","); got != "c1,local" {
+		t.Errorf("a Secret for Argo CD's own cluster stands in for it: got %s", got)
+	}
+}
