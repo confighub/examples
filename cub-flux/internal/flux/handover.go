@@ -68,6 +68,11 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("REPO_ROOT=${REPO_ROOT:-%s}", q(repoRelOr(repoRel)))
 	add(`case "$cluster" in %s) ;; *) echo "set CLUSTER=<one of: %s> so the right Target is used"; exit 1 ;; esac`,
 		strings.ReplaceAll(clusterNames(p), ", ", "|"), clusterNames(p))
+	for _, c := range p.Clusters {
+		if c.LayersSpace != "" {
+			add(`[ "$cluster" != %s ] || { echo "%s is handed over already: its layers are Units in %s, read by its ConfigHub root."; exit 0; }`, q(c.Name), c.Name, c.LayersSpace)
+		}
+	}
 	add("")
 
 	add(`step "0/4 Check before changing anything"`)

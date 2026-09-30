@@ -380,6 +380,18 @@ func layersFor(c *cobra.Command, args []string, name, space, unit, target, clust
 		return nil, fmt.Errorf("this fleet has %d clusters and a run reads one: pass --cluster, one of %s, with --kube-context for it", len(p.Clusters), strings.Join(names, ", "))
 	}
 	checks := flux.ChecksFor(p)
+	// A handed-over cluster's layers are Units in its layers Space, not files
+	// in this repository.
+	for _, cl := range p.Clusters {
+		if cl.LayersSpace == "" || (cluster != "" && cl.Name != cluster) {
+			continue
+		}
+		more, err := flux.ChecksFromLayersSpace(flux.Run, cl.Name, cl.LayersSpace)
+		if err != nil {
+			return nil, err
+		}
+		checks = append(checks, more...)
+	}
 	if cluster != "" {
 		var keep []flux.Check
 		for _, x := range checks {

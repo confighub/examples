@@ -190,8 +190,16 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 			file, oc = onboardingWorkflow, c.onboarding()
 		}
 		add("cub changeworkflow create --space %s rollout --filename %s/%s --allow-exists --quiet", c.Base, c.Name, file)
-		add("stages_are %s rollout %s || echo %s | cub changeworkflow update --patch --space %s rollout --from-stdin --quiet",
-			c.Base, q(stageNames(c)), q(stagesJSON(oc)), c.Base)
+		if p.handedOver() {
+			// A handed-over cluster's stage is in the live workflow but not in
+			// this repository's view of it, so rewriting the stages from here
+			// would drop it and let a change skip that cluster.
+			add("# Some clusters are handed over, so their stages are not in this view:")
+			add("# the rollout workflow is left as ConfigHub holds it.")
+		} else {
+			add("stages_are %s rollout %s || echo %s | cub changeworkflow update --patch --space %s rollout --from-stdin --quiet",
+				c.Base, q(stageNames(c)), q(stagesJSON(oc)), c.Base)
+		}
 	}
 	add("")
 
@@ -279,7 +287,7 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 			requiring = append(requiring, c)
 		}
 	}
-	if len(requiring) > 0 {
+	if len(requiring) > 0 && !p.handedOver() {
 		add("")
 		add(`step "Every change from now on also waits for %s in the stage before"`, strings.Join(requiring[0].Require, ", "))
 		add("# Change orders created from here on use this workflow; the onboarding")
@@ -310,4 +318,15 @@ func (c *Component) onboarding() *Component {
 // layerFile is where apply writes one layer's delivery Unit for one cluster.
 func layerFile(cluster, layer string) string {
 	return "layers/" + cluster + "/" + layer + ".yaml"
+}
+
+// handedOver reports whether any cluster's layers now come from ConfigHub, so
+// this repository no longer shows every stage of a shared workflow.
+func (p *Plan) handedOver() bool {
+	for _, c := range p.Clusters {
+		if c.LayersSpace != "" {
+			return true
+		}
+	}
+	return false
 }

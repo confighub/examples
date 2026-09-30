@@ -34,6 +34,11 @@ func JoinScript(p *Plan, prefix string) string {
 	add(`cluster=${CLUSTER:-}`)
 	add(`case "$cluster" in %s) ;; *) echo "set CLUSTER=<one of: %s>"; exit 1 ;; esac`,
 		strings.ReplaceAll(clusterNames(p), ", ", "|"), clusterNames(p))
+	for _, c := range p.Clusters {
+		if c.LayersSpace != "" {
+			add(`[ "$cluster" != %s ] || { echo "%s is handed over already: its root reads %s, so there is nothing to join."; exit 1; }`, q(c.Name), c.Name, c.LayersSpace)
+		}
+	}
 	add(`addr=${CONFIGHUB_OCI:-}`)
 	add(`[ -n "$addr" ] || { echo "set CONFIGHUB_OCI to the gateway host this cluster reaches (CONFIGHUB_OCI_PLAIN_HTTP=1 if it serves plain HTTP)"; exit 1; }`)
 	add(`step() { printf '\n== %%s\n' "$*"; }`)
