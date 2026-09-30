@@ -157,7 +157,8 @@ if [ -z "$addr" ]; then
   echo "Set CONFIGHUB_OCI to the gateway host this cluster reaches, without a scheme."
   echo "  ConfigHub cloud:  oci.hub.confighub.com"
   echo "  self-hosted:      the host and port of the confighub-oci-server service,"
-  echo "                    as reachable FROM this cluster, not from your laptop."
+  echo "                    as reachable FROM this cluster, not from your laptop;"
+  echo "                    set CONFIGHUB_OCI_PLAIN_HTTP=1 if it serves plain HTTP."
   echo "Then: CONFIGHUB_OCI=<host> CLUSTER=$cluster bash handover.sh"; exit 1
 fi
 # The ID and secret go from cub into the Secret through command substitution
@@ -171,6 +172,8 @@ k create secret docker-registry confighub-flux-targets --namespace "$ns" \
 # One OCIRepository per layer, each reading that layer's release for this
 # cluster. Commit these to the bootstrap directory so flux-system keeps them.
 mkdir -p "bootstrap/$cluster"
+insecure=""
+[ -z "${CONFIGHUB_OCI_PLAIN_HTTP:-}" ] || insecure='  insecure: true'
 case "$cluster" in
   dev-1) space_infrastructure='flux-infrastructure-dev-1' ;;
   staging-1) space_infrastructure='flux-infrastructure-staging-1' ;;
@@ -190,6 +193,7 @@ spec:
     tag: latest
   secretRef:
     name: confighub-flux-targets
+${insecure}
 YAML
 case "$cluster" in
   dev-1) space_apps='flux-apps-dev-1' ;;
@@ -210,6 +214,7 @@ spec:
     tag: latest
   secretRef:
     name: confighub-flux-targets
+${insecure}
 YAML
 case "$cluster" in
   dev-1) space_tenants='flux-tenants-dev-1' ;;
@@ -230,6 +235,7 @@ spec:
     tag: latest
   secretRef:
     name: confighub-flux-targets
+${insecure}
 YAML
 case "$cluster" in
   dev-1) space_image_automation='flux-image-automation-dev-1' ;;
@@ -248,6 +254,7 @@ spec:
     tag: latest
   secretRef:
     name: confighub-flux-targets
+${insecure}
 YAML
 k apply -f "bootstrap/$cluster/"
 echo "Commit bootstrap/$cluster/ into this cluster's flux-system path so these survive a reconcile."
@@ -313,9 +320,15 @@ swap() {
   k -n "$ns" wait --for=condition=Ready "ocirepository/$1" --timeout=2m
   fetched=$(k -n "$ns" get ocirepository "$1" -o jsonpath='{.status.artifact.revision}')
   if [ "${fetched##*@}" != "$want" ]; then
-    log "NOT moved $1: checked $want, OCIRepository fetched $fetched"
-    echo "  $1: the release was checked at $want, but Flux fetched $fetched. A release was published since; re-run to check that one." >&2
-    return 1
+    k -n "$ns" annotate --overwrite "ocirepository/$1" "reconcile.fluxcd.io/requestedAt=$(date +%s)" >/dev/null
+    if k -n "$ns" wait --for=jsonpath='{.status.artifact.revision}'="${fetched%@*}@$want" "ocirepository/$1" --timeout=90s >/dev/null 2>&1; then
+      log "OCIRepository $1 fetched the checked $want after a refetch (it held $fetched)"
+    else
+      fetched=$(k -n "$ns" get ocirepository "$1" -o jsonpath='{.status.artifact.revision}')
+      log "NOT moved $1: checked $want, OCIRepository fetched $fetched"
+      echo "  $1: the release was checked at $want, but Flux fetched $fetched. Either a newer release was published after the check, or Flux could not fetch the checked one; re-run to check what is published now." >&2
+      return 1
+    fi
   fi
   k -n "$ns" patch kustomization "$1" --type merge -p "{\"spec\":{\"sourceRef\":{\"kind\":\"OCIRepository\",\"name\":\"$1\"},\"path\":\"./\"}}"
   moved="$moved $1"; log "patched $1"

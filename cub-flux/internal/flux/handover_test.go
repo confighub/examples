@@ -19,6 +19,7 @@ import (
 //	IUA_OWNER               the Kustomization label on it (default none)
 //	LAYER_OWNER             the Kustomization label on every layer (default none)
 //	FETCHED                 the digest the OCIRepository fetched (default the checked one)
+//	REFETCH_OK              a requested refetch reaches the checked digest
 const stubKubectl = `#!/usr/bin/env bash
 echo "$*" >> "$STUB_LOG"
 a=" $* "
@@ -34,6 +35,8 @@ case "$a" in
   *" get ocirepository "*) echo "latest@${FETCHED:-sha256:checked}" ;;
   *" patch kustomization "*)
     [ -n "${FAIL_PATCH:-}" ] && [[ "$a" == *" patch kustomization $FAIL_PATCH "* ]] && exit 1 ;;
+  *" wait --for=jsonpath"*) [ -n "${REFETCH_OK:-}" ] || exit 1 ;;
+  *" annotate "*) ;;
   *" wait "*)
     [ -n "${FAIL_WAIT:-}" ] && [[ "$a" == *"kustomization/$FAIL_WAIT "* ]] && exit 1 ;;
   *" get imageupdateautomation "*" -o name "*) echo "imageupdateautomation/x" ;;
@@ -240,7 +243,7 @@ func TestHandoverStopsWhenTheReleaseMovedAfterTheCheck(t *testing.T) {
 	if r.err == nil {
 		t.Fatalf("a release other than the checked one must stop the run:\n%s", r.out)
 	}
-	if !strings.Contains(r.out, "checked at sha256:checked, but Flux fetched latest@sha256:newer") {
+	if !strings.Contains(r.out, "checked at sha256:checked, but Flux fetched latest@sha256:newer") || !strings.Contains(r.log, "annotate --overwrite ocirepository/infrastructure") {
 		t.Errorf("should name both digests:\n%s", r.out)
 	}
 	if strings.Contains(r.log, "patch kustomization") {
@@ -256,5 +259,17 @@ func TestHandoverChecksTheRecordedRelease(t *testing.T) {
 	}
 	if !strings.Contains(r.state, "Ready apps at latest@sha256:checked") {
 		t.Errorf("the applied revision should be recorded:\n%s", r.state)
+	}
+}
+
+// Right after a publish, Flux usually still holds the release before. A
+// refetch that reaches the checked digest lets the layer move.
+func TestHandoverRefetchesAnOCIRepositoryThatIsBehind(t *testing.T) {
+	r := runHandover(t, "FLUX_CONTEXT=ctx-a", "FETCHED=sha256:older", "REFETCH_OK=1")
+	if r.err != nil {
+		t.Fatalf("a refetch that reaches the checked release should let the run finish: %v\n%s", r.err, r.out)
+	}
+	if !strings.Contains(r.state, "fetched the checked sha256:checked after a refetch") {
+		t.Errorf("the refetch should be recorded:\n%s", r.state)
 	}
 }

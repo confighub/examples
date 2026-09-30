@@ -199,7 +199,8 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add(`  echo "Set CONFIGHUB_OCI to the gateway host this cluster reaches, without a scheme."`)
 	add(`  echo "  ConfigHub cloud:  oci.hub.confighub.com"`)
 	add(`  echo "  self-hosted:      the host and port of the confighub-oci-server service,"`)
-	add(`  echo "                    as reachable FROM this cluster, not from your laptop."`)
+	add(`  echo "                    as reachable FROM this cluster, not from your laptop;"`)
+	add(`  echo "                    set CONFIGHUB_OCI_PLAIN_HTTP=1 if it serves plain HTTP."`)
 	add(`  echo "Then: CONFIGHUB_OCI=<host> CLUSTER=$cluster bash handover.sh"; exit 1`)
 	add("fi")
 	// A docker-registry Secret, not a generic one. Measured against Flux
@@ -221,6 +222,11 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("# One OCIRepository per layer, each reading that layer's release for this")
 	add("# cluster. Commit these to the bootstrap directory so flux-system keeps them.")
 	add(`mkdir -p "bootstrap/$cluster"`)
+	// spec.insecure is only for a gateway served over plain HTTP, such as a
+	// self-hosted one reached inside a lab. Without it Flux speaks HTTPS to an
+	// HTTP port and the source never becomes Ready.
+	add(`insecure=""`)
+	add(`[ -z "${CONFIGHUB_OCI_PLAIN_HTTP:-}" ] || insecure='  insecure: true'`)
 	// The gateway serves one repository per Space, at /space/<space>. A layer's
 	// Space differs per cluster, so each OCIRepository has to name the variant
 	// Space for the cluster this run is handing over -- an address without it
@@ -249,6 +255,7 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 		add("    tag: latest")
 		add("  secretRef:")
 		add("    name: confighub-%s", targets)
+		add("${insecure}")
 		add("YAML")
 	}
 	add(`k apply -f "bootstrap/$cluster/"`)
@@ -315,10 +322,20 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	raw(`  [ -n "$want" ] || { echo "  $1: no checked release digest was recorded for it" >&2; return 1; }`)
 	raw(`  k -n "$ns" wait --for=condition=Ready "ocirepository/$1" --timeout=2m`)
 	raw(`  fetched=$(k -n "$ns" get ocirepository "$1" -o jsonpath='{.status.artifact.revision}')`)
+	// Flux polls on its interval, so right after a publish it usually still
+	// holds the release before. Measured on Flux v2.8.6 against ConfigHub
+	// v0.6.8: the check read release 2 while the OCIRepository held release 1.
+	// So ask it to fetch now and give it a moment before calling it a mismatch.
 	raw(`  if [ "${fetched##*@}" != "$want" ]; then`)
-	raw(`    log "NOT moved $1: checked $want, OCIRepository fetched $fetched"`)
-	raw(`    echo "  $1: the release was checked at $want, but Flux fetched $fetched. A release was published since; re-run to check that one." >&2`)
-	raw(`    return 1`)
+	raw(`    k -n "$ns" annotate --overwrite "ocirepository/$1" "reconcile.fluxcd.io/requestedAt=$(date +%s)" >/dev/null`)
+	raw(`    if k -n "$ns" wait --for=jsonpath='{.status.artifact.revision}'="${fetched%@*}@$want" "ocirepository/$1" --timeout=90s >/dev/null 2>&1; then`)
+	raw(`      log "OCIRepository $1 fetched the checked $want after a refetch (it held $fetched)"`)
+	raw(`    else`)
+	raw(`      fetched=$(k -n "$ns" get ocirepository "$1" -o jsonpath='{.status.artifact.revision}')`)
+	raw(`      log "NOT moved $1: checked $want, OCIRepository fetched $fetched"`)
+	raw(`      echo "  $1: the release was checked at $want, but Flux fetched $fetched. Either a newer release was published after the check, or Flux could not fetch the checked one; re-run to check what is published now." >&2`)
+	raw(`      return 1`)
+	raw(`    fi`)
 	raw(`  fi`)
 	// spec.path moves with the source. It is a path inside the artifact, and a
 	// Git artifact is the repository tree while a ConfigHub artifact is the
