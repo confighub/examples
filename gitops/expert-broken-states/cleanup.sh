@@ -9,9 +9,9 @@ WORKLOAD_SPACE="${GITOPS_EXPERT_BROKEN_STATES_SPACE:-gitops-expert-broken-states
 
 echo "This removes local rendered output only. It does not delete anything in ConfigHub."
 echo "To remove the ConfigHub Spaces this example created, run:"
-echo "  cub space delete $ARGO_CONTROL_SPACE"
-echo "  cub space delete $FLUX_CONTROL_SPACE"
-echo "  cub space delete $WORKLOAD_SPACE"
+echo "  cub space delete --recursive --detach $ARGO_CONTROL_SPACE"
+echo "  cub space delete --recursive --detach $FLUX_CONTROL_SPACE"
+echo "  cub space delete --recursive --detach $WORKLOAD_SPACE"
 
 rm -rf "$VAR_DIR"
 
