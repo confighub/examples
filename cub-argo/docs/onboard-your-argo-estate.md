@@ -16,12 +16,15 @@ anything, and the first two commands change nothing at all.
   read a ConfigHub Space instead of Git. Every Application an ApplicationSet
   generated becomes a Unit in ConfigHub, named after its cluster's variant,
   reading that variant's releases: the estate's delivery objects are
-  configuration you review, not objects on a cluster.
+  configuration you review, not objects on a cluster. A plain Application reads
+  its variant too: a child of an app of apps through its Unit, one applied by
+  hand patched in place.
 - **ConfigHub knows what is running.** argobot, beside Argo CD, writes each
   Application's live state back to its variant — sync, health, the digest it
   runs. With an argobot that has confighub/argobot#14, not yet released, it
   also makes each published release land at once; until then a release waits
-  for Argo's own poll.
+  for Argo's own poll. Where argobot is not running, `cub argo status --watch
+  --hard-refresh` writes the same live status and makes releases land.
 - **Nothing is recreated.** Every Application keeps its name and its UID, and so
   does every workload. Every step that touches a cluster checks that first and
   prints its way back.
@@ -104,10 +107,12 @@ Run from the root of the repository Argo CD syncs. Each script is written by
 | 1 | `cub argo plan . clusters.json --stage-label rollout-phase --stages canary,secondary,primary` | shows the estate ConfigHub would govern ([1](#1-see-the-plan)) | no | nothing to undo |
 | 2 | `cub argo apply . clusters.json --stage-label rollout-phase --stages canary,secondary,primary --out onboard` | writes the files and scripts ([2](#2-write-the-steps-read-them-run-them)) | no | delete `onboard/` |
 | 3 | `bash onboard/apply.sh` | fills ConfigHub: bases, variants, stages, first releases. Argo still reads Git | no | `bash onboard/cleanup.sh` |
-| 4 | `ARGOCD_CONTEXT=<context> DEST_CONTEXT_<cluster>=<context> CONFIGHUB_OCI=<gateway> bash onboard/handover.sh` | points `root` at ConfigHub, prints the reviewed edit that does the same for each app of apps, then checks every Application's release against what Argo owns on its cluster — before any workload's source moves ([3](#3-hand-the-estate-over)) | yes | printed when it stops, and at the end |
+| 4 | `ARGOCD_CONTEXT=<context> DEST_CONTEXT_<cluster>=<context> CONFIGHUB_OCI=<gateway> bash onboard/handover.sh` | points `root` at ConfigHub, prints the reviewed edit that does the same for each app of apps, then checks every Application's release against what Argo owns on its cluster — before any workload's source moves, then points each plain Application at its Space: one applied by hand itself, a child of an app of apps through the printed Unit edit ([3](#3-hand-the-estate-over)) | yes | printed when it stops, and at the end |
 | 5 | retire each ApplicationSet, as the "Retire each ApplicationSet" step of `handover.sh` prints | a reviewed edit to its Unit, so it generates nothing more ([why](#applicationsets-are-retired-not-repointed)) | yes | restore the Unit's earlier revision |
 | 6 | `ARGOCD_CONTEXT=<context> CONFIGHUB_OCI=<gateway> bash onboard/move-applications.sh canary`, then `secondary`, then `primary` | each generated Application becomes a Unit reading its own Space, one stage at a time ([more](#each-application-becomes-a-unit)) | yes | printed when it stops, and at the end |
 | 7 | `ARGOCD_CONTEXT=<context> CONFIGHUB_URL=<ConfigHub address> bash onboard/argobot.sh` | runs argobot: live status comes back ([more](#a-published-release-does-not-arrive-on-its-own)) | installs argobot | `kubectl delete namespace argobot` |
+| 7, without argobot | `cub argo status . clusters.json --stage-label rollout-phase --stages canary,secondary,primary --kube-context <context> --watch --hard-refresh` | writes the same live status from where you run it, and asks Argo to read each new release ([more](#what-confighub-hears-back-live-status)) | only the refresh annotation | stop it |
+| out | `ARGOCD_CONTEXT=<context> bash onboard/cleanup.sh` | once every source is back on Git: removes what `apply.sh` made and the gateway credential. It refuses, naming them, while any Application still reads ConfigHub | removes the credential | nothing to undo |
 
 `clusters.json` is your cluster Secrets, exported without their credentials:
 see [When a cluster joins](#when-a-cluster-joins) for the one command that does
@@ -276,6 +281,26 @@ like any other change. Each ApplicationSet is retired last, and
 its own Space, stage by stage, under the same name, so Argo's tracking does not
 change and no workload is recreated.
 
+**Applications that are neither roots nor generated.** Most app-of-apps estates
+are a root whose children are ordinary Applications, one per app and
+environment, and some Applications are simply applied by hand. Each is checked
+like a generated one, against the release it will read, and then:
+
+- **A child its parent syncs** is a Unit in the parent's control Space by then.
+  Patched on the cluster, the parent would put it back on its next reconcile.
+  So `apply` writes each such Unit already repointed, under
+  `repointed/<space>/`, and `handover.sh` fills in the gateway and prints the
+  two commands that put it in place: `cub unit update` for each Unit, then one
+  `cub release publish` of the control Space. A reviewed change, in one
+  publish.
+- **An Application applied by hand** is patched by `handover.sh` itself, the
+  way `root` is: its source recorded first, the patch, a hard refresh, then a
+  wait until it has synced the digest that was checked.
+
+Either way the repoint clears the `kustomize`, `helm` and `directory` settings
+the Application had: a release is rendered already, and a tool setting left in
+place would have Argo build it a second time.
+
 **What the script checks before it changes anything.** That Argo CD is v3.1 or
 newer, which is where an `oci://` source is read natively, and that your
 AppProjects allow the gateway under `sourceRepos` — until they do, every repoint
@@ -306,7 +331,7 @@ password:
 ```yaml
 stringData:
   type: oci
-  url: oci://<gateway>/space/<space>
+  url: oci://<gateway>/space/<prefix>-
   username: <the Targets' server worker id>
   password: <its secret>
   # only for a gateway served over plain HTTP:
@@ -317,18 +342,25 @@ stringData:
 `resources-finalizer.argocd.argoproj.io`, which deletes everything they
 deployed. Every step is a patch for exactly that reason.
 
-**The way back is printed, leaves first.** Before `handover.sh` patches `root`,
-it records `root`'s source as it was, in `handover-state/argo.txt`. After the
+**The way back is printed, leaves first.** Before `handover.sh` patches an
+Application, it records that Application's whole source as it was, in
+`handover-state/argo.txt`: the settings the repoint clears are put back too. A
+record written by an earlier version of the script, which kept three fields of
+it, is still read, since a handover can outlive a plugin upgrade. After the
 repoint it checks that the digest `root` synced is the control Space's newest
 release, and stops if not. If the run stops anywhere after `root` moved, it
 prints the way back, in this order, and rolls nothing back by itself. It prints
 the same at the end of a clean run.
 
-1. Restore any retired ApplicationSet's Unit to the revision before
-   `create-only`, and publish. The controller then puts its Applications back
-   on the template's Git source.
-2. Restore the Unit of any app of apps repointed through it, and publish.
-3. Patch `root` back to its recorded source, on the context the run used.
+1. Undo `create-only` on any retired ApplicationSet: in its Unit, then
+   publish, or on the cluster when it was applied by hand. The controller then
+   puts its Applications back on the template's Git source.
+2. Put back each Unit repointed through ConfigHub, a child or a nested app of
+   apps, from the copy `apply` wrote under `control/<space>/`, and publish its
+   Space. The script prints the exact `cub unit update` and `cub release
+   publish` commands, children before parents.
+3. Patch each Application it patched back to its recorded source, on the
+   context the run used, the last moved first.
 
 Moving `root` back alone also puts everything back, with every UID intact. It
 was run live on 2026-09-30. But for a moment it restores the Git AppProjects
@@ -655,8 +687,14 @@ matches a `repository` Secret to an Application by url, and these repoURLs carry
 a `/space/<space>` path that `oci://<host>` does not match. The credential was
 silently ignored, Argo fell back to anonymous **https**, and it failed with
 `cannot get digest for revision latest` over a scheme nobody had asked for.
-`repo-creds` is the prefix form: one credential for every Space under the
-gateway.
+`repo-creds` is the prefix form, and it is scoped to this estate's Spaces,
+`oci://<gateway>/space/<prefix>-`, not the whole gateway. Measured on
+2026-09-30: two estates onboarded on one gateway each wrote a gateway-wide
+Secret, Argo used the stale one, whose worker `cleanup.sh` had deleted, and
+the repointed root failed with `401 Unauthorized`. Argo takes the longest
+matching prefix, so a scoped credential is the one used for its Spaces;
+`handover.sh` refuses when another Secret claims the same prefix, and
+`cleanup.sh` deletes the one `handover.sh` wrote.
 
 **A control Space needs its own release Target and a published Release.**
 Without one, the parent repointed at it reads tag `latest` from a repository
@@ -792,9 +830,44 @@ stopped twice on a `409` from ConfigHub, at its first start and after half an
 hour, when its polls collided; that is confighub/argobot#15. In a cluster its
 Deployment restarts it, and a missed refresh costs only immediacy.
 
-Without argobot, or without that annotation in whatever promotes your releases,
-an approved release sits unread on the gateway and the approval gate you built
-governs nothing.
+**Without argobot, `cub argo status` does both,** from wherever you run it, as
+the cub user you run it as: it asks Argo for that hard refresh once per release,
+and writes the same live status.
+
+```bash
+cub argo status <what you planned, with the same flags> --kube-context <argo cluster> --watch --hard-refresh
+```
+
+Without one or the other, an approved release sits unread on the gateway and
+the approval gate you built governs nothing.
+
+## What ConfigHub hears back: live status
+
+ConfigHub learns what a cluster runs from one annotation on each Space,
+`confighub.com/live-status`. Its Healthy gate reads it, its change orders
+advance on it, and its UI shows it. argobot writes it where it runs. Without
+argobot, `cub argo status` writes it, in the same shape, from each Application
+that reads its Space:
+
+| Word | When `cub argo status` says it |
+| --- | --- |
+| `Synced` | Argo says Synced, and the digest it synced is the newest published release of that Space. Argo synced at an older release is `OutOfSync`, naming both releases; at a digest that is no release, `Unknown` |
+| health | Argo CD's own, which covers every resource the Application owns |
+| `revision` | the digest in `status.sync.revision`, never inferred |
+| `Unknown` | Argo has not compared the Application with its ConfigHub source yet, or reports an error condition |
+
+Given the same input as `plan`, it reports every variant and every app of apps
+whose children moved into a control Space. An Application still reading Git is
+not reported, and one that has gone back to Git has its old reading replaced by
+one that closes the gate. A read that fails writes nothing. It writes only when
+a reading changes, or when the one ConfigHub holds is older than `--refresh`
+(10 minutes), which shows the reporter is alive. A reading another reporter
+wrote, argobot say, is left alone while it is fresh, so the two do not
+overwrite each other.
+
+`--dry-run` shows what it would write; `--json` prints what it read and did.
+The run that proved it, from handover to a reviewed release to the way back,
+is [docs/runs/2026-09-30-status-and-in-cluster.md](runs/2026-09-30-status-and-in-cluster.md).
 
 ## Making a change afterwards
 
@@ -915,6 +988,10 @@ Measured both ways on the rig.
 - Generators it does not read offline: git, SCM provider, pull request, merge
   and plugin. The plan names them rather than guessing.
 - Multi-source Applications' paths, and anything needing Sprig functions.
+- A plain directory Argo reads with `directory.include`, `directory.exclude` or
+  jsonnet. The plan names it. A plain directory without those is read as Argo
+  reads it: every `.yaml`, `.yml` and `.json` file, recursively with
+  `directory.recurse`.
 
 ## What has and has not been checked
 
@@ -962,8 +1039,26 @@ cluster joining after the retirement, and argobot refreshing and reporting
 status: see "Each Application becomes a Unit", "A published release does not
 arrive on its own" and "When a cluster joins".
 
-**Not claimed at all:** that a plain directory of manifests can be onboarded
-(`kustomize build` will not read one, though Argo will — the plan says so),
+**Since run: live status, and an estate on Argo CD's own cluster.** On
+2026-09-30, `beginner-applicationset`, which deploys only to `in-cluster` and
+has no cluster Secret, was planned from a live export, onboarded, handed over
+with every UID unchanged, and given a reviewed release. `cub argo status` wrote
+`Synced` at release 1, `OutOfSync` while Argo held release 1 after release 2
+was published, and `Synced` at release 2's digest once `--hard-refresh` asked
+Argo to read it. Handed back to Git, the reading was replaced by one that
+closes the gate. See [the run log](runs/2026-09-30-status-and-in-cluster.md).
+
+**Since run: an app of apps whose children are plain Applications.** On
+2026-09-30, `beginner-app-of-apps`, whose children sync plain directories, was
+onboarded from a live export and handed over: the root patched, both children
+changed in their control Space's Units and published, each at the digest that
+was checked, and every UID unchanged. Then the way back, leaves first, again
+with every UID unchanged, and `cleanup.sh`, which refused while the Applications
+read ConfigHub and deleted everything once they did not. See
+[the run log](runs/2026-09-30-plain-directories-and-app-of-apps.md).
+
+**Not claimed at all:** that a plain directory Argo reads with include, exclude
+or jsonnet can be onboarded (the plan says so),
 that git, SCM-provider, pull-request, merge or plugin generators are resolved,
 or that an Application whose source is a Helm chart, from a chart repository or
 a chart kept in the repository, can be governed yet (the plan says so).

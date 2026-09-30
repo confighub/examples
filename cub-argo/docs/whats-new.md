@@ -3,6 +3,35 @@
 Each release is tagged `cub-argo-v<version>` in confighub/examples and installs
 with `cub plugin install confighub/examples@cub-argo-v<version> --name argo`.
 
+## 0.2.0, unreleased
+
+- **Live status without argobot.** `cub argo status [--watch] [--hard-refresh]`
+  writes what each handed-over Application synced into its Space as
+  `confighub.com/live-status`, in argobot's shape: `Synced` only at the newest
+  published release's digest, `OutOfSync` naming what differs, `Unknown` until
+  Argo has compared its ConfigHub source. `--hard-refresh` asks Argo, once per
+  release, to read a release it cached past. A fresh argobot reading is left
+  alone.
+- **Estates on Argo CD's own cluster.** One that deploys only to `in-cluster`,
+  and so has no cluster Secret, plans and onboards. A cluster generator with an
+  empty selector includes `in-cluster`, as the ApplicationSet controller does.
+- **Plain directories.** A source path with no kustomization is read as Argo
+  reads it, recursively with `directory.recurse`, and both scripts render it the
+  same way. An Application that names its tool (`directory`, `kustomize`,
+  `plugin`) gets it, whatever files are at the path.
+- **Plain Applications handed over.** `handover.sh` checks every Application,
+  not only generated ones. A child of an app of apps is changed in its Unit (the
+  edit is written for you); one applied by hand is repointed by the script. The
+  way back restores each whole original source and prints the exact Unit
+  restores.
+- **The gateway credential is scoped to the estate**
+  (`oci://<gateway>/space/<prefix>-`), so two estates on one gateway no longer
+  collide, and `handover.sh` refuses a competing Secret.
+- **`cleanup.sh` checks for itself.** With `ARGOCD_CONTEXT` it refuses while any
+  Application reads a Space it would delete, and it removes the credential.
+- **`e2e/run.sh`** runs the whole journey on a kind cluster of its own and
+  compares every UID at each move.
+
 ## 0.1.0, 2026-09-30
 
 The first release. An Argo CD estate onboards, hands over and reports back:

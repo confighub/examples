@@ -96,8 +96,19 @@ func CleanupScript(p *Plan, prefix string) string {
 	add("")
 	add(`step "1/3 Check that nothing on a cluster still reads ConfigHub"`)
 	add("# A repointed Application whose Space is deleted has no source at all, and")
-	add("# with prune on that empties the cluster. This will not guess; it asks.")
-	add(`if [ "${I_HAVE_PUT_THE_SOURCES_BACK:-}" != yes ]; then`)
+	add("# with prune on that empties the cluster. With ARGOCD_CONTEXT it reads the")
+	add("# Applications and refuses; without it, it will not guess, and asks.")
+	add(`if [ -n "${ARGOCD_CONTEXT:-}" ]; then`)
+	add(`  reading=$(kubectl --context "$ARGOCD_CONTEXT" -n argocd get applications -o jsonpath='{range .items[*]}{.metadata.name} {.spec.source.repoURL}{range .spec.sources[*]} {.repoURL}{end}{"\n"}{end}') || { echo "Could not read the Applications on $ARGOCD_CONTEXT. Nothing was deleted."; exit 1; }`)
+	add(`  still=$(printf '%%s
+' "$reading" | grep -E '/space/%s-' | cut -d' ' -f1 | tr '
+' ' ')`, prefix)
+	add(`  if [ -n "$still" ]; then`)
+	add(`    echo "These Applications still read a Space this would delete: $still"`)
+	add(`    echo "Put each source back to Git first (handover.sh printed the way back). Nothing was deleted."; exit 1`)
+	add(`  fi`)
+	add(`  echo "  no Application on $ARGOCD_CONTEXT reads these Spaces"`)
+	add(`elif [ "${I_HAVE_PUT_THE_SOURCES_BACK:-}" != yes ]; then`)
 	add(`  echo "If handover.sh has run, put every Application's source back to Git first:"`)
 	add(`  echo "  kubectl $ctxflag -n argocd get applications -o custom-columns=NAME:.metadata.name,SOURCE:.spec.source.repoURL"`)
 	add(`  echo "Then re-run with I_HAVE_PUT_THE_SOURCES_BACK=yes bash cleanup.sh"`)
@@ -149,13 +160,21 @@ func CleanupScript(p *Plan, prefix string) string {
 		}
 	}
 	add("")
-	add(`step "3/3 The Components those Spaces belonged to"`)
+	add(`step "3/3 The Components those Spaces belonged to, and the credential"`)
 	for _, s := range p.controlSpaces(prefix) {
 		add("cub component delete %s --quiet 2>/dev/null", s.Space)
 	}
 	for _, c := range p.Components {
 		add("cub component delete %s-%s --quiet 2>/dev/null", prefix, c.Name)
 	}
+	add("# The repo-creds Secret handover.sh wrote holds the worker deleted above.")
+	add("# Left behind, it answers for these Spaces with a credential that no longer")
+	add("# exists, which a later onboarding under the same prefix would inherit.")
+	add(`if [ -n "${ARGOCD_CONTEXT:-}" ]; then`)
+	add(`  kubectl --context "$ARGOCD_CONTEXT" -n argocd delete secret confighub-%s --ignore-not-found`, targets)
+	add("else")
+	add(`  echo "  if handover.sh ran, remove the credential it wrote: kubectl $ctxflag -n argocd delete secret confighub-%s --ignore-not-found"`, targets)
+	add("fi")
 	add("")
 
 	// Saying it is done is not the same as checking. The seven-step version of

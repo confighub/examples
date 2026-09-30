@@ -4,9 +4,13 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -43,19 +47,27 @@ func newRoot() *cobra.Command {
 		Short: "Read an Argo CD estate and plan it into ConfigHub, one variant per cluster",
 		Long: `Read an Argo CD estate as it is and plan it into ConfigHub.
 
-  plan   reads Applications, ApplicationSets, AppProjects and cluster Secrets,
-         either a repository directory or 'kubectl get' output, and shows the
-         fleet ConfigHub would govern: one base per ApplicationSet (or list
-         element), one variant per Application it generates, addressed to that
-         one cluster, and the control tree that stays as it is. Offline: no
-         account, no cluster, nothing changes.
+  plan    reads Applications, ApplicationSets, AppProjects and cluster Secrets,
+          either a repository directory or 'kubectl get' output, and shows the
+          fleet ConfigHub would govern: one base per ApplicationSet (or list
+          element), one variant per Application it generates, addressed to that
+          one cluster, and the control tree that stays as it is. Offline: no
+          account, no cluster, nothing changes.
 
-  apply  writes the plan as files beside its scripts: apply.sh, which fills
-         ConfigHub and touches no cluster; handover.sh, which repoints each
-         layer's source at ConfigHub, top down; move-applications.sh, which
-         makes each generated Application a Unit reading its own Space, one
-         stage at a time; and argobot.sh, which runs argobot beside Argo CD.
-         Nothing runs until you run them.`,
+  apply   writes the plan as files beside its scripts: apply.sh, which fills
+          ConfigHub and touches no cluster; handover.sh, which repoints each
+          Application's source at ConfigHub, top down; move-applications.sh,
+          which makes each generated Application a Unit reading its own Space,
+          one stage at a time; argobot.sh, which runs argobot beside Argo CD;
+          and cleanup.sh, the way back. Nothing runs until you run them.
+
+  check   compares what Argo CD owns on the cluster with what ConfigHub holds,
+          which is what handover.sh does before it moves anything. It changes
+          nothing unless --record.
+
+  status  reports what each handed-over Application synced as ConfigHub live
+          status, once or with --watch: the route without argobot, so
+          ConfigHub's Healthy gate and its change orders can read it.`,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
@@ -308,6 +320,119 @@ thing, to ConfigHub: each verdict as a LiveCheck attestation.`,
 	check.Flags().BoolVar(&checkJSON, "json", false, "print the comparison as JSON")
 	check.Flags().BoolVar(&checkRecord, "record", false, "record each verdict in ConfigHub as a LiveCheck attestation on the revision the release bundled: a Pass, or a rejection naming what differs (needs --fields)")
 
+	var stNS, stApp, stSpace, stContext, stStages string
+	var stJSON, stWatch, stDry, stHard bool
+	var stInterval, stRefresh time.Duration
+	var stOpts argo.Options
+	status := &cobra.Command{
+		Use:   "status [dir|input.yaml|-]",
+		Short: "Report what each handed-over Application synced as ConfigHub live status",
+		Long: `Report what Argo CD synced as ConfigHub live status.
+
+For each Application that reads its ConfigHub Space, it reads the Application
+and writes the Space's confighub.com/live-status: the words ConfigHub's Healthy
+gate, its change orders and its UI read. On a cluster 'cub cluster up' made,
+argobot does this; an estate onboarded with this plugin has no argobot.
+
+  Synced     only when the digest Argo CD synced is the newest published
+             release of that Space; an older one is OutOfSync
+  health     Argo CD's own, which covers every resource it owns
+  revision   the digest Argo CD records in status.sync.revision
+
+Given the same input as plan, it reports every Application the plan governs:
+each variant, and each app of apps whose children moved into a control Space.
+An Application still reading Git is not reported. A read that fails writes
+nothing. It writes only when a reading changes, or when the one ConfigHub holds
+is older than --refresh, which shows the reporter is alive. A reading another
+reporter (argobot) wrote is left alone while it is fresher than --refresh.
+
+It writes as the cub user it runs as.
+
+Argo CD caches the digest it resolved for "latest", so a newly published
+release is not read on its own; argobot asks for a hard refresh on every
+publish. With --hard-refresh this does the same: when an Application has
+synced an older release than the newest published one, it annotates it
+argocd.argoproj.io/refresh=hard, once per release. That is the one change it
+makes on a cluster.`,
+		Args: cobra.MaximumNArgs(1),
+		RunE: func(c *cobra.Command, args []string) error {
+			argo.KubeContext = stContext
+			argo.SetApplicationNamespace(stNS)
+			var checks []argo.StatusCheck
+			if stApp != "" {
+				if stSpace == "" {
+					return fmt.Errorf("--application needs --space; or pass the repository instead and every Application is reported")
+				}
+				checks = []argo.StatusCheck{{Application: stApp, Space: stSpace}}
+			} else {
+				if len(args) == 0 {
+					return fmt.Errorf("status needs the repository to work out what to report, or --application with --space")
+				}
+				in, err := argo.Load(c.InOrStdin(), args)
+				if err != nil {
+					return err
+				}
+				stOpts.Stages = split(stStages)
+				p, err := argo.Build(in, stOpts)
+				if err != nil {
+					return err
+				}
+				checks = argo.StatusChecksFor(p, stOpts.Prefix)
+				if len(checks) == 0 {
+					return fmt.Errorf("the plan governs no Application; run plan to see why")
+				}
+			}
+			ctx, stop := signal.NotifyContext(c.Context(), os.Interrupt, syscall.SIGTERM)
+			defer stop()
+			w := c.OutOrStdout()
+			var refresher *argo.Refresher
+			if stHard && !stDry {
+				refresher = &argo.Refresher{Run: argo.Run}
+			}
+			for {
+				outs, err := reportOnce(checks, stRefresh, stDry, refresher, c.ErrOrStderr())
+				if stJSON {
+					enc := json.NewEncoder(w)
+					enc.SetIndent("", "  ")
+					_ = enc.Encode(outs)
+				} else {
+					argo.PrintOutcomes(w, outs)
+				}
+				if err != nil {
+					if !stWatch {
+						return err
+					}
+					// A watch outlives a failed read: that pass wrote nothing
+					// for the Application it could not read, and the next
+					// pass tries again.
+					fmt.Fprintf(c.ErrOrStderr(), "%s\n", err)
+				}
+				if !stWatch {
+					return nil
+				}
+				select {
+				case <-ctx.Done():
+					return nil
+				case <-time.After(stInterval):
+				}
+			}
+		},
+	}
+	status.Flags().StringVar(&stNS, "namespace", "argocd", "the namespace Argo CD's Applications live in")
+	status.Flags().StringVar(&stOpts.Prefix, "prefix", "argo", "the prefix the plan used in ConfigHub")
+	status.Flags().StringVar(&stOpts.StageLabel, "stage-label", "", "the cluster label the plan staged by")
+	status.Flags().StringVar(&stStages, "stages", "", "the stages in order, comma-separated")
+	status.Flags().StringVar(&stOpts.RepoRoot, "repo-root", "", "the checkout Applications' source paths are relative to")
+	status.Flags().StringVar(&stApp, "application", "", "one Application to report")
+	status.Flags().StringVar(&stSpace, "space", "", "the ConfigHub Space that Application reads")
+	status.Flags().StringVar(&stContext, "kube-context", "", "the kubectl context of the cluster Argo CD runs on; without it kubectl's current context is used, which may be another cluster")
+	status.Flags().BoolVar(&stWatch, "watch", false, "keep reporting")
+	status.Flags().DurationVar(&stInterval, "interval", 30*time.Second, "how often to report, with --watch")
+	status.Flags().DurationVar(&stRefresh, "refresh", 10*time.Minute, "write an unchanged reading again once the one ConfigHub holds is this old")
+	status.Flags().BoolVar(&stDry, "dry-run", false, "show what would be written, and write nothing")
+	status.Flags().BoolVar(&stHard, "hard-refresh", false, "ask Argo CD to read a newly published release it has not synced, as argobot does (annotates the Application)")
+	status.Flags().BoolVar(&stJSON, "json", false, "print what was read and done as JSON")
+
 	versionCmd := &cobra.Command{
 		Use:   "version",
 		Short: "Print the plugin version",
@@ -367,7 +492,7 @@ cluster, which apply writes as apps/<space>.yaml.`,
 	appUnit.Flags().BoolVar(&auSettled, "settled", false, "the Application reads its Space already: leave out Replace=true, which would erase its status on every sync of the parent")
 	appUnit.Flags().StringVar(&auRendered, "rendered", "", "for an Application not on the cluster yet: the file apply wrote with what its ApplicationSet's template renders for its cluster (apps/<space>.yaml)")
 
-	root.AddCommand(plan, apply, check, appUnit, versionCmd)
+	root.AddCommand(plan, apply, check, status, appUnit, versionCmd)
 	return root
 }
 
@@ -420,4 +545,37 @@ func shortestPath(p string) string {
 		return p
 	}
 	return rel
+}
+
+// reportOnce reads every Application and writes what changed. One that cannot
+// be read is left as ConfigHub holds it, and the others are still reported.
+func reportOnce(checks []argo.StatusCheck, refresh time.Duration, dryRun bool, refresher *argo.Refresher, log io.Writer) ([]argo.Outcome, error) {
+	now := time.Now()
+	var readings []argo.Reading
+	var errs []string
+	for _, ck := range checks {
+		r, err := argo.ReadStatus(argo.Run, ck, now)
+		if err != nil {
+			errs = append(errs, err.Error())
+			continue
+		}
+		readings = append(readings, r)
+	}
+	outs, err := argo.ReportStatus(argo.Run, argo.CubWriter, readings, refresh, dryRun, now)
+	if err != nil {
+		errs = append(errs, err.Error())
+	}
+	if refresher != nil {
+		did, err := refresher.Refresh(readings)
+		for _, app := range did {
+			fmt.Fprintf(log, "%s: asked Argo CD for a hard refresh, so it reads the newest release\n", app)
+		}
+		if err != nil {
+			errs = append(errs, err.Error())
+		}
+	}
+	if len(errs) > 0 {
+		return outs, fmt.Errorf("%s", strings.Join(errs, "; "))
+	}
+	return outs, nil
 }

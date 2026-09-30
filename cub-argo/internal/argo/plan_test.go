@@ -686,17 +686,97 @@ spec:
 	}
 }
 
-// A path with no kustomization.yaml renders for Argo but not for the script.
-func TestPlainDirectoryIsReported(t *testing.T) {
+// A path with no kustomization is a plain directory, and is read as Argo CD
+// reads it: every whole object there, rendered by the scripts through a
+// kustomization that lists them.
+func TestPlainDirectoryIsReadAsArgoReadsIt(t *testing.T) {
 	root, dir := copyExample(t)
-	if err := os.Remove(filepath.Join(dir, "apps", "apptique", "overlays", "prod", "kustomization.yaml")); err != nil {
+	overlay := filepath.Join(dir, "apps", "apptique", "overlays", "prod")
+	if err := os.Remove(filepath.Join(overlay, "kustomization.yaml")); err != nil {
 		t.Fatal(err)
 	}
 	opts := staged
 	opts.RepoRoot = root
 	p := planOf(t, dir, opts)
-	if !hasProblem(p, "has no kustomization.yaml", "plain directory") {
-		t.Errorf("want a plain-directory problem, got %v", p.Problems)
+	if hasProblem(p, "overlays/prod") {
+		t.Errorf("a directory of whole objects is read, not refused: %v", p.Problems)
+	}
+	noted := false
+	for _, c := range p.Components {
+		for _, n := range c.Notes {
+			noted = noted || strings.Contains(n, "a plain directory of manifests, read as Argo CD reads it")
+		}
+	}
+	if !noted {
+		t.Error("the component should say it is a plain directory")
+	}
+	if s := ApplyScript(p, "argo", "."); !strings.Contains(s, "--load-restrictor LoadRestrictionsNone") {
+		t.Error("apply.sh must render a plain directory through a kustomization that lists its files")
+	}
+
+	// A patch left beside the objects is not an object, and Argo fails on it.
+	if err := os.WriteFile(filepath.Join(overlay, "replicas-patch.yaml"), []byte("spec:\n  replicas: 3\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if p := planOf(t, dir, opts); !hasProblem(p, "replicas-patch.yaml in it is not a whole Kubernetes object") {
+		t.Errorf("want the patch named, got %v", p.Problems)
+	}
+	if err := os.Remove(filepath.Join(overlay, "replicas-patch.yaml")); err != nil {
+		t.Fatal(err)
+	}
+
+	// Jsonnet is evaluated by Argo, and not by the script.
+	if err := os.WriteFile(filepath.Join(overlay, "extra.jsonnet"), []byte("{}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if p := planOf(t, dir, opts); !hasProblem(p, "jsonnet files (extra.jsonnet)") {
+		t.Errorf("want the jsonnet named, got %v", p.Problems)
+	}
+}
+
+// What a plain directory holds, as Argo CD would read it.
+func TestManifestFiles(t *testing.T) {
+	dir := t.TempDir()
+	for _, f := range []string{"a.yaml", "b.yml", "c.json", "README.md", ".hidden.yaml", "sub/d.yaml", ".git/e.yaml", "lib.jsonnet"} {
+		path := filepath.Join(dir, filepath.FromSlash(f))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte("{}"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	files, jsonnet := manifestFiles(dir, false)
+	if got := strings.Join(files, ","); got != "a.yaml,b.yml,c.json" {
+		t.Errorf("top level only: got %s", got)
+	}
+	if got := strings.Join(jsonnet, ","); got != "lib.jsonnet" {
+		t.Errorf("jsonnet: got %s", got)
+	}
+	files, _ = manifestFiles(dir, true)
+	if got := strings.Join(files, ","); got != "a.yaml,b.yml,c.json,sub/d.yaml" {
+		t.Errorf("recursive, hidden left out: got %s", got)
+	}
+}
+
+// The beginner app of apps syncs plain directories, and now onboards.
+func TestBeginnerAppOfAppsOnboards(t *testing.T) {
+	const dir = "../../../gitops/argo/beginner-app-of-apps"
+	if _, err := os.Stat(dir); err != nil {
+		t.Skip("example not present")
+	}
+	p := planOf(t, dir, Options{RepoRoot: repoRoot(t)})
+	if len(p.Problems) > 0 {
+		t.Errorf("want a clean plan, got %v", p.Problems)
+	}
+	// Its paths name no shared base. Measured: without a base unit the
+	// variant is cloned empty, and apply.sh failed at "unit apptique-dev not
+	// found" when it wrote the variant's render.
+	s := ApplyScript(p, "argo", ".")
+	for _, c := range p.Components {
+		if !strings.Contains(s, "cub unit create --space "+c.Base+" "+c.Name+" render/"+c.Name+"-base.yaml") {
+			t.Errorf("apply.sh must give %s a base unit for its variants to overwrite", c.Base)
+		}
 	}
 }
 
@@ -797,5 +877,141 @@ func TestLiveExportFindsTheControlTree(t *testing.T) {
 	cs := p.controlSpaces("argo")
 	if len(cs) == 0 || len(cs[0].Files) == 0 {
 		t.Errorf("the control Spaces should hold the files the parents sync: %+v", cs)
+	}
+}
+
+// Argo CD's own cluster has no Secret. An estate that deploys only there plans
+// without any, and apply.sh makes it a Target like any other cluster.
+func TestInClusterEstateNeedsNoClusterSecret(t *testing.T) {
+	const dir = "../../../gitops/argo/beginner-applicationset"
+	if _, err := os.Stat(dir); err != nil {
+		t.Skip("example not present")
+	}
+	p := planOf(t, dir, Options{RepoRoot: repoRoot(t)})
+	if len(p.Problems) > 0 {
+		t.Fatalf("an in-cluster estate should plan cleanly: %v", p.Problems)
+	}
+	if got := p.targetClusters(); len(got) != 1 || got[0] != "in-cluster" {
+		t.Errorf("want one Target, in-cluster; got %v", got)
+	}
+	if s := ApplyScript(p, "argo", "."); !strings.Contains(s, "cub target create in-cluster '{}' server-worker --space argo-targets") {
+		t.Error("apply.sh must create the in-cluster Target its variants are addressed to")
+	}
+	if head := strings.SplitN(Render(p), "\n", 2)[0]; !strings.Contains(head, "1 cluster, Argo CD's own (in-cluster)") {
+		t.Errorf("the header should count Argo CD's own cluster: %s", head)
+	}
+}
+
+// A cluster generator with an empty selector includes Argo CD's own cluster,
+// as the ApplicationSet controller does; a selector excludes it, since it has
+// no labels; and a Secret for it is not counted twice.
+func TestClusterGeneratorAndTheLocalCluster(t *testing.T) {
+	const remote = `
+apiVersion: v1
+kind: Secret
+metadata: {name: c1, namespace: argocd, labels: {argocd.argoproj.io/secret-type: cluster, env: prod}}
+stringData: {name: c1, server: https://c1}
+`
+	const local = `
+---
+apiVersion: v1
+kind: Secret
+metadata: {name: local, namespace: argocd, labels: {argocd.argoproj.io/secret-type: cluster, env: prod}}
+stringData: {name: local, server: https://kubernetes.default.svc}
+`
+	appset := func(selector string) string {
+		return `
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata: {name: mon, namespace: argocd}
+spec:
+  generators: [{clusters: {` + selector + `}}]
+  template:
+    metadata: {name: '{{name}}-mon'}
+    spec:
+      project: default
+      source: {repoURL: https://git.example/fleet.git, path: mon, targetRevision: main}
+      destination: {server: '{{server}}', namespace: mon}
+`
+	}
+	clustersOf := func(doc string) []string {
+		t.Helper()
+		in, err := Load(strings.NewReader(doc), []string{"-"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		p, err := Build(in, Options{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out []string
+		for _, c := range p.Components {
+			for _, st := range c.Stages {
+				for _, v := range st.Variants {
+					out = append(out, v.Cluster)
+				}
+			}
+		}
+		return out
+	}
+	if got := strings.Join(clustersOf(remote+appset("")), ","); got != "c1,in-cluster" {
+		t.Errorf("an empty selector includes Argo CD's own cluster: got %s", got)
+	}
+	if got := strings.Join(clustersOf(remote+appset("selector: {matchLabels: {env: prod}}")), ","); got != "c1" {
+		t.Errorf("a selector cannot match Argo CD's own cluster, which has no labels: got %s", got)
+	}
+	if got := strings.Join(clustersOf(remote+local+appset("")), ","); got != "c1,local" {
+		t.Errorf("a Secret for Argo CD's own cluster stands in for it: got %s", got)
+	}
+}
+
+// Argo CD's own cluster needs no Secret, and its Target is still the one core
+// cub variant create adds an Application for, in the root's control Space.
+func TestInClusterTargetIsMarkedForTheAppsSpace(t *testing.T) {
+	const dir = "../../../gitops/argo/beginner-app-of-apps"
+	if _, err := os.Stat(dir); err != nil {
+		t.Skip("example not present")
+	}
+	p := planOf(t, dir, Options{RepoRoot: repoRoot(t)})
+	s := ApplyScript(p, "argo", ".")
+	want := `echo '{"Annotations":{"confighub.com/argo-apps-space":"argo-apptique-apps-children"}}' | cub target update --patch --space argo-targets in-cluster`
+	if !strings.Contains(s, want) {
+		t.Errorf("want the in-cluster Target marked:\n%s", want)
+	}
+}
+
+// An Application that names its tool gets it: a Chart.yaml beside the files
+// does not make a source with spec.source.directory or kustomize a chart.
+// From review on #265.
+func TestExplicitSourceTypeWinsOverAChartYaml(t *testing.T) {
+	root, dir := copyExample(t)
+	overlay := filepath.Join(dir, "apps", "apptique", "overlays", "prod")
+	if err := os.WriteFile(filepath.Join(overlay, "Chart.yaml"), []byte("apiVersion: v2\nname: x\nversion: 0.1.0\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(overlay, "kustomization.yaml")); err != nil {
+		t.Fatal(err)
+	}
+	opts := staged
+	opts.RepoRoot = root
+	appset := filepath.Join(dir, "apps-of-apps", "storefront", "apptique.yaml")
+	data, err := os.ReadFile(appset)
+	if err != nil {
+		t.Skip("the example's ApplicationSet has moved")
+	}
+	if p := planOf(t, dir, opts); !hasProblem(p, "is a Helm chart") {
+		t.Fatalf("without a named tool, a Chart.yaml makes it a chart: %v", p.Problems)
+	}
+	named := strings.Replace(string(data), "        path: ", "        directory: {recurse: false}\n        path: ", 1)
+	if named == string(data) {
+		t.Skip("the example's source has changed shape")
+	}
+	if err := os.WriteFile(appset, []byte(named), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p := planOf(t, dir, opts)
+	if hasProblem(p, "is a Helm chart") {
+		t.Errorf("spec.source.directory names the tool, so it is not a chart: %v", p.Problems)
 	}
 }

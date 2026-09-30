@@ -14,9 +14,12 @@ The commands and scripts, in order; the first two change nothing:
 | `plan` | shows the estate ConfigHub would govern | no, and no account either |
 | `apply --out` | writes the files and the scripts below | no, it runs nothing |
 | `apply.sh` | fills ConfigHub with a parallel copy nothing reads | no |
+| `check` | compares what Argo owns on the cluster with what ConfigHub holds; `handover.sh` runs it before it moves anything | no (`--record` writes a LiveCheck to ConfigHub) |
 | `handover.sh` | repoints `root` at ConfigHub, prints the reviewed edit for each app of apps, and checks every Application's release against the cluster before any workload's source moves | yes, this is the step that moves it |
 | `move-applications.sh` | makes each Application that an ApplicationSet generated a Unit reading its own Space, one stage at a time | yes, through the parent that syncs it |
 | `argobot.sh` | runs argobot beside Argo CD: live status goes back to each Space (and releases land at once, with an argobot that has confighub/argobot#14) | yes, it installs argobot |
+| `status` | without argobot: writes what each handed-over Application synced into its Space as ConfigHub live status, once or with `--watch` | only with `--hard-refresh`, which asks Argo to read a new release |
+| `cleanup.sh` | the way back out of ConfigHub, once each source is back on Git | no |
 
 **Start with the guide: [Onboard your Argo CD estate](docs/onboard-your-argo-estate.md).**
 
@@ -92,10 +95,33 @@ Reads cluster, list and matrix (two generators) generators; Go templates
 (`goTemplate`) and `{{param}}` templates; label selectors with `In`, `NotIn`,
 `Exists` and `DoesNotExist`; sync waves; sync windows; overlay image tags.
 
+Reads a source path as Argo does: a kustomization is built with kustomize, and
+a plain directory of manifests is read file by file, recursively with
+`directory.recurse`. Argo CD's own cluster, `in-cluster`, needs no cluster
+Secret.
+
 Leaves out, and says so: git, SCM provider, pull request, merge and plugin
 generators; templates that use Sprig functions; multi-source Applications'
-paths. It does not render Kustomize or Helm; for that, use the
+paths; Helm chart sources; plain directories read with include, exclude or
+jsonnet. It does not render Kustomize or Helm; for that, use the
 [ConfigHub Workshop](https://confighub.github.io/helm-expt/) or `cub gen`.
+
+## After the handover: live status
+
+argobot.sh is the first route: it reports live status and lands each release.
+Where argobot is not running, keep this running beside the cluster instead:
+
+```bash
+cub argo status ../gitops/argo/expert-app-of-apps --stage-label rollout-phase \
+  --stages canary,secondary,primary --kube-context <argo cluster> --watch --hard-refresh
+```
+
+It writes each Space's `confighub.com/live-status`, which ConfigHub's Healthy
+gate, its change orders and its UI read. A reading says `Synced` only when Argo
+synced the newest published release of that Space, at that release's digest.
+`--hard-refresh` asks Argo, once per release, to read a release it has cached
+past; without it, a newly approved release sits unread on the gateway.
+`--dry-run` shows what would be written; `--json` prints it for scripts.
 
 ## Install
 
@@ -116,12 +142,35 @@ go build -o bin/cub-argo . && cub plugin install ./bin/cub-argo
 # after a git pull: go build -o bin/cub-argo . && cub plugin upgrade argo
 ```
 
+## Prove it on kind
+
+`e2e/run.sh` runs the whole journey on a kind cluster of its own, with its own
+kubeconfig: an estate syncing from GitHub, a live export, `plan`, `apply.sh`,
+`handover.sh`, `status`, the way back `handover.sh` printed, and `cleanup.sh`.
+It compares every UID at each move and stops at the first thing that is not as
+it should be.
+
+```bash
+CONFIGHUB_OCI=<gateway host:port the kind cluster reaches> CONFIGHUB_OCI_PLAIN_HTTP=1 \
+  bash e2e/run.sh app-of-apps     # or: by-hand
+```
+
+`app-of-apps` is `beginner-app-of-apps`, a root whose children sync plain
+directories. `by-hand` is `intermediate-ci-to-gitops`, Applications with no
+parent, whose image does not pull, so `status` has to report `Progressing` and
+keep the Healthy gate shut. Both passed on 2026-09-30 against Argo CD v3.5.3
+and ConfigHub v0.6.8, and the script's own first runs found three bugs in
+itself, none in the plugin.
+
 ## Develop
 
 ```bash
 make test      # unit tests, the golden plan, and two break-it cases
 make golden    # rewrite the golden plan after an intended change
 ```
+
+What has been run live, and what it found, is in the guide's "What the Argo
+handover has been through" and in [docs/runs](docs/runs).
 
 Where it goes next: move the planning core it shares with `cub sveltos` into
 one library.

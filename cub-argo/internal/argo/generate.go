@@ -86,6 +86,14 @@ func expand(g map[string]any, clusters []Cluster, root string) ([]paramSet, stri
 				out = append(out, paramSet{values: clusterParams(cl, values), cluster: &cl})
 			}
 		}
+		// Argo CD's own cluster has no Secret, so no labels to match. With an
+		// empty selector the generator includes it anyway, unless a Secret
+		// for it is already among the clusters.
+		if len(strMap(sel["matchLabels"])) == 0 && len(list(sel["matchExpressions"])) == 0 && !hasLocalCluster(clusters) {
+			local := localCluster()
+			out = append(out, paramSet{values: clusterParams(local, values), cluster: &local})
+			sort.SliceStable(out, func(i, j int) bool { return out[i].cluster.Name < out[j].cluster.Name })
+		}
 		return out, "clusters where " + describeSelector(sel), nil
 	case g["list"] != nil:
 		var out []paramSet
@@ -147,6 +155,20 @@ func copyMap(m map[string]any) map[string]any {
 		out[k] = v
 	}
 	return out
+}
+
+// localServer is how Argo CD addresses the cluster it runs on.
+const localServer = "https://kubernetes.default.svc"
+
+func localCluster() Cluster { return Cluster{Name: "in-cluster", Server: localServer} }
+
+func hasLocalCluster(clusters []Cluster) bool {
+	for _, c := range clusters {
+		if c.Server == localServer {
+			return true
+		}
+	}
+	return false
 }
 
 // clusterParams are the parameters Argo CD's cluster generator provides.
