@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"gopkg.in/yaml.v3"
 )
 
 // handedOver copies a fleet and makes one cluster's directory look the way a
@@ -39,7 +41,7 @@ func handedOver(t *testing.T, fleet, clusterDir, layersSpace string, keep ...str
 	// A root as made before roots named their cluster: the plan reads which
 	// cluster it is from the Space's name.
 	rootYAML := strings.NewReplacer(gatewayMarker, "gw.example:5000", insecureMarker, "false",
-		DeliverySpace("flux", "__CLUSTER__"), layersSpace, "  labels:\n    "+RootClusterLabel+": __CLUSTER__\n", "").Replace(RootManifests("flux", "__CLUSTER__"))
+		DeliverySpace("flux", "__CLUSTER__"), layersSpace, "  labels:\n    "+RootClusterLabel+": \"__CLUSTER__\"\n", "").Replace(RootManifests("flux", "__CLUSTER__"))
 	if err := os.WriteFile(filepath.Join(cdir, RootName+".yaml"), []byte(rootYAML), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -280,5 +282,23 @@ func TestRootKeepsItsClusterNameUnderAnotherPrefix(t *testing.T) {
 	}
 	if s := ApplyScript(p, "flux", "."); !strings.Contains(s, "cub target update --patch --space flux-targets dev-1 ") {
 		t.Errorf("dev-1's Target should be the one annotated")
+	}
+}
+
+// From review on #262: a label value must be a string, and a cluster named
+// 123 would otherwise be a number.
+func TestRootClusterLabelIsAString(t *testing.T) {
+	var docs []map[string]any
+	for _, part := range strings.Split(RootManifests("flux", "123"), "---\n") {
+		var d map[string]any
+		if err := yaml.Unmarshal([]byte(part), &d); err != nil {
+			t.Fatal(err)
+		}
+		docs = append(docs, d)
+	}
+	for _, d := range docs {
+		if v, ok := get(d, "metadata", "labels", RootClusterLabel).(string); !ok || v != "123" {
+			t.Errorf("%s's cluster label is %#v, want the string 123", d["kind"], get(d, "metadata", "labels", RootClusterLabel))
+		}
 	}
 }

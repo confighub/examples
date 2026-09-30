@@ -104,7 +104,7 @@ metadata:
   name: %[1]s
   namespace: %[6]s
   labels:
-    %[8]s: %[7]s
+    %[8]s: "%[7]s"
 spec:
   interval: 1m
   url: oci://%[2]s/space/%[3]s
@@ -120,7 +120,7 @@ metadata:
   name: %[1]s
   namespace: %[6]s
   labels:
-    %[8]s: %[7]s
+    %[8]s: "%[7]s"
 spec:
   interval: 10m
   path: ./

@@ -218,7 +218,7 @@ metadata:
   name: confighub-root
   namespace: __FLUX_NAMESPACE__
   labels:
-    confighub.com/cluster: __CLUSTER__
+    confighub.com/cluster: "__CLUSTER__"
 spec:
   interval: 1m
   url: oci://__CONFIGHUB_OCI__/space/flux-__CLUSTER__-layers
@@ -234,7 +234,7 @@ metadata:
   name: confighub-root
   namespace: __FLUX_NAMESPACE__
   labels:
-    confighub.com/cluster: __CLUSTER__
+    confighub.com/cluster: "__CLUSTER__"
 spec:
   interval: 10m
   path: ./
