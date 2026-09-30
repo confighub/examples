@@ -162,7 +162,7 @@ func MoveScript(p *Plan, prefix string) string {
 	add(`    record "$1" "$2" "$3"`)
 	add(`    cub argo application-unit --kube-context "$ctx" --namespace "$ns" --application "$1" --space "$2" --gateway "$addr" > "render/app-$2.yaml"`)
 	add(`  else`)
-	add(`    [ -s "apps/$2.yaml" ] || { echo "  $1 is not on the cluster, and apps/$2.yaml is missing: plan and apply again with the cluster in the input" >&2; return 1; }`)
+	add(`    [ -s "apps/$2.yaml" ] || { echo "  $1 is not on the cluster, and apps/$2.yaml is missing: plan and apply again with the cluster in the input. If the plan notes templatePatch, which it does not render, make this Application by hand" >&2; return 1; }`)
 	add(`    echo "  $1 is not on the cluster: its cluster joined after the retirement, so it is made from what the template renders for it"`)
 	add(`    record "$1" "$2" "$3" new`)
 	add(`    cub argo application-unit --rendered "apps/$2.yaml" --namespace "$ns" --space "$2" --gateway "$addr" > "render/app-$2.yaml"`)

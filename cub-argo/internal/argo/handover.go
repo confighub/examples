@@ -461,8 +461,13 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 		}
 		for _, st := range c.Stages {
 			for _, v := range st.Variants {
-				show(fmt.Sprintf(
-					"patch application %s --type json -p '[{\"op\":\"replace\",\"path\":\"/spec/source\",\"value\":{\"repoURL\":\"oci://<gateway>/space/%s\",\"path\":\".\",\"targetRevision\":\"latest\"}}]'   # stage %s",
+				// A multi-source Application has no /spec/source to replace:
+				// its sources go, and one source takes their place.
+				ops := `{"op":"replace","path":"/spec/source","value":{"repoURL":"oci://<gateway>/space/%s","path":".","targetRevision":"latest"}}`
+				if v.Path == "(multi-source)" {
+					ops = `{"op":"remove","path":"/spec/sources"},{"op":"add","path":"/spec/source","value":{"repoURL":"oci://<gateway>/space/%s","path":".","targetRevision":"latest"}}`
+				}
+				show(fmt.Sprintf("patch application %s --type json -p '["+ops+"]'   # stage %s",
 					v.Application, v.Space, st.Name))
 				if v.Path != "" && v.Path != "(multi-source)" {
 					add(`echo "    # checked at ${%s:-?}; once synced, its status.sync.revision should name that digest, or a newer release went out unchecked"`, digestVar(v.Space))

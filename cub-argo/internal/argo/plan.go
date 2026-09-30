@@ -410,6 +410,14 @@ func (b *builder) appset(o object) {
 			}
 			variants = append(variants, b.variant(c, ra.app, cl, ra.fields))
 		}
+		if _, patched := spec["templatePatch"]; patched {
+			// Rendered from spec.template alone, a joined cluster's Application
+			// would miss what the patch adds, so none is written for it.
+			for i := range variants {
+				variants[i].app = nil
+			}
+			c.Notes = append(c.Notes, "uses templatePatch, which the plan does not render: a cluster that joins after the handover gets its Application by hand")
+		}
 		b.finish(c, variants)
 		if strings.EqualFold(str(get(spec, "strategy", "type")), "RollingSync") {
 			c.Notes = append(c.Notes, "orders its own rollout with RollingSync; the ChangeWorkflow would own the order, so handover turns it off")
