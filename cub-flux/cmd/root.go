@@ -65,11 +65,15 @@ func newRoot() *cobra.Command {
 	var opts flux.Options
 	var stages string
 	var asJSON bool
+	var planFormat, exportedAt string
 	plan := &cobra.Command{
 		Use:   "plan <fleet-repo-dir>",
 		Short: "Show the fleet ConfigHub would govern; changes nothing",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
+			if exportedAt != "" && planFormat != "preview-json" {
+				return fmt.Errorf("--exported-at is only valid with --format preview-json")
+			}
 			in, err := flux.Load(c.InOrStdin(), args)
 			if err != nil {
 				return err
@@ -80,7 +84,25 @@ func newRoot() *cobra.Command {
 				return err
 			}
 			out := c.OutOrStdout()
-			if asJSON {
+			if planFormat != "ascii" && planFormat != "json" && planFormat != "preview-json" {
+				return fmt.Errorf("unknown plan format %q (want ascii, json, or preview-json)", planFormat)
+			}
+			if planFormat == "preview-json" {
+				if asJSON {
+					return fmt.Errorf("--json and --format preview-json cannot be combined")
+				}
+				stamp := exportedAt
+				if stamp == "" {
+					stamp = time.Now().UTC().Format(time.RFC3339Nano)
+				} else if _, err := time.Parse(time.RFC3339, stamp); err != nil {
+					return fmt.Errorf("--exported-at must be an RFC3339 timestamp: %w", err)
+				}
+				enc := json.NewEncoder(out)
+				enc.SetIndent("", "  ")
+				if err := enc.Encode(flux.PreviewPlan(p, version, stamp)); err != nil {
+					return err
+				}
+			} else if asJSON || planFormat == "json" {
 				enc := json.NewEncoder(out)
 				enc.SetIndent("", "  ")
 				if err := enc.Encode(p); err != nil {
@@ -102,6 +124,8 @@ func newRoot() *cobra.Command {
 	plan.Flags().StringVar(&opts.RepoRoot, "repo-root", "", "the checkout Flux paths are relative to (default: the .git above the input)")
 	plan.Flags().StringSliceVar(&opts.Require, "require", nil, "what each stage after the first also waits for in the stage before it: Healthy, which `cub flux status` reports")
 	plan.Flags().BoolVar(&asJSON, "json", false, "print the plan as JSON")
+	plan.Flags().StringVar(&planFormat, "format", "ascii", "plan output format: ascii, json (same schema as --json), or preview-json (plugin-preview v1)")
+	plan.Flags().StringVar(&exportedAt, "exported-at", "", "RFC3339 export timestamp for --format preview-json (default: current UTC time)")
 
 	var af flux.Options
 	var applyStages, out string

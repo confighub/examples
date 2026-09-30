@@ -65,6 +65,19 @@ checkout found by walking up to `.git`, or `--repo-root`. Clusters roll out
 dev, staging, prod, then the rest by name; `--stages` sets the order.
 `--json` prints the plan as JSON.
 
+For consumers that render a plugin preview, `--format preview-json` emits the
+shared `confighub.com/plugin-preview/v1` envelope from the same plan. It
+describes the supplied Git plan as inventory and the proposed ConfigHub
+Spaces, Targets, and Units; it does not claim live cluster discovery or
+delivery. Its `exportedAt` is the export time and changes between runs. Pass
+`--exported-at <RFC3339>` to pin it for reproducible output. The existing
+`--json` output remains the plan schema and is unchanged.
+
+```bash
+./bin/cub-flux plan ../gitops/flux/expert-fleet --format preview-json
+./bin/cub-flux plan ../gitops/flux/expert-fleet --format preview-json --exported-at 2026-09-30T00:00:00Z
+```
+
 ## What it leaves out
 
 Live exports (`kubectl get kustomizations ...`), OCIRepository and Bucket
