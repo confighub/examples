@@ -311,3 +311,21 @@ func TestArgoWayBackReadsAnOlderStateFile(t *testing.T) {
 		t.Errorf("an old record must not come out broken:\n%s", out)
 	}
 }
+
+// cub-scout takes no context flag and reads whatever is current, so the
+// cross-check hands it a kubeconfig for the cluster each namespace is on.
+func TestArgoScoutCrossCheckReadsTheRightCluster(t *testing.T) {
+	p := planOf(t, example, Options{Prefix: "argo", StageLabel: "rollout-phase", Stages: []string{"canary", "secondary", "primary"}, RepoRoot: repoRoot(t)})
+	s := HandoverScript(p, "argo", ".")
+	if strings.Contains(s, "\n  cub scout map list") {
+		t.Error("no cub scout call may read the current context")
+	}
+	for _, want := range []string{
+		`KUBECONFIG="$kc" cub scout map list -q "$2"`,
+		`scout "${DEST_CONTEXT_prod_1:-}" 'owner=Native AND namespace=storefront-prod AND name!=kube-root-ca.crt'`,
+	} {
+		if !strings.Contains(s, want) {
+			t.Errorf("want %q in handover.sh", want)
+		}
+	}
+}
