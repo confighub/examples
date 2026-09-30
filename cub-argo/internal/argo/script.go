@@ -306,17 +306,24 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 	add("# handover, move-applications.sh makes it a Unit. So a cub that would add a")
 	add("# second Application when it makes a variant for an Argo cluster is told not to.")
 	add(`no_argo_app=; case "$(cub variant create --help 2>&1)" in *--no-argo-app*) no_argo_app=--no-argo-app ;; esac`)
+	add("# A variant with a release is ConfigHub's: changes to it are made there, through")
+	add("# change orders, so re-rendering it from Git would publish Git over them. Measured:")
+	add("# re-run for a joining cluster, this rolled every existing cluster back to Git.")
+	add("# Only a variant with no release yet is rendered.")
+	add(`released() { cub release get --space "$1" --oci-reference latest -o jq=.Release.ReleaseNum >/dev/null 2>&1; }`)
 	for _, c := range p.Components {
 		for _, st := range c.Stages {
 			for _, v := range st.Variants {
-				add("cub variant create %s %s --stage %s --space-pattern template:%s --target %s/%s --space-label Role=deployment --space-label Cluster=%s $no_argo_app --allow-exists --quiet",
+				add("if released %s; then echo %s; else", v.Space, q("  "+v.Space+" is released: ConfigHub holds it, so it is left as it is"))
+				add("  cub variant create %s %s --stage %s --space-pattern template:%s --target %s/%s --space-label Role=deployment --space-label Cluster=%s $no_argo_app --allow-exists --quiet",
 					v.Cluster, c.Base, st.Name, v.Space, targets, v.Cluster, v.Cluster)
 				if v.Path != "" && v.Path != "(multi-source)" {
-					add("render %s %s", q(v.Path), q(v.Space))
-					add("cub unit update --space %s %s render/%s.yaml --change-desc %s --quiet",
+					add("  render %s %s", q(v.Path), q(v.Space))
+					add("  cub unit update --space %s %s render/%s.yaml --change-desc %s --quiet",
 						v.Space, c.Name, v.Space, q(fmt.Sprintf("What %s renders for %s", v.Path, v.Cluster)))
 				}
-				add("holds %s 1", v.Space)
+				add("  holds %s 1", v.Space)
+				add("fi")
 			}
 		}
 	}

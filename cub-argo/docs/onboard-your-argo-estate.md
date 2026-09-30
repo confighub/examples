@@ -778,20 +778,28 @@ with `kubectl apply` keeps its plain `stringData`, bearer token included, in the
 last-applied annotation, so removing `.data.config` alone leaves the token in
 the file. Measured.
 
-The plan shows the new cluster's variants. `apply.sh` leaves every existing
-variant as it is, clones the new one from the base as the base stands today,
+The plan shows the new cluster's variants. `apply.sh` leaves every variant that
+has a release as it is — ConfigHub holds it, and re-rendering it from Git would
+publish Git over every change made since; measured, that is what an earlier
+version did — clones the new one from the base as the base stands today,
 including every change made since, and releases it through its stages with an
 approval in each. Then `move-applications.sh <its stage>` makes its
-Applications: there is none on the cluster to read, so each is made like its
-sibling's Unit (the same component on another cluster), with the name,
-destination and stage label the plan works out from the template. Joining is a
-reviewed change rather than a side effect of a label.
+Applications: there is none on the cluster to read, so each is made from what
+its ApplicationSet's template renders for the new cluster, which `apply` writes
+as `apps/<space>.yaml`. Every templated field — project, destination, labels,
+sync policy — is the new cluster's own. An ApplicationSet with a `templatePatch`
+is the exception: the plan does not render the patch, so it writes no file, and
+that Application is made by hand. Joining is a reviewed change rather than a
+side effect of a label.
 
 **Run live on 2026-09-30:** `prod-1` registered after the retirement got no
 Application from Git; `apply.sh` released its three variants; `move-applications.sh
 primary` made its three Applications, and `prod-1-cluster-baseline` synced
 Healthy. The two in the `storefront` project waited, correctly, for the
-example's own deny window on `prod-1-*` to close; the script says so.
+example's own deny window on `prod-1-*` to close, and synced when it did; the
+script says so. `prod-1-checkout-cache` was then taken out and made again from
+its rendered template, with the `storefront` project, `prod-1`'s destination and
+the `primary` label.
 
 A change still in flight when a cluster joins stops `apply.sh`: a change order
 across variants at different revisions of a Unit is refused ("the targets are

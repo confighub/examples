@@ -82,6 +82,12 @@ func WriteApply(p *Plan, prefix, dir string) (string, error) {
 		files = append(files, outFile{"move-applications.sh", []byte(s), 0o755})
 	}
 
+	// What the templates render is written afresh each time, so a cluster
+	// that left the plan, or an ApplicationSet that now has a templatePatch,
+	// leaves nothing behind for move-applications.sh to read.
+	if err := os.RemoveAll(filepath.Join(dir, "apps")); err != nil {
+		return "", err
+	}
 	sort.Slice(files, func(i, j int) bool { return files[i].name < files[j].name })
 	for _, f := range files {
 		path := filepath.Join(dir, f.name)
