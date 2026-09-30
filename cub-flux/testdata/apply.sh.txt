@@ -31,6 +31,18 @@ holds() {
   [ "$n" -ge "$2" ] || { echo "$1 holds $n of its $2 units; run this script again" >&2; return 1; }
 }
 stages_are() { [ "$(cub changeworkflow get --space "$1" "$2" -o 'jq=[.ChangeWorkflow.Stages[].Name] | join(",")')" = "$3" ]; }
+# add_stage <base> <stage> <earlier stages, nearest first> <stage JSON>:
+# insert a stage the live workflow lacks after the nearest earlier stage it
+# has (first if none), keeping every stage it has as it is.
+add_stage() {
+  local have after="" e
+  have=$(cub changeworkflow get --space "$1" rollout -o 'jq=[.ChangeWorkflow.Stages[].Name] | join(",")')
+  case ",$have," in *",$2,"*) return 0 ;; esac
+  for e in ${3//,/ }; do case ",$have," in *",$e,"*) after=$e; break ;; esac; done
+  cub changeworkflow get --space "$1" rollout -o "jq=.ChangeWorkflow.Stages | ((map(.Name) | index(\"$after\")) // -1) as \$i | {Stages: (.[:\$i+1] + [$4] + .[\$i+1:])}" |
+    cub changeworkflow update --patch --space "$1" rollout --from-stdin --quiet
+  echo "  $1: added stage $2 after ${after:-nothing}, keeping every stage it had"
+}
 promote() {
   local out
   for _ in 1 2 3; do

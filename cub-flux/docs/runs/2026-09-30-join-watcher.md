@@ -56,4 +56,24 @@ apps -> rh-w-apps-dev-2: Synced/Healthy/Succeeded at sha256:f750eadbdea4: releas
 
 **After the approval, the watcher still published nothing.** `apply.sh` counted an onboarding change order as done once it read `Completed`. That only means it was promoted through every stage: a run with `PROPOSE_ONLY`, or one that stopped between promoting and publishing, leaves it `Completed` with a variant unreleased. It now also needs every variant Space in the plan to have a release.
 
+**A cluster joining a fleet that has a handed-over cluster could not be
+onboarded.** Codex found this in review of #257, and a second live run
+reproduced it. There were two causes:
+- `apply.sh` left the live workflow alone once any cluster was handed over, so
+  the joining cluster had no stage. It now inserts each missing stage after the
+  nearest earlier stage the workflow has, in the fleet's order, and keeps every
+  stage already there as it is.
+- The handed-over cluster's variants were not in the plan, so the change order
+  never passed through them, and the next promotion was refused: "Variant 'dev'
+  has not taken change order". `apply.sh` now promotes and publishes a
+  handed-over cluster's existing variant Spaces in stage order too; with
+  nothing new, they report already released.
+
+The second run used `dev` committed as handed over, `prod`, and `dev-2`
+joining:
+- The workflow went from `dev, prod` to `dev, prod, dev-2`, keeping `dev` and
+  `prod` as they were.
+- The watcher proposed dev-2, with both approval lines.
+- After approval, both dev-2 variants and its layers Space had a release.
+
 Everything was removed with the generated `cleanup.sh`, and the kind cluster was deleted.

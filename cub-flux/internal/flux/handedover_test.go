@@ -170,7 +170,17 @@ func TestApplyLeavesWorkflowsAloneAfterAHandover(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := ApplyScript(p, "flux", ".")
-	if strings.Contains(s, "changeworkflow update") || !strings.Contains(s, "the rollout workflow is left as ConfigHub holds it") {
-		t.Errorf("no workflow may be rewritten while a cluster is handed over")
+	if strings.Contains(s, "\nstages_are ") || strings.Contains(s, "rollout --filename apps/change-workflow.yaml --quiet") {
+		t.Errorf("no workflow may be rewritten or replaced while a cluster is handed over")
+	}
+	// A stage the plan has and the workflow may lack is only ever added, after
+	// the nearest earlier stage in the fleet's order, the handed-over one too.
+	if !strings.Contains(s, "add_stage flux-apps-base 'prod' 'dev' ") {
+		t.Errorf("prod should be added after dev if missing, keeping dev:\n%s", s)
+	}
+	// And the handed-over cluster's stage is still promoted, so later stages
+	// find it has taken the order.
+	if !strings.Contains(s, "if cub space get flux-apps-dev >/dev/null 2>&1; then  # dev is handed over") {
+		t.Errorf("dev's existing variant should still take the order")
 	}
 }
