@@ -17,7 +17,9 @@ import (
 //	IUA_PATCH_FAIL          the image automation patch is denied
 //	IUA_SUSPEND             what spec.suspend reads back (default true)
 //	IUA_OWNER               the Kustomization label on it (default none)
-//	LAYER_OWNER             the Kustomization label on every layer (default none)
+//	LAYER_OWNER             the Kustomization label on every layer until the root is applied
+//	OWNER_SOURCE_KIND       what that owner reads (default GitRepository)
+//	GIT_COMMITTED           the owner's Git revision has the handover commit
 //	FETCHED                 the digest each layer applied (default the checked one)
 //	RELEASE_MOVES_AFTER     cub release get answers a newer digest after this many calls
 const stubKubectl = `#!/usr/bin/env bash
@@ -26,12 +28,21 @@ a=" $* "
 case "$a" in
   *" config current-context "*) echo ctx-current ;;
   *" get namespace "*) ;;
-  *" get kustomization "*labels*) echo "${LAYER_OWNER:-}" ;;
+  *" get kustomization confighub-root "*labels*) echo "${LAYER_OWNER:-}" ;;
+  *" get kustomization "*labels*)
+    # Once the root is applied it owns the layers, as it does on a cluster.
+    if [ -f "$STUB_LOG.root" ]; then echo confighub-root; else echo "${LAYER_OWNER:-}"; fi ;;
   *" get kustomization "*metadata.name*)
     name=$(sed 's/.* get kustomization \([^ ]*\) .*/\1/' <<<"$a")
     echo "$name|GitRepository|fleet-repo||./gitops/$name" ;;
+  *" get kustomization "*"{.spec.sourceRef.kind}"*) echo "${OWNER_SOURCE_KIND:-GitRepository}" ;;
+  *" get kustomization "*"{.spec.sourceRef.name}"*) echo fleet-repo ;;
+  *" get kustomization "*"{.spec.sourceRef.namespace}"*) ;;
+  *" get kustomization "*"{.spec.suspend}"*) ;;
+  *" get gitrepository "*) echo "main@sha1:0123456789abcdef0123456789abcdef01234567" ;;
+  *" get kustomization "*lastAppliedRevision*)
+    case "$a" in *" kustomization flux-system "*) echo "main@sha1:0123456789abcdef0123456789abcdef01234567" ;; *) echo "latest@${FETCHED:-sha256:checked}" ;; esac ;;
   *" get kustomization "*conditions*) echo "the artifact could not be fetched" ;;
-  *" get kustomization "*lastAppliedRevision*) echo "latest@${FETCHED:-sha256:checked}" ;;
   *" patch kustomization "*)
     [ -n "${FAIL_PATCH:-}" ] && [[ "$a" == *" patch kustomization $FAIL_PATCH "* ]] && exit 1 ;;
   *" wait --for=jsonpath"*) ;;
@@ -43,6 +54,18 @@ case "$a" in
   *" get imageupdateautomation "*labels*) echo "${IUA_OWNER:-}" ;;
   *" create secret "*) echo "kind: Secret" ;;
   *" apply -f - "*) cat >/dev/null ;;
+  *" apply -f bootstrap/"*) touch "$STUB_LOG.root" ;;
+esac
+exit 0
+`
+
+// The stand-in git answers for a fleet checkout: GIT_COMMITTED says whether the
+// revision the owner reads has the handover commit (layers gone, root in).
+const stubGit = `#!/usr/bin/env bash
+case " $* " in
+  *" cat-file -e "*"^{commit}"*) exit 0 ;;
+  *" cat-file -e "*:*) [ -n "${GIT_COMMITTED:-}" ] && exit 1; exit 0 ;;
+  *" grep -q "*) [ -n "${GIT_COMMITTED:-}" ] && exit 0; exit 1 ;;
 esac
 exit 0
 `
@@ -82,13 +105,28 @@ func runHandoverOn(t *testing.T, cluster string, env ...string) handoverRun {
 	bin := t.TempDir()
 	for name, body := range map[string]string{
 		"kubectl": stubKubectl, "cub": stubCub, "kustomize": stubKustomize,
-		"git": "#!/usr/bin/env bash\nexit 0\n",
+		"git": stubGit,
 	} {
 		if err := os.WriteFile(filepath.Join(bin, name), []byte(body), 0o755); err != nil {
 			t.Fatal(err)
 		}
 	}
 	calls := filepath.Join(t.TempDir(), "kubectl.log")
+	for _, e := range env {
+		// PRESEED_OWNER stands in for an earlier run that suspended this owner
+		// and handed the layers to the root.
+		if o, ok := strings.CutPrefix(e, "PRESEED_OWNER="); ok {
+			if err := os.MkdirAll(filepath.Join(dir, "handover-state"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(dir, "handover-state", cluster+".owner"), []byte(o+"\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(calls+".root", nil, 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
 	cmd := exec.Command("bash", filepath.Join(dir, "handover.sh"))
 	cmd.Env = append(os.Environ(),
 		"PATH="+bin+string(os.PathListSeparator)+os.Getenv("PATH"),
@@ -170,22 +208,6 @@ func TestImageAutomationSuspension(t *testing.T) {
 				t.Errorf("must not claim a suspension it did not see:\n%s", r.out)
 			}
 		})
-	}
-}
-
-// In a fleet made with flux bootstrap, flux-system applies every layer, and a
-// kubectl patch of one is undone on its next reconcile (measured on Flux
-// v2.8.6). The script must find that before it changes anything.
-func TestHandoverRefusesLayersAnotherKustomizationOwns(t *testing.T) {
-	r := runHandover(t, "FLUX_CONTEXT=ctx-a", "LAYER_OWNER=flux-system")
-	if r.err == nil {
-		t.Fatalf("owned layers must stop the run:\n%s", r.out)
-	}
-	if !strings.Contains(r.out, "apps(applied-by-flux-system)") || !strings.Contains(r.out, "hand them over in") {
-		t.Errorf("should name the owned layers and the Git route:\n%s", r.out)
-	}
-	if strings.Contains(r.log, " patch ") || strings.Contains(r.log, " apply ") || strings.Contains(r.log, " create ") {
-		t.Errorf("nothing may change before the refusal:\n%s", r.log)
 	}
 }
 
@@ -278,5 +300,69 @@ func TestHandoverOnAClusterWithoutEveryLayer(t *testing.T) {
 	}
 	if !strings.Contains(r.log, "wait --for=condition=Ready kustomization/apps") {
 		t.Errorf("apps should still arrive on staging:\n%s", r.log)
+	}
+}
+
+// A bootstrapped fleet: flux-system owns the layers. It is suspended, the root
+// takes them over, and the run pauses for the Git commit, leaving flux-system
+// suspended: resuming it before the commit lands would re-apply the layers and
+// then delete them, and all they run, when it does.
+func TestBootstrappedHandoverPausesForTheCommit(t *testing.T) {
+	r := runHandover(t, "FLUX_CONTEXT=ctx-a", "LAYER_OWNER=flux-system")
+	if ee, ok := r.err.(*exec.ExitError); !ok || ee.ExitCode() != 2 {
+		t.Fatalf("want exit 2, paused: %v\n%s", r.err, r.out)
+	}
+	suspend := strings.Index(r.log, `patch kustomization flux-system --type merge -p {"spec":{"suspend":true}}`)
+	root := strings.Index(r.log, "apply -f bootstrap/dev-1/confighub-root.yaml")
+	if suspend < 0 || root < 0 || suspend > root {
+		t.Errorf("flux-system must be suspended before the root goes on:\n%s", r.log)
+	}
+	if strings.Contains(r.log, `"suspend":false`) {
+		t.Errorf("flux-system must stay suspended until Git has the commit:\n%s", r.log)
+	}
+	for _, want := range []string{"PAUSED", "git rm gitops/flux/expert-fleet/clusters/dev/apps.yaml", "Do NOT resume flux-system by hand"} {
+		if !strings.Contains(r.out, want) {
+			t.Errorf("want %q in:\n%s", want, r.out)
+		}
+	}
+	if resume := strings.LastIndex(r.out, "patch kustomization flux-system --type merge -p '{\"spec\":{\"suspend\":false}}'"); resume < strings.LastIndex(r.out, "delete kustomization confighub-root") {
+		t.Errorf("the way back resumes flux-system last, after the root is gone:\n%s", r.out)
+	}
+}
+
+// Once the revision flux-system reads no longer defines the layers and does
+// define the root, flux-system is resumed and the layers are still the root's.
+func TestBootstrappedHandoverResumesOnceGitHasTheCommit(t *testing.T) {
+	r := runHandover(t, "FLUX_CONTEXT=ctx-a", "LAYER_OWNER=flux-system", "GIT_COMMITTED=1")
+	if r.err != nil {
+		t.Fatalf("%v\n%s", r.err, r.out)
+	}
+	if !strings.Contains(r.log, `patch kustomization flux-system --type merge -p {"spec":{"suspend":false}}`) {
+		t.Errorf("flux-system should be resumed:\n%s", r.log)
+	}
+	if !strings.Contains(r.state, "resumed flux-system at main@sha1:") || !strings.Contains(r.out, "git revert") {
+		t.Errorf("the resume should be recorded and the way back be a revert:\n%s\n%s", r.state, r.out)
+	}
+}
+
+// An owner that does not read Git has no commit to wait for.
+func TestHandoverRefusesAnOwnerNotReadingGit(t *testing.T) {
+	r := runHandover(t, "FLUX_CONTEXT=ctx-a", "LAYER_OWNER=platform", "OWNER_SOURCE_KIND=OCIRepository")
+	if r.err == nil || !strings.Contains(r.out, "does not read Git") || strings.Contains(r.log, "patch ") {
+		t.Errorf("want a refusal before anything changes: %v\n%s", r.err, r.out)
+	}
+}
+
+// Found live: a re-run after the commit saw the layers already the root's,
+// took the plain path, and left flux-system suspended while reporting success.
+// The owner an earlier run suspended is in the state, and a re-run finishes.
+func TestBootstrappedRerunFinishes(t *testing.T) {
+	r := runHandover(t, "FLUX_CONTEXT=ctx-a", "PRESEED_OWNER=flux-system", "GIT_COMMITTED=1")
+	if r.err != nil {
+		t.Fatalf("%v\n%s", r.err, r.out)
+	}
+	if !strings.Contains(r.out, "continuing: flux-system was suspended by an earlier run") ||
+		!strings.Contains(r.log, `patch kustomization flux-system --type merge -p {"spec":{"suspend":false}}`) {
+		t.Errorf("a re-run must resume the owner an earlier run suspended:\n%s\n%s", r.out, r.log)
 	}
 }

@@ -696,19 +696,38 @@ what happens next, when the layers leave `flux-system`'s source:
   pruning deleted every workload, and the `infrastructure` layer's pruning even
   deleted the `GitRepository` the layers read.
 
-So `handover.sh` still refuses a layer that another Kustomization owns. It
-accepts `confighub-root` as the owner, so it can be re-run. Run against the
-bootstrapped cluster, it named both layers and exited with every
-`Kustomization`'s `resourceVersion` unchanged.
+So for a bootstrapped fleet, `handover.sh` follows the order that measurement
+leaves safe:
 
-The sequence for a bootstrapped fleet follows from that measurement. It is the
-design, and is **not built yet**:
+1. It suspends `flux-system`: step 0 finds it owns the layers, and checks that
+   it reads Git.
+2. It applies the root and lets it take the layers over.
+3. It pauses, with exit code 2, for one commit: remove the layer files from
+   `clusters/<name>/`, add the root file, push. It prints the exact `git rm`
+   and `cp` lines.
+4. Run it again. It resumes `flux-system` only once the revision
+   `flux-system` reads no longer has the layer files and does define the root,
+   which it checks in your checkout with `git cat-file` and `git grep`.
 
-1. Suspend `flux-system`.
-2. Apply the root and let it take the layers over.
-3. Commit the removal of the layer files from `clusters/<name>/`, together with
-   `bootstrap/<cluster>/`.
-4. Resume `flux-system` only once that commit is what it reads.
+Until then it says, in so many words, not to resume `flux-system` by hand. It
+records the owner it suspended, so a rerun carries on from there. After the
+commit, the way back is a revert, with the root's pruning turned off first.
+
+**Run live, 2026-09-30:** Flux v2.8.6 on kind, bootstrapped from a lab Git
+server that the cluster reads and the test pushes to, and ConfigHub v0.6.8.
+- The run paused, and the commit was made as printed.
+- The rerun resumed `flux-system` at that commit. After two more forced
+  reconciles, the ownership chain was: `flux-system` from Git, then
+  `confighub-root`, then the layers from ConfigHub.
+- Every UID, the Pod's, the layers' and the `GitRepository`'s, and the rollout
+  revision were identical.
+- The revert way back put the layers back under `flux-system` from Git, and
+  removed the root with nothing else deleted.
+
+The run is recorded in
+[docs/runs/2026-09-30-bootstrapped-handover.md](runs/2026-09-30-bootstrapped-handover.md),
+with the one bug it found (a rerun that did not finish) and what it does not
+cover.
 
 Suspending first means `flux-system` cannot reconcile the layers after the root
 has. The same goes for image automation: its

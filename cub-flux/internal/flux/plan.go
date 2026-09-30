@@ -108,8 +108,11 @@ type Variant struct {
 	Images          map[string]string `json:"images,omitempty"`
 	stage           string
 	layer           map[string]any
-	overlay         map[string]any
-	resourceDirs    []string
+	// layerFile is the repository file that defines the layer's
+	// Kustomization for this cluster: what a bootstrapped handover removes.
+	layerFile    string
+	overlay      map[string]any
+	resourceDirs []string
 }
 
 // Source is a Flux source and the branch each cluster reads it at.
@@ -382,6 +385,7 @@ func (b *builder) variant(c *Component, cl Cluster, d Doc) *Variant {
 		TargetNamespace: str(spec["targetNamespace"]),
 		stage:           cl.Stage,
 		layer:           d.Value,
+		layerFile:       b.rel(d.File),
 	}
 	local := filepath.Join(b.root, filepath.FromSlash(path))
 	if info, err := os.Stat(local); err != nil || !info.IsDir() {
