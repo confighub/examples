@@ -303,11 +303,24 @@ cub argo check --kube-context "$ctx" --fields --namespace "$ns" --application 'p
 # What no controller claims on these namespaces, as a cross-check. This
 # is cub-scout inferring ownership, not a gate: it finds what was applied
 # by hand and would be left behind, which neither record above reports.
+# cub-scout reads kubectl's current context and takes no flag for another,
+# so each call gets a kubeconfig holding only the cluster it should read:
+# otherwise it reports on whichever cluster happens to be current.
+scout() {
+  local kc; kc=$(mktemp)
+  if ! kubectl config view --minify --flatten --context "$1" > "$kc" 2>/dev/null; then
+    rm -f "$kc"; echo "  no kubectl context $1; skipping the cross-check there" >&2; return 0
+  fi
+  KUBECONFIG="$kc" cub scout map list -q "$2" || true
+  rm -f "$kc"
+}
 if command -v cub-scout >/dev/null || cub scout --help >/dev/null 2>&1; then
-  cub scout map list -q 'owner=Native AND namespace=storefront-dev AND name!=kube-root-ca.crt' || true
-  cub scout map list -q 'owner=Native AND namespace=storefront-staging AND name!=kube-root-ca.crt' || true
-  cub scout map list -q 'owner=Native AND namespace=storefront-prod AND name!=kube-root-ca.crt' || true
-  cub scout map list -q 'owner=Native AND namespace=platform-system AND name!=kube-root-ca.crt' || true
+  scout "${DEST_CONTEXT_dev_1:-}" 'owner=Native AND namespace=storefront-dev AND name!=kube-root-ca.crt'
+  scout "${DEST_CONTEXT_staging_1:-}" 'owner=Native AND namespace=storefront-staging AND name!=kube-root-ca.crt'
+  scout "${DEST_CONTEXT_prod_1:-}" 'owner=Native AND namespace=storefront-prod AND name!=kube-root-ca.crt'
+  scout "${DEST_CONTEXT_dev_1:-}" 'owner=Native AND namespace=platform-system AND name!=kube-root-ca.crt'
+  scout "${DEST_CONTEXT_staging_1:-}" 'owner=Native AND namespace=platform-system AND name!=kube-root-ca.crt'
+  scout "${DEST_CONTEXT_prod_1:-}" 'owner=Native AND namespace=platform-system AND name!=kube-root-ca.crt'
 else
   echo "  cub-scout is not installed; skipping the unclaimed-resource cross-check"
 fi

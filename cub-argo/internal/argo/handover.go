@@ -454,18 +454,34 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("# What no controller claims on these namespaces, as a cross-check. This")
 	add("# is cub-scout inferring ownership, not a gate: it finds what was applied")
 	add("# by hand and would be left behind, which neither record above reports.")
+	add("# cub-scout reads kubectl's current context and takes no flag for another,")
+	add("# so each call gets a kubeconfig holding only the cluster it should read:")
+	add("# otherwise it reports on whichever cluster happens to be current.")
+	add(`scout() {`)
+	add(`  local kc; kc=$(mktemp)`)
+	add(`  if ! kubectl config view --minify --flatten --context "$1" > "$kc" 2>/dev/null; then`)
+	add(`    rm -f "$kc"; echo "  no kubectl context $1; skipping the cross-check there" >&2; return 0`)
+	add(`  fi`)
+	add(`  KUBECONFIG="$kc" cub scout map list -q "$2" || true`)
+	add(`  rm -f "$kc"`)
+	add(`}`)
 	add(`if command -v cub-scout >/dev/null || cub scout --help >/dev/null 2>&1; then`)
 	seen := map[string]bool{}
 	for _, c := range p.Components {
 		for _, st := range c.Stages {
 			for _, v := range st.Variants {
-				if v.Namespace == "" || seen[v.Namespace] {
+				key := v.Cluster + "/" + v.Namespace
+				if v.Namespace == "" || seen[key] {
 					continue
 				}
-				seen[v.Namespace] = true
+				seen[key] = true
+				on := `"$ctx"`
+				if v.Cluster != "in-cluster" {
+					on = `"${` + destVar(v.Cluster) + `:-}"`
+				}
 				// Kubernetes puts kube-root-ca.crt in every namespace, so it is
 				// never something a handover leaves behind.
-				add(`  cub scout map list -q %s || true`, q("owner=Native AND namespace="+v.Namespace+" AND name!=kube-root-ca.crt"))
+				add(`  scout %s %s`, on, q("owner=Native AND namespace="+v.Namespace+" AND name!=kube-root-ca.crt"))
 			}
 		}
 	}
