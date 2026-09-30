@@ -208,8 +208,52 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("# What no controller claims in this fleet, as a cross-check. cub-scout")
 	add("# infers ownership where the inventory is Flux's own record, so this is")
 	add("# not a gate: it finds what was applied by hand and would be left behind.")
+	add("# It reads kubectl's current context and takes no flag for another, so it")
+	add("# gets a kubeconfig holding only this cluster. It looks where the layers")
+	add("# put things, not at Flux's own controllers or the cluster's system.")
+	add(`scout() {`)
+	add(`  local kc; kc=$(mktemp)`)
+	add(`  if ! kubectl config view --minify --flatten --context "$ctx" > "$kc" 2>/dev/null; then`)
+	add(`    rm -f "$kc"; echo "  no kubectl context $ctx; skipping the cross-check" >&2; return 0`)
+	add(`  fi`)
+	add(`  KUBECONFIG="$kc" cub scout map list -q "$1" || true`)
+	add(`  rm -f "$kc"`)
+	add(`}`)
 	add(`if cub scout --help >/dev/null 2>&1; then`)
-	add(`  cub scout map list -q "owner=Native" || true`)
+	nsOf := map[string][]string{}
+	seenNS := map[string]bool{}
+	untargeted := map[string]bool{}
+	var clusterOrder []string
+	for _, c := range p.Components {
+		for _, st := range c.Stages {
+			for _, v := range st.Variants {
+				if _, ok := nsOf[v.Cluster]; !ok {
+					nsOf[v.Cluster] = nil
+					clusterOrder = append(clusterOrder, v.Cluster)
+				}
+				if v.TargetNamespace == "" {
+					// A layer without one can put things anywhere, so the
+					// whole cluster, less its system, is looked at.
+					untargeted[v.Cluster] = true
+				} else if !seenNS[v.Cluster+"/"+v.TargetNamespace] {
+					seenNS[v.Cluster+"/"+v.TargetNamespace] = true
+					nsOf[v.Cluster] = append(nsOf[v.Cluster], v.TargetNamespace)
+				}
+			}
+		}
+	}
+	system := "owner=Native AND namespace!=flux-system AND namespace!=kube-system AND namespace!=kube-public AND namespace!=kube-node-lease AND name!=kube-root-ca.crt"
+	for _, cl := range clusterOrder {
+		add(`  if [ "$cluster" = %s ]; then`, q(cl))
+		if untargeted[cl] || len(nsOf[cl]) == 0 {
+			add(`    scout %s`, q(system))
+		} else {
+			for _, ns := range nsOf[cl] {
+				add(`    scout %s`, q("owner=Native AND namespace="+ns+" AND name!=kube-root-ca.crt"))
+			}
+		}
+		add(`  fi`)
+	}
 	add("else")
 	add(`  echo "  cub-scout is not installed; skipping the unclaimed-resource cross-check"`)
 	add("fi")
@@ -282,6 +326,20 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	// every layer prunes what it runs: measured on Flux v2.8.6, a layer removed
 	// from its owner's source took its workloads with it. So the way back stops
 	// the root pruning before anything else, and removes it last.
+	// The root applied each layer's OCIRepository, and a root removed with
+	// pruning off leaves them behind. Measured on Flux v2.8.6 by the e2e rig:
+	// after the way back they still read ConfigHub, and cleanup.sh refused,
+	// rightly. Nothing reads them once the layers read Git again, so they go
+	// last. A layer that read an OCIRepository before is never recorded, so its
+	// own source is never named here.
+	raw(`layer_sources() {`)
+	raw(`  local name kind src srcns path`)
+	raw(`  echo "  # last, once each layer reads Git again: the OCIRepositories the root applied, which nothing reads now"`)
+	raw(`  while IFS='|' read -r name kind src srcns path; do`)
+	raw(`    case " $moved " in *" $name "*) ;; *) [ "${1:-}" = all ] || continue ;; esac`)
+	raw(`    [ "$kind" = OCIRepository ] || echo "  kubectl --context '$ctx' -n '$ns' delete ocirepository $name"`)
+	raw(`  done < "$state"`)
+	raw(`}`)
 	raw(`# way_back [all]: the commands that put the layers back on Git, for the ones`)
 	raw(`# this run moved, or with "all" for every layer recorded for this cluster.`)
 	raw(`way_back() {`)
@@ -296,6 +354,7 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	raw(`  done < "$state"`)
 	raw(`  echo "  kubectl --context '$ctx' -n '$ns' delete kustomization ` + RootName + `"`)
 	raw(`  echo "  kubectl --context '$ctx' -n '$ns' delete ocirepository ` + RootName + `"`)
+	raw(`  layer_sources "${1:-}"`)
 	raw(`  [ -z "$suspended_owner" ] || echo "  kubectl --context '$ctx' -n '$ns' patch kustomization $suspended_owner --type merge -p '{\"spec\":{\"suspend\":false}}'   # its Git still defines the layers"`)
 	raw(`}`)
 	raw(`stopped() {`)
@@ -516,6 +575,7 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	raw(`  echo "  kubectl --context '$ctx' -n '$ns' patch kustomization ` + RootName + ` --type merge -p '{\"spec\":{\"suspend\":true,\"prune\":false}}'"`)
 	raw(`  echo "  git revert <the commit above> && git push"`)
 	raw(`  echo "  kubectl --context '$ctx' -n '$ns' patch kustomization $owner --type merge -p '{\"spec\":{\"suspend\":false}}'   # re-applies the layers from Git, removes the root"`)
+	raw(`  layer_sources all`)
 	raw(`else`)
 	raw(`  way_back all`)
 	raw(`fi`)

@@ -235,6 +235,18 @@ func TestHandoverStoppedMidwayNamesTheWayBack(t *testing.T) {
 			t.Errorf("the root moved %s too, so it needs a way back:\n%s", l, r.out)
 		}
 	}
+	// The root applied each layer's OCIRepository and is removed with pruning
+	// off, so they are left behind reading ConfigHub unless the way back names
+	// them, after the root. Measured by the e2e rig.
+	for _, l := range []string{"apps", "infrastructure", "tenants", "image-automation"} {
+		del := strings.Index(r.out, "-n 'flux-system' delete ocirepository "+l+"\n")
+		if del < 0 || del < remove {
+			t.Errorf("want %s's OCIRepository deleted after the root is gone:\n%s", l, r.out)
+		}
+	}
+	if strings.Contains(r.out, "delete ocirepository apptique-examples") {
+		t.Errorf("the layers' own Git sources are never deleted:\n%s", r.out)
+	}
 	if !strings.Contains(r.state, "NOT Ready apps: the artifact could not be fetched") {
 		t.Errorf("the reason should be kept:\n%s", r.state)
 	}
