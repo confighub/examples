@@ -239,20 +239,20 @@ else
   all_released() { local s; for s in "$@"; do released "$s" || return 1; done; }
   publish_layers() { out=$(cub release publish "$1" --quiet 2>&1) || case "$out" in *"no changes"*) ;; *) echo "$out" >&2; return 1 ;; esac; }
   cub space create flux-dev-1-layers --release-target flux-targets/dev-1 --label Role=layers --label Cluster=dev-1 --allow-exists --quiet
-  echo '{}' | cub target update --patch --space flux-targets dev-1 --annotation confighub.com/flux-layers-space=flux-dev-1-layers --annotation confighub.com/flux-pull-secret=confighub-flux-targets --from-stdin --quiet
+  echo '{"Annotations":{"confighub.com/flux-layers-space":"flux-dev-1-layers","confighub.com/flux-pull-secret":"confighub-flux-targets"}}' | cub target update --patch --space flux-targets dev-1 --from-stdin --quiet
   layer_unit 'flux-dev-1-layers' 'infrastructure' 'layers/dev-1/infrastructure.yaml'
   layer_unit 'flux-dev-1-layers' 'apps' 'layers/dev-1/apps.yaml'
   layer_unit 'flux-dev-1-layers' 'tenants' 'layers/dev-1/tenants.yaml'
   layer_unit 'flux-dev-1-layers' 'image-automation' 'layers/dev-1/image-automation.yaml'
   if [ -z "${PROPOSE_ONLY:-}" ] || all_released flux-infrastructure-dev-1 flux-apps-dev-1 flux-tenants-dev-1 flux-image-automation-dev-1; then publish_layers flux-dev-1-layers; else echo "  flux-dev-1-layers waits: not every variant of dev-1 is released yet"; fi
   cub space create flux-staging-1-layers --release-target flux-targets/staging-1 --label Role=layers --label Cluster=staging-1 --allow-exists --quiet
-  echo '{}' | cub target update --patch --space flux-targets staging-1 --annotation confighub.com/flux-layers-space=flux-staging-1-layers --annotation confighub.com/flux-pull-secret=confighub-flux-targets --from-stdin --quiet
+  echo '{"Annotations":{"confighub.com/flux-layers-space":"flux-staging-1-layers","confighub.com/flux-pull-secret":"confighub-flux-targets"}}' | cub target update --patch --space flux-targets staging-1 --from-stdin --quiet
   layer_unit 'flux-staging-1-layers' 'infrastructure' 'layers/staging-1/infrastructure.yaml'
   layer_unit 'flux-staging-1-layers' 'apps' 'layers/staging-1/apps.yaml'
   layer_unit 'flux-staging-1-layers' 'tenants' 'layers/staging-1/tenants.yaml'
   if [ -z "${PROPOSE_ONLY:-}" ] || all_released flux-infrastructure-staging-1 flux-apps-staging-1 flux-tenants-staging-1; then publish_layers flux-staging-1-layers; else echo "  flux-staging-1-layers waits: not every variant of staging-1 is released yet"; fi
   cub space create flux-prod-1-layers --release-target flux-targets/prod-1 --label Role=layers --label Cluster=prod-1 --allow-exists --quiet
-  echo '{}' | cub target update --patch --space flux-targets prod-1 --annotation confighub.com/flux-layers-space=flux-prod-1-layers --annotation confighub.com/flux-pull-secret=confighub-flux-targets --from-stdin --quiet
+  echo '{"Annotations":{"confighub.com/flux-layers-space":"flux-prod-1-layers","confighub.com/flux-pull-secret":"confighub-flux-targets"}}' | cub target update --patch --space flux-targets prod-1 --from-stdin --quiet
   layer_unit 'flux-prod-1-layers' 'infrastructure' 'layers/prod-1/infrastructure.yaml'
   layer_unit 'flux-prod-1-layers' 'apps' 'layers/prod-1/apps.yaml'
   layer_unit 'flux-prod-1-layers' 'tenants' 'layers/prod-1/tenants.yaml'

@@ -218,17 +218,40 @@ func TestTargetNamesTheLayersSpaceTheRootReads(t *testing.T) {
 	}
 	p := planAt(t, root, fleet)
 	s := ApplyScript(p, "flux", ".")
-	if !strings.Contains(s, "cub target update --patch --space flux-targets dev --annotation confighub.com/flux-layers-space=old-dev-layers --annotation confighub.com/flux-pull-secret=confighub-old-targets ") {
+	if !strings.Contains(s, `echo '{"Annotations":{"confighub.com/flux-layers-space":"old-dev-layers","confighub.com/flux-pull-secret":"confighub-old-targets"}}' | cub target update --patch --space flux-targets dev `) {
 		t.Errorf("dev's Target should name old-dev-layers and the Secret its root pulls with:\n%s", s)
 	}
 	if strings.Contains(s, "flux-dev-layers") {
 		t.Errorf("nothing should make or name flux-dev-layers for a root reading old-dev-layers")
 	}
 	step5 := strings.Index(s, `step "5/5`)
-	if a := strings.Index(s, "confighub.com/flux-layers-space="); a < step5 {
+	if a := strings.Index(s, `"confighub.com/flux-layers-space":`); a < step5 {
 		t.Errorf("the Target is annotated before step 5 makes the layers Space")
 	}
 	if !strings.Contains(s, " $no_flux_layer --allow-exists") {
 		t.Errorf("apply.sh makes the layer Units itself, so variant create must be told not to")
+	}
+}
+
+// From review on #262: a root that pulls anonymously has no Secret, and one an
+// earlier run named is removed, since the patch merges.
+func TestAnonymousRootClearsThePullSecret(t *testing.T) {
+	const fleet = "gitops/flux/beginner"
+	root := handedOver(t, fleet, "dev", "flux-dev-layers")
+	file := filepath.Join(root, fleet, "clusters", "dev", RootName+".yaml")
+	y, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	anon := strings.Replace(string(y), "  secretRef:\n    name: confighub-flux-targets\n", "", 1)
+	if anon == string(y) {
+		t.Fatal("the root should have had a secretRef to remove")
+	}
+	if err := os.WriteFile(file, []byte(anon), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	s := ApplyScript(planAt(t, root, fleet), "flux", ".")
+	if !strings.Contains(s, `{"Annotations":{"confighub.com/flux-layers-space":"flux-dev-layers","confighub.com/flux-pull-secret":null}}`) {
+		t.Errorf("an anonymous root's Target should lose its pull Secret:\n%s", s)
 	}
 }

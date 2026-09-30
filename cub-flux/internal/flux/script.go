@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -357,11 +358,14 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 		// pull with: the signal a Flux-aware `cub variant create` reads to add a
 		// variant made outside this plan as a layer here (the Flux counterpart of
 		// confighub.com/argo-apps-space).
-		ann := "--annotation confighub.com/flux-layers-space=" + space
-		if secret := cl.pullSecret(prefix); secret != "" {
-			ann += " --annotation confighub.com/flux-pull-secret=" + secret
+		// A root that pulls anonymously has no Secret; null removes one an
+		// earlier run named, as the patch merges.
+		secret := "null"
+		if s := cl.pullSecret(prefix); s != "" {
+			secret = strconv.Quote(s)
 		}
-		raw(fmt.Sprintf(`  echo '{}' | cub target update --patch --space %s %s %s --from-stdin --quiet`, targets, cl.Name, ann))
+		ann := fmt.Sprintf(`{"Annotations":{"confighub.com/flux-layers-space":%s,"confighub.com/flux-pull-secret":%s}}`, strconv.Quote(space), secret)
+		raw(fmt.Sprintf(`  echo %s | cub target update --patch --space %s %s --from-stdin --quiet`, q(ann), targets, cl.Name))
 		for _, c := range p.Components {
 			for _, st := range c.Stages {
 				for _, v := range st.Variants {
