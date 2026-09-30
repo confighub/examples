@@ -84,16 +84,23 @@ Live exports (`kubectl get kustomizations ...`), OCIRepository and Bucket
 sources as layer inputs, `substituteFrom` values, and rendering: it reads
 kustomization files but does not run kustomize or Helm.
 
-## Use it as a cub plugin
+## Install
 
-The plugin is built from this directory, since it does not live in a
-repository of its own. It needs Go.
+```bash
+cub plugin install confighub/examples@cub-flux-v0.1.0 --name flux
+cub plugin list       # flux should be listed, status ok
+cub flux plan ../gitops/flux/expert-fleet
+```
+
+Releases are tagged `cub-flux-v<version>` in this repository; upgrade by
+naming one: `cub plugin upgrade flux@cub-flux-v<version>`. What each release
+changed is in [docs/whats-new.md](docs/whats-new.md).
+
+To build from source instead (needs Go):
 
 ```bash
 go build -o bin/cub-flux . && cub plugin install ./bin/cub-flux
-cub plugin list       # flux should be listed, status ok
 # after a git pull: go build -o bin/cub-flux . && cub plugin upgrade flux
-cub flux plan ../gitops/flux/expert-fleet
 ```
 
 ## Develop

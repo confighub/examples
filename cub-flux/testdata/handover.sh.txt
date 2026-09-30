@@ -2,12 +2,13 @@
 # Move this Flux fleet onto ConfigHub. Written by `cub flux apply`.
 # Read it, then run it, one cluster at a time:
 #
-#   FLUX_CONTEXT=<kubectl context of one cluster> bash handover.sh
+#   CONFIGHUB_OCI=<gateway host the cluster reaches> CLUSTER=<cluster, as plan names it> \
+#   FLUX_CONTEXT=<kubectl context of that cluster> bash handover.sh
 #
 # Run apply.sh first. Each layer keeps its Kustomization, its name and its
 # inventory; only the source changes, so nothing is reinstalled.
 #
-# Rehearsed end to end on Flux v2.8.6 against ConfigHub v0.6.2: every UID
+# Rehearsed end to end on Flux v2.8.6 against ConfigHub v0.6.8: every UID
 # survived, including the Pod's, and the rollout revision did not change.
 # Your fleet is not that one. Read every step before running it, and start
 # with one non-production cluster.
