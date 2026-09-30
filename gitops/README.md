@@ -20,7 +20,7 @@ change it safely before anything touches a live cluster.
 | A fleet repo doing a database's job: filename keys, silent layers, find-and-replace promotion, reach nobody can see | Argo CD | Intermediate | Ready (read-only; ConfigHub upload planned) | [`argo/intermediate-git-as-database`](./argo/intermediate-git-as-database/README.md) |
 | App-of-apps plus ApplicationSets, cluster labels, staged rollout, sync windows | Argo CD | Expert | Ready | [`argo/expert-app-of-apps`](./argo/expert-app-of-apps/README.md) |
 | Bootstrap plus clusters plus apps, namespace per team, branch promotion, post-build substitution | Flux | Expert | Ready | [`flux/expert-fleet`](./flux/expert-fleet/README.md) |
-| Several teams on one cluster | Flux | Expert | Planned | not yet added |
+| Several teams on one cluster | Flux | Expert | Ready | [`flux/expert-multi-tenant`](./flux/expert-multi-tenant/README.md) |
 | Drift, failed sync, and bad-commit states | Argo CD and Flux | Expert | Ready | [`expert-broken-states`](./expert-broken-states/README.md) |
 
 "Ready" means the example is fully built: it has a README, an AI guide, a
@@ -59,8 +59,12 @@ for the Argo and Flux beginner and expert descriptions.
   automation on dev only, one tenant with its own service account, and a dev
   to staging to production promotion path written into the layout.
 - **I run several teams on one Flux-managed cluster and want the
-  multi-tenancy shape on its own.** `flux/expert-fleet` includes one tenant;
-  a dedicated several-teams example is still planned (see the table above).
+  multi-tenancy shape on its own.** Start with
+  [`flux/expert-multi-tenant`](./flux/expert-multi-tenant/README.md): one
+  shared cluster, a platform-owned bootstrap layer, and three teams, each
+  with its own namespace, ServiceAccount, narrow Role, RoleBinding, quota and
+  NetworkPolicy. `flux/expert-fleet` also includes one tenant, on its own
+  dedicated cluster, if you want the fleet-plus-tenancy shape instead.
 - **I want to see what a broken GitOps state looks like (drift, a failed
   sync, a bad commit) and how it gets caught.** Start with
   [`expert-broken-states`](./expert-broken-states/README.md): one app,

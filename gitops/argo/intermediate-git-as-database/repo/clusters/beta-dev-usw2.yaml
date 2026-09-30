@@ -1,6 +1,15 @@
-global:
+apiVersion: v1
+kind: Secret
+metadata:
   name: beta-dev-usw2
-  org: beta
-  env: dev
-  region: usw2
-  provider: aws
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: cluster
+    org: beta
+    env: dev
+    region: usw2
+    provider: aws
+type: Opaque
+stringData:
+  name: beta-dev-usw2
+  server: https://beta-dev-usw2.k8s.example.invalid

@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loyalty-api
+  labels:
+    app: loyalty-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: loyalty-api
+  template:
+    metadata:
+      labels:
+        app: loyalty-api
+    spec:
+      containers:
+        - name: api
+          image: nginx:1.27.3-alpine
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi

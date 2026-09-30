@@ -1,6 +1,15 @@
-global:
+apiVersion: v1
+kind: Secret
+metadata:
   name: beta-prod-euw1
-  org: beta
-  env: prod
-  region: euw1
-  provider: aws
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: cluster
+    org: beta
+    env: prod
+    region: euw1
+    provider: aws
+type: Opaque
+stringData:
+  name: beta-prod-euw1
+  server: https://beta-prod-euw1.k8s.example.invalid

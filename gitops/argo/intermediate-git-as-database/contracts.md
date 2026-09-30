@@ -20,7 +20,7 @@ Stable command outputs for `gitops/argo/intermediate-git-as-database`.
 
 - mutates: no
 - output shape: plain text report from `prompts/scout/scout.py`
-- stable text anchors: `SEVEN QUESTIONS TO ASK IF YOU ARE USING GIT AS A DATABASE`, `Q1` to `Q7`, `Q7b`, `Q7c`
+- stable text anchors: `SEVEN QUESTIONS: IS YOUR CONFIG REPO DOING A DATABASE'S JOB?`, section headings `1  Am I using` to `7  Am I using`, `Also:`
 - proves: each planted problem in `repo/` is visible from the files alone
 
 ### `./verify.sh`

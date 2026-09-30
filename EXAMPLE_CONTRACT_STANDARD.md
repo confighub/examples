@@ -23,7 +23,7 @@ Both are required for full runnable examples. Together they support:
 
 ## Current Scope
 
-The verifier (`scripts/verify.sh`) currently covers **21 examples**, the ones
+The verifier (`scripts/verify.sh`) currently covers **0 examples**, the ones
 listed in its `ai_guide_examples` array. They include the `spring-platform`
 apps, `initiatives-demo`, `promotion-demo-data` and its `verify` wrapper, the
 guardrail examples, the five `global-app-layer` examples, and the

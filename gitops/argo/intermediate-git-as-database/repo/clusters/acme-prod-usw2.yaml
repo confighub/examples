@@ -1,6 +1,15 @@
-global:
+apiVersion: v1
+kind: Secret
+metadata:
   name: acme-prod-usw2
-  org: acme
-  env: prod
-  region: usw2
-  provider: aws
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: cluster
+    org: acme
+    env: prod
+    region: usw2
+    provider: aws
+type: Opaque
+stringData:
+  name: acme-prod-usw2
+  server: https://acme-prod-usw2.k8s.example.invalid
