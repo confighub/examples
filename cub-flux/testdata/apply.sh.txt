@@ -49,12 +49,12 @@ render() {
   [ -s "render/$2.yaml" ] || { echo "kustomize build $REPO_ROOT/$1 rendered nothing" >&2; return 1; }
 }
 
-step "0/4 Check before changing anything"
+step "0/5 Check before changing anything"
 cub auth status >/dev/null 2>&1 || { echo "cub is not logged in: run cub auth login"; exit 1; }
 cub auth status 2>&1 | grep -i '^Warning:' && echo "  Steps below may fail on that skew rather than on anything here."
 command -v kustomize >/dev/null || { echo "kustomize is not on PATH; the layers are rendered with it"; exit 1; }
 
-step "1/4 One named Target per cluster, in flux-targets"
+step "1/5 One named Target per cluster, in flux-targets"
 cub space create flux-targets --allow-exists --quiet
 # A server-hosted worker has no process behind it and no role in the
 # organization; it holds the Targets and is the credential Flux reads with.
@@ -63,7 +63,7 @@ cub target create dev-1 '{}' server-worker --space flux-targets --provider OCI -
 cub target create staging-1 '{}' server-worker --space flux-targets --provider OCI --toolchain Any --allow-exists --quiet
 cub target create prod-1 '{}' server-worker --space flux-targets --provider OCI --toolchain Any --allow-exists --quiet
 
-step "2/4 One component per layer: a base holding what it renders to, and a rollout workflow"
+step "2/5 One component per layer: a base holding what it renders to, and a rollout workflow"
 cub component create flux-infrastructure --allow-exists --quiet
 cub space create flux-infrastructure-base --component flux-infrastructure --label Component=flux-infrastructure --label Role=base --allow-exists --quiet
 render 'gitops/flux/expert-fleet/infrastructure/base' 'infrastructure-base'
@@ -89,7 +89,7 @@ cub unit create --space flux-image-automation-base image-automation render/image
 cub changeworkflow create --space flux-image-automation-base rollout --filename image-automation/change-workflow.yaml --allow-exists --quiet
 stages_are flux-image-automation-base rollout 'dev' || echo '{"Stages":[{"Name":"dev","WhereSpace":"Labels.Stage = '\''dev'\''","ReleasePrerequisites":["approval"]}]}' | cub changeworkflow update --patch --space flux-image-automation-base rollout --from-stdin --quiet
 
-step "3/4 One variant per cluster, each holding what its own path renders to"
+step "3/5 One variant per cluster, each holding what its own path renders to"
 cub variant create dev-1 flux-infrastructure-base --stage dev --space-pattern template:flux-infrastructure-dev-1 --target flux-targets/dev-1 --space-label Role=deployment --space-label Cluster=dev-1 --allow-exists --quiet
 render 'gitops/flux/expert-fleet/infrastructure/dev' 'flux-infrastructure-dev-1'
 cub unit update --space flux-infrastructure-dev-1 infrastructure render/flux-infrastructure-dev-1.yaml --change-desc 'What gitops/flux/expert-fleet/infrastructure/dev renders for dev-1' --quiet
@@ -131,7 +131,7 @@ render 'gitops/flux/expert-fleet/image-automation' 'flux-image-automation-dev-1'
 cub unit update --space flux-image-automation-dev-1 image-automation render/flux-image-automation-dev-1.yaml --change-desc 'What gitops/flux/expert-fleet/image-automation renders for dev-1' --quiet
 holds flux-image-automation-dev-1 1
 
-step "4/4 Release each variant, stage by stage: promote, approve, publish"
+step "4/5 Release each variant, stage by stage: promote, approve, publish"
 cub changeorder create --space flux-infrastructure-base onboard-845737c5 --change-workflow flux-infrastructure-base/rollout --description 'First release of flux-infrastructure-dev-1, flux-infrastructure-staging-1, flux-infrastructure-prod-1' --allow-exists --quiet
 if rolled_out flux-infrastructure-base/onboard-845737c5; then
   echo 'infrastructure: every variant in this plan is released'
@@ -181,6 +181,42 @@ else
   promote flux-image-automation-base/onboard-3ceb6a03 dev
   cub variant approve --change-order flux-image-automation-base/onboard-3ceb6a03 --stage dev --quiet
   publish flux-image-automation-dev-1 flux-image-automation-base/onboard-3ceb6a03 1
+fi
+
+step "5/5 One Space per cluster holding its layers, which one root on that cluster reads"
+# Each layer's Unit is its own Kustomization, reading its variant's Space,
+# and the OCIRepository for that Space. The gateway address is the one the
+# cluster reaches, which only you know; nothing reads these until the root
+# is on the cluster, which handover.sh puts there.
+if [ -z "${CONFIGHUB_OCI:-}" ]; then
+  echo "  skipped: set CONFIGHUB_OCI to the gateway host the clusters reach (and CONFIGHUB_OCI_PLAIN_HTTP=1 if it serves plain HTTP), then re-run. handover.sh needs these Spaces."
+else
+  insecure=false; [ -z "${CONFIGHUB_OCI_PLAIN_HTTP:-}" ] || insecure=true
+  mkdir -p render
+  # layer_unit <space> <unit> <file>
+  layer_unit() {
+    sed -e "s|__CONFIGHUB_OCI__|$CONFIGHUB_OCI|" -e "s|__CONFIGHUB_OCI_INSECURE__|$insecure|" "$3" > "render/$1-$2.yaml"
+    cub unit create --space "$1" "$2" "render/$1-$2.yaml" --allow-exists --quiet
+    cub unit update --space "$1" "$2" "render/$1-$2.yaml" --quiet
+  }
+  # A release with nothing new is refused, which here means it is current.
+  publish_layers() { out=$(cub release publish "$1" --quiet 2>&1) || case "$out" in *"no changes"*) ;; *) echo "$out" >&2; return 1 ;; esac; }
+  cub space create flux-dev-1-layers --release-target flux-targets/dev-1 --label Role=layers --label Cluster=dev-1 --allow-exists --quiet
+  layer_unit 'flux-dev-1-layers' 'infrastructure' 'layers/dev-1/infrastructure.yaml'
+  layer_unit 'flux-dev-1-layers' 'apps' 'layers/dev-1/apps.yaml'
+  layer_unit 'flux-dev-1-layers' 'tenants' 'layers/dev-1/tenants.yaml'
+  layer_unit 'flux-dev-1-layers' 'image-automation' 'layers/dev-1/image-automation.yaml'
+  publish_layers flux-dev-1-layers
+  cub space create flux-staging-1-layers --release-target flux-targets/staging-1 --label Role=layers --label Cluster=staging-1 --allow-exists --quiet
+  layer_unit 'flux-staging-1-layers' 'infrastructure' 'layers/staging-1/infrastructure.yaml'
+  layer_unit 'flux-staging-1-layers' 'apps' 'layers/staging-1/apps.yaml'
+  layer_unit 'flux-staging-1-layers' 'tenants' 'layers/staging-1/tenants.yaml'
+  publish_layers flux-staging-1-layers
+  cub space create flux-prod-1-layers --release-target flux-targets/prod-1 --label Role=layers --label Cluster=prod-1 --allow-exists --quiet
+  layer_unit 'flux-prod-1-layers' 'infrastructure' 'layers/prod-1/infrastructure.yaml'
+  layer_unit 'flux-prod-1-layers' 'apps' 'layers/prod-1/apps.yaml'
+  layer_unit 'flux-prod-1-layers' 'tenants' 'layers/prod-1/tenants.yaml'
+  publish_layers flux-prod-1-layers
 fi
 
 echo

@@ -96,7 +96,7 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	raw(`owner_of() { k -n "$ns" get kustomization "$1" -o jsonpath='{.metadata.labels.kustomize\.toolkit\.fluxcd\.io/name}' 2>/dev/null || true; }`)
 	for _, step := range p.Order {
 		for _, name := range step {
-			onlyWhereLayer(name, fmt.Sprintf(`o=$(owner_of %s); [ -z "$o" ] || owned="$owned %s(applied-by-$o)"`, q(name), name))
+			onlyWhereLayer(name, fmt.Sprintf(`o=$(owner_of %s); [ -z "$o" ] || [ "$o" = %s ] || owned="$owned %s(applied-by-$o)"`, q(name), RootName, name))
 		}
 	}
 	raw(`if [ -n "$owned" ]; then`)
@@ -169,6 +169,7 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 				// the layer: a release published in between would otherwise go
 				// out unchecked.
 				add(`if [ "$cluster" = %s ]; then`, q(v.Cluster))
+				add(`  space_%s=%s`, shellName(name), q(v.Space))
 				add(`  digest_%s=$(cub release get --space %s --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')`, shellName(name), q(v.Space))
 				add(`  cub flux check --kube-context "$ctx" --namespace %s --kustomization %s --space %s --unit %s%s --release "$digest_%s"`,
 					q(ns), q(name), q(v.Space), q(c.Name), target, shellName(name))
@@ -187,10 +188,11 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("fi")
 	add("")
 
-	add(`step "2/4 Add the gateway to flux-system: the credential and one OCIRepository per layer"`)
+	add(`step "2/4 Add the gateway to flux-system: the credential and the root"`)
 	add("# These cannot come from ConfigHub: a Kustomization cannot read a source that")
-	add("# does not exist yet. They are committed to the bootstrap directory, which is")
-	add("# the one part of this fleet that stays on Git.")
+	add("# does not exist yet. They go into the bootstrap directory, which is the one")
+	add("# part of this fleet that stays on Git; every layer after them comes from the")
+	add("# cluster's layers Space in ConfigHub.")
 	add(`addr=${CONFIGHUB_OCI:-}`)
 	add(`if [ -z "$addr" ]; then`)
 	// The Target does not carry the gateway's host: apply.sh creates it with
@@ -219,57 +221,22 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add(`  --docker-password="$(cub worker get --space %s server-worker --include-secret -o jq=.BridgeWorker.Secret | tr -d '\"\n')" \`, targets)
 	add(`  --dry-run=client -o yaml | k apply -f -`)
 	add("")
-	add("# One OCIRepository per layer, each reading that layer's release for this")
-	add("# cluster. Commit these to the bootstrap directory so flux-system keeps them.")
-	add(`mkdir -p "bootstrap/$cluster"`)
-	// spec.insecure is only for a gateway served over plain HTTP, such as a
-	// self-hosted one reached inside a lab. Without it Flux speaks HTTPS to an
-	// HTTP port and the source never becomes Ready.
-	add(`insecure=""`)
-	add(`[ -z "${CONFIGHUB_OCI_PLAIN_HTTP:-}" ] || insecure='  insecure: true'`)
-	// The gateway serves one repository per Space, at /space/<space>. A layer's
-	// Space differs per cluster, so each OCIRepository has to name the variant
-	// Space for the cluster this run is handing over -- an address without it
-	// is not a repository the gateway has, and the layer never becomes Ready.
-	for _, c := range p.Components {
-		v := shellName(c.Name)
-		add(`case "$cluster" in`)
-		for _, st := range c.Stages {
-			for _, va := range st.Variants {
-				add(`  %s) space_%s='%s' ;;`, va.Cluster, v, va.Space)
-			}
-		}
-		// A cluster without this layer needs no source for it.
-		add(`  *) space_%s='' ;;`, v)
-		add(`esac`)
-		add(`[ -z "$space_%s" ] || cat > "bootstrap/$cluster/ocirepository-%s.yaml" <<YAML`, v, c.Name)
-		add("apiVersion: source.toolkit.fluxcd.io/v1")
-		add("kind: OCIRepository")
-		add("metadata:")
-		add("  name: %s", c.Name)
-		add(`  namespace: ${ns}`)
-		add("spec:")
-		add("  interval: 1m")
-		add(`  url: oci://${addr}/space/${space_%s}`, v)
-		add("  ref:")
-		add("    tag: latest")
-		add("  secretRef:")
-		add("    name: confighub-%s", targets)
-		add("${insecure}")
-		add("YAML")
-	}
-	add(`k apply -f "bootstrap/$cluster/"`)
-	add(`echo "Commit bootstrap/$cluster/ into this cluster's flux-system path so these survive a reconcile."`)
+	add("# The root: one source and one Kustomization, reading this cluster's layers")
+	add("# Space, which apply.sh filled and released. It is all this cluster needs")
+	add("# from outside ConfigHub, so it goes into the bootstrap directory with the")
+	add("# credential; every layer after it comes from ConfigHub.")
+	L = append(L, rootLines(prefix)...)
+	add(`echo "Commit bootstrap/$cluster/ into this cluster's flux-system path so the root survives a reconcile."`)
 	add("")
 
-	add(`step "3/4 Swap each layer's sourceRef, deepest dependency first"`)
-	add("# The Kustomization keeps its name, so Flux keeps the inventory of what it")
-	add("# applied, and nothing is recreated.")
+	add(`step "3/4 Hand the layers to the root, which reads them from ConfigHub"`)
+	add("# Each layer keeps its name, so Flux keeps the inventory of what it applied,")
+	add("# and nothing is recreated. The root applies the layer's own Kustomization")
+	add("# from ConfigHub, which differs from the one on the cluster only in its")
+	add("# sourceRef and path, and so takes it over: that is the whole move.")
 	add("#")
-	add("# Before a layer changes, its sourceRef and path are recorded, once: a re-run")
-	add("# must not overwrite the original with a half-moved state. If anything below")
-	add("# stops the script, the layers already moved are named, with the commands")
-	add("# that put them back. Nothing is rolled back automatically.")
+	add("# Each layer's sourceRef and path are recorded first. If anything below stops")
+	add("# the script, the way back is printed; nothing is rolled back automatically.")
 	raw(`state="handover-state/$cluster.txt"; log="handover-state/$cluster.log"`)
 	raw(`mkdir -p handover-state; touch "$state"`)
 	raw(`log() { printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >> "$log"; }`)
@@ -284,77 +251,91 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	raw(`    *) printf '%s\n' "$was" >> "$state"; log "recorded $was" ;;`)
 	raw(`  esac`)
 	raw(`}`)
-	raw(`# way_back [all]: the commands that restore BOTH fields, for the layers this`)
-	raw(`# run moved, or with "all" for every layer recorded for this cluster.`)
+	// The root prunes. Deleting it while it does would delete every layer, and
+	// every layer prunes what it runs: measured on Flux v2.8.6, a layer removed
+	// from its owner's source took its workloads with it. So the way back stops
+	// the root pruning before anything else, and removes it last.
+	raw(`# way_back [all]: the commands that put the layers back on Git, for the ones`)
+	raw(`# this run moved, or with "all" for every layer recorded for this cluster.`)
 	raw(`way_back() {`)
 	raw(`  local name kind src srcns path ref`)
+	raw(`  echo "  # first, so that removing the root cannot delete the layers:"`)
+	raw(`  echo "  kubectl --context '$ctx' -n '$ns' patch kustomization ` + RootName + ` --type merge -p '{\"spec\":{\"suspend\":true,\"prune\":false}}'"`)
 	raw(`  while IFS='|' read -r name kind src srcns path; do`)
 	raw(`    case " $moved " in *" $name "*) ;; *) [ "${1:-}" = all ] || continue ;; esac`)
 	raw(`    ref="\"kind\":\"$kind\",\"name\":\"$src\""`)
 	raw(`    [ -z "$srcns" ] || ref="$ref,\"namespace\":\"$srcns\""`)
 	raw(`    echo "  kubectl --context '$ctx' -n '$ns' patch kustomization $name --type merge -p '{\"spec\":{\"sourceRef\":{$ref},\"path\":\"$path\"}}'"`)
 	raw(`  done < "$state"`)
+	raw(`  echo "  kubectl --context '$ctx' -n '$ns' delete kustomization ` + RootName + `"`)
+	raw(`  echo "  kubectl --context '$ctx' -n '$ns' delete ocirepository ` + RootName + `"`)
 	raw(`}`)
 	raw(`stopped() {`)
 	raw(`  local rc=$?`)
 	raw(`  [ "$finished" = 1 ] && return`)
 	raw(`  echo >&2`)
 	raw(`  if [ -z "$moved" ]; then`)
-	raw(`    echo "Stopped (exit $rc) before any layer's source was changed." >&2`)
+	raw(`    echo "Stopped (exit $rc) before the root was applied: no layer's source was changed." >&2`)
 	raw(`    return`)
 	raw(`  fi`)
 	raw(`  log "stopped at ${current:-?}, exit $rc"`)
 	raw(`  echo "HANDOVER STOPPED at ${current:-?} (exit $rc), on context $ctx." >&2`)
-	raw(`  echo "These layers were moved and now read ConfigHub:$moved" >&2`)
-	raw(`  echo "Nothing is rolled back automatically. To put them back on Git:" >&2`)
+	raw(`  echo "The root is applied, so these layers read ConfigHub, or are moving to:$moved" >&2`)
+	raw(`  echo "Nothing is rolled back automatically. To put them back on Git, in this order:" >&2`)
 	raw(`  way_back >&2`)
 	raw(`  echo "Each layer's original is in $state; what happened is in $log." >&2`)
-	raw(`  echo "The gateway Secret and OCIRepositories from step 2 stay; they feed nothing unless a layer reads them." >&2`)
 	raw(`}`)
 	raw(`trap stopped EXIT`)
-	raw(`# swap <layer>`)
-	raw(`swap() {`)
-	raw(`  current=$1`)
-	raw(`  echo "-- $1"`)
-	raw(`  record "$1"`)
-	raw(`  local var want fetched`)
-	raw(`  var="digest_$(printf '%s' "$1" | tr -- '-./' '___')"; want=${!var:-}`)
+	raw(`# still_current <layer>: the release checked in step 1 is still the newest.`)
+	raw(`still_current() {`)
+	raw(`  local dv sv want now`)
+	raw(`  dv="digest_$(printf '%s' "$1" | tr -- '-./' '___')"; want=${!dv:-}`)
+	raw(`  sv="space_$(printf '%s' "$1" | tr -- '-./' '___')"`)
 	raw(`  [ -n "$want" ] || { echo "  $1: no checked release digest was recorded for it" >&2; return 1; }`)
-	raw(`  k -n "$ns" wait --for=condition=Ready "ocirepository/$1" --timeout=2m`)
-	raw(`  fetched=$(k -n "$ns" get ocirepository "$1" -o jsonpath='{.status.artifact.revision}')`)
-	// Flux polls on its interval, so right after a publish it usually still
-	// holds the release before. Measured on Flux v2.8.6 against ConfigHub
-	// v0.6.8: the check read release 2 while the OCIRepository held release 1.
-	// So ask it to fetch now and give it a moment before calling it a mismatch.
-	raw(`  if [ "${fetched##*@}" != "$want" ]; then`)
-	raw(`    k -n "$ns" annotate --overwrite "ocirepository/$1" "reconcile.fluxcd.io/requestedAt=$(date +%s)" >/dev/null`)
-	raw(`    if k -n "$ns" wait --for=jsonpath='{.status.artifact.revision}'="${fetched%@*}@$want" "ocirepository/$1" --timeout=90s >/dev/null 2>&1; then`)
-	raw(`      log "OCIRepository $1 fetched the checked $want after a refetch (it held $fetched)"`)
-	raw(`    else`)
-	raw(`      fetched=$(k -n "$ns" get ocirepository "$1" -o jsonpath='{.status.artifact.revision}')`)
-	raw(`      log "NOT moved $1: checked $want, OCIRepository fetched $fetched"`)
-	raw(`      echo "  $1: the release was checked at $want, but Flux fetched $fetched. Either a newer release was published after the check, or Flux could not fetch the checked one; re-run to check what is published now." >&2`)
-	raw(`      return 1`)
-	raw(`    fi`)
-	raw(`  fi`)
-	// spec.path moves with the source. It is a path inside the artifact, and a
-	// Git artifact is the repository tree while a ConfigHub artifact is the
-	// rendered manifests at its root. Leaving the Git path behind fails with,
-	// measured on Flux v2.8.6:
-	//   kustomization path not found: stat /tmp/kustomization-.../<git path>
-	// which reads as a missing directory rather than as the one field the swap
-	// forgot, and the layer never becomes Ready.
-	raw(`  k -n "$ns" patch kustomization "$1" --type merge -p "{\"spec\":{\"sourceRef\":{\"kind\":\"OCIRepository\",\"name\":\"$1\"},\"path\":\"./\"}}"`)
-	raw(`  moved="$moved $1"; log "patched $1"`)
+	raw(`  now=$(cub release get --space "${!sv}" --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')`)
+	raw(`  [ "$now" = "$want" ] || { echo "  $1: checked release $want, but ${!sv} now publishes $now; re-run to check that one" >&2; return 1; }`)
+	raw(`}`)
+	raw(`# arrived <layer>: the root has taken it over, it is Ready, and it applied`)
+	raw(`# the release that was checked.`)
+	raw(`arrived() {`)
+	raw(`  current=$1`)
+	raw(`  local dv want applied`)
+	raw(`  dv="digest_$(printf '%s' "$1" | tr -- '-./' '___')"; want=${!dv:-}`)
+	raw(`  k -n "$ns" wait --for=jsonpath='{.spec.sourceRef.kind}'=OCIRepository "kustomization/$1" --timeout=3m >/dev/null`)
 	raw(`  if ! k -n "$ns" wait --for=condition=Ready "kustomization/$1" --timeout=5m; then`)
 	raw(`    log "NOT Ready $1: $(k -n "$ns" get kustomization "$1" -o jsonpath='{.status.conditions[?(@.type=="Ready")].message}' 2>&1 || true)"`)
 	raw(`    return 1`)
 	raw(`  fi`)
-	raw(`  log "Ready $1 at $(k -n "$ns" get kustomization "$1" -o jsonpath='{.status.lastAppliedRevision}')"`)
+	raw(`  applied=$(k -n "$ns" get kustomization "$1" -o jsonpath='{.status.lastAppliedRevision}')`)
+	raw(`  if [ "${applied##*@}" != "$want" ]; then`)
+	raw(`    log "$1 applied $applied, not the checked $want"`)
+	raw(`    echo "  $1: Flux applied $applied, but $want was checked: a newer release went out unchecked" >&2`)
+	raw(`    return 1`)
+	raw(`  fi`)
+	raw(`  log "Ready $1 at $applied, from the root"`)
 	raw(`}`)
 	for _, step := range p.Order {
 		for _, name := range step {
-			onlyWhereLayer(name, "swap "+q(name))
+			onlyWhereLayer(name, "record "+q(name))
+		}
+	}
+	for _, step := range p.Order {
+		for _, name := range step {
+			onlyWhereLayer(name, "still_current "+q(name))
+		}
+	}
+	raw(`current=` + RootName)
+	raw(`k apply -f "bootstrap/$cluster/` + RootName + `.yaml"`)
+	for _, step := range p.Order {
+		for _, name := range step {
+			onlyWhereLayer(name, fmt.Sprintf(`moved="$moved %s"`, name))
+		}
+	}
+	raw(`log "applied the root; it reads $layers_space"`)
+	raw(`k -n "$ns" wait --for=condition=Ready "kustomization/` + RootName + `" --timeout=5m`)
+	for _, step := range p.Order {
+		for _, name := range step {
+			onlyWhereLayer(name, "arrived "+q(name))
 		}
 	}
 	raw(`current=""`)
@@ -428,12 +409,12 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("")
 	raw(`finished=1`)
 	add("echo")
-	add("echo %s", q("Every layer is Ready from an OCIRepository. To see them:"))
+	add("echo %s", q("Every layer is Ready from ConfigHub, through the root. To see them:"))
 	raw(`echo "  kubectl --context '$ctx' -n $ns get kustomizations -o custom-columns=NAME:.metadata.name,SOURCE:.spec.sourceRef.kind,READY:.status.conditions[0].status"`)
 	// The way back restores two fields, not one, and restores them to what the
 	// cluster had rather than to what the plan guessed: layers can read
 	// different GitRepositories, and only the cluster knows which.
-	add("echo %s", q("Nothing was deleted. To go back, restore BOTH fields on each layer, as recorded before it moved:"))
+	add("echo %s", q("Nothing was deleted. To go back, in this order: stop the root pruning, restore BOTH fields on each layer as recorded before it moved, then remove the root:"))
 	raw(`way_back all`)
 	raw(`if [ -n "$held" ]; then`)
 	raw(`  echo "Suspended on the cluster only, until Git says so too:$held"`)

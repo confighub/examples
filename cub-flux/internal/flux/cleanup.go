@@ -36,6 +36,11 @@ func CleanupScript(p *Plan, prefix string) string {
 	// Variants first, then the bases they were promoted from, then the Targets
 	// Space. Measured on v0.6.2: base-first left two Spaces behind.
 	var spaces []string
+	// The layers Spaces first: each is released to a Target in the Targets
+	// Space, which cannot go while anything still releases to it.
+	for _, cl := range p.Clusters {
+		spaces = append(spaces, DeliverySpace(prefix, cl.Name))
+	}
 	for _, c := range p.Components {
 		for _, st := range c.Stages {
 			for _, v := range st.Variants {
@@ -56,9 +61,8 @@ func CleanupScript(p *Plan, prefix string) string {
 	add("# This is the way back from onboarding, while Flux is still reading Git and")
 	add("# ConfigHub holds a copy nothing reads. It removes only what apply.sh made.")
 	add("#")
-	add("# It is NOT the way back from a handover. If handover.sh has already")
-	add("# repointed a Kustomization at the gateway, deleting these Spaces takes its")
-	add("# source away.")
+	add("# It is NOT the way back from a handover or a join. Once a cluster's root reads")
+	add("# its layers Space, deleting these Spaces takes every layer's source away.")
 	add("set -uo pipefail")
 	// Every kubectl command printed below names a context: the one given, or a
 	// placeholder that has to be filled in, never whichever happens to be current.
@@ -76,8 +80,12 @@ func CleanupScript(p *Plan, prefix string) string {
 	add(`  echo "  Both sourceRef and path have to go back: handover.sh printed the exact commands."`)
 	add(`  echo "Then re-run with I_HAVE_PUT_THE_SOURCES_BACK=yes bash cleanup.sh"`)
 	add(`  echo`)
-	add(`  echo "If handover.sh has not run, nothing on any cluster reads these Spaces and"`)
-	add(`  echo "you can say so now."`)
+	add(`  echo "A cluster that joined with join.sh reads ConfigHub from the start: remove its"`)
+	add(`  echo "root first, with pruning off so the layers stay, or leave these Spaces alone:"`)
+	add(`  echo "  kubectl $ctxflag -n flux-system patch kustomization confighub-root --type merge -p '{\"spec\":{\"suspend\":true,\"prune\":false}}'"`)
+	add(`  echo`)
+	add(`  echo "If handover.sh and join.sh have not run, nothing on any cluster reads these"`)
+	add(`  echo "Spaces and you can say so now."`)
 	add(`  read -r -p "Has the handover been undone, or never run? [yes/no] " a`)
 	add(`  [ "$a" = yes ] || { echo "Stopping. Nothing was deleted."; exit 1; }`)
 	add("fi")
