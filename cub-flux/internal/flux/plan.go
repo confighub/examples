@@ -269,7 +269,7 @@ func (b *builder) readClusters() map[string]map[string]Doc {
 		}
 		byName := map[string]Doc{}
 		name := e.Name()
-		layersSpace, pullSecret := "", ""
+		layersSpace, pullSecret, rootName := "", "", ""
 		for _, d := range b.docs {
 			if !under(d.File, cdir) || under(d.File, boot) {
 				continue
@@ -280,6 +280,9 @@ func (b *builder) readClusters() map[string]map[string]Doc {
 			// holds this cluster's layers, and that Space's name says which
 			// cluster it is: the layers that carried cluster_name are gone.
 			if dname == RootName {
+				if cn := str(get(d.Value, "metadata", "labels", RootClusterLabel)); cn != "" {
+					rootName = cn
+				}
 				if kind == "OCIRepository" {
 					url := str(get(d.Value, "spec", "url"))
 					if i := strings.Index(url, "/space/"); i >= 0 {
@@ -300,7 +303,11 @@ func (b *builder) readClusters() map[string]map[string]Doc {
 			}
 		}
 		if layersSpace != "" {
-			if cn, ok := strings.CutPrefix(layersSpace, b.opts.Prefix+"-"); ok {
+			// The root names its cluster; a root made before it did is read by
+			// its Space's name, which this prefix must have made.
+			if rootName != "" && len(byName) == 0 {
+				name = rootName
+			} else if cn, ok := strings.CutPrefix(layersSpace, b.opts.Prefix+"-"); ok {
 				if cn, ok = strings.CutSuffix(cn, "-layers"); ok && len(byName) == 0 {
 					name = cn
 				}

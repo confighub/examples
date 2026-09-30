@@ -36,8 +36,10 @@ func handedOver(t *testing.T, fleet, clusterDir, layersSpace string, keep ...str
 			}
 		}
 	}
+	// A root as made before roots named their cluster: the plan reads which
+	// cluster it is from the Space's name.
 	rootYAML := strings.NewReplacer(gatewayMarker, "gw.example:5000", insecureMarker, "false",
-		DeliverySpace("flux", "__CLUSTER__"), layersSpace).Replace(RootManifests("flux", "__CLUSTER__"))
+		DeliverySpace("flux", "__CLUSTER__"), layersSpace, "  labels:\n    "+RootClusterLabel+": __CLUSTER__\n", "").Replace(RootManifests("flux", "__CLUSTER__"))
 	if err := os.WriteFile(filepath.Join(cdir, RootName+".yaml"), []byte(rootYAML), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -253,5 +255,30 @@ func TestAnonymousRootClearsThePullSecret(t *testing.T) {
 	s := ApplyScript(planAt(t, root, fleet), "flux", ".")
 	if !strings.Contains(s, `{"Annotations":{"confighub.com/flux-layers-space":"flux-dev-layers","confighub.com/flux-pull-secret":null}}`) {
 		t.Errorf("an anonymous root's Target should lose its pull Secret:\n%s", s)
+	}
+}
+
+// From review on #262: a fleet planned again under another prefix keeps the
+// name its root carries, not its directory's, so the Target it annotates is
+// the one its variants use.
+func TestRootKeepsItsClusterNameUnderAnotherPrefix(t *testing.T) {
+	const fleet = "gitops/flux/expert-fleet"
+	root := handedOver(t, fleet, "dev", "old-dev-1-layers")
+	file := filepath.Join(root, fleet, "clusters", "dev", RootName+".yaml")
+	y := strings.NewReplacer(gatewayMarker, "gw.example:5000", insecureMarker, "false", namespaceMarker, "flux-system").
+		Replace(RootManifests("old", "dev-1"))
+	if err := os.WriteFile(file, []byte(y), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p := planAt(t, root, fleet)
+	var found bool
+	for _, c := range p.Clusters {
+		found = found || (c.Name == "dev-1" && c.LayersSpace == "old-dev-1-layers" && c.PullSecret == "confighub-old-targets")
+	}
+	if !found {
+		t.Fatalf("clusters/dev is dev-1, reading old-dev-1-layers: %+v", p.Clusters)
+	}
+	if s := ApplyScript(p, "flux", "."); !strings.Contains(s, "cub target update --patch --space flux-targets dev-1 ") {
+		t.Errorf("dev-1's Target should be the one annotated")
 	}
 }

@@ -95,13 +95,16 @@ func DeliveryUnit(v *Variant, prefix string) (string, error) {
 
 // RootManifests is what goes on the cluster once, into flux-system: the root
 // source and Kustomization reading the cluster's layers Space. The credential
-// is a Secret made beside it, never a Unit.
+// is a Secret made beside it, never a Unit. The root carries the cluster's
+// name, which a plan read later needs once the layers naming it are gone.
 func RootManifests(prefix, cluster string) string {
 	return fmt.Sprintf(`apiVersion: source.toolkit.fluxcd.io/v1
 kind: OCIRepository
 metadata:
   name: %[1]s
   namespace: %[6]s
+  labels:
+    %[8]s: %[7]s
 spec:
   interval: 1m
   url: oci://%[2]s/space/%[3]s
@@ -116,6 +119,8 @@ kind: Kustomization
 metadata:
   name: %[1]s
   namespace: %[6]s
+  labels:
+    %[8]s: %[7]s
 spec:
   interval: 10m
   path: ./
@@ -123,8 +128,11 @@ spec:
   sourceRef:
     kind: OCIRepository
     name: %[1]s
-`, RootName, gatewayMarker, DeliverySpace(prefix, cluster), prefix, insecureMarker, namespaceMarker)
+`, RootName, gatewayMarker, DeliverySpace(prefix, cluster), prefix, insecureMarker, namespaceMarker, cluster, RootClusterLabel)
 }
+
+// RootClusterLabel names the cluster on its root.
+const RootClusterLabel = "confighub.com/cluster"
 
 func deepCopy(v any) any {
 	switch t := v.(type) {
