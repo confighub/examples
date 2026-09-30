@@ -146,8 +146,11 @@ promoted from. Each Space then goes in one
 **Handover and join** (step 4) change which source feeds a cluster. Neither is
 undone by deleting Spaces: a layer whose Space is gone has no source at all,
 and with `prune: true` it empties itself. Put each layer's `sourceRef` back to
-its `GitRepository` first, which `cleanup.sh` asks about before it does
-anything.
+its `GitRepository` first. Given the clusters' contexts (`FLUX_CONTEXT`, or
+`FLUX_CONTEXTS="ctx-a ctx-b"`), `cleanup.sh` reads each cluster's
+OCIRepositories and refuses, naming them, while any still reads a Space it
+would delete; without them, it asks. Once it deletes, it also removes the pull
+Secret `handover.sh` or `join.sh` wrote on each of those clusters.
 
 ## What the plugin sees in your repository
 
