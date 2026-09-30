@@ -700,6 +700,31 @@ func TestPlainDirectoryIsReported(t *testing.T) {
 	}
 }
 
+// Argo CD renders a path with Helm only when it has a Chart.yaml and no
+// kustomization; with both, Kustomize wins and the path onboards as usual.
+func TestChartPathIsReportedOnlyWithoutAKustomization(t *testing.T) {
+	root, dir := copyExample(t)
+	overlay := filepath.Join(dir, "apps", "apptique", "overlays", "prod")
+	if err := os.WriteFile(filepath.Join(overlay, "Chart.yaml"), []byte("apiVersion: v2\nname: apptique\nversion: 0.1.0\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	opts := staged
+	opts.RepoRoot = root
+	if p := planOf(t, dir, opts); hasProblem(p, "is a Helm chart") {
+		t.Errorf("a path with a kustomization renders with Kustomize, not Helm: %v", p.Problems)
+	}
+	if err := os.Remove(filepath.Join(overlay, "kustomization.yaml")); err != nil {
+		t.Fatal(err)
+	}
+	p := planOf(t, dir, opts)
+	if !hasProblem(p, "is a Helm chart", "Chart.yaml") {
+		t.Errorf("want a chart problem, got %v", p.Problems)
+	}
+	if hasProblem(p, "plain directory") {
+		t.Errorf("a chart path is not a plain directory: %v", p.Problems)
+	}
+}
+
 // check works the estate out from the same input plan does, so a person needs
 // no per-Application flags and handover.sh checks exactly what the plan governs.
 func TestChecksAreDerivedFromThePlan(t *testing.T) {
