@@ -100,6 +100,9 @@ type Variant struct {
 	Namespace   string            `json:"namespace"`
 	Path        string            `json:"path"`
 	Images      map[string]string `json:"images,omitempty"`
+	// Recurse is spec.source.directory.recurse, for a plain directory: Argo
+	// CD then reads the manifests below the path, not only at it.
+	Recurse bool `json:"recurse,omitempty"`
 	// Key is what tells this variant from its siblings: the cluster, or the
 	// Application's own name where one cluster carries several.
 	Key   string `json:"key,omitempty"`
@@ -556,9 +559,7 @@ func (b *builder) variant(c *Component, app map[string]any, cl *Cluster, fields 
 						"%s: %s is a Helm chart (it has a Chart.yaml), which Argo CD renders with helm template. The script renders with kustomize build, which does not read a chart. Onboarding a chart kept in the repository is not supported yet",
 						c.Name, v.Path))
 				} else {
-					p.Problems = appendOnce(p.Problems, fmt.Sprintf(
-						"%s: %s has no kustomization.yaml. Argo CD reads a plain directory of manifests, and so does Flux, but the script renders with kustomize build, which does not. Onboarding a plain directory is not supported yet",
-						c.Name, v.Path))
+					b.plainDirectory(c, &v, app, local)
 				}
 			}
 			charts := helmCharts(local, 4)
@@ -1233,4 +1234,101 @@ func (b *builder) checkLive() {
 		}
 	}
 	sort.Strings(p.Live)
+}
+
+// plainDirectory reads a path with no kustomization and no chart as Argo CD
+// reads it: every .yaml, .yml and .json file there, or below it with
+// directory.recurse. What Argo would do differently from that is a problem.
+func (b *builder) plainDirectory(c *Component, v *Variant, app map[string]any, local string) {
+	p := b.plan
+	dir := obj(get(app, "spec", "source", "directory"))
+	v.Recurse = dir["recurse"] == true
+	var unread []string
+	for _, k := range []string{"include", "exclude"} {
+		if str(dir[k]) != "" {
+			unread = append(unread, "directory."+k)
+		}
+	}
+	if dir["jsonnet"] != nil {
+		unread = append(unread, "directory.jsonnet")
+	}
+	files, jsonnet := manifestFiles(local, v.Recurse)
+	if len(jsonnet) > 0 {
+		unread = append(unread, "jsonnet files ("+strings.Join(jsonnet, ", ")+")")
+	}
+	// Argo CD applies each document as an object, so a patch or a values
+	// file left in the directory fails its sync, and would fail the render.
+	var notObjects []string
+	for _, f := range files {
+		data, err := os.ReadFile(filepath.Join(local, filepath.FromSlash(f)))
+		if err != nil {
+			notObjects = append(notObjects, f+" (unreadable)")
+			continue
+		}
+		docs, err := parse(data, f)
+		if err != nil {
+			notObjects = append(notObjects, f+" (does not parse)")
+			continue
+		}
+		for _, d := range docs {
+			if str(d.Value["apiVersion"]) == "" || str(d.Value["kind"]) == "" {
+				notObjects = append(notObjects, f)
+				break
+			}
+		}
+	}
+	switch {
+	case len(notObjects) > 0:
+		p.Problems = appendOnce(p.Problems, fmt.Sprintf(
+			"%s: %s is a plain directory, and %s in it is not a whole Kubernetes object (apiVersion and kind), which Argo CD would fail to apply. Add a kustomization.yaml if these are patches, or move them out",
+			c.Name, v.Path, strings.Join(notObjects, ", ")))
+	case len(unread) > 0:
+		p.Problems = appendOnce(p.Problems, fmt.Sprintf(
+			"%s: %s is a plain directory Argo CD reads with %s, which the script does not reproduce yet, so what ConfigHub stored could differ from what Argo applies",
+			c.Name, v.Path, strings.Join(unread, " and ")))
+	case len(files) == 0:
+		p.Problems = appendOnce(p.Problems, fmt.Sprintf(
+			"%s: %s holds no .yaml, .yml or .json files, so Argo CD applies nothing from it and neither would ConfigHub", c.Name, v.Path))
+	default:
+		how := "at the top level"
+		if v.Recurse {
+			how = "and below it (directory.recurse)"
+		}
+		c.Notes = appendOnce(c.Notes, fmt.Sprintf("a plain directory of manifests, read as Argo CD reads it: every .yaml, .yml and .json file %s", how))
+	}
+}
+
+// manifestFiles lists what Argo CD would read from a plain directory, and any
+// jsonnet it would evaluate, relative to dir. Hidden files and directories are
+// left out, as the script leaves them out.
+func manifestFiles(dir string, recurse bool) (files, jsonnet []string) {
+	_ = filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		rel, _ := filepath.Rel(dir, path)
+		if rel == "." {
+			return nil
+		}
+		if strings.HasPrefix(d.Name(), ".") {
+			if d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if d.IsDir() {
+			if !recurse {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		switch strings.ToLower(filepath.Ext(path)) {
+		case ".yaml", ".yml", ".json":
+			files = append(files, filepath.ToSlash(rel))
+		case ".jsonnet", ".libsonnet":
+			jsonnet = append(jsonnet, filepath.ToSlash(rel))
+		}
+		return nil
+	})
+	return files, jsonnet
 }

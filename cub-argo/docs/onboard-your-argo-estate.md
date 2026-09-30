@@ -276,6 +276,26 @@ like any other change. Each ApplicationSet is retired last, and
 its own Space, stage by stage, under the same name, so Argo's tracking does not
 change and no workload is recreated.
 
+**Applications that are neither roots nor generated.** Most app-of-apps estates
+are a root whose children are ordinary Applications, one per app and
+environment, and some Applications are simply applied by hand. Each is checked
+like a generated one, against the release it will read, and then:
+
+- **A child its parent syncs** is a Unit in the parent's control Space by then.
+  Patched on the cluster, the parent would put it back on its next reconcile.
+  So `apply` writes each such Unit already repointed, under
+  `repointed/<space>/`, and `handover.sh` fills in the gateway and prints the
+  two commands that put it in place: `cub unit update` for each Unit, then one
+  `cub release publish` of the control Space. A reviewed change, in one
+  publish.
+- **An Application applied by hand** is patched by `handover.sh` itself, the
+  way `root` is: its source recorded first, the patch, a hard refresh, then a
+  wait until it has synced the digest that was checked.
+
+Either way the repoint clears the `kustomize`, `helm` and `directory` settings
+the Application had: a release is rendered already, and a tool setting left in
+place would have Argo build it a second time.
+
 **What the script checks before it changes anything.** That Argo CD is v3.1 or
 newer, which is where an `oci://` source is read natively, and that your
 AppProjects allow the gateway under `sourceRepos` — until they do, every repoint
@@ -306,7 +326,7 @@ password:
 ```yaml
 stringData:
   type: oci
-  url: oci://<gateway>/space/<space>
+  url: oci://<gateway>/space/<prefix>-
   username: <the Targets' server worker id>
   password: <its secret>
   # only for a gateway served over plain HTTP:
@@ -317,18 +337,25 @@ stringData:
 `resources-finalizer.argocd.argoproj.io`, which deletes everything they
 deployed. Every step is a patch for exactly that reason.
 
-**The way back is printed, leaves first.** Before `handover.sh` patches `root`,
-it records `root`'s source as it was, in `handover-state/argo.txt`. After the
+**The way back is printed, leaves first.** Before `handover.sh` patches an
+Application, it records that Application's whole source as it was, in
+`handover-state/argo.txt`: the settings the repoint clears are put back too. A
+record written by an earlier version of the script, which kept three fields of
+it, is still read, since a handover can outlive a plugin upgrade. After the
 repoint it checks that the digest `root` synced is the control Space's newest
 release, and stops if not. If the run stops anywhere after `root` moved, it
 prints the way back, in this order, and rolls nothing back by itself. It prints
 the same at the end of a clean run.
 
-1. Restore any retired ApplicationSet's Unit to the revision before
-   `create-only`, and publish. The controller then puts its Applications back
-   on the template's Git source.
-2. Restore the Unit of any app of apps repointed through it, and publish.
-3. Patch `root` back to its recorded source, on the context the run used.
+1. Undo `create-only` on any retired ApplicationSet: in its Unit, then
+   publish, or on the cluster when it was applied by hand. The controller then
+   puts its Applications back on the template's Git source.
+2. Put back each Unit repointed through ConfigHub, a child or a nested app of
+   apps, from the copy `apply` wrote under `control/<space>/`, and publish its
+   Space. The script prints the exact `cub unit update` and `cub release
+   publish` commands, children before parents.
+3. Patch each Application it patched back to its recorded source, on the
+   context the run used, the last moved first.
 
 Moving `root` back alone also puts everything back, with every UID intact. It
 was run live on 2026-09-30. But for a moment it restores the Git AppProjects
@@ -655,8 +682,14 @@ matches a `repository` Secret to an Application by url, and these repoURLs carry
 a `/space/<space>` path that `oci://<host>` does not match. The credential was
 silently ignored, Argo fell back to anonymous **https**, and it failed with
 `cannot get digest for revision latest` over a scheme nobody had asked for.
-`repo-creds` is the prefix form: one credential for every Space under the
-gateway.
+`repo-creds` is the prefix form, and it is scoped to this estate's Spaces,
+`oci://<gateway>/space/<prefix>-`, not the whole gateway. Measured on
+2026-09-30: two estates onboarded on one gateway each wrote a gateway-wide
+Secret, Argo used the stale one, whose worker `cleanup.sh` had deleted, and
+the repointed root failed with `401 Unauthorized`. Argo takes the longest
+matching prefix, so a scoped credential is the one used for its Spaces;
+`handover.sh` refuses when another Secret claims the same prefix, and
+`cleanup.sh` deletes the one `handover.sh` wrote.
 
 **A control Space needs its own release Target and a published Release.**
 Without one, the parent repointed at it reads tag `latest` from a repository
@@ -950,6 +983,10 @@ Measured both ways on the rig.
 - Generators it does not read offline: git, SCM provider, pull request, merge
   and plugin. The plan names them rather than guessing.
 - Multi-source Applications' paths, and anything needing Sprig functions.
+- A plain directory Argo reads with `directory.include`, `directory.exclude` or
+  jsonnet. The plan names it. A plain directory without those is read as Argo
+  reads it: every `.yaml`, `.yml` and `.json` file, recursively with
+  `directory.recurse`.
 
 ## What has and has not been checked
 
@@ -1006,8 +1043,17 @@ was published, and `Synced` at release 2's digest once `--hard-refresh` asked
 Argo to read it. Handed back to Git, the reading was replaced by one that
 closes the gate. See [the run log](runs/2026-09-30-status-and-in-cluster.md).
 
-**Not claimed at all:** that a plain directory of manifests can be onboarded
-(`kustomize build` will not read one, though Argo will — the plan says so),
+**Since run: an app of apps whose children are plain Applications.** On
+2026-09-30, `beginner-app-of-apps`, whose children sync plain directories, was
+onboarded from a live export and handed over: the root patched, both children
+changed in their control Space's Units and published, each at the digest that
+was checked, and every UID unchanged. Then the way back, leaves first, again
+with every UID unchanged, and `cleanup.sh`, which refused while the Applications
+read ConfigHub and deleted everything once they did not. See
+[the run log](runs/2026-09-30-plain-directories-and-app-of-apps.md).
+
+**Not claimed at all:** that a plain directory Argo reads with include, exclude
+or jsonnet can be onboarded (the plan says so),
 that git, SCM-provider, pull-request, merge or plugin generators are resolved,
 or that an Application whose source is a Helm chart, from a chart repository or
 a chart kept in the repository, can be governed yet (the plan says so).

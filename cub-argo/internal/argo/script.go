@@ -202,12 +202,22 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 	add(`  out=$(cub release publish "$1" --revision "ChangeOrder:$2" --quiet 2>&1) && return 0`)
 	add(`  case "$out" in *"no changes were made since :latest bundle"*) echo "$1 already released" ;; *) echo "$out" >&2; return 1 ;; esac`)
 	add("}")
-	add("# Each overlay is rendered by kustomize here rather than by the plugin, so")
+	add("# Each source is rendered by kustomize here rather than by the plugin, so")
 	add("# what ConfigHub stores is exactly what the delivery tool builds today.")
+	for _, l := range buildFunc {
+		add("%s", l)
+	}
+	add("# A variant cloned while its base held no unit holds none either, as after")
+	add("# a first run that stopped part way. It gets a clone, linked to the base, so")
+	add("# a change made on the base still reaches it.")
+	add("has_unit() {")
+	add(`  cub unit get --space "$1" "$2" >/dev/null 2>&1 && return 0`)
+	add(`  cub unit create --space "$1" "$2" --upstream-space "$3" --upstream-unit "$2" --target "$4" --quiet`)
+	add("}")
 	add("render() {")
 	add(`  mkdir -p render`)
-	add(`  kustomize build ${KUSTOMIZE_FLAGS:-} "$REPO_ROOT/$1" > "render/$2.yaml"`)
-	add(`  [ -s "render/$2.yaml" ] || { echo "kustomize build $REPO_ROOT/$1 rendered nothing" >&2; return 1; }`)
+	add(`  build "$REPO_ROOT/$1" "${3:-}" > "render/$2.yaml"`)
+	add(`  [ -s "render/$2.yaml" ] || { echo "$REPO_ROOT/$1 rendered nothing" >&2; return 1; }`)
 	add("}")
 	add("")
 
@@ -294,6 +304,13 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 			add("render %s %s", q(dir), q(c.Name+"-base"))
 			add("cub unit create --space %s %s render/%s-base.yaml --change-desc %s --allow-exists --quiet",
 				base, c.Name, c.Name, q(fmt.Sprintf("Onboard %s from %s", c.Name, dir)))
+		} else if v, ok := c.firstRendered(); ok {
+			// The layout names no shared base, so the base starts as the first
+			// variant's render. Each variant is then overwritten with its own;
+			// without a unit here there would be nothing in them to overwrite.
+			add("render %s %s%s", q(v.Path), q(c.Name+"-base"), v.recurseArg())
+			add("cub unit create --space %s %s render/%s-base.yaml --change-desc %s --allow-exists --quiet",
+				base, c.Name, c.Name, q(fmt.Sprintf("Onboard %s from %s, its first variant's source: the layout names no shared base", c.Name, v.Path)))
 		}
 		add("cub changeworkflow create --space %s rollout --filename %s/change-workflow.yaml --allow-exists --quiet", base, c.Name)
 		add("stages_are %s rollout %s || echo %s | cub changeworkflow update --patch --space %s rollout --from-stdin --quiet",
@@ -325,7 +342,8 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 				add("  cub variant create %s %s --stage %s --space-pattern template:%s --target %s/%s --space-label Role=deployment --space-label Cluster=%s $no_argo_app --allow-exists --quiet",
 					v.Cluster, c.Base, st.Name, v.Space, targets, v.Cluster, v.Cluster)
 				if v.Path != "" && v.Path != "(multi-source)" {
-					add("  render %s %s", q(v.Path), q(v.Space))
+					add("  render %s %s%s", q(v.Path), q(v.Space), v.recurseArg())
+					add("  has_unit %s %s %s %s/%s", v.Space, c.Name, c.Base, targets, v.Cluster)
 					add("  cub unit update --space %s %s render/%s.yaml --change-desc %s --quiet",
 						v.Space, c.Name, v.Space, q(fmt.Sprintf("What %s renders for %s", v.Path, v.Cluster)))
 				}
@@ -427,6 +445,9 @@ func commonKustomizeBase(path string) string {
 // and not always the object's own.
 type unitHome struct {
 	Space, Unit string
+	// Parent is the app of apps that syncs the Space; File is the file the
+	// Unit was made from, as the plan read it.
+	Parent, File string
 }
 
 // unitHomes maps each object in the control tree to the Space and Unit that
@@ -446,7 +467,7 @@ func (p *Plan) unitHomes(prefix string) map[string]unitHome {
 					continue
 				}
 				unit := strings.TrimSuffix(filepath.Base(c.File), filepath.Ext(c.File))
-				out[c.Kind+"/"+c.Name] = unitHome{Space: space, Unit: unit}
+				out[c.Kind+"/"+c.Name] = unitHome{Space: space, Unit: unit, Parent: n.Name, File: c.File}
 			}
 		}
 		for _, c := range n.Children {
@@ -494,4 +515,50 @@ func (p *Plan) targetClusters() []string {
 		}
 	}
 	return out
+}
+
+// buildFunc is the shell function both scripts render a source with, so the
+// render apply.sh stores and the one handover.sh compares it with are made the
+// same way. A kustomization is built as Argo CD builds it. A plain directory
+// is read as Argo CD reads one: every .yaml, .yml and .json file, at the top
+// level or, with recurse, below it, hidden files aside. Those files are listed
+// in a kustomization of their own, so the render is normalized exactly as an
+// overlay's is, and a file that is not a Kubernetes object fails here as it
+// would fail in Argo.
+var buildFunc = []string{
+	`build() {`,
+	`  if [ -e "$1/kustomization.yaml" ] || [ -e "$1/kustomization.yml" ] || [ -e "$1/Kustomization" ]; then`,
+	`    kustomize build ${KUSTOMIZE_FLAGS:-} "$1"; return`,
+	`  fi`,
+	`  local k dir rc=0 depth="-maxdepth 1"`,
+	`  [ "${2:-}" = recurse ] && depth=""`,
+	`  dir=$(cd "$1" && pwd) || return 1`,
+	`  k=$(mktemp -d)`,
+	`  { echo "resources:"`,
+	`    (cd "$dir" && find . $depth -type f \( -name '*.yaml' -o -name '*.yml' -o -name '*.json' \) -not -path '*/.*') \`,
+	`      | LC_ALL=C sort | sed "s|^\./|- $dir/|"; } > "$k/kustomization.yaml"`,
+	`  kustomize build --load-restrictor LoadRestrictionsNone "$k" || rc=$?`,
+	`  rm -rf "$k"; return $rc`,
+	`}`,
+}
+
+// recurseArg is the build argument for a plain directory Argo reads
+// recursively.
+func (v Variant) recurseArg() string {
+	if v.Recurse {
+		return " recurse"
+	}
+	return ""
+}
+
+// firstRendered is the first variant with a source path to render.
+func (c *Component) firstRendered() (Variant, bool) {
+	for _, st := range c.Stages {
+		for _, v := range st.Variants {
+			if v.Path != "" && v.Path != "(multi-source)" && !strings.HasPrefix(v.Path, "(") {
+				return v, true
+			}
+		}
+	}
+	return Variant{}, false
 }
