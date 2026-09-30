@@ -225,8 +225,25 @@ stringData:
 
 **Nothing is deleted.** `root` and `storefront` carry
 `resources-finalizer.argocd.argoproj.io`, which deletes everything they
-deployed. Every step is a patch for exactly that reason. To go back, patch each
-source to its Git `repoURL` and path.
+deployed. Every step is a patch for exactly that reason.
+
+**The way back is printed, leaves first.** Before `handover.sh` patches `root`,
+it records `root`'s source as it was, in `handover-state/argo.txt`. After the
+repoint it checks that the digest `root` synced is the control Space's newest
+release, and stops if not. If the run stops anywhere after `root` moved, it
+prints the way back, in this order, and rolls nothing back by itself. It prints
+the same at the end of a clean run.
+
+1. Restore any retired ApplicationSet's Unit to the revision before
+   `create-only`, and publish. The controller then puts its Applications back
+   on the template's Git source.
+2. Restore the Unit of any app of apps repointed through it, and publish.
+3. Patch `root` back to its recorded source, on the context the run used.
+
+Moving `root` back alone also puts everything back, with every UID intact. It
+was run live on 2026-09-30. But for a moment it restores the Git AppProjects
+while a generated Application still reads the gateway, and that Application is
+refused until it moves too. Undoing from the bottom avoids that.
 
 ## What the plugin checks for you, and what it cannot
 

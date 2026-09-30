@@ -65,6 +65,40 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("gateway() { cub target get --space %s \"$1\" -o jq=.Target.Parameters.OCIRepository 2>/dev/null || true; }", targets)
 	add("")
 
+	add("# The state of this run: each parent's source as it was, recorded before it")
+	add("# moves. If anything stops the script after a parent moved, the way back is")
+	add("# printed; nothing is rolled back automatically.")
+	add(`state=handover-state/argo.txt; mkdir -p handover-state; touch "$state"; moved=""; finished=0`)
+	add(`record_source() {`)
+	add(`  grep -q "^$1|" "$state" && return 0`)
+	add(`  local was; was=$(k -n "$ns" get application "$1" -o jsonpath='{.metadata.name}{"|"}{.spec.source.repoURL}{"|"}{.spec.source.path}{"|"}{.spec.source.targetRevision}')`)
+	add(`  case "$was" in *"|oci://"*) ;; *) printf '%%s\n' "$was" >> "$state" ;; esac`)
+	add(`}`)
+	add("# way_back: leaves first, then parents. Measured on Argo CD v3.5.3: moving")
+	add("# root back alone puts everything back, every UID intact, but restores the Git")
+	add("# AppProjects while a generated Application still reads the gateway, which is")
+	add("# refused until it moves too. Undoing from the bottom avoids that.")
+	add(`way_back() {`)
+	add(`  local name url path rev`)
+	add(`  echo "  1. Any ApplicationSet you retired in step 5: restore its Unit to the revision before create-only, and publish its Space; the controller then puts its Applications back on the template's Git source."`)
+	add(`  echo "  2. Any app of apps repointed through its Unit: restore that Unit to the revision before the repoint, and publish its Space."`)
+	add(`  echo "  3. Then each parent patched here:"`)
+	add(`  while IFS='|' read -r name url path rev; do`)
+	add(`    case " $moved " in *" $name "*) ;; *) [ "${1:-}" = all ] || continue ;; esac`)
+	add(`    echo "  kubectl --context '$ctx' -n '$ns' patch application $name --type merge -p '{\"spec\":{\"source\":{\"repoURL\":\"$url\",\"path\":\"$path\",\"targetRevision\":\"$rev\"}}}'"`)
+	add(`  done < "$state"`)
+	add(`}`)
+	add(`stopped() {`)
+	add(`  local rc=$?`)
+	add(`  [ "$finished" = 1 ] && return`)
+	add(`  [ -n "$moved" ] || { echo "Stopped (exit $rc) before any parent's source was changed." >&2; return; }`)
+	add(`  echo >&2; echo "HANDOVER STOPPED (exit $rc) on context $ctx. These parents read ConfigHub:$moved" >&2`)
+	add(`  echo "Nothing is rolled back automatically. The way back, leaves first:" >&2`)
+	add(`  way_back >&2`)
+	add(`  echo "Each parent's original source is in $state." >&2`)
+	add(`}`)
+	add(`trap stopped EXIT`)
+	add("")
 	add(`step "0/5 Check before changing anything"`)
 	// cub auth status, not a list call: a list goes through the entity API and
 	// fails on a client/server version skew while the session is fine. See the
@@ -244,6 +278,10 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 		// empty answer, and the repoint went in as oci:///space/<space> -- a
 		// URL with no host, which Argo rejects as "not permitted in project"
 		// rather than as malformed.
+		// Its source is recorded before it moves, once, so a re-run cannot
+		// overwrite the original with the half-moved state; the way back
+		// restores exactly this.
+		add(`record_source %s`, q(s.Parent))
 		add(`k -n "$ns" get application %s -o jsonpath='{.spec.source.repoURL}' | grep -q '^oci://' && echo %s || \`,
 			s.Parent, q(s.Parent+" already reads ConfigHub"))
 		// The gateway serves one repository per Space, at /space/<space>, so the
@@ -254,6 +292,7 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 		add("# Argo caches the digest it resolved for a tag, so a repoint alone can")
 		add("# leave it serving the release it read before. A hard refresh re-resolves")
 		add("# the tag, and is what argobot issues on every release.published.")
+		add(`moved="$moved %s"`, s.Parent)
 		add(`k -n "$ns" annotate application %s argocd.argoproj.io/refresh=hard --overwrite`, s.Parent)
 		// Not --for=Synced. A parent reports OutOfSync while any child still
 		// differs, and during a handover its children are exactly what is being
@@ -271,7 +310,14 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 		add(`  k -n "$ns" get application %s -o jsonpath='{.status.conditions[*].message}' >&2; echo >&2`, s.Parent)
 		add(`  exit 1`)
 		add("fi")
-		add(`echo "  %s reads %s ($st; a parent reads OutOfSync until its children move too)"`, s.Parent, s.Space)
+		// The digest Argo synced is the release it read: it has to be the one
+		// ConfigHub holds as the newest, or a release went out unchecked.
+		add(`want=$(cub release get --space %s --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')`, s.Space)
+		add(`got=$(k -n "$ns" get application %s -o jsonpath='{.status.sync.revision}')`, s.Parent)
+		add(`if [ -n "$got" ] && [ "$got" != "$want" ]; then`)
+		add(`  echo "  %s synced $got, but %s's newest release is $want" >&2; exit 1`, s.Parent, s.Space)
+		add(`fi`)
+		add(`echo "  %s reads %s at ${got:-its latest release} ($st; a parent reads OutOfSync until its children move too)"`, s.Parent, s.Space)
 		step++
 	}
 
@@ -420,7 +466,9 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("echo")
 	add("echo %s", q("Done once every Application reports Synced from an oci:// source:"))
 	show("get applications -o custom-columns=NAME:.metadata.name,SOURCE:.spec.source.repoURL,SYNC:.status.sync.status")
-	add("echo %s", q("Nothing was deleted. To go back, patch each source to its Git repoURL and path."))
+	add(`finished=1`)
+	add("echo %s", q("Nothing was deleted. The way back, leaves first:"))
+	add(`way_back all`)
 	add("echo")
 	add("echo %s", q("One more thing, measured on Argo CD v3.5.3: publishing a new release does NOT"))
 	add("echo %s", q("reach the cluster on its own. Argo caches the digest it resolved for the tag, and"))

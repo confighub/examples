@@ -31,6 +31,40 @@ KUSTOMIZE_FLAGS=${KUSTOMIZE_FLAGS:---enable-helm}
 # The gateway address a repointed source reads. cub reports it for a Target.
 gateway() { cub target get --space argo-targets "$1" -o jq=.Target.Parameters.OCIRepository 2>/dev/null || true; }
 
+# The state of this run: each parent's source as it was, recorded before it
+# moves. If anything stops the script after a parent moved, the way back is
+# printed; nothing is rolled back automatically.
+state=handover-state/argo.txt; mkdir -p handover-state; touch "$state"; moved=""; finished=0
+record_source() {
+  grep -q "^$1|" "$state" && return 0
+  local was; was=$(k -n "$ns" get application "$1" -o jsonpath='{.metadata.name}{"|"}{.spec.source.repoURL}{"|"}{.spec.source.path}{"|"}{.spec.source.targetRevision}')
+  case "$was" in *"|oci://"*) ;; *) printf '%s\n' "$was" >> "$state" ;; esac
+}
+# way_back: leaves first, then parents. Measured on Argo CD v3.5.3: moving
+# root back alone puts everything back, every UID intact, but restores the Git
+# AppProjects while a generated Application still reads the gateway, which is
+# refused until it moves too. Undoing from the bottom avoids that.
+way_back() {
+  local name url path rev
+  echo "  1. Any ApplicationSet you retired in step 5: restore its Unit to the revision before create-only, and publish its Space; the controller then puts its Applications back on the template's Git source."
+  echo "  2. Any app of apps repointed through its Unit: restore that Unit to the revision before the repoint, and publish its Space."
+  echo "  3. Then each parent patched here:"
+  while IFS='|' read -r name url path rev; do
+    case " $moved " in *" $name "*) ;; *) [ "${1:-}" = all ] || continue ;; esac
+    echo "  kubectl --context '$ctx' -n '$ns' patch application $name --type merge -p '{\"spec\":{\"source\":{\"repoURL\":\"$url\",\"path\":\"$path\",\"targetRevision\":\"$rev\"}}}'"
+  done < "$state"
+}
+stopped() {
+  local rc=$?
+  [ "$finished" = 1 ] && return
+  [ -n "$moved" ] || { echo "Stopped (exit $rc) before any parent's source was changed." >&2; return; }
+  echo >&2; echo "HANDOVER STOPPED (exit $rc) on context $ctx. These parents read ConfigHub:$moved" >&2
+  echo "Nothing is rolled back automatically. The way back, leaves first:" >&2
+  way_back >&2
+  echo "Each parent's original source is in $state." >&2
+}
+trap stopped EXIT
+
 step "0/5 Check before changing anything"
 cub auth status >/dev/null 2>&1 || { echo "cub is not logged in: run cub auth login"; exit 1; }
 image=$(k get deployment argocd-repo-server -n "$ns" -o jsonpath='{.spec.template.spec.containers[0].image}')
@@ -100,11 +134,13 @@ YAML
 
 step "2/5 Repoint root at argo-root-children"
 # Its children are Units there by now, released to the argocd Target.
+record_source 'root'
 k -n "$ns" get application root -o jsonpath='{.spec.source.repoURL}' | grep -q '^oci://' && echo 'root already reads ConfigHub' || \
   k -n "$ns" patch application root --type merge -p "{\"spec\":{\"source\":{\"repoURL\":\"oci://${addr}/space/argo-root-children\",\"path\":\".\",\"targetRevision\":\"latest\"}}}"
 # Argo caches the digest it resolved for a tag, so a repoint alone can
 # leave it serving the release it read before. A hard refresh re-resolves
 # the tag, and is what argobot issues on every release.published.
+moved="$moved root"
 k -n "$ns" annotate application root argocd.argoproj.io/refresh=hard --overwrite
 for _ in $(seq 1 36); do
   st=$(k -n "$ns" get application root -o jsonpath='{.status.sync.status}' 2>/dev/null)
@@ -117,7 +153,12 @@ if [ "$st" = Unknown ] || [ -z "$st" ]; then
   k -n "$ns" get application root -o jsonpath='{.status.conditions[*].message}' >&2; echo >&2
   exit 1
 fi
-echo "  root reads argo-root-children ($st; a parent reads OutOfSync until its children move too)"
+want=$(cub release get --space argo-root-children --oci-reference latest -o jq=.Release.ManifestDigest | tr -d '"')
+got=$(k -n "$ns" get application root -o jsonpath='{.status.sync.revision}')
+if [ -n "$got" ] && [ "$got" != "$want" ]; then
+  echo "  root synced $got, but argo-root-children's newest release is $want" >&2; exit 1
+fi
+echo "  root reads argo-root-children at ${got:-its latest release} ($st; a parent reads OutOfSync until its children move too)"
 step "3/5 Repoint storefront at argo-storefront-children"
 # Its children are Units there by now, released to the argocd Target.
 echo "storefront is a Unit in argo-root-children now, which root syncs from ConfigHub."
@@ -273,7 +314,9 @@ echo 'Note: AppProject storefront denies syncing prod-1-apptique, prod-1-checkou
 echo
 echo 'Done once every Application reports Synced from an oci:// source:'
 printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'get applications -o custom-columns=NAME:.metadata.name,SOURCE:.spec.source.repoURL,SYNC:.status.sync.status' | sed "s|<gateway>|${addr:-<gateway>}|")"
-echo 'Nothing was deleted. To go back, patch each source to its Git repoURL and path.'
+finished=1
+echo 'Nothing was deleted. The way back, leaves first:'
+way_back all
 echo
 echo 'One more thing, measured on Argo CD v3.5.3: publishing a new release does NOT'
 echo 'reach the cluster on its own. Argo caches the digest it resolved for the tag, and'
