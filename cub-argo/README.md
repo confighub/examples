@@ -142,6 +142,26 @@ go build -o bin/cub-argo . && cub plugin install ./bin/cub-argo
 # after a git pull: go build -o bin/cub-argo . && cub plugin upgrade argo
 ```
 
+## Prove it on kind
+
+`e2e/run.sh` runs the whole journey on a kind cluster of its own, with its own
+kubeconfig: an estate syncing from GitHub, a live export, `plan`, `apply.sh`,
+`handover.sh`, `status`, the way back `handover.sh` printed, and `cleanup.sh`.
+It compares every UID at each move and stops at the first thing that is not as
+it should be.
+
+```bash
+CONFIGHUB_OCI=<gateway host:port the kind cluster reaches> CONFIGHUB_OCI_PLAIN_HTTP=1 \
+  bash e2e/run.sh app-of-apps     # or: by-hand
+```
+
+`app-of-apps` is `beginner-app-of-apps`, a root whose children sync plain
+directories. `by-hand` is `intermediate-ci-to-gitops`, Applications with no
+parent, whose image does not pull, so `status` has to report `Progressing` and
+keep the Healthy gate shut. Both passed on 2026-09-30 against Argo CD v3.5.3
+and ConfigHub v0.6.8, and the script's own first runs found three bugs in
+itself, none in the plugin.
+
 ## Develop
 
 ```bash
