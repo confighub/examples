@@ -28,6 +28,20 @@ machine-readable contract, and scripts that render and can upload into
 ConfigHub. "Planned" rows are tracked and will land as their own pull
 requests, beginner examples first.
 
+## Already running Argo CD or Flux?
+
+The examples above show repository shapes. To move an estate you already run
+onto ConfigHub, use the plugin for your controller:
+
+| You run | Install | Guide |
+| --- | --- | --- |
+| Argo CD | `cub plugin install confighub/examples@cub-argo-v0.1.0 --name argo` | [Onboard your Argo CD estate](../cub-argo/docs/onboard-your-argo-estate.md) |
+| Flux | `cub plugin install confighub/examples@cub-flux-v0.1.0 --name flux` | [Onboard your Flux fleet](../cub-flux/docs/onboard-your-flux-fleet.md) |
+
+Both start with `plan`, which needs no account and changes no cluster, and try
+it on the expert examples above first: `expert-app-of-apps` and `expert-fleet`
+are what each plugin's guide walks through.
+
 ## Personas
 
 Each example is written for one persona. See [`personas/`](./personas/README.md)
