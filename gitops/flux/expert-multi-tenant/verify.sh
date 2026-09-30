@@ -30,6 +30,16 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# Fails with a message when a rendered file lacks a line matching a pattern.
+# A bare "grep -q" under "set -e" would abort with no output at all.
+need() {
+  local file="$1" pattern="$2" message="$3"
+  if ! grep -q -- "$pattern" "$file"; then
+    echo "$message" >&2
+    exit 1
+  fi
+}
+
 require_cmd kustomize
 require_cmd jq
 
@@ -39,7 +49,7 @@ echo "==> Checking that setup.sh --explain-json is valid JSON with the expected 
 EXPLAIN_JSON_OUT="$("$SCRIPT_DIR/setup.sh" --explain-json)"
 echo "$EXPLAIN_JSON_OUT" | jq . >/dev/null
 
-for field in example_name mutates mutates_confighub mutates_live_infra spaces units cluster teams namespaces apps evaluation_modes; do
+for field in example_name mutates mutates_confighub mutates_live_infra spaces uploads cluster teams namespaces apps evaluation_modes; do
   if ! echo "$EXPLAIN_JSON_OUT" | jq -e "has(\"$field\")" >/dev/null; then
     echo "setup.sh --explain-json is missing field: $field" >&2
     exit 1
@@ -78,11 +88,16 @@ for team in storefront payments loyalty; do
   kustomize build "$SCRIPT_DIR/tenants/base/team-$team/workloads" > "$VAR_DIR/rendered-workloads-$team.yaml"
 done
 
+echo "==> Counting the Units each upload would create (cub variant upload makes one Unit per resource)"
+for f in "$VAR_DIR"/rendered-*.yaml; do
+  echo "    $(basename "$f"): $(grep -c '^kind: ' "$f") resources"
+done
+
 echo "==> Checking the platform bootstrap layer runs with the platform's own identity"
 f="$VAR_DIR/rendered-cluster-control.yaml"
-grep -q "^kind: Kustomization$" "$f"
-grep -q "  name: tenants$" "$f"
-grep -q "path: ./gitops/flux/expert-multi-tenant/tenants/base" "$f"
+need "$f" "^kind: Kustomization$" "clusters/shared renders no Flux Kustomization"
+need "$f" "  name: tenants$" "clusters/shared should hold the Kustomization named tenants"
+need "$f" "path: ./gitops/flux/expert-multi-tenant/tenants/base" "The tenants Kustomization should point at ./gitops/flux/expert-multi-tenant/tenants/base"
 if ! awk '/^  sourceRef:$/{s=1; next} s && /^    name: /{print $2; exit}' "$f" | grep -qx "flux-system"; then
   echo "The platform bootstrap Kustomization should read from the flux-system GitRepository" >&2
   echo "that flux bootstrap generates; no other source is defined in this example." >&2
@@ -96,11 +111,11 @@ fi
 echo "==> Checking each team has its own namespace, ServiceAccount, Role and RoleBinding"
 for team in storefront payments loyalty; do
   f="$VAR_DIR/rendered-bootstrap-$team.yaml"
-  grep -q "^kind: Namespace$" "$f"
-  grep -q "  name: team-$team$" "$f"
-  grep -q "^kind: ServiceAccount$" "$f"
-  grep -q "^kind: Role$" "$f"
-  grep -q "^kind: RoleBinding$" "$f"
+  need "$f" "^kind: Namespace$" "team-$team's bootstrap has no Namespace"
+  need "$f" "  name: team-$team$" "team-$team's bootstrap has nothing named team-$team"
+  need "$f" "^kind: ServiceAccount$" "team-$team's bootstrap has no ServiceAccount"
+  need "$f" "^kind: Role$" "team-$team's bootstrap has no Role"
+  need "$f" "^kind: RoleBinding$" "team-$team's bootstrap has no RoleBinding"
 done
 
 # Prints every roleRef in a rendered stream as "<kind> <name>", one per line.
@@ -157,6 +172,44 @@ platform_owned_writes() {
   ' "$1"
 }
 
+# Prints one line for every way a rendered binding is not scoped to team $2:
+# a ClusterRoleBinding at all, a RoleBinding outside the team's namespace, or
+# any subject other than the team's own ServiceAccount in the team's own
+# namespace. Prints nothing when every binding is the team's own. Reads the
+# fixed block layout kustomize build prints: subjects are a "- kind:" list at
+# the top level, metadata.namespace is indented two spaces.
+binding_violations() {
+  awk -v team="$2" '
+    function flush(   i, who) {
+      if (kind == "ClusterRoleBinding") {
+        print "ClusterRoleBinding " bname ": a tenant is bound by a namespaced RoleBinding, never a cluster-wide one"
+      } else if (kind == "RoleBinding") {
+        if (bns != team)
+          print "RoleBinding " bname " is in namespace " (bns == "" ? "(none)" : bns) ", not " team
+        if (nsub == 0)
+          print "RoleBinding " bname " has no subjects"
+        for (i = 1; i <= nsub; i++) {
+          if (sk[i] != "ServiceAccount" || sn[i] != team || sns[i] != team) {
+            who = sk[i] " " (sns[i] == "" ? "" : sns[i] "/") sn[i]
+            print "RoleBinding " bname " has a subject that is not " team "\047s own ServiceAccount: " who
+          }
+        }
+      }
+      kind = ""; bname = ""; bns = ""; nsub = 0; section = ""
+    }
+    /^---$/ { flush(); next }
+    /^kind: / { kind = $2; next }
+    /^[a-zA-Z]/ { section = $1; sub(/:$/, "", section); next }
+    section == "metadata" && /^  name: / { bname = $2; next }
+    section == "metadata" && /^  namespace: / { bns = $2; next }
+    section == "subjects" && /^- / { nsub++; sk[nsub] = ""; sn[nsub] = ""; sns[nsub] = "" }
+    section == "subjects" && /^(- |  )kind: / { sk[nsub] = $NF }
+    section == "subjects" && /^(- |  )name: / { sn[nsub] = $NF }
+    section == "subjects" && /^(- |  )namespace: / { sns[nsub] = $NF }
+    END { flush() }
+  ' "$1"
+}
+
 echo "==> Checking each team's grant cannot loosen the platform's guardrails"
 for team in storefront payments loyalty; do
   f="$VAR_DIR/rendered-bootstrap-$team.yaml"
@@ -166,6 +219,16 @@ for team in storefront payments loyalty; do
     echo "The built-in admin and edit ClusterRoles let a team write NetworkPolicies." >&2
     echo "NetworkPolicy allow rules are additive, so a team holding either could add an" >&2
     echo "allow-all policy next to the platform's same-namespace policy and undo it." >&2
+    exit 1
+  fi
+  violations="$(binding_violations "$f" "team-$team")"
+  if [[ -n "$violations" ]]; then
+    echo "team-$team's role binding is not scoped to team-$team alone:" >&2
+    echo "$violations" >&2
+    echo "Every RoleBinding in a team's bootstrap must sit in that team's namespace and" >&2
+    echo "name only that team's own ServiceAccount as its subject. A foreign subject" >&2
+    echo "gives another team's Kustomization this team's rights, and this team's" >&2
+    echo "namespace is no longer its own." >&2
     exit 1
   fi
   writes="$(platform_owned_writes "$f")"
@@ -188,8 +251,16 @@ done
 echo "==> Checking each team has its own guardrails: a ResourceQuota and a same-namespace-only NetworkPolicy"
 for team in storefront payments loyalty; do
   f="$VAR_DIR/rendered-bootstrap-$team.yaml"
-  grep -q "^kind: ResourceQuota$" "$f"
-  grep -q "^kind: NetworkPolicy$" "$f"
+  if ! grep -q "^kind: ResourceQuota$" "$f"; then
+    echo "team-$team has no ResourceQuota in its rendered bootstrap" >&2
+    echo "Without one, this team can consume as much of the shared cluster as it likes." >&2
+    exit 1
+  fi
+  if ! grep -q "^kind: NetworkPolicy$" "$f"; then
+    echo "team-$team has no NetworkPolicy in its rendered bootstrap" >&2
+    echo "Without one, pods in other namespaces can reach this team's pods." >&2
+    exit 1
+  fi
   if grep -q "namespaceSelector:" "$f"; then
     echo "team-$team's NetworkPolicy should not admit traffic from other namespaces" >&2
     exit 1
@@ -199,7 +270,7 @@ done
 echo "==> Checking every team's own Kustomization impersonates its own ServiceAccount and targets its own namespace"
 for team in storefront payments loyalty; do
   f="$VAR_DIR/rendered-bootstrap-$team.yaml"
-  grep -q "^kind: GitRepository$" "$f"
+  need "$f" "^kind: GitRepository$" "team-$team's bootstrap has no GitRepository for its own source"
   if ! grep -q "  serviceAccountName: team-$team$" "$f"; then
     echo "team-$team's Kustomization does not impersonate its own ServiceAccount" >&2
     echo "This is the tenant-escape break: a Kustomization with no serviceAccountName," >&2
@@ -220,11 +291,11 @@ for team in storefront payments loyalty; do
 done
 
 echo "==> Checking each team's workloads render with the expected apps"
-grep -q "  name: storefront$" "$VAR_DIR/rendered-workloads-storefront.yaml"
-grep -q "^kind: Service$" "$VAR_DIR/rendered-workloads-storefront.yaml"
-grep -q "  name: payments-api$" "$VAR_DIR/rendered-workloads-payments.yaml"
-grep -q "^kind: Service$" "$VAR_DIR/rendered-workloads-payments.yaml"
-grep -q "  name: loyalty-api$" "$VAR_DIR/rendered-workloads-loyalty.yaml"
+need "$VAR_DIR/rendered-workloads-storefront.yaml" "  name: storefront$" "team-storefront's workloads should render the storefront app"
+need "$VAR_DIR/rendered-workloads-storefront.yaml" "^kind: Service$" "team-storefront's workloads should render a Service"
+need "$VAR_DIR/rendered-workloads-payments.yaml" "  name: payments-api$" "team-payments' workloads should render the payments-api app"
+need "$VAR_DIR/rendered-workloads-payments.yaml" "^kind: Service$" "team-payments' workloads should render a Service"
+need "$VAR_DIR/rendered-workloads-loyalty.yaml" "  name: loyalty-api$" "team-loyalty's workloads should render the loyalty-api app"
 if grep -q "^kind: Service$" "$VAR_DIR/rendered-workloads-loyalty.yaml"; then
   echo "team-loyalty's workloads should carry a Deployment only, no Service" >&2
   exit 1

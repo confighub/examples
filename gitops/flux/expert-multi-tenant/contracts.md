@@ -15,7 +15,7 @@ What a tool may assume about this example.
 
 - mutates: no
 - output shape: JSON object
-- stable fields: `example_name`, `mutates`, `mutates_confighub`, `mutates_live_infra`, `spaces`, `units`, `cluster`, `teams`, `namespaces`, `apps`, `space_per_component`, `evaluation_modes`
+- stable fields: `example_name`, `mutates`, `mutates_confighub`, `mutates_live_infra`, `spaces`, `uploads`, `units_per_upload`, `cluster`, `teams`, `namespaces`, `apps`, `space_per_component`, `evaluation_modes`
 - expected anchors:
   - `.example_name == "gitops-flux-multi-tenant"`
   - `.mutates == false`
@@ -25,7 +25,9 @@ What a tool may assume about this example.
   - `.spaces | unique | length == 7`
   - `.cluster == "shared"`
   - `.teams == ["team-storefront", "team-payments", "team-loyalty"]`
-  - `.units | length == 7`
+  - `.uploads | length == 7`
+  - `.uploads | map(.space) == .spaces`
+  - `.units_per_upload` says each upload makes one Unit per rendered resource, not one Unit per upload
 - proves: the example plan before any mutation
 
 ## Structural Contract
@@ -53,6 +55,9 @@ without running anything against a cluster:
 - The platform bootstrap Kustomization's `sourceRef` names the
   `flux-system` GitRepository that `flux bootstrap` generates. That source
   is not committed here.
+- Every RoleBinding in a team's bootstrap sits in that team's namespace and
+  has that team's own ServiceAccount, in that team's namespace, as its only
+  subject. No other team's ServiceAccount, user or group is bound.
 - Every team's `sync.yaml` Kustomization sets `serviceAccountName` to that
   team's own ServiceAccount name and `targetNamespace` to that team's own
   namespace. Those two values always match the namespace the team's
@@ -87,8 +92,13 @@ without running anything against a cluster:
   - `gitops-flux-multi-tenant-team-loyalty-bootstrap` (Component `tenant-bootstrap`, Owner `platform`)
   - `gitops-flux-multi-tenant-team-loyalty-workloads` (Component `tenant-workloads`, Owner `team-loyalty`)
 
-  one cluster-control Unit plus one `tenant-bootstrap` Unit and one
-  `tenant-workloads` Unit per team
+  `cub variant upload` makes one Unit per rendered resource, so there are
+  seven uploads but many more Units: one for the cluster-level
+  Kustomization, one per resource in each team's bootstrap (Namespace,
+  ServiceAccount, Role, RoleBinding, ResourceQuota, NetworkPolicy,
+  GitRepository, Kustomization) and one per resource in each team's workloads
+  (a Deployment, plus a Service for storefront and payments). `./verify.sh`
+  prints the resource count for each render.
 - cleanup: `./cleanup.sh` (local files) plus the `cub space delete` commands
   it prints
 
@@ -109,6 +119,10 @@ without running anything against a cluster:
   - the platform bootstrap Kustomization reads the `flux-system` source
   - every team has its own `Namespace`, `ServiceAccount`, `Role` and
     `RoleBinding`, and the RoleBinding points at that team's own Role
+  - every RoleBinding in a team's bootstrap is in that team's namespace and
+    has exactly one subject, that team's own ServiceAccount in that
+    team's own namespace (a foreign subject fails and the error names it), and
+    no ClusterRoleBinding is present
   - no tenant Role can write NetworkPolicies, ResourceQuotas, LimitRanges,
     Namespaces, RBAC or Flux objects, and each still grants Deployments
     and Services
@@ -121,6 +135,9 @@ without running anything against a cluster:
     Service; `team-loyalty` renders a Deployment only
   - every path any Kustomization points at exists in this repo
 - does not require ConfigHub, Flux, or a live cluster
+- does not read Flux controller flags (`--no-cross-namespace-refs`,
+  `--default-service-account`) and does not check who may push to the repo;
+  the README names both as things the isolation depends on
 - does not prove that a live cluster would return `Forbidden` for the
   tenant-escape edit; that is named explicitly as a proof gap in the README
 

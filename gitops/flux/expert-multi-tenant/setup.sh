@@ -102,6 +102,11 @@ This example will:
   and each team's workloads render into that team's own workloads Space,
   using "cub variant upload --component <tenant-bootstrap|tenant-workloads> --variant <team> --owner <platform|team-name>"
 
+Units: "cub variant upload" makes one Unit per rendered resource, not one per
+upload. A team's bootstrap upload becomes a Unit each for its Namespace,
+ServiceAccount, Role, RoleBinding, ResourceQuota, NetworkPolicy, GitRepository
+and Kustomization. ./verify.sh prints the resource count for each render.
+
 ConfigHub mutations if you run without --explain:
 - creates (or updates) Space "$PLATFORM_SPACE" with the cluster-level render
 - creates (or updates) Space "$STOREFRONT_BOOTSTRAP_SPACE" with
@@ -143,12 +148,16 @@ if [[ "$EXPLAIN_JSON" -eq 1 ]]; then
         $paymentsBootstrapSpace, $paymentsWorkloadsSpace,
         $loyaltyBootstrapSpace, $loyaltyWorkloadsSpace
       ],
-      units: [
-        "cluster-control",
-        "tenant-bootstrap-storefront", "tenant-workloads-storefront",
-        "tenant-bootstrap-payments", "tenant-workloads-payments",
-        "tenant-bootstrap-loyalty", "tenant-workloads-loyalty"
+      uploads: [
+        {space: $platformSpace, component: "cluster-control", variant: "shared", owner: "platform"},
+        {space: $storefrontBootstrapSpace, component: "tenant-bootstrap", variant: "storefront", owner: "platform"},
+        {space: $storefrontWorkloadsSpace, component: "tenant-workloads", variant: "storefront", owner: "team-storefront"},
+        {space: $paymentsBootstrapSpace, component: "tenant-bootstrap", variant: "payments", owner: "platform"},
+        {space: $paymentsWorkloadsSpace, component: "tenant-workloads", variant: "payments", owner: "team-payments"},
+        {space: $loyaltyBootstrapSpace, component: "tenant-bootstrap", variant: "loyalty", owner: "platform"},
+        {space: $loyaltyWorkloadsSpace, component: "tenant-workloads", variant: "loyalty", owner: "team-loyalty"}
       ],
+      units_per_upload: "one Unit per rendered resource, created by cub variant upload",
       cluster: "shared",
       teams: ["team-storefront", "team-payments", "team-loyalty"],
       namespaces: ["flux-system", "team-storefront", "team-payments", "team-loyalty"],

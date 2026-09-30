@@ -129,7 +129,7 @@ What this does not mutate:
 GUI checkpoint:
 
 - GUI now: open the seven Spaces in ConfigHub and inspect the uploaded
-  Units; notice that each team's bootstrap Space is owned by the platform
+  Units (one per rendered resource, not one per upload); notice that each team's bootstrap Space is owned by the platform
   and each team's workloads Space is owned by that team
 - GUI gap: there is no single view across the six team Spaces that shows
   access side by side
@@ -147,7 +147,8 @@ This re-renders every layer locally and checks the structure: the platform
 bootstrap has no impersonation and reads the `flux-system` source, every
 team has its own namespace, RBAC, quota and NetworkPolicy, no team's Role
 can write NetworkPolicies, quotas, LimitRanges, Namespaces, RBAC or Flux
-objects, every team's Kustomization impersonates only its
+objects, every RoleBinding names only its own team's ServiceAccount in
+its own namespace, every team's Kustomization impersonates only its
 own ServiceAccount and targets only its own namespace, and every path any
 Kustomization points at exists. It does not call ConfigHub, so it passes
 even if you skipped Stage 3.
@@ -162,12 +163,13 @@ Pause after this stage.
 
 ## Stage 5: Break It On Purpose (optional, local edits only)
 
-The README lists four single-edit breakages: a tenant escape (a
+The README lists five single-edit breakages: a tenant escape (a
 Kustomization's `targetNamespace` pointed at another team), a missing
 `serviceAccountName` (the opposite failure: too much access instead of a
 refusal), a removed `NetworkPolicy` (a guardrail quietly gone), and an
 over-broad tenant grant (a team bound to `admin`, which could add its own
-allow-all NetworkPolicy). Make
+allow-all NetworkPolicy), and a foreign subject (another team's
+ServiceAccount added to a team's RoleBinding). Make
 one, run `./verify.sh`, and read the failure message it prints: it names
 what a live cluster would do (Kubernetes RBAC refuses the apply, Flux marks
 the Kustomization not `Ready`) and says plainly that this repo only proves
