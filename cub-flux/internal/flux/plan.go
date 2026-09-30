@@ -2,6 +2,7 @@ package flux
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -486,7 +487,7 @@ func (b *builder) variant(c *Component, cl Cluster, d Doc) *Variant {
 	k, raw := readKustomization(local)
 	v.overlay = k
 	if k == nil {
-		v.Departures = append(v.Departures, "plain manifests, no kustomization.yaml")
+		b.plainLayer(c, cl, v, local)
 		return v
 	}
 	for _, r := range list(k["resources"]) {
@@ -1020,4 +1021,87 @@ func readKustomization(dir string) (map[string]any, string) {
 		return docs[0].Value, string(data)
 	}
 	return nil, ""
+}
+
+// plainLayer checks a path with no kustomization as kustomize-controller reads
+// it: it generates a kustomization over every .yaml and .yml file below the
+// path, taking a subdirectory with a kustomization of its own whole, and fails
+// the build on a file that is not Kubernetes YAML.
+func (b *builder) plainLayer(c *Component, cl Cluster, v *Variant, local string) {
+	p := b.plan
+	files, dirs := fluxManifests(local)
+	var bad []string
+	for _, f := range files {
+		data, err := os.ReadFile(filepath.Join(local, filepath.FromSlash(f)))
+		if err != nil {
+			bad = append(bad, f+" (unreadable)")
+			continue
+		}
+		docs, err := parse(data, f)
+		if err != nil {
+			bad = append(bad, f+" (does not parse)")
+			continue
+		}
+		for _, d := range docs {
+			if str(d.Value["apiVersion"]) == "" || str(d.Value["kind"]) == "" {
+				bad = append(bad, f)
+				break
+			}
+		}
+	}
+	switch {
+	case len(bad) > 0:
+		p.Problems = append(p.Problems, fmt.Sprintf(
+			"%s on %s: %s has no kustomization, so Flux builds every .yaml and .yml below it, and %s is not Kubernetes YAML: Flux would fail the build. Add a kustomization.yaml, or move it out",
+			c.Name, cl.Name, v.Path, strings.Join(bad, ", ")))
+	case len(files) == 0 && len(dirs) == 0:
+		p.Problems = append(p.Problems, fmt.Sprintf(
+			"%s on %s: %s holds no .yaml or .yml files, so Flux would build nothing from it", c.Name, cl.Name, v.Path))
+	default:
+		v.Departures = append(v.Departures, "plain manifests: no kustomization.yaml, so every .yaml and .yml below the path, as Flux reads it")
+	}
+}
+
+// fluxManifests lists, relative to dir, the files kustomize-controller would
+// put in the kustomization it generates for a path without one, and the
+// subdirectories it would take whole because they have their own. Hidden
+// files and directories are left out, as the scripts leave them out.
+func fluxManifests(dir string) (files, dirs []string) {
+	_ = filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		rel, _ := filepath.Rel(dir, path)
+		if rel == "." {
+			return nil
+		}
+		if strings.HasPrefix(d.Name(), ".") {
+			if d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if d.IsDir() {
+			if k, _ := readKustomization(path); k != nil || hasKustomizationFile(path) {
+				dirs = append(dirs, filepath.ToSlash(rel))
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		switch filepath.Ext(path) {
+		case ".yaml", ".yml":
+			files = append(files, filepath.ToSlash(rel))
+		}
+		return nil
+	})
+	return files, dirs
+}
+
+func hasKustomizationFile(dir string) bool {
+	for _, name := range []string{"kustomization.yaml", "kustomization.yml", "Kustomization"} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err == nil {
+			return true
+		}
+	}
+	return false
 }

@@ -172,6 +172,15 @@ flowchart LR
 of apps has with its children. It is also the one part of the fleet this
 handover never touches — see [the bootstrap stays](#the-bootstrap-stays).
 
+A layer's path is read as kustomize-controller reads it. With a
+kustomization, it is built with kustomize. Without one it is a plain layer,
+and Flux generates a kustomization over every `.yaml` and `.yml` below the
+path, recursively, taking a subdirectory with a kustomization of its own
+whole. The scripts render a plain layer the same way, and a layer whose
+clusters share no one base starts its base from the first cluster's render. A
+file in a plain layer that is not Kubernetes YAML fails Flux's build, so the
+plan names it.
+
 ## 1. See the plan
 
 ```bash

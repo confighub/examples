@@ -23,7 +23,7 @@ fmt:
 golden:
 	$(GO) test ./internal/flux -run Golden -update
 
-# Plan the expert Argo CD example in this repo. Offline; changes nothing.
+# Plan the expert Flux example in this repo. Offline; changes nothing.
 example: build
 	$(BIN) plan ../gitops/flux/expert-fleet
 

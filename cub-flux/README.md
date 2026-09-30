@@ -78,6 +78,13 @@ delivery. Its `exportedAt` is the export time and changes between runs. Pass
 ./bin/cub-flux plan ../gitops/flux/expert-fleet --format preview-json --exported-at 2026-09-30T00:00:00Z
 ```
 
+A layer path is read as kustomize-controller reads it. One with a
+kustomization is built with kustomize. One without is a plain layer: Flux
+generates a kustomization over every `.yaml` and `.yml` below it, recursively,
+taking a subdirectory with a kustomization of its own whole. `apply.sh` and
+`handover.sh` render it the same way, and the plan names any file there that
+is not Kubernetes YAML, which would fail Flux's build.
+
 ## What it leaves out
 
 Live exports (`kubectl get kustomizations ...`), OCIRepository and Bucket

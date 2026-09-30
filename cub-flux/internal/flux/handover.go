@@ -150,11 +150,14 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add(`if ! git -C "$REPO_ROOT" diff --quiet 2>/dev/null; then`)
 	add(`  echo "  note: $REPO_ROOT has uncommitted changes, so this renders something Flux is not applying" >&2`)
 	add("fi")
+	for _, l := range buildFunc {
+		add("%s", l)
+	}
 	add("# same <space> <unit> <path>")
 	add("same() {")
 	add(`  local fresh got rc=0`)
 	add(`  fresh=$(mktemp); got=$(mktemp)`)
-	add(`  kustomize build ${KUSTOMIZE_FLAGS:-} "$REPO_ROOT/$3" > "$fresh" || { rm -f "$fresh" "$got"; return 1; }`)
+	add(`  build "$REPO_ROOT/$3" > "$fresh" || { rm -f "$fresh" "$got"; return 1; }`)
 	add(`  cub unit data --space "$1" "$2" > "$got" || { rm -f "$fresh" "$got"; return 1; }`)
 	add(`  if diff -q <(grep -v '^\s*#' "$fresh") <(grep -v '^\s*#' "$got") >/dev/null; then`)
 	add(`    echo "  $1 holds what $3 renders today"`)

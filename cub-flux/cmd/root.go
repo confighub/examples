@@ -1,4 +1,4 @@
-// Package cmd is the `cub argo` command tree.
+// Package cmd is the `cub flux` command tree.
 package cmd
 
 import (
@@ -136,7 +136,7 @@ func newRoot() *cobra.Command {
 	var applyStages, out string
 	apply := &cobra.Command{
 		Use:   "apply <fleet-repo-dir> --out <dir>",
-		Short: "Write the plan's files and the apply, handover and cleanup scripts; runs nothing",
+		Short: "Write the plan's files and the apply, handover, join and cleanup scripts; runs nothing",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
 			if out == "" {

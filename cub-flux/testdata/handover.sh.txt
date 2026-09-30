@@ -86,11 +86,35 @@ echo "  rendering with $(kustomize version)"
 if ! git -C "$REPO_ROOT" diff --quiet 2>/dev/null; then
   echo "  note: $REPO_ROOT has uncommitted changes, so this renders something Flux is not applying" >&2
 fi
+build() {
+  has_k() { [ -e "$1/kustomization.yaml" ] || [ -e "$1/kustomization.yml" ] || [ -e "$1/Kustomization" ]; }
+  if has_k "$1" || [ ! -d "$1" ]; then kustomize build ${KUSTOMIZE_FLAGS:-} "$1"; return; fi
+  # list <dir> <as>: what Flux would list under dir, named as <as>/...
+  list() {
+    local f
+    for f in "$1"/*; do
+      [ -e "$f" ] || continue
+      if [ -d "$f" ]; then
+        if has_k "$f"; then echo "- $2/${f##*/}"; else list "$f" "$2/${f##*/}"; fi
+      else
+        case "$f" in *.yaml|*.yml) echo "- $2/${f##*/}" ;; esac
+      fi
+    done
+  }
+  # kustomize takes a directory resource only by a relative path, so the
+  # layer is linked beside the kustomization that lists it.
+  local k rc=0
+  k=$(mktemp -d)
+  ln -s "$(cd "$1" && pwd)" "$k/src" || { rm -rf "$k"; return 1; }
+  { echo "resources:"; LC_ALL=C list "$k/src" src; } > "$k/kustomization.yaml"
+  kustomize build ${KUSTOMIZE_FLAGS:-} --load-restrictor LoadRestrictionsNone "$k" || rc=$?
+  rm -rf "$k"; return $rc
+}
 # same <space> <unit> <path>
 same() {
   local fresh got rc=0
   fresh=$(mktemp); got=$(mktemp)
-  kustomize build ${KUSTOMIZE_FLAGS:-} "$REPO_ROOT/$3" > "$fresh" || { rm -f "$fresh" "$got"; return 1; }
+  build "$REPO_ROOT/$3" > "$fresh" || { rm -f "$fresh" "$got"; return 1; }
   cub unit data --space "$1" "$2" > "$got" || { rm -f "$fresh" "$got"; return 1; }
   if diff -q <(grep -v '^\s*#' "$fresh") <(grep -v '^\s*#' "$got") >/dev/null; then
     echo "  $1 holds what $3 renders today"

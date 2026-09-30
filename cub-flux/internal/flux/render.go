@@ -16,7 +16,7 @@ func Render(p *Plan) string {
 			variants += len(st.Variants)
 		}
 	}
-	w("Flux fleet: %d clusters, %d layers, %d variants\n", len(p.Clusters), len(p.Components), variants)
+	w("Flux fleet: %s, %s, %s\n", plural(len(p.Clusters), "cluster"), plural(len(p.Components), "layer"), plural(variants, "variant"))
 	if len(p.Inputs.Skipped) > 0 {
 		w("Read %d objects; skipped %d files that are not Kubernetes YAML\n", p.Inputs.Objects, len(p.Inputs.Skipped))
 	} else {
@@ -106,4 +106,11 @@ func Render(p *Plan) string {
 	section("Left out", p.LeftOut)
 	section("Problems to fix first", p.Problems)
 	return b.String()
+}
+
+func plural(n int, word string) string {
+	if n == 1 {
+		return fmt.Sprintf("1 %s", word)
+	}
+	return fmt.Sprintf("%d %ss", n, word)
 }
