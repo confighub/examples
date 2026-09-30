@@ -29,7 +29,9 @@ case "$a" in
   *"spec.source.repoURL"*)
     case "$app" in
       root|storefront) echo "${PARENT_READS:-oci://gw.example:5000/space/argo-x-children}" ;;
-      *) sp=$(grep "^$app " "$STUB_LOG.map" 2>/dev/null | cut -d' ' -f2); echo "oci://gw.example:5000/space/${sp:-none}" ;;
+      *) sp=$(grep "^$app " "$STUB_LOG.map" 2>/dev/null | cut -d' ' -f2)
+         [ "$app" = "${PREMOVED:-none}" ] && sp=${sp:-argo-apptique-dev-1}
+         if [ -n "$sp" ]; then echo "oci://gw.example:5000/space/$sp"; else echo "https://github.com/confighub/examples"; fi ;;
     esac ;;
   *"status.sync.revision"*)
     case "$app" in root|storefront) echo sha256:x ;; *) echo "${RELEASE:-sha256:x}" ;; esac ;;
@@ -137,6 +139,12 @@ func TestMoveDeliversOneStage(t *testing.T) {
 	if !strings.Contains(r.out, `patch application dev-1-checkout-cache --type json -p '[{"op":"replace","path":"/spec/source","value":{"kustomize":{"version":"v5"},"path":"gitops/argo/x"`) {
 		t.Errorf("the way back should restore the whole recorded source:\n%s", r.out)
 	}
+	// From the fifth review: once moved, each Unit drops Replace=true, so the
+	// parent's later syncs do not erase the Application's status.
+	if !strings.Contains(r.log, "cub argo application-unit --settled --kube-context ctx-a --namespace argocd --application dev-1-apptique") ||
+		!strings.Contains(r.log, "cub unit update --space argo-storefront-children argo-apptique-dev-1 render/app-argo-apptique-dev-1.yaml --change-desc dev-1-apptique reads argo-apptique-dev-1: stop replacing it on every sync") {
+		t.Errorf("each moved Unit should be settled:\n%s", r.log)
+	}
 	if strings.Contains(r.log, "patch application") {
 		t.Errorf("nothing is patched on the cluster; the parent applies the Unit:\n%s", r.log)
 	}
@@ -217,6 +225,31 @@ func TestMoveMakesAJoinedClustersApplication(t *testing.T) {
 	}
 	if !strings.Contains(r.out, "delete application staging-1-apptique") {
 		t.Errorf("its way back is to delete it, as there is no source to restore:\n%s", r.out)
+	}
+}
+
+// Found live: a joined cluster's Space had no release yet, and its
+// Application was made anyway. Now every Space in the stage is checked first,
+// so a stage moves whole or not at all (from the fifth review).
+func TestMoveWaitsForTheRelease(t *testing.T) {
+	r := runMove(t, []string{"canary"}, "UNRELEASED=argo-platform-addons-cluster-baseline-dev-1")
+	if r.err == nil || !strings.Contains(r.out, "no release yet in: argo-platform-addons-cluster-baseline-dev-1") {
+		t.Fatalf("a Space with no release must stop the stage: %v\n%s", r.err, r.out)
+	}
+	if strings.Contains(r.log, "unit create") {
+		t.Errorf("nothing in the stage may be made first:\n%s", r.log)
+	}
+}
+
+// An Application already reading the gateway has no Git source to record, and
+// its way back says so rather than restoring the gateway.
+func TestMoveRecordsAnAlreadyMovedApplication(t *testing.T) {
+	r := runMove(t, []string{"canary"}, "PREMOVED=dev-1-apptique")
+	if r.err != nil {
+		t.Fatalf("%v\n%s", r.err, r.out)
+	}
+	if !strings.Contains(r.out, "dev-1-apptique read the gateway already when it was moved") {
+		t.Errorf("want the unrecorded source named:\n%s", r.out)
 	}
 }
 

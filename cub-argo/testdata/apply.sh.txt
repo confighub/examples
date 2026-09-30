@@ -125,60 +125,67 @@ step "4/5 One variant per cluster, each holding what its overlay renders to"
 # handover, move-applications.sh makes it a Unit. So a cub that would add a
 # second Application when it makes a variant for an Argo cluster is told not to.
 no_argo_app=; case "$(cub variant create --help 2>&1)" in *--no-argo-app*) no_argo_app=--no-argo-app ;; esac
-# A variant with a release is ConfigHub's: changes to it are made there, through
-# change orders, so re-rendering it from Git would publish Git over them. Measured:
-# re-run for a joining cluster, this rolled every existing cluster back to Git.
-# Only a variant with no release yet is rendered.
-released() { cub release get --space "$1" --oci-reference latest -o jq=.Release.ReleaseNum >/dev/null 2>&1; }
-if released argo-apptique-dev-1; then echo '  argo-apptique-dev-1 is released: ConfigHub holds it, so it is left as it is'; else
+# Once handover.sh has begun, a variant with a release is ConfigHub's: changes
+# to it are made there, through change orders, and re-rendering it from Git
+# would publish Git over them. Measured: re-run for a joining cluster, that
+# rolled every existing cluster back to Git. Before the handover Git is still
+# what Argo applies, so every variant is rendered again, which is how a change
+# in Git since the last run is picked up.
+released() {
+  local out; out=$(cub release get --space "$1" --oci-reference latest -o jq=.Release.ReleaseNum 2>&1) && return 0
+  case "$out" in *"not found"*|*"no release"*|*"404"*) return 1 ;; esac
+  echo "could not tell whether $1 has a release: $out" >&2; exit 1
+}
+handed_over() { [ -s handover-state/argo.txt ]; }
+if handed_over && released argo-apptique-dev-1; then echo '  argo-apptique-dev-1 is released and handed over: ConfigHub holds it, so it is left as it is'; else
   cub variant create dev-1 argo-apptique-base --stage canary --space-pattern template:argo-apptique-dev-1 --target argo-targets/dev-1 --space-label Role=deployment --space-label Cluster=dev-1 $no_argo_app --allow-exists --quiet
   render 'gitops/argo/expert-app-of-apps/apps/apptique/overlays/dev' 'argo-apptique-dev-1'
   cub unit update --space argo-apptique-dev-1 apptique render/argo-apptique-dev-1.yaml --change-desc 'What gitops/argo/expert-app-of-apps/apps/apptique/overlays/dev renders for dev-1' --quiet
   holds argo-apptique-dev-1 1
 fi
-if released argo-apptique-staging-1; then echo '  argo-apptique-staging-1 is released: ConfigHub holds it, so it is left as it is'; else
+if handed_over && released argo-apptique-staging-1; then echo '  argo-apptique-staging-1 is released and handed over: ConfigHub holds it, so it is left as it is'; else
   cub variant create staging-1 argo-apptique-base --stage secondary --space-pattern template:argo-apptique-staging-1 --target argo-targets/staging-1 --space-label Role=deployment --space-label Cluster=staging-1 $no_argo_app --allow-exists --quiet
   render 'gitops/argo/expert-app-of-apps/apps/apptique/overlays/staging' 'argo-apptique-staging-1'
   cub unit update --space argo-apptique-staging-1 apptique render/argo-apptique-staging-1.yaml --change-desc 'What gitops/argo/expert-app-of-apps/apps/apptique/overlays/staging renders for staging-1' --quiet
   holds argo-apptique-staging-1 1
 fi
-if released argo-apptique-prod-1; then echo '  argo-apptique-prod-1 is released: ConfigHub holds it, so it is left as it is'; else
+if handed_over && released argo-apptique-prod-1; then echo '  argo-apptique-prod-1 is released and handed over: ConfigHub holds it, so it is left as it is'; else
   cub variant create prod-1 argo-apptique-base --stage primary --space-pattern template:argo-apptique-prod-1 --target argo-targets/prod-1 --space-label Role=deployment --space-label Cluster=prod-1 $no_argo_app --allow-exists --quiet
   render 'gitops/argo/expert-app-of-apps/apps/apptique/overlays/prod' 'argo-apptique-prod-1'
   cub unit update --space argo-apptique-prod-1 apptique render/argo-apptique-prod-1.yaml --change-desc 'What gitops/argo/expert-app-of-apps/apps/apptique/overlays/prod renders for prod-1' --quiet
   holds argo-apptique-prod-1 1
 fi
-if released argo-checkout-cache-dev-1; then echo '  argo-checkout-cache-dev-1 is released: ConfigHub holds it, so it is left as it is'; else
+if handed_over && released argo-checkout-cache-dev-1; then echo '  argo-checkout-cache-dev-1 is released and handed over: ConfigHub holds it, so it is left as it is'; else
   cub variant create dev-1 argo-checkout-cache-base --stage canary --space-pattern template:argo-checkout-cache-dev-1 --target argo-targets/dev-1 --space-label Role=deployment --space-label Cluster=dev-1 $no_argo_app --allow-exists --quiet
   render 'gitops/argo/expert-app-of-apps/apps/checkout-cache/overlays/dev' 'argo-checkout-cache-dev-1'
   cub unit update --space argo-checkout-cache-dev-1 checkout-cache render/argo-checkout-cache-dev-1.yaml --change-desc 'What gitops/argo/expert-app-of-apps/apps/checkout-cache/overlays/dev renders for dev-1' --quiet
   holds argo-checkout-cache-dev-1 1
 fi
-if released argo-checkout-cache-staging-1; then echo '  argo-checkout-cache-staging-1 is released: ConfigHub holds it, so it is left as it is'; else
+if handed_over && released argo-checkout-cache-staging-1; then echo '  argo-checkout-cache-staging-1 is released and handed over: ConfigHub holds it, so it is left as it is'; else
   cub variant create staging-1 argo-checkout-cache-base --stage secondary --space-pattern template:argo-checkout-cache-staging-1 --target argo-targets/staging-1 --space-label Role=deployment --space-label Cluster=staging-1 $no_argo_app --allow-exists --quiet
   render 'gitops/argo/expert-app-of-apps/apps/checkout-cache/overlays/staging' 'argo-checkout-cache-staging-1'
   cub unit update --space argo-checkout-cache-staging-1 checkout-cache render/argo-checkout-cache-staging-1.yaml --change-desc 'What gitops/argo/expert-app-of-apps/apps/checkout-cache/overlays/staging renders for staging-1' --quiet
   holds argo-checkout-cache-staging-1 1
 fi
-if released argo-checkout-cache-prod-1; then echo '  argo-checkout-cache-prod-1 is released: ConfigHub holds it, so it is left as it is'; else
+if handed_over && released argo-checkout-cache-prod-1; then echo '  argo-checkout-cache-prod-1 is released and handed over: ConfigHub holds it, so it is left as it is'; else
   cub variant create prod-1 argo-checkout-cache-base --stage primary --space-pattern template:argo-checkout-cache-prod-1 --target argo-targets/prod-1 --space-label Role=deployment --space-label Cluster=prod-1 $no_argo_app --allow-exists --quiet
   render 'gitops/argo/expert-app-of-apps/apps/checkout-cache/overlays/prod' 'argo-checkout-cache-prod-1'
   cub unit update --space argo-checkout-cache-prod-1 checkout-cache render/argo-checkout-cache-prod-1.yaml --change-desc 'What gitops/argo/expert-app-of-apps/apps/checkout-cache/overlays/prod renders for prod-1' --quiet
   holds argo-checkout-cache-prod-1 1
 fi
-if released argo-platform-addons-cluster-baseline-dev-1; then echo '  argo-platform-addons-cluster-baseline-dev-1 is released: ConfigHub holds it, so it is left as it is'; else
+if handed_over && released argo-platform-addons-cluster-baseline-dev-1; then echo '  argo-platform-addons-cluster-baseline-dev-1 is released and handed over: ConfigHub holds it, so it is left as it is'; else
   cub variant create dev-1 argo-platform-addons-cluster-baseline-base --stage canary --space-pattern template:argo-platform-addons-cluster-baseline-dev-1 --target argo-targets/dev-1 --space-label Role=deployment --space-label Cluster=dev-1 $no_argo_app --allow-exists --quiet
   render 'gitops/argo/expert-app-of-apps/apps/platform/cluster-baseline/overlays/dev' 'argo-platform-addons-cluster-baseline-dev-1'
   cub unit update --space argo-platform-addons-cluster-baseline-dev-1 platform-addons-cluster-baseline render/argo-platform-addons-cluster-baseline-dev-1.yaml --change-desc 'What gitops/argo/expert-app-of-apps/apps/platform/cluster-baseline/overlays/dev renders for dev-1' --quiet
   holds argo-platform-addons-cluster-baseline-dev-1 1
 fi
-if released argo-platform-addons-cluster-baseline-staging-1; then echo '  argo-platform-addons-cluster-baseline-staging-1 is released: ConfigHub holds it, so it is left as it is'; else
+if handed_over && released argo-platform-addons-cluster-baseline-staging-1; then echo '  argo-platform-addons-cluster-baseline-staging-1 is released and handed over: ConfigHub holds it, so it is left as it is'; else
   cub variant create staging-1 argo-platform-addons-cluster-baseline-base --stage secondary --space-pattern template:argo-platform-addons-cluster-baseline-staging-1 --target argo-targets/staging-1 --space-label Role=deployment --space-label Cluster=staging-1 $no_argo_app --allow-exists --quiet
   render 'gitops/argo/expert-app-of-apps/apps/platform/cluster-baseline/overlays/staging' 'argo-platform-addons-cluster-baseline-staging-1'
   cub unit update --space argo-platform-addons-cluster-baseline-staging-1 platform-addons-cluster-baseline render/argo-platform-addons-cluster-baseline-staging-1.yaml --change-desc 'What gitops/argo/expert-app-of-apps/apps/platform/cluster-baseline/overlays/staging renders for staging-1' --quiet
   holds argo-platform-addons-cluster-baseline-staging-1 1
 fi
-if released argo-platform-addons-cluster-baseline-prod-1; then echo '  argo-platform-addons-cluster-baseline-prod-1 is released: ConfigHub holds it, so it is left as it is'; else
+if handed_over && released argo-platform-addons-cluster-baseline-prod-1; then echo '  argo-platform-addons-cluster-baseline-prod-1 is released and handed over: ConfigHub holds it, so it is left as it is'; else
   cub variant create prod-1 argo-platform-addons-cluster-baseline-base --stage primary --space-pattern template:argo-platform-addons-cluster-baseline-prod-1 --target argo-targets/prod-1 --space-label Role=deployment --space-label Cluster=prod-1 $no_argo_app --allow-exists --quiet
   render 'gitops/argo/expert-app-of-apps/apps/platform/cluster-baseline/overlays/prod' 'argo-platform-addons-cluster-baseline-prod-1'
   cub unit update --space argo-platform-addons-cluster-baseline-prod-1 platform-addons-cluster-baseline render/argo-platform-addons-cluster-baseline-prod-1.yaml --change-desc 'What gitops/argo/expert-app-of-apps/apps/platform/cluster-baseline/overlays/prod renders for prod-1' --quiet
@@ -186,6 +193,20 @@ if released argo-platform-addons-cluster-baseline-prod-1; then echo '  argo-plat
 fi
 
 step "5/5 Release each variant, stage by stage: promote, approve, publish"
+if handed_over; then
+  if released argo-apptique-dev-1; then
+    up=$(cub unit get --space argo-apptique-dev-1 apptique -o jq=.Unit.UpstreamRevisionNum)
+    cmp -s <(cub revision data --space argo-apptique-base apptique "$up") <(cub unit data --space argo-apptique-base apptique) || { echo 'argo-apptique-base holds a change argo-apptique-dev-1 has not taken. A joining cluster'\''s first release goes through every stage, so this run would promote that change into dev-1 and approve it. Finish that change, or undo it in the base, then run this again.' >&2; exit 1; }
+  fi
+  if released argo-apptique-staging-1; then
+    up=$(cub unit get --space argo-apptique-staging-1 apptique -o jq=.Unit.UpstreamRevisionNum)
+    cmp -s <(cub revision data --space argo-apptique-base apptique "$up") <(cub unit data --space argo-apptique-base apptique) || { echo 'argo-apptique-base holds a change argo-apptique-staging-1 has not taken. A joining cluster'\''s first release goes through every stage, so this run would promote that change into staging-1 and approve it. Finish that change, or undo it in the base, then run this again.' >&2; exit 1; }
+  fi
+  if released argo-apptique-prod-1; then
+    up=$(cub unit get --space argo-apptique-prod-1 apptique -o jq=.Unit.UpstreamRevisionNum)
+    cmp -s <(cub revision data --space argo-apptique-base apptique "$up") <(cub unit data --space argo-apptique-base apptique) || { echo 'argo-apptique-base holds a change argo-apptique-prod-1 has not taken. A joining cluster'\''s first release goes through every stage, so this run would promote that change into prod-1 and approve it. Finish that change, or undo it in the base, then run this again.' >&2; exit 1; }
+  fi
+fi
 cub changeorder create --space argo-apptique-base onboard-70d46caa --change-workflow argo-apptique-base/rollout --description 'First release of argo-apptique-dev-1, argo-apptique-staging-1, argo-apptique-prod-1' --allow-exists --quiet
 if rolled_out argo-apptique-base/onboard-70d46caa; then
   echo 'apptique: every variant in this plan is released'
@@ -200,6 +221,20 @@ else
   cub variant approve --change-order argo-apptique-base/onboard-70d46caa --stage primary --quiet
   publish argo-apptique-prod-1 argo-apptique-base/onboard-70d46caa 1
 fi
+if handed_over; then
+  if released argo-checkout-cache-dev-1; then
+    up=$(cub unit get --space argo-checkout-cache-dev-1 checkout-cache -o jq=.Unit.UpstreamRevisionNum)
+    cmp -s <(cub revision data --space argo-checkout-cache-base checkout-cache "$up") <(cub unit data --space argo-checkout-cache-base checkout-cache) || { echo 'argo-checkout-cache-base holds a change argo-checkout-cache-dev-1 has not taken. A joining cluster'\''s first release goes through every stage, so this run would promote that change into dev-1 and approve it. Finish that change, or undo it in the base, then run this again.' >&2; exit 1; }
+  fi
+  if released argo-checkout-cache-staging-1; then
+    up=$(cub unit get --space argo-checkout-cache-staging-1 checkout-cache -o jq=.Unit.UpstreamRevisionNum)
+    cmp -s <(cub revision data --space argo-checkout-cache-base checkout-cache "$up") <(cub unit data --space argo-checkout-cache-base checkout-cache) || { echo 'argo-checkout-cache-base holds a change argo-checkout-cache-staging-1 has not taken. A joining cluster'\''s first release goes through every stage, so this run would promote that change into staging-1 and approve it. Finish that change, or undo it in the base, then run this again.' >&2; exit 1; }
+  fi
+  if released argo-checkout-cache-prod-1; then
+    up=$(cub unit get --space argo-checkout-cache-prod-1 checkout-cache -o jq=.Unit.UpstreamRevisionNum)
+    cmp -s <(cub revision data --space argo-checkout-cache-base checkout-cache "$up") <(cub unit data --space argo-checkout-cache-base checkout-cache) || { echo 'argo-checkout-cache-base holds a change argo-checkout-cache-prod-1 has not taken. A joining cluster'\''s first release goes through every stage, so this run would promote that change into prod-1 and approve it. Finish that change, or undo it in the base, then run this again.' >&2; exit 1; }
+  fi
+fi
 cub changeorder create --space argo-checkout-cache-base onboard-996c2e5c --change-workflow argo-checkout-cache-base/rollout --description 'First release of argo-checkout-cache-dev-1, argo-checkout-cache-staging-1, argo-checkout-cache-prod-1' --allow-exists --quiet
 if rolled_out argo-checkout-cache-base/onboard-996c2e5c; then
   echo 'checkout-cache: every variant in this plan is released'
@@ -213,6 +248,20 @@ else
   promote argo-checkout-cache-base/onboard-996c2e5c primary
   cub variant approve --change-order argo-checkout-cache-base/onboard-996c2e5c --stage primary --quiet
   publish argo-checkout-cache-prod-1 argo-checkout-cache-base/onboard-996c2e5c 1
+fi
+if handed_over; then
+  if released argo-platform-addons-cluster-baseline-dev-1; then
+    up=$(cub unit get --space argo-platform-addons-cluster-baseline-dev-1 platform-addons-cluster-baseline -o jq=.Unit.UpstreamRevisionNum)
+    cmp -s <(cub revision data --space argo-platform-addons-cluster-baseline-base platform-addons-cluster-baseline "$up") <(cub unit data --space argo-platform-addons-cluster-baseline-base platform-addons-cluster-baseline) || { echo 'argo-platform-addons-cluster-baseline-base holds a change argo-platform-addons-cluster-baseline-dev-1 has not taken. A joining cluster'\''s first release goes through every stage, so this run would promote that change into dev-1 and approve it. Finish that change, or undo it in the base, then run this again.' >&2; exit 1; }
+  fi
+  if released argo-platform-addons-cluster-baseline-staging-1; then
+    up=$(cub unit get --space argo-platform-addons-cluster-baseline-staging-1 platform-addons-cluster-baseline -o jq=.Unit.UpstreamRevisionNum)
+    cmp -s <(cub revision data --space argo-platform-addons-cluster-baseline-base platform-addons-cluster-baseline "$up") <(cub unit data --space argo-platform-addons-cluster-baseline-base platform-addons-cluster-baseline) || { echo 'argo-platform-addons-cluster-baseline-base holds a change argo-platform-addons-cluster-baseline-staging-1 has not taken. A joining cluster'\''s first release goes through every stage, so this run would promote that change into staging-1 and approve it. Finish that change, or undo it in the base, then run this again.' >&2; exit 1; }
+  fi
+  if released argo-platform-addons-cluster-baseline-prod-1; then
+    up=$(cub unit get --space argo-platform-addons-cluster-baseline-prod-1 platform-addons-cluster-baseline -o jq=.Unit.UpstreamRevisionNum)
+    cmp -s <(cub revision data --space argo-platform-addons-cluster-baseline-base platform-addons-cluster-baseline "$up") <(cub unit data --space argo-platform-addons-cluster-baseline-base platform-addons-cluster-baseline) || { echo 'argo-platform-addons-cluster-baseline-base holds a change argo-platform-addons-cluster-baseline-prod-1 has not taken. A joining cluster'\''s first release goes through every stage, so this run would promote that change into prod-1 and approve it. Finish that change, or undo it in the base, then run this again.' >&2; exit 1; }
+  fi
 fi
 cub changeorder create --space argo-platform-addons-cluster-baseline-base onboard-70c23c7e --change-workflow argo-platform-addons-cluster-baseline-base/rollout --description 'First release of argo-platform-addons-cluster-baseline-dev-1, argo-platform-addons-cluster-baseline-staging-1, argo-platform-addons-cluster-baseline-prod-1' --allow-exists --quiet
 if rolled_out argo-platform-addons-cluster-baseline-base/onboard-70c23c7e; then

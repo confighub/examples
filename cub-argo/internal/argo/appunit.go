@@ -43,6 +43,18 @@ const DeliversAnnotation = "argo.confighub.com/delivers"
 // ApplicationUnit reads an Application from the cluster Argo CD runs on and
 // returns the Unit that delivers it from space on the gateway.
 func ApplicationUnit(run Runner, application, gateway, space string) ([]byte, error) {
+	return applicationUnitFromCluster(run, application, gateway, space, true)
+}
+
+// SettledApplicationUnit is the same Unit once the Application reads its
+// Space: without Replace=true, which did its work on the move. Left on, every
+// sync of the parent would replace the Application and erase its status,
+// history included.
+func SettledApplicationUnit(run Runner, application, gateway, space string) ([]byte, error) {
+	return applicationUnitFromCluster(run, application, gateway, space, false)
+}
+
+func applicationUnitFromCluster(run Runner, application, gateway, space string, replace bool) ([]byte, error) {
 	out, err := run("kubectl", "-n", checkNamespace, "get", "application", application, "-o", "json")
 	if err != nil {
 		return nil, fmt.Errorf("reading Application %s: %w", application, err)
@@ -54,6 +66,10 @@ func ApplicationUnit(run Runner, application, gateway, space string) ([]byte, er
 	u, err := applicationUnit(live, gateway, space)
 	if err != nil {
 		return nil, err
+	}
+	if !replace {
+		ann := obj(get(u, "metadata", "annotations"))
+		ann["argocd.argoproj.io/sync-options"] = withoutOption(str(ann["argocd.argoproj.io/sync-options"]), ReplaceTrue)
 	}
 	var b strings.Builder
 	b.WriteString(fmt.Sprintf("# %s, delivered from ConfigHub: it reads the Space %s.\n", application, space))
@@ -135,6 +151,17 @@ func applicationUnit(live map[string]any, gateway, space string) (map[string]any
 		"metadata":   meta,
 		"spec":       out,
 	}, nil
+}
+
+// withoutOption takes opt out of a comma-separated sync-options value.
+func withoutOption(have, opt string) string {
+	var opts []string
+	for _, o := range strings.Split(have, ",") {
+		if o = strings.TrimSpace(o); o != "" && o != opt {
+			opts = append(opts, o)
+		}
+	}
+	return strings.Join(opts, ",")
 }
 
 // withOption adds opt to a comma-separated sync-options value, once.

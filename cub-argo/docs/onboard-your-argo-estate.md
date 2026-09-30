@@ -494,17 +494,20 @@ sync options:
   the way back, and not when the parent is pointed back at Git, which does not
   hold it. Deleting an Application with the resources finalizer deletes its
   workloads.
-- `Replace=true`, so the parent replaces the Application with its Unit rather
-  than merging into it. Measured: `checkout-cache`'s template sets
-  `source.kustomize.version: v5`, which a merge would have kept, and Argo would
-  then have tried to build the rendered bundle as a kustomization. A replace is
-  an update, so the UID stays; it also takes off the ApplicationSet's
-  ownerReference, so the Application stands on its own.
+- `Replace=true`, for the move only, so the parent replaces the Application
+  with its Unit rather than merging into it. Measured: `checkout-cache`'s
+  template sets `source.kustomize.version: v5`, which a merge would have kept,
+  and Argo would then have tried to build the rendered bundle as a
+  kustomization. A replace is an update, so the UID stays; it also takes off
+  the ApplicationSet's ownerReference, so the Application stands on its own.
+  Once the Application reads its Space, the script updates its Unit without
+  `Replace=true` and publishes again: left on, every later sync of the parent
+  would replace the Application again and erase its status and sync history.
 
 Then it publishes that control Space, waits for the parent to apply it, and
 checks each Application reads its Space, has synced that Space's newest release,
-and is the same object it was (by UID). A stage whose Space has no release yet
-is refused before anything is made. The way back is printed at the end and if it
+and is the same object it was (by UID). Every Space in the stage is checked for
+a release first, so a stage moves whole or not at all. The way back is printed at the end and if it
 stops: take the Unit out and publish — the Application stays, as `Prune=false`
 says — then put its recorded source back: all of it, from
 `handover-state/source-<application>.json`, since a template can set more than
@@ -778,10 +781,12 @@ with `kubectl apply` keeps its plain `stringData`, bearer token included, in the
 last-applied annotation, so removing `.data.config` alone leaves the token in
 the file. Measured.
 
-The plan shows the new cluster's variants. `apply.sh` leaves every variant that
-has a release as it is — ConfigHub holds it, and re-rendering it from Git would
-publish Git over every change made since; measured, that is what an earlier
-version did — clones the new one from the base as the base stands today,
+The plan shows the new cluster's variants. Once `handover.sh` has begun,
+`apply.sh` leaves every variant that has a release as it is — ConfigHub holds
+it, and re-rendering it from Git would publish Git over every change made
+since; measured, that is what an earlier version did. (Before the handover it
+renders every variant again, which is how a change in Git since its last run is
+picked up.) It clones the new one from the base as the base stands today,
 including every change made since, and releases it through its stages with an
 approval in each. Then `move-applications.sh <its stage>` makes its
 Applications: there is none on the cluster to read, so each is made from what
@@ -801,9 +806,15 @@ script says so. `prod-1-checkout-cache` was then taken out and made again from
 its rendered template, with the `storefront` project, `prod-1`'s destination and
 the `primary` label.
 
-A change still in flight when a cluster joins stops `apply.sh`: a change order
-across variants at different revisions of a Unit is refused ("the targets are
-at different revisions of it"). Finish or abandon the change first.
+A change still in flight when a cluster joins stops `apply.sh`, and it says
+which. A joining cluster's first release has to go through every stage — the
+server will not promote a stage while an earlier one selects nothing, measured —
+so its change order promotes into the clusters already released too, and
+`apply.sh` approves it. A change in the base that one of them has not taken
+would reach it that way, unreviewed. So `apply.sh` compares each released
+variant's upstream revision with the base, and stops if they differ: finish the
+change through its own change order, or undo it in the base, then run it again.
+Measured both ways on the rig.
 
 ## What this leaves alone
 

@@ -318,6 +318,7 @@ thing, to ConfigHub: each verdict as a LiveCheck attestation.`,
 	}
 
 	var auCtx, auNS, auApp, auSpace, auGateway, auRendered string
+	var auSettled bool
 	appUnit := &cobra.Command{
 		Use:   "application-unit",
 		Short: "Print the Unit that delivers an Application from its Space; reads the cluster, changes nothing",
@@ -346,6 +347,8 @@ cluster, which apply writes as apps/<space>.yaml.`,
 					return rerr
 				}
 				b, err = argo.ApplicationUnitRendered(data, auNS, auGateway, auSpace)
+			} else if auSettled {
+				b, err = argo.SettledApplicationUnit(argo.Run, auApp, auGateway, auSpace)
 			} else {
 				b, err = argo.ApplicationUnit(argo.Run, auApp, auGateway, auSpace)
 			}
@@ -361,6 +364,7 @@ cluster, which apply writes as apps/<space>.yaml.`,
 	appUnit.Flags().StringVar(&auApp, "application", "", "the Application to deliver")
 	appUnit.Flags().StringVar(&auSpace, "space", "", "the variant's Space, which it will read")
 	appUnit.Flags().StringVar(&auGateway, "gateway", "", "the gateway address the cluster reaches, host[:port]")
+	appUnit.Flags().BoolVar(&auSettled, "settled", false, "the Application reads its Space already: leave out Replace=true, which would erase its status on every sync of the parent")
 	appUnit.Flags().StringVar(&auRendered, "rendered", "", "for an Application not on the cluster yet: the file apply wrote with what its ApplicationSet's template renders for its cluster (apps/<space>.yaml)")
 
 	root.AddCommand(plan, apply, check, appUnit, versionCmd)

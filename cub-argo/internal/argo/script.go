@@ -306,15 +306,22 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 	add("# handover, move-applications.sh makes it a Unit. So a cub that would add a")
 	add("# second Application when it makes a variant for an Argo cluster is told not to.")
 	add(`no_argo_app=; case "$(cub variant create --help 2>&1)" in *--no-argo-app*) no_argo_app=--no-argo-app ;; esac`)
-	add("# A variant with a release is ConfigHub's: changes to it are made there, through")
-	add("# change orders, so re-rendering it from Git would publish Git over them. Measured:")
-	add("# re-run for a joining cluster, this rolled every existing cluster back to Git.")
-	add("# Only a variant with no release yet is rendered.")
-	add(`released() { cub release get --space "$1" --oci-reference latest -o jq=.Release.ReleaseNum >/dev/null 2>&1; }`)
+	add("# Once handover.sh has begun, a variant with a release is ConfigHub's: changes")
+	add("# to it are made there, through change orders, and re-rendering it from Git")
+	add("# would publish Git over them. Measured: re-run for a joining cluster, that")
+	add("# rolled every existing cluster back to Git. Before the handover Git is still")
+	add("# what Argo applies, so every variant is rendered again, which is how a change")
+	add("# in Git since the last run is picked up.")
+	add(`released() {`)
+	add(`  local out; out=$(cub release get --space "$1" --oci-reference latest -o jq=.Release.ReleaseNum 2>&1) && return 0`)
+	add(`  case "$out" in *"not found"*|*"no release"*|*"404"*) return 1 ;; esac`)
+	add(`  echo "could not tell whether $1 has a release: $out" >&2; exit 1`)
+	add(`}`)
+	add(`handed_over() { [ -s handover-state/argo.txt ]; }`)
 	for _, c := range p.Components {
 		for _, st := range c.Stages {
 			for _, v := range st.Variants {
-				add("if released %s; then echo %s; else", v.Space, q("  "+v.Space+" is released: ConfigHub holds it, so it is left as it is"))
+				add("if handed_over && released %s; then echo %s; else", v.Space, q("  "+v.Space+" is released and handed over: ConfigHub holds it, so it is left as it is"))
 				add("  cub variant create %s %s --stage %s --space-pattern template:%s --target %s/%s --space-label Role=deployment --space-label Cluster=%s $no_argo_app --allow-exists --quiet",
 					v.Cluster, c.Base, st.Name, v.Space, targets, v.Cluster, v.Cluster)
 				if v.Path != "" && v.Path != "(multi-source)" {
@@ -340,6 +347,23 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 		if len(all) == 0 {
 			continue
 		}
+		// A cluster joining after the handover goes through every stage: a
+		// later stage cannot be promoted while an earlier one selects nothing
+		// (measured). So its change order promotes into the clusters already
+		// released too, and this script approves it; a change in the base
+		// that one of them has not taken would reach it that way, unreviewed.
+		// Stop instead.
+		add("if handed_over; then")
+		for _, st := range c.Stages {
+			for _, v := range st.Variants {
+				add(`  if released %s; then`, v.Space)
+				add(`    up=$(cub unit get --space %s %s -o jq=.Unit.UpstreamRevisionNum)`, v.Space, c.Name)
+				add(`    cmp -s <(cub revision data --space %s %s "$up") <(cub unit data --space %s %s) || { echo %s >&2; exit 1; }`, c.Base, c.Name, c.Base, c.Name,
+					q(fmt.Sprintf("%s holds a change %s has not taken. A joining cluster's first release goes through every stage, so this run would promote that change into %s and approve it. Finish that change, or undo it in the base, then run this again.", c.Base, v.Space, v.Cluster)))
+				add(`  fi`)
+			}
+		}
+		add("fi")
 		order := "onboard-" + short(c.Base, strings.Join(all, ","))
 		add("cub changeorder create --space %s %s --change-workflow %s/rollout --description %s --allow-exists --quiet",
 			c.Base, order, c.Base, q("First release of "+strings.Join(all, ", ")))

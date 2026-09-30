@@ -94,6 +94,8 @@ func MoveScript(p *Plan, prefix string) string {
 	add(`  grep -q "^$1|" "$state" && return 0`)
 	add(`  [ "${4:-}" = new ] && { printf '%%s|%%s|%%s|new|||
 ' "$1" "$2" "$3" >> "$state"; return 0; }`)
+	add("  # Already on the gateway (moved by hand, say): there is no Git source to record.")
+	add(`  case "$(k -n "$ns" get application "$1" -o jsonpath='{.spec.source.repoURL}')" in oci://*) printf '%%s|%%s|%%s|unknown|||\n' "$1" "$2" "$3" >> "$state"; return 0 ;; esac`)
 	add(`  k -n "$ns" get application "$1" -o jsonpath='{.spec.source}' > "handover-state/source-$1.json"`)
 	add(`  printf '%%s|%%s|%%s|%%s\n' "$1" "$2" "$3" "$(k -n "$ns" get application "$1" -o jsonpath='{.metadata.uid}{"|"}{.spec.source.repoURL}{"|"}{.spec.source.path}{"|"}{.spec.source.targetRevision}')" >> "$state"`)
 	add(`}`)
@@ -111,8 +113,12 @@ func MoveScript(p *Plan, prefix string) string {
 	add(`      echo "  kubectl --context '$ctx' -n '$ns' delete application $app"`)
 	add(`      continue`)
 	add(`    fi`)
+	add(`    if [ "$uid" = unknown ]; then`)
+	add(`      echo "  # $app read the gateway already when it was moved, so its Git source was never recorded: put it back by hand."`)
+	add(`      continue`)
+	add(`    fi`)
 	add(`    if [ -s "handover-state/source-$app.json" ]; then`)
-	add(`      echo "  kubectl --context '$ctx' -n '$ns' patch application $app --type json -p '[{\"op\":\"replace\",\"path\":\"/spec/source\",\"value\":$(cat "handover-state/source-$app.json")}]'"`)
+	add(`      echo "  kubectl --context '$ctx' -n '$ns' patch application $app --type json -p '[{\"op\":\"replace\",\"path\":\"/spec/source\",\"value\":$(sed "s/'/'\\\\''/g" "handover-state/source-$app.json")}]'"`)
 	add(`    else`)
 	add(`      echo "  kubectl --context '$ctx' -n '$ns' patch application $app --type json -p '[{\"op\":\"replace\",\"path\":\"/spec/source\",\"value\":{\"repoURL\":\"$url\",\"path\":\"$path\",\"targetRevision\":\"$rev\"}}]'"`)
 	add(`    fi`)
@@ -155,9 +161,6 @@ func MoveScript(p *Plan, prefix string) string {
 	add("# apps/<space>.yaml, which cub argo apply wrote beside this script.")
 	add(`deliver() {`)
 	add(`  if cub unit get --space "$3" "$2" >/dev/null 2>&1; then echo "  $1 is a Unit in $3 already"; return 0; fi`)
-	add("  # An Application reading a Space with no release fails to fetch until one is")
-	add("  # published, so a Space is delivered only once it has one.")
-	add(`  cub release get --space "$2" --oci-reference latest -o jq=.Release.ManifestDigest >/dev/null 2>&1 || { echo "  $2 has no release yet: release it (apply.sh does, stage by stage), then run this again" >&2; return 1; }`)
 	add(`  if k -n "$ns" get application "$1" >/dev/null 2>&1; then`)
 	add(`    record "$1" "$2" "$3"`)
 	add(`    cub argo application-unit --kube-context "$ctx" --namespace "$ns" --application "$1" --space "$2" --gateway "$addr" > "render/app-$2.yaml"`)
@@ -199,12 +202,28 @@ func MoveScript(p *Plan, prefix string) string {
 	add(`  [ "$url" = "oci://$addr/space/$2" ] || { echo "  $1 reads $url, not its Space $2" >&2; return 1; }`)
 	add(`  [ "$got" = "$want" ] || { echo "  $1 synced ${got:-nothing it reports}, not $2's newest release $want" >&2; return 1; }`)
 	add(`  uid=$(k -n "$ns" get application "$1" -o jsonpath='{.metadata.uid}')`)
-	add(`  [ -z "$was" ] || [ "$was" = new ] || [ "$uid" = "$was" ] || { echo "  $1 is a new object (UID $uid, was $was): it was recreated, not moved" >&2; return 1; }`)
-	add(`  local same="UID unchanged"; [ "$was" = new ] && same="new, for a cluster that joined"`)
+	add(`  [ -z "$was" ] || [ "$was" = new ] || [ "$was" = unknown ] || [ "$uid" = "$was" ] || { echo "  $1 is a new object (UID $uid, was $was): it was recreated, not moved" >&2; return 1; }`)
+	add(`  local same="UID unchanged"; [ "$was" = new ] && same="new, for a cluster that joined"; [ "$was" = unknown ] && same="moved before"`)
 	add(`  echo "  $1 reads $2 at $got ($(k -n "$ns" get application "$1" -o jsonpath='{.status.sync.status}/{.status.health.status}'), $same)"`)
 	add(`}`)
 	add("")
 
+	add("# settle <application> <space> <control space>: once it reads its Space, its")
+	add("# Unit drops Replace=true. The replace took off what the template set on the")
+	add("# source; left on, every sync of the parent would replace the Application")
+	add("# again and erase its status and history.")
+	add(`settle() {`)
+	add(`  cub argo application-unit --settled --kube-context "$ctx" --namespace "$ns" --application "$1" --space "$2" --gateway "$addr" > "render/app-$2.yaml"`)
+	add(`  cub unit update --space "$3" "$2" "render/app-$2.yaml" --change-desc "$1 reads $2: stop replacing it on every sync" --quiet`)
+	add(`}`)
+	add("# ready <space>...: every Space in a stage has a release, checked before anything")
+	add("# is made, so a stage is moved whole or not at all.")
+	add(`ready() {`)
+	add(`  local s missing=""`)
+	add(`  for s in "$@"; do cub release get --space "$s" --oci-reference latest -o jq=.Release.ManifestDigest >/dev/null 2>&1 || missing="$missing $s"; done`)
+	add(`  [ -z "$missing" ] || { echo "  no release yet in:$missing. Release them (apply.sh does, stage by stage), then run this again." >&2; return 1; }`)
+	add(`}`)
+	add("")
 	add(`[ $# -gt 0 ] || set -- %s`, strings.Join(p.Stages, " "))
 	add(`for stage in "$@"; do`)
 	add(`  case "$stage" in`)
@@ -219,6 +238,11 @@ func MoveScript(p *Plan, prefix string) string {
 		}
 		touched := map[string]bool{}
 		var order []string
+		var spaces []string
+		for _, m := range ms {
+			spaces = append(spaces, q(m.v.Space))
+		}
+		add(`    ready %s`, strings.Join(spaces, " "))
 		for _, m := range ms {
 			add(`    deliver %s %s %s`, q(m.v.Application), q(m.v.Space), q(m.home.Space))
 			if !touched[m.home.Space] {
@@ -231,6 +255,12 @@ func MoveScript(p *Plan, prefix string) string {
 		}
 		for _, m := range ms {
 			add(`    arrived %s %s`, q(m.v.Application), q(m.v.Space))
+		}
+		for _, m := range ms {
+			add(`    settle %s %s %s`, q(m.v.Application), q(m.v.Space), q(m.home.Space))
+		}
+		for _, s := range order {
+			add(`    publish %s %s`, q(s), q(parentOf[s]))
 		}
 		for _, w := range p.Windows {
 			if w.Kind != "deny" {

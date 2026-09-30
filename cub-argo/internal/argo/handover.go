@@ -85,6 +85,7 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("# refused until it moves too. Undoing from the bottom avoids that.")
 	add(`way_back() {`)
 	add(`  local name url path rev`)
+	add(`  [ -s handover-state/applications.txt ] && echo "  0. First the way back move-applications.sh prints, for each Application it made a Unit: restoring an ApplicationSet while its Applications are Units sets it and their parent against each other."`)
 	add(`  echo "  1. Any ApplicationSet you retired in step 5: restore its Unit to the revision before create-only, and publish its Space; the controller then puts its Applications back on the template's Git source."`)
 	add(`  echo "  2. Any app of apps repointed through its Unit: restore that Unit to the revision before the repoint, and publish its Space."`)
 	add(`  echo "  3. Then each parent patched here:"`)
