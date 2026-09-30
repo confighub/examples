@@ -154,5 +154,4 @@ kubectl -n apptique-broken-states get deployment frontend \
 cub unit data --space gitops-expert-broken-states frontend-service
 ```
 
-None of these mutate anything except the short-lived debug pod the fourth
-command creates and removes; this example does not run any of them.
+None of these mutate anything, and this example does not run any of them.
