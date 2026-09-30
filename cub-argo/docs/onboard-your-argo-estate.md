@@ -16,12 +16,15 @@ anything, and the first two commands change nothing at all.
   read a ConfigHub Space instead of Git. Every Application an ApplicationSet
   generated becomes a Unit in ConfigHub, named after its cluster's variant,
   reading that variant's releases: the estate's delivery objects are
-  configuration you review, not objects on a cluster.
+  configuration you review, not objects on a cluster. A plain Application reads
+  its variant too: a child of an app of apps through its Unit, one applied by
+  hand patched in place.
 - **ConfigHub knows what is running.** argobot, beside Argo CD, writes each
   Application's live state back to its variant — sync, health, the digest it
   runs. With an argobot that has confighub/argobot#14, not yet released, it
   also makes each published release land at once; until then a release waits
-  for Argo's own poll.
+  for Argo's own poll. Where argobot is not running, `cub argo status --watch
+  --hard-refresh` writes the same live status and makes releases land.
 - **Nothing is recreated.** Every Application keeps its name and its UID, and so
   does every workload. Every step that touches a cluster checks that first and
   prints its way back.
@@ -104,10 +107,12 @@ Run from the root of the repository Argo CD syncs. Each script is written by
 | 1 | `cub argo plan . clusters.json --stage-label rollout-phase --stages canary,secondary,primary` | shows the estate ConfigHub would govern ([1](#1-see-the-plan)) | no | nothing to undo |
 | 2 | `cub argo apply . clusters.json --stage-label rollout-phase --stages canary,secondary,primary --out onboard` | writes the files and scripts ([2](#2-write-the-steps-read-them-run-them)) | no | delete `onboard/` |
 | 3 | `bash onboard/apply.sh` | fills ConfigHub: bases, variants, stages, first releases. Argo still reads Git | no | `bash onboard/cleanup.sh` |
-| 4 | `ARGOCD_CONTEXT=<context> DEST_CONTEXT_<cluster>=<context> CONFIGHUB_OCI=<gateway> bash onboard/handover.sh` | points `root` at ConfigHub, prints the reviewed edit that does the same for each app of apps, then checks every Application's release against what Argo owns on its cluster — before any workload's source moves ([3](#3-hand-the-estate-over)) | yes | printed when it stops, and at the end |
+| 4 | `ARGOCD_CONTEXT=<context> DEST_CONTEXT_<cluster>=<context> CONFIGHUB_OCI=<gateway> bash onboard/handover.sh` | points `root` at ConfigHub, prints the reviewed edit that does the same for each app of apps, then checks every Application's release against what Argo owns on its cluster — before any workload's source moves, then points each plain Application at its Space: one applied by hand itself, a child of an app of apps through the printed Unit edit ([3](#3-hand-the-estate-over)) | yes | printed when it stops, and at the end |
 | 5 | retire each ApplicationSet, as the "Retire each ApplicationSet" step of `handover.sh` prints | a reviewed edit to its Unit, so it generates nothing more ([why](#applicationsets-are-retired-not-repointed)) | yes | restore the Unit's earlier revision |
 | 6 | `ARGOCD_CONTEXT=<context> CONFIGHUB_OCI=<gateway> bash onboard/move-applications.sh canary`, then `secondary`, then `primary` | each generated Application becomes a Unit reading its own Space, one stage at a time ([more](#each-application-becomes-a-unit)) | yes | printed when it stops, and at the end |
 | 7 | `ARGOCD_CONTEXT=<context> CONFIGHUB_URL=<ConfigHub address> bash onboard/argobot.sh` | runs argobot: live status comes back ([more](#a-published-release-does-not-arrive-on-its-own)) | installs argobot | `kubectl delete namespace argobot` |
+| 7, without argobot | `cub argo status . clusters.json --stage-label rollout-phase --stages canary,secondary,primary --kube-context <context> --watch --hard-refresh` | writes the same live status from where you run it, and asks Argo to read each new release ([more](#what-confighub-hears-back-live-status)) | only the refresh annotation | stop it |
+| out | `ARGOCD_CONTEXT=<context> bash onboard/cleanup.sh` | once every source is back on Git: removes what `apply.sh` made and the gateway credential. It refuses, naming them, while any Application still reads ConfigHub | removes the credential | nothing to undo |
 
 `clusters.json` is your cluster Secrets, exported without their credentials:
 see [When a cluster joins](#when-a-cluster-joins) for the one command that does
