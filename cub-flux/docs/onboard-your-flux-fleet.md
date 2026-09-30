@@ -424,6 +424,19 @@ before checking it. Before it applies the root, it confirms each checked release
 is still the newest, and stops with nothing moved if a newer one was published
 in between. Afterwards it confirms each layer applied the digest it checked.
 
+**`--record` keeps the verdict in ConfigHub.** `cub flux check --fields
+--record` writes each layer's verdict as a `LiveCheck` attestation on the Unit
+revision the checked release bundled. A clean check is a Pass. Anything that
+differs is a rejection that names it: an object the release would add or prune,
+a field, or an object it could not read. The claims name the Kustomization and
+the release digest. `LiveCheck` is the type `cub kubara check --record` uses for
+the same claim, so a workflow can require one type whichever plugin checked. It
+needs `--fields`: a claim that the cluster runs this release rests on every
+field the release sets. Run live on 2026-09-30:
+- A clean cluster recorded a Pass for each layer.
+- After a `kubectl scale`, the `apps` layer recorded a rejection naming
+  `.spec.replicas: cluster has 3, the release holds 1`.
+
 **You run it the way you ran `plan`.** `check` takes the same fleet directory
 and works the layers out for itself — there is no per-Kustomization flag to get
 right, and no list to keep in step with the repository:

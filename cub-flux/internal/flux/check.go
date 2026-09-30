@@ -58,6 +58,8 @@ type Result struct {
 	// cluster says is not there: the controller's record is behind, so it is
 	// not a record a handover can be checked against.
 	Stale []string `json:"staleInventory,omitempty"`
+	// Recorded is the ID of the LiveCheck attestation --record wrote.
+	Recorded string `json:"recorded,omitempty"`
 }
 
 // OK reports whether swapping this layer's source would leave the cluster as
