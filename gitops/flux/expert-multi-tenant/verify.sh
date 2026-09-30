@@ -248,9 +248,19 @@ for team in storefront payments loyalty; do
   done
 done
 
-echo "==> Checking each team has its own guardrails: a ResourceQuota and a same-namespace-only NetworkPolicy"
+echo "==> Checking each team has its own guardrails: Pod Security, a ResourceQuota with storage, and a same-namespace-only NetworkPolicy"
 for team in storefront payments loyalty; do
   f="$VAR_DIR/rendered-bootstrap-$team.yaml"
+  if ! grep -Eq "pod-security.kubernetes.io/enforce: (baseline|restricted)$" "$f"; then
+    echo "team-$team's Namespace does not enforce Pod Security (baseline or restricted)" >&2
+    echo "Without it, the team's Deployments can run privileged pods or mount the node's filesystem." >&2
+    exit 1
+  fi
+  if ! grep -q "requests.storage:" "$f" || ! grep -q "persistentvolumeclaims:" "$f"; then
+    echo "team-$team's ResourceQuota does not bound storage (requests.storage and persistentvolumeclaims)" >&2
+    echo "The team can create PersistentVolumeClaims, so without these it can claim storage without limit." >&2
+    exit 1
+  fi
   if ! grep -q "^kind: ResourceQuota$" "$f"; then
     echo "team-$team has no ResourceQuota in its rendered bootstrap" >&2
     echo "Without one, this team can consume as much of the shared cluster as it likes." >&2

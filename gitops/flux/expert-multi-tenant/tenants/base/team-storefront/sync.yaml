@@ -13,12 +13,23 @@ spec:
   url: https://github.com/confighub/examples
   ref:
     branch: main
-  # source-controller matches this with go-git's gitignore matcher, which
-  # re-includes the workloads/ path below the excluded "/*". Plain
-  # "git check-ignore" would not: git cannot re-include a path whose parent
-  # directory is excluded.
+  # Each parent is re-included before its children are excluded again, so
+  # this means the same to git check-ignore as to source-controller: a path
+  # under an excluded directory cannot otherwise be re-included.
   ignore: |
     /*
+    !/gitops/
+    /gitops/*
+    !/gitops/flux/
+    /gitops/flux/*
+    !/gitops/flux/expert-multi-tenant/
+    /gitops/flux/expert-multi-tenant/*
+    !/gitops/flux/expert-multi-tenant/tenants/
+    /gitops/flux/expert-multi-tenant/tenants/*
+    !/gitops/flux/expert-multi-tenant/tenants/base/
+    /gitops/flux/expert-multi-tenant/tenants/base/*
+    !/gitops/flux/expert-multi-tenant/tenants/base/team-storefront/
+    /gitops/flux/expert-multi-tenant/tenants/base/team-storefront/*
     !/gitops/flux/expert-multi-tenant/tenants/base/team-storefront/workloads/
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1

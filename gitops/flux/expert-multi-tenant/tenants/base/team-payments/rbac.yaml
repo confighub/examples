@@ -19,6 +19,11 @@ metadata:
   name: team-payments
   labels:
     toolkit.fluxcd.io/tenant: team-payments
+    # Pod Security Admission: the team can write Deployments and Jobs, so
+    # without this it could run privileged pods, host namespaces or hostPath
+    # mounts and reach past its namespace to the node.
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/warn: restricted
 ---
 apiVersion: v1
 kind: ServiceAccount
