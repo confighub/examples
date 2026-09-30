@@ -23,7 +23,32 @@ The commands and scripts, in order; the first two change nothing:
 
 **Start with the guide: [Onboard your Argo CD estate](docs/onboard-your-argo-estate.md).**
 
-## Try it on the expert example
+## Install
+
+```bash
+cub plugin install confighub/examples@cub-argo-v0.2.0 --name argo
+cub plugin list                  # argo should be listed, status ok
+cub argo plan <the repository your Argo CD syncs, or a kubectl export>
+```
+
+`plan` needs no ConfigHub account and changes nothing, so it is the safe first
+command on your own estate. Already on an earlier release?
+
+```bash
+cub plugin upgrade argo@cub-argo-v0.2.0
+```
+
+Releases are tagged `cub-argo-v<version>` in this repository, and what each one
+changed is in [docs/whats-new.md](docs/whats-new.md).
+
+To build from source instead (needs Go):
+
+```bash
+go build -o bin/cub-argo . && cub plugin install ./bin/cub-argo
+# after a git pull: go build -o bin/cub-argo . && cub plugin upgrade argo
+```
+
+## Try it on the expert example, from a checkout
 
 ```bash
 make example
@@ -122,25 +147,6 @@ synced the newest published release of that Space, at that release's digest.
 `--hard-refresh` asks Argo, once per release, to read a release it has cached
 past; without it, a newly approved release sits unread on the gateway.
 `--dry-run` shows what would be written; `--json` prints it for scripts.
-
-## Install
-
-```bash
-cub plugin install confighub/examples@cub-argo-v0.1.0 --name argo
-cub plugin list       # argo should be listed, status ok
-cub argo plan ../gitops/argo/expert-app-of-apps --stage-label rollout-phase --stages canary,secondary,primary
-```
-
-Releases are tagged `cub-argo-v<version>` in this repository; upgrade by
-naming one: `cub plugin upgrade argo@cub-argo-v<version>`. What each release
-changed is in [docs/whats-new.md](docs/whats-new.md).
-
-To build from source instead (needs Go):
-
-```bash
-go build -o bin/cub-argo . && cub plugin install ./bin/cub-argo
-# after a git pull: go build -o bin/cub-argo . && cub plugin upgrade argo
-```
 
 ## Prove it on kind
 

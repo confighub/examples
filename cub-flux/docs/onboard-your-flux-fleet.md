@@ -75,7 +75,7 @@ flowchart LR
 ## Install
 
 ```bash
-cub plugin install confighub/examples@cub-flux-v0.1.0 --name flux
+cub plugin install confighub/examples@cub-flux-v0.2.0 --name flux
 cub plugin list   # flux should be listed, status ok
 ```
 
