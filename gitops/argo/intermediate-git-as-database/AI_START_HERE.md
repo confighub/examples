@@ -98,6 +98,7 @@ Pause after this stage.
 
 ## Stage 4: Optional, Test An AI Tool
 
-Paste `prompts/config-repo-ten-questions.md` into a fresh agent session opened
-on `repo/`, then compare its answers with `EXPECTED.md`. Flag any number the
+Copy `repo/` to a directory of its own (so the agent cannot read `EXPECTED.md`), then
+paste `prompts/config-repo-seven-questions.md` into a fresh agent session opened
+on that copy, then compare its answers with `EXPECTED.md`. Flag any number the
 agent stated without computing it.

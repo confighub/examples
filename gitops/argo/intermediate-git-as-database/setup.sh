@@ -36,9 +36,9 @@ Nothing will be mutated.
 
 Conceptual model:
 
-  repo/appsets/mon.yaml     (ApplicationSet: 6 cluster generators, 3 versions)
-  repo/appsets/canary.yaml  (ApplicationSet: 1 cluster)
-    -> repo/clusters/*.yaml (24 targets, key encoded in the filename)
+  repo/appsets/mon.yaml          (ApplicationSet: 6 cluster generators, 3 versions)
+  repo/appsets/node-tuning.yaml  (ApplicationSet: 1 cluster, in-repo chart)
+    -> repo/clusters/*.yaml      (24 Argo CD cluster Secrets, key in the filename)
     <- repo/values/**       (layered values, some layers never resolve)
 
 This example will:

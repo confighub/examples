@@ -222,16 +222,67 @@ check('density: fan-out x values', (bp['/values/shared.yaml']['reach'], bp['/val
       bp['/values/shared.yaml']['surface']) == (10, 3, 30), bp)
 check('density: missing path is NOT OBSERVED', bp['/values/missing.yaml']['values'] is None, bp)
 
+# --- Argo template substitution
+L = {'env': 'prod', 'org': 'acme', 'provider': 'aws'}
+check('subst: go template', scout._substitute('v/{{.metadata.labels.env}}/{{.name}}.yaml', 'c1', L) == 'v/prod/c1.yaml')
+check('subst: index form', scout._substitute('v/{{ index .metadata.labels "org" }}.yaml', 'c1', L) == 'v/acme.yaml')
+check('subst: fasttemplate', scout._substitute('v/{{metadata.labels.provider}}.yaml', 'c1', L) == 'v/aws.yaml')
+check('subst: unknown label is unchecked, not guessed', scout._substitute('v/{{.metadata.labels.team}}.yaml', 'c1', L) is None)
+check('subst: bare {{env}} is not an Argo parameter', scout._substitute('v/{{env}}.yaml', 'c1', L) is None)
+
+# --- inventory from Argo CD cluster Secrets; lookups per target
+sec = """\
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {n}
+  labels: {{argocd.argoproj.io/secret-type: cluster, env: {e}}}
+stringData: {{name: {n}, server: https://{n}}}
+"""
+files = {f'clusters/{n}.yaml': sec.format(n=n, e=e) for n, e in [('a1', 'prod'), ('a2', 'dev')]}
+files['values/prod.yaml'] = 'x: 1\n'
+files['appsets/s.yaml'] = """\
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata: {name: s}
+spec:
+  goTemplate: true
+  generators:
+  - clusters: {selector: {matchExpressions: [{key: env, operator: Exists}]}}
+  template:
+    spec:
+      sources:
+      - helm:
+          valueFiles: ['$values/values/{{.metadata.labels.env}}.yaml']
+"""
+q = scout.q5_reach(scout.Repo([repo(files)]))
+check('inventory: from cluster Secrets', (q['inventory_source'], q['targets']) == ('Argo CD cluster Secrets', 2), q)
+check('lookups: one resolves, one misses', q['lookups'] == dict(total=2, missing=1, unchecked=0), q['lookups'])
+
+# --- rename cost counts references inside files, not only names
+names = [f'{o}-{e}-{g}' for o in ('acme', 'beta', 'gamma') for e in ('dev', 'prod') for g in ('eu', 'us')]
+files = {f'clusters/{n}.yaml': f'name: {n}\n' for n in names}
+files.update({'appsets/x.yaml': 'target: acme-prod-eu\n', 'values/acme-prod-eu.yaml': 'a: 1\n'})
+r = scout.Repo([repo(files)])
+rc = scout.q2_keys_in_paths(r)['rename_cost']
+check('rename: counts content references', rc and rc['max'] == 3, rc)
+
+# --- Flux-only repo: reach is NOT OBSERVED, not zero
+r = scout.Repo([repo({'hr.yaml': 'apiVersion: helm.toolkit.fluxcd.io/v2\nkind: HelmRelease\nspec: {chart: {spec: {chart: x, version: 1.0.0}}}\n'})])
+check('flux: reach marked out of scope', 'NOT OBSERVED' in (scout.q5_reach(r)['out_of_scope'] or ''))
+
 # --- fleet-small: every planted answer
 FLEET = os.environ.get('SCOUT_FLEET', os.path.join(
     HERE, '..', '..', 'gitops', 'argo', 'intermediate-git-as-database', 'repo'))
 out = json.loads(subprocess.run([sys.executable, os.path.join(HERE, 'scout.py'),
                                  FLEET, '--json'],
                                 capture_output=True, text=True, check=True).stdout)
-check('fleet Q1: 1 templated, 0 rendered',
-      (out['q1']['templated_sources'], out['q1']['rendered_manifests']) == (1, 0), out['q1'])
-check('fleet Q2: rename touches 2 files', out['q2']['rename_cost']['median'] == 2, out['q2']['rename_cost'])
-check('fleet Q2: 1 silent missing layer', out['q2']['missing'] == ['$values/values/org/acme.yaml'], out['q2']['missing'])
+check('fleet Q2 (render): no rendered output stored',
+      out['q1']['rendered_manifests'] == 0 and out['q1']['gap'], out['q1'])
+check('fleet Q1: rename touches 2 files, 4 for the busiest cluster',
+      (out['q2']['rename_cost']['median'], out['q2']['rename_cost']['max']) == (2, 4), out['q2']['rename_cost'])
+check('fleet Q1: 36 of 121 lookups resolve to nothing',
+      (out['q5']['lookups']['total'], out['q5']['lookups']['missing']) == (121, 36), out['q5']['lookups'])
 led = {d['dimension']: d['undeclared'] for d in out['q2b']['dimensions']}
 check('fleet ledger: org 2, provider 1, env 0 undeclared',
       (led.get('org'), led.get('provider'), led.get('env')) == (2, 1, 0), led)
@@ -240,9 +291,9 @@ check('fleet Q4: 3 versions live', out['q34']['worst_skew'][0][0] == 3, out['q34
 rbp = dict(out['q5']['reach_by_path'])
 check('fleet Q5: 24 vs 1',
       (rbp.get('/values/global.yaml'), rbp.get('/values/clusters/acme-prod-use1.yaml')) == (24, 1), rbp)
-bb = {b['path']: b['surface'] for b in out['q5']['blast_by_path']}
-check('fleet Q5: blast radius 120 vs 9',
-      (bb.get('/values/global.yaml'), bb.get('/values/clusters/acme-prod-use1.yaml')) == (120, 9), bb)
+bb = {b['path']: (b['reach'], b['values'], b['surface']) for b in out['q5']['blast_by_path']}
+check('fleet Q5: global 24 x 5 = 120; cluster file 2 x 9 = 18',
+      (bb.get('values/global.yaml'), bb.get('values/clusters/acme-prod-use1.yaml')) == ((24, 5, 120), (2, 9, 18)), bb)
 check('fleet Q6: 2 quotas', out['q6']['count'] == 2, out['q6'])
 check('fleet Q7: 1 self-heal no prune', out['q7']['posture'].get('self-heal, no prune') == 1, out['q7'])
 check('fleet Q7b: generated/ guarded', out['q7b']['dirs'][0]['guarded_by'] != [], out['q7b'])

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-scout - seven questions to ask if you are using Git as a database.
+scout - seven questions: is your config repo doing a database's job?
 
 Read-only. No network. No credentials. No telemetry. No writes.
 Everything it prints is computed from files on disk.
@@ -13,12 +13,12 @@ Options:
               file, and every templated reference it could not check
   --json      machine-readable output
 
-scout is the reference implementation of the questions. The ten-question
-prompt at github.com/confighub/examples/tree/main/prompts asks the same things
-of an AI coding agent and explains the answers in your repo's own terms. Where
-the two disagree, trust scout and tell us.
+scout runs the seven questions in prompts/config-repo-seven-questions.md as
+fixed checks, so the same repo gives the same answer every run. It covers Argo CD
+ApplicationSets with Helm best; where it cannot resolve something it says so.
+The prompt, run by an AI agent, adapts to any repo shape and explains itself.
 """
-import os, re, sys, json, signal, statistics, collections
+import os, re, sys, json, signal, statistics, collections, textwrap
 
 try:
     import yaml
@@ -118,6 +118,63 @@ def _values_at(repo, path):
     return None, None
 
 
+# ------------------------------------------------------------------ paths
+
+def _rels(repo):
+    out = set()
+    for root in repo.roots:
+        out |= {os.path.relpath(p, root) for p in repo.paths
+                if p.startswith(root + os.sep)}
+    return out
+
+
+def _match(ref, rels):
+    """The repo-relative file a value-file reference resolves to, or None."""
+    r = re.sub(r'^\$[\w-]+/', '', ref)
+    parts = [x for x in r.split('/') if x not in ('', '.', '..')]
+    if not parts:
+        return None
+    tail = '/'.join(parts)
+    hits = sorted(x for x in rels if x == tail or x.endswith('/' + tail))
+    return hits[0] if hits else None
+
+
+def _found(ref, rels):
+    """Does a value-file reference match a file in the scanned roots? Matching is
+    by path suffix after stripping $ref/ prefixes and ./ ../ segments. It is
+    lenient: it can call a ref resolved when the real file is elsewhere, never the
+    reverse, so counts of missing files are lower bounds."""
+    r = re.sub(r'^\$[\w-]+/', '', ref)
+    parts = [x for x in r.split('/') if x not in ('', '.', '..')]
+    if not parts:
+        return True
+    tail = '/'.join(parts)
+    return any(x == tail or x.endswith('/' + tail) for x in rels)
+
+
+_TPL = re.compile(r'\{\{\s*(.*?)\s*\}\}')
+
+def _substitute(ref, name, labels):
+    """Fill Argo CD cluster-generator parameters into a value-file reference.
+    Handles Go templates ({{.name}}, {{.metadata.labels.x}}, {{index .metadata.labels "x"}})
+    and fasttemplate ({{name}}, {{metadata.labels.x}}). Returns None if any
+    placeholder cannot be filled, so the lookup is reported as unchecked."""
+    def fill(m):
+        e = m.group(1).strip()
+        e = re.sub(r'^index\s+\.?metadata\.labels\s+"([^"]+)"$', r'metadata.labels.\1', e)
+        e = e.lstrip('.')
+        if e in ('name', 'nameNormalized'):
+            return name
+        if e == 'server':
+            return labels.get('server', '') or '\0'
+        if e.startswith('metadata.labels.'):
+            v = labels.get(e[len('metadata.labels.'):])
+            return v if v is not None else '\0'
+        return '\0'
+    out = _TPL.sub(fill, ref)
+    return None if '\0' in out else out
+
+
 # ------------------------------------------------------------------ Q1
 
 def q1_render_gap(repo):
@@ -208,10 +265,14 @@ def q2_keys_in_paths(repo, want_resolve=False):
         if d:
             rows = [f.rsplit('.', 1)[0] for f in os.listdir(d)
                     if f.endswith(('.yaml', '.yml'))][:30]
-            basenames = [(os.path.basename(p), os.path.dirname(p)) for p in repo.paths]
-            hits = [sum(1 for b, dd in basenames if r in b or r in dd) for r in rows]
+            hits = []
+            for r in rows:
+                rx = re.compile(r'(?<![\w-])' + re.escape(r) + r'(?![\w-])')
+                hits.append(sum(1 for p in repo.paths
+                                if rx.search(p) or rx.search(repo.text.get(p, ''))))
             if hits:
-                cost = dict(median=statistics.median(hits), max=max(hits))
+                cost = dict(median=statistics.median(hits), max=max(hits),
+                            basis='files whose path or content names the entity')
 
     # silent resolution: layered value refs, and which are literal enough to check
     ignore_on = layered = 0
@@ -229,18 +290,8 @@ def q2_keys_in_paths(repo, want_resolve=False):
     # path suffix after stripping $ref/ prefixes and ./ ../ segments, so it is
     # lenient: it can call a ref resolved when the real file is elsewhere, never
     # the reverse. Missing counts are therefore a lower bound.
-    rels = set()
-    for root in repo.roots:
-        rels |= {os.path.relpath(p, root) for p in repo.paths
-                 if p.startswith(root + os.sep)}
-    def found(ref):
-        r = re.sub(r'^\$[\w-]+/', '', ref)
-        parts = [x for x in r.split('/') if x not in ('', '.', '..')]
-        if not parts:
-            return True
-        tail = '/'.join(parts)
-        return any(x == tail or x.endswith('/' + tail) for x in rels)
-    missing = sorted(r for r in literal_refs if not found(r))
+    rels = _rels(repo)
+    missing = sorted(r for r in literal_refs if not _found(r, rels))
 
     return dict(schemes=schemes[:6], distinct_schemes=len(seen), rename_cost=cost,
                 sources_with_layers=layered, ignore_missing=ignore_on,
@@ -378,8 +429,24 @@ def q34_promotion(repo):
 def q5_reach(repo):
     """Resolve ApplicationSet cluster selectors against a discovered target
     inventory. Reports what it could NOT resolve rather than guessing."""
-    inv = {}
-    for root in repo.roots:
+    inv, inv_source = {}, None
+    for p, d in repo.kind('Secret'):
+        md = d.get('metadata') or {}
+        lab = md.get('labels') or {}
+        if lab.get('argocd.argoproj.io/secret-type') != 'cluster':
+            continue
+        sd = d.get('stringData') or {}
+        name = str(sd.get('name') or md.get('name') or '')
+        if not name:
+            continue
+        labels = {k: (str(v).lower() if isinstance(v, bool) else str(v))
+                  for k, v in lab.items() if '/' not in k}
+        if sd.get('server'):
+            labels['server'] = str(sd['server'])
+        inv[name] = labels
+    if inv:
+        inv_source = 'Argo CD cluster Secrets'
+    for root in ([] if inv else repo.roots):
         for d, subs, fs in os.walk(root):
             subs[:] = [s for s in subs if s not in SKIP_DIRS]
             ys = [f for f in fs if f.endswith(('.yaml', '.yml'))]
@@ -395,7 +462,7 @@ def q5_reach(repo):
                         if len(lab) >= 3:
                             cand[f.rsplit('.', 1)[0]] = lab
             if len(cand) > len(inv):
-                inv = cand
+                inv, inv_source = cand, 'directory of per-target files (heuristic)'
 
     def norm(v):
         return str(v).lower() if isinstance(v, bool) else str(v)
@@ -444,10 +511,27 @@ def q5_reach(repo):
                 unres += 1
         return s, unres
 
+    rels = _rels(repo)
+    lookups = dict(total=0, missing=0, unchecked=0)
+    missing_by_ref = collections.Counter()
+    used_by = collections.defaultdict(set)   # values file -> {(definition, target)}
     fan, unresolved, partial, residual = [], 0, 0, 0
     for p, d in repo.kind('ApplicationSet'):
         gens = (d.get('spec') or {}).get('generators')
         t, u = collect(gens)
+        for ref in _value_file_refs([(d.get('spec') or {}).get('template') or {}]):
+            for name in t:
+                lookups['total'] += 1
+                filled = _substitute(ref, name, inv.get(name, {}))
+                if filled is None:
+                    lookups['unchecked'] += 1
+                elif not _found(filled, rels):
+                    lookups['missing'] += 1
+                    missing_by_ref[ref] += 1
+                else:
+                    hit = _match(filled, rels)
+                    if hit:
+                        used_by[hit].add((p, name))
         unresolved += 1 if u and not t else 0
         partial += 1 if u and t else 0
         if 'NotIn' in json.dumps(gens or []):
@@ -466,18 +550,34 @@ def q5_reach(repo):
         for seg in [s for s in mgp.split(';') if s and '{{' not in s]:
             scope[seg.strip()] += len(t)
 
-    # density: values carried by each declared path, and fan-out x density
+    # blast radius per values file. Reach is the number of Applications that load
+    # the file (from resolved value-file lookups); where a path is only declared in
+    # manifest-generate-paths, the declared reach is used and marked as such.
+    reach = {rel: (len(apps), 'used') for rel, apps in used_by.items()}
+    for path, n in scope.items():
+        rel = path.strip().lstrip('/').rstrip('/')
+        if rel and rel not in reach:
+            reach[path] = (n, 'declared')
     by_path = []
-    for path, n in scope.most_common(5):
+    for path, (n, basis) in sorted(reach.items(), key=lambda x: -x[1][0])[:5]:
         vals, kind = _values_at(repo, path)
-        by_path.append(dict(path=path, reach=n, values=vals, kind=kind,
+        by_path.append(dict(path=path, reach=n, basis=basis, values=vals, kind=kind,
                             surface=(n * vals) if vals is not None else None))
     per_file = [sum(_leaves(d) for d in ds) for ds in repo.docs.values()]
     density = dict(values=sum(per_file), files=len(per_file),
                    mean=round(sum(per_file) / len(per_file), 1) if per_file else 0,
                    median=statistics.median(per_file) if per_file else 0)
 
-    return dict(_inv=inv, targets=len(inv), definitions=len(fan) + unresolved,
+    others = sum(1 for k in ('HelmRelease', 'Kustomization', 'Application')
+                 for _ in repo.kind(k))
+    out_of_scope = None
+    if others and not any(True for _ in repo.kind('ApplicationSet')):
+        out_of_scope = (f'{others} Flux or plain Argo definitions found. scout resolves reach '
+                        'only for ApplicationSet cluster selectors, so reach here is NOT OBSERVED.')
+
+    return dict(_inv=inv, inventory_source=inv_source, lookups=lookups,
+                missing_lookups=missing_by_ref.most_common(6), out_of_scope=out_of_scope,
+                targets=len(inv), definitions=len(fan) + unresolved,
                 resolved_definitions=len(fan), unresolved_definitions=unresolved,
                 partially_resolved=partial,
                 instances=sum(v), reach_median=statistics.median(v),
@@ -661,35 +761,22 @@ def hr(c='-'): print(c * W)
 
 def report(res, resolve=False):
     hr('=')
-    print("  SEVEN QUESTIONS TO ASK IF YOU ARE USING GIT AS A DATABASE")
+    print("  SEVEN QUESTIONS: IS YOUR CONFIG REPO DOING A DATABASE'S JOB?")
     hr('=')
     print("  Read-only. Nothing was sent anywhere. These are questions, not")
     print("  findings: several answers will turn out to be deliberate and correct.")
     print("  The exercise is whether you can find out quickly.")
     print()
-    print("    1.  Inputs were approved, but outputs are deployed.")
-    print("    2.  Your primary key is a filename.")
-    print("    3.  Promotion by find-and-replace.")
-    print("    4.  Is my change in progress, or abandoned?")
-    print("    5.  One value was edited. How many values changed?")
-    print("    6.  Safer, or just rarer?")
-    print("    7.  Allowed to differ, or just differing?")
-
-    r = res['q1']
-    print(); hr(); print("Q1  Are you approving inputs, but deploying outputs?"); hr()
-    print(f"    templated sources ................. {r['templated_sources']}")
-    print(f"    rendered manifests in repo ........ {r['rendered_manifests']}")
-    print(f"    definitions using Source Hydrator . {r['hydrated_definitions']}")
-    if r['hydrated_definitions']:
-        print("\n    Hydrated definitions store their render on a branch, so the output")
-        print("    exists. How far one input change reaches is still not recorded: see Q5.")
-    if r['gap']:
-        print("\n    Reviewers see inputs. Clusters receive outputs. Nothing here")
-        print("    shows the second. How does a reviewer know what a values change")
-        print("    will actually produce?")
+    print("    1.  Am I using filenames as primary keys?")
+    print("    2.  Am I approving the query, but deploying the result?")
+    print("    3.  Am I using find-and-replace as my transaction?")
+    print("    4.  Am I using someone's memory as my status column?")
+    print("    5.  Am I using grep as my query engine?")
+    print("    6.  Am I using rate limits as my constraints?")
+    print("    7.  Am I using defaults as my drift policy?")
 
     r = res['q2']
-    print(); hr(); print("Q2  Is your primary key a filename?"); hr()
+    print(); hr(); print("1  Am I using filenames as primary keys?"); hr()
     if r['schemes']:
         s = r['schemes'][0]
         print(f"    largest path-encoded key .......... {s['fields']} fields, "
@@ -706,9 +793,15 @@ def report(res, resolve=False):
     for ref in r['missing']:
         print(f"        {ref}")
     if r['templated_refs']:
-        print("    templated refs cannot be resolved without rendering. examples:")
+        print("    templated refs (filled in per target in the lookups line below):")
         for ref in r['uncheckable']:
             print(f"        {ref}")
+    lk = res['q5']['lookups']
+    if lk['total']:
+        print(f"    value-file lookups, per target .... {lk['total']}  "
+              f"(resolved to nothing: {lk['missing']}, could not check: {lk['unchecked']})")
+        for ref, n in res['q5']['missing_lookups']:
+            print(f"        {n:>6} miss  {ref}")
     if r['ignore_pct'] > 50:
         print("\n    A typo, a deleted file and a deliberate default all render the")
         print("    same and emit no signal. Templated refs cannot be checked from")
@@ -751,8 +844,21 @@ def report(res, resolve=False):
         print("    The question is whether anyone decided that, or whether adding a value")
         print("    simply succeeded and nothing ever asked.")
 
+    r = res['q1']
+    print(); hr(); print("2  Am I approving the query, but deploying the result?"); hr()
+    print(f"    templated sources ................. {r['templated_sources']}")
+    print(f"    rendered manifests in repo ........ {r['rendered_manifests']}")
+    print(f"    definitions using Source Hydrator . {r['hydrated_definitions']}")
+    if r['hydrated_definitions']:
+        print("\n    Hydrated definitions store their render on a branch, so the output")
+        print("    exists. How far one input change reaches is still not recorded: see Q5.")
+    if r['gap']:
+        print("\n    Reviewers see inputs. Clusters receive outputs. Nothing here")
+        print("    shows the second. How does a reviewer know what a values change")
+        print("    will actually produce?")
+
     r = res['q34']
-    print(); hr(); print("Q3  Is your promotion a find-and-replace?"); hr()
+    print(); hr(); print("3  Am I using find-and-replace as my transaction?"); hr()
     print(f"    definitions repeating one version . {r['definitions_repeating']}")
     print(f"    repeats per definition ............ median {r['repeat_median']}, "
           f"max {r['repeat_max']}")
@@ -761,7 +867,7 @@ def report(res, resolve=False):
     print("\n    A promotion is a state transition. Here it is a text edit repeated")
     print("    once per target group, with nothing recording that it happened.")
 
-    print(); hr(); print("Q4  Can you tell 'in progress' from 'abandoned'?"); hr()
+    print(); hr(); print("4  Am I using someone's memory as my status column?"); hr()
     print(f"    definitions holding 2+ versions ... {r['definitions_multi_version']}")
     for n, p in r['worst_skew']:
         print(f"        {n} versions live   {p}")
@@ -770,9 +876,13 @@ def report(res, resolve=False):
     print("    in progress, or stopped?")
 
     r = res['q5']
-    print(); hr(); print("Q5  If you edit just one value, can you say exactly how many");
-    print("    values will be changed?"); hr()
-    print(f"    deploy targets discovered ......... {r['targets']}")
+    print(); hr(); print("5  Am I using grep as my query engine?")
+    hr()
+    if r['out_of_scope']:
+        for ln in textwrap.wrap(r['out_of_scope'], W - 4):
+            print(f"    {ln}")
+    src = f"  ({r['inventory_source']})" if r['inventory_source'] else ''
+    print(f"    deploy targets discovered ......... {r['targets']}{src}")
     print(f"    definitions ....................... {r['definitions']}")
     print(f"    ...scout could not resolve ........ {r['unresolved_definitions']}")
     print(f"    ...resolved only in part .......... {r['partially_resolved']}  (reach is a lower bound)")
@@ -785,10 +895,12 @@ def report(res, resolve=False):
     if r['blast_by_path']:
         print("    blast radius by changed path (fan-out x density):")
         print(f"        {'fan-out':>8}  {'values':>7}  {'if whole file changes':>22}  path")
+        print("        (fan-out counts Applications that load the file; 'declared' means")
+        print("         taken from manifest-generate-paths because no lookup was resolved)")
         for b in r['blast_by_path']:
             v = 'NOT OBSERVED' if b['values'] is None else str(b['values'])
             sfc = '' if b['surface'] is None else f"{b['surface']:,}"
-            tag = ' (dir)' if b['kind'] == 'dir' else ''
+            tag = (' (dir)' if b['kind'] == 'dir' else '') + (' (declared)' if b['basis'] == 'declared' else '')
             print(f"        {b['reach']:>8}  {v:>7}  {sfc:>22}  {b['path']}{tag}")
         print("\n    One value edited changes one value on each target: the fan-out.")
         print("    The whole file changed touches fan-out x values. Density is in the")
@@ -801,7 +913,7 @@ def report(res, resolve=False):
         print("    does not say so.")
 
     r = res['q6']
-    print(); hr(); print("Q6  Do your controls make changes safer, or just rarer?"); hr()
+    print(); hr(); print("6  Am I using rate limits as my constraints?"); hr()
     print(f"    quota-shaped controls found ....... {r['count']}")
     for k in r['detail']:
         loc, snip = r['where'][k]
@@ -816,7 +928,7 @@ def report(res, resolve=False):
 
     r = res['q7']
     if r['definitions']:
-        print(); hr(); print("Q7  Allowed to differ, or just differing?"); hr()
+        print(); hr(); print("7  Am I using defaults as my drift policy?"); hr()
         print("    Drift itself is not visible from a repository: it is the difference")
         print("    between this repo and the running system. What IS here is the")
         print("    tolerance — and that splits into declared and merely allowed.")
@@ -855,7 +967,7 @@ def report(res, resolve=False):
         print("    still have targets diverged. Confirming that needs the cluster.")
 
     r = res['q7b']
-    print(); hr(); print("Q7b Where does observed data land, and what stops hand edits?"); hr()
+    print(); hr(); print("Also: where does observed data land, and what stops hand edits?"); hr()
     if r['dirs']:
         for d in r['dirs']:
             g = ', '.join(d['guarded_by']) if d['guarded_by'] else 'NOT OBSERVED'
@@ -868,7 +980,7 @@ def report(res, resolve=False):
     print("    only review one?")
 
     r = res['q7c']
-    print(); hr(); print("Q7c Do your charts pin their dependencies?"); hr()
+    print(); hr(); print("Also: do your charts pin their dependencies?"); hr()
     print(f"    charts with dependencies .......... {r['charts_with_deps']}")
     print(f"    ...with Chart.lock committed ...... {r['charts_locked']}")
     print(f"    Chart.lock in .gitignore .......... {'yes' if r['lock_gitignored'] else 'no'}")

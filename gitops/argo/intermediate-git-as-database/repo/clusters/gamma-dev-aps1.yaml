@@ -1,6 +1,15 @@
-global:
+apiVersion: v1
+kind: Secret
+metadata:
   name: gamma-dev-aps1
-  org: gamma
-  env: dev
-  region: aps1
-  provider: azure
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: cluster
+    org: gamma
+    env: dev
+    region: aps1
+    provider: azure
+type: Opaque
+stringData:
+  name: gamma-dev-aps1
+  server: https://gamma-dev-aps1.k8s.example.invalid
