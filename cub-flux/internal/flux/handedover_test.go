@@ -136,8 +136,12 @@ metadata: {name: apps, namespace: flux-system}
 spec: {targetNamespace: apptique-dev, path: ./}
 `
 	run := fake(map[string]string{
-		"unit list": `[{"Unit":{"Slug":"apps"}}]`,
-		"unit data": unit,
+		"unit list":                               `[{"Unit":{"Slug":"apps"}},{"Unit":{"Slug":"unreleased"}}]`,
+		"release get":                             `{"Release":{"ReleaseNum":4,"ManifestDigest":"sha256:l4","TagID":"t4"}}`,
+		"list --space flux-dev-layers apps":       `[{"Revision":{"RevisionNum":2}}]`,
+		"list --space flux-dev-layers unreleased": `[]`,
+		"revision data":                           unit,
+		"unit get":                                `{"Unit":{"HeadRevisionNum":3}}`,
 	})
 	checks, err := ChecksFromLayersSpace(run, "dev", "flux-dev-layers")
 	if err != nil {
@@ -147,7 +151,26 @@ spec: {targetNamespace: apptique-dev, path: ./}
 	if len(checks) != 1 || checks[0] != want {
 		t.Errorf("want %+v, got %+v", want, checks)
 	}
-	if _, err := ChecksFromLayersSpace(fake(map[string]string{"unit list": `[]`}), "dev", "flux-dev-layers"); err == nil {
+	if _, err := ChecksFromLayersSpace(fake(map[string]string{"unit list": `[]`, "release get": `{"Release":{"ReleaseNum":1,"ManifestDigest":"sha256:x","TagID":"t"}}`}), "dev", "flux-dev-layers"); err == nil {
 		t.Error("an empty layers Space should say so")
+	}
+}
+
+// From review on #256: after a handover, re-running apply.sh must not rewrite
+// a shared workflow from a view that no longer shows the handed-over stage.
+func TestApplyLeavesWorkflowsAloneAfterAHandover(t *testing.T) {
+	const fleet = "gitops/flux/beginner"
+	root := handedOver(t, fleet, "dev", "flux-dev-layers")
+	in, err := Load(nil, []string{filepath.Join(root, fleet)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := Build(in, Options{Prefix: "flux", RepoRoot: root, Require: []string{"Healthy"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := ApplyScript(p, "flux", ".")
+	if strings.Contains(s, "changeworkflow update") || !strings.Contains(s, "the rollout workflow is left as ConfigHub holds it") {
+		t.Errorf("no workflow may be rewritten while a cluster is handed over")
 	}
 }

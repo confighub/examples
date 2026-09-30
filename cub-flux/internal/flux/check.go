@@ -143,8 +143,14 @@ func ChecksFromLayersSpace(run Runner, cluster, space string) ([]Check, error) {
 	}
 	var checks []Check
 	for _, u := range units {
-		data, err := run("cub", "unit", "data", "--space", space, u.Unit.Slug)
+		// The root reads the published release, so the layer is what that
+		// release holds: a Unit's head may be ahead of it, and a Unit may not
+		// be in it at all.
+		_, data, err := ReleasedData(run, space, u.Unit.Slug, "latest")
 		if err != nil {
+			if strings.Contains(err.Error(), "does not hold") {
+				continue
+			}
 			return nil, fmt.Errorf("reading layer %s of %s: %w", u.Unit.Slug, cluster, err)
 		}
 		docs, err := documentsIn(data)
