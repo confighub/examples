@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -96,6 +99,7 @@ func newRoot() *cobra.Command {
 	plan.Flags().StringVar(&stages, "stages", "", "the clusters in rollout order, by directory or cluster name, comma-separated (default dev, staging, prod, then the rest)")
 	plan.Flags().StringVar(&opts.ClustersDir, "clusters", "clusters", "the directory holding one directory per cluster, relative to the input")
 	plan.Flags().StringVar(&opts.RepoRoot, "repo-root", "", "the checkout Flux paths are relative to (default: the .git above the input)")
+	plan.Flags().StringSliceVar(&opts.Require, "require", nil, "what each stage after the first also waits for in the stage before it: Healthy, which `cub flux status` reports")
 	plan.Flags().BoolVar(&asJSON, "json", false, "print the plan as JSON")
 
 	var af flux.Options
@@ -138,6 +142,7 @@ func newRoot() *cobra.Command {
 	apply.Flags().StringVar(&applyStages, "stages", "", "the clusters in rollout order, comma-separated")
 	apply.Flags().StringVar(&af.ClustersDir, "clusters", "clusters", "the directory holding one directory per cluster")
 	apply.Flags().StringVar(&af.RepoRoot, "repo-root", "", "the checkout Flux paths are relative to")
+	apply.Flags().StringSliceVar(&af.Require, "require", nil, "what each stage after the first also waits for in the stage before it: Healthy, which `cub flux status` reports")
 	apply.Flags().StringVar(&out, "out", "", "directory for the files and the scripts")
 
 	var ckNS, ckName, ckSpace, ckUnit, ckTarget, kubeContext, ckCluster, ckRelease string
@@ -162,37 +167,9 @@ One cluster at a time: pass --kube-context for the cluster to read.`,
 		RunE: func(c *cobra.Command, args []string) error {
 			flux.KubeContext = kubeContext
 			flux.SetControllerNamespace(ckNS)
-			var checks []flux.Check
-			if ckName != "" {
-				if ckSpace == "" || ckUnit == "" {
-					return fmt.Errorf("--kustomization needs --space and --unit; or pass the fleet repository instead and every layer is checked")
-				}
-				checks = []flux.Check{{Kustomization: ckName, Space: ckSpace, Unit: ckUnit, Namespace: ckTarget}}
-			} else {
-				if len(args) == 0 {
-					return fmt.Errorf("check needs the fleet repository to work out what to check, or --kustomization with --space and --unit")
-				}
-				in, err := flux.Load(c.InOrStdin(), args)
-				if err != nil {
-					return err
-				}
-				p, err := flux.Build(in, ckOpts)
-				if err != nil {
-					return err
-				}
-				checks = flux.ChecksFor(p)
-				if ckCluster != "" {
-					var keep []flux.Check
-					for _, x := range checks {
-						if x.Cluster == ckCluster {
-							keep = append(keep, x)
-						}
-					}
-					checks = keep
-				}
-				if len(checks) == 0 {
-					return fmt.Errorf("no layers to check; a fleet is checked one cluster at a time, so pass --cluster with one of the plan's clusters")
-				}
+			checks, err := layersFor(c, args, ckName, ckSpace, ckUnit, ckTarget, ckCluster, ckOpts)
+			if err != nil {
+				return err
 			}
 			for i := range checks {
 				checks[i].Release = ckRelease
@@ -279,6 +256,86 @@ One cluster at a time: pass --kube-context for the cluster to read.`,
 	check.Flags().StringVar(&kubeContext, "kube-context", "", "the kubectl context of the cluster to read; without it kubectl's current context is used, which may be another cluster")
 	check.Flags().BoolVar(&ckJSON, "json", false, "print the comparison as JSON")
 
+	var stNS, stName, stSpace, stUnit, stTarget, stContext, stCluster string
+	var stJSON, stWatch, stDry bool
+	var stInterval, stRefresh time.Duration
+	var stOpts flux.Options
+	status := &cobra.Command{
+		Use:   "status [fleet-repo-dir]",
+		Short: "Report what each layer applied as ConfigHub live status",
+		Long: `Report what Flux applied on a cluster as ConfigHub live status.
+
+For each layer that reads its ConfigHub Space, it reads the Kustomization and
+writes the Space's confighub.com/live-status: the words ConfigHub's Healthy
+gate, its change orders and its UI read.
+
+  Synced     only when the digest Flux applied is the newest published
+             release of that Space; an older one is OutOfSync
+  Healthy    only when Flux checked the workloads (spec.wait or
+             healthChecks), or the layer runs none; otherwise Unknown
+  revision   the digest Flux applied, never one inferred
+
+A layer still reading Git, or another Space, is not reported. A read that
+fails writes nothing. It writes only when a reading changes, or when the one
+ConfigHub holds is older than --refresh, which shows the reporter is alive.
+
+One cluster at a time, like check. It writes as the cub user it runs as.`,
+		Args: cobra.MaximumNArgs(1),
+		RunE: func(c *cobra.Command, args []string) error {
+			flux.KubeContext = stContext
+			flux.SetControllerNamespace(stNS)
+			layers, err := layersFor(c, args, stName, stSpace, stUnit, stTarget, stCluster, stOpts)
+			if err != nil {
+				return err
+			}
+			ctx, stop := signal.NotifyContext(c.Context(), os.Interrupt, syscall.SIGTERM)
+			defer stop()
+			w := c.OutOrStdout()
+			for {
+				outs, err := reportOnce(layers, stRefresh, stDry)
+				if stJSON {
+					enc := json.NewEncoder(w)
+					enc.SetIndent("", "  ")
+					_ = enc.Encode(outs)
+				} else {
+					flux.PrintOutcomes(w, outs)
+				}
+				if err != nil {
+					if !stWatch {
+						return err
+					}
+					// A watch outlives a failed read: that pass wrote nothing
+					// for the layer it could not read, and the next pass tries
+					// again.
+					fmt.Fprintf(c.ErrOrStderr(), "%s\n", err)
+				}
+				if !stWatch {
+					return nil
+				}
+				select {
+				case <-ctx.Done():
+					return nil
+				case <-time.After(stInterval):
+				}
+			}
+		},
+	}
+	status.Flags().StringVar(&stCluster, "cluster", "", "the cluster being reported, when reading a fleet repository")
+	status.Flags().StringVar(&stOpts.Prefix, "prefix", "flux", "the prefix the plan used in ConfigHub")
+	status.Flags().StringVar(&stOpts.ClustersDir, "clusters", "clusters", "the directory holding one directory per cluster")
+	status.Flags().StringVar(&stOpts.RepoRoot, "repo-root", "", "the checkout Flux paths are relative to")
+	status.Flags().StringVar(&stNS, "namespace", "flux-system", "the namespace the Kustomizations live in")
+	status.Flags().StringVar(&stName, "kustomization", "", "one layer to report")
+	status.Flags().StringVar(&stSpace, "space", "", "the ConfigHub Space the layer reads")
+	status.Flags().StringVar(&stUnit, "unit", "", "the unit in that Space")
+	status.Flags().StringVar(&stTarget, "target-namespace", "", "the layer's targetNamespace")
+	status.Flags().StringVar(&stContext, "kube-context", "", "the kubectl context of the cluster to read; without it kubectl's current context is used, which may be another cluster")
+	status.Flags().BoolVar(&stWatch, "watch", false, "keep reporting")
+	status.Flags().DurationVar(&stInterval, "interval", 30*time.Second, "how often to report, with --watch")
+	status.Flags().DurationVar(&stRefresh, "refresh", 10*time.Minute, "write an unchanged reading again once the one ConfigHub holds is this old")
+	status.Flags().BoolVar(&stDry, "dry-run", false, "show what would be written, and write nothing")
+	status.Flags().BoolVar(&stJSON, "json", false, "print what was read and done as JSON")
+
 	versionCmd := &cobra.Command{
 		Use:   "version",
 		Short: "Print the plugin version",
@@ -288,8 +345,45 @@ One cluster at a time: pass --kube-context for the cluster to read.`,
 		},
 	}
 
-	root.AddCommand(plan, apply, check, versionCmd)
+	root.AddCommand(plan, apply, check, status, versionCmd)
 	return root
+}
+
+// layersFor is the layers a command acts on: the one --kustomization names, or
+// every layer the plan finds for one cluster, so check and status take the
+// same input as plan.
+func layersFor(c *cobra.Command, args []string, name, space, unit, target, cluster string, opts flux.Options) ([]flux.Check, error) {
+	if name != "" {
+		if space == "" || unit == "" {
+			return nil, fmt.Errorf("--kustomization needs --space and --unit; or pass the fleet repository instead and every layer is used")
+		}
+		return []flux.Check{{Kustomization: name, Space: space, Unit: unit, Namespace: target}}, nil
+	}
+	if len(args) == 0 {
+		return nil, fmt.Errorf("pass the fleet repository to work out the layers, or --kustomization with --space and --unit")
+	}
+	in, err := flux.Load(c.InOrStdin(), args)
+	if err != nil {
+		return nil, err
+	}
+	p, err := flux.Build(in, opts)
+	if err != nil {
+		return nil, err
+	}
+	checks := flux.ChecksFor(p)
+	if cluster != "" {
+		var keep []flux.Check
+		for _, x := range checks {
+			if x.Cluster == cluster {
+				keep = append(keep, x)
+			}
+		}
+		checks = keep
+	}
+	if len(checks) == 0 {
+		return nil, fmt.Errorf("no layers; a fleet is read one cluster at a time, so pass --cluster with one of the plan's clusters")
+	}
+	return checks, nil
 }
 
 // Execute runs the command tree and exits non-zero on failure.
@@ -341,4 +435,28 @@ func shortestPath(p string) string {
 		return p
 	}
 	return rel
+}
+
+// reportOnce reads every layer and writes what changed. A layer that cannot
+// be read is left as ConfigHub holds it, and the others are still reported.
+func reportOnce(layers []flux.Check, refresh time.Duration, dryRun bool) ([]flux.Outcome, error) {
+	now := time.Now()
+	var readings []flux.Reading
+	var errs []string
+	for _, l := range layers {
+		r, err := flux.ReadStatus(flux.Run, l, now)
+		if err != nil {
+			errs = append(errs, err.Error())
+			continue
+		}
+		readings = append(readings, r)
+	}
+	outs, err := flux.ReportStatus(flux.Run, flux.CubWriter, readings, refresh, dryRun, now)
+	if err != nil {
+		errs = append(errs, err.Error())
+	}
+	if len(errs) > 0 {
+		return outs, fmt.Errorf("%s", strings.Join(errs, "; "))
+	}
+	return outs, nil
 }

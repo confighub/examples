@@ -204,3 +204,16 @@ func CompareInventory(live Live, stored []Owned, targetNamespace string) Invento
 	sort.Strings(c.WouldAdd)
 	return c
 }
+
+// CubWriter sets a Space's live status with `cub space update --patch`, which
+// merges the body into the Space rather than replacing it.
+func CubWriter(space string, patch []byte) error {
+	cmd := exec.Command("cub", "space", "update", "--patch", space, "--from-stdin", "--quiet")
+	cmd.Stdin = bytes.NewReader(patch)
+	var stderr strings.Builder
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("cub space update %s: %s", space, strings.TrimSpace(stderr.String()))
+	}
+	return nil
+}

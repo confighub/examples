@@ -15,6 +15,8 @@ Three commands, and the first two change nothing:
 | `apply --out` | writes the workflow files, `apply.sh` and `handover.sh` | no, it runs nothing |
 | `apply.sh` | fills ConfigHub with a parallel copy nothing reads | no |
 | `handover.sh` | swaps each layer's `sourceRef`, one cluster at a time | yes, this is the step that moves it |
+| `check` | compares what each layer applied with the published release | reads it, changes nothing |
+| `status` | reports what Flux applied as ConfigHub live status, which the Healthy gate reads | reads it; writes only to ConfigHub |
 
 `flux-system` is never repointed: it reconciles the Flux controllers
 themselves, so it stays on Git as the recovery path.

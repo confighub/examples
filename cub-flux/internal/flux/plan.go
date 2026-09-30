@@ -28,6 +28,10 @@ type Options struct {
 	// ClustersDir is the directory, relative to the input, holding one
 	// directory per cluster. Default "clusters".
 	ClustersDir string
+	// Require is what each stage after the first also waits for, in the
+	// stage before it. Healthy is the one offered: it passes on the live
+	// status `cub flux status` reports.
+	Require []string
 }
 
 // Plan is what ConfigHub would hold for a Flux fleet. Building it changes
@@ -69,6 +73,8 @@ type Cluster struct {
 // Component is one layer (a Flux Kustomization name) across the clusters: a
 // base inferred from the overlays, and one variant per cluster.
 type Component struct {
+	// Require is what each stage after the first also waits for.
+	Require      []string `json:"require,omitempty"`
 	Name         string   `json:"name"`
 	Base         string   `json:"base"`
 	BaseDir      string   `json:"baseDir"`
@@ -138,6 +144,11 @@ func Build(in *Input, opts Options) (*Plan, error) {
 	}
 	if opts.ClustersDir == "" {
 		opts.ClustersDir = "clusters"
+	}
+	for _, r := range opts.Require {
+		if r != "Healthy" {
+			return nil, fmt.Errorf("--require %s: only Healthy is offered, which passes on the live status `cub flux status` reports", r)
+		}
 	}
 	b := &builder{opts: opts, input: in.Dirs[0], plan: &Plan{}, docs: in.Docs}
 	b.root = opts.RepoRoot
@@ -344,6 +355,7 @@ func (b *builder) components(layers map[string]map[string]Doc) {
 		}
 		c.InFlight = inFlight(c)
 		c.HelmReleases = b.helmReleases(c)
+		c.Require = b.opts.Require
 		p.Components = append(p.Components, c)
 	}
 }

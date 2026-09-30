@@ -47,6 +47,11 @@ func Workflow(c *Component) string {
 		b.WriteString(fmt.Sprintf("    WhereSpace: Labels.Stage = '%s'\n", st.Name))
 		if i > 0 {
 			b.WriteString("    Prerequisites:\n      - Released\n")
+			for _, r := range c.Require {
+				// Healthy reads the live status of the stage before, which
+				// `cub flux status` writes; without a reporter it never passes.
+				b.WriteString(fmt.Sprintf("      - %s\n", r))
+			}
 		}
 		b.WriteString("    ReleasePrerequisites:\n      - approval\n")
 	}
@@ -65,7 +70,7 @@ func stagesJSON(c *Component) string {
 		s := stage{Name: st.Name, WhereSpace: fmt.Sprintf("Labels.Stage = '%s'", st.Name),
 			ReleasePrerequisites: []string{"approval"}}
 		if i > 0 {
-			s.Prerequisites = []string{"Released"}
+			s.Prerequisites = append([]string{"Released"}, c.Require...)
 		}
 		stages = append(stages, s)
 	}
@@ -176,9 +181,17 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 			add("cub unit create --space %s %s render/%s-base.yaml --change-desc %s --allow-exists --quiet",
 				c.Base, c.Name, c.Name, q(fmt.Sprintf("Onboard the %s layer from %s", c.Name, c.BaseDir)))
 		}
-		add("cub changeworkflow create --space %s rollout --filename %s/change-workflow.yaml --allow-exists --quiet", c.Base, c.Name)
+		// The first release of every variant is made before anything reads
+		// ConfigHub, so it cannot wait for Healthy. A change order keeps the
+		// workflow it was created under, so onboarding runs under one without
+		// what --require adds, and the workflow is replaced once it is done.
+		file, oc := "change-workflow.yaml", c
+		if len(c.Require) > 0 {
+			file, oc = onboardingWorkflow, c.onboarding()
+		}
+		add("cub changeworkflow create --space %s rollout --filename %s/%s --allow-exists --quiet", c.Base, c.Name, file)
 		add("stages_are %s rollout %s || echo %s | cub changeworkflow update --patch --space %s rollout --from-stdin --quiet",
-			c.Base, q(stageNames(c)), q(stagesJSON(c)), c.Base)
+			c.Base, q(stageNames(c)), q(stagesJSON(oc)), c.Base)
 	}
 	add("")
 
@@ -225,7 +238,36 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 	}
 	add("")
 	add("echo")
+	var requiring []*Component
+	for _, c := range p.Components {
+		if len(c.Require) > 0 {
+			requiring = append(requiring, c)
+		}
+	}
+	if len(requiring) > 0 {
+		add("")
+		add(`step "Every change from now on also waits for %s in the stage before"`, strings.Join(requiring[0].Require, ", "))
+		add("# Change orders created from here on use this workflow; the onboarding")
+		add("# ones above keep the one they were created under.")
+		add("# Healthy passes on the live status `cub flux status` writes, so once a")
+		add("# cluster reads ConfigHub, keep it running there.")
+		for _, c := range requiring {
+			add("cub changeworkflow update --space %s rollout --filename %s/change-workflow.yaml --quiet", c.Base, c.Name)
+		}
+	}
 	add("echo %s", q("Done. ConfigHub holds this fleet and nothing reads it yet."))
 	add("echo %s", q("Flux is still reconciling Git. Read handover.sh next: that is the step that moves it."))
 	return strings.Join(L, "\n") + "\n"
+}
+
+// onboardingWorkflow is the file apply.sh creates the workflow from when
+// --require adds a prerequisite the first releases cannot meet.
+const onboardingWorkflow = "change-workflow.onboarding.yaml"
+
+// onboarding is the component as its first release sees it: without the
+// prerequisites --require adds, which nothing can meet before the handover.
+func (c *Component) onboarding() *Component {
+	o := *c
+	o.Require = nil
+	return &o
 }
