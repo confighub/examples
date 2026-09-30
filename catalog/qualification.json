@@ -344,7 +344,7 @@
       }
     },
     "kubara-kind-lab": {
-      "source_revision": "86884faae853b12e552354d0b7cb898bc8df59fa",
+      "source_revision": "fdae8a233fec57bf2f4102b8fea43c3bf557e35e",
       "working_directory": "a new empty directory",
       "commands": [
         {
@@ -354,7 +354,8 @@
             "wrote": [
               "platform/config.yaml",
               "platform/.env.example",
-              "platform/confighub-intent.yaml"
+              "platform/confighub-intent.yaml",
+              "platform/.gitignore"
             ],
             "note": "left out homer-dashboard on spoke (a spoke; it runs only on hub)"
           }
@@ -411,7 +412,7 @@
       ],
       "tested_tool_versions": {
         "cub": "v0.6.8",
-        "cub-kubara": "0.2.3",
+        "cub-kubara": "0.2.4",
         "kubara": "v0.15.0"
       }
     }
