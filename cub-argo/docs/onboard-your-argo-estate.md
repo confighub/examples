@@ -638,7 +638,8 @@ Helm-inflated `checkout-cache`. Every Application and every Deployment, Service
 and ConfigMap on both clusters kept its UID. The way back was run for one
 Application: with its Unit removed `root` reported it `requiresPruning` and left
 it; patched back it synced Git again, and the retired generator left it alone.
-Moving it again picked up where it was.
+Moving it again picked up where it was. The run log:
+[runs/2026-09-30-delivery-objects-argobot-and-a-join.md](runs/2026-09-30-delivery-objects-argobot-and-a-join.md).
 
 ### Removing a retired ApplicationSet later
 
@@ -828,7 +829,8 @@ reached `dev-1` in 2 seconds, and to `staging-1` in 2 more once promoted and
 approved, against the 90 seconds and more above. With three Targets it also
 stopped twice on a `409` from ConfigHub, at its first start and after half an
 hour, when its polls collided; that is confighub/argobot#15. In a cluster its
-Deployment restarts it, and a missed refresh costs only immediacy.
+Deployment restarts it, and a missed refresh costs only immediacy. The run log:
+[runs/2026-09-30-delivery-objects-argobot-and-a-join.md](runs/2026-09-30-delivery-objects-argobot-and-a-join.md).
 
 **Without argobot, `cub argo status` does both,** from wherever you run it, as
 the cub user you run it as: it asks Argo for that hard refresh once per release,
@@ -964,7 +966,8 @@ Healthy. The two in the `storefront` project waited, correctly, for the
 example's own deny window on `prod-1-*` to close, and synced when it did; the
 script says so. `prod-1-checkout-cache` was then taken out and made again from
 its rendered template, with the `storefront` project, `prod-1`'s destination and
-the `primary` label.
+the `primary` label. The run log:
+[runs/2026-09-30-delivery-objects-argobot-and-a-join.md](runs/2026-09-30-delivery-objects-argobot-and-a-join.md).
 
 A change still in flight when a cluster joins stops `apply.sh`, and it says
 which. A joining cluster's first release has to go through every stage — the
