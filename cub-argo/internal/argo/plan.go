@@ -1212,12 +1212,10 @@ func (b *builder) handover(appsets, apps []object, projects []object) {
 	}
 	for _, a := range appsets {
 		// An ApplicationSet gives what it generates the finalizer whether or
-		// not its template names one, unless it preserves resources on
-		// deletion (measured on Argo CD v3.5.3).
-		if cascades(get(a.spec(), "template", "metadata", "finalizers")) ||
-			get(a.spec(), "syncPolicy", "preserveResourcesOnDeletion") != true {
-			guarded = append(guarded, "every Application "+a.name+" generates")
-		}
+		// not its template names one (measured on Argo CD v3.5.3), and
+		// preserveResourcesOnDeletion did not keep the workloads when it was
+		// tried, so every generated Application is named.
+		guarded = append(guarded, "every Application "+a.name+" generates")
 	}
 	if len(guarded) > 0 {
 		p.Handover = append(p.Handover, fmt.Sprintf(

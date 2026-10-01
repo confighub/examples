@@ -44,6 +44,34 @@ flowchart LR
   l2 -.->|"cub flux status"| v1
 ```
 
+## The words you will meet
+
+- **Layer**: one Flux `Kustomization` — `infrastructure`, `apps`, `tenants`.
+  A handover makes a layer read ConfigHub.
+- **Base**: the directory every cluster's overlay builds on, stored once. A
+  change to the layer is made here.
+- **Variant**: one cluster's copy, holding what that cluster's overlay renders
+  differently — its namespace, image tag, patches and `postBuild` values.
+- **Departure**: a field in which a variant differs from its base.
+- **Layers Space**: one per cluster, `<prefix>-<cluster>-layers`, released to
+  that cluster's Target. It holds one Unit per layer.
+- **Root**: the one `OCIRepository` and `Kustomization`, both named
+  `confighub-root`, that a cluster keeps in `flux-system` to read its layers
+  Space.
+- **Unit**: one piece of configuration in ConfigHub — a layer's manifests, or
+  one layer's `OCIRepository` and `Kustomization`.
+- **Release**: a published, immutable version of a Space. A cluster reads
+  releases, never work in progress; each has a digest, which Flux reports as
+  the revision it applied.
+- **Space**: ConfigHub's folder for configuration. Each base and each variant
+  gets one; your organization has a quota of them.
+- **Component**: the group of one base and its variants. There is one per
+  layer.
+- **Target**: a named destination, one per cluster. A variant's releases go to
+  its cluster's Target.
+- **Change order**: one change moving through the stages, with an approval
+  recorded in each. **Workflow**: the stages and what each waits for.
+
 ## What repointing means
 
 Repointing is one edit to an object you already have: the fields that say
@@ -79,9 +107,11 @@ in that inventory, so the first reconcile from ConfigHub changes nothing on
 the cluster.
 
 **Is my Kustomization replaced by a new one?** No. The root applies a
-`Kustomization` of the same name that differs only in those two fields, which
-updates the one on the cluster. The script checks afterwards that each object
-is the one it was.
+`Kustomization` of the same name, which updates the one on the cluster. It is
+the one Git defines with those two fields changed, so a field someone had
+changed on the cluster by hand goes back to what Git says. The script then
+waits for each layer to read its new source, be Ready, and have applied the
+release that was checked; the live runs measured every UID unchanged.
 
 **Is anything deleted?** No layer and no workload. On a fleet set up with `flux
 bootstrap`, the layer files do leave `clusters/<name>/` in Git, in one commit
@@ -98,10 +128,10 @@ Git path no longer reaches the cluster.
 | Object | What changes | How | The same object afterwards? |
 | --- | --- | --- | --- |
 | A layer's `Kustomization` | `sourceRef` and `path` | the root applies it, from the layer's Unit | yes, same name and inventory |
-| `flux-system`, and the Flux controllers | nothing; suspended during the handover of a bootstrapped fleet, then resumed | | yes |
+| `flux-system`, and the Flux controllers | nothing on a fleet that was not bootstrapped. On a bootstrapped one it is suspended, and resumed once your commit has moved the layer files out of its directory and the root file in | `handover.sh`, run a second time after the commit | yes |
 | The `GitRepository` | nothing. The layers stop reading it; `flux-system` still does, where it did | | yes |
 | Your workloads | nothing | | yes, same UIDs |
-| `ImageUpdateAutomation` | suspended, since its commits would feed nothing | `handover.sh` | yes |
+| `ImageUpdateAutomation` | suspended, since its commits would feed nothing. Where a layer applies it, say `suspend: true` in that layer's Unit too, or the layer undoes it | `handover.sh` | yes |
 
 Three things are added to the cluster, all in `flux-system`: the root (an
 `OCIRepository` and a `Kustomization`, both named `confighub-root`), one
@@ -113,34 +143,6 @@ commands that put them back, in the order that is safe.
 
 `join.sh` does create the layers, on a cluster that has none. Repointing is for
 the layers you already run.
-
-## The words you will meet
-
-- **Layer**: one Flux `Kustomization` — `infrastructure`, `apps`, `tenants`.
-  A handover makes a layer read ConfigHub.
-- **Base**: the directory every cluster's overlay builds on, stored once. A
-  change to the layer is made here.
-- **Variant**: one cluster's copy, holding what that cluster's overlay renders
-  differently — its namespace, image tag, patches and `postBuild` values.
-- **Departure**: a field in which a variant differs from its base.
-- **Layers Space**: one per cluster, `<prefix>-<cluster>-layers`, released to
-  that cluster's Target. It holds one Unit per layer.
-- **Root**: the one `OCIRepository` and `Kustomization`, both named
-  `confighub-root`, that a cluster keeps in `flux-system` to read its layers
-  Space.
-- **Unit**: one piece of configuration in ConfigHub — a layer's manifests, or
-  one layer's `OCIRepository` and `Kustomization`.
-- **Release**: a published, immutable version of a Space. A cluster reads
-  releases, never work in progress; each has a digest, which Flux reports as
-  the revision it applied.
-- **Space**: ConfigHub's folder for configuration. Each base and each variant
-  gets one; your organization has a quota of them.
-- **Component**: the group of one base and its variants. There is one per
-  layer.
-- **Target**: a named destination, one per cluster. A variant's releases go to
-  its cluster's Target.
-- **Change order**: one change moving through the stages, with an approval
-  recorded in each. **Workflow**: the stages and what each waits for.
 
 ## Install
 
@@ -700,10 +702,11 @@ flowchart TB
 **A bootstrapped fleet takes one commit as well.** There, `flux-system` also
 applies the directory that holds each layer's `Kustomization`, so it owns the
 very objects the root takes over. `handover.sh` reads the owner of every layer
-first. Where it is `flux-system` reading Git, the script suspends it, lets the
-root take the layers, and pauses for the commit that removes the layer files
-from that directory; where it is any other Kustomization, it stops before it
-changes anything. It accepts `confighub-root` as the owner, so it can be re-run.
+first. Where one Kustomization reading Git owns them, which is `flux-system`
+after a bootstrap, the script suspends it, lets the root take the layers, and
+pauses for the commit that removes the layer files from that directory. Where
+several own them, or the owner does not read Git, it stops before it changes
+anything. It accepts `confighub-root` as the owner, so it can be re-run.
 See "Measured: a fleet set up the way `flux bootstrap` sets it up" below for why,
 and for the sequence.
 

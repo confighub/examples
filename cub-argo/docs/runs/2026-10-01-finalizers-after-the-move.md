@@ -32,8 +32,7 @@ storefront               oci://192.168.97.2:32181/space/rh-fin-storefront-childr
 
 `plan` read only the template, so its "never delete" line named `root` and
 `storefront` and left these out. It now names every Application an
-ApplicationSet generates, unless the ApplicationSet sets
-`preserveResourcesOnDeletion`, and knows the finalizer's `/foreground` and
+ApplicationSet generates, and knows the finalizer's `/foreground` and
 `/background` forms.
 
 ## 2. The move keeps finalizer and UID

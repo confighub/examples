@@ -51,6 +51,27 @@ flowchart LR
   ab -.->|"live status"| v1
 ```
 
+## The words you will meet
+
+- **Layer**: one thing in your Argo tree that syncs a source — the root
+  Application, an app of apps, an ApplicationSet. A handover repoints layers.
+- **Base**: the shared render an app's overlays build on, stored once in
+  ConfigHub. A change to the app is made here.
+- **Variant**: a copy of the base for one cluster, holding only what that
+  cluster's overlay renders differently.
+- **Departure**: a field in which a variant differs from its base.
+- **Unit**: one piece of configuration in ConfigHub — the manifests of one app,
+  or one Argo CD Application.
+- **Release**: a published, immutable version of a Space. A cluster reads
+  releases, never work in progress; each has a digest.
+- **Space**: ConfigHub's folder for configuration. The base and each variant
+  get one; your organization has a quota of them.
+- **Component**: the group of one base and its variants. There is one per app.
+- **Target**: a named destination, one per cluster, plus one for the cluster
+  Argo CD itself runs on. A variant's releases go to its cluster's Target.
+- **Change order**: one change moving through the stages, with an approval
+  recorded in each. **Workflow**: the stages and what each waits for.
+
 ## What repointing means
 
 Repointing is one edit to an object you already have: the field that says
@@ -76,19 +97,25 @@ Nothing is deleted, and no new Application takes the old one's place.
 +    targetRevision: latest
 ```
 
+Any `kustomize`, `helm`, `directory` or `plugin` settings under `source` go
+too, since what Argo reads now is rendered already.
+
 Before, Argo CD cloned Git and ran `kustomize build` on the overlay. After, it
 pulls that cluster's newest release from ConfigHub: the same manifests, already
 rendered. The same Argo CD syncs the same Application to the same cluster and
-tracks the same workloads. The handover checks, before it moves anything, that
-the release holds what Argo owns on the cluster field for field, so the first
-sync from ConfigHub changes nothing there.
+tracks the same workloads. Before any Application that deploys workloads is
+moved, the handover checks that the release it will read holds what Argo owns
+on the cluster, field for field, so its first sync from ConfigHub changes
+nothing there.
 
-**Is my Application replaced by a new one?** No. It is edited in place, and
-the scripts check afterwards that it has the UID it had before. The other way
-to do this — create a second set of Applications and have them adopt the
-running workloads — means removing the old Applications without their
-finalizer and handing Argo's tracking from one owner to another. Repointing
-does neither, because the owner never changes.
+**Is my Application replaced by a new one?** No. It is edited in place.
+`move-applications.sh` checks that each Application it moves has the UID it had
+before; for `root`, an app of apps and a plain Application, the live runs
+measured the same. The other way to do this — create a second set of
+Applications — means the new ones have to take over the running workloads, and
+the old ones have to be removed with their finalizer taken off so that they do
+not delete those workloads on the way out. Repointing does neither, because
+the Application that owns a workload never changes.
 
 **Is anything deleted?** No Application, no ApplicationSet and no workload.
 Every step is a patch or a reviewed edit.
@@ -111,10 +138,11 @@ reaches the cluster.
 | An AppProject | `sourceRepos` gains the gateway | your commit to Git, before the handover | yes |
 | Your workloads | nothing | | yes, same UIDs |
 
-Three things are added to the cluster Argo CD runs on: one repository Secret,
-so Argo can read the gateway; on each Application `move-applications.sh`
-moves, the sync option `Prune=false` and an annotation naming its Space; and
-argobot, if you install it. Argo CD itself, its projects' other settings and every destination cluster
+What is added to the cluster Argo CD runs on: one repository Secret, so Argo
+can read the gateway; on each Application `move-applications.sh` moves, the
+sync option `Prune=false` and an annotation naming its Space (and
+`Replace=true`, for the move only); an annotation on each retired
+ApplicationSet saying so; and argobot, if you install it. Argo CD itself, its projects' other settings and every destination cluster
 are left as they are.
 
 **The way back is the same edit in reverse.** Each script records every source
@@ -123,27 +151,6 @@ that is safe.
 
 `cub cluster up` and `cub variant create` do make new Applications, for a
 cluster that has none. Repointing is for the Applications you already run.
-
-## The words you will meet
-
-- **Layer**: one thing in your Argo tree that syncs a source — the root
-  Application, an app of apps, an ApplicationSet. A handover repoints layers.
-- **Base**: the shared render an app's overlays build on, stored once in
-  ConfigHub. A change to the app is made here.
-- **Variant**: a copy of the base for one cluster, holding only what that
-  cluster's overlay renders differently.
-- **Departure**: a field in which a variant differs from its base.
-- **Unit**: one piece of configuration in ConfigHub — the manifests of one app,
-  or one Argo CD Application.
-- **Release**: a published, immutable version of a Space. A cluster reads
-  releases, never work in progress; each has a digest.
-- **Space**: ConfigHub's folder for configuration. The base and each variant
-  get one; your organization has a quota of them.
-- **Component**: the group of one base and its variants. There is one per app.
-- **Target**: a named destination, one per cluster, plus one for the cluster
-  Argo CD itself runs on. A variant's releases go to its cluster's Target.
-- **Change order**: one change moving through the stages, with an approval
-  recorded in each. **Workflow**: the stages and what each waits for.
 
 ## Install
 
@@ -414,7 +421,7 @@ stringData:
 
 **Nothing is deleted, and no finalizer is touched.** `root` and `storefront`
 carry `resources-finalizer.argocd.argoproj.io`, which deletes everything they
-deployed, and so does every Application an ApplicationSet generates, whether
+deployed, and so does every Application an ApplicationSet generated, whether
 or not its template names the finalizer. Every step is a patch for exactly
 that reason, and none of them adds or removes a finalizer: an Application
 keeps the ones it had, so deleting it later does what it did before.
