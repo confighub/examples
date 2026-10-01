@@ -108,7 +108,7 @@ create_worker_space() {
   echo "  Created worker space: $WORKER_SPACE"
 }
 
-# Create an infrastructure space with target (worker lives in $WORKER_SPACE)
+# Create an infrastructure space with target
 create_infra_space() {
   local target="$1"
   local env
@@ -124,7 +124,7 @@ create_infra_space() {
     --label "TargetRegion=$(region_label "$region")" \
     --quiet
 
-  $CUB target create "$target" '{}' "${WORKER_SPACE}/worker" -p Noop --space "$target" \
+  $CUB target create "$target" --space "$target" \
     --label "ExampleName=${EXAMPLE_NAME}" \
     --label "DisplayName=$(region_label "$region") - $(target_role "$env")" \
     --label "TargetRole=$(target_role "$env")" \

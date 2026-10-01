@@ -268,9 +268,9 @@ variables push a `where` down so the common case invokes a fraction of the fleet
 
 `GET /space?summary=true` returns per-Space counts computed on the server:
 `TotalUnitCount`, `UnreleasedUnitCount`, `GatedUnitCount`,
-`WarnedUnitCount`, `UpgradableUnitCount`, `UnlinkedUnitCount`, plus `TargetCountByToolchainType`, `TriggerCountByEventType`,
+`WarnedUnitCount`, `UpgradableUnitCount`, `UnlinkedUnitCount`, plus `TriggerCountByEventType`,
 and totals for Links, Filters, Views, Tags, ChangeSets, Invocations, Attributes,
-Releases, BridgeWorkers.
+Releases, Targets, BridgeWorkers.
 
 This is the one place ConfigHub *does* aggregate for you, and it is exactly the
 grain most governance panels want. The whole KPI row (§5D) and any per-Space,

@@ -121,11 +121,13 @@ command -v kustomize >/dev/null || { echo "kustomize is not on PATH; the layers 
 step "1/5 One named Target per cluster, in flux-targets"
 cub space create flux-targets --allow-exists --quiet
 # A server-hosted worker has no process behind it and no role in the
-# organization; it holds the Targets and is the credential Flux reads with.
+# organization; it is the credential Flux reads with. Its bot user holds View
+# and ViewChildren on each Target, to find it and pull its Releases.
 cub worker create --space flux-targets server-worker --is-server-worker --org-role none --allow-exists --quiet
-cub target create dev-1 '{}' server-worker --space flux-targets --provider OCI --toolchain Any --allow-exists --quiet
-cub target create staging-1 '{}' server-worker --space flux-targets --provider OCI --toolchain Any --allow-exists --quiet
-cub target create prod-1 '{}' server-worker --space flux-targets --provider OCI --toolchain Any --allow-exists --quiet
+bot_user="$(cub worker get --space flux-targets server-worker -o jq=.BridgeWorker.UserID | tr -d '"\n')"
+cub target create dev-1 --space flux-targets --permission "View:${bot_user}" --permission "ViewChildren:${bot_user}" --allow-exists --quiet
+cub target create staging-1 --space flux-targets --permission "View:${bot_user}" --permission "ViewChildren:${bot_user}" --allow-exists --quiet
+cub target create prod-1 --space flux-targets --permission "View:${bot_user}" --permission "ViewChildren:${bot_user}" --allow-exists --quiet
 
 step "2/5 One component per layer: a base holding what it renders to, and a rollout workflow"
 cub component create flux-infrastructure --allow-exists --quiet

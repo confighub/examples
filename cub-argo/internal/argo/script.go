@@ -243,12 +243,14 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 	add(`step "1/5 One named Target per cluster, in %s"`, targets)
 	add("cub space create %s --allow-exists --quiet", targets)
 	add("# A server-hosted worker has no process behind it and no role in the")
-	add("# organization; it holds the Targets and is the credential Argo reads with.")
+	add("# organization; it is the credential Argo reads with. Its bot user holds View")
+	add("# and ViewChildren on each Target, to find it and pull its Releases.")
 	add("cub worker create --space %s server-worker --is-server-worker --org-role none --allow-exists --quiet", targets)
+	add(`bot_user="$(cub worker get --space %s server-worker -o jq=.BridgeWorker.UserID | tr -d '\n')"`, targets)
 	add("# The cluster Argo CD itself runs on: the control objects are released here.")
-	add("cub target create argocd '{}' server-worker --space %s --provider OCI --toolchain Any --allow-exists --quiet", targets)
+	add(`cub target create argocd --space %s --permission "View:${bot_user}" --permission "ViewChildren:${bot_user}" --allow-exists --quiet`, targets)
 	for _, c := range p.targetClusters() {
-		add("cub target create %s '{}' server-worker --space %s --provider OCI --toolchain Any --allow-exists --quiet", c, targets)
+		add(`cub target create %s --space %s --permission "View:${bot_user}" --permission "ViewChildren:${bot_user}" --allow-exists --quiet`, c, targets)
 	}
 	add("")
 

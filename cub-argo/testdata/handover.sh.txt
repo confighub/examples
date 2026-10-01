@@ -28,9 +28,6 @@ ns=${ARGOCD_NAMESPACE:-argocd}
 REPO_ROOT=${REPO_ROOT:-'<repo>'}
 KUSTOMIZE_FLAGS=${KUSTOMIZE_FLAGS:---enable-helm}
 
-# The gateway address a repointed source reads. cub reports it for a Target.
-gateway() { cub target get --space argo-targets "$1" -o jq=.Target.Parameters.OCIRepository 2>/dev/null || true; }
-
 # The state of this run: each parent's source as it was, recorded before it
 # moves. If anything stops the script after a parent moved, the way back is
 # printed; nothing is rolled back automatically.
@@ -168,13 +165,15 @@ else
 fi
 
 step "1/5 The credential Argo reads the gateway with"
-# A repository Secret for the gateway, holding the Targets' server worker.
+# A repository Secret for the gateway, holding the server worker the Targets grant access to.
 # The ID and secret go from cub into the Secret through file descriptors,
 # never to disk, the command line, or the terminal.
-addr=${CONFIGHUB_OCI:-$(gateway argocd)}
+addr=${CONFIGHUB_OCI:-}
 if [ -z "$addr" ]; then
-  echo "Could not read the gateway address from Target argo-targets/argocd."
-  echo "Find it with: cub target get --space argo-targets argocd"
+  echo "Set CONFIGHUB_OCI to the gateway address, oci://<gateway host>:"
+  echo "  ConfigHub cloud:  oci://oci.hub.confighub.com"
+  echo "  self-hosted:      oci:// plus the host and port of confighub-oci-server,"
+  echo "                    as reachable FROM this cluster, not from your laptop."
   echo "then re-run with CONFIGHUB_OCI=<address> bash handover.sh"; exit 1
 fi
 # The repository Secret's shape was verified against Argo CD v3.5.3:
