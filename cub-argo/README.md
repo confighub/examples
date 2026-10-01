@@ -89,9 +89,12 @@ The plan orders it top down, because a parent left syncing an empty source
 prunes its children. For the expert example that is: fix `sourceRepos` on both
 AppProjects, check Argo is v3.1 or newer, publish `argo-root-children` and
 repoint `root` by hand, publish `argo-storefront-children` and repoint the
-`storefront` Unit under approval, then point each ApplicationSet's template at
-its clusters' Targets. Nothing is deleted, which matters because `root` and
-`storefront` carry `resources-finalizer.argocd.argoproj.io`.
+`storefront` Unit under approval, then retire each ApplicationSet and move the
+Applications it generated onto Units, a stage at a time. Every Application is
+edited in place and keeps its UID: see [What repointing
+means](docs/onboard-your-argo-estate.md#what-repointing-means). Nothing is
+deleted, which matters because `root`, `storefront` and every generated
+Application carry `resources-finalizer.argocd.argoproj.io`.
 
 Orphaning with `--cascade=orphan` remains the fallback for an ApplicationSet
 applied by hand, where no parent can repoint its template under review.

@@ -1206,24 +1206,33 @@ func (b *builder) handover(appsets, apps []object, projects []object) {
 
 	var guarded []string
 	for _, a := range apps {
-		for _, f := range list(get(a.value, "metadata", "finalizers")) {
-			if str(f) == "resources-finalizer.argocd.argoproj.io" {
-				guarded = append(guarded, a.name)
-			}
+		if cascades(get(a.value, "metadata", "finalizers")) {
+			guarded = append(guarded, a.name)
 		}
 	}
 	for _, a := range appsets {
-		for _, f := range list(get(a.spec(), "template", "metadata", "finalizers")) {
-			if str(f) == "resources-finalizer.argocd.argoproj.io" {
-				guarded = append(guarded, "every Application "+a.name+" generates")
-			}
-		}
+		// An ApplicationSet gives what it generates the finalizer whether or
+		// not its template names one (measured on Argo CD v3.5.3), and
+		// preserveResourcesOnDeletion did not keep the workloads when it was
+		// tried, so every generated Application is named.
+		guarded = append(guarded, "every Application "+a.name+" generates")
 	}
 	if len(guarded) > 0 {
 		p.Handover = append(p.Handover, fmt.Sprintf(
 			"never delete %s: resources-finalizer.argocd.argoproj.io deletes everything it deployed. Every step above is a patch for exactly this reason",
 			strings.Join(guarded, ", ")))
 	}
+}
+
+// cascades reports whether a finalizer list holds Argo CD's resources
+// finalizer, in any of its forms: bare, /foreground or /background.
+func cascades(finalizers any) bool {
+	for _, f := range list(finalizers) {
+		if f := str(f); f == "resources-finalizer.argocd.argoproj.io" || strings.HasPrefix(f, "resources-finalizer.argocd.argoproj.io/") {
+			return true
+		}
+	}
+	return false
 }
 
 // checkLive compares live generated Applications with the ones the plan
