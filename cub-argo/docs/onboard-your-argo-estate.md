@@ -75,7 +75,7 @@ flowchart LR
 ## Install
 
 ```bash
-cub plugin install confighub/examples@cub-argo-v0.1.0 --name argo
+cub plugin install confighub/examples@cub-argo-v0.2.0 --name argo
 cub plugin list   # argo should be listed, status ok
 ```
 

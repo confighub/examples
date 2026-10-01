@@ -29,7 +29,32 @@ a Space per cluster, and one root that reads it.
 
 **Start with the guide: [Onboard your Flux fleet](docs/onboard-your-flux-fleet.md).**
 
-## Try it on the expert example
+## Install
+
+```bash
+cub plugin install confighub/examples@cub-flux-v0.2.0 --name flux
+cub plugin list                  # flux should be listed, status ok
+cub flux plan <your fleet repository>
+```
+
+`plan` needs no ConfigHub account and changes nothing, so it is the safe first
+command on your own estate. Already on an earlier release?
+
+```bash
+cub plugin upgrade flux@cub-flux-v0.2.0
+```
+
+Releases are tagged `cub-flux-v<version>` in this repository, and what each one
+changed is in [docs/whats-new.md](docs/whats-new.md).
+
+To build from source instead (needs Go):
+
+```bash
+go build -o bin/cub-flux . && cub plugin install ./bin/cub-flux
+# after a git pull: go build -o bin/cub-flux . && cub plugin upgrade flux
+```
+
+## Try it on the expert example, from a checkout
 
 ```bash
 make example
@@ -90,25 +115,6 @@ is not Kubernetes YAML, which would fail Flux's build.
 Live exports (`kubectl get kustomizations ...`), OCIRepository and Bucket
 sources as layer inputs, `substituteFrom` values, and rendering: it reads
 kustomization files but does not run kustomize or Helm.
-
-## Install
-
-```bash
-cub plugin install confighub/examples@cub-flux-v0.1.0 --name flux
-cub plugin list       # flux should be listed, status ok
-cub flux plan ../gitops/flux/expert-fleet
-```
-
-Releases are tagged `cub-flux-v<version>` in this repository; upgrade by
-naming one: `cub plugin upgrade flux@cub-flux-v<version>`. What each release
-changed is in [docs/whats-new.md](docs/whats-new.md).
-
-To build from source instead (needs Go):
-
-```bash
-go build -o bin/cub-flux . && cub plugin install ./bin/cub-flux
-# after a git pull: go build -o bin/cub-flux . && cub plugin upgrade flux
-```
 
 ## Prove it on kind
 
