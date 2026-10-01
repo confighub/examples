@@ -1015,3 +1015,22 @@ func TestExplicitSourceTypeWinsOverAChartYaml(t *testing.T) {
 		t.Errorf("spec.source.directory names the tool, so it is not a chart: %v", p.Problems)
 	}
 }
+
+// The resources finalizer has three forms, and an Application carrying any
+// of them takes its workloads with it when it is deleted.
+func TestCascadesKnowsEveryFormOfTheFinalizer(t *testing.T) {
+	for f, want := range map[string]bool{
+		"resources-finalizer.argocd.argoproj.io":            true,
+		"resources-finalizer.argocd.argoproj.io/foreground": true,
+		"resources-finalizer.argocd.argoproj.io/background": true,
+		"post-delete-finalizer.argocd.argoproj.io":          false,
+		"resources-finalizer.argocd.argoproj.iox":           false,
+	} {
+		if got := cascades([]any{f}); got != want {
+			t.Errorf("cascades(%q) = %v, want %v", f, got, want)
+		}
+	}
+	if cascades(nil) {
+		t.Error("no finalizers cascades nothing")
+	}
+}

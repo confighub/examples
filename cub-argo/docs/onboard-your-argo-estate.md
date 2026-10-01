@@ -51,6 +51,79 @@ flowchart LR
   ab -.->|"live status"| v1
 ```
 
+## What repointing means
+
+Repointing is one edit to an object you already have: the field that says
+where it reads from. For an Argo CD Application that field is `spec.source`.
+Nothing is deleted, and no new Application takes the old one's place.
+
+```diff
+ kind: Application
+ metadata:
+   name: dev-1-apptique            # the same name
+   uid: ef68e5ce-d724-474f-…       # the same object
+   finalizers: […]                 # as they were
+ spec:
+   project: storefront             # as it was
+   destination: {…}                # as it was
+   syncPolicy: {…}                 # as it was
+   source:
+-    repoURL: https://github.com/you/fleet
+-    path: apps/apptique/overlays/dev
+-    targetRevision: main
++    repoURL: oci://<gateway>/space/argo-apptique-dev-1
++    path: .
++    targetRevision: latest
+```
+
+Before, Argo CD cloned Git and ran `kustomize build` on the overlay. After, it
+pulls that cluster's newest release from ConfigHub: the same manifests, already
+rendered. The same Argo CD syncs the same Application to the same cluster and
+tracks the same workloads. The handover checks, before it moves anything, that
+the release holds what Argo owns on the cluster field for field, so the first
+sync from ConfigHub changes nothing there.
+
+**Is my Application replaced by a new one?** No. It is edited in place, and
+the scripts check afterwards that it has the UID it had before. The other way
+to do this — create a second set of Applications and have them adopt the
+running workloads — means removing the old Applications without their
+finalizer and handing Argo's tracking from one owner to another. Repointing
+does neither, because the owner never changes.
+
+**Is anything deleted?** No Application, no ApplicationSet and no workload.
+Every step is a patch or a reviewed edit.
+
+**Who is in charge afterwards?** Argo CD still does the syncing. ConfigHub
+decides what it syncs: a change reaches a cluster only as a release, published
+after the approvals its stage asks for. A commit to the old Git path no longer
+reaches the cluster.
+
+**What happens to each kind of object:**
+
+| Object | What changes | How | The same object afterwards? |
+| --- | --- | --- | --- |
+| `root`, applied by hand | its source: the Space holding its children | `handover.sh` patches it | yes |
+| An app of apps, such as `storefront` | its source: the Space holding its children | a reviewed edit to its Unit, published | yes |
+| A plain Application its parent syncs | its source: its variant's Space | a reviewed edit to its Unit, published | yes |
+| A plain Application applied by hand | its source: its variant's Space | `handover.sh` patches it | yes |
+| An ApplicationSet | not repointed. It is retired: it stays, and generates nothing more ([why](#applicationsets-are-retired-not-repointed)) | a reviewed edit to its Unit, published | yes, inert |
+| An Application an ApplicationSet generated | its source: its variant's Space. It becomes a Unit, and stops being owned by the ApplicationSet | `move-applications.sh`, one stage at a time | yes, same UID |
+| An AppProject | `sourceRepos` gains the gateway | your commit to Git, before the handover | yes |
+| Your workloads | nothing | | yes, same UIDs |
+
+Three things are added to the cluster Argo CD runs on: one repository Secret,
+so Argo can read the gateway; on each Application `move-applications.sh`
+moves, the sync option `Prune=false` and an annotation naming its Space; and
+argobot, if you install it. Argo CD itself, its projects' other settings and every destination cluster
+are left as they are.
+
+**The way back is the same edit in reverse.** Each script records every source
+before it changes it and prints the commands that put it back, in the order
+that is safe.
+
+`cub cluster up` and `cub variant create` do make new Applications, for a
+cluster that has none. Repointing is for the Applications you already run.
+
 ## The words you will meet
 
 - **Layer**: one thing in your Argo tree that syncs a source — the root
@@ -255,24 +328,25 @@ flowchart LR
   a1 -.->|"template reads apps/apptique/overlays/*"| git
 ```
 
-After, the same layers read ConfigHub. Same objects, same names, three
-sources moved, in this order:
+After, the same objects read ConfigHub. Same names, same UIDs; the sources
+move in this order:
 
 ```mermaid
 flowchart LR
   r2["root"] -->|"creates"| s2["storefront"]
-  s2 -->|"creates"| a2["ApplicationSet apptique"]
-  a2 -->|"generates"| g2["dev-1-apptique<br/>staging-1-apptique<br/>prod-1-apptique"]
+  s2 -->|"creates"| a2["ApplicationSet apptique<br/>retired: generates nothing"]
+  s2 -->|"creates, from its Unit"| g2["dev-1-apptique<br/>staging-1-apptique<br/>prod-1-apptique"]
   r2 ==>|"1 · argo-root-children"| ch["ConfigHub"]
   s2 ==>|"2 · argo-storefront-children"| ch
-  a2 ==>|"3 · one Target per cluster"| ch
+  g2 ==>|"3 · each its own variant Space,<br/>a stage at a time"| ch
 ```
 
-The tree is the same on both sides. Only the three sources move, and in that
-order, because a parent pointed at a Space that holds nothing is a parent
-syncing an empty source — and with `prune: true` it deletes the children it
-applied. `apply.sh` publishes each Space before `handover.sh` repoints the layer
-that syncs it.
+The objects are the same on both sides. One line in the tree changes: each
+generated Application is now applied by `storefront`, from a Unit, rather than
+by the ApplicationSet. The sources move in that order because a parent pointed
+at a Space that holds nothing is a parent syncing an empty source — and with
+`prune: true` it deletes the children it applied. `apply.sh` publishes each
+Space before `handover.sh` repoints the layer that syncs it.
 
 `root` is patched in the cluster, because nothing above it can repoint it under
 review. `storefront` is a Unit by then, so its repoint is promoted and approved
@@ -338,9 +412,19 @@ stringData:
   insecureOCIForceHttp: "true"
 ```
 
-**Nothing is deleted.** `root` and `storefront` carry
-`resources-finalizer.argocd.argoproj.io`, which deletes everything they
-deployed. Every step is a patch for exactly that reason.
+**Nothing is deleted, and no finalizer is touched.** `root` and `storefront`
+carry `resources-finalizer.argocd.argoproj.io`, which deletes everything they
+deployed, and so does every Application an ApplicationSet generates, whether
+or not its template names the finalizer. Every step is a patch for exactly
+that reason, and none of them adds or removes a finalizer: an Application
+keeps the ones it had, so deleting it later does what it did before.
+
+Measured on 2026-10-01, Argo CD v3.5.3: three generated Applications, each
+with the finalizer, moved onto Units. Each kept its finalizer and its UID, and
+no workload's UID changed. One was then deleted on purpose: Argo removed its
+Deployment and Service, as the finalizer says, and `storefront` put the
+Application back from its Unit, which synced them again. The run log:
+[runs/2026-10-01-finalizers-after-the-move.md](runs/2026-10-01-finalizers-after-the-move.md).
 
 **The way back is printed, leaves first.** Before `handover.sh` patches an
 Application, it records that Application's whole source as it was, in
@@ -539,6 +623,11 @@ cub-scout what no controller claims in your namespaces, as a cross-check rather
 than a gate.
 
 ## ApplicationSets are retired, not repointed
+
+Retired means the ApplicationSet stays on the cluster and is told to stop
+generating; the Applications it already made stay where they are, and each is
+then repointed like any other. It is not deleted, and nothing is created in
+its place.
 
 An ApplicationSet generates one Application per cluster from **one shared
 template**, so it cannot give each cluster its own Space by editing that

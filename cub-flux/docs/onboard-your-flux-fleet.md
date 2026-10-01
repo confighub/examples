@@ -44,6 +44,76 @@ flowchart LR
   l2 -.->|"cub flux status"| v1
 ```
 
+## What repointing means
+
+Repointing is one edit to an object you already have: the fields that say
+where it reads from. For a Flux `Kustomization` those are `spec.sourceRef` and
+`spec.path`. Nothing is deleted, and no new `Kustomization` takes the old one's
+place.
+
+```diff
+ kind: Kustomization
+ metadata:
+   name: apps                      # the same name
+   namespace: flux-system
+ spec:
+   interval: 5m                    # as it was
+   prune: true                     # as it was
+   dependsOn: [{name: infrastructure}]   # as it was
+   sourceRef:
+-    kind: GitRepository
+-    name: fleet
+-  path: ./apps/dev
++    kind: OCIRepository
++    name: apps
++  path: ./
+```
+
+Before, Flux read the repository and ran kustomize on the overlay. After, it
+pulls that cluster's newest release from ConfigHub: the same manifests, already
+rendered, at the root of the artifact, which is why `path` changes too. The
+same kustomize-controller reconciles the same `Kustomization`, and because the
+name is the same it keeps its inventory, the record of what it applied. The
+handover checks, before it moves anything, that the release holds everything
+in that inventory, so the first reconcile from ConfigHub changes nothing on
+the cluster.
+
+**Is my Kustomization replaced by a new one?** No. The root applies a
+`Kustomization` of the same name that differs only in those two fields, which
+updates the one on the cluster. The script checks afterwards that each object
+is the one it was.
+
+**Is anything deleted?** No layer and no workload. On a fleet set up with `flux
+bootstrap`, the layer files do leave `clusters/<name>/` in Git, in one commit
+the script prints, so that `flux-system` stops applying them; the objects on
+the cluster stay.
+
+**Who is in charge afterwards?** Flux still does the reconciling. ConfigHub
+decides what it reconciles: a change reaches a cluster only as a release,
+published after the approvals its stage asks for. A commit to the layer's old
+Git path no longer reaches the cluster.
+
+**What happens to each kind of object:**
+
+| Object | What changes | How | The same object afterwards? |
+| --- | --- | --- | --- |
+| A layer's `Kustomization` | `sourceRef` and `path` | the root applies it, from the layer's Unit | yes, same name and inventory |
+| `flux-system`, and the Flux controllers | nothing; suspended during the handover of a bootstrapped fleet, then resumed | | yes |
+| The `GitRepository` | nothing. The layers stop reading it; `flux-system` still does, where it did | | yes |
+| Your workloads | nothing | | yes, same UIDs |
+| `ImageUpdateAutomation` | suspended, since its commits would feed nothing | `handover.sh` | yes |
+
+Three things are added to the cluster, all in `flux-system`: the root (an
+`OCIRepository` and a `Kustomization`, both named `confighub-root`), one
+`OCIRepository` per layer, and the Secret they read the gateway with.
+
+**The way back is the same edit in reverse.** `handover.sh` records each
+layer's `sourceRef` and `path` before the root is applied, and prints the
+commands that put them back, in the order that is safe.
+
+`join.sh` does create the layers, on a cluster that has none. Repointing is for
+the layers you already run.
+
 ## The words you will meet
 
 - **Layer**: one Flux `Kustomization` — `infrastructure`, `apps`, `tenants`.
@@ -627,13 +697,15 @@ flowchart TB
   fs -->|"the root reads"| l
 ```
 
-**A bootstrapped fleet is not handed over yet.** There, `flux-system` also
+**A bootstrapped fleet takes one commit as well.** There, `flux-system` also
 applies the directory that holds each layer's `Kustomization`, so it owns the
-very objects the root would take over. `handover.sh` reads the owner of every
-layer first and, if another Kustomization owns any of them, stops before it
+very objects the root takes over. `handover.sh` reads the owner of every layer
+first. Where it is `flux-system` reading Git, the script suspends it, lets the
+root take the layers, and pauses for the commit that removes the layer files
+from that directory; where it is any other Kustomization, it stops before it
 changes anything. It accepts `confighub-root` as the owner, so it can be re-run.
 See "Measured: a fleet set up the way `flux bootstrap` sets it up" below for why,
-and for the sequence that is safe.
+and for the sequence.
 
 Also left alone: SOPS keys and any Secret, and the `team-checkout` tenant —
 repointing it would move that team from Git access to ConfigHub access, which
