@@ -11,9 +11,11 @@ Needs `cub` and ConfigHub v0.7.0 or newer.
   `status` and `watch` read releases, revisions, Units, Targets and Spaces, and
   write live status and attestations, through the ConfigHub SDK (v0.8.0) in the
   plugin's own process. They no longer run `cub` and read what it prints, so
-  they do not need `cub` on the PATH and do not break when its output changes.
-  They use the login `cub` passes a plugin, or the active context. The scripts
-  `cub flux apply` writes still call `cub`: they are for you to read and run.
+  they do not break when its output changes, and `check` and `status` do not
+  need `cub` on the PATH. They use the login `cub` passes a plugin, or the
+  active context. The scripts `cub flux apply` writes still call `cub`, since
+  they are for you to read and run; `watch` runs one of them, so it still
+  needs `cub`.
 - **Targets without a worker.** `apply.sh` creates each Target the way `cub`
   v0.7.0 does, with no worker, provider or parameters. `cub flux` 0.2.0 fails
   against `cub` v0.7.0 at that step.

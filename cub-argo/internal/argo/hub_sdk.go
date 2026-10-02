@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/confighub/sdk/core/cubapi"
 	goclientnew "github.com/confighub/sdk/core/openapi/goclient-new"
@@ -14,17 +15,20 @@ import (
 // SDKHub answers Hub through the ConfigHub SDK, as the user cub is logged in
 // as: the context and token cub passes a plugin, or the active context.
 type SDKHub struct {
-	clients cubapi.MemoizedClient
+	userAgent string
 }
 
-// NewHub is the Hub the commands use. It connects on first use, so a command
-// that asks ConfigHub nothing needs no login.
+// NewHub is the Hub the commands use. It connects when asked something, so a
+// command that asks ConfigHub nothing needs no login.
 func NewHub(version string) *SDKHub {
-	return &SDKHub{clients: cubapi.MemoizedClient{UserAgent: "cub-argo/" + version}}
+	return &SDKHub{userAgent: "cub-argo/" + version}
 }
 
+// client reads the login again for each question, as running cub did: that
+// is a file read, not a request, and a status or watch left running for days
+// then picks up a token that was renewed meanwhile.
 func (h *SDKHub) client(ctx context.Context) (*cubapi.Client, error) {
-	c, err := h.clients.Client(ctx)
+	c, err := cubapi.ResolveClient(ctx, cubapi.ClientOptions{UserAgent: h.userAgent})
 	if err != nil {
 		return nil, fmt.Errorf("connecting to ConfigHub: %w", err)
 	}
@@ -86,7 +90,14 @@ func (h *SDKHub) releases(ctx context.Context, where string, space string) ([]Hu
 func (h *SDKHub) Release(space, ref string) (HubRelease, error) {
 	where := "Published = true"
 	if ref != "" && ref != "latest" {
-		where = "ManifestDigest = '" + ref + "'"
+		if !strings.HasPrefix(strings.ToLower(ref), "sha256:") {
+			return HubRelease{}, fmt.Errorf("release %q is neither \"latest\" nor a manifest digest (sha256:...)", ref)
+		}
+		w := cubapi.Where{}.Eq("ManifestDigest", ref)
+		if err := w.Err(); err != nil {
+			return HubRelease{}, err
+		}
+		where = w.String()
 	}
 	rs, err := h.releases(context.Background(), where, space)
 	if err != nil {
@@ -129,16 +140,21 @@ func (h *SDKHub) TaggedRevision(space, unit, tagID string) (int, bool, error) {
 	if err != nil {
 		return 0, false, err
 	}
+	if strings.ContainsAny(tagID, "'\\") {
+		return 0, false, fmt.Errorf("tag %q cannot be named in a filter", tagID)
+	}
 	revs, err := h.revisions(ctx, c, u, "Tags ? '"+tagID+"'")
 	if err != nil {
 		return 0, false, err
 	}
+	// The newest revision carrying the tag, whatever order they come in.
+	newest, found := 0, false
 	for _, r := range revs {
-		if r.Revision != nil {
-			return int(r.Revision.RevisionNum), true, nil
+		if r.Revision != nil && (!found || int(r.Revision.RevisionNum) > newest) {
+			newest, found = int(r.Revision.RevisionNum), true
 		}
 	}
-	return 0, false, nil
+	return newest, found, nil
 }
 
 func (h *SDKHub) RevisionData(space, unit string, revision int) ([]byte, error) {
@@ -228,11 +244,15 @@ func (h *SDKHub) Attest(a Attestation) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	unit := cubapi.Where{}.Eq("Slug", a.Unit)
+	if err := unit.Err(); err != nil {
+		return "", err
+	}
 	req := goclientnew.AttestationCreateRequest{
 		Type:      a.Type,
 		Note:      a.Note,
 		Claims:    a.Claims,
-		WhereUnit: "Slug = '" + a.Unit + "'",
+		WhereUnit: unit.String(),
 		Revision:  strconv.Itoa(a.Revision),
 	}
 	if a.Reject {
