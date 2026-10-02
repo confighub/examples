@@ -1,0 +1,25 @@
+name: No personal names
+
+# Committed files say "the team", "a colleague" or the issue number instead of
+# naming a person. The tree is clean; this keeps it clean by failing when a
+# tracked file contains one of the first names held in the script, and printing
+# the lines. scripts/verify.sh runs the same script locally.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  no-personal-names:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node scripts/verify-no-personal-names.mjs
