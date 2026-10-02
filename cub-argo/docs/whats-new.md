@@ -3,6 +3,27 @@
 Each release is tagged `cub-argo-v<version>` in confighub/examples and installs
 with `cub plugin install confighub/examples@cub-argo-v<version> --name argo`.
 
+## 0.3.0, 2026-10-02
+
+Needs `cub` and ConfigHub v0.7.0 or newer.
+
+- **ConfigHub is asked through the SDK.** `cub argo check`, `check --record`
+  and `status` read releases, revisions and Spaces, and write live status and
+  attestations, through the ConfigHub SDK (v0.8.0) in the plugin's own process.
+  They no longer run `cub` and read what it prints, so they do not need `cub`
+  on the PATH and do not break when its output changes. They use the login
+  `cub` passes a plugin, or the active context. The scripts `cub argo apply`
+  writes still call `cub`: they are for you to read and run.
+- **Targets without a worker.** `apply.sh` creates each Target the way `cub`
+  v0.7.0 does, with no worker, provider or parameters. `cub argo` 0.2.0 fails
+  against `cub` v0.7.0 at that step.
+- **The never-delete line names generated Applications.** An ApplicationSet
+  gives what it generates the resources finalizer whether or not its template
+  names it, so `plan` warns about each of them, and knows the finalizer's
+  `/foreground` and `/background` forms.
+- **The guide says what repointing means**, with a diff of the one edit and
+  what happens to each kind of object.
+
 ## 0.2.0, 2026-09-30
 
 - **Live status without argobot.** `cub argo status [--watch] [--hard-refresh]`

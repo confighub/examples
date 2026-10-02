@@ -23,6 +23,10 @@ var (
 	date    = "unknown"
 )
 
+// hub is the plugin's connection to ConfigHub, through the SDK. It connects
+// when a command first asks it something.
+var hub = flux.NewHub(version)
+
 // Version is the plugin's version, set at release build time.
 func Version() string { return version }
 
@@ -214,7 +218,7 @@ One cluster at a time: pass --kube-context for the cluster to read.`,
 			bad := 0
 			var results []flux.Result
 			for _, ck := range checks {
-				r, err := flux.RunCheck(flux.Run, ck, ckDeep)
+				r, err := flux.RunCheck(flux.Run, hub, ck, ckDeep)
 				if err != nil {
 					if ckJSON {
 						return fmt.Errorf("%s: %w", ck.Kustomization, err)
@@ -227,7 +231,7 @@ One cluster at a time: pass --kube-context for the cluster to read.`,
 					bad++
 				}
 				if ckRecord {
-					id, err := flux.RecordCheck(flux.Run, r)
+					id, err := flux.RecordCheck(hub, r)
 					if err != nil {
 						return err
 					}
@@ -437,7 +441,7 @@ apply.sh printed.`,
 				}
 				return flux.Build(in, wOpts)
 			}
-			w := flux.NewWatcher(wOpts.Prefix, wOut, plan)
+			w := flux.NewWatcher(hub, wOpts.Prefix, wOut, plan)
 			ctx, stop := signal.NotifyContext(c.Context(), os.Interrupt, syscall.SIGTERM)
 			defer stop()
 			for {
@@ -518,7 +522,7 @@ func layersFor(c *cobra.Command, args []string, name, space, unit, target, clust
 		if cl.LayersSpace == "" || (cluster != "" && cl.Name != cluster) {
 			continue
 		}
-		more, err := flux.ChecksFromLayersSpace(flux.Run, cl.Name, cl.LayersSpace)
+		more, err := flux.ChecksFromLayersSpace(hub, cl.Name, cl.LayersSpace)
 		if err != nil {
 			return nil, err
 		}
@@ -597,14 +601,14 @@ func reportOnce(layers []flux.Check, refresh time.Duration, dryRun bool) ([]flux
 	var readings []flux.Reading
 	var errs []string
 	for _, l := range layers {
-		r, err := flux.ReadStatus(flux.Run, l, now)
+		r, err := flux.ReadStatus(flux.Run, hub, l, now)
 		if err != nil {
 			errs = append(errs, err.Error())
 			continue
 		}
 		readings = append(readings, r)
 	}
-	outs, err := flux.ReportStatus(flux.Run, flux.CubWriter, readings, refresh, dryRun, now)
+	outs, err := flux.ReportStatus(hub, readings, refresh, dryRun, now)
 	if err != nil {
 		errs = append(errs, err.Error())
 	}

@@ -99,7 +99,7 @@ var workloadKinds = map[string]bool{
 // ReadStatus reads one layer and says what ConfigHub should hear. A read that
 // fails returns an error and no reading: a guess written here could open a
 // gate or advance a change order.
-func ReadStatus(run Runner, c Check, now time.Time) (Reading, error) {
+func ReadStatus(run Runner, hub Hub, c Check, now time.Time) (Reading, error) {
 	r := Reading{Check: c}
 	out, err := run("kubectl", "-n", checkNamespace, "get", "kustomization", c.Kustomization, "-o", "json")
 	if err != nil {
@@ -127,7 +127,7 @@ func ReadStatus(run Runner, c Check, now time.Time) (Reading, error) {
 		r.Skip = fmt.Sprintf("reads %s, not Space %s", url, c.Space)
 		return r, nil
 	}
-	releases, err := publishedReleases(run, c.Space)
+	releases, err := publishedReleases(hub, c.Space)
 	if err != nil {
 		return r, err
 	}
@@ -286,25 +286,15 @@ type release struct {
 	Digest string
 }
 
-func publishedReleases(run Runner, space string) ([]release, error) {
-	out, err := run("cub", "release", "list", "--space", space, "-o", "json")
+func publishedReleases(hub Hub, space string) ([]release, error) {
+	list, err := hub.Releases(space)
 	if err != nil {
-		return nil, fmt.Errorf("listing the releases of %s: %w", space, err)
-	}
-	var list []struct {
-		Release struct {
-			ReleaseNum     int    `json:"ReleaseNum"`
-			ManifestDigest string `json:"ManifestDigest"`
-			Published      bool   `json:"Published"`
-		} `json:"Release"`
-	}
-	if err := json.Unmarshal(out, &list); err != nil {
 		return nil, fmt.Errorf("listing the releases of %s: %w", space, err)
 	}
 	var rs []release
 	for _, l := range list {
-		if l.Release.Published {
-			rs = append(rs, release{Num: l.Release.ReleaseNum, Digest: l.Release.ManifestDigest})
+		if l.Published {
+			rs = append(rs, release{Num: l.Num, Digest: l.ManifestDigest})
 		}
 	}
 	sort.Slice(rs, func(i, j int) bool { return rs[i].Num < rs[j].Num })
@@ -312,23 +302,10 @@ func publishedReleases(run Runner, space string) ([]release, error) {
 }
 
 // HeldStatus is the reading ConfigHub holds for a Space now, if any.
-func HeldStatus(run Runner, space string) (LiveStatus, bool, error) {
-	out, err := run("cub", "space", "get", space, "-o", "json")
+func HeldStatus(hub Hub, space string) (LiveStatus, bool, error) {
+	a, err := hub.SpaceAnnotations(space)
 	if err != nil {
 		return LiveStatus{}, false, fmt.Errorf("reading Space %s: %w", space, err)
-	}
-	var s struct {
-		Space struct {
-			Annotations map[string]string `json:"Annotations"`
-		} `json:"Space"`
-		Annotations map[string]string `json:"Annotations"`
-	}
-	if err := json.Unmarshal(out, &s); err != nil {
-		return LiveStatus{}, false, fmt.Errorf("reading Space %s: %w", space, err)
-	}
-	a := s.Space.Annotations
-	if a == nil {
-		a = s.Annotations
 	}
 	raw, ok := a[LiveStatusAnnotation]
 	if !ok {
@@ -352,9 +329,6 @@ func StatusPatch(s LiveStatus) ([]byte, error) {
 	return json.Marshal(map[string]any{"Annotations": map[string]string{LiveStatusAnnotation: string(doc)}})
 }
 
-// Writer sets a Space's live status.
-type Writer func(space string, patch []byte) error
-
 // Outcome is what reporting did for one layer.
 type Outcome struct {
 	Reading
@@ -365,14 +339,14 @@ type Outcome struct {
 // ReportStatus writes each reading that says something new, or that ConfigHub
 // has held for longer than refresh: observedAt is the only sign a reporter is
 // still running, so an unchanged reading is written again now and then.
-func ReportStatus(run Runner, write Writer, readings []Reading, refresh time.Duration, dryRun bool, now time.Time) ([]Outcome, error) {
+func ReportStatus(hub Hub, readings []Reading, refresh time.Duration, dryRun bool, now time.Time) ([]Outcome, error) {
 	var out []Outcome
 	// A Space that cannot be read or written is reported, and the rest are
 	// still reported: one deleted Space must not freeze every reading after it.
 	var errs []string
 	for _, r := range readings {
 		o := Outcome{Reading: r}
-		held, ok, err := HeldStatus(run, r.Check.Space)
+		held, ok, err := HeldStatus(hub, r.Check.Space)
 		if err != nil {
 			errs = append(errs, err.Error())
 			continue
@@ -411,7 +385,7 @@ func ReportStatus(run Runner, write Writer, readings []Reading, refresh time.Dur
 		if err != nil {
 			return out, err
 		}
-		if err := write(r.Check.Space, patch); err != nil {
+		if err := hub.PatchSpace(r.Check.Space, patch); err != nil {
 			errs = append(errs, fmt.Sprintf("writing the live status of %s: %v", r.Check.Space, err))
 			continue
 		}

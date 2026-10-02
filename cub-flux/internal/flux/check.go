@@ -1,7 +1,6 @@
 package flux
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 )
@@ -70,13 +69,13 @@ func (r Result) OK() bool {
 
 // RunCheck compares one layer with what ConfigHub holds for it. With fields,
 // it also compares every field the release sets.
-func RunCheck(run Runner, c Check, fields bool) (Result, error) {
+func RunCheck(run Runner, hub Hub, c Check, fields bool) (Result, error) {
 	ns := checkNamespace
 	live, err := LiveInventory(run, ns, c.Kustomization)
 	if err != nil {
 		return Result{}, err
 	}
-	rel, stored, err := ReleasedData(run, c.Space, c.Unit, c.Release)
+	rel, stored, err := ReleasedData(hub, c.Space, c.Unit, c.Release)
 	if err != nil {
 		return Result{}, err
 	}
@@ -130,36 +129,28 @@ func SetControllerNamespace(ns string) {
 // layers are defined there and nowhere else. Each Unit holds the layer's
 // Kustomization and the OCIRepository naming its variant Space, whose Unit is
 // named after the layer too.
-func ChecksFromLayersSpace(run Runner, cluster, space string) ([]Check, error) {
-	out, err := run("cub", "unit", "list", "--space", space, "-o", "json")
+func ChecksFromLayersSpace(hub Hub, cluster, space string) ([]Check, error) {
+	units, err := hub.UnitSlugs(space)
 	if err != nil {
 		return nil, fmt.Errorf("listing the layers of %s in %s: %w", cluster, space, err)
 	}
-	var units []struct {
-		Unit struct {
-			Slug string `json:"Slug"`
-		} `json:"Unit"`
-	}
-	if err := json.Unmarshal(out, &units); err != nil {
-		return nil, fmt.Errorf("listing the layers of %s in %s: %w", cluster, space, err)
-	}
 	var checks []Check
-	for _, u := range units {
+	for _, unit := range units {
 		// The root reads the published release, so the layer is what that
 		// release holds: a Unit's head may be ahead of it, and a Unit may not
 		// be in it at all.
-		_, data, err := ReleasedData(run, space, u.Unit.Slug, "latest")
+		_, data, err := ReleasedData(hub, space, unit, "latest")
 		if err != nil {
 			if strings.Contains(err.Error(), "does not hold") {
 				continue
 			}
-			return nil, fmt.Errorf("reading layer %s of %s: %w", u.Unit.Slug, cluster, err)
+			return nil, fmt.Errorf("reading layer %s of %s: %w", unit, cluster, err)
 		}
 		docs, err := documentsIn(data)
 		if err != nil {
-			return nil, fmt.Errorf("reading layer %s of %s: %w", u.Unit.Slug, cluster, err)
+			return nil, fmt.Errorf("reading layer %s of %s: %w", unit, cluster, err)
 		}
-		c := Check{Unit: u.Unit.Slug, Cluster: cluster}
+		c := Check{Unit: unit, Cluster: cluster}
 		for _, d := range docs {
 			switch str(d["kind"]) {
 			case "Kustomization":
@@ -173,7 +164,7 @@ func ChecksFromLayersSpace(run Runner, cluster, space string) ([]Check, error) {
 			}
 		}
 		if c.Kustomization == "" || c.Space == "" {
-			return nil, fmt.Errorf("layer %s of %s in %s holds no Kustomization reading a variant Space", u.Unit.Slug, cluster, space)
+			return nil, fmt.Errorf("layer %s of %s in %s holds no Kustomization reading a variant Space", unit, cluster, space)
 		}
 		checks = append(checks, c)
 	}

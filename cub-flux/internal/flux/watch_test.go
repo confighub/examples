@@ -2,7 +2,6 @@ package flux
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -10,34 +9,11 @@ import (
 	"testing"
 )
 
-// hub stands in for ConfigHub as a join goes through it: which Targets exist
-// and which layers Spaces have a release.
-type hub struct {
-	targets, released map[string]bool
-}
-
-func (h *hub) run(name string, args ...string) ([]byte, error) {
-	key := strings.Join(args, " ")
-	switch {
-	case strings.HasPrefix(key, "target get"):
-		if h.targets[args[4]] {
-			return []byte(`{}`), nil
-		}
-		return nil, fmt.Errorf("target %s not found", args[4])
-	case strings.HasPrefix(key, "release get"):
-		if h.released[args[3]] {
-			return []byte(`{}`), nil
-		}
-		return nil, fmt.Errorf("latest: not found")
-	}
-	return nil, fmt.Errorf("unexpected %s", key)
-}
-
 // A cluster joins: the watcher proposes it, says what waits for approval, and
 // once its layers Space is released, says it can join. It never approves.
 func TestWatcherProposesAJoiningCluster(t *testing.T) {
 	p := planOf(t, example, repoRoot(t))
-	h := &hub{targets: map[string]bool{}, released: map[string]bool{}}
+	h := &fakeHub{targets: map[string]bool{}, released: map[string]bool{}}
 	for _, c := range p.Clusters {
 		if c.Name != "prod-1" {
 			h.targets[c.Name] = true
@@ -45,9 +21,7 @@ func TestWatcherProposesAJoiningCluster(t *testing.T) {
 		}
 	}
 	var scripts int
-	var marked []string
-	w := &Watcher{Run: h.run, Plan: func() (*Plan, error) { return p, nil }, Prefix: "flux", Out: t.TempDir(),
-		Mark: func(space string, patch []byte) error { marked = append(marked, space+" "+string(patch)); return nil }}
+	w := &Watcher{Hub: h, Plan: func() (*Plan, error) { return p, nil }, Prefix: "flux", Out: t.TempDir()}
 	w.Script = func(dir string) (string, error) {
 		scripts++
 		if _, err := os.Stat(filepath.Join(dir, "apply.sh")); err != nil {
@@ -79,7 +53,7 @@ func TestWatcherProposesAJoiningCluster(t *testing.T) {
 	if !strings.Contains(say.String(), "prod-1 is ready") || !strings.Contains(say.String(), "CLUSTER=prod-1") {
 		t.Fatalf("want the join command:\n%s", say.String())
 	}
-	if len(marked) != 1 || !strings.Contains(marked[0], "flux-prod-1-layers") || !strings.Contains(marked[0], "flux.confighub.com/joined") {
+	if marked := h.patches; len(marked) != 1 || !strings.Contains(marked[0], "flux-prod-1-layers") || !strings.Contains(marked[0], "flux.confighub.com/joined") {
 		t.Errorf("the layers Space should record the join: %v", marked)
 	}
 

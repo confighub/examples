@@ -26,9 +26,6 @@ func deployWith(replicas int) string {
 func TestFieldsAreReadOnTheDestination(t *testing.T) {
 	mgmt := fake(map[string]string{
 		"get application": remoteApp,
-		"release get":     releaseJSON,
-		"revision list":   `[{"Revision":{"RevisionNum":1}}]`,
-		"revision data":   releaseOneReplica,
 		"get deployment":  deployWith(4), // same name, on the management cluster
 	})
 	var readOn string
@@ -36,7 +33,7 @@ func TestFieldsAreReadOnTheDestination(t *testing.T) {
 		readOn = d.Server
 		return fake(map[string]string{"get deployment": deployWith(1)}), nil
 	}
-	r, err := RunCheck(mgmt, Check{Application: "prod-1-apptique", Space: "s", Unit: "u", Namespace: "apptique"}, true, workloads)
+	r, err := RunCheck(mgmt, oneReplicaReleased(), Check{Application: "prod-1-apptique", Space: "s", Unit: "u", Namespace: "apptique"}, true, workloads)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,13 +47,13 @@ func TestFieldsAreReadOnTheDestination(t *testing.T) {
 
 // A destination that cannot be reached is not a clean check.
 func TestUnreachableDestinationIsNotClean(t *testing.T) {
-	mgmt := fake(map[string]string{"get application": remoteApp, "release get": releaseJSON, "revision list": `[{"Revision":{"RevisionNum":1}}]`, "revision data": releaseOneReplica})
+	mgmt := fake(map[string]string{"get application": remoteApp})
 	workloads := func(Destination) (Runner, error) {
 		return func(string, ...string) ([]byte, error) {
 			return nil, fmt.Errorf("kubectl -n apptique get: Unable to connect to the server: dial tcp: i/o timeout")
 		}, nil
 	}
-	r, err := RunCheck(mgmt, Check{Application: "a", Space: "s", Unit: "u"}, true, workloads)
+	r, err := RunCheck(mgmt, oneReplicaReleased(), Check{Application: "a", Space: "s", Unit: "u"}, true, workloads)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,11 +65,11 @@ func TestUnreachableDestinationIsNotClean(t *testing.T) {
 // A refusal to resolve the destination fails the check rather than falling
 // back to the management cluster.
 func TestUnresolvedDestinationFailsTheCheck(t *testing.T) {
-	mgmt := fake(map[string]string{"get application": remoteApp, "release get": releaseJSON, "revision list": `[{"Revision":{"RevisionNum":1}}]`, "revision data": releaseOneReplica, "get deployment": deployWith(1)})
+	mgmt := fake(map[string]string{"get application": remoteApp, "get deployment": deployWith(1)})
 	workloads := func(d Destination) (Runner, error) {
 		return nil, fmt.Errorf("no context for %s", d)
 	}
-	if _, err := RunCheck(mgmt, Check{Application: "a", Space: "s", Unit: "u"}, true, workloads); err == nil {
+	if _, err := RunCheck(mgmt, oneReplicaReleased(), Check{Application: "a", Space: "s", Unit: "u"}, true, workloads); err == nil {
 		t.Error("an unresolved destination must fail, not read the management cluster")
 	}
 }
@@ -117,4 +114,10 @@ func TestResolveDestination(t *testing.T) {
 			}
 		})
 	}
+}
+
+// oneReplicaReleased is a ConfigHub whose release 7 holds the Deployment with
+// one replica.
+func oneReplicaReleased() Hub {
+	return &fakeHub{release: &release7, revision: 1, data: releaseOneReplica}
 }

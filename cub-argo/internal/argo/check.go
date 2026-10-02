@@ -65,13 +65,13 @@ func (r Result) OK() bool {
 // fields, it also compares every field the release sets. The Application is
 // read with run, on the cluster Argo CD runs on; its objects are read with the
 // runner workloads gives for the Application's destination, which may refuse.
-func RunCheck(run Runner, c Check, fields bool, workloads func(Destination) (Runner, error)) (Result, error) {
+func RunCheck(run Runner, hub Hub, c Check, fields bool, workloads func(Destination) (Runner, error)) (Result, error) {
 	ns := checkNamespace
 	live, err := LiveInventory(run, ns, c.Application)
 	if err != nil {
 		return Result{}, err
 	}
-	rel, stored, err := ReleasedData(run, c.Space, c.Unit, c.Release)
+	rel, stored, err := ReleasedData(hub, c.Space, c.Unit, c.Release)
 	if err != nil {
 		return Result{}, err
 	}
