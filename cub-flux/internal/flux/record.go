@@ -2,8 +2,6 @@ package flux
 
 import (
 	"fmt"
-	"regexp"
-	"strconv"
 	"strings"
 )
 
@@ -17,11 +15,9 @@ import (
 // LiveCheckType is the attestation type a recorded check carries.
 const LiveCheckType = "LiveCheck"
 
-var attestationID = regexp.MustCompile(`attestation ([0-9a-f-]{36})`)
-
 // RecordCheck records one check's verdict. It needs a field comparison: a
 // claim that the cluster runs this release rests on more than the object set.
-func RecordCheck(run Runner, r Result) (string, error) {
+func RecordCheck(hub Hub, r Result) (string, error) {
 	if r.Fields == nil {
 		return "", fmt.Errorf("%s: --record needs --fields, so the claim rests on every field the release sets", r.Check.Kustomization)
 	}
@@ -40,15 +36,9 @@ func RecordCheck(run Runner, r Result) (string, error) {
 		problems = append(problems, fmt.Sprintf("fields compared on %d of %d objects", r.Fields.Compared, r.Fields.Total))
 	}
 	ns := checkNamespace
-	args := []string{"attestation", "create", "--space", r.Check.Space,
-		"--where", "Slug = '" + r.Check.Unit + "'",
-		"--revision", strconv.Itoa(r.Release.UnitRevision),
-		"--type", LiveCheckType,
-		"--claim", "kustomize.toolkit.fluxcd.io/kustomization=" + ns + "/" + r.Check.Kustomization,
-		"--claim", "confighub.com/release=" + r.Release.ManifestDigest}
 	note := fmt.Sprintf("cub flux check: %d objects match what the layer applied, and every field the release sets matches on all %d", r.Inventory.Same, r.Fields.Total)
-	if len(problems) > 0 {
-		args = append(args, "--reject")
+	reject := len(problems) > 0
+	if reject {
 		note = "cub flux check: " + strings.Join(problems, "; ")
 	}
 	// A note is a reason, not a report: long enough to say what, short enough
@@ -56,12 +46,17 @@ func RecordCheck(run Runner, r Result) (string, error) {
 	if len(note) > 480 {
 		note = note[:477] + "..."
 	}
-	out, err := run("cub", append(args, "--note", note)...)
+	id, err := hub.Attest(Attestation{
+		Space: r.Check.Space, Unit: r.Check.Unit, Revision: r.Release.UnitRevision,
+		Type: LiveCheckType,
+		Claims: map[string]string{
+			"kustomize.toolkit.fluxcd.io/kustomization": ns + "/" + r.Check.Kustomization,
+			"confighub.com/release":                     r.Release.ManifestDigest,
+		},
+		Reject: reject, Note: note,
+	})
 	if err != nil {
 		return "", fmt.Errorf("recording the check of %s: %w", r.Check.Kustomization, err)
 	}
-	if m := attestationID.FindStringSubmatch(string(out)); m != nil {
-		return m[1], nil
-	}
-	return strings.TrimSpace(string(out)), nil
+	return id, nil
 }

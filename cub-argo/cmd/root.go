@@ -23,6 +23,10 @@ var (
 	date    = "unknown"
 )
 
+// hub is the plugin's connection to ConfigHub, through the SDK. It connects
+// when a command first asks it something.
+var hub = argo.NewHub(version)
+
 // Version is the plugin's version, set at release build time.
 func Version() string { return version }
 
@@ -222,7 +226,7 @@ thing, to ConfigHub: each verdict as a LiveCheck attestation.`,
 			}
 			var results []argo.Result
 			for _, ck := range checks {
-				r, err := argo.RunCheck(argo.Run, ck, checkDeep, workloads)
+				r, err := argo.RunCheck(argo.Run, hub, ck, checkDeep, workloads)
 				if err != nil {
 					if checkJSON {
 						return fmt.Errorf("%s: %w", ck.Application, err)
@@ -235,7 +239,7 @@ thing, to ConfigHub: each verdict as a LiveCheck attestation.`,
 					bad++
 				}
 				if checkRecord {
-					id, err := argo.RecordCheck(argo.Run, r)
+					id, err := argo.RecordCheck(hub, r)
 					if err != nil {
 						return err
 					}
@@ -554,14 +558,14 @@ func reportOnce(checks []argo.StatusCheck, refresh time.Duration, dryRun bool, r
 	var readings []argo.Reading
 	var errs []string
 	for _, ck := range checks {
-		r, err := argo.ReadStatus(argo.Run, ck, now)
+		r, err := argo.ReadStatus(argo.Run, hub, ck, now)
 		if err != nil {
 			errs = append(errs, err.Error())
 			continue
 		}
 		readings = append(readings, r)
 	}
-	outs, err := argo.ReportStatus(argo.Run, argo.CubWriter, readings, refresh, dryRun, now)
+	outs, err := argo.ReportStatus(hub, readings, refresh, dryRun, now)
 	if err != nil {
 		errs = append(errs, err.Error())
 	}

@@ -14,10 +14,12 @@ const (
 	dX = "sha256:9999999999999999999999999999999999999999999999999999999999999999"
 )
 
-var releasesJSON = fmt.Sprintf(`[
- {"Release":{"ReleaseNum":1,"ManifestDigest":"%s","Published":true}},
- {"Release":{"ReleaseNum":2,"ManifestDigest":"%s","Published":true}},
- {"Release":{"ReleaseNum":3,"ManifestDigest":"%s","Published":false}}]`, d1, d2, dX)
+// Releases 1 and 2 are published; 3 is not.
+var releases = []HubRelease{
+	{Num: 1, ManifestDigest: d1, Published: true},
+	{Num: 2, ManifestDigest: d2, Published: true},
+	{Num: 3, ManifestDigest: dX},
+}
 
 const spaceURL = "oci://gw.example/space/argo-apptique-dev"
 
@@ -55,8 +57,8 @@ var statusCheck = StatusCheck{Application: "apptique-dev", Space: "argo-apptique
 
 func readApp(t *testing.T, ajson string) Reading {
 	t.Helper()
-	run := fake(map[string]string{"get application": ajson, "release list": releasesJSON})
-	r, err := ReadStatus(run, statusCheck, time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
+	run := fake(map[string]string{"get application": ajson})
+	r, err := ReadStatus(run, &fakeHub{releases: releases}, statusCheck, time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -164,10 +166,10 @@ func TestArgoStatusSkipsApplicationsNotReadingTheSpace(t *testing.T) {
 // A read that fails writes nothing: a guess could open a gate.
 func TestArgoStatusReadFailureIsNotAReading(t *testing.T) {
 	run := fake(map[string]string{"get application": app(t, nil)})
-	if _, err := ReadStatus(run, statusCheck, time.Now()); err == nil {
+	if _, err := ReadStatus(run, &fakeHub{releasesErr: fmt.Errorf("no such space")}, statusCheck, time.Now()); err == nil {
 		t.Error("a failed release list must be an error, not a reading")
 	}
-	if _, err := ReadStatus(fake(nil), statusCheck, time.Now()); err == nil {
+	if _, err := ReadStatus(fake(nil), &fakeHub{releases: releases}, statusCheck, time.Now()); err == nil {
 		t.Error("a failed Application read must be an error, not a reading")
 	}
 }
@@ -189,14 +191,15 @@ func TestArgoStatusMessageIsClipped(t *testing.T) {
 	}
 }
 
-func heldSpace(t *testing.T, s *LiveStatus) string {
-	t.Helper()
-	if s == nil {
-		return `{"Space":{"Slug":"argo-apptique-dev","Annotations":{"other":"kept"}}}`
+// holding is a ConfigHub whose Space argo-apptique-dev holds that reading, or
+// none.
+func holding(s *LiveStatus) *fakeHub {
+	ann := map[string]string{"other": "kept"}
+	if s != nil {
+		doc, _ := json.Marshal(s)
+		ann = map[string]string{LiveStatusAnnotation: string(doc)}
 	}
-	doc, _ := json.Marshal(s)
-	b, _ := json.Marshal(map[string]any{"Space": map[string]any{"Annotations": map[string]string{LiveStatusAnnotation: string(doc)}}})
-	return string(b)
+	return &fakeHub{annotations: map[string]map[string]string{"argo-apptique-dev": ann}}
 }
 
 func TestArgoReportStatusWritesOnlyWhatChanged(t *testing.T) {
@@ -222,16 +225,12 @@ func TestArgoReportStatusWritesOnlyWhatChanged(t *testing.T) {
 		{"dry run", nil, true, "dry-run"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			var wrote []string
-			write := func(space string, patch []byte) error {
-				wrote = append(wrote, space+" "+string(patch))
-				return nil
-			}
-			run := fake(map[string]string{"space get": heldSpace(t, tc.held)})
-			outs, err := ReportStatus(run, write, []Reading{{Check: statusCheck, Status: reading}}, 10*time.Minute, tc.dry, now)
+			hub := holding(tc.held)
+			outs, err := ReportStatus(hub, []Reading{{Check: statusCheck, Status: reading}}, 10*time.Minute, tc.dry, now)
 			if err != nil {
 				t.Fatal(err)
 			}
+			wrote := hub.patches
 			if outs[0].Did != tc.did {
 				t.Errorf("want %s, got %s", tc.did, outs[0].Did)
 			}
@@ -262,17 +261,17 @@ func TestArgoLeftSpaceReplacesOurStaleReading(t *testing.T) {
 		did  string
 	}{{"ours", ours, "written"}, {"another reporter's", theirs, "skipped"}, {"nothing held", nil, "skipped"}} {
 		t.Run(tc.name, func(t *testing.T) {
-			var wrote []byte
-			write := func(_ string, patch []byte) error { wrote = patch; return nil }
-			outs, err := ReportStatus(fake(map[string]string{"space get": heldSpace(t, tc.held)}), write, []Reading{gone}, 10*time.Minute, false, now)
+			hub := holding(tc.held)
+			outs, err := ReportStatus(hub, []Reading{gone}, 10*time.Minute, false, now)
 			if err != nil {
 				t.Fatal(err)
 			}
+			wrote := strings.Join(hub.patches, "")
 			if outs[0].Did != tc.did {
 				t.Fatalf("want %s, got %s", tc.did, outs[0].Did)
 			}
 			if tc.did == "written" {
-				if outs[0].Status.Gate() || !strings.Contains(string(wrote), "no longer reads this Space") {
+				if outs[0].Status.Gate() || !strings.Contains(wrote, "no longer reads this Space") {
 					t.Errorf("the replacement must not pass the gate and must say why: %s", wrote)
 				}
 			}
@@ -284,22 +283,15 @@ func TestArgoLeftSpaceReplacesOurStaleReading(t *testing.T) {
 func TestArgoReportStatusCarriesOnPastAnUnreadableSpace(t *testing.T) {
 	now := time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)
 	st := LiveStatus{Source: StatusSource, SyncStatus: "Synced", HealthStatus: "Healthy", OperationPhase: "Succeeded", ObservedAt: now.Format(time.RFC3339)}
-	run := func(name string, args ...string) ([]byte, error) {
-		if strings.Contains(strings.Join(args, " "), "space get gone") {
-			return nil, fmt.Errorf("space gone not found")
-		}
-		return []byte(heldSpace(t, nil)), nil
-	}
-	var wrote []string
-	write := func(space string, _ []byte) error { wrote = append(wrote, space); return nil }
-	outs, err := ReportStatus(run, write, []Reading{
+	hub := &fakeHub{unreadable: map[string]bool{"gone": true}}
+	outs, err := ReportStatus(hub, []Reading{
 		{Check: StatusCheck{Application: "a", Space: "gone"}, Status: st},
 		{Check: StatusCheck{Application: "b", Space: "here"}, Status: st},
 	}, time.Minute, false, now)
 	if err == nil || !strings.Contains(err.Error(), "gone") {
 		t.Errorf("the unreadable Space should be reported: %v", err)
 	}
-	if len(wrote) != 1 || wrote[0] != "here" || len(outs) != 1 {
+	if wrote := hub.patches; len(wrote) != 1 || !strings.HasPrefix(wrote[0], "here ") || len(outs) != 1 {
 		t.Errorf("the next Space should still be written: wrote %v, outcomes %v", wrote, outs)
 	}
 }

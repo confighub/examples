@@ -38,21 +38,22 @@ const (
 )
 
 // ClusterStates reads where each cluster of the plan stands.
-func ClusterStates(run Runner, p *Plan, prefix string) (map[string]JoinState, error) {
+func ClusterStates(hub Hub, p *Plan, prefix string) (map[string]JoinState, error) {
 	out := map[string]JoinState{}
 	for _, c := range p.Clusters {
 		if c.LayersSpace != "" {
 			out[c.Name] = HandedOver
 			continue
 		}
-		if _, err := run("cub", "target", "get", "--space", prefix+"-targets", c.Name, "-o", "json"); err != nil {
-			if !strings.Contains(err.Error(), "not found") && !strings.Contains(err.Error(), "404") {
-				return nil, fmt.Errorf("reading the Target of %s: %w", c.Name, err)
-			}
+		has, err := hub.HasTarget(prefix+"-targets", c.Name)
+		if err != nil {
+			return nil, fmt.Errorf("reading the Target of %s: %w", c.Name, err)
+		}
+		if !has {
 			out[c.Name] = Joining
 			continue
 		}
-		if _, err := run("cub", "release", "get", "--space", DeliverySpace(prefix, c.Name), "--oci-reference", "latest", "-o", "json"); err != nil {
+		if _, err := hub.Release(DeliverySpace(prefix, c.Name), "latest"); err != nil {
 			out[c.Name] = Proposed
 			continue
 		}
@@ -63,15 +64,14 @@ func ClusterStates(run Runner, p *Plan, prefix string) (map[string]JoinState, er
 
 // Watcher proposes the clusters that join a fleet.
 type Watcher struct {
-	Run Runner
+	// Hub is ConfigHub: where each cluster stands is read from it, and when a
+	// cluster's layers were released is recorded on it.
+	Hub Hub
 	// Script runs apply.sh in dir with PROPOSE_ONLY=1 and returns what it
 	// printed.
 	Script func(dir string) (string, error)
 	// Plan re-reads the fleet repository.
-	Plan func() (*Plan, error)
-	// Mark patches a Space, as CubWriter does; it records when a cluster's
-	// layers were released.
-	Mark   Writer
+	Plan   func() (*Plan, error)
 	Prefix string
 	Out    string
 	// told keeps what was last said about each cluster, so a watch that sees
@@ -80,8 +80,8 @@ type Watcher struct {
 }
 
 // NewWatcher is a Watcher that runs commands on this machine.
-func NewWatcher(prefix, out string, plan func() (*Plan, error)) *Watcher {
-	return &Watcher{Run: Run, Script: runProposeOnly, Plan: plan, Mark: CubWriter, Prefix: prefix, Out: out}
+func NewWatcher(hub Hub, prefix, out string, plan func() (*Plan, error)) *Watcher {
+	return &Watcher{Hub: hub, Script: runProposeOnly, Plan: plan, Prefix: prefix, Out: out}
 }
 
 var waitsFor = regexp.MustCompile(`(?m)^(\S+) waits for approval: (.*)$`)
@@ -99,7 +99,7 @@ func (w *Watcher) Once(say io.Writer) error {
 	if len(p.Problems) > 0 {
 		return fmt.Errorf("the plan has problems to fix first: %s", strings.Join(p.Problems, "; "))
 	}
-	before, err := ClusterStates(w.Run, p, w.Prefix)
+	before, err := ClusterStates(w.Hub, p, w.Prefix)
 	if err != nil {
 		return err
 	}
@@ -120,7 +120,7 @@ func (w *Watcher) Once(say io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("apply.sh with PROPOSE_ONLY=1 failed; its output is in %s: %w", filepath.Join(w.Out, "watch.log"), err)
 	}
-	after, err := ClusterStates(w.Run, p, w.Prefix)
+	after, err := ClusterStates(w.Hub, p, w.Prefix)
 	if err != nil {
 		return err
 	}
@@ -158,11 +158,8 @@ func (w *Watcher) Once(say io.Writer) error {
 // markJoined records on the cluster's layers Space when and why it was
 // proposed, as cub sveltos records on its variants.
 func (w *Watcher) markJoined(cluster string) {
-	if w.Mark == nil {
-		return
-	}
 	note := fmt.Sprintf(`{"Annotations":{"flux.confighub.com/joined":"proposed by cub flux watch; layers released %s"}}`, time.Now().UTC().Format(time.RFC3339))
-	_ = w.Mark(DeliverySpace(w.Prefix, cluster), []byte(note))
+	_ = w.Hub.PatchSpace(DeliverySpace(w.Prefix, cluster), []byte(note))
 }
 
 func (w *Watcher) log(printed string) {

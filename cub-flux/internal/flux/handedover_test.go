@@ -139,15 +139,14 @@ kind: Kustomization
 metadata: {name: apps, namespace: flux-system}
 spec: {targetNamespace: apptique-dev, path: ./}
 `
-	run := fake(map[string]string{
-		"unit list":                               `[{"Unit":{"Slug":"apps"}},{"Unit":{"Slug":"unreleased"}}]`,
-		"release get":                             `{"Release":{"ReleaseNum":4,"ManifestDigest":"sha256:l4","TagID":"t4"}}`,
-		"list --space flux-dev-layers apps":       `[{"Revision":{"RevisionNum":2}}]`,
-		"list --space flux-dev-layers unreleased": `[]`,
-		"revision data":                           unit,
-		"unit get":                                `{"Unit":{"HeadRevisionNum":3}}`,
-	})
-	checks, err := ChecksFromLayersSpace(run, "dev", "flux-dev-layers")
+	hub := &fakeHub{
+		units:     []string{"apps", "unreleased"},
+		release:   &HubRelease{Num: 4, ManifestDigest: "sha256:l4", TagID: "t4", Published: true},
+		revisions: map[string]int{"apps": 2},
+		data:      unit,
+		head:      3,
+	}
+	checks, err := ChecksFromLayersSpace(hub, "dev", "flux-dev-layers")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -155,7 +154,7 @@ spec: {targetNamespace: apptique-dev, path: ./}
 	if len(checks) != 1 || checks[0] != want {
 		t.Errorf("want %+v, got %+v", want, checks)
 	}
-	if _, err := ChecksFromLayersSpace(fake(map[string]string{"unit list": `[]`, "release get": `{"Release":{"ReleaseNum":1,"ManifestDigest":"sha256:x","TagID":"t"}}`}), "dev", "flux-dev-layers"); err == nil {
+	if _, err := ChecksFromLayersSpace(&fakeHub{release: &HubRelease{Num: 1, ManifestDigest: "sha256:x", TagID: "t"}}, "dev", "flux-dev-layers"); err == nil {
 		t.Error("an empty layers Space should say so")
 	}
 }

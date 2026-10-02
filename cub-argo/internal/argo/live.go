@@ -238,26 +238,3 @@ func CompareInventory(live Live, stored []Owned, destNamespace string) Inventory
 	sort.Strings(c.Notes)
 	return c
 }
-
-// Unclaimed asks cub-scout what on this cluster no controller claims. It is a
-// cross-check rather than the gate: cub-scout infers ownership, where
-// status.resources is Argo's own record. Absent or failing cub-scout is not a
-// failure, because nothing here depends on it.
-func Unclaimed(run Runner, namespace string) ([]string, error) {
-	out, err := run("cub", "scout", "map", "list", "--json", "-q", "owner=Native AND namespace="+namespace)
-	if err != nil {
-		return nil, err
-	}
-	var rows []struct {
-		Kind, Namespace, Name string
-	}
-	if err := json.Unmarshal(out, &rows); err != nil {
-		return nil, err
-	}
-	var names []string
-	for _, r := range rows {
-		names = append(names, r.Kind+" "+r.Namespace+"/"+r.Name)
-	}
-	sort.Strings(names)
-	return names, nil
-}

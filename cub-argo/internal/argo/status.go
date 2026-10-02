@@ -1,11 +1,9 @@
 package argo
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
-	"os/exec"
 	"sort"
 	"strings"
 	"time"
@@ -248,7 +246,7 @@ func (a application) problem() string {
 // ReadStatus reads one Application and says what ConfigHub should hear. A read
 // that fails returns an error and no reading: a guess written here could open
 // a gate or advance a change order.
-func ReadStatus(run Runner, c StatusCheck, now time.Time) (Reading, error) {
+func ReadStatus(run Runner, hub Hub, c StatusCheck, now time.Time) (Reading, error) {
 	r := Reading{Check: c}
 	out, err := run("kubectl", "-n", checkNamespace, "get", "application", c.Application, "-o", "json")
 	if err != nil {
@@ -263,7 +261,7 @@ func ReadStatus(run Runner, c StatusCheck, now time.Time) (Reading, error) {
 		r.Skip = fmt.Sprintf("reads %s, not Space %s, so there is nothing of ConfigHub's to report", a.sourceURLs(), c.Space)
 		return r, nil
 	}
-	releases, err := publishedReleases(run, c.Space)
+	releases, err := publishedReleases(hub, c.Space)
 	if err != nil {
 		return r, err
 	}
@@ -356,25 +354,15 @@ type release struct {
 	Digest string
 }
 
-func publishedReleases(run Runner, space string) ([]release, error) {
-	out, err := run("cub", "release", "list", "--space", space, "-o", "json")
+func publishedReleases(hub Hub, space string) ([]release, error) {
+	list, err := hub.Releases(space)
 	if err != nil {
-		return nil, fmt.Errorf("listing the releases of %s: %w", space, err)
-	}
-	var list []struct {
-		Release struct {
-			ReleaseNum     int    `json:"ReleaseNum"`
-			ManifestDigest string `json:"ManifestDigest"`
-			Published      bool   `json:"Published"`
-		} `json:"Release"`
-	}
-	if err := json.Unmarshal(out, &list); err != nil {
 		return nil, fmt.Errorf("listing the releases of %s: %w", space, err)
 	}
 	var rs []release
 	for _, l := range list {
-		if l.Release.Published {
-			rs = append(rs, release{Num: l.Release.ReleaseNum, Digest: l.Release.ManifestDigest})
+		if l.Published {
+			rs = append(rs, release{Num: l.Num, Digest: l.ManifestDigest})
 		}
 	}
 	sort.Slice(rs, func(i, j int) bool { return rs[i].Num < rs[j].Num })
@@ -382,23 +370,10 @@ func publishedReleases(run Runner, space string) ([]release, error) {
 }
 
 // HeldStatus is the reading ConfigHub holds for a Space now, if any.
-func HeldStatus(run Runner, space string) (LiveStatus, bool, error) {
-	out, err := run("cub", "space", "get", space, "-o", "json")
+func HeldStatus(hub Hub, space string) (LiveStatus, bool, error) {
+	a, err := hub.SpaceAnnotations(space)
 	if err != nil {
 		return LiveStatus{}, false, fmt.Errorf("reading Space %s: %w", space, err)
-	}
-	var s struct {
-		Space struct {
-			Annotations map[string]string `json:"Annotations"`
-		} `json:"Space"`
-		Annotations map[string]string `json:"Annotations"`
-	}
-	if err := json.Unmarshal(out, &s); err != nil {
-		return LiveStatus{}, false, fmt.Errorf("reading Space %s: %w", space, err)
-	}
-	a := s.Space.Annotations
-	if a == nil {
-		a = s.Annotations
 	}
 	raw, ok := a[LiveStatusAnnotation]
 	if !ok {
@@ -422,9 +397,6 @@ func StatusPatch(s LiveStatus) ([]byte, error) {
 	return json.Marshal(map[string]any{"Annotations": map[string]string{LiveStatusAnnotation: string(doc)}})
 }
 
-// Writer sets a Space's live status.
-type Writer func(space string, patch []byte) error
-
 // Outcome is what reporting did for one Application.
 type Outcome struct {
 	Reading
@@ -442,14 +414,14 @@ type Outcome struct {
 // fresher than refresh: two reporters on one Space would overwrite each other
 // on every pass. One older than that is from a reporter that has stopped, and
 // is replaced.
-func ReportStatus(run Runner, write Writer, readings []Reading, refresh time.Duration, dryRun bool, now time.Time) ([]Outcome, error) {
+func ReportStatus(hub Hub, readings []Reading, refresh time.Duration, dryRun bool, now time.Time) ([]Outcome, error) {
 	var out []Outcome
 	// A Space that cannot be read or written is reported, and the rest are
 	// still reported: one deleted Space must not freeze every reading after it.
 	var errs []string
 	for _, r := range readings {
 		o := Outcome{Reading: r}
-		held, ok, err := HeldStatus(run, r.Check.Space)
+		held, ok, err := HeldStatus(hub, r.Check.Space)
 		if err != nil {
 			errs = append(errs, err.Error())
 			continue
@@ -498,7 +470,7 @@ func ReportStatus(run Runner, write Writer, readings []Reading, refresh time.Dur
 		if err != nil {
 			return out, err
 		}
-		if err := write(r.Check.Space, patch); err != nil {
+		if err := hub.PatchSpace(r.Check.Space, patch); err != nil {
 			errs = append(errs, fmt.Sprintf("writing the live status of %s: %v", r.Check.Space, err))
 			continue
 		}
@@ -528,19 +500,6 @@ func PrintOutcomes(w io.Writer, outs []Outcome) {
 		}
 		fmt.Fprintf(w, "%s -> %s: %s (%s; %s)\n", o.Check.Application, o.Check.Space, o.Status, o.Did, gate)
 	}
-}
-
-// CubWriter sets a Space's live status with `cub space update --patch`, which
-// merges the body into the Space rather than replacing it.
-func CubWriter(space string, patch []byte) error {
-	cmd := exec.Command("cub", "space", "update", "--patch", space, "--from-stdin", "--quiet")
-	cmd.Stdin = bytes.NewReader(patch)
-	var stderr strings.Builder
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("cub space update %s: %s", space, strings.TrimSpace(stderr.String()))
-	}
-	return nil
 }
 
 // Argo CD caches the digest it resolved for "latest", so a release published
