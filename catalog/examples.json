@@ -698,13 +698,13 @@
       "admission": "verified-source",
       "source": {
         "repository": "confighub/kubara-confighub",
-        "revision": "fdae8a233fec57bf2f4102b8fea43c3bf557e35e",
+        "revision": "62afd6a7ef95e854b5d1cbb3834843c0a2911d67",
         "path": "examples/kind-lab",
-        "url": "https://github.com/confighub/kubara-confighub/tree/fdae8a233fec57bf2f4102b8fea43c3bf557e35e/examples/kind-lab"
+        "url": "https://github.com/confighub/kubara-confighub/tree/62afd6a7ef95e854b5d1cbb3834843c0a2911d67/examples/kind-lab"
       },
       "guides": {
-        "human": "https://github.com/confighub/kubara-confighub/blob/fdae8a233fec57bf2f4102b8fea43c3bf557e35e/docs/user/cub-kubara.md",
-        "lab": "https://github.com/confighub/kubara-confighub/blob/fdae8a233fec57bf2f4102b8fea43c3bf557e35e/examples/kind-lab/README.md"
+        "human": "https://github.com/confighub/kubara-confighub/blob/62afd6a7ef95e854b5d1cbb3834843c0a2911d67/docs/user/cub-kubara.md",
+        "lab": "https://github.com/confighub/kubara-confighub/blob/62afd6a7ef95e854b5d1cbb3834843c0a2911d67/examples/kind-lab/README.md"
       },
       "preview": {
         "working_directory": "a new empty directory",
@@ -725,18 +725,19 @@
       "effects": "The preview writes a Kubara platform directory (config.yaml, .env, a .gitignore and Kubara's generated charts) in the working directory; it needs no ConfigHub account and no cluster, and changes nothing else. The full lab creates two kind clusters in Docker and bootstraps Kubara and Argo CD on them (up.sh). run.sh then creates Spaces named kubara-* (or PREFIX-*) in your ConfigHub organization and releases to them. It also installs argobot on the hub and points Kubara's ApplicationSets at ConfigHub.",
       "stop_when": "Stop after the plan without authority to create Spaces in a ConfigHub organization, or without room in Docker for two kind clusters. A plan does not prove delivery. Run handover on the kind lab, not a real hub, until check passes there: it repoints a live hub's ApplicationSets. On kind, cert-manager Degraded, Traefik Progressing and the hub's argocd Application waiting for an Ingress address are expected.",
       "evidence": {
-        "checked_on": "2026-09-30",
-        "static": "Offline preview passed locally at the pinned revision with the released cub kubara 0.2.4: init (which now also writes a .gitignore), kubara generate --helm on Kubara v0.15.0 and again on v0.16.0, then plan; both plans are byte-identical, with 2 stages, 6 components and 16 Spaces, and identical to the plan recorded for 0.2.3",
-        "connected": "not checked by this index. The source's recorded run at the pinned revision shows apply.sh and handover.sh writing to a hosted ConfigHub organization, and a stage refusing an unhealthy promotion. Its second-approver run shows handover.sh stopping before prod for another approval, then resuming. The logs were recorded with cub kubara built from branches before each release, not with a released binary",
+        "checked_on": "2026-10-02",
+        "static": "Offline preview passed locally at the pinned revision with the released cub kubara 0.3.0 and cub v0.8.0: init, kubara generate --helm on Kubara v0.15.0 and again on v0.16.0, then plan; both plans are byte-identical, with 2 stages, 6 components and 16 Spaces. The plan now reports all 7 upstream charts checked at the exact version Kubara pins, so its hash differs from the one recorded for 0.2.4",
+        "connected": "not checked by this index. The source's recorded run at the pinned revision shows apply.sh and handover.sh writing to a hosted ConfigHub organization, and a stage refusing an unhealthy promotion. Its second-approver run shows handover.sh stopping before prod for another approval, then resuming. Its run of 2026-10-02 shows the same steps against ConfigHub v0.8.0 with cub v0.8.0. The logs were recorded with cub kubara built from branches before each release, not with a released binary",
         "controller": "not checked by this index. The source's recorded run shows Kubara's hub Argo CD delivering each cluster's approved release after handover, and its recorded hand-back returning each ApplicationSet to Git with nothing pruned. Its re-bootstrap run shows kubara bootstrap handing the hub back to Git, and handover.sh again restoring every Application to ConfigHub",
-        "runtime": "not checked by this index. The source's recorded run shows metrics-server Healthy on both clusters, cert-manager Degraded and Traefik Progressing on kind, and an image that does not exist turning dev Degraded. The second-approver run shows cub kubara check failing Degraded variants and holding Progressing ones as not yet",
+        "runtime": "not checked by this index. The source's recorded run shows metrics-server Healthy on both clusters, cert-manager Degraded and Traefik Progressing on kind, and an image that does not exist turning dev Degraded. The second-approver run shows cub kubara check failing Degraded variants and holding Progressing ones as not yet. The run of 2026-10-02 shows check --record writing a Pass or a rejection for each variant it judged, and a promotion to prod refused while dev is not healthy",
         "receipt": "catalog/qualification.json#/checks/kubara-kind-lab",
         "source_records": [
-          "https://github.com/confighub/kubara-confighub/blob/fdae8a233fec57bf2f4102b8fea43c3bf557e35e/examples/kind-lab/run-2026-09-30.log",
-          "https://github.com/confighub/kubara-confighub/blob/fdae8a233fec57bf2f4102b8fea43c3bf557e35e/examples/kind-lab/handback-2026-09-30.log",
-          "https://github.com/confighub/kubara-confighub/blob/fdae8a233fec57bf2f4102b8fea43c3bf557e35e/examples/kind-lab/run-v0.16-2026-09-30.log",
-          "https://github.com/confighub/kubara-confighub/blob/fdae8a233fec57bf2f4102b8fea43c3bf557e35e/examples/kind-lab/run-approve-2026-09-30.log",
-          "https://github.com/confighub/kubara-confighub/blob/fdae8a233fec57bf2f4102b8fea43c3bf557e35e/examples/kind-lab/rebootstrap-2026-09-30.log"
+          "https://github.com/confighub/kubara-confighub/blob/62afd6a7ef95e854b5d1cbb3834843c0a2911d67/examples/kind-lab/run-2026-09-30.log",
+          "https://github.com/confighub/kubara-confighub/blob/62afd6a7ef95e854b5d1cbb3834843c0a2911d67/examples/kind-lab/handback-2026-09-30.log",
+          "https://github.com/confighub/kubara-confighub/blob/62afd6a7ef95e854b5d1cbb3834843c0a2911d67/examples/kind-lab/run-v0.16-2026-09-30.log",
+          "https://github.com/confighub/kubara-confighub/blob/62afd6a7ef95e854b5d1cbb3834843c0a2911d67/examples/kind-lab/run-approve-2026-09-30.log",
+          "https://github.com/confighub/kubara-confighub/blob/62afd6a7ef95e854b5d1cbb3834843c0a2911d67/examples/kind-lab/rebootstrap-2026-09-30.log",
+          "https://github.com/confighub/kubara-confighub/blob/62afd6a7ef95e854b5d1cbb3834843c0a2911d67/examples/kind-lab/run-sdk-2026-10-02.log"
         ]
       },
       "maintenance_owner": "confighub/kubara-confighub",
@@ -744,8 +745,8 @@
       "requirements": {
         "local": {
           "tested_tool_versions": {
-            "cub": "v0.6.8",
-            "cub-kubara": "0.2.4",
+            "cub": "v0.8.0",
+            "cub-kubara": "0.3.0",
             "kubara": "v0.15.0"
           },
           "credentials": "none for init, kubara generate and plan",
@@ -762,9 +763,9 @@
             "git",
             "jq",
             "kubara v0.15 or v0.16",
-            "cub with the kubara plugin v0.2.4 (cub plugin install confighub/kubara-confighub)"
+            "cub v0.8.0 or newer, with the kubara plugin v0.3.0 (cub plugin install confighub/kubara-confighub)"
           ],
-          "version_note": "The full lab needs Docker (about 5 GB of memory for two kind clusters), kind, kubectl, helm, git, jq, Kubara v0.15 or v0.16, and cub with the kubara plugin v0.2.4. The source's logs were recorded with kind v0.31.0, Kubernetes v1.35.0, Argo CD 3.5.2 and cub v0.6.8; this index has not run the connected path.",
+          "version_note": "The full lab needs Docker (about 5 GB of memory for two kind clusters), kind, kubectl, helm, git, jq, Kubara v0.15 or v0.16, and cub v0.8.0 or newer with the kubara plugin v0.3.0. The plugin v0.3.0 is the first whose handover works with ConfigHub v0.8.0 and cub v0.8.0; it installs argobot v0.1.8. The source's run of 2026-10-02 was recorded with kind v0.31.0, Kubernetes v1.35.0, Argo CD 3.5.2, Kubara v0.16.0, and cub and ConfigHub v0.8.0; its earlier logs used cub v0.6.8. This index has not run the connected path.",
           "credentials": "A ConfigHub organization, signed in with cub auth login, for run.sh, upgrade.sh and handback.sh; up.sh needs no account. Local kind clusters only; no cloud credential.",
           "cost": "Two local kind clusters; up.sh takes about 10 minutes and run.sh about 15 to 20. ConfigHub resource cost unknown.",
           "cleanup": "bash examples/kind-lab/down.sh deletes both kind clusters and the lab directory. The lab's Spaces stay in ConfigHub unless it runs with CONFIGHUB=yes, which lists and then deletes the PREFIX-* Spaces."
