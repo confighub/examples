@@ -147,9 +147,11 @@ the layers you already run.
 ## Install
 
 ```bash
-cub plugin install confighub/examples@cub-flux-v0.2.0 --name flux
+cub plugin install confighub/examples@cub-flux-v0.3.0 --name flux
 cub plugin list   # flux should be listed, status ok
 ```
+
+This release needs `cub` and ConfigHub v0.7.0 or newer; `cub version` shows both.
 
 Upgrade later by naming the new release: `cub plugin upgrade flux@cub-flux-v<version>`.
 To build from source instead (needs Go):
