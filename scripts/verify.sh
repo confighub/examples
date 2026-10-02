@@ -4,6 +4,12 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "${script_dir}/.." && pwd)"
 
+# Only a git checkout has tracked files to read; a downloaded archive skips this.
+if git -C "${repo_root}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "==> Checking that no committed file names a person"
+  node "${repo_root}/scripts/verify-no-personal-names.mjs"
+fi
+
 echo "==> Checking public example catalog"
 node "${repo_root}/scripts/test-examples-catalog.mjs"
 
