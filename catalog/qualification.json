@@ -344,7 +344,7 @@
       }
     },
     "kubara-kind-lab": {
-      "source_revision": "fdae8a233fec57bf2f4102b8fea43c3bf557e35e",
+      "source_revision": "62afd6a7ef95e854b5d1cbb3834843c0a2911d67",
       "working_directory": "a new empty directory",
       "commands": [
         {
@@ -400,9 +400,9 @@
               "traefik"
             ],
             "spaces": 16,
-            "workshop_evidence": "0 of 7 upstream charts checked at the exact version Kubara pins; 7 checked at another version; 0 from another repository; 0 not in the Workshop Catalog.",
+            "workshop_evidence": "7 of 7 upstream charts checked at the exact version Kubara pins; 0 checked at another version; 0 from another repository; 0 not in the Workshop Catalog.",
             "last_line": "Offline: no account, no cluster, nothing changed.",
-            "plan_sha256": "sha256:e3cae7f0ce5fec5349a903e1fed7bc6e499e5c726898a42556e15ade01806daa",
+            "plan_sha256": "sha256:789b7b3d8b65d124e0ae0f85dd75a13aa350792ff973ce95e9244266864df84c",
             "same_plan_on_kubara": [
               "v0.15.0",
               "v0.16.0"
@@ -411,8 +411,8 @@
         }
       ],
       "tested_tool_versions": {
-        "cub": "v0.6.8",
-        "cub-kubara": "0.2.4",
+        "cub": "v0.8.0",
+        "cub-kubara": "0.3.0",
         "kubara": "v0.15.0"
       }
     }
