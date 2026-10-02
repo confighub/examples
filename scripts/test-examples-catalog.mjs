@@ -156,6 +156,7 @@ assert.equal(findExamples({ query: 'platform' })[0].id, 'layered-platform-recipe
 assert.equal(findExamples({ query: 'gpu' })[0].id, 'gpu-layered-recipe');
 assert.equal(findExamples({ query: 'kubara' })[0].id, 'kubara-kind-lab');
 assert.equal(findExamples({ query: 'Kubara platform into ConfigHub' })[0].id, 'kubara-kind-lab');
+assert.equal(findExamples({ query: 'Kubara add-ons' })[0].id, 'kubara-kind-lab');
 assert.ok(catalog.entries.every(entry => getExample(entry.id)?.source.url === entry.source.url));
 assert.ok(findExamples().every(eligible));
 

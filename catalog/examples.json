@@ -678,7 +678,7 @@
     },
     {
       "id": "kubara-kind-lab",
-      "task": "Bring a Kubara platform into ConfigHub and let its hub's Argo CD deliver only approved releases, on a kind hub and spoke",
+      "task": "Bring Kubara's managed add-ons into ConfigHub and let the hub's Argo CD deliver only approved releases, on a kind hub and spoke",
       "tags": [
         "kubara",
         "platform",
