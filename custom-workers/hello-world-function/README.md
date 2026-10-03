@@ -7,10 +7,10 @@ selected unit.
 
 ## What This Example Proves
 
-- how to register a custom function in a worker
+- how to register a custom function with a worker
 - how to accept one required string parameter
 - how to mutate `Kubernetes/YAML` unit data
-- how to run the worker locally, connected to ConfigHub as a Worker
+- how to run the function executor locally, connected to ConfigHub as a Worker
 
 This example mutates ConfigHub unit data. It does not apply anything to a
 cluster unless you later choose to apply the unit through some other workflow.
