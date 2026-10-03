@@ -4,7 +4,7 @@
 #
 # End-to-end demo of the kubescape example worker.
 #
-# This script builds the worker, runs it locally with `cub worker run`,
+# This script builds the worker, runs it locally as a ConfigHub Worker,
 # and exercises the vet-kubescape function against units with various
 # security control violations.
 #
@@ -39,7 +39,7 @@ echo ""
 # --- Cleanup trap ------------------------------------------------------------
 
 cleanup() {
-  # Kill the worker process group (cub worker run + the worker executable + child processes).
+  # Kill the worker's process group: the executable and anything it started.
   if [ -n "$WORKER_PID" ] && kill -0 "$WORKER_PID" 2>/dev/null; then
     echo "--- Stopping worker (PID $WORKER_PID) ---"
     kill -- -"$WORKER_PID" 2>/dev/null || kill "$WORKER_PID" 2>/dev/null || true
@@ -66,11 +66,17 @@ echo ""
 # --- Start worker ------------------------------------------------------------
 
 WORKER_LOG=$(mktemp /tmp/kubescape-worker.XXXXXX)
-echo "--- Starting worker with cub worker run ---"
+echo "--- Starting worker ---"
 echo "Worker log: $WORKER_LOG"
 echo "(kubescape downloads artifacts on first start, this may take a moment)"
 set -m  # Enable job control so the background job gets its own process group
-cub worker run --space "$SPACE" --executable ./kubescape-worker "$WORKER" &>"$WORKER_LOG" &
+cub worker create --space "$SPACE" "$WORKER"
+(
+  # The worker reads its credentials and the server from its environment.
+  eval "$(cub worker get-envs --space "$SPACE" "$WORKER")"
+  export CONFIGHUB_URL="${CONFIGHUB_URL:-$(cub context get -o jq=.coordinate.serverURL)}"
+  exec ./kubescape-worker
+) &>"$WORKER_LOG" &
 WORKER_PID=$!
 set +m
 echo "Worker started (PID $WORKER_PID)"

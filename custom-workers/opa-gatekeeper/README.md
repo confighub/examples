@@ -38,30 +38,21 @@ To deploy the worker in a cluster, first build and push a container image:
     docker build -f Dockerfile -t my-registry/opa-gatekeeper-worker:latest .
     docker push my-registry/opa-gatekeeper-worker:latest
 
-Then install using `cub worker install`:
+Let the worker list ValidatingWebhookConfigurations, which is how it finds the webhooks to call:
 
-    # Create the worker unit in ConfigHub
-    cub worker install --space $SPACE \
-      --unit gatekeeper-worker-unit \
-      --target $TARGET \
-      -n gatekeeper-worker \
-      --image my-registry/opa-gatekeeper-worker:latest \
-      -e "GATEKEEPER_URL=https://gatekeeper-webhook-service.gatekeeper-system.svc:443" \
-      -e "GATEKEEPER_SKIP_TLS_VERIFY=true" \
-      my-gatekeeper-worker
+    kubectl create clusterrole webhook-reader \
+      --verb=list,watch --resource=validatingwebhookconfigurations.admissionregistration.k8s.io
+    kubectl create clusterrolebinding worker-webhook-reader \
+      --clusterrole=webhook-reader \
+      --group="system:serviceaccounts:gatekeeper-worker"
 
-    # Apply the worker unit to the cluster
-    cub unit apply --space $SPACE gatekeeper-worker-unit
+Then give the cluster the Worker's credentials as a Secret and run the image with a Deployment that reads it. [`deploy-worker.sh`](../deploy-worker.sh) does both, and waits for the rollout:
 
-    # Wait for the namespace and deployment, then install the secret
-    kubectl -n gatekeeper-worker wait --for=create deployment/my-gatekeeper-worker --timeout=120s
-    cub worker install --space $SPACE \
-      --export-secret-only \
-      -n gatekeeper-worker \
-      my-gatekeeper-worker 2>/dev/null | kubectl apply -f -
+    IMAGE_PULL_POLICY=IfNotPresent ../deploy-worker.sh $SPACE my-gatekeeper-worker gatekeeper-worker my-registry/opa-gatekeeper-worker:latest \
+      GATEKEEPER_URL=https://gatekeeper-webhook-service.gatekeeper-system.svc:443 \
+      GATEKEEPER_SKIP_TLS_VERIFY=true
 
-    # Wait for the worker to be ready
-    kubectl -n gatekeeper-worker rollout status deployment/my-gatekeeper-worker --timeout=120s
+[External Functions](https://docs.confighub.com/guide/external-functions/#in-kubernetes) in the ConfigHub docs shows the Secret and the Deployment it applies, if you would rather write them yourself or keep the Deployment in a Unit.
 
 For a complete end-to-end demo using Kind, see [demo.sh](demo.sh).
 
@@ -84,21 +75,4 @@ You can also run the worker outside the cluster using `kubectl port-forward` to 
     # Run the worker
     ./opa-gatekeeper
 
-Or use `cub worker run`:
-
-    cub worker run --space $SPACE --executable ./opa-gatekeeper \
-      -e "GATEKEEPER_URL=https://localhost:8443" \
-      -e "GATEKEEPER_SKIP_TLS_VERIFY=true" \
-      my-gatekeeper-worker
-
-## Usage
-
-The `vet-opa-gatekeeper` function takes no parameters — it validates resources against all constraints deployed in the Gatekeeper cluster.
-
-    cub function do vet-opa-gatekeeper --where "Slug='my-unit'" --worker "my-space/my-worker"
-
-## Running Tests
-
-Unit tests use a mock HTTP server and do not require a running Gatekeeper instance:
-
-    go test -v ./...
+`CONFIGHUB_URL` must also be set, to the server you are logged in to: `export CONFIGHUB_URL=https://hub.confighub.com`.

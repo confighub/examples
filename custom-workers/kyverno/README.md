@@ -21,51 +21,31 @@ Build the example worker:
 
     go build
 
-### Running locally with `cub worker run`
+### Running locally
 
-The simplest way to run the example is with `cub worker run`, which automatically creates the worker and sets up the environment:
+Create the Worker, put its credentials in your shell, name the server, and start the executable:
 
-    cub worker run --space $SPACE --executable ./kyverno my-kyverno-worker
-
-This will create the worker if it doesn't exist, set the required environment variables (`CONFIGHUB_WORKER_ID`, `CONFIGHUB_WORKER_SECRET`, `CONFIGHUB_URL`), and start the executable. The `kyverno` CLI must be in PATH.
-
-### Running directly with environment variables
-
-Alternatively, you can set up the environment manually:
-
+    cub worker create --space $SPACE my-kyverno-worker
     eval "$(cub worker get-envs --space $SPACE my-kyverno-worker)"
+    export CONFIGHUB_URL=https://hub.confighub.com
     ./kyverno
 
-### Installing in a Kubernetes cluster
+The executable reads `CONFIGHUB_WORKER_ID`, `CONFIGHUB_WORKER_SECRET` and `CONFIGHUB_URL` from its environment and connects to ConfigHub as that Worker. The `kyverno` CLI must be in PATH.
 
-To deploy the worker in a Kubernetes cluster, first build and push a container image:
+### Running in a Kubernetes cluster
+
+Build and push a container image:
 
     docker build -f Dockerfile -t my-registry/kyverno-worker:latest .
     docker push my-registry/kyverno-worker:latest
 
-Then install using `cub worker install`:
+Then give the cluster the Worker's credentials as a Secret and run the image with a Deployment that reads it. [`deploy-worker.sh`](../deploy-worker.sh) does both, and waits for the rollout:
 
-    # Create the worker unit in ConfigHub
-    cub worker install --space $SPACE \
-      --unit kyverno-worker-unit \
-      --target $TARGET \
-      --image my-registry/kyverno-worker:latest \
-      my-kyverno-worker
+    IMAGE_PULL_POLICY=IfNotPresent ../deploy-worker.sh $SPACE my-kyverno-worker confighub my-registry/kyverno-worker:latest
 
-    # Apply the worker unit to the cluster
-    cub unit apply --space $SPACE kyverno-worker-unit
+[External Functions](https://docs.confighub.com/guide/external-functions/#in-kubernetes) in the ConfigHub docs shows the Secret and the Deployment it applies, if you would rather write them yourself or keep the Deployment in a Unit.
 
-    # Wait for the namespace and deployment, then install the secret
-    kubectl -n confighub wait --for=create deployment/my-kyverno-worker --timeout=120s
-    cub worker install --space $SPACE \
-      --export-secret-only \
-      -n confighub \
-      my-kyverno-worker 2>/dev/null | kubectl apply -f -
-
-    # Wait for the worker to be ready
-    kubectl -n confighub rollout status deployment/my-kyverno-worker --timeout=120s
-
-The worker connects to ConfigHub and registers the `vet-kyverno` function alongside the standard built-in functions.
+The worker connects to ConfigHub and registers the `vet-kyverno` function.
 
 ## Usage
 

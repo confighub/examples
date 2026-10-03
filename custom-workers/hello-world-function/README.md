@@ -10,7 +10,7 @@ selected unit.
 - how to register a custom function in a worker
 - how to accept one required string parameter
 - how to mutate `Kubernetes/YAML` unit data
-- how to run a function worker locally with `cub worker run`
+- how to run the worker locally, connected to ConfigHub as a Worker
 
 This example mutates ConfigHub unit data. It does not apply anything to a
 cluster unless you later choose to apply the unit through some other workflow.
@@ -37,7 +37,10 @@ go build -o ./hello-world-function .
 Start the worker in one terminal:
 
 ```bash
-cub worker run --space "$SPACE" --executable ./hello-world-function "$WORKER"
+cub worker create --space "$SPACE" "$WORKER"
+eval "$(cub worker get-envs --space "$SPACE" "$WORKER")"
+export CONFIGHUB_URL=https://hub.confighub.com
+./hello-world-function
 ```
 
 In a second terminal, create a test unit and invoke the function:
@@ -102,7 +105,7 @@ The worker starts in [main.go](./main.go). It registers one function against the
 - `CONFIGHUB_WORKER_ID`
 - `CONFIGHUB_WORKER_SECRET`
 
-Those environment variables are set for you when you use `cub worker run`.
+`cub worker get-envs` prints the Worker's ID and secret; `CONFIGHUB_URL` is the server you are logged in to.
 
 The actual mutation lives in [hello_world_function.go](./hello_world_function.go):
 

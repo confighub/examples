@@ -38,30 +38,21 @@ To deploy the worker in a cluster, first build and push a container image:
     docker build -f Dockerfile -t my-registry/kyverno-server-worker:latest .
     docker push my-registry/kyverno-server-worker:latest
 
-Then install using `cub worker install`:
+Let the worker list ValidatingWebhookConfigurations, which is how it finds the webhooks to call:
 
-    # Create the worker unit in ConfigHub
-    cub worker install --space $SPACE \
-      --unit kyverno-server-unit \
-      --target $TARGET \
-      -n kyverno-worker \
-      --image my-registry/kyverno-server-worker:latest \
-      -e "KYVERNO_URL=https://kyverno-svc.kyverno.svc:443" \
-      -e "KYVERNO_SKIP_TLS_VERIFY=true" \
-      my-kyverno-server
+    kubectl create clusterrole webhook-reader \
+      --verb=list,watch --resource=validatingwebhookconfigurations.admissionregistration.k8s.io
+    kubectl create clusterrolebinding worker-webhook-reader \
+      --clusterrole=webhook-reader \
+      --group="system:serviceaccounts:kyverno-worker"
 
-    # Apply the worker unit to the cluster
-    cub unit apply --space $SPACE kyverno-server-unit
+Then give the cluster the Worker's credentials as a Secret and run the image with a Deployment that reads it. [`deploy-worker.sh`](../deploy-worker.sh) does both, and waits for the rollout:
 
-    # Wait for the namespace and deployment, then install the secret
-    kubectl -n kyverno-worker wait --for=create deployment/my-kyverno-server --timeout=120s
-    cub worker install --space $SPACE \
-      --export-secret-only \
-      -n kyverno-worker \
-      my-kyverno-server 2>/dev/null | kubectl apply -f -
+    IMAGE_PULL_POLICY=IfNotPresent ../deploy-worker.sh $SPACE my-kyverno-server kyverno-worker my-registry/kyverno-server-worker:latest \
+      KYVERNO_URL=https://kyverno-svc.kyverno.svc:443 \
+      KYVERNO_SKIP_TLS_VERIFY=true
 
-    # Wait for the worker to be ready
-    kubectl -n kyverno-worker rollout status deployment/my-kyverno-server --timeout=120s
+[External Functions](https://docs.confighub.com/guide/external-functions/#in-kubernetes) in the ConfigHub docs shows the Secret and the Deployment it applies, if you would rather write them yourself or keep the Deployment in a Unit.
 
 For a complete end-to-end demo using Kind, see [demo.sh](demo.sh).
 
@@ -84,30 +75,4 @@ You can also run the worker outside the cluster using `kubectl port-forward` to 
     # Run the worker
     ./kyverno-server
 
-Or use `cub worker run`:
-
-    cub worker run --space $SPACE --executable ./kyverno-server \
-      -e "KYVERNO_URL=https://localhost:8443" \
-      -e "KYVERNO_SKIP_TLS_VERIFY=true" \
-      my-kyverno-worker
-
-## Usage
-
-The `vet-kyverno-server` function takes no parameters — it validates resources against all policies deployed in the Kyverno cluster.
-
-    cub function do vet-kyverno-server --where "Slug='my-unit'" --worker "my-space/my-worker"
-
-## Comparison with the CLI Example
-
-|                    | `kyverno` (CLI)              | `kyverno-server`             |
-| ------------------ | ---------------------------- | ---------------------------- |
-| Policy source      | Passed as function parameter | Deployed in Kyverno cluster  |
-| Kyverno dependency | CLI binary in PATH           | Kyverno running in a cluster |
-| Performance        | Process spawn per invocation | HTTP request per resource    |
-| Policy management  | Ad-hoc, per invocation       | Centralized in cluster       |
-
-## Running Tests
-
-Unit tests use a mock HTTP server and do not require a running Kyverno instance:
-
-    go test -v ./...
+`CONFIGHUB_URL` must also be set, to the server you are logged in to: `export CONFIGHUB_URL=https://hub.confighub.com`.

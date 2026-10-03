@@ -482,15 +482,13 @@ echo ""
 
 # ── Step 2: Local kind cluster + kyverno worker ──────────────────────────────
 #
-# The demo brings its own kind cluster, k8s-worker, and vet-kyverno worker so
+# The demo brings its own kind cluster and vet-kyverno worker so
 # initiative triggers have somewhere to run. Workers live in the platform
 # space. Everything is namespaced under CLUSTER_NAME (defaults to the platform
 # space slug) so cleanup.sh can find it.
 
 CLUSTER_NAME="${CLUSTER_NAME:-$PLATFORM_SPACE}"
 KCTX="kind-$CLUSTER_NAME"
-K8S_WORKER="k8s-worker"
-K8S_TARGET="k8s-worker-kubernetes-yaml-cluster"
 KYVERNO_WORKER="kyverno-cli-worker"
 KYVERNO_WORKER_NAMESPACE="kyverno-cli-worker"
 KYVERNO_IMAGE="kyverno-cli-worker:initiatives-demo"
@@ -509,42 +507,11 @@ docker build -t "$KYVERNO_IMAGE" "$KYVERNO_DIR"
 kind load docker-image "$KYVERNO_IMAGE" --name "$CLUSTER_NAME"
 echo ""
 
-echo "--- Installing standard Kubernetes worker ---"
-if $cub worker get --space "$PLATFORM_SPACE" "$K8S_WORKER" --quiet 2>/dev/null; then
-  echo "Worker '$K8S_WORKER' already exists, reusing."
-else
-  $cub worker install --space "$PLATFORM_SPACE" \
-    --export --include-secret \
-    -t Kubernetes \
-    "$K8S_WORKER" 2>/dev/null | kubectl --context "$KCTX" apply -f -
-fi
-kubectl --context "$KCTX" -n confighub rollout status deployment/"$K8S_WORKER" --timeout=120s
-$cub target get --space "$PLATFORM_SPACE" --wait --timeout 120s "$K8S_TARGET" >/dev/null
-echo "Target $K8S_TARGET is ready."
-echo ""
-
-echo "--- Installing kyverno CLI worker ---"
-if $cub worker get --space "$PLATFORM_SPACE" "$KYVERNO_WORKER" --quiet 2>/dev/null; then
-  echo "Worker '$KYVERNO_WORKER' already exists, reusing."
-else
-  $cub worker install --space "$PLATFORM_SPACE" \
-    --unit kyverno-cli-worker-unit \
-    --target "$K8S_TARGET" \
-    -n "$KYVERNO_WORKER_NAMESPACE" \
-    --image "$KYVERNO_IMAGE" \
-    --image-pull-policy Never \
-    "$KYVERNO_WORKER"
-  # Don't wait — the deployment won't be Ready until the secret below is applied.
-  $cub unit apply --space "$PLATFORM_SPACE" kyverno-cli-worker-unit
-  kubectl --context "$KCTX" -n "$KYVERNO_WORKER_NAMESPACE" \
-    wait --for=create deployment/"$KYVERNO_WORKER" --timeout=120s
-  $cub worker install --space "$PLATFORM_SPACE" \
-    --export-secret-only \
-    -n "$KYVERNO_WORKER_NAMESPACE" \
-    "$KYVERNO_WORKER" 2>/dev/null | kubectl --context "$KCTX" apply -f -
-fi
-kubectl --context "$KCTX" -n "$KYVERNO_WORKER_NAMESPACE" \
-  rollout status deployment/"$KYVERNO_WORKER" --timeout=120s
+echo "--- Deploying kyverno CLI worker ---"
+# A Secret with the Worker's credentials and a Deployment that reads it. Applying
+# them again is harmless, so a rerun needs no check for an existing worker.
+CUB="$cub" KUBECTL_CONTEXT="$KCTX" "$KYVERNO_DIR/../deploy-worker.sh" \
+  "$PLATFORM_SPACE" "$KYVERNO_WORKER" "$KYVERNO_WORKER_NAMESPACE" "$KYVERNO_IMAGE"
 echo "Kyverno CLI worker is ready."
 echo ""
 

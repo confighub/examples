@@ -27,8 +27,6 @@ done
 
 CLUSTER_NAME="kyverno-demo-$(( RANDOM % 9000 + 1000 ))"
 SPACE="kyverno-demo-$(( RANDOM % 9000 + 1000 ))"
-K8S_WORKER="k8s-worker"
-K8S_TARGET="k8s-worker-kubernetes-yaml-cluster"
 KYVERNO_WORKER="kyverno-worker"
 KYVERNO_WORKER_NAMESPACE="kyverno-worker"
 IMAGE_NAME="kyverno-server-worker:demo"
@@ -77,30 +75,12 @@ echo "--- Creating ConfigHub space ---"
 cub space create "$SPACE"
 echo ""
 
-# --- Bootstrap standard Kubernetes worker ------------------------------------
+# --- Install Kyverno ---------------------------------------------------------
 
-echo "--- Bootstrapping standard Kubernetes worker ---"
-cub worker install --space "$SPACE" \
-  --export --include-secret \
-  -t Kubernetes \
-  "$K8S_WORKER" 2>/dev/null | kubectl apply -f -
-
-echo "Waiting for k8s-worker deployment..."
-kubectl -n confighub rollout status deployment/"$K8S_WORKER" --timeout=120s
-
-echo "Waiting for target to be created by the server..."
-cub target get --space "$SPACE" --wait --timeout 60s "$K8S_TARGET" &>/dev/null
-echo "Target $K8S_TARGET is ready."
-echo ""
-
-# --- Install Kyverno via ConfigHub -------------------------------------------
-
-echo "--- Installing Kyverno via cub unit create + apply ---"
-cub unit create --space "$SPACE" kyverno-install \
-  https://github.com/kyverno/kyverno/releases/download/v1.17.2/install.yaml \
-  --toolchain Kubernetes/YAML \
-  --target "$K8S_TARGET"
-cub unit apply --space "$SPACE" kyverno-install --wait
+echo "--- Installing Kyverno ---"
+# Server-side apply: the CRDs are too large for a last-applied annotation.
+kubectl apply --server-side -f \
+  https://github.com/kyverno/kyverno/releases/download/v1.17.2/install.yaml
 
 echo "Waiting for Kyverno to be ready..."
 kubectl -n kyverno rollout status deployment/kyverno-admission-controller --timeout=120s
@@ -110,12 +90,10 @@ kubectl -n kyverno rollout status deployment/kyverno-reports-controller --timeou
 echo "Kyverno is ready."
 echo ""
 
-# --- Create Kyverno policy via ConfigHub -------------------------------------
+# --- Create Kyverno policies -------------------------------------------------
 
 echo "--- Creating Kyverno ValidatingPolicy (require-labels) ---"
-cub unit create --space "$SPACE" require-labels-policy - \
-  --toolchain Kubernetes/YAML \
-  --target "$K8S_TARGET" <<'POLICY'
+kubectl apply -f - <<'POLICY'
 apiVersion: policies.kyverno.io/v1
 kind: ValidatingPolicy
 metadata:
@@ -140,13 +118,10 @@ spec:
         object.metadata.labels['team'] != ''
       message: "The label 'team' is required."
 POLICY
-cub unit apply --space "$SPACE" require-labels-policy --wait
 echo ""
 
 echo "--- Creating Kyverno ValidatingPolicy (disallow-latest-tag) ---"
-cub unit create --space "$SPACE" disallow-latest-tag-policy - \
-  --toolchain Kubernetes/YAML \
-  --target "$K8S_TARGET" <<'POLICY'
+kubectl apply -f - <<'POLICY'
 apiVersion: policies.kyverno.io/v1
 kind: ValidatingPolicy
 metadata:
@@ -171,43 +146,22 @@ spec:
         )
       message: "Using 'latest' tag is not allowed."
 POLICY
-cub unit apply --space "$SPACE" disallow-latest-tag-policy --wait
 echo ""
 
-# --- Install kyverno-server worker ------------------------------------------
+# --- Deploy kyverno-server worker --------------------------------------------
 
-echo "--- Installing kyverno-server worker ---"
-# Create the worker unit in ConfigHub (not exported to stdout)
-cub worker install --space "$SPACE" \
-  --unit kyverno-worker-unit \
-  --target "$K8S_TARGET" \
-  -n "$KYVERNO_WORKER_NAMESPACE" \
-  --image "$IMAGE_NAME" \
-  --image-pull-policy Never \
-  -e "KYVERNO_URL=https://kyverno-svc.kyverno.svc:443" \
-  -e "KYVERNO_SKIP_TLS_VERIFY=true" \
-  "$KYVERNO_WORKER"
-
-# Apply the worker unit to the cluster (creates namespace, deployment)
-# Don't wait because the deployment won't be ready until the secret is applied below
-cub unit apply --space "$SPACE" kyverno-worker-unit
-
-# Grant the worker permission to discover Kyverno webhook configurations
-kubectl -n "$KYVERNO_WORKER_NAMESPACE" wait --for=create deployment/"$KYVERNO_WORKER" --timeout=120s
+echo "--- Deploying kyverno-server worker ---"
+# The worker lists ValidatingWebhookConfigurations to find Kyverno's webhooks.
 kubectl create clusterrole kyverno-webhook-reader \
-  --verb=list --resource=validatingwebhookconfigurations.admissionregistration.k8s.io
+  --verb=list,watch --resource=validatingwebhookconfigurations.admissionregistration.k8s.io
 kubectl create clusterrolebinding kyverno-worker-webhook-reader \
   --clusterrole=kyverno-webhook-reader \
   --group="system:serviceaccounts:$KYVERNO_WORKER_NAMESPACE"
 
-# Apply the ConfigHub connection secret
-cub worker install --space "$SPACE" \
-  --export-secret-only \
-  -n "$KYVERNO_WORKER_NAMESPACE" \
-  "$KYVERNO_WORKER" 2>/dev/null | kubectl apply -f -
-
-echo "Waiting for kyverno-worker deployment..."
-kubectl -n "$KYVERNO_WORKER_NAMESPACE" rollout status deployment/"$KYVERNO_WORKER" --timeout=120s
+# A Secret with the Worker's credentials and a Deployment that reads it.
+"$(dirname "$0")/../deploy-worker.sh" "$SPACE" "$KYVERNO_WORKER" "$KYVERNO_WORKER_NAMESPACE" "$IMAGE_NAME" \
+  KYVERNO_URL=https://kyverno-svc.kyverno.svc:443 \
+  KYVERNO_SKIP_TLS_VERIFY=true
 echo "Kyverno worker is ready."
 echo ""
 
