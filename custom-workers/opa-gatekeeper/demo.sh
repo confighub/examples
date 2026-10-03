@@ -150,10 +150,10 @@ spec:
 CONSTRAINT
 echo ""
 
-# --- Deploy gatekeeper worker ------------------------------------------------
+# --- Deploy gatekeeper function executor -------------------------------------
 
-echo "--- Deploying gatekeeper worker ---"
-# The worker lists ValidatingWebhookConfigurations to find Gatekeeper's webhooks.
+echo "--- Deploying gatekeeper function executor ---"
+# The function executor lists ValidatingWebhookConfigurations to find Gatekeeper's webhooks.
 kubectl create clusterrole gatekeeper-webhook-reader \
   --verb=list,watch --resource=validatingwebhookconfigurations.admissionregistration.k8s.io
 kubectl create clusterrolebinding gatekeeper-worker-webhook-reader \
@@ -164,7 +164,7 @@ kubectl create clusterrolebinding gatekeeper-worker-webhook-reader \
 "$(dirname "$0")/../deploy-worker.sh" "$SPACE" "$GATEKEEPER_WORKER" "$GATEKEEPER_WORKER_NAMESPACE" "$IMAGE_NAME" \
   GATEKEEPER_URL=https://gatekeeper-webhook-service.gatekeeper-system.svc:443 \
   GATEKEEPER_SKIP_TLS_VERIFY=true
-echo "Gatekeeper worker is ready."
+echo "Gatekeeper function executor is ready."
 echo ""
 
 # --- Create test units -------------------------------------------------------

@@ -482,7 +482,7 @@ echo ""
 
 # ── Step 2: Local kind cluster + kyverno worker ──────────────────────────────
 #
-# The demo brings its own kind cluster and vet-kyverno worker so
+# The demo brings its own kind cluster and vet-kyverno function executor so
 # initiative triggers have somewhere to run. Workers live in the platform
 # space. Everything is namespaced under CLUSTER_NAME (defaults to the platform
 # space slug) so cleanup.sh can find it.
@@ -507,12 +507,12 @@ docker build -t "$KYVERNO_IMAGE" "$KYVERNO_DIR"
 kind load docker-image "$KYVERNO_IMAGE" --name "$CLUSTER_NAME"
 echo ""
 
-echo "--- Deploying kyverno CLI worker ---"
+echo "--- Deploying kyverno CLI function executor ---"
 # A Secret with the Worker's credentials and a Deployment that reads it. Applying
-# them again is harmless, so a rerun needs no check for an existing worker.
+# them again is harmless, so a rerun needs no check for an existing Worker.
 CUB="$cub" KUBECTL_CONTEXT="$KCTX" "$KYVERNO_DIR/../deploy-worker.sh" \
   "$PLATFORM_SPACE" "$KYVERNO_WORKER" "$KYVERNO_WORKER_NAMESPACE" "$KYVERNO_IMAGE"
-echo "Kyverno CLI worker is ready."
+echo "Kyverno CLI function executor is ready."
 echo ""
 
 # ── Step 3: Detect kyverno worker ────────────────────────────────────────────

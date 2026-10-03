@@ -17,20 +17,20 @@ Build the kyverno CLI (if not already installed):
     # Or install from release:
     # See https://kyverno.io/docs/installation/#install-kyverno-cli
 
-Build the example worker:
+Build the example function executor:
 
     go build
 
 ### Running locally
 
-Create the Worker, put its credentials in your shell, name the server, and start the executable:
+Create a Worker, put its credentials in your shell, name the server, and start the function executor:
 
     cub worker create --space $SPACE my-kyverno-worker
     eval "$(cub worker get-envs --space $SPACE my-kyverno-worker)"
     export CONFIGHUB_URL=https://hub.confighub.com
     ./kyverno
 
-The executable reads `CONFIGHUB_WORKER_ID`, `CONFIGHUB_WORKER_SECRET` and `CONFIGHUB_URL` from its environment and connects to ConfigHub as that Worker. The `kyverno` CLI must be in PATH.
+The function executor reads `CONFIGHUB_WORKER_ID`, `CONFIGHUB_WORKER_SECRET` and `CONFIGHUB_URL` from its environment and connects to ConfigHub as that Worker. The `kyverno` CLI must be in PATH.
 
 ### Running in a Kubernetes cluster
 
@@ -45,7 +45,7 @@ Then give the cluster the Worker's credentials as a Secret and run the image wit
 
 [External Functions](https://docs.confighub.com/guide/external-functions/#in-kubernetes) in the ConfigHub docs shows the Secret and the Deployment it applies, if you would rather write them yourself or keep the Deployment in a Unit.
 
-The worker connects to ConfigHub and registers the `vet-kyverno` function.
+The function executor connects to ConfigHub and registers the `vet-kyverno` function with the Worker.
 
 ## Usage
 

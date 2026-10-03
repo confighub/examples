@@ -38,7 +38,7 @@ To deploy the worker in a cluster, first build and push a container image:
     docker build -f Dockerfile -t my-registry/kyverno-server-worker:latest .
     docker push my-registry/kyverno-server-worker:latest
 
-Let the worker list ValidatingWebhookConfigurations, which is how it finds the webhooks to call:
+Let the function executor list ValidatingWebhookConfigurations, which is how it finds the webhooks to call:
 
     kubectl create clusterrole webhook-reader \
       --verb=list,watch --resource=validatingwebhookconfigurations.admissionregistration.k8s.io
@@ -56,7 +56,7 @@ Then give the cluster the Worker's credentials as a Secret and run the image wit
 
 For a complete end-to-end demo using Kind, see [demo.sh](demo.sh).
 
-The worker connects to ConfigHub and registers the `vet-kyverno-server` function.
+The function executor connects to ConfigHub and registers the `vet-kyverno-server` function with the Worker.
 
 ### Running out-of-cluster
 

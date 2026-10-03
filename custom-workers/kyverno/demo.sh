@@ -81,10 +81,10 @@ echo ""
 
 # --- Install kyverno CLI worker ----------------------------------------------
 
-echo "--- Deploying kyverno CLI worker ---"
+echo "--- Deploying kyverno CLI function executor ---"
 # A Secret with the Worker's credentials and a Deployment that reads it.
 "$(dirname "$0")/../deploy-worker.sh" "$SPACE" "$KYVERNO_WORKER" "$KYVERNO_WORKER_NAMESPACE" "$IMAGE_NAME"
-echo "Kyverno CLI worker is ready."
+echo "Kyverno CLI function executor is ready."
 echo ""
 
 # --- Load policies and resources from demo-data/ -----------------------------

@@ -34,7 +34,7 @@ cub space create "$SPACE"
 go build -o ./hello-world-function .
 ```
 
-Start the worker in one terminal:
+Start the function executor in one terminal:
 
 ```bash
 cub worker create --space "$SPACE" "$WORKER"

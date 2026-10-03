@@ -148,10 +148,10 @@ spec:
 POLICY
 echo ""
 
-# --- Deploy kyverno-server worker --------------------------------------------
+# --- Deploy kyverno-server function executor ---------------------------------
 
-echo "--- Deploying kyverno-server worker ---"
-# The worker lists ValidatingWebhookConfigurations to find Kyverno's webhooks.
+echo "--- Deploying kyverno-server function executor ---"
+# The function executor lists ValidatingWebhookConfigurations to find Kyverno's webhooks.
 kubectl create clusterrole kyverno-webhook-reader \
   --verb=list,watch --resource=validatingwebhookconfigurations.admissionregistration.k8s.io
 kubectl create clusterrolebinding kyverno-worker-webhook-reader \
@@ -162,7 +162,7 @@ kubectl create clusterrolebinding kyverno-worker-webhook-reader \
 "$(dirname "$0")/../deploy-worker.sh" "$SPACE" "$KYVERNO_WORKER" "$KYVERNO_WORKER_NAMESPACE" "$IMAGE_NAME" \
   KYVERNO_URL=https://kyverno-svc.kyverno.svc:443 \
   KYVERNO_SKIP_TLS_VERIFY=true
-echo "Kyverno worker is ready."
+echo "Kyverno function executor is ready."
 echo ""
 
 # --- Create test units -------------------------------------------------------

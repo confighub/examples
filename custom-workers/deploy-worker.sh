@@ -2,9 +2,9 @@
 # Copyright (C) ConfigHub, Inc.
 # SPDX-License-Identifier: MIT
 #
-# Run a worker image in the current Kubernetes cluster, connected to ConfigHub
-# as a Worker: a Secret holding the Worker's credentials and a Deployment that
-# reads it. These are the two objects described in
+# Run a function executor image in the current Kubernetes cluster, connected to
+# ConfigHub using a Worker identity: a Secret holding the Worker's credentials
+# and a Deployment that reads it. These are the two objects described in
 # https://docs.confighub.com/guide/external-functions/#in-kubernetes, applied
 # with kubectl so a demo needs nothing but a cluster.
 #
@@ -16,7 +16,7 @@
 #
 # Environment:
 #   CUB                cub binary to invoke (default: cub)
-#   CONFIGHUB_URL      server the worker connects to (default: the server of the
+#   CONFIGHUB_URL      server the function executor connects to (default: the server of the
 #                      active cub context; a localhost server is rewritten to
 #                      host.docker.internal so a kind node can reach it)
 #   KUBECTL_CONTEXT    kubectl context to apply to (default: the current one)
