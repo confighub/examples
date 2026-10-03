@@ -27,8 +27,6 @@ done
 
 CLUSTER_NAME="gatekeeper-demo-$(( RANDOM % 9000 + 1000 ))"
 SPACE="gatekeeper-demo-$(( RANDOM % 9000 + 1000 ))"
-K8S_WORKER="k8s-worker"
-K8S_TARGET="k8s-worker-kubernetes-yaml-cluster"
 GATEKEEPER_WORKER="gatekeeper-worker"
 GATEKEEPER_WORKER_NAMESPACE="gatekeeper-worker"
 IMAGE_NAME="opa-gatekeeper-worker:demo"
@@ -77,30 +75,11 @@ echo "--- Creating ConfigHub space ---"
 cub space create "$SPACE"
 echo ""
 
-# --- Bootstrap standard Kubernetes worker ------------------------------------
-
-echo "--- Bootstrapping standard Kubernetes worker ---"
-cub worker install --space "$SPACE" \
-  --export --include-secret \
-  -t Kubernetes \
-  "$K8S_WORKER" 2>/dev/null | kubectl apply -f -
-
-echo "Waiting for k8s-worker deployment..."
-kubectl -n confighub rollout status deployment/"$K8S_WORKER" --timeout=120s
-
-echo "Waiting for target to be created by the server..."
-cub target get --space "$SPACE" --wait --timeout 60s "$K8S_TARGET" &>/dev/null
-echo "Target $K8S_TARGET is ready."
-echo ""
-
-# --- Install Gatekeeper via ConfigHub ----------------------------------------
+# --- Install Gatekeeper -------------------------------------------------------
 
 echo "--- Installing OPA Gatekeeper ---"
-cub unit create --space "$SPACE" gatekeeper-install \
-  https://raw.githubusercontent.com/open-policy-agent/gatekeeper/v3.17.1/deploy/gatekeeper.yaml \
-  --toolchain Kubernetes/YAML \
-  --target "$K8S_TARGET"
-cub unit apply --space "$SPACE" gatekeeper-install --wait
+kubectl apply -f \
+  https://raw.githubusercontent.com/open-policy-agent/gatekeeper/v3.17.1/deploy/gatekeeper.yaml
 
 echo "Waiting for Gatekeeper to be ready..."
 kubectl -n gatekeeper-system rollout status deployment/gatekeeper-audit --timeout=120s
@@ -108,12 +87,10 @@ kubectl -n gatekeeper-system rollout status deployment/gatekeeper-controller-man
 echo "Gatekeeper is ready."
 echo ""
 
-# --- Create Constraint Template and Constraint via ConfigHub -----------------
+# --- Create Constraint Template and Constraint --------------------------------
 
 echo "--- Creating ConstraintTemplate (K8sRequiredLabels) ---"
-cub unit create --space "$SPACE" require-labels-template - \
-  --toolchain Kubernetes/YAML \
-  --target "$K8S_TARGET" <<'TEMPLATE'
+kubectl apply -f - <<'TEMPLATE'
 apiVersion: templates.gatekeeper.sh/v1
 kind: ConstraintTemplate
 metadata:
@@ -143,13 +120,16 @@ spec:
           msg := sprintf("Missing required labels: %v", [missing])
         }
 TEMPLATE
-cub unit apply --space "$SPACE" require-labels-template --wait
+# Gatekeeper creates the constraint's CRD from the template; wait for it.
+for _ in $(seq 1 60); do
+  kubectl get crd k8srequiredlabels.constraints.gatekeeper.sh &>/dev/null && break
+  sleep 2
+done
+kubectl wait --for=condition=established crd/k8srequiredlabels.constraints.gatekeeper.sh --timeout=60s
 echo ""
 
 echo "--- Creating Constraint (require-team-label) ---"
-cub unit create --space "$SPACE" require-team-label - \
-  --toolchain Kubernetes/YAML \
-  --target "$K8S_TARGET" <<'CONSTRAINT'
+kubectl apply -f - <<'CONSTRAINT'
 apiVersion: constraints.gatekeeper.sh/v1beta1
 kind: K8sRequiredLabels
 metadata:
@@ -168,42 +148,23 @@ spec:
     labels:
       - team
 CONSTRAINT
-cub unit apply --space "$SPACE" require-team-label --wait
 echo ""
 
-# --- Install gatekeeper worker -----------------------------------------------
+# --- Deploy gatekeeper function executor -------------------------------------
 
-echo "--- Installing gatekeeper worker ---"
-cub worker install --space "$SPACE" \
-  --unit gatekeeper-worker-unit \
-  --target "$K8S_TARGET" \
-  -n "$GATEKEEPER_WORKER_NAMESPACE" \
-  --image "$IMAGE_NAME" \
-  --image-pull-policy Never \
-  -e "GATEKEEPER_URL=https://gatekeeper-webhook-service.gatekeeper-system.svc:443" \
-  -e "GATEKEEPER_SKIP_TLS_VERIFY=true" \
-  "$GATEKEEPER_WORKER"
-
-# Don't wait because the deployment won't be ready until the secret is applied below
-cub unit apply --space "$SPACE" gatekeeper-worker-unit
-
-# Grant the worker permission to discover Gatekeeper webhook configurations
-kubectl -n "$GATEKEEPER_WORKER_NAMESPACE" wait --for=create deployment/"$GATEKEEPER_WORKER" --timeout=120s
+echo "--- Deploying gatekeeper function executor ---"
+# The function executor lists ValidatingWebhookConfigurations to find Gatekeeper's webhooks.
 kubectl create clusterrole gatekeeper-webhook-reader \
-  --verb=list --resource=validatingwebhookconfigurations.admissionregistration.k8s.io
+  --verb=list,watch --resource=validatingwebhookconfigurations.admissionregistration.k8s.io
 kubectl create clusterrolebinding gatekeeper-worker-webhook-reader \
   --clusterrole=gatekeeper-webhook-reader \
   --group="system:serviceaccounts:$GATEKEEPER_WORKER_NAMESPACE"
 
-# Apply the ConfigHub connection secret
-cub worker install --space "$SPACE" \
-  --export-secret-only \
-  -n "$GATEKEEPER_WORKER_NAMESPACE" \
-  "$GATEKEEPER_WORKER" 2>/dev/null | kubectl apply -f -
-
-echo "Waiting for gatekeeper-worker deployment..."
-kubectl -n "$GATEKEEPER_WORKER_NAMESPACE" rollout status deployment/"$GATEKEEPER_WORKER" --timeout=120s
-echo "Gatekeeper worker is ready."
+# A Secret with the Worker's credentials and a Deployment that reads it.
+"$(dirname "$0")/../deploy-worker.sh" "$SPACE" "$GATEKEEPER_WORKER" "$GATEKEEPER_WORKER_NAMESPACE" "$IMAGE_NAME" \
+  GATEKEEPER_URL=https://gatekeeper-webhook-service.gatekeeper-system.svc:443 \
+  GATEKEEPER_SKIP_TLS_VERIFY=true
+echo "Gatekeeper function executor is ready."
 echo ""
 
 # --- Create test units -------------------------------------------------------

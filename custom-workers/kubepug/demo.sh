@@ -4,7 +4,7 @@
 #
 # End-to-end demo of the kubepug example worker.
 #
-# This script builds the worker, runs it locally with `cub worker run`,
+# This script builds the function code, runs it locally, connected to ConfigHub using a Worker identity,
 # and exercises the vet-kubepug function against units with deprecated and
 # deleted Kubernetes APIs.
 #
@@ -39,9 +39,9 @@ echo ""
 # --- Cleanup trap ------------------------------------------------------------
 
 cleanup() {
-  # Kill the worker process group (cub worker run + the worker executable).
+  # Kill the function executor's process group: the executable and anything it started.
   if [ -n "$WORKER_PID" ] && kill -0 "$WORKER_PID" 2>/dev/null; then
-    echo "--- Stopping worker (PID $WORKER_PID) ---"
+    echo "--- Stopping function executor (PID $WORKER_PID) ---"
     kill -- -"$WORKER_PID" 2>/dev/null || kill "$WORKER_PID" 2>/dev/null || true
     wait "$WORKER_PID" 2>/dev/null || true
   fi
@@ -66,13 +66,19 @@ echo ""
 # --- Start worker ------------------------------------------------------------
 
 WORKER_LOG=$(mktemp /tmp/kubepug-worker.XXXXXX)
-echo "--- Starting worker with cub worker run ---"
+echo "--- Starting function executor ---"
 echo "Worker log: $WORKER_LOG"
 set -m  # Enable job control so the background job gets its own process group
-cub worker run --space "$SPACE" --executable ./kubepug-worker "$WORKER" &>"$WORKER_LOG" &
+cub worker create --space "$SPACE" "$WORKER"
+(
+  # The function executor reads the Worker's credentials and the server from its environment.
+  eval "$(cub worker get-envs --space "$SPACE" "$WORKER")"
+  export CONFIGHUB_URL="${CONFIGHUB_URL:-$(cub context get -o jq=.coordinate.serverURL)}"
+  exec ./kubepug-worker
+) &>"$WORKER_LOG" &
 WORKER_PID=$!
 set +m
-echo "Worker started (PID $WORKER_PID)"
+echo "Function executor started (PID $WORKER_PID)"
 
 echo "--- Waiting for worker to be ready ---"
 for i in $(seq 1 30); do

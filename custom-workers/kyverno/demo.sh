@@ -31,8 +31,6 @@ done
 
 CLUSTER_NAME="kyverno-cli-demo-$(( RANDOM % 9000 + 1000 ))"
 SPACE="kyverno-cli-demo-$(( RANDOM % 9000 + 1000 ))"
-K8S_WORKER="k8s-worker"
-K8S_TARGET="k8s-worker-kubernetes-yaml-cluster"
 KYVERNO_WORKER="kyverno-cli-worker"
 KYVERNO_WORKER_NAMESPACE="kyverno-cli-worker"
 IMAGE_NAME="kyverno-cli-worker:demo"
@@ -81,46 +79,12 @@ echo "--- Creating ConfigHub space ---"
 cub space create "$SPACE"
 echo ""
 
-# --- Bootstrap standard Kubernetes worker ------------------------------------
-
-echo "--- Bootstrapping standard Kubernetes worker ---"
-cub worker install --space "$SPACE" \
-  --export --include-secret \
-  -t Kubernetes \
-  "$K8S_WORKER" 2>/dev/null | kubectl apply -f -
-
-echo "Waiting for k8s-worker deployment..."
-kubectl -n confighub rollout status deployment/"$K8S_WORKER" --timeout=120s
-
-echo "Waiting for target to be created by the server..."
-cub target get --space "$SPACE" --wait --timeout 60s "$K8S_TARGET" &>/dev/null
-echo "Target $K8S_TARGET is ready."
-echo ""
-
 # --- Install kyverno CLI worker ----------------------------------------------
 
-echo "--- Installing kyverno CLI worker ---"
-cub worker install --space "$SPACE" \
-  --unit kyverno-cli-worker-unit \
-  --target "$K8S_TARGET" \
-  -n "$KYVERNO_WORKER_NAMESPACE" \
-  --image "$IMAGE_NAME" \
-  --image-pull-policy Never \
-  "$KYVERNO_WORKER"
-
-# Don't wait because the deployment won't be ready until the secret is applied below
-cub unit apply --space "$SPACE" kyverno-cli-worker-unit
-
-kubectl -n "$KYVERNO_WORKER_NAMESPACE" wait --for=create deployment/"$KYVERNO_WORKER" --timeout=120s
-
-cub worker install --space "$SPACE" \
-  --export-secret-only \
-  -n "$KYVERNO_WORKER_NAMESPACE" \
-  "$KYVERNO_WORKER" 2>/dev/null | kubectl apply -f -
-
-echo "Waiting for kyverno-cli-worker deployment..."
-kubectl -n "$KYVERNO_WORKER_NAMESPACE" rollout status deployment/"$KYVERNO_WORKER" --timeout=120s
-echo "Kyverno CLI worker is ready."
+echo "--- Deploying kyverno CLI function executor ---"
+# A Secret with the Worker's credentials and a Deployment that reads it.
+"$(dirname "$0")/../deploy-worker.sh" "$SPACE" "$KYVERNO_WORKER" "$KYVERNO_WORKER_NAMESPACE" "$IMAGE_NAME"
+echo "Kyverno CLI function executor is ready."
 echo ""
 
 # --- Load policies and resources from demo-data/ -----------------------------

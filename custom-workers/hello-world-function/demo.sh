@@ -55,12 +55,18 @@ echo "--- Creating space ---"
 cub space create "$SPACE"
 echo ""
 
-echo "--- Starting worker ---"
+echo "--- Starting function executor ---"
 set -m
-cub worker run --space "$SPACE" --executable ./hello-world-function "$WORKER" &
+cub worker create --space "$SPACE" "$WORKER"
+(
+  # The function executor reads the Worker's credentials and the server from its environment.
+  eval "$(cub worker get-envs --space "$SPACE" "$WORKER")"
+  export CONFIGHUB_URL="${CONFIGHUB_URL:-$(cub context get -o jq=.coordinate.serverURL)}"
+  exec ./hello-world-function
+) &
 WORKER_PID=$!
 set +m
-echo "Worker started (PID $WORKER_PID)"
+echo "Function executor started (PID $WORKER_PID)"
 echo ""
 
 echo "--- Creating sample unit ---"

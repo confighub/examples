@@ -42,7 +42,7 @@ This demo uses the **component model**: every application component gets its own
 | `website` | website | base | Marketing | Web | App | initiatives-demo |
 | `initiatives-demo` | — | — | — | — | Platform | initiatives-demo |
 
-`initiatives-demo` is the **platform Space**: it holds the shared entities — the kyverno/k8s Workers, the initiative Views and their Filters, and the vet-kyverno Triggers — but **no application units**. The `Purpose=initiatives-demo` label ties all the demo's spaces together so the initiative filters (and `cleanup.sh`) can find them regardless of how they're named.
+`initiatives-demo` is the **platform Space**: it holds the shared entities — the kyverno Worker, the initiative Views and their Filters, and the vet-kyverno Triggers — but **no application units**. The `Purpose=initiatives-demo` label ties all the demo's spaces together so the initiative filters (and `cleanup.sh`) can find them regardless of how they're named.
 
 ### Units (18)
 
