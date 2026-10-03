@@ -4,7 +4,7 @@
 #
 # End-to-end demo of the kube-linter example worker.
 #
-# This script builds the worker, runs it locally as a ConfigHub Worker,
+# This script builds the function code, runs it locally, connected to ConfigHub using a Worker identity,
 # and exercises the vet-kube-linter function against units with various
 # best-practice violations.
 #
