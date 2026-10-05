@@ -3,7 +3,7 @@ module github.com/confighub/examples/cub-argo
 go 1.25.0
 
 require (
-	github.com/confighub/sdk/core v0.8.0
+	github.com/confighub/sdk/core v0.8.3
 	github.com/confighub/sveltos-confighub v0.5.2-0.20260928111757-b806aff549de
 	github.com/spf13/cobra v1.10.2
 	gopkg.in/yaml.v3 v3.0.1
