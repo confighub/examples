@@ -8,7 +8,7 @@
 #   ./tutorial.sh --list          what the sections are
 #
 # Keys while a command is waiting: space runs it, s skips it, f stops the
-# typing effect, ! opens a subshell, q quits. See demo-lib.sh.
+# typing effect, ! opens a subshell, q quits. See ../scripts/demo-lib.sh.
 #
 # Wants: cub (authenticated), docker, kind, kubectl. The cluster sections
 # create real kind clusters and take a few minutes each; `cleanup` removes
@@ -20,7 +20,7 @@
 # where minutes of kind output is dead air. Unset, or anything else, keeps the
 # tutorial's own order.
 
-source "$(dirname "${BASH_SOURCE[0]}")/demo-lib.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/../scripts/demo-lib.sh"
 
 SECTIONS="cluster install release change prod flow undo cleanup"
 

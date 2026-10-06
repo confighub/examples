@@ -4,10 +4,10 @@
 # no pv, no tmux, no script(1), and nothing newer than bash 3.2, which is what
 # macOS ships.
 #
-# Use it like this:
+# Use it like this, from a demo in its own directory beside scripts/:
 #
 #   #!/usr/bin/env bash
-#   source "$(dirname "${BASH_SOURCE[0]}")/demo-lib.sh"
+#   source "$(dirname "${BASH_SOURCE[0]}")/../scripts/demo-lib.sh"
 #
 #   desc "Everything starts from the base."
 #   run  "cub unit list --space cubbychat-base"

@@ -72,12 +72,13 @@ DEMO_SPEED=0 ./tutorial.sh flow             # no typing effect; still one keypre
 
 ## Using the runner for your own demo
 
-`demo-lib.sh` is the whole mechanism and has no dependencies beyond bash — no `pv`, no `tmux`, and
-nothing newer than the bash that ships with macOS.
+[`scripts/demo-lib.sh`](../scripts/demo-lib.sh) is the whole mechanism and has no dependencies
+beyond bash — no `pv`, no `tmux`, and nothing newer than the bash that ships with macOS. A demo in
+its own directory of this repository sources it the way `tutorial.sh` does:
 
 ```bash
 #!/usr/bin/env bash
-source "$(dirname "${BASH_SOURCE[0]}")/demo-lib.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/../scripts/demo-lib.sh"
 
 heading "Where the config lives"
 desc "Everything starts from the base."
