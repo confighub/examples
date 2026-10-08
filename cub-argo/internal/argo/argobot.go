@@ -6,14 +6,15 @@ import (
 )
 
 // ArgobotVersion is the argobot release argobot.sh installs unless told
-// otherwise. It reports status for a moved estate, but its refresh looks for
-// an Application named after the Space, which a moved estate does not have;
-// confighub/argobot#14 finds them by source, and is not in a release yet.
-const ArgobotVersion = "v0.1.7"
+// otherwise. It has to be one that finds its Targets by grant: a Target no
+// longer names a worker, and an argobot that asks for Targets by worker is
+// refused by the server and exits. It also finds a moved estate's Applications
+// by the Space their source reads, since they keep Argo's names.
+const ArgobotVersion = "v0.1.9"
 
-// argobotBySource is the first release that refreshes by source; "" until
-// there is one.
-const argobotBySource = ""
+// argobotBySource is the first release that refreshes by source. An install of
+// an earlier one, through ARGOBOT_VERSION, reports status only.
+const argobotBySource = "v0.1.9"
 
 // ArgobotScript writes argobot.sh, which runs argobot beside Argo CD with the
 // Targets' server worker as its identity, the one `cub cluster up` gives it.
@@ -39,10 +40,9 @@ func ArgobotScript(prefix string) string {
 	add("#   revision it synced) back to the Space it reads, as confighub.com/live-status,")
 	add("#   which the Healthy gate and the ConfigHub UI read.")
 	add("#")
-	add("# Both find an Application by the Space its source reads. For the refresh, that")
-	add("# needs an argobot with confighub/argobot#14; an earlier one looks for an")
-	add("# Application named after the Space, which a moved estate does not have, and")
-	add("# reports status only.")
+	add("# Both find an Application by the Space its source reads, which needs argobot")
+	add("# %s or later; an earlier one looks for an Application named after the Space,", argobotBySource)
+	add("# which a moved estate does not have.")
 	add("set -euo pipefail")
 	add(`ctx=${ARGOCD_CONTEXT:-$(kubectl config current-context 2>/dev/null || true)}`)
 	add(`[ -n "$ctx" ] || { echo "no kubectl context: set ARGOCD_CONTEXT to the cluster Argo CD runs on"; exit 1; }`)
@@ -73,14 +73,17 @@ func ArgobotScript(prefix string) string {
 	add(`  CONFIGHUB_WORKER_ID: "$id"`)
 	add(`  CONFIGHUB_WORKER_SECRET: "$secret"`)
 	add("YAML")
+	add("# argobot records each release's live status on the Release, which takes")
+	add("# EditChildren on the Target it was published to. apply.sh grants it on the")
+	add("# Targets it creates; this covers the ones an earlier apply.sh made without it.")
+	add(`bot_user=$(cub worker get --space %s server-worker -o jq=.BridgeWorker.UserID | tr -d '"\n')`, targets)
+	add(`[ -n "$bot_user" ] || { echo "could not read the bot user of %s/server-worker"; exit 1; }`, targets)
+	add(`for t in $(cub target list --space %s -o jq='.[].Target.Slug' | tr -d '"'); do`, targets)
+	add(`  cub target update "$t" --space %s --permission "EditChildren:${bot_user}" --quiet`, targets)
+	add("done")
 	add(`k -n argobot set env deployment/argobot CONFIGHUB_URL="$url" ARGO_NAMESPACE="$ns"`)
 	add(`k -n argobot set image deployment/argobot argobot="ghcr.io/confighub/argobot:$version"`)
 	add(`k -n argobot rollout status deployment/argobot --timeout=5m`)
-	if argobotBySource == "" {
-		add("# No argobot release refreshes by source yet (confighub/argobot#14). Set")
-		add("# ARGOBOT_VERSION to one that does once there is one.")
-		add(`[ -n "${ARGOBOT_VERSION:-}" ] || { echo; echo "note: argobot $version reports each Application's live status, but does NOT refresh these"; echo "Applications on a release: they keep Argo's names, and it looks for one named after the Space."; echo "Until a release has confighub/argobot#14, a published release waits for Argo's own poll, or:"; echo "  kubectl --context $ctx -n $ns annotate application <name> argocd.argoproj.io/refresh=hard --overwrite"; }`)
-	}
 	add("")
 	add(`echo "argobot $version runs as %s/server-worker. What it does:"`, targets)
 	add(`echo "  kubectl --context $ctx -n argobot logs deploy/argobot"`)

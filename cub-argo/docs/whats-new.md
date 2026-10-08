@@ -3,6 +3,26 @@
 Each release is tagged `cub-argo-v<version>` in confighub/examples and installs
 with `cub plugin install confighub/examples@cub-argo-v<version> --name argo`.
 
+## 0.3.1, unreleased
+
+- **argobot.sh installs an argobot that starts.** It installed argobot v0.1.7,
+  which asks ConfigHub for its Targets by worker. From ConfigHub v0.7.0 a
+  Target names no worker, so the server refuses the request and argobot exits,
+  again and again. It now installs v0.1.9, which finds its Targets by grant.
+- **A published release lands at once.** argobot v0.1.9 finds a moved estate's
+  Applications by the Space their source reads, so it refreshes them when that
+  Space publishes. Measured on a kind cluster with Argo CD v3.5.4: a release
+  reached the cluster in under 20 seconds, where without argobot it waited
+  157 seconds for Argo's own poll. The note saying releases still wait is gone.
+- **Live status reaches the Release.** argobot records it on the Release, which
+  takes `EditChildren` on the Target. `apply.sh` now grants it on the Targets
+  it creates, and `argobot.sh` grants it on the ones an earlier `apply.sh`
+  made, so an estate that is already onboarded needs only `argobot.sh` again.
+- **handover.sh takes the address as its help gives it.** The help asks for
+  `CONFIGHUB_OCI=oci://<gateway host>` and the script wrote the scheme again,
+  so that form gave `oci://oci://…`. It now takes the address with or without
+  the scheme, as `move-applications.sh` already did.
+
 ## 0.3.0, 2026-10-02
 
 Needs `cub` and ConfigHub v0.7.0 or newer.
