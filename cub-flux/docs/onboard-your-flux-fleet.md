@@ -21,6 +21,8 @@ without recreating anything, and the first two commands change nothing at all.
   layer applied on the release it applied — found by its exact digest, with
   whether its workloads are ready, where the layer checks them with `wait` or
   `healthChecks` — and `--require Healthy` makes the next stage wait for it.
+  `fluxbot.sh` puts that reporter on the cluster, so nobody has to keep a
+  command running.
 - **New clusters are proposed, not surprised.** `cub flux watch` notices a
   cluster added to the fleet repository, proposes it in ConfigHub, and releases
   it once a person approves.
@@ -135,7 +137,9 @@ Git path no longer reaches the cluster.
 
 Three things are added to the cluster, all in `flux-system`: the root (an
 `OCIRepository` and a `Kustomization`, both named `confighub-root`), one
-`OCIRepository` per layer, and the Secret they read the gateway with.
+`OCIRepository` per layer, and the Secret they read the gateway with. If you
+install the reporter, `fluxbot.sh` adds one pod there too, with its own Secret,
+ServiceAccount and Role.
 
 **The way back is the same edit in reverse.** `handover.sh` records each
 layer's `sourceRef` and `path` before the root is applied, and prints the
@@ -147,7 +151,7 @@ the layers you already run.
 ## Install
 
 ```bash
-cub plugin install confighub/examples@cub-flux-v0.3.2 --name flux
+cub plugin install confighub/examples@cub-flux-v0.4.0 --name flux
 cub plugin list   # flux should be listed, status ok
 ```
 
@@ -182,10 +186,12 @@ Run from the root of your fleet repository. Each script is written by
 | 3 | `CONFIGHUB_OCI=<gateway> bash onboard/apply.sh` | fills ConfigHub: bases, variants, stages, first releases, each cluster's layers Space. Flux still reads Git | no | `bash onboard/cleanup.sh` |
 | 4 | `CONFIGHUB_OCI=<gateway> CLUSTER=<cluster> FLUX_CONTEXT=<context> bash onboard/handover.sh` | for a cluster already running the layers from Git: puts the root on it, and the root takes each layer over ([3](#3-hand-one-cluster-over)) | yes | printed when it stops, and at the end |
 | 4′ | `CONFIGHUB_OCI=<gateway> CLUSTER=<cluster> FLUX_CONTEXT=<context> bash onboard/join.sh` | for a new cluster with Flux and nothing else: the root brings every layer ([4](#4-join-a-new-cluster)) | yes | printed at the end |
-| 5 | `cub flux status . --cluster <cluster> --kube-context <context> --watch` | keeps ConfigHub told what each layer applied, which `--require Healthy` waits for ([5](#5-tell-confighub-what-the-cluster-is-running)) | writes to ConfigHub only | stop it |
+| 5 | `FLUX_CONTEXT=<context> CLUSTER=<cluster> CONFIGHUB_URL=<ConfigHub address> bash onboard/fluxbot.sh` | runs the reporter on the cluster: it keeps ConfigHub told what each layer applied, which `--require Healthy` waits for ([5](#5-tell-confighub-what-the-cluster-is-running)) | adds one pod, and grants its worker `EditChildren` on the cluster's Target | printed at the end |
+| 5, without it | `cub flux status . --cluster <cluster> --kube-context <context> --watch` | the same reporter, from where you run it, for as long as you keep it running | writes to ConfigHub only | stop it |
 | 6 | `CONFIGHUB_OCI=<gateway> cub flux watch . --require Healthy --out onboard --pull` | proposes each cluster added to `clusters/` ([4](#4-join-a-new-cluster)) | no; a person approves | stop it |
 
-`<cluster>` is the name `cub flux plan` prints: in `dev-1 (clusters/dev)` it is
+`CONFIGHUB_URL` is ConfigHub's address as the cluster reaches it, such as
+`https://hub.confighub.com`. `<cluster>` is the name `cub flux plan` prints: in `dev-1 (clusters/dev)` it is
 `dev-1`, not the directory. `<gateway>` is ConfigHub's OCI host as your clusters
 reach it: `oci.hub.confighub.com` on ConfigHub cloud. `oci://<host>` is taken too. Leave out
 `--require Healthy` in steps 1, 2 and 6 to promote on approval alone; `watch`
@@ -533,6 +539,57 @@ which is what `cub flux` 0.3.0 and earlier wrote; a current server does not
 read it, so with those versions a fleet planned with `--require Healthy` never
 passes the gate.
 
+### fluxbot: the reporter, on the cluster
+
+Flux has no reporter of its own, so something has to run this for as long as
+the cluster is governed. `fluxbot.sh`, which `cub flux apply` writes beside the
+other scripts, runs it on the cluster itself, as argobot does for Argo CD:
+
+```bash
+FLUX_CONTEXT=<dev-1> CLUSTER=dev-1 CONFIGHUB_URL=https://hub.confighub.com \
+  bash onboard/fluxbot.sh
+```
+
+It is the same command, `cub flux status --discover --watch`, in one pod in the
+Flux namespace. With `--discover` it needs no fleet repository: each pass it
+finds every `Kustomization` there whose source is a ConfigHub Space of this
+fleet, so a layer handed over later is picked up without a restart. It changes
+nothing on the cluster but itself. Read the script before running it; this is
+everything it adds:
+
+| Where | What | Why |
+| --- | --- | --- |
+| ConfigHub | `EditChildren` on this cluster's Target, for the Targets' worker | recording a release's live status takes it. That worker is the credential Flux already pulls with; before this it could only read |
+| The Flux namespace | a Secret holding that worker's ID and secret | the pod signs in to ConfigHub as the worker, not as a person |
+| The Flux namespace | a ServiceAccount, and a Role to get and list `Kustomization`s and `OCIRepository`s there | all it reads on the cluster. No cluster-wide role |
+| The Flux namespace | a Deployment of one pod | the reporter |
+
+No image is built for it. The pod runs this plugin's own release binary: an
+init container fetches it from this repository's GitHub release and stops
+unless its checksum is the release's, and it runs in the Kubernetes project's
+`kubectl` image, which is what it reads the cluster with. So the cluster has to
+reach github.com whenever the pod starts; `FLUXBOT_URL` names another place
+that serves the binary and its `.sha256` where it cannot.
+
+`kubectl -n flux-system logs deploy/fluxbot` shows each pass. The script prints
+how to take it out again: one `kubectl delete`, and the grant.
+
+It is a step of its own on purpose, as `argobot.sh` is: the handover moves
+where Flux reads from and installs nothing, and a pod holding a ConfigHub
+credential is a separate thing to agree to. Without it, run `cub flux status
+--watch` yourself; both record the same thing, and a reading either wrote is
+the other's to keep current.
+
+**Run live on 2026-10-09** against ConfigHub v0.8.10 and Flux v2.8.6: the pod
+recorded all three layers on its first pass. A change was then released to dev
+and promotion to prod asked for every ten seconds, with nobody running a
+command. It was refused eight times, "has no live status for release 2 yet",
+and went through 87 seconds after the publish, once Flux had applied release 2
+and the pod had recorded it. It is in
+[the run log](runs/2026-10-09-live-status-on-the-release.md).
+
+### What it says
+
 It says only what it can back:
 
 | What | How it is decided |
@@ -550,9 +607,10 @@ reporter wrote is left alone while it is fresh or says the same. A passing
 reading of its own that is no longer true, because Flux now reports another
 release or none, is withdrawn from the newest release. A layer Flux is
 reconciling again at the release it already applied, as it does every
-interval, is not reported until that pass finishes. It runs as the `cub` user you
-run it as, one cluster at a time, and recording takes Edit on the Release:
-your own, or `EditChildren` on its Target for a worker.
+interval, is not reported until that pass finishes. Run by hand it writes as the
+`cub` user you run it as, one cluster at a time; recording takes Edit on the
+Release, which is your own, or `EditChildren` on its Target for the worker
+fluxbot signs in as.
 
 **To make promotions wait for it,** plan and apply with `--require Healthy`.
 Each stage after the first then also waits for the stage before: its newest

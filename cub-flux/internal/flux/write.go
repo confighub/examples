@@ -59,6 +59,7 @@ func WriteApply(p *Plan, prefix, dir string) (string, error) {
 		outFile{"apply.sh", []byte(ApplyScript(p, prefix, repoRel)), 0o755},
 		outFile{"handover.sh", []byte(HandoverScript(p, prefix, repoRel)), 0o755},
 		outFile{"join.sh", []byte(JoinScript(p, prefix)), 0o755},
+		outFile{"fluxbot.sh", []byte(FluxbotScript(prefix, PluginVersion)), 0o755},
 		outFile{"cleanup.sh", []byte(CleanupScript(p, prefix)), 0o755},
 		outFile{".gitignore", []byte("render/\n"), 0o644},
 	)

@@ -429,8 +429,9 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 		add(`step "Every change from now on also waits for %s in the stage before"`, strings.Join(requiring[0].Require, ", "))
 		add("# Change orders created from here on use this workflow; the onboarding")
 		add("# ones above keep the one they were created under.")
-		add("# Healthy passes on the live status `cub flux status` writes, so once a")
-		add("# cluster reads ConfigHub, keep it running there.")
+		add("# Healthy passes on the live status a reporter records, so once a cluster")
+		add("# reads ConfigHub, run one for it: fluxbot.sh puts it on the cluster, or")
+		add("# keep `cub flux status --watch` running yourself.")
 		for _, c := range requiring {
 			add("cub changeworkflow update --space %s rollout --filename %s/change-workflow.yaml --quiet", c.Base, c.Name)
 		}

@@ -30,6 +30,8 @@ var hub = flux.NewHub(version)
 // Version is the plugin's version, set at release build time.
 func Version() string { return version }
 
+func init() { flux.PluginVersion = version }
+
 // errProblems makes the command exit non-zero after it has printed the plan.
 type errProblems struct{}
 
@@ -338,7 +340,7 @@ One cluster at a time: pass --kube-context for the cluster to read.`,
 	check.Flags().BoolVar(&ckRecord, "record", false, "record each verdict in ConfigHub as a LiveCheck attestation on the revision the release bundled: a Pass, which also names the health Flux reports; a rejection naming what differs, or that Flux reports the layer stalled or not ready; nothing while it is still reconciling (needs --fields). With it, the command fails unless every check recorded a Pass")
 
 	var stNS, stName, stSpace, stUnit, stTarget, stContext, stCluster string
-	var stJSON, stWatch, stDry bool
+	var stJSON, stWatch, stDry, stDiscover bool
 	var stInterval, stRefresh time.Duration
 	var stOpts flux.Options
 	status := &cobra.Command{
@@ -369,20 +371,43 @@ reconciling again at the release it already applied is not reported until
 that pass finishes.
 
 One cluster at a time, like check. It writes as the cub user it runs as, which
-takes Edit on the Release: your own, or EditChildren on its Target.`,
+takes Edit on the Release: your own, or EditChildren on its Target.
+
+With --discover it needs no fleet repository: it reports every layer on the
+cluster that reads a ConfigHub Space of --prefix. That is how it runs on the
+cluster itself, which fluxbot.sh sets up: as a worker, signed in with
+CONFIGHUB_WORKER_ID and CONFIGHUB_WORKER_SECRET to CONFIGHUB_URL.`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
 			flux.KubeContext = stContext
 			flux.SetControllerNamespace(stNS)
-			layers, err := layersFor(c, args, stName, stSpace, stUnit, stTarget, stCluster, stOpts)
-			if err != nil {
-				return err
+			var layers []flux.Check
+			if stDiscover {
+				if len(args) > 0 || stName != "" {
+					return fmt.Errorf("--discover reads the layers from the cluster, so it takes no fleet repository and no --kustomization")
+				}
+			} else {
+				var err error
+				if layers, err = layersFor(c, args, stName, stSpace, stUnit, stTarget, stCluster, stOpts); err != nil {
+					return err
+				}
 			}
 			ctx, stop := signal.NotifyContext(c.Context(), os.Interrupt, syscall.SIGTERM)
 			defer stop()
 			w := c.OutOrStdout()
 			for {
-				outs, err := reportOnce(layers, stRefresh, stDry)
+				var outs []flux.Outcome
+				var err error
+				if stDiscover {
+					// Read again each pass: a layer handed over later is
+					// reported without a restart.
+					if layers, err = flux.DiscoverLayers(flux.Run, stOpts.Prefix); err == nil && len(layers) == 0 && !stJSON {
+						fmt.Fprintf(w, "no layer in %s reads a ConfigHub Space of prefix %s yet\n", stNS, stOpts.Prefix)
+					}
+				}
+				if err == nil {
+					outs, err = reportOnce(layers, stRefresh, stDry)
+				}
 				if stJSON {
 					enc := json.NewEncoder(w)
 					enc.SetIndent("", "  ")
@@ -410,6 +435,7 @@ takes Edit on the Release: your own, or EditChildren on its Target.`,
 			}
 		},
 	}
+	status.Flags().BoolVar(&stDiscover, "discover", false, "report every layer on the cluster that reads a ConfigHub Space of --prefix, read from the cluster each pass, with no fleet repository: what fluxbot.sh runs on the cluster")
 	status.Flags().StringVar(&stCluster, "cluster", "", "the cluster being reported, when reading a fleet repository")
 	status.Flags().StringVar(&stOpts.Prefix, "prefix", "flux", "the prefix the plan used in ConfigHub")
 	status.Flags().StringVar(&stOpts.ClustersDir, "clusters", "clusters", "the directory holding one directory per cluster")

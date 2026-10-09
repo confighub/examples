@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/confighub/sdk/core/cubapi"
@@ -18,6 +20,10 @@ import (
 // as: the context and token cub passes a plugin, or the active context.
 type SDKHub struct {
 	userAgent string
+
+	mu          sync.Mutex
+	worker      *cubapi.Client
+	workerSince time.Time
 }
 
 // NewHub is the Hub the commands use. It connects when asked something, so a
@@ -26,14 +32,51 @@ func NewHub(version string) *SDKHub {
 	return &SDKHub{userAgent: "cub-flux/" + version}
 }
 
+// The reporter that runs on a cluster has no signed-in user: it signs in as a
+// worker, with the ID and secret these name, to the server this names.
+const (
+	EnvWorkerID     = "CONFIGHUB_WORKER_ID"
+	EnvWorkerSecret = "CONFIGHUB_WORKER_SECRET"
+	EnvServerURL    = "CONFIGHUB_URL"
+)
+
+// workerTokenAge is how long a worker's token is used before it signs in
+// again. A reporter runs for weeks; a token does not last that long.
+const workerTokenAge = 10 * time.Minute
+
 // client reads the login again for each question, as running cub did: that
 // is a file read, not a request, and a status or watch left running for days
-// then picks up a token that was renewed meanwhile.
+// then picks up a token that was renewed meanwhile. As a worker it signs in
+// with the worker's own credential, and again when that token has aged.
 func (h *SDKHub) client(ctx context.Context) (*cubapi.Client, error) {
+	if id, secret := os.Getenv(EnvWorkerID), os.Getenv(EnvWorkerSecret); id != "" || secret != "" {
+		return h.workerClient(id, secret, strings.TrimRight(os.Getenv(EnvServerURL), "/"))
+	}
 	c, err := cubapi.ResolveClient(ctx, cubapi.ClientOptions{UserAgent: h.userAgent})
 	if err != nil {
 		return nil, fmt.Errorf("connecting to ConfigHub: %w", err)
 	}
+	return c, nil
+}
+
+func (h *SDKHub) workerClient(id, secret, server string) (*cubapi.Client, error) {
+	if id == "" || secret == "" || server == "" {
+		return nil, fmt.Errorf("signing in as a worker needs %s, %s and %s", EnvWorkerID, EnvWorkerSecret, EnvServerURL)
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.worker != nil && time.Since(h.workerSince) < workerTokenAge {
+		return h.worker, nil
+	}
+	session, err := cubapi.PerformWorkerAuth(server, id, secret)
+	if err != nil {
+		return nil, fmt.Errorf("signing in to ConfigHub at %s as worker %s: %w", server, id, err)
+	}
+	c, err := cubapi.NewClient(cubapi.ClientOptions{ServerURL: server, Token: session.AccessToken, UserAgent: h.userAgent})
+	if err != nil {
+		return nil, fmt.Errorf("connecting to ConfigHub: %w", err)
+	}
+	h.worker, h.workerSince = c, time.Now()
 	return c, nil
 }
 
