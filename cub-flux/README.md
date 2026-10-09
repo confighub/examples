@@ -131,8 +131,9 @@ CONFIGHUB_OCI=<gateway host:port the kind cluster reaches> CONFIGHUB_OCI_PLAIN_H
   bash e2e/run.sh
 ```
 
-It passed on 2026-09-30 against Flux v2.8.6 and ConfigHub v0.6.8, and its
-first run found that the way back left the layers' OCIRepositories reading
+It passed again on 2026-10-09, with v0.3.2, against Flux v2.8.6 and ConfigHub
+v0.8.10 over a TLS gateway. It first passed on 2026-09-30 against ConfigHub
+v0.6.8, when its first run found that the way back left the layers' OCIRepositories reading
 ConfigHub; the way back now removes them last. A bootstrapped fleet's handover
 pauses for a commit to the repository `flux-system` reads, which a rig reading
 GitHub cannot make: [docs/runs/2026-09-30-bootstrapped-handover.md](docs/runs/2026-09-30-bootstrapped-handover.md)
