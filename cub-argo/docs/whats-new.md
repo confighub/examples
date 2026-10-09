@@ -10,15 +10,18 @@ with `cub plugin install confighub/examples@cub-argo-v<version> --name argo`.
   Application Argo CD reported Degraded. Now only a Healthy Application can be
   a Pass; a Degraded or Missing one is a rejection that says so; and one still
   Progressing or Suspended records nothing, since it is neither yet. The
-  attestation's claims name the health. A check without `--record` is
-  unchanged: it still answers whether a handover would change the cluster.
+  attestation's claims name the health. With `--record` the command now fails
+  unless every check recorded a Pass, and `--json` carries the verdict. A check
+  without `--record` is unchanged: it still answers whether a handover would
+  change the cluster.
 - **Sign-in advice fits a server with no identity provider.** The scripts said
   to run `cub auth login`; they now also give the form that signs in by key.
 - **The guide says why argobot is a step of its own.**
 
 ## 0.3.1, 2026-10-09
 
-Needs ConfigHub v0.8.2 or newer for live status.
+Needs ConfigHub v0.8.2 or newer for live status. Built with ConfigHub SDK
+v0.8.10.
 
 - **Live status is recorded where ConfigHub now reads it.** From ConfigHub
   v0.8.2, live status lives on the Release, and the Healthy gate reads the

@@ -237,6 +237,7 @@ func (r *Reading) place(releases []HubRelease, why string) {
 type condition struct {
 	Type               string `json:"type"`
 	Status             string `json:"status"`
+	Reason             string `json:"reason"`
 	Message            string `json:"message"`
 	ObservedGeneration int64  `json:"observedGeneration"`
 }
@@ -311,47 +312,85 @@ func (k kustomization) unchecked() []string {
 	return out
 }
 
+// A layer is in one of these places, by what Flux says of it.
+const (
+	layerSuspended   = "suspended"   // spec.suspend: Flux applies nothing
+	layerUnseen      = "unseen"      // Flux has not reported on this generation
+	layerFailed      = "failed"      // stalled, or not ready for a reason of its own
+	layerWaiting     = "waiting"     // not ready only because a dependency is not
+	layerReconciling = "reconciling" // a pass is under way
+	layerReady       = "ready"
+)
+
+// place says where a layer stands, and Flux's reason when it gives one.
+//
+// The order matters. After a failed pass Flux leaves the layer Ready=False
+// and also Reconciling=True, because it will retry: read Reconciling first
+// and a layer failing for an hour looks like one still on its way. And
+// status.observedGeneration moves only when a pass succeeds, so whether Flux
+// has seen this generation is asked of the Ready condition, which a failed
+// pass writes too.
+func (k kustomization) place() (where, reason string) {
+	if k.Spec.Suspend {
+		return layerSuspended, "the Kustomization is suspended, so Flux applies nothing"
+	}
+	ready := k.condition("Ready")
+	if ready == nil || ready.ObservedGeneration != k.Metadata.Generation {
+		return layerUnseen, "Flux has not reported on the current generation yet"
+	}
+	if s := k.condition("Stalled"); s != nil && s.Status == "True" {
+		return layerFailed, "stalled: " + orSay(s.Message, "no reason given")
+	}
+	rc := k.condition("Reconciling")
+	passing := rc != nil && rc.Status == "True"
+	switch ready.Status {
+	case "True":
+		if passing {
+			// Ready is from the pass before; this one has not said yet.
+			return layerReconciling, orSay(rc.Message, "reconciling")
+		}
+		return layerReady, ""
+	case "False":
+		if ready.Reason == "DependencyNotReady" {
+			return layerWaiting, orSay(ready.Message, "a dependency is not ready")
+		}
+		return layerFailed, orSay(ready.Message, "not ready")
+	}
+	if passing && rc.Message != "" {
+		return layerReconciling, rc.Message
+	}
+	return layerReconciling, orSay(ready.Message, "reconciling")
+}
+
 // status maps a Kustomization onto ConfigHub's words, and names the digest
 // the reading is about: the one Flux applied, or the one it is trying to apply
 // when the reading is about that attempt. why is what to add about health once
-// the release is known.
+// the release is known. pending is set when this pass has nothing new to say.
 func (k kustomization) status() (st LiveStatus, revision, why, pending string) {
 	applied := digestOf(k.Status.LastAppliedRevision)
 	attempted := digestOf(k.Status.LastAttemptedRevision)
 	if attempted == "" {
 		attempted = applied
 	}
-	if k.Spec.Suspend {
-		return LiveStatus{Sync: "Unknown", Health: "Suspended", Message: "the Kustomization is suspended, so Flux applies nothing"}, applied, "", ""
-	}
-	ready := k.condition("Ready")
-	if k.Status.ObservedGeneration != k.Metadata.Generation || ready == nil || ready.ObservedGeneration != k.Metadata.Generation {
-		return LiveStatus{Sync: "Unknown", Health: "Progressing", Operation: "Running", Message: "Flux has not reported on the current generation yet"}, attempted, "", ""
-	}
-	if s := k.condition("Stalled"); s != nil && s.Status == "True" {
-		return LiveStatus{Sync: "OutOfSync", Health: "Degraded", Operation: "Failed", Message: "stalled: " + s.Message}, attempted, "", ""
-	}
-	// Flux marks a layer Reconciling, and its readiness unknown, at the start
-	// of every pass, including the one it makes each interval over a release
-	// it applied long ago. That pass says nothing new about the release, and
-	// reporting it would close the gate for a few seconds every interval.
-	again := applied != "" && attempted == applied
-	const stands = "Flux is reconciling the release it already applied; what is recorded stands until it finishes"
-	if rc := k.condition("Reconciling"); rc != nil && rc.Status == "True" {
-		if again {
-			return LiveStatus{}, applied, "", stands
+	where, reason := k.place()
+	switch where {
+	case layerSuspended:
+		return LiveStatus{Sync: "Unknown", Health: "Suspended", Message: reason}, applied, "", ""
+	case layerUnseen:
+		return LiveStatus{Sync: "Unknown", Health: "Progressing", Operation: "Running", Message: reason}, attempted, "", ""
+	case layerFailed:
+		return LiveStatus{Sync: "OutOfSync", Health: "Degraded", Operation: "Failed", Message: reason}, attempted, "", ""
+	case layerWaiting, layerReconciling:
+		// Flux marks a layer Reconciling, and its readiness unknown, at the
+		// start of every pass, including the one it makes each interval over
+		// a release it applied long ago, and it waits on a dependency the same
+		// way. Neither says anything new about that release, and reporting
+		// them would close the gate for a few seconds every interval. A pass
+		// that fails is not here: it is failed, above.
+		if applied != "" && attempted == applied {
+			return LiveStatus{}, applied, "", "Flux is reconciling the release it already applied; what is recorded stands until it finishes"
 		}
-		return LiveStatus{Sync: "OutOfSync", Health: "Progressing", Operation: "Running", Message: orSay(rc.Message, "reconciling")}, attempted, "", ""
-	}
-	switch ready.Status {
-	case "False":
-		return LiveStatus{Sync: "OutOfSync", Health: "Degraded", Operation: "Failed", Message: orSay(ready.Message, "not ready")}, attempted, "", ""
-	case "True":
-	default:
-		if again {
-			return LiveStatus{}, applied, "", stands
-		}
-		return LiveStatus{Sync: "OutOfSync", Health: "Progressing", Operation: "Running", Message: orSay(ready.Message, "readiness unknown")}, attempted, "", ""
+		return LiveStatus{Sync: "OutOfSync", Health: "Progressing", Operation: "Running", Message: reason}, attempted, "", ""
 	}
 	if attempted != applied {
 		return LiveStatus{Sync: "OutOfSync", Health: "Progressing", Operation: "Running", Message: "Flux is applying this release; it last applied " + orSay(applied, "none")}, attempted, "", ""
@@ -366,30 +405,23 @@ func (k kustomization) status() (st LiveStatus, revision, why, pending string) {
 }
 
 // health is what Flux says of the layer for a recorded check: its health in
-// ConfigHub's words, what is wrong if it is Degraded, and why it is neither
-// healthy nor wrong yet if it is still on its way. A layer whose workloads
-// Flux was not asked to check is Unknown, and is not held back for it: Ready
-// is all Flux will ever say of it.
+// ConfigHub's words, what is wrong if it has failed, and why it is neither
+// healthy nor wrong yet otherwise. A layer whose workloads Flux was not asked
+// to check is Unknown, and is not held back for it: ready is all Flux will
+// ever say of it.
 func (k kustomization) health(name string) (health, unhealthy, notYet string) {
-	if k.Spec.Suspend {
+	where, reason := k.place()
+	switch where {
+	case layerSuspended:
 		return "Suspended", "", fmt.Sprintf("Kustomization %s is suspended, so Flux applies nothing", name)
-	}
-	ready := k.condition("Ready")
-	if k.Status.ObservedGeneration != k.Metadata.Generation || ready == nil || ready.ObservedGeneration != k.Metadata.Generation {
+	case layerUnseen:
 		return "Progressing", "", fmt.Sprintf("Flux has not reported on the current generation of %s yet", name)
-	}
-	if s := k.condition("Stalled"); s != nil && s.Status == "True" {
-		return "Degraded", fmt.Sprintf("Flux reports %s stalled: %s", name, orSay(s.Message, "no reason given")), ""
-	}
-	if rc := k.condition("Reconciling"); rc != nil && rc.Status == "True" {
+	case layerFailed:
+		return "Degraded", fmt.Sprintf("Flux reports %s failed: %s", name, reason), ""
+	case layerWaiting:
+		return "Progressing", "", fmt.Sprintf("Flux is waiting to reconcile %s: %s", name, reason)
+	case layerReconciling:
 		return "Progressing", "", fmt.Sprintf("Flux is reconciling %s", name)
-	}
-	switch ready.Status {
-	case "False":
-		return "Degraded", fmt.Sprintf("Flux reports %s not ready: %s", name, orSay(ready.Message, "no reason given")), ""
-	case "True":
-	default:
-		return "Progressing", "", fmt.Sprintf("Flux does not say yet whether %s is ready", name)
 	}
 	if len(k.unchecked()) > 0 {
 		return "Unknown", "", ""

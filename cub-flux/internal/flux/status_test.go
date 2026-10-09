@@ -456,7 +456,13 @@ func TestClipCutsOnACharacter(t *testing.T) {
 // new, so nothing is written and what is recorded stands.
 func TestStatusOfARoutineReconcileStands(t *testing.T) {
 	for name, mutate := range map[string]func(k map[string]any){
-		"Reconciling": func(k map[string]any) {
+		"Reconciling, readiness unknown, as Flux writes them at the start of a pass": func(k map[string]any) {
+			status(k)["conditions"] = []any{
+				map[string]any{"type": "Reconciling", "status": "True", "reason": "Progressing", "observedGeneration": 3, "message": "Reconciliation in progress"},
+				map[string]any{"type": "Ready", "status": "Unknown", "reason": "Progressing", "observedGeneration": 3, "message": "Reconciliation in progress"},
+			}
+		},
+		"Reconciling while still marked ready from the pass before": func(k map[string]any) {
 			status(k)["conditions"] = append(status(k)["conditions"].([]any), map[string]any{"type": "Reconciling", "status": "True", "message": "Reconciliation in progress"})
 		},
 		"readiness unknown": func(k map[string]any) {
@@ -479,5 +485,39 @@ func TestStatusOfARoutineReconcileStands(t *testing.T) {
 				t.Errorf("say so: %s", b.String())
 			}
 		})
+	}
+}
+
+// After a pass that fails, Flux leaves the layer not ready and also
+// reconciling, since it will retry. That is a failure, on the release it was
+// trying, however long ago it applied it: not a pass still on its way, and
+// not a routine one whose reading stands.
+func TestStatusOfAFailedPassIsAFailure(t *testing.T) {
+	failing := func(k map[string]any) {
+		status(k)["conditions"] = []any{
+			map[string]any{"type": "Reconciling", "status": "True", "reason": "ProgressingWithRetry", "observedGeneration": 3, "message": "Detecting drift for revision latest with a timeout of 4m30s"},
+			map[string]any{"type": "Ready", "status": "False", "reason": "HealthCheckFailed", "observedGeneration": 3, "message": "health check failed after 30s"},
+		}
+	}
+	r := readWith(t, ks(t, failing), spaceURL)
+	if r.Pending != "" || r.Release != 2 || r.Status.Sync != "OutOfSync" || r.Status.Health != "Degraded" || r.Status.Operation != "Failed" || !strings.Contains(r.Status.Message, "health check failed") {
+		t.Errorf("want release 2 failed, with Flux's reason: %+v", r)
+	}
+	// And it replaces the passing reading the release held.
+	hub := &fakeHub{}
+	r.Held = &LiveStatus{Reporter: StatusReporter, DataSource: "apps", Sync: "Synced", Health: "Healthy", Operation: "Succeeded", ObservedAt: time.Now().UTC().Format(time.RFC3339)}
+	if outs, err := ReportStatus(hub, []Reading{r}, 10*time.Minute, false, time.Now()); err != nil || outs[0].Did != "written" {
+		t.Errorf("want the failure written over the passing reading: %+v %v", outs, err)
+	}
+}
+
+// A layer waiting on a dependency at the release it already applied says
+// nothing new about that release either.
+func TestStatusOfALayerWaitingOnADependencyStands(t *testing.T) {
+	r := readWith(t, ks(t, func(k map[string]any) {
+		status(k)["conditions"] = []any{map[string]any{"type": "Ready", "status": "False", "reason": "DependencyNotReady", "observedGeneration": 3, "message": "dependency 'flux-system/infrastructure' is not ready"}}
+	}), spaceURL)
+	if r.Pending == "" {
+		t.Errorf("want what is recorded to stand: %+v", r)
 	}
 }

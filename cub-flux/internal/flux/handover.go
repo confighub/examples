@@ -80,7 +80,7 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	// cub auth status, not a list call: a list goes through the entity API and
 	// fails on a client/server version skew while the session is fine. See the
 	// note in ApplyScript.
-	add(`cub auth status >/dev/null 2>&1 || { echo "cub is not signed in to ConfigHub: run 'cub auth login', or 'cub auth login --private-key <key>' on a server with no identity provider"; exit 1; }`)
+	add(`cub auth status >/dev/null 2>&1 || { echo "cub is not signed in to ConfigHub: run 'cub auth login', or 'cub auth login --private-key=<key>' on a server with no identity provider"; exit 1; }`)
 	add(`echo "  every kubectl call below uses context $ctx"`)
 	add(`k get namespace "$ns" >/dev/null || { echo "no $ns namespace: is this the right cluster?"; exit 1; }`)
 	add("# flux-system reconciles the Flux controllers themselves. It is the way back")

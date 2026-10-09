@@ -189,7 +189,7 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	// cub auth status, not a list call: a list goes through the entity API and
 	// fails on a client/server version skew while the session is fine. See the
 	// note in ApplyScript.
-	add(`cub auth status >/dev/null 2>&1 || { echo "cub is not signed in to ConfigHub: run 'cub auth login', or 'cub auth login --private-key <key>' on a server with no identity provider"; exit 1; }`)
+	add(`cub auth status >/dev/null 2>&1 || { echo "cub is not signed in to ConfigHub: run 'cub auth login', or 'cub auth login --private-key=<key>' on a server with no identity provider"; exit 1; }`)
 	add(`image=$(k get deployment argocd-repo-server -n "$ns" -o jsonpath='{.spec.template.spec.containers[0].image}')`)
 	add(`version=${image##*:}; version=${version#v}`)
 	add(`if [ "$(printf '%%s\n' 3.1 "${version%%.*}.${version#*.}" | sort -V | head -1)" != 3.1 ]; then`)

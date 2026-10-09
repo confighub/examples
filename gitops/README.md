@@ -38,6 +38,7 @@ onto ConfigHub, use the plugin for your controller:
 | Argo CD | `cub plugin install confighub/examples@cub-argo-v0.3.2 --name argo` | [Onboard your Argo CD estate](../cub-argo/docs/onboard-your-argo-estate.md) |
 | Flux | `cub plugin install confighub/examples@cub-flux-v0.3.2 --name flux` | [Onboard your Flux fleet](../cub-flux/docs/onboard-your-flux-fleet.md) |
 
+Both need `cub` v0.7.0 or newer, and ConfigHub v0.8.2 or newer for live status.
 Both start with `plan`, which needs no account and changes no cluster, and try
 it on the expert examples above first: `expert-app-of-apps` and `expert-fleet`
 are what each plugin's guide walks through.

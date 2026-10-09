@@ -66,8 +66,11 @@ type Result struct {
 	Health    string `json:"health,omitempty"`
 	Unhealthy string `json:"unhealthy,omitempty"`
 	NotYet    string `json:"notYet,omitempty"`
-	// Recorded is the ID of the LiveCheck attestation --record wrote.
+	// Recorded is the ID of the LiveCheck attestation --record wrote, and
+	// Verdict what --record came to: pass, rejection, or none when nothing
+	// was recorded yet.
 	Recorded string `json:"recorded,omitempty"`
+	Verdict  string `json:"verdict,omitempty"`
 }
 
 // OK reports whether swapping this layer's source would leave the cluster as

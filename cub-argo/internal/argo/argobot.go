@@ -53,7 +53,7 @@ func ArgobotScript(prefix string) string {
 	add(`version=${ARGOBOT_VERSION:-%s}`, ArgobotVersion)
 	add(`ns=${ARGOCD_NAMESPACE:-argocd}`)
 	add(`[ "$ns" = argocd ] || echo "note: argobot's manifest grants it a Role in the argocd namespace; give it the same in $ns"`)
-	add(`cub auth status >/dev/null 2>&1 || { echo "cub is not signed in to ConfigHub: run 'cub auth login', or 'cub auth login --private-key <key>' on a server with no identity provider"; exit 1; }`)
+	add(`cub auth status >/dev/null 2>&1 || { echo "cub is not signed in to ConfigHub: run 'cub auth login', or 'cub auth login --private-key=<key>' on a server with no identity provider"; exit 1; }`)
 	add("")
 	add("# Its Namespace, ServiceAccount, RBAC and Deployment, as argobot publishes them.")
 	add(`k apply -f "https://raw.githubusercontent.com/confighub/argobot/$version/manifests/argobot.yaml"`)

@@ -95,10 +95,48 @@ NUM    TAG                                        PUBLISHED    DIGEST          L
 Put back, Flux applied release 2 and the next pass recorded it Synced/Healthy
 again.
 
+## 4. A layer that starts failing, on a second rig the same day
+
+Run with the build that became 0.3.2, after a review said `cub flux status`
+0.3.1 would misread a failed pass. The gateway was given as
+`CONFIGHUB_OCI=oci://oci.hub.confighub.com`, and nothing wrote the scheme twice.
+
+The frontend's node was cordoned and its pod deleted, with the `apps` layer's
+timeout shortened to 40s. While Flux was checking health, at the release it had
+already applied, it said nothing new, and nothing was written:
+
+```text
+{"type":"Reconciling","status":"True","reason":"Progressing"}  {"type":"Ready","status":"Unknown","reason":"Progressing"}
+apps -> rh-lf-apps-dev: Flux is reconciling the release it already applied; what is recorded stands until it finishes
+```
+
+When the pass failed, Flux left the layer not ready and also reconciling, since
+it will retry. That is the state 0.3.1 took for a pass still under way:
+
+```text
+{"type":"Reconciling","status":"True","reason":"ProgressingWithRetry"}  {"type":"Ready","status":"False","reason":"HealthCheckFailed"}
+apps -> rh-lf-apps-dev release 1: OutOfSync/Degraded/Failed: health check failed after 40.014591528s: timeout waiting for: [Deployment/apptique-dev/frontend status: 'InProgress'] (written; the Healthy gate would not pass)
+
+NUM    TAG                                        PUBLISHED    DIGEST          LIVE                  CREATED
+1      rh-lf-apps-base/onboard-e4388183-co-end    true         b3ab9137b0f0    OutOfSync/Degraded    2026-10-09 09:19:02
+```
+
+`cub flux check --fields --record` on the failing layer recorded a rejection,
+though every object and field still matched:
+
+```text
+apps: release 1 (sha256:b3ab9137b0f0264c03010e50c4252a4204619dd6a43b7694e1def5e9462700b1) holds apps at revision 3
+  recorded a rejection: LiveCheck attestation 4cbb3626-3fd9-462f-8755-a6e7f82136e9 on rh-lf-apps-dev/apps revision 3
+  health: Flux reports apps failed: health check failed after 40.014591528s: timeout waiting for: [Deployment/apptique-dev/frontend status: 'InProgress']
+apps: 4 objects match what the layer applied
+```
+
+With the node uncordoned, Flux's next pass succeeded and the reading went back
+to Synced/Healthy/Succeeded.
+
 ## Not checked
 
-- A layer Flux is reconciling again at the release it already applied: the
-  reporter was not caught mid-pass. Covered by tests.
+- A layer waiting on a dependency. Covered by tests.
 - A layer handed back to Git, and another reporter's reading on the same
   release. Covered by tests.
 - `cub flux status` run as a worker, which takes `EditChildren` on the Target.
@@ -106,4 +144,4 @@ again.
 
 ## Afterwards
 
-The kind cluster and every `rh-ls-*` Space were deleted.
+Both kind clusters and every `rh-ls-*` and `rh-lf-*` Space were deleted.

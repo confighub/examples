@@ -215,7 +215,7 @@ One cluster at a time: pass --kube-context for the cluster to read.`,
 				checks[i].Release = ckRelease
 			}
 			w := c.OutOrStdout()
-			bad := 0
+			bad, notPassed := 0, 0
 			var results []flux.Result
 			for _, ck := range checks {
 				r, err := flux.RunCheck(flux.Run, hub, ck, ckDeep)
@@ -236,6 +236,17 @@ One cluster at a time: pass --kube-context for the cluster to read.`,
 						return err
 					}
 					r.Recorded = id
+					switch {
+					case id == "":
+						r.Verdict = "none"
+					case !r.OK() || r.Unhealthy != "":
+						r.Verdict = "rejection"
+					default:
+						r.Verdict = "pass"
+					}
+					if r.Verdict != "pass" {
+						notPassed++
+					}
 				}
 				if ckJSON {
 					results = append(results, r)
@@ -244,17 +255,17 @@ One cluster at a time: pass --kube-context for the cluster to read.`,
 				fmt.Fprintf(w, "%s: release %d (%s) holds %s at revision %d\n", ck.Kustomization, r.Release.Num, r.Release.ManifestDigest, ck.Unit, r.Release.UnitRevision)
 				if r.Recorded != "" {
 					verdict := "a Pass"
-					if !r.OK() || r.Unhealthy != "" {
+					if r.Verdict == "rejection" {
 						verdict = "a rejection"
 					}
 					fmt.Fprintf(w, "  recorded %s: LiveCheck attestation %s on %s/%s revision %d\n", verdict, r.Recorded, ck.Space, ck.Unit, r.Release.UnitRevision)
 				} else if ckRecord {
-					fmt.Fprintf(w, "  recorded nothing yet: %s, which is neither a Pass nor a rejection; check again once it settles\n", r.NotYet)
+					fmt.Fprintf(w, "  recorded nothing yet: %s, which is neither a Pass nor a rejection; check again once that changes\n", r.NotYet)
 				}
 				switch {
 				case r.Unhealthy != "":
 					fmt.Fprintf(w, "  health: %s\n", r.Unhealthy)
-				case r.NotYet != "" && !ckRecord:
+				case r.NotYet != "" && r.Verdict != "none":
 					fmt.Fprintf(w, "  health: %s\n", r.NotYet)
 				case r.Health == "Unknown":
 					fmt.Fprintf(w, "  health: Flux reports it ready, which means applied: neither spec.wait nor a health check covers its workloads\n")
@@ -292,15 +303,20 @@ One cluster at a time: pass --kube-context for the cluster to read.`,
 				if err := enc.Encode(results); err != nil {
 					return err
 				}
-				if bad > 0 {
+				if bad > 0 || notPassed > 0 {
 					return errProblems{}
 				}
 				return nil
 			}
 			if len(checks) > 1 {
 				fmt.Fprintf(w, "\n%d of %d clean\n", len(checks)-bad, len(checks))
+				if ckRecord {
+					fmt.Fprintf(w, "%d of %d recorded a Pass\n", len(checks)-notPassed, len(checks))
+				}
 			}
-			if bad > 0 {
+			// With --record the question is whether a Pass was recorded, so
+			// a rejection for health, or nothing recorded yet, fails too.
+			if bad > 0 || notPassed > 0 {
 				return errProblems{}
 			}
 			return nil
@@ -319,7 +335,7 @@ One cluster at a time: pass --kube-context for the cluster to read.`,
 	check.Flags().StringVar(&ckTarget, "target-namespace", "", "the layer's targetNamespace, where objects without one land")
 	check.Flags().StringVar(&kubeContext, "kube-context", "", "the kubectl context of the cluster to read; without it kubectl's current context is used, which may be another cluster")
 	check.Flags().BoolVar(&ckJSON, "json", false, "print the comparison as JSON")
-	check.Flags().BoolVar(&ckRecord, "record", false, "record each verdict in ConfigHub as a LiveCheck attestation on the revision the release bundled: a Pass, which also names the health Flux reports; a rejection naming what differs, or that Flux reports the layer stalled or not ready; nothing while it is still reconciling (needs --fields)")
+	check.Flags().BoolVar(&ckRecord, "record", false, "record each verdict in ConfigHub as a LiveCheck attestation on the revision the release bundled: a Pass, which also names the health Flux reports; a rejection naming what differs, or that Flux reports the layer stalled or not ready; nothing while it is still reconciling (needs --fields). With it, the command fails unless every check recorded a Pass")
 
 	var stNS, stName, stSpace, stUnit, stTarget, stContext, stCluster string
 	var stJSON, stWatch, stDry bool

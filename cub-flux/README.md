@@ -44,6 +44,7 @@ command on your own estate. Already on an earlier release?
 cub plugin upgrade flux@cub-flux-v0.3.2
 ```
 
+Needs `cub` v0.7.0 or newer; live status needs ConfigHub v0.8.2 or newer.
 Releases are tagged `cub-flux-v<version>` in this repository, and what each one
 changed is in [docs/whats-new.md](docs/whats-new.md).
 
@@ -104,7 +105,8 @@ delivery. Its `exportedAt` is the export time and changes between runs. Pass
 ```
 
 A layer path is read as kustomize-controller reads it. One with a
-kustomization is built with kustomize. One without is a plain layer: Flux
+kustomization is one the scripts build with `kustomize build`; the plugin
+itself renders nothing. One without is a plain layer: Flux
 generates a kustomization over every `.yaml` and `.yml` below it, recursively,
 taking a subdirectory with a kustomization of its own whole. `apply.sh` and
 `handover.sh` render it the same way, and the plan names any file there that

@@ -17,10 +17,10 @@ without recreating anything, and the first two commands change nothing at all.
   layers Space holds one Unit per layer: its `OCIRepository` and
   `Kustomization`, reading the layer's variant. The same shape `cub cluster up`
   gives Argo CD, an apps Space and a root Application.
-- **ConfigHub knows what is running.** `cub flux status` writes what each layer
-  applied — the exact release digest, and whether its workloads are ready,
-  where the layer checks them with `wait` or `healthChecks` — back to its
-  variant, and `--require Healthy` makes the next stage wait for it.
+- **ConfigHub knows what is running.** `cub flux status` records what each
+  layer applied on the release it applied — found by its exact digest, with
+  whether its workloads are ready, where the layer checks them with `wait` or
+  `healthChecks` — and `--require Healthy` makes the next stage wait for it.
 - **New clusters are proposed, not surprised.** `cub flux watch` notices a
   cluster added to the fleet repository, proposes it in ConfigHub, and releases
   it once a person approves.
@@ -151,7 +151,7 @@ cub plugin install confighub/examples@cub-flux-v0.3.2 --name flux
 cub plugin list   # flux should be listed, status ok
 ```
 
-This release needs `cub` v0.7.0 or newer and ConfigHub v0.8.2 or newer; `cub version` shows both.
+Needs `cub` v0.7.0 or newer; live status needs ConfigHub v0.8.2 or newer. `cub version` shows both.
 
 Upgrade later by naming the new release: `cub plugin upgrade flux@cub-flux-v<version>`.
 To build from source instead (needs Go):
@@ -250,7 +250,8 @@ of apps has with its children. It is also the one part of the fleet this
 handover never touches — see [the bootstrap stays](#the-bootstrap-stays).
 
 A layer's path is read as kustomize-controller reads it. With a
-kustomization, it is built with kustomize. Without one it is a plain layer,
+kustomization, the scripts build it with `kustomize build`; the plugin itself
+renders nothing. Without one it is a plain layer,
 and Flux generates a kustomization over every `.yaml` and `.yml` below the
 path, recursively, taking a subdirectory with a kustomization of its own
 whole. The scripts render a plain layer the same way, and a layer whose
@@ -569,6 +570,9 @@ are done.
   on it, and the promotion went through. A second pass wrote nothing.
 - The layer was then rolled back to release 1. The reporter recorded that on
   release 1 and withdrew its reading from release 2, which closed the gate.
+- A layer whose health check started failing, at a release it had applied
+  long before, was recorded Degraded on that release, and Healthy again once
+  it recovered. While Flux was only checking, nothing was written.
 
 The run log: [runs/2026-10-09-live-status-on-the-release.md](runs/2026-10-09-live-status-on-the-release.md).
 
@@ -613,9 +617,10 @@ in between. Afterwards it confirms each layer applied the digest it checked.
 revision the checked release bundled. A clean check of a ready layer is a Pass.
 Anything that differs is a rejection that names it: an object the release would
 add or prune, a field, or an object it could not read. Health is part of the
-verdict: a layer Flux reports stalled or not ready is a rejection too, and one
-still reconciling or suspended records nothing, since it is neither yet; run
-the check again once it settles. A Pass names the health it rests on, which is
+verdict: a layer Flux reports failed (stalled, or not ready for a reason of its
+own) is a rejection too. One still reconciling, waiting on a dependency, or
+suspended records nothing, since it is neither yet; run the check again once
+that changes. A Pass names the health it rests on, which is
 `Unknown` where neither `spec.wait` nor a health check covers the layer's
 workloads: ready then means applied. The claims name the Kustomization, that
 health and the release digest. `LiveCheck` is the type `cub kubara check --record` uses for
@@ -626,8 +631,9 @@ field the release sets. Run live on 2026-09-30:
 - After a `kubectl scale`, the `apps` layer recorded a rejection naming
   `.spec.replicas: cluster has 3, the release holds 1`.
 
-Health in the verdict was added after that run and is covered by tests; the
-same rule was run live for `cub argo` on 2026-10-09.
+Health in the verdict was run live on 2026-10-09: a layer whose health check
+had started failing recorded a rejection, though every object and field still
+matched. It is in [the run log](runs/2026-10-09-live-status-on-the-release.md).
 
 **You run it the way you ran `plan`.** `check` takes the same fleet directory
 and works the layers out for itself — there is no per-Kustomization flag to get
@@ -644,6 +650,8 @@ apps: 3 objects match what the layer applied
 ```
 
 It exits non-zero if any layer is not clean, so it drops into CI as it is.
+Clean is about objects and fields. Health counts only with `--record`, where
+the command also fails unless every check recorded a Pass.
 `--kube-context` names the cluster to read; without it kubectl uses whatever
 context is current, which during a handover is very likely the wrong one.
 

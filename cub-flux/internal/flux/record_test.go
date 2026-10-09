@@ -80,13 +80,26 @@ func TestRecordCheckJudgesHealth(t *testing.T) {
 		{"ready, workloads not checked", func(k map[string]any) { spec(k)["wait"] = false }, "Unknown", true, false, "that means applied, not healthy"},
 		{"not ready", func(k map[string]any) {
 			status(k)["conditions"] = []any{map[string]any{"type": "Ready", "status": "False", "observedGeneration": 3, "message": "health check failed"}}
-		}, "Degraded", true, true, "Flux reports apps not ready: health check failed"},
+		}, "Degraded", true, true, "Flux reports apps failed: health check failed"},
 		{"stalled", func(k map[string]any) {
 			status(k)["conditions"] = append(status(k)["conditions"].([]any), map[string]any{"type": "Stalled", "status": "True", "message": "path not found"})
-		}, "Degraded", true, true, "Flux reports apps stalled: path not found"},
+		}, "Degraded", true, true, "Flux reports apps failed: stalled: path not found"},
 		{"reconciling", func(k map[string]any) {
 			status(k)["conditions"] = append(status(k)["conditions"].([]any), map[string]any{"type": "Reconciling", "status": "True"})
 		}, "Progressing", false, false, ""},
+		{"failed, and Flux will retry: not ready and reconciling at once", func(k map[string]any) {
+			status(k)["conditions"] = []any{
+				map[string]any{"type": "Reconciling", "status": "True", "reason": "ProgressingWithRetry", "observedGeneration": 3, "message": "Detecting drift for revision latest with a timeout of 4m30s"},
+				map[string]any{"type": "Ready", "status": "False", "reason": "HealthCheckFailed", "observedGeneration": 3, "message": "health check failed after 30s: timeout waiting for: [Deployment/apptique-dev/frontend status: 'InProgress']"},
+			}
+		}, "Degraded", true, true, "Flux reports apps failed: health check failed after 30s"},
+		{"waiting for a dependency is not a failure", func(k map[string]any) {
+			status(k)["conditions"] = []any{map[string]any{"type": "Ready", "status": "False", "reason": "DependencyNotReady", "observedGeneration": 3, "message": "dependency 'flux-system/infrastructure' is not ready"}}
+		}, "Progressing", false, false, ""},
+		{"failed on a new generation: only a pass that succeeds moves status.observedGeneration", func(k map[string]any) {
+			k["metadata"].(map[string]any)["generation"] = 4
+			status(k)["conditions"] = []any{map[string]any{"type": "Ready", "status": "False", "reason": "BuildFailed", "observedGeneration": 4, "message": "kustomize build failed"}}
+		}, "Degraded", true, true, "Flux reports apps failed: kustomize build failed"},
 		{"a generation Flux has not seen", func(k map[string]any) { k["metadata"].(map[string]any)["generation"] = 4 }, "Progressing", false, false, ""},
 		{"suspended", func(k map[string]any) { spec(k)["suspend"] = true }, "Suspended", false, false, ""},
 	} {

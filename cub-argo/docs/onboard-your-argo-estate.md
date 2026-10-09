@@ -19,9 +19,9 @@ anything, and the first two commands change nothing at all.
   configuration you review, not objects on a cluster. A plain Application reads
   its variant too: a child of an app of apps through its Unit, one applied by
   hand patched in place.
-- **ConfigHub knows what is running.** argobot, beside Argo CD, writes each
-  Application's live state back to its variant — sync, health, the digest it
-  runs. It also makes each published release land at once, where otherwise a
+- **ConfigHub knows what is running.** argobot, beside Argo CD, records each
+  Application's live state — sync, health, operation — on the release it
+  synced. It also makes each published release land at once, where otherwise a
   release waits for Argo's own poll. Where argobot is not running, `cub argo status --watch
   --hard-refresh` writes the same live status and makes releases land.
 - **Nothing is recreated.** Every Application keeps its name and its UID, and so
@@ -137,7 +137,7 @@ reaches the cluster.
 | An AppProject | `sourceRepos` gains the gateway | your commit to Git, before the handover | yes |
 | Your workloads | nothing | | yes, same UIDs |
 
-What is added to the cluster Argo CD runs on: one repository Secret, so Argo
+What is added to the cluster Argo CD runs on: one repo-creds Secret, so Argo
 can read the gateway; on each Application `move-applications.sh` moves, the
 sync option `Prune=false` and an annotation naming its Space (and
 `Replace=true`, for the move only); an annotation on each retired
@@ -158,7 +158,7 @@ cub plugin install confighub/examples@cub-argo-v0.3.2 --name argo
 cub plugin list   # argo should be listed, status ok
 ```
 
-This release needs `cub` v0.7.0 or newer and ConfigHub v0.8.2 or newer; `cub version` shows both.
+Needs `cub` v0.7.0 or newer; live status needs ConfigHub v0.8.2 or newer. `cub version` shows both.
 
 Upgrade later by naming the new release: `cub plugin upgrade argo@cub-argo-v<version>`.
 To build from source instead (needs Go):
@@ -191,7 +191,7 @@ Run from the root of the repository Argo CD syncs. Each script is written by
 | 4 | `ARGOCD_CONTEXT=<context> DEST_CONTEXT_<cluster>=<context> CONFIGHUB_OCI=<gateway> bash onboard/handover.sh` | points `root` at ConfigHub, prints the reviewed edit that does the same for each app of apps, then checks every Application's release against what Argo owns on its cluster — before any workload's source moves, then points each plain Application at its Space: one applied by hand itself, a child of an app of apps through the printed Unit edit ([3](#3-hand-the-estate-over)) | yes | printed when it stops, and at the end |
 | 5 | retire each ApplicationSet, as the "Retire each ApplicationSet" step of `handover.sh` prints | a reviewed edit to its Unit, so it generates nothing more ([why](#applicationsets-are-retired-not-repointed)) | yes | restore the Unit's earlier revision |
 | 6 | `ARGOCD_CONTEXT=<context> CONFIGHUB_OCI=<gateway> bash onboard/move-applications.sh canary`, then `secondary`, then `primary` | each generated Application becomes a Unit reading its own Space, one stage at a time ([more](#each-application-becomes-a-unit)) | yes | printed when it stops, and at the end |
-| 7 | `ARGOCD_CONTEXT=<context> CONFIGHUB_URL=<ConfigHub address> bash onboard/argobot.sh` | runs argobot: live status comes back ([more](#a-published-release-does-not-arrive-on-its-own)) | installs argobot | `kubectl delete namespace argobot` |
+| 7 | `ARGOCD_CONTEXT=<context> CONFIGHUB_URL=<ConfigHub address> bash onboard/argobot.sh` | runs argobot: live status comes back ([more](#a-published-release-does-not-arrive-on-its-own)) | installs argobot, and grants its worker `EditChildren` on each Target | `kubectl delete -f https://raw.githubusercontent.com/confighub/argobot/v0.1.9/manifests/argobot.yaml` |
 | 7, without argobot | `cub argo status . clusters.json --stage-label rollout-phase --stages canary,secondary,primary --kube-context <context> --watch --hard-refresh` | writes the same live status from where you run it, and asks Argo to read each new release ([more](#what-confighub-hears-back-live-status)) | only the refresh annotation | stop it |
 | out | `ARGOCD_CONTEXT=<context> bash onboard/cleanup.sh` | once every source is back on Git: removes what `apply.sh` made and the gateway credential. It refuses, naming them, while any Application still reads ConfigHub | removes the credential | nothing to undo |
 
@@ -285,11 +285,13 @@ cub argo apply . --stage-label rollout-phase --stages canary,secondary,primary -
 bash onboard/apply.sh
 ```
 
-`apply` writes files and two scripts, and runs nothing. It checks `cub` is
+`apply` writes files and five scripts, and runs nothing. `apply.sh` is the first to run. It checks `cub` is
 logged in and `kustomize` is present, then:
 
-1. Creates one Target per cluster, named for it, plus `argocd` for the cluster
-   Argo runs on, all on a server-hosted worker.
+1. Creates one server-hosted worker and one Target per cluster, named for it,
+   plus `argocd` for the cluster Argo runs on. A Target names no worker; the
+   worker's bot user is granted `View`, `ViewChildren` and `EditChildren` on
+   each, which is what lets it pull releases and record their live status.
 2. Stores each app of apps' children as Units — your `AppProject`,
    `ApplicationSet` and child `Application` manifests, copied byte for byte, so
    reviewing what ConfigHub holds is reviewing what Argo reads today.
@@ -404,7 +406,7 @@ no controller claims in those namespaces: things applied by hand, which neither
 record mentions and which a handover leaves behind. That one is a cross-check,
 not a gate, and cub-scout's absence is not a failure.
 
-**The repository Secret, verified against Argo CD v3.5.3.** The Application's
+**The repo-creds Secret, verified against Argo CD v3.5.3.** The Application's
 `repoURL` and the Secret's `url` both need the `oci://` scheme — without it Argo
 treats the address as a git repository and fails with `list refs: invalid auth
 method`. The Secret's `type` is `oci`, and the worker is the username and
@@ -504,7 +506,8 @@ staging-apptique: 3 objects match what Argo owns
 ```
 
 It exits non-zero if any Application is not clean, so it drops into CI as it
-is. `--kube-context` names the cluster to read; without it kubectl uses
+is. Clean is about objects and fields. Health counts only with `--record`,
+where the command also fails unless every check recorded a Pass. `--kube-context` names the cluster to read; without it kubectl uses
 whatever context is current, which during a handover is very likely the wrong
 one.
 
@@ -575,7 +578,7 @@ a Pass. Anything that differs is a rejection that names it: an object the
 release would add or prune, a field, or an object it could not read. Health is
 part of the verdict: an Application Argo CD reports Degraded or Missing is a
 rejection too, and one still Progressing or Suspended records nothing, since
-it is neither yet; run the check again once it settles. The claims name the
+it is neither yet; run the check again once that changes. The claims name the
 Application, its health and the release digest. `LiveCheck` is the type `cub kubara check --record` uses for
 the same claim, so a workflow can require one type whichever plugin checked. It
 needs `--fields`: a claim that the cluster runs this release rests on every
@@ -589,7 +592,8 @@ Those are the same cluster only when the destination is Argo's own
 (`in-cluster`). For any other, pass that cluster's context:
 
 ```bash
-cub argo check ./my-estate --cluster prod-1 --fields \
+cub argo check --application prod-1-apptique --space argo-apptique-prod-1 --unit apptique \
+  --destination-namespace storefront-prod --fields \
   --kube-context <Argo CD's cluster> --destination-context <prod-1's context>
 ```
 
@@ -1124,7 +1128,7 @@ Measured both ways on the rig.
 Nothing in this guide is claimed without something having run.
 
 **Checked here, offline:** every render in the example's script runs against
-kustomize 5.8.1 and gives the same bytes twice over. Both generated scripts are
+kustomize 5.8.1 and gives the same bytes twice over. Every generated script is
 valid bash. `plan` reads every Argo example in this repository. One command,
 `scripts/verify-gitops-plugins.sh`, runs all of that and has twice caught
 defects nobody was looking for.
@@ -1154,7 +1158,7 @@ from the same wrong beliefs as the code.
 published to the OCI gateway, an Argo CD v3.5.3 Application was pointed at it,
 and it reported `Synced` and `Healthy` at the exact manifest digest
 `cub release list` showed. The workloads came up. Two things were learned that
-way and are now in the script and this guide: the repository Secret's shape,
+way and are now in the script and this guide: the repo-creds Secret's shape,
 and that a second release does not arrive without a hard refresh.
 
 **Since run:** a handover of an estate *already live under Argo*, repointing

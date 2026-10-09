@@ -83,11 +83,41 @@ NUM    TAG                                            PUBLISHED    DIGEST       
 1      rh-la-apptique-base/onboard-b97387d1-co-end    true         f3bc16ed53a6    Synced/Healthy    2026-10-09 08:37:06
 ```
 
+## 4. A recorded check judges health
+
+With the build that became 0.3.2. All three Applications Healthy:
+
+```text
+$ cub argo check estate.json … --fields --record
+dev-1-apptique: release 2 (sha256:1b46f5f8b03f4198035939d58d1bc39545273831e87f82d5ca999d3735febb32) holds apptique at revision 4
+  recorded a Pass: LiveCheck attestation f6081b0a-2ac1-4516-90ef-6c1be58640f3 on rh-la-apptique-dev-1/apptique revision 4
+…
+3 of 3 clean
+3 of 3 recorded a Pass
+
+{"Type":"LiveCheck","Result":"Pass","Claims":{"argocd.argoproj.io/application":"dev-1-apptique","argocd.argoproj.io/health":"Healthy","confighub.com/release":"sha256:1b46f5f8b03f4198035939d58d1bc39545273831e87f82d5ca999d3735febb32"},"Note":"cub argo check: 4 objects match what Argo owns, every field the release sets matches on all 4, and Argo CD reports it Healthy"}
+```
+
+Then the workload cluster's node was cordoned and the pods in `storefront-dev`
+deleted, so two Applications waited for a node. Nothing differed, and nothing
+was recorded for them; the command failed:
+
+```text
+  recorded nothing yet: Argo CD reports dev-1-apptique as Progressing, which is neither a Pass nor a rejection; check again once that changes
+  recorded nothing yet: Argo CD reports dev-1-checkout-cache as Progressing, which is neither a Pass nor a rejection; check again once that changes
+  recorded a Pass: LiveCheck attestation 85cc2ffb-8802-4994-b810-5af4a156a9bf on rh-la-platform-addons-cluster-baseline-dev-1/platform-addons-cluster-baseline revision 3
+3 of 3 clean
+1 of 3 recorded a Pass
+exit 1
+```
+
 ## Not checked
 
 - The Healthy gate refusing a promotion: this estate had one stage. It was
   shown the same day with `cub flux`, against the same server:
   [the Flux run log](../../../cub-flux/docs/runs/2026-10-09-live-status-on-the-release.md).
+- A Degraded Application recorded as a rejection: only Progressing was
+  produced here. Covered by tests, and run live for a failing Flux layer.
 - argobot and `cub argo status` on the same release, an Application with
   several sources, and a reading withdrawn after a rollback. Covered by tests;
   the withdrawal was run live with `cub flux`.

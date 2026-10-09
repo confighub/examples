@@ -202,7 +202,7 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 	// does not exist on entity type Space" and exits 1 while the session is
 	// perfectly good. Using that as the login check aborts this script on its
 	// own first line and sends the reader to re-login, which cannot help.
-	add(`cub auth status >/dev/null 2>&1 || { echo "cub is not signed in to ConfigHub: run 'cub auth login', or 'cub auth login --private-key <key>' on a server with no identity provider"; exit 1; }`)
+	add(`cub auth status >/dev/null 2>&1 || { echo "cub is not signed in to ConfigHub: run 'cub auth login', or 'cub auth login --private-key=<key>' on a server with no identity provider"; exit 1; }`)
 	// The skew is worth saying out loud, because it is what later steps fail
 	// on, and nothing else in the run would explain them.
 	add(`cub auth status 2>&1 | grep -i '^Warning:' && echo "  Steps below may fail on that skew rather than on anything here."`)
@@ -358,11 +358,11 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 	add("# cluster reaches, which only you know; nothing reads these until the root")
 	add("# is on the cluster, which handover.sh puts there.")
 	raw := func(s string) { L = append(L, s) }
-	raw(`if [ -z "${CONFIGHUB_OCI:-}" ]; then`)
+	raw(`# What is written below adds the scheme itself, so take it off if it was given.`)
+	raw(`CONFIGHUB_OCI=${CONFIGHUB_OCI:-}; CONFIGHUB_OCI=${CONFIGHUB_OCI#oci://}`)
+	raw(`if [ -z "$CONFIGHUB_OCI" ]; then`)
 	raw(`  echo "  skipped: set CONFIGHUB_OCI to the gateway host the clusters reach (and CONFIGHUB_OCI_PLAIN_HTTP=1 if it serves plain HTTP), then re-run. handover.sh needs these Spaces."`)
 	raw(`else`)
-	raw(`  # What is written below adds the scheme itself, so take it off if it was given.`)
-	raw(`  CONFIGHUB_OCI=${CONFIGHUB_OCI#oci://}`)
 	raw(`  insecure=false; [ -z "${CONFIGHUB_OCI_PLAIN_HTTP:-}" ] || insecure=true`)
 	raw(`  mkdir -p render`)
 	raw(`  # layer_unit <space> <unit> <file>`)
