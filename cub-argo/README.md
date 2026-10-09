@@ -171,9 +171,10 @@ CONFIGHUB_OCI=<gateway host:port the kind cluster reaches> CONFIGHUB_OCI_PLAIN_H
 `app-of-apps` is `beginner-app-of-apps`, a root whose children sync plain
 directories. `by-hand` is `intermediate-ci-to-gitops`, Applications with no
 parent, whose image does not pull, so `status` has to report `Progressing` and
-keep the Healthy gate shut. Both passed on 2026-09-30 against Argo CD v3.5.3
-and ConfigHub v0.6.8, and the script's own first runs found three bugs in
-itself, none in the plugin.
+keep the Healthy gate shut. Both passed again on 2026-10-09, with
+v0.3.2, against Argo CD v3.5.3 and ConfigHub v0.8.10 over a TLS gateway. They
+first passed on 2026-09-30 against ConfigHub v0.6.8, when the script's own first
+runs found three bugs in itself, none in the plugin.
 
 ## Develop
 
