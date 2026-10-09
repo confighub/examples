@@ -3,6 +3,24 @@
 Each release is tagged `cub-flux-v<version>` in confighub/examples and installs
 with `cub plugin install confighub/examples@cub-flux-v<version> --name flux`.
 
+## 0.3.1, unreleased
+
+Needs ConfigHub v0.8.2 or newer for live status.
+
+- **Live status is recorded where ConfigHub now reads it.** From ConfigHub
+  v0.8.2, live status lives on the Release, and the Healthy gate reads the
+  newest published release of a Space and nothing else. `cub flux status` wrote
+  the Space annotation `confighub.com/live-status`, which a current server does
+  not read, so a fleet planned with `--require Healthy` never passed the gate.
+  It now records each reading on the release whose digest Flux reports, in
+  ConfigHub's normalized words.
+- **A failing release is reported on the release that failed.** When Flux is
+  applying a release, or stalled on one, the reading goes on that release
+  rather than the one applied before it, so the gate says "still being
+  deployed" or "failed to deploy" instead of "no live status yet".
+- **Another reporter's fresh reading is left alone**, as `cub argo status`
+  already did.
+
 ## 0.3.0, 2026-10-02
 
 Needs `cub` and ConfigHub v0.7.0 or newer.

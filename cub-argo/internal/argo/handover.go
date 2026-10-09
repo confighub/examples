@@ -643,9 +643,9 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("echo %s", q("the tag to a digest and the release lands:"))
 	show("annotate application <name> argocd.argoproj.io/refresh=hard --overwrite")
 	add("echo %s", q("argobot does this for you: argobot.sh runs it beside Argo CD with the Targets' worker,"))
-	add("echo %s", q("so it refreshes each Application reading a Space when that Space publishes, and writes"))
-	add("echo %s", q("each Application's live status back to its Space. Without argobot, keep this running"))
-	add("echo %s", q("beside the cluster instead: it asks for that refresh once per release, and writes the"))
+	add("echo %s", q("so it refreshes each Application reading a Space when that Space publishes, and records"))
+	add("echo %s", q("each Application's live status on the release it synced. Without argobot, keep this running"))
+	add("echo %s", q("beside the cluster instead: it asks for that refresh once per release, and records the"))
 	add("echo %s", q("same live status, which is what the Healthy gate and change orders read:"))
 	add(`echo "  cub argo status <what you planned, with the same flags> --prefix %s --kube-context $ctx --watch --hard-refresh"`, prefix)
 	return strings.Join(L, "\n") + "\n"

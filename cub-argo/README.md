@@ -17,8 +17,8 @@ The commands and scripts, in order; the first two change nothing:
 | `check` | compares what Argo owns on the cluster with what ConfigHub holds; `handover.sh` runs it before it moves anything | no (`--record` writes a LiveCheck to ConfigHub) |
 | `handover.sh` | repoints `root` at ConfigHub, prints the reviewed edit for each app of apps, and checks every Application's release against the cluster before any workload's source moves | yes, this is the step that moves it |
 | `move-applications.sh` | makes each Application that an ApplicationSet generated a Unit reading its own Space, one stage at a time | yes, through the parent that syncs it |
-| `argobot.sh` | runs argobot beside Argo CD: live status goes back to each Space, and each published release lands at once | yes, it installs argobot |
-| `status` | without argobot: writes what each handed-over Application synced into its Space as ConfigHub live status, once or with `--watch` | only with `--hard-refresh`, which asks Argo to read a new release |
+| `argobot.sh` | runs argobot beside Argo CD: live status is recorded on each release, and each published release lands at once | yes, it installs argobot |
+| `status` | without argobot: records what each handed-over Application synced as live status on the release it synced, once or with `--watch` | only with `--hard-refresh`, which asks Argo to read a new release |
 | `cleanup.sh` | the way back out of ConfigHub, once each source is back on Git | no |
 
 **Start with the guide: [Onboard your Argo CD estate](docs/onboard-your-argo-estate.md).**
@@ -144,9 +144,11 @@ cub argo status ../gitops/argo/expert-app-of-apps --stage-label rollout-phase \
   --stages canary,secondary,primary --kube-context <argo cluster> --watch --hard-refresh
 ```
 
-It writes each Space's `confighub.com/live-status`, which ConfigHub's Healthy
-gate, its change orders and its UI read. A reading says `Synced` only when Argo
-synced the newest published release of that Space, at that release's digest.
+It records each Application's live status on the release it synced, found by
+the digest Argo reports, which is what ConfigHub's Healthy gate, its change
+orders and its UI read. The gate reads the newest published release only, so
+a reading of an older one does not pass it. This needs ConfigHub v0.8.2 or
+newer, where live status moved from the Space onto the Release.
 `--hard-refresh` asks Argo, once per release, to read a release it has cached
 past; without it, a newly approved release sits unread on the gateway.
 `--dry-run` shows what would be written; `--json` prints it for scripts.

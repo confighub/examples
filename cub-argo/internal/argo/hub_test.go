@@ -1,9 +1,11 @@
 package argo
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+)
 
-// fakeHub stands in for ConfigHub. Its zero value holds nothing: no release,
-// no annotations.
+// fakeHub stands in for ConfigHub. Its zero value holds nothing: no release.
 type fakeHub struct {
 	release     *HubRelease // what Release answers; nil is "no release"
 	releases    []HubRelease
@@ -11,11 +13,10 @@ type fakeHub struct {
 	revision    int    // the revision the release's tag names; 0 is "not in the release"
 	data        string // that revision's data
 	head        int
-	annotations map[string]map[string]string
-	unreadable  map[string]bool // Spaces that cannot be read
+	unwritable  map[string]bool // Spaces whose Releases cannot be written
 
 	asked    []string
-	patches  []string
+	recorded []string // "<space> release <n> <status as JSON>"
 	attested []Attestation
 }
 
@@ -46,15 +47,12 @@ func (f *fakeHub) UnitHead(space, unit string) (int, error) {
 	return f.head, nil
 }
 
-func (f *fakeHub) SpaceAnnotations(space string) (map[string]string, error) {
-	if f.unreadable[space] {
-		return nil, fmt.Errorf("space %s not found", space)
+func (f *fakeHub) SetLiveStatus(space string, release int, st LiveStatus) error {
+	if f.unwritable[space] {
+		return fmt.Errorf("space %s not found", space)
 	}
-	return f.annotations[space], nil
-}
-
-func (f *fakeHub) PatchSpace(space string, patch []byte) error {
-	f.patches = append(f.patches, space+" "+string(patch))
+	doc, _ := json.Marshal(st)
+	f.recorded = append(f.recorded, fmt.Sprintf("%s release %d %s", space, release, doc))
 	return nil
 }
 

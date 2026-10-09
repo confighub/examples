@@ -4,47 +4,46 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"sort"
 	"strings"
 	"time"
+
+	"github.com/confighub/sdk/core/livestatus"
 )
 
-// Live status is how ConfigHub hears what a cluster is running: a small JSON
-// document in the confighub.com/live-status annotation of the Space an
-// Application reads. On a cluster `cub cluster up` made, argobot writes it. An
-// estate onboarded here has no argobot, so without this nothing would, and
-// ConfigHub's Healthy gate, its change order stages and its UI would have
-// nothing to read.
+// Live status is how ConfigHub hears what a cluster is running. It is
+// recorded on the Release: what the tool deploying that Release says about it
+// running. ConfigHub's Healthy gate reads the newest published Release of a
+// Space and nothing else, so a Release no tool has reported on is not healthy,
+// however the one before it was. On a cluster `cub cluster up` made, argobot
+// records it. An estate onboarded here may run no argobot, and without this
+// nothing would record it: the gate, the change order stages and the UI would
+// have nothing to read.
 //
-// Argo CD's own words are close to what ConfigHub wants, but not the same:
-//
-//   - Argo says Synced when the cluster matches the revision Argo last
-//     resolved for "latest", and it caches that digest until a hard refresh.
-//     So after a publish Argo goes on saying Synced at the release before. A
-//     reading here says Synced only when the digest Argo synced is the newest
-//     published release of that Space.
-//   - ConfigHub advances a change order when a reading's revision equals one of
-//     its releases' manifest digests. For an oci:// source Argo records that
-//     digest in status.sync.revision, and that is what is written, never a
-//     digest inferred from anything else.
+// Which Release a reading is recorded on is decided by one thing only: the
+// digest Argo CD says it synced, status.sync.revision, which for an oci://
+// source is the Release's manifest digest. It is never inferred from anything
+// else. Argo caches the digest it resolved for "latest" until a hard refresh,
+// so after a publish it goes on saying Synced at the release before: that
+// reading is recorded on the release before, where it is true, and the newest
+// Release stays without one until Argo reads it.
 
-// LiveStatusAnnotation is the Space annotation ConfigHub reads.
-const LiveStatusAnnotation = "confighub.com/live-status"
+// StatusReporter names this reporter on each Release it reports on.
+const StatusReporter = "cub-argo"
 
-// StatusSource names this reporter. The UI shows an Argo mark for any source
-// containing "argo".
-const StatusSource = "cub-argo"
-
-// LiveStatus is ConfigHub's live-status document, in Argo CD's words.
+// LiveStatus is what is recorded on a Release. Sync, Health and Operation are
+// ConfigHub's normalized words, which its gates read; the Reporter fields
+// keep Argo CD's own beside them.
 type LiveStatus struct {
-	Source         string `json:"source"`
-	App            string `json:"app,omitempty"`
-	SyncStatus     string `json:"syncStatus,omitempty"`
-	HealthStatus   string `json:"healthStatus,omitempty"`
-	OperationPhase string `json:"operationPhase,omitempty"`
-	Revision       string `json:"revision,omitempty"`
-	Message        string `json:"message,omitempty"`
-	ObservedAt     string `json:"observedAt"`
+	Reporter          string `json:"reporter"`
+	DataSource        string `json:"dataSource,omitempty"`
+	Sync              string `json:"sync"`
+	Health            string `json:"health"`
+	Operation         string `json:"operation,omitempty"`
+	ReporterSync      string `json:"reporterSync,omitempty"`
+	ReporterHealth    string `json:"reporterHealth,omitempty"`
+	ReporterOperation string `json:"reporterOperation,omitempty"`
+	Message           string `json:"message,omitempty"`
+	ObservedAt        string `json:"observedAt"`
 }
 
 // Same reports whether two readings say the same thing, whenever each was
@@ -55,20 +54,18 @@ func (s LiveStatus) Same(o LiveStatus) bool {
 }
 
 // Gate reports whether ConfigHub's Healthy prerequisite would pass on this
-// reading.
+// reading, were it on the Space's newest published Release: synced, healthy,
+// and no operation running or failed.
 func (s LiveStatus) Gate() bool {
-	return s.SyncStatus == "Synced" && s.OperationPhase == "Succeeded" && s.HealthStatus == "Healthy"
+	return s.Sync == "Synced" && s.Health == "Healthy" && s.Operation != "Running" && s.Operation != "Failed"
 }
 
 func (s LiveStatus) String() string {
-	parts := []string{s.SyncStatus, s.HealthStatus}
-	if s.OperationPhase != "" {
-		parts = append(parts, s.OperationPhase)
+	parts := []string{s.Sync, s.Health}
+	if s.Operation != "" {
+		parts = append(parts, s.Operation)
 	}
 	out := strings.Join(parts, "/")
-	if s.Revision != "" {
-		out += " at " + s.Revision
-	}
 	if s.Message != "" {
 		out += ": " + s.Message
 	}
@@ -97,11 +94,24 @@ func StatusChecksFor(p *Plan, prefix string) []StatusCheck {
 	return out
 }
 
-// Reading is what one Application says about itself, before anything is
-// written.
+// Reading is what one Application says about itself, and the Release it says
+// it about, before anything is written.
 type Reading struct {
 	Check  StatusCheck `json:"check"`
 	Status LiveStatus  `json:"status"`
+	// Revision is the digest Argo CD says it synced, which names the Release
+	// the reading is about.
+	Revision string `json:"revision,omitempty"`
+	// Release is the published release with that digest, where the reading is
+	// recorded; 0 when there is none. Newest is the Space's newest published
+	// release, the one the Healthy gate reads.
+	Release int `json:"release,omitempty"`
+	Newest  int `json:"newest,omitempty"`
+	// Held is what that Release holds now, if a tool has reported on it.
+	Held *LiveStatus `json:"held,omitempty"`
+	// Unrecorded, when set, is why the reading names no Release to record it
+	// on.
+	Unrecorded string `json:"unrecorded,omitempty"`
 	// Skip, when set, is why nothing is reported for this Application: it
 	// does not read the Space the reading would be written to.
 	Skip string `json:"skip,omitempty"`
@@ -110,8 +120,8 @@ type Reading struct {
 	Unread string `json:"unread,omitempty"`
 }
 
-// statusMessageLimit keeps a reading well inside the 1024 bytes ConfigHub
-// allows an annotation value.
+// statusMessageLimit keeps a message short enough to read in a list; ConfigHub
+// allows 1024 bytes.
 const statusMessageLimit = 200
 
 type appSource struct {
@@ -243,9 +253,9 @@ func (a application) problem() string {
 	return ""
 }
 
-// ReadStatus reads one Application and says what ConfigHub should hear. A read
-// that fails returns an error and no reading: a guess written here could open
-// a gate or advance a change order.
+// ReadStatus reads one Application and says what ConfigHub should hear, and
+// about which Release. A read that fails returns an error and no reading: a
+// guess written here could open a gate or advance a change order.
 func ReadStatus(run Runner, hub Hub, c StatusCheck, now time.Time) (Reading, error) {
 	r := Reading{Check: c}
 	out, err := run("kubectl", "-n", checkNamespace, "get", "application", c.Application, "-o", "json")
@@ -259,204 +269,189 @@ func ReadStatus(run Runner, hub Hub, c StatusCheck, now time.Time) (Reading, err
 	src, ok := a.spaceSource(c.Space)
 	if !ok {
 		r.Skip = fmt.Sprintf("reads %s, not Space %s, so there is nothing of ConfigHub's to report", a.sourceURLs(), c.Space)
+		r.leftBehind(hub)
 		return r, nil
 	}
-	releases, err := publishedReleases(hub, c.Space)
+	releases, err := hub.Releases(c.Space)
 	if err != nil {
-		return r, err
+		return r, fmt.Errorf("listing the releases of %s: %w", c.Space, err)
 	}
-	r.Status = a.status(src, releases)
-	if len(releases) > 0 && r.Status.Revision != "" {
-		if newest := releases[len(releases)-1]; newest.Digest != r.Status.Revision {
-			r.Unread = newest.Digest
-		}
-	}
-	r.Status.Source = StatusSource
-	r.Status.App = c.Application
+	r.Status, r.Revision = a.status(src)
+	r.Status.Reporter = StatusReporter
+	r.Status.DataSource = c.Application
 	r.Status.ObservedAt = now.UTC().Format(time.RFC3339)
-	if len(r.Status.Message) > statusMessageLimit {
-		r.Status.Message = r.Status.Message[:statusMessageLimit-3] + "..."
-	}
+	r.place(releases)
+	r.Status.Message = clip(r.Status.Message)
 	return r, nil
 }
 
-// status maps an Application onto ConfigHub's words.
-func (a application) status(src appSource, releases []release) LiveStatus {
-	health := a.Status.Health.Status
-	if health == "" {
-		health = "Unknown"
+// leftBehind notes what the Space's newest Release holds, for a reading that
+// is skipped: that decides whether a reading of ours is left behind on it. A
+// Space that cannot be read has nothing of ours to replace.
+func (r *Reading) leftBehind(hub Hub) {
+	releases, err := hub.Releases(r.Check.Space)
+	if err != nil {
+		return
 	}
+	if newest := newestPublished(releases); newest != nil {
+		r.Release, r.Newest, r.Held = newest.Num, newest.Num, newest.Live
+	}
+}
+
+func clip(msg string) string {
+	if len(msg) > statusMessageLimit {
+		return msg[:statusMessageLimit-3] + "..."
+	}
+	return msg
+}
+
+func newestPublished(releases []HubRelease) *HubRelease {
+	var newest *HubRelease
+	for i := range releases {
+		if releases[i].Published && (newest == nil || releases[i].Num > newest.Num) {
+			newest = &releases[i]
+		}
+	}
+	return newest
+}
+
+// place finds the Release a reading is about: the newest published one with
+// the digest Argo CD synced.
+func (r *Reading) place(releases []HubRelease) {
+	newest := newestPublished(releases)
+	if newest != nil {
+		r.Newest = newest.Num
+	}
+	if r.Revision == "" {
+		r.Unrecorded = r.Status.Message
+		if r.Unrecorded == "" {
+			r.Unrecorded = "Argo CD reports no synced revision"
+		}
+		return
+	}
+	var this *HubRelease
+	for i := range releases {
+		if releases[i].Published && releases[i].ManifestDigest == r.Revision && (this == nil || releases[i].Num > this.Num) {
+			this = &releases[i]
+		}
+	}
+	if this == nil {
+		r.Unrecorded = "Argo CD synced " + r.Revision + ", which is no published release of this Space"
+		return
+	}
+	r.Release, r.Held = this.Num, this.Live
+	behind := ""
+	if this.Num != newest.Num {
+		r.Unread = newest.ManifestDigest
+		behind = fmt.Sprintf("; release %d is published and Argo CD has not read it: it caches the digest behind latest until a hard refresh (status --hard-refresh asks for one)", newest.Num)
+	}
+	if r.Status.Message == "" {
+		r.Status.Message = fmt.Sprintf("release %d synced%s", this.Num, behind)
+	}
+}
+
+// status maps an Application onto ConfigHub's words, and names the digest it
+// is about: empty when Argo has not said.
+func (a application) status(src appSource) (LiveStatus, string) {
 	phase := ""
 	if op := a.Status.OperationState; op != nil {
 		phase = op.Phase
 	}
+	n := livestatus.FromArgoCD(a.Status.Sync.Status, a.Status.Health.Status, phase)
+	st := LiveStatus{
+		Sync: string(n.Sync), Health: string(n.Health), Operation: string(n.Operation),
+		ReporterSync: n.ReporterSync, ReporterHealth: n.ReporterHealth, ReporterOperation: n.ReporterOperation,
+	}
 	if !a.comparedWith(src) {
-		return LiveStatus{SyncStatus: "Unknown", HealthStatus: health, OperationPhase: phase,
-			Message: "Argo CD has not compared the Application with its ConfigHub source yet"}
+		st.Sync = "Unknown"
+		st.Message = "Argo CD has not compared the Application with its ConfigHub source yet"
+		return st, ""
 	}
 	revision := a.Status.Sync.Revision
 	if p := a.problem(); p != "" {
 		// Argo can go on saying Synced from the last comparison that worked
 		// while it reports an error now. That is not a reading to pass a gate
 		// on.
-		sync := orUnknown(a.Status.Sync.Status)
-		if sync == "Synced" {
-			sync = "Unknown"
+		if st.Sync == "Synced" {
+			st.Sync = "Unknown"
 		}
-		return LiveStatus{SyncStatus: sync, HealthStatus: health, OperationPhase: phase, Revision: revision, Message: p}
+		st.Message = p
+		return st, revision
 	}
 	if a.Status.Sync.Status != "Synced" {
 		// The last operation's message describes that operation, which may
 		// have succeeded before the source moved on, so it is the last resort.
-		msg := a.outOfSync()
-		if msg == "" {
-			msg = a.Status.Health.Message
+		st.Message = a.outOfSync()
+		if st.Message == "" {
+			st.Message = a.Status.Health.Message
 		}
-		if op := a.Status.OperationState; msg == "" && op != nil {
-			msg = op.Message
-		}
-		return LiveStatus{SyncStatus: orUnknown(a.Status.Sync.Status), HealthStatus: health, OperationPhase: phase, Revision: revision, Message: msg}
-	}
-	why := ""
-	if phase == "" {
-		why = "; Argo CD has run no sync operation, so none has succeeded"
-	}
-	var this, newest *release
-	for i := range releases {
-		if releases[i].Digest == revision {
-			this = &releases[i]
-		}
-		if newest == nil || releases[i].Num > newest.Num {
-			newest = &releases[i]
+		if op := a.Status.OperationState; st.Message == "" && op != nil {
+			st.Message = op.Message
 		}
 	}
-	switch {
-	case this == nil:
-		return LiveStatus{SyncStatus: "Unknown", HealthStatus: health, OperationPhase: phase, Revision: revision,
-			Message: "Argo CD synced " + revision + ", which is no published release of this Space" + why}
-	case this.Num != newest.Num:
-		return LiveStatus{SyncStatus: "OutOfSync", HealthStatus: health, OperationPhase: phase, Revision: revision,
-			Message: fmt.Sprintf("release %d is synced; release %d is published and Argo CD has not read it: it caches the digest behind latest until a hard refresh (status --hard-refresh asks for one)%s", this.Num, newest.Num, why)}
-	}
-	return LiveStatus{SyncStatus: "Synced", HealthStatus: health, OperationPhase: phase, Revision: revision,
-		Message: fmt.Sprintf("release %d synced%s", this.Num, why)}
-}
-
-func orUnknown(s string) string {
-	if s == "" {
-		return "Unknown"
-	}
-	return s
-}
-
-type release struct {
-	Num    int
-	Digest string
-}
-
-func publishedReleases(hub Hub, space string) ([]release, error) {
-	list, err := hub.Releases(space)
-	if err != nil {
-		return nil, fmt.Errorf("listing the releases of %s: %w", space, err)
-	}
-	var rs []release
-	for _, l := range list {
-		if l.Published {
-			rs = append(rs, release{Num: l.Num, Digest: l.ManifestDigest})
-		}
-	}
-	sort.Slice(rs, func(i, j int) bool { return rs[i].Num < rs[j].Num })
-	return rs, nil
-}
-
-// HeldStatus is the reading ConfigHub holds for a Space now, if any.
-func HeldStatus(hub Hub, space string) (LiveStatus, bool, error) {
-	a, err := hub.SpaceAnnotations(space)
-	if err != nil {
-		return LiveStatus{}, false, fmt.Errorf("reading Space %s: %w", space, err)
-	}
-	raw, ok := a[LiveStatusAnnotation]
-	if !ok {
-		return LiveStatus{}, false, nil
-	}
-	var held LiveStatus
-	if err := json.Unmarshal([]byte(raw), &held); err != nil {
-		// Unreadable is as good as absent: it will be replaced.
-		return LiveStatus{}, false, nil
-	}
-	return held, true, nil
-}
-
-// StatusPatch is the body that sets only the live-status annotation, leaving
-// every other field and annotation of the Space as it is.
-func StatusPatch(s LiveStatus) ([]byte, error) {
-	doc, err := json.Marshal(s)
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(map[string]any{"Annotations": map[string]string{LiveStatusAnnotation: string(doc)}})
+	return st, revision
 }
 
 // Outcome is what reporting did for one Application.
 type Outcome struct {
 	Reading
-	// Did is one of written, unchanged, dry-run, skipped or left.
+	// Did is one of written, unchanged, dry-run, skipped, left or unrecorded.
 	Did string `json:"did"`
 	// Why says, for left, whose reading was left alone.
 	Why string `json:"why,omitempty"`
 }
 
-// ReportStatus writes each reading that says something new, or that ConfigHub
-// has held for longer than refresh: observedAt is the only sign a reporter is
-// still running, so an unchanged reading is written again now and then.
+// ReportStatus records each reading that says something new on its Release, or
+// that the Release has held for longer than refresh: observedAt is the only
+// sign a reporter is still running, so an unchanged reading is written again
+// now and then.
 //
 // A reading another reporter wrote, argobot say, is left alone while it is
-// fresher than refresh: two reporters on one Space would overwrite each other
-// on every pass. One older than that is from a reporter that has stopped, and
-// is replaced.
+// fresher than refresh: two reporters on one Release would overwrite each
+// other on every pass. One older than that is from a reporter that has
+// stopped, and is replaced.
 func ReportStatus(hub Hub, readings []Reading, refresh time.Duration, dryRun bool, now time.Time) ([]Outcome, error) {
 	var out []Outcome
-	// A Space that cannot be read or written is reported, and the rest are
-	// still reported: one deleted Space must not freeze every reading after it.
+	// A Release that cannot be written is reported, and the rest are still
+	// reported: one deleted Space must not freeze every reading after it.
 	var errs []string
 	for _, r := range readings {
 		o := Outcome{Reading: r}
-		held, ok, err := HeldStatus(hub, r.Check.Space)
-		if err != nil {
-			errs = append(errs, err.Error())
-			continue
-		}
+		held := r.Held
 		fresh := false
-		if ok {
+		if held != nil {
 			if at, err := time.Parse(time.RFC3339, held.ObservedAt); err == nil && now.Sub(at) < refresh {
 				fresh = true
 			}
 		}
-		if ok && held.Source != StatusSource && fresh {
-			o.Did = "left"
-			o.Why = fmt.Sprintf("%s reported this Space at %s; two reporters would overwrite each other", held.Source, held.ObservedAt)
-			out = append(out, o)
-			continue
-		}
 		if r.Skip != "" {
 			// An Application that has left this Space, handed back to Git say,
-			// leaves behind the last reading written for it, and the Healthy
+			// leaves behind the last reading recorded for it, and the Healthy
 			// gate would go on passing on it. So a reading this reporter wrote
-			// is replaced with one that says the Application no longer reads
-			// the Space. Another reporter's reading is not ours to change.
-			if !ok || held.Source != StatusSource {
+			// on the newest Release is replaced with one that says the
+			// Application no longer reads the Space. Another reporter's reading
+			// is not ours to change.
+			if held == nil || held.Reporter != StatusReporter {
 				o.Did = "skipped"
 				out = append(out, o)
 				continue
 			}
-			r.Status = LiveStatus{Source: StatusSource, App: r.Check.Application, SyncStatus: "Unknown", HealthStatus: "Unknown",
-				Message: "the Application no longer reads this Space: it " + r.Skip, ObservedAt: now.UTC().Format(time.RFC3339)}
-			if len(r.Status.Message) > statusMessageLimit {
-				r.Status.Message = r.Status.Message[:statusMessageLimit-3] + "..."
-			}
+			r.Status = LiveStatus{Reporter: StatusReporter, DataSource: r.Check.Application, Sync: "Unknown", Health: "Unknown",
+				Message: clip("the Application no longer reads this Space: it " + r.Skip), ObservedAt: now.UTC().Format(time.RFC3339)}
 			o.Reading = r
 		}
-		if ok && held.Same(r.Status) && fresh {
+		if r.Release == 0 {
+			o.Did = "unrecorded"
+			out = append(out, o)
+			continue
+		}
+		if held != nil && held.Reporter != StatusReporter && fresh {
+			o.Did = "left"
+			o.Why = fmt.Sprintf("%s reported on release %d at %s; two reporters would overwrite each other", held.Reporter, r.Release, held.ObservedAt)
+			out = append(out, o)
+			continue
+		}
+		if held != nil && held.Same(r.Status) && fresh {
 			o.Did = "unchanged"
 			out = append(out, o)
 			continue
@@ -466,12 +461,8 @@ func ReportStatus(hub Hub, readings []Reading, refresh time.Duration, dryRun boo
 			out = append(out, o)
 			continue
 		}
-		patch, err := StatusPatch(r.Status)
-		if err != nil {
-			return out, err
-		}
-		if err := hub.PatchSpace(r.Check.Space, patch); err != nil {
-			errs = append(errs, fmt.Sprintf("writing the live status of %s: %v", r.Check.Space, err))
+		if err := hub.SetLiveStatus(r.Check.Space, r.Release, r.Status); err != nil {
+			errs = append(errs, fmt.Sprintf("recording the live status of release %d of %s: %v", r.Release, r.Check.Space, err))
 			continue
 		}
 		o.Did = "written"
@@ -490,15 +481,21 @@ func PrintOutcomes(w io.Writer, outs []Outcome) {
 		case o.Did == "left":
 			fmt.Fprintf(w, "%s -> %s: left alone: %s\n", o.Check.Application, o.Check.Space, o.Why)
 			continue
-		case o.Skip != "" && o.Did == "skipped":
+		case o.Did == "skipped":
 			fmt.Fprintf(w, "%s: not reported: %s\n", o.Check.Application, o.Skip)
+			continue
+		case o.Did == "unrecorded":
+			fmt.Fprintf(w, "%s -> %s: not recorded, there is no release to record it on: %s (the Healthy gate would not pass)\n", o.Check.Application, o.Check.Space, o.Unrecorded)
 			continue
 		}
 		gate := "the Healthy gate would not pass"
-		if o.Status.Gate() {
+		switch {
+		case o.Release != o.Newest:
+			gate = fmt.Sprintf("the Healthy gate would not pass: it reads release %d, the newest, which nothing has reported on", o.Newest)
+		case o.Status.Gate():
 			gate = "the Healthy gate would pass"
 		}
-		fmt.Fprintf(w, "%s -> %s: %s (%s; %s)\n", o.Check.Application, o.Check.Space, o.Status, o.Did, gate)
+		fmt.Fprintf(w, "%s -> %s release %d: %s (%s; %s)\n", o.Check.Application, o.Check.Space, o.Release, o.Status, o.Did, gate)
 	}
 }
 

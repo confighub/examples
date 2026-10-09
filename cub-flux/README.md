@@ -20,7 +20,7 @@ that move a cluster:
 | `watch` | proposes each cluster added to the fleet repository, and releases it once a person approves | no, it runs `apply.sh`; `join.sh` stays yours |
 | `cleanup.sh` | takes what `apply.sh` made back out of ConfigHub, layers Spaces first | no |
 | `check` | compares what each layer applied with the published release; `--record` keeps the verdict as a `LiveCheck` attestation | reads it; changes nothing, except that `--record` writes to ConfigHub |
-| `status` | reports what Flux applied as ConfigHub live status, which the Healthy gate reads | reads it; writes only to ConfigHub |
+| `status` | records what Flux applied as live status on the release it applied, which the Healthy gate reads | reads it; writes only to ConfigHub |
 
 `flux-system` is never repointed: it reconciles the Flux controllers
 themselves, so it stays on Git as the recovery path. It also holds the root and

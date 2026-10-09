@@ -5,6 +5,21 @@ with `cub plugin install confighub/examples@cub-argo-v<version> --name argo`.
 
 ## 0.3.1, unreleased
 
+Needs ConfigHub v0.8.2 or newer for live status.
+
+- **Live status is recorded where ConfigHub now reads it.** From ConfigHub
+  v0.8.2, live status lives on the Release, and the Healthy gate reads the
+  newest published release of a Space and nothing else. `cub argo status` wrote
+  the Space annotation `confighub.com/live-status`, which a current server does
+  not read, so on an estate without argobot the gate never passed. It now
+  records each reading on the release whose digest Argo CD synced, in
+  ConfigHub's normalized words with Argo's own beside them, as argobot does. A
+  reading of an older release is recorded on that release, and the command
+  says the gate reads the newest. A reading that names no published release is
+  recorded nowhere, and said.
+- **The gate's rule is the server's.** A release passes when it is synced and
+  healthy with no operation running or failed. An Application Argo has run no
+  sync operation on no longer counts against it.
 - **argobot.sh installs an argobot that starts.** It installed argobot v0.1.7,
   which asks ConfigHub for its Targets by worker. From ConfigHub v0.7.0 a
   Target names no worker, so the server refuses the request and argobot exits,

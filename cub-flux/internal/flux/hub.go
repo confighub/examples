@@ -18,8 +18,9 @@ type Hub interface {
 	RevisionData(space, unit string, revision int) ([]byte, error)
 	// UnitHead is unit's newest revision.
 	UnitHead(space, unit string) (int, error)
-	// SpaceAnnotations are the Space's annotations.
-	SpaceAnnotations(space string) (map[string]string, error)
+	// SetLiveStatus records what a tool says about a release of the Space
+	// running, on that Release, replacing what it held.
+	SetLiveStatus(space string, release int, s LiveStatus) error
 	// PatchSpace merges a JSON merge patch into the Space.
 	PatchSpace(space string, patch []byte) error
 	// Attest records an attestation and returns its ID.
@@ -36,6 +37,8 @@ type HubRelease struct {
 	ManifestDigest string
 	TagID          string
 	Published      bool
+	// Live is what a tool has reported about the release running, if any has.
+	Live *LiveStatus
 }
 
 // Attestation is a verdict recorded on one revision of one Unit.
