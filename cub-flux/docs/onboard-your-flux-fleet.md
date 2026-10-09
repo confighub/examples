@@ -550,10 +550,12 @@ FLUX_CONTEXT=<dev-1> CLUSTER=dev-1 CONFIGHUB_URL=https://hub.confighub.com \
   bash onboard/fluxbot.sh
 ```
 
-It is the same command, `cub flux status --discover --watch`, in one pod in the
-Flux namespace. With `--discover` it needs no fleet repository: each pass it
-finds every `Kustomization` there whose source is a ConfigHub Space of this
-fleet, so a layer handed over later is picked up without a restart. It changes
+It is the same command, `cub flux status --discover --as-worker --watch`, in
+one pod in the Flux namespace. With `--discover` it needs no fleet repository:
+each pass it finds every `Kustomization` there whose source is a ConfigHub
+Space named `<prefix>-…`, so a layer handed over later is picked up without a
+restart. That includes the root, on the cluster's layers Space, which a run by
+hand from the fleet repository does not report. It changes
 nothing on the cluster but itself. Read the script before running it; this is
 everything it adds:
 
@@ -566,10 +568,17 @@ everything it adds:
 
 No image is built for it. The pod runs this plugin's own release binary: an
 init container fetches it from this repository's GitHub release and stops
-unless its checksum is the release's, and it runs in the Kubernetes project's
-`kubectl` image, which is what it reads the cluster with. So the cluster has to
-reach github.com whenever the pod starts; `FLUXBOT_URL` names another place
-that serves the binary and its `.sha256` where it cannot.
+unless its checksum is the one published beside it, and it runs in the
+Kubernetes project's `kubectl` image, which is what it reads the cluster with.
+So the cluster has to reach github.com, and objects.githubusercontent.com which
+it redirects to, whenever the pod starts; `FLUXBOT_URL` names another place
+that serves the binary and its `.sha256` where it cannot. The checksum catches
+a download that went wrong. It trusts whoever serves both files, which is
+GitHub unless you say otherwise.
+
+The pod is ready only once it has signed in to ConfigHub, and it stops at once
+if it cannot. So a wrong address or credential does not replace a reporter
+that works: the script waits, then fails and shows what the new pod said.
 
 `kubectl -n flux-system logs deploy/fluxbot` shows each pass. The script prints
 how to take it out again: one `kubectl delete`, and the grant.
@@ -577,8 +586,8 @@ how to take it out again: one `kubectl delete`, and the grant.
 It is a step of its own on purpose, as `argobot.sh` is: the handover moves
 where Flux reads from and installs nothing, and a pod holding a ConfigHub
 credential is a separate thing to agree to. Without it, run `cub flux status
---watch` yourself; both record the same thing, and a reading either wrote is
-the other's to keep current.
+--watch` yourself; both record the same thing for each layer, and a reading
+either wrote is the other's to keep current.
 
 **Run live on 2026-10-09** against ConfigHub v0.8.10 and Flux v2.8.6: the pod
 recorded all three layers on its first pass. A change was then released to dev

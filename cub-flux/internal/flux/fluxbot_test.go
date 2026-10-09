@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"gopkg.in/yaml.v3"
 )
 
 // fluxbot.sh run against stand-ins for kubectl and cub, which log each call
@@ -27,14 +29,18 @@ func runFluxbot(t *testing.T, version string, env ...string) (out, log string, e
 	for name, body := range map[string]string{
 		"kubectl": `#!/usr/bin/env bash
 echo "kubectl $*" >> "$STUB_LOG"
-case " $* " in *" apply -f - "*) cat >> "$STUB_LOG" ;; esac
+case " $* " in
+  *" create secret generic "*) echo "# the Secret, from: $(cat | tr '\n' ' ')" ;;
+  *" apply -f - "*) cat >> "$STUB_LOG" ;;
+  *" rollout status "*) [ -z "${ROLLOUT_FAILS:-}" ] || exit 1 ;;
+esac
 exit 0
 `,
 		"cub": `#!/usr/bin/env bash
 echo "cub $*" >> "$STUB_LOG"
 case " $* " in
   *" target get "*) case " $* " in *" nosuch "*) exit 1 ;; esac ;;
-  *"--include-secret"*) echo '"s3cret"' ;;
+  *"--include-secret"*) echo "\"${WORKER_SECRET-s3cret}\"" ;;
   *"BridgeWorkerID"*) echo '"worker-id"' ;;
   *"UserID"*) echo '"bot-user"' ;;
 esac
@@ -68,13 +74,16 @@ func TestFluxbotInstallsTheReporter(t *testing.T) {
 	}
 	for _, want := range []string{
 		"kubectl --context ctx-dev apply -f -",
-		`CONFIGHUB_WORKER_ID: "worker-id"`, `CONFIGHUB_WORKER_SECRET: "s3cret"`,
+		"create secret generic fluxbot --from-env-file=/dev/stdin --dry-run=client",
+		"# the Secret, from: CONFIGHUB_WORKER_ID=worker-id CONFIGHUB_WORKER_SECRET=s3cret",
 		`{name: FROM, value: "https://github.com/confighub/examples/releases/download/cub-flux-v0.4.0"}`,
-		`command: ["/tools/cub-flux", "status", "--discover", "--watch", "--prefix", "flux", "--namespace", "flux-system"]`,
+		`command: ["/tools/cub-flux", "status", "--discover", "--as-worker", "--watch", "--ready-file", "/tmp/ready", "--prefix", "flux", "--namespace", "flux-system"]`,
+		`readinessProbe: {exec: {command: ["/tools/cub-flux", "status", "--ready", "/tmp/ready"]}`,
 		`{name: CONFIGHUB_URL, value: "https://hub.example"}`,
 		`resources: ["kustomizations"]`, `resources: ["ocirepositories"]`, `verbs: ["get", "list"]`,
 		"image: " + fluxbotFetch, "image: " + fluxbotRuntime,
-		`case "$(uname -m)" in`, `sha256sum cub-flux`,
+		`case "$(uname -m)" in`, `sha256sum cub-flux.new`, "mv -f cub-flux.new cub-flux",
+		"maxUnavailable: 0", "flux.confighub.com/made-from:",
 		"rollout status deployment/fluxbot",
 	} {
 		if !strings.Contains(log, want) {
@@ -86,6 +95,38 @@ func TestFluxbotInstallsTheReporter(t *testing.T) {
 	}
 	if strings.Contains(out, "s3cret") {
 		t.Errorf("the worker's secret must not be printed:\n%s", out)
+	}
+	if strings.Contains(log, "rollout restart") {
+		t.Errorf("a working pod is not restarted: only a change to what it was made from replaces it:\n%s", log)
+	}
+	// What is applied is YAML a cluster would take, with the pod as intended.
+	var deployment map[string]any
+	dec := yaml.NewDecoder(strings.NewReader(log[strings.Index(log, "apiVersion: v1\nkind: ServiceAccount"):strings.Index(log, "kubectl --context ctx-dev -n flux-system rollout status")]))
+	kinds := map[string]bool{}
+	for {
+		var doc map[string]any
+		if err := dec.Decode(&doc); err != nil {
+			if err != io.EOF {
+				t.Fatalf("what fluxbot.sh applies is not YAML: %v", err)
+			}
+			break
+		}
+		kinds[str(doc["kind"])] = true
+		if doc["kind"] == "Deployment" {
+			deployment = doc
+		}
+	}
+	if !kinds["ServiceAccount"] || !kinds["Role"] || !kinds["RoleBinding"] || deployment == nil {
+		t.Fatalf("want a ServiceAccount, Role, RoleBinding and Deployment: %v", kinds)
+	}
+	pod := obj(get(deployment, "spec", "template", "spec"))
+	if get(pod, "securityContext", "runAsNonRoot") != true || str(pod["serviceAccountName"]) != "fluxbot" {
+		t.Errorf("the pod runs as its own account, and not as root: %v", pod)
+	}
+	for _, c := range append(list(pod["initContainers"]), list(pod["containers"])...) {
+		if get(c, "securityContext", "readOnlyRootFilesystem") != true || get(c, "securityContext", "allowPrivilegeEscalation") != false {
+			t.Errorf("every container is locked down: %v", c)
+		}
 	}
 	if !strings.Contains(out, "delete deployment,serviceaccount,role,rolebinding,secret fluxbot") || !strings.Contains(out, "--permission -EditChildren:bot-user") {
 		t.Errorf("say how to take it out again, the grant too:\n%s", out)
@@ -103,13 +144,14 @@ func TestFluxbotRefusesWithoutWhatItNeeds(t *testing.T) {
 		"no address":   {"0.4.0", []string{"FLUX_CONTEXT=c", "CLUSTER=dev"}, "set CONFIGHUB_URL"},
 		"not a Target": {"0.4.0", []string{"FLUX_CONTEXT=c", "CLUSTER=nosuch", "CONFIGHUB_URL=https://hub.example"}, "flux-targets/nosuch is not a Target"},
 		"an unreleased build has no binary to name": {"dev", []string{"FLUX_CONTEXT=c", "CLUSTER=dev", "CONFIGHUB_URL=https://hub.example"}, "set FLUXBOT_URL"},
+		"a worker with no secret to read":           {"0.4.0", []string{"FLUX_CONTEXT=c", "CLUSTER=dev", "CONFIGHUB_URL=https://hub.example", "WORKER_SECRET=null"}, "its user, ID or secret is missing"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			out, log, err := runFluxbot(t, tc.version, tc.env...)
 			if err == nil || !strings.Contains(out, tc.says) {
 				t.Errorf("want a refusal saying %q: %v\n%s", tc.says, err, out)
 			}
-			if strings.Contains(log, "apply") || strings.Contains(log, "target update") {
+			if strings.Contains(log, "apply") || (strings.Contains(log, "target update") && name != "a worker with no secret to read") {
 				t.Errorf("nothing may be changed:\n%s", log)
 			}
 		})
@@ -172,7 +214,19 @@ func TestSDKHubSignsInAsAWorker(t *testing.T) {
 	t.Setenv(EnvWorkerID, "worker-id")
 	t.Setenv(EnvWorkerSecret, "s3cret")
 	t.Setenv(EnvServerURL, srv.URL+"/")
+	// The names are cub-worker's own, so they may be set for another reason:
+	// only a Hub told to be a worker reads them.
+	t.Setenv("CUB_SERVER", "")
+	t.Setenv("CUB_TOKEN", "")
+	t.Setenv("CUB_CONFIG", filepath.Join(t.TempDir(), "none.yaml"))
+	if _, err := NewHub("test").Releases("s"); err == nil || signIns != 0 {
+		t.Errorf("without being told, the worker's credential is not used: %v, %d sign-ins", err, signIns)
+	}
 	h := NewHub("test")
+	h.AsWorker()
+	if err := h.SignIn(); err != nil {
+		t.Fatalf("a worker that can sign in and read is ready: %v", err)
+	}
 	for i := 0; i < 3; i++ {
 		if _, err := h.Releases("s"); err != nil {
 			t.Fatal(err)
@@ -182,7 +236,24 @@ func TestSDKHubSignsInAsAWorker(t *testing.T) {
 		t.Errorf("want one sign-in and its token on each request: %d sign-ins, Authorization %q", signIns, auth)
 	}
 	t.Setenv(EnvServerURL, "")
-	if _, err := NewHub("test").Releases("s"); err == nil || !strings.Contains(err.Error(), EnvServerURL) {
+	lost := NewHub("test")
+	lost.AsWorker()
+	if err := lost.SignIn(); err == nil || !strings.Contains(err.Error(), EnvServerURL) {
 		t.Errorf("a worker with no server to sign in to must say what is missing: %v", err)
+	}
+}
+
+// When the pod does not come up, the script says why from the pod's own
+// words, and fails.
+func TestFluxbotSaysWhyThePodDidNotComeUp(t *testing.T) {
+	out, log, err := runFluxbot(t, "0.4.0", "FLUX_CONTEXT=ctx-dev", "CLUSTER=dev", "CONFIGHUB_URL=https://hub.example", "ROLLOUT_FAILS=1")
+	if err == nil || !strings.Contains(out, "fluxbot did not come up") {
+		t.Fatalf("want a failure that says so: %v\n%s", err, out)
+	}
+	if !strings.Contains(log, "--sort-by=.metadata.creationTimestamp") || !strings.Contains(log, "-c fetch --tail=10") || !strings.Contains(log, "-c fluxbot --previous --tail=10") {
+		t.Errorf("show what the newest pod said, its fetch and the reporter, not an older pod's:\n%s", log)
+	}
+	if strings.Contains(out, "fluxbot runs in") {
+		t.Errorf("it must not go on to say it runs:\n%s", out)
 	}
 }

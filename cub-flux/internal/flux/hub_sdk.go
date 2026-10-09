@@ -20,6 +20,7 @@ import (
 // as: the context and token cub passes a plugin, or the active context.
 type SDKHub struct {
 	userAgent string
+	asWorker  bool
 
 	mu          sync.Mutex
 	worker      *cubapi.Client
@@ -33,7 +34,9 @@ func NewHub(version string) *SDKHub {
 }
 
 // The reporter that runs on a cluster has no signed-in user: it signs in as a
-// worker, with the ID and secret these name, to the server this names.
+// worker, with the ID and secret these name, to the server this names. They
+// are the names cub-worker uses, so they may be set in a shell for another
+// reason: they are read only by a Hub told to be a worker.
 const (
 	EnvWorkerID     = "CONFIGHUB_WORKER_ID"
 	EnvWorkerSecret = "CONFIGHUB_WORKER_SECRET"
@@ -42,17 +45,47 @@ const (
 
 // workerTokenAge is how long a worker's token is used before it signs in
 // again. A reporter runs for weeks; a token does not last that long.
-const workerTokenAge = 10 * time.Minute
+const workerTokenAge = 5 * time.Minute
+
+// requestTimeout bounds every request to ConfigHub. A reporter that waits
+// for ever on a stalled connection reports nothing, and says nothing.
+const requestTimeout = 60 * time.Second
+
+// AsWorker makes this Hub sign in as the worker the environment names, rather
+// than as the user cub is signed in as.
+func (h *SDKHub) AsWorker() { h.asWorker = true }
+
+// SignIn connects and asks ConfigHub who it is talking to, so a wrong address
+// or credential is found at the start rather than on the first write.
+func (h *SDKHub) SignIn() error {
+	ctx := context.Background()
+	c, err := h.client(ctx)
+	if err != nil {
+		return err
+	}
+	if h.asWorker {
+		// A worker is no organization member, so it is asked something it
+		// may read instead.
+		if _, err := cubapi.ListSpaces(ctx, c, cubapi.Where{}, cubapi.ListOpts{}); err != nil {
+			return fmt.Errorf("ConfigHub at %s refused the worker: %w", c.Server, err)
+		}
+		return nil
+	}
+	if _, err := c.VerifyAuth(ctx); err != nil {
+		return fmt.Errorf("ConfigHub at %s: %w", c.Server, err)
+	}
+	return nil
+}
 
 // client reads the login again for each question, as running cub did: that
 // is a file read, not a request, and a status or watch left running for days
 // then picks up a token that was renewed meanwhile. As a worker it signs in
 // with the worker's own credential, and again when that token has aged.
 func (h *SDKHub) client(ctx context.Context) (*cubapi.Client, error) {
-	if id, secret := os.Getenv(EnvWorkerID), os.Getenv(EnvWorkerSecret); id != "" || secret != "" {
-		return h.workerClient(id, secret, strings.TrimRight(os.Getenv(EnvServerURL), "/"))
+	if h.asWorker {
+		return h.workerClient(os.Getenv(EnvWorkerID), os.Getenv(EnvWorkerSecret), strings.TrimRight(os.Getenv(EnvServerURL), "/"))
 	}
-	c, err := cubapi.ResolveClient(ctx, cubapi.ClientOptions{UserAgent: h.userAgent})
+	c, err := cubapi.ResolveClient(ctx, cubapi.ClientOptions{UserAgent: h.userAgent, HTTPClient: &http.Client{Timeout: requestTimeout}})
 	if err != nil {
 		return nil, fmt.Errorf("connecting to ConfigHub: %w", err)
 	}
@@ -68,11 +101,16 @@ func (h *SDKHub) workerClient(id, secret, server string) (*cubapi.Client, error)
 	if h.worker != nil && time.Since(h.workerSince) < workerTokenAge {
 		return h.worker, nil
 	}
+	// The SDK signs a worker in with the default client, which waits for
+	// ever unless told otherwise.
+	if http.DefaultClient.Timeout == 0 {
+		http.DefaultClient.Timeout = requestTimeout
+	}
 	session, err := cubapi.PerformWorkerAuth(server, id, secret)
 	if err != nil {
 		return nil, fmt.Errorf("signing in to ConfigHub at %s as worker %s: %w", server, id, err)
 	}
-	c, err := cubapi.NewClient(cubapi.ClientOptions{ServerURL: server, Token: session.AccessToken, UserAgent: h.userAgent})
+	c, err := cubapi.NewClient(cubapi.ClientOptions{ServerURL: server, Token: session.AccessToken, UserAgent: h.userAgent, HTTPClient: &http.Client{Timeout: requestTimeout}})
 	if err != nil {
 		return nil, fmt.Errorf("connecting to ConfigHub: %w", err)
 	}

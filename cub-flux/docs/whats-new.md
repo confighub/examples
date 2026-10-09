@@ -19,8 +19,13 @@ with `cub plugin install confighub/examples@cub-flux-v<version> --name flux`.
 - **`cub flux status --discover`** reports every layer on the cluster that
   reads a ConfigHub Space of the fleet, read from the cluster each pass, with
   no fleet repository. It is what fluxbot runs, and works by hand too.
-- **`cub flux status` signs in as a worker** when `CONFIGHUB_WORKER_ID`,
-  `CONFIGHUB_WORKER_SECRET` and `CONFIGHUB_URL` are set.
+- **`cub flux status --as-worker`** signs in to `CONFIGHUB_URL` as the worker
+  `CONFIGHUB_WORKER_ID` and `CONFIGHUB_WORKER_SECRET` name, and stops at once if
+  it cannot. Without the flag those variables are not read. `--ready-file`
+  writes a file once it has signed in, which the pod's readiness probe reads,
+  so a reporter that cannot sign in never replaces one that can.
+- **Every request to ConfigHub has a time limit**, so a stalled connection is
+  an error rather than a silence.
 
 ## 0.3.2, 2026-10-09
 

@@ -340,7 +340,8 @@ One cluster at a time: pass --kube-context for the cluster to read.`,
 	check.Flags().BoolVar(&ckRecord, "record", false, "record each verdict in ConfigHub as a LiveCheck attestation on the revision the release bundled: a Pass, which also names the health Flux reports; a rejection naming what differs, or that Flux reports the layer stalled or not ready; nothing while it is still reconciling (needs --fields). With it, the command fails unless every check recorded a Pass")
 
 	var stNS, stName, stSpace, stUnit, stTarget, stContext, stCluster string
-	var stJSON, stWatch, stDry, stDiscover bool
+	var stJSON, stWatch, stDry, stDiscover, stAsWorker bool
+	var stReadyFile, stReady string
 	var stInterval, stRefresh time.Duration
 	var stOpts flux.Options
 	status := &cobra.Command{
@@ -374,13 +375,39 @@ One cluster at a time, like check. It writes as the cub user it runs as, which
 takes Edit on the Release: your own, or EditChildren on its Target.
 
 With --discover it needs no fleet repository: it reports every layer on the
-cluster that reads a ConfigHub Space of --prefix. That is how it runs on the
-cluster itself, which fluxbot.sh sets up: as a worker, signed in with
+cluster that reads a ConfigHub Space named <prefix>-…. That is how it runs on
+the cluster itself, which fluxbot.sh sets up, with --as-worker: signed in with
 CONFIGHUB_WORKER_ID and CONFIGHUB_WORKER_SECRET to CONFIGHUB_URL.`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
 			flux.KubeContext = stContext
 			flux.SetControllerNamespace(stNS)
+			if stReady != "" {
+				if _, err := os.Stat(stReady); err != nil {
+					return fmt.Errorf("not ready: %s is not there", stReady)
+				}
+				return nil
+			}
+			if stReadyFile != "" {
+				// One left by a run before this one says nothing about this one.
+				_ = os.Remove(stReadyFile)
+			}
+			if stAsWorker {
+				hub.AsWorker()
+				// On a cluster nobody is watching the first lines: a wrong
+				// address or credential stops it here, so the pod is seen to
+				// fail rather than run and report nothing.
+				if err := hub.SignIn(); err != nil {
+					return err
+				}
+			}
+			if stReadyFile != "" {
+				// Written once it can reach ConfigHub as who it is meant to
+				// be, which is what a readiness probe on the pod asks.
+				if err := os.WriteFile(stReadyFile, []byte("signed in\n"), 0o644); err != nil {
+					return fmt.Errorf("saying it is ready: %w", err)
+				}
+			}
 			var layers []flux.Check
 			if stDiscover {
 				if len(args) > 0 || stName != "" {
@@ -435,7 +462,10 @@ CONFIGHUB_WORKER_ID and CONFIGHUB_WORKER_SECRET to CONFIGHUB_URL.`,
 			}
 		},
 	}
-	status.Flags().BoolVar(&stDiscover, "discover", false, "report every layer on the cluster that reads a ConfigHub Space of --prefix, read from the cluster each pass, with no fleet repository: what fluxbot.sh runs on the cluster")
+	status.Flags().BoolVar(&stDiscover, "discover", false, "report every layer on the cluster that reads a ConfigHub Space named <prefix>-..., read from the cluster each pass, with no fleet repository: what fluxbot.sh runs on the cluster")
+	status.Flags().BoolVar(&stAsWorker, "as-worker", false, "sign in to CONFIGHUB_URL as the worker CONFIGHUB_WORKER_ID and CONFIGHUB_WORKER_SECRET name, rather than as the signed-in cub user, and stop at once if that fails: what fluxbot.sh runs on the cluster")
+	status.Flags().StringVar(&stReadyFile, "ready-file", "", "write this file once signed in, for a readiness probe to find with 'cub flux status --ready <file>'")
+	status.Flags().StringVar(&stReady, "ready", "", "exit 0 if this file exists and 1 if not, and do nothing else: the readiness probe fluxbot.sh gives the pod")
 	status.Flags().StringVar(&stCluster, "cluster", "", "the cluster being reported, when reading a fleet repository")
 	status.Flags().StringVar(&stOpts.Prefix, "prefix", "flux", "the prefix the plan used in ConfigHub")
 	status.Flags().StringVar(&stOpts.ClustersDir, "clusters", "clusters", "the directory holding one directory per cluster")

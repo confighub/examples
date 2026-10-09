@@ -180,6 +180,30 @@ apps -> rh-fb-apps-dev: Flux is reconciling the release it already applied; what
 apps -> rh-fb-apps-dev release 2: Synced/Healthy/Succeeded: release 2 applied (written; the Healthy gate would pass)
 ```
 
+A review of the script then asked for three things, each run on the same rig
+once it was changed:
+
+- **Run a second time**, it left the pod as it was: the same pod, no restart.
+- **Given a wrong address**, the first version still said "successfully rolled
+  out": Kubernetes counted the pod ready the moment it started, before it
+  failed. The pod is now ready only once it has signed in, so:
+
+```text
+error: timed out waiting for the condition
+fluxbot did not come up. What pod/fluxbot-76759b96db-z68jz said, its fetch and then the reporter:
+Error: signing in to ConfigHub at https://hub.confighub.example as worker 411ed5f7-…: failed to make authentication request: Post "https://hub.confighub.example/auth/worker": dial tcp: lookup hub.confighub.example on 10.96.0.10:53: no such host
+The reporter it was to replace, if there was one, is still running. Run this again once that is put right.
+
+fluxbot-5ccdd7684c-t9x8g 1/1 Running restarts=0; fluxbot-76759b96db-h52l7 0/1 CrashLoopBackOff restarts=5
+```
+
+- **With the node restarted**, the fetch ran again over the binary it had left
+  and finished, and the reporter carried on.
+
+The reporter's account was asked what it may do: get and list
+`Kustomization`s and `OCIRepository`s in `flux-system`, yes; Secrets, pods, a
+patch to a `Kustomization`, or anything in another namespace, no.
+
 ## Not checked
 
 - A layer waiting on a dependency. Covered by tests.
