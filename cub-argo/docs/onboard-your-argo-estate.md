@@ -21,9 +21,8 @@ anything, and the first two commands change nothing at all.
   hand patched in place.
 - **ConfigHub knows what is running.** argobot, beside Argo CD, writes each
   Application's live state back to its variant — sync, health, the digest it
-  runs. With an argobot that has confighub/argobot#14, not yet released, it
-  also makes each published release land at once; until then a release waits
-  for Argo's own poll. Where argobot is not running, `cub argo status --watch
+  runs. It also makes each published release land at once, where otherwise a
+  release waits for Argo's own poll. Where argobot is not running, `cub argo status --watch
   --hard-refresh` writes the same live status and makes releases land.
 - **Nothing is recreated.** Every Application keeps its name and its UID, and so
   does every workload. Every step that touches a cluster checks that first and
@@ -915,11 +914,11 @@ Targets:
 
 Both find an Application by the Space its source reads, since a moved estate
 keeps Argo's names (`dev-1-apptique` reads `argo-apptique-dev-1`). The status
-does that in every argobot. The refresh needs confighub/argobot#14, which no
-argobot release has yet: one without it looks only for an Application named
-after the Space, so `argobot.sh` installs a release that reports status and
-says, when it finishes, that releases still wait for Argo's poll or the
-annotation above. Set `ARGOBOT_VERSION` to a release with #14 once there is one.
+does that in every argobot. The refresh does it from argobot v0.1.9, which is
+what `argobot.sh` installs: an earlier one looks only for an Application named
+after the Space. An argobot before v0.1.8 does not start against a current
+ConfigHub server at all, because it asks for its Targets by worker and a Target
+no longer names one. `ARGOBOT_VERSION` installs another release.
 
 **Run live on 2026-09-30,** argobot built with #14, against the estate above:
 it wrote live status for all eight Applications; a change released to canary

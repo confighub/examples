@@ -17,7 +17,7 @@ The commands and scripts, in order; the first two change nothing:
 | `check` | compares what Argo owns on the cluster with what ConfigHub holds; `handover.sh` runs it before it moves anything | no (`--record` writes a LiveCheck to ConfigHub) |
 | `handover.sh` | repoints `root` at ConfigHub, prints the reviewed edit for each app of apps, and checks every Application's release against the cluster before any workload's source moves | yes, this is the step that moves it |
 | `move-applications.sh` | makes each Application that an ApplicationSet generated a Unit reading its own Space, one stage at a time | yes, through the parent that syncs it |
-| `argobot.sh` | runs argobot beside Argo CD: live status goes back to each Space (and releases land at once, with an argobot that has confighub/argobot#14) | yes, it installs argobot |
+| `argobot.sh` | runs argobot beside Argo CD: live status goes back to each Space, and each published release lands at once | yes, it installs argobot |
 | `status` | without argobot: writes what each handed-over Application synced into its Space as ConfigHub live status, once or with `--watch` | only with `--hard-refresh`, which asks Argo to read a new release |
 | `cleanup.sh` | the way back out of ConfigHub, once each source is back on Git | no |
 

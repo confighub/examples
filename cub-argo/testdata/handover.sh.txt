@@ -169,6 +169,9 @@ step "1/5 The credential Argo reads the gateway with"
 # The ID and secret go from cub into the Secret through file descriptors,
 # never to disk, the command line, or the terminal.
 addr=${CONFIGHUB_OCI:-}
+# The address is asked for as oci://<host>, and every use below writes the
+# scheme itself, so take it off here: left on, each URL would carry it twice.
+addr=${addr#oci://}
 if [ -z "$addr" ]; then
   echo "Set CONFIGHUB_OCI to the gateway address, oci://<gateway host>:"
   echo "  ConfigHub cloud:  oci://oci.hub.confighub.com"
