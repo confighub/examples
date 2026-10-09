@@ -594,7 +594,8 @@ recorded all three layers on its first pass. A change was then released to dev
 and promotion to prod asked for every ten seconds, with nobody running a
 command. It was refused eight times, "has no live status for release 2 yet",
 and went through 87 seconds after the publish, once Flux had applied release 2
-and the pod had recorded it. It is in
+and the pod had recorded it. The released v0.4.0 was then installed the same
+way, the pod fetching its binary from GitHub. It is in
 [the run log](runs/2026-10-09-live-status-on-the-release.md).
 
 ### What it says
