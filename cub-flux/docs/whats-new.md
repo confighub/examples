@@ -3,6 +3,21 @@
 Each release is tagged `cub-flux-v<version>` in confighub/examples and installs
 with `cub plugin install confighub/examples@cub-flux-v<version> --name flux`.
 
+## 0.3.2, 2026-10-09
+
+- **A recorded check judges health.** `cub flux check --fields --record`
+  recorded a Pass whenever the objects and fields matched, even on a layer
+  Flux reported stalled or not ready. Now such a layer is a rejection that says
+  so, and one still reconciling or suspended records nothing, since it is
+  neither yet. A Pass names the health it rests on: `Unknown` where neither
+  `spec.wait` nor a health check covers the layer's workloads. A check without
+  `--record` is unchanged: it still answers whether a handover would change the
+  cluster.
+- **The gateway address is taken with or without `oci://`** by `apply.sh`,
+  `handover.sh` and `join.sh`, as `cub argo`'s scripts take it.
+- **Sign-in advice fits a server with no identity provider.** The scripts said
+  to run `cub auth login`; they now also give the form that signs in by key.
+
 ## 0.3.1, 2026-10-09
 
 Needs ConfigHub v0.8.2 or newer for live status.

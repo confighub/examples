@@ -244,10 +244,20 @@ One cluster at a time: pass --kube-context for the cluster to read.`,
 				fmt.Fprintf(w, "%s: release %d (%s) holds %s at revision %d\n", ck.Kustomization, r.Release.Num, r.Release.ManifestDigest, ck.Unit, r.Release.UnitRevision)
 				if r.Recorded != "" {
 					verdict := "a Pass"
-					if !r.OK() {
+					if !r.OK() || r.Unhealthy != "" {
 						verdict = "a rejection"
 					}
 					fmt.Fprintf(w, "  recorded %s: LiveCheck attestation %s on %s/%s revision %d\n", verdict, r.Recorded, ck.Space, ck.Unit, r.Release.UnitRevision)
+				} else if ckRecord {
+					fmt.Fprintf(w, "  recorded nothing yet: %s, which is neither a Pass nor a rejection; check again once it settles\n", r.NotYet)
+				}
+				switch {
+				case r.Unhealthy != "":
+					fmt.Fprintf(w, "  health: %s\n", r.Unhealthy)
+				case r.NotYet != "" && !ckRecord:
+					fmt.Fprintf(w, "  health: %s\n", r.NotYet)
+				case r.Health == "Unknown":
+					fmt.Fprintf(w, "  health: Flux reports it ready, which means applied: neither spec.wait nor a health check covers its workloads\n")
 				}
 				if a := r.Release.HeadAhead(); a != "" {
 					fmt.Fprintf(w, "  note: %s\n", a)
@@ -309,7 +319,7 @@ One cluster at a time: pass --kube-context for the cluster to read.`,
 	check.Flags().StringVar(&ckTarget, "target-namespace", "", "the layer's targetNamespace, where objects without one land")
 	check.Flags().StringVar(&kubeContext, "kube-context", "", "the kubectl context of the cluster to read; without it kubectl's current context is used, which may be another cluster")
 	check.Flags().BoolVar(&ckJSON, "json", false, "print the comparison as JSON")
-	check.Flags().BoolVar(&ckRecord, "record", false, "record each verdict in ConfigHub as a LiveCheck attestation on the revision the release bundled: a Pass, or a rejection naming what differs (needs --fields)")
+	check.Flags().BoolVar(&ckRecord, "record", false, "record each verdict in ConfigHub as a LiveCheck attestation on the revision the release bundled: a Pass, which also names the health Flux reports; a rejection naming what differs, or that Flux reports the layer stalled or not ready; nothing while it is still reconciling (needs --fields)")
 
 	var stNS, stName, stSpace, stUnit, stTarget, stContext, stCluster string
 	var stJSON, stWatch, stDry bool

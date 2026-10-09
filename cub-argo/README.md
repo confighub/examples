@@ -26,7 +26,7 @@ The commands and scripts, in order; the first two change nothing:
 ## Install
 
 ```bash
-cub plugin install confighub/examples@cub-argo-v0.3.1 --name argo
+cub plugin install confighub/examples@cub-argo-v0.3.2 --name argo
 cub plugin list                  # argo should be listed, status ok
 cub argo plan <the repository your Argo CD syncs, or a kubectl export>
 ```
@@ -35,7 +35,7 @@ cub argo plan <the repository your Argo CD syncs, or a kubectl export>
 command on your own estate. Already on an earlier release?
 
 ```bash
-cub plugin upgrade argo@cub-argo-v0.3.1
+cub plugin upgrade argo@cub-argo-v0.3.2
 ```
 
 Releases are tagged `cub-argo-v<version>` in this repository, and what each one

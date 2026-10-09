@@ -136,7 +136,7 @@ func MoveScript(p *Plan, prefix string) string {
 	add("")
 
 	add(`step "Check before changing anything"`)
-	add(`cub auth status >/dev/null 2>&1 || { echo "cub is not logged in: run cub auth login"; exit 1; }`)
+	add(`cub auth status >/dev/null 2>&1 || { echo "cub is not signed in to ConfigHub: run 'cub auth login', or 'cub auth login --private-key <key>' on a server with no identity provider"; exit 1; }`)
 	seenParent := map[string]bool{}
 	for _, c := range sets {
 		home := homes["ApplicationSet/"+c.Source]

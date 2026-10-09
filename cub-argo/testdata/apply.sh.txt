@@ -84,7 +84,7 @@ render() {
 }
 
 step "0/5 Check before changing anything"
-cub auth status >/dev/null 2>&1 || { echo "cub is not logged in: run cub auth login"; exit 1; }
+cub auth status >/dev/null 2>&1 || { echo "cub is not signed in to ConfigHub: run 'cub auth login', or 'cub auth login --private-key <key>' on a server with no identity provider"; exit 1; }
 cub auth status 2>&1 | grep -i '^Warning:' && echo "  Steps below may fail on that skew rather than on anything here."
 command -v kustomize >/dev/null || { echo "kustomize is not on PATH; the overlays are rendered with it"; exit 1; }
 # A component here inflates a Helm chart through Kustomize, which needs the

@@ -147,7 +147,7 @@ the layers you already run.
 ## Install
 
 ```bash
-cub plugin install confighub/examples@cub-flux-v0.3.1 --name flux
+cub plugin install confighub/examples@cub-flux-v0.3.2 --name flux
 cub plugin list   # flux should be listed, status ok
 ```
 
@@ -187,7 +187,7 @@ Run from the root of your fleet repository. Each script is written by
 
 `<cluster>` is the name `cub flux plan` prints: in `dev-1 (clusters/dev)` it is
 `dev-1`, not the directory. `<gateway>` is ConfigHub's OCI host as your clusters
-reach it, without a scheme: `oci.hub.confighub.com` on ConfigHub cloud. Leave out
+reach it: `oci.hub.confighub.com` on ConfigHub cloud. `oci://<host>` is taken too. Leave out
 `--require Healthy` in steps 1, 2 and 6 to promote on approval alone; `watch`
 must be given what the plan used.
 
@@ -610,16 +610,24 @@ in between. Afterwards it confirms each layer applied the digest it checked.
 
 **`--record` keeps the verdict in ConfigHub.** `cub flux check --fields
 --record` writes each layer's verdict as a `LiveCheck` attestation on the Unit
-revision the checked release bundled. A clean check is a Pass. Anything that
-differs is a rejection that names it: an object the release would add or prune,
-a field, or an object it could not read. The claims name the Kustomization and
-the release digest. `LiveCheck` is the type `cub kubara check --record` uses for
+revision the checked release bundled. A clean check of a ready layer is a Pass.
+Anything that differs is a rejection that names it: an object the release would
+add or prune, a field, or an object it could not read. Health is part of the
+verdict: a layer Flux reports stalled or not ready is a rejection too, and one
+still reconciling or suspended records nothing, since it is neither yet; run
+the check again once it settles. A Pass names the health it rests on, which is
+`Unknown` where neither `spec.wait` nor a health check covers the layer's
+workloads: ready then means applied. The claims name the Kustomization, that
+health and the release digest. `LiveCheck` is the type `cub kubara check --record` uses for
 the same claim, so a workflow can require one type whichever plugin checked. It
 needs `--fields`: a claim that the cluster runs this release rests on every
 field the release sets. Run live on 2026-09-30:
 - A clean cluster recorded a Pass for each layer.
 - After a `kubectl scale`, the `apps` layer recorded a rejection naming
   `.spec.replicas: cluster has 3, the release holds 1`.
+
+Health in the verdict was added after that run and is covered by tests; the
+same rule was run live for `cub argo` on 2026-10-09.
 
 **You run it the way you ran `plan`.** `check` takes the same fleet directory
 and works the layers out for itself — there is no per-Kustomization flag to get

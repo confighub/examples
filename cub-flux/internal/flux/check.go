@@ -57,6 +57,15 @@ type Result struct {
 	// cluster says is not there: the controller's record is behind, so it is
 	// not a record a handover can be checked against.
 	Stale []string `json:"staleInventory,omitempty"`
+	// Health is what Flux says of the layer: Healthy, or Unknown where Flux
+	// was not asked to check the workloads, or Degraded, Progressing or
+	// Suspended. It is part of what --record claims, not of whether a
+	// handover would change the cluster: Unhealthy, when set, makes the
+	// record a rejection, and NotYet, when set, is why nothing is recorded
+	// yet.
+	Health    string `json:"health,omitempty"`
+	Unhealthy string `json:"unhealthy,omitempty"`
+	NotYet    string `json:"notYet,omitempty"`
 	// Recorded is the ID of the LiveCheck attestation --record wrote.
 	Recorded string `json:"recorded,omitempty"`
 }
@@ -84,6 +93,7 @@ func RunCheck(run Runner, hub Hub, c Check, fields bool) (Result, error) {
 		return Result{}, err
 	}
 	r := Result{Check: c, Release: rel, Inventory: CompareInventory(live, held, c.Namespace)}
+	r.Health, r.Unhealthy, r.NotYet = live.Health, live.Unhealthy, live.NotYet
 	if fields {
 		fc, err := CompareFields(run, c.Namespace, stored)
 		if err != nil {

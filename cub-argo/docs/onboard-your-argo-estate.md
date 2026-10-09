@@ -154,7 +154,7 @@ cluster that has none. Repointing is for the Applications you already run.
 ## Install
 
 ```bash
-cub plugin install confighub/examples@cub-argo-v0.3.1 --name argo
+cub plugin install confighub/examples@cub-argo-v0.3.2 --name argo
 cub plugin list   # argo should be listed, status ok
 ```
 
@@ -197,8 +197,8 @@ Run from the root of the repository Argo CD syncs. Each script is written by
 
 `clusters.json` is your cluster Secrets, exported without their credentials:
 see [When a cluster joins](#when-a-cluster-joins) for the one command that does
-it safely. `<gateway>` is ConfigHub's OCI host as your clusters reach it, without
-a scheme: `oci.hub.confighub.com` on ConfigHub cloud. `DEST_CONTEXT_<cluster>`
+it safely. `<gateway>` is ConfigHub's OCI host as your clusters reach it, with
+or without `oci://`: `oci.hub.confighub.com` on ConfigHub cloud. `DEST_CONTEXT_<cluster>`
 is one variable per cluster Argo deploys to other than its own, with `-` in the
 cluster's name written `_` (`DEST_CONTEXT_prod_1`); step 0 of `handover.sh` names
 any that are missing. `CONFIGHUB_URL` is ConfigHub's address as the Argo CD
@@ -570,14 +570,18 @@ before checking it, and prints it beside each repoint, so the digest Argo then r
 
 **`--record` keeps the verdict in ConfigHub.** `cub argo check --fields
 --record` writes each Application's verdict as a `LiveCheck` attestation on the Unit
-revision the checked release bundled. A clean check is a Pass. Anything that
-differs is a rejection that names it: an object the release would add or prune,
-a field, or an object it could not read. The claims name the Application and the
-release digest. `LiveCheck` is the type `cub kubara check --record` uses for
+revision the checked release bundled. A clean check of a Healthy Application is
+a Pass. Anything that differs is a rejection that names it: an object the
+release would add or prune, a field, or an object it could not read. Health is
+part of the verdict: an Application Argo CD reports Degraded or Missing is a
+rejection too, and one still Progressing or Suspended records nothing, since
+it is neither yet; run the check again once it settles. The claims name the
+Application, its health and the release digest. `LiveCheck` is the type `cub kubara check --record` uses for
 the same claim, so a workflow can require one type whichever plugin checked. It
 needs `--fields`: a claim that the cluster runs this release rests on every
-field the release sets. The recording is the same code as `cub flux`,
-which was run live on 2026-09-30.
+field the release sets. Run live on 2026-10-09: three Healthy Applications
+recorded a Pass each, with the health among the claims; one made to wait for a
+node recorded nothing while Argo CD reported it Progressing.
 
 **It reads each object where it runs.** The Application is read on the cluster
 Argo CD runs on, and the objects it deploys on the cluster it deploys them to.
@@ -919,6 +923,11 @@ what `argobot.sh` installs: an earlier one looks only for an Application named
 after the Space. An argobot before v0.1.8 does not start against a current
 ConfigHub server at all, because it asks for its Targets by worker and a Target
 no longer names one. `ARGOBOT_VERSION` installs another release.
+
+`argobot.sh` is a step of its own on purpose. The handover moves where Argo CD
+reads from and installs nothing; argobot is a workload that runs on your
+cluster with a ConfigHub credential, which is a separate thing to agree to. An
+estate can stop after the handover and report with `cub argo status` instead.
 
 **Run live on 2026-09-30,** argobot built with #14, against the estate above:
 it wrote live status for all eight Applications; a change released to canary

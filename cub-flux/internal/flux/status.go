@@ -365,6 +365,38 @@ func (k kustomization) status() (st LiveStatus, revision, why, pending string) {
 	return LiveStatus{Sync: "Synced", Health: health, Operation: "Succeeded"}, applied, why, ""
 }
 
+// health is what Flux says of the layer for a recorded check: its health in
+// ConfigHub's words, what is wrong if it is Degraded, and why it is neither
+// healthy nor wrong yet if it is still on its way. A layer whose workloads
+// Flux was not asked to check is Unknown, and is not held back for it: Ready
+// is all Flux will ever say of it.
+func (k kustomization) health(name string) (health, unhealthy, notYet string) {
+	if k.Spec.Suspend {
+		return "Suspended", "", fmt.Sprintf("Kustomization %s is suspended, so Flux applies nothing", name)
+	}
+	ready := k.condition("Ready")
+	if k.Status.ObservedGeneration != k.Metadata.Generation || ready == nil || ready.ObservedGeneration != k.Metadata.Generation {
+		return "Progressing", "", fmt.Sprintf("Flux has not reported on the current generation of %s yet", name)
+	}
+	if s := k.condition("Stalled"); s != nil && s.Status == "True" {
+		return "Degraded", fmt.Sprintf("Flux reports %s stalled: %s", name, orSay(s.Message, "no reason given")), ""
+	}
+	if rc := k.condition("Reconciling"); rc != nil && rc.Status == "True" {
+		return "Progressing", "", fmt.Sprintf("Flux is reconciling %s", name)
+	}
+	switch ready.Status {
+	case "False":
+		return "Degraded", fmt.Sprintf("Flux reports %s not ready: %s", name, orSay(ready.Message, "no reason given")), ""
+	case "True":
+	default:
+		return "Progressing", "", fmt.Sprintf("Flux does not say yet whether %s is ready", name)
+	}
+	if len(k.unchecked()) > 0 {
+		return "Unknown", "", ""
+	}
+	return "Healthy", "", ""
+}
+
 // orSay is msg, or what to say when Flux gave none: an empty message would be
 // taken for an applied release's.
 func orSay(msg, otherwise string) string {

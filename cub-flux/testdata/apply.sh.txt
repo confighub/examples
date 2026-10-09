@@ -114,7 +114,7 @@ render() {
 }
 
 step "0/5 Check before changing anything"
-cub auth status >/dev/null 2>&1 || { echo "cub is not logged in: run cub auth login"; exit 1; }
+cub auth status >/dev/null 2>&1 || { echo "cub is not signed in to ConfigHub: run 'cub auth login', or 'cub auth login --private-key <key>' on a server with no identity provider"; exit 1; }
 cub auth status 2>&1 | grep -i '^Warning:' && echo "  Steps below may fail on that skew rather than on anything here."
 command -v kustomize >/dev/null || { echo "kustomize is not on PATH; the layers are rendered with it"; exit 1; }
 
@@ -270,6 +270,8 @@ step "5/5 One Space per cluster holding its layers, which one root on that clust
 if [ -z "${CONFIGHUB_OCI:-}" ]; then
   echo "  skipped: set CONFIGHUB_OCI to the gateway host the clusters reach (and CONFIGHUB_OCI_PLAIN_HTTP=1 if it serves plain HTTP), then re-run. handover.sh needs these Spaces."
 else
+  # What is written below adds the scheme itself, so take it off if it was given.
+  CONFIGHUB_OCI=${CONFIGHUB_OCI#oci://}
   insecure=false; [ -z "${CONFIGHUB_OCI_PLAIN_HTTP:-}" ] || insecure=true
   mkdir -p render
   # layer_unit <space> <unit> <file>

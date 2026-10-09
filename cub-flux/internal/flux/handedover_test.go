@@ -358,3 +358,25 @@ func TestUnlabelledRootUnderAShorterPrefix(t *testing.T) {
 		t.Errorf("clusters/dev is dev-1 under team, not 1 under team-dev: %+v", p.Clusters)
 	}
 }
+
+// The gateway address is taken with or without its scheme: every script that
+// reads it takes the scheme off before it writes one itself.
+func TestScriptsTakeTheGatewayWithOrWithoutItsScheme(t *testing.T) {
+	p := planOf(t, example, repoRoot(t))
+	for name, s := range map[string]string{
+		"apply.sh":    ApplyScript(p, "flux", "."),
+		"handover.sh": HandoverScript(p, "flux", "."),
+		"join.sh":     JoinScript(p, "flux"),
+	} {
+		strip := strings.Index(s, "#oci://}")
+		use := strings.Index(s, "oci://$")
+		if alt := strings.Index(s, "oci://${"); alt >= 0 && (use < 0 || alt < use) {
+			use = alt
+		}
+		if strip < 0 {
+			t.Errorf("%s does not take the scheme off the gateway address", name)
+		} else if use >= 0 && use < strip {
+			t.Errorf("%s writes the scheme before it has taken off the one it was given", name)
+		}
+	}
+}
