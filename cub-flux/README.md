@@ -13,14 +13,15 @@ that move a cluster:
 | Command | What it does | Touches a cluster? |
 |---|---|---|
 | `plan` | shows the fleet ConfigHub would govern | no, and no account either |
-| `apply --out` | writes the workflow files and `apply.sh`, `handover.sh`, `join.sh` and `cleanup.sh` | no, it runs nothing |
+| `apply --out` | writes the workflow files and `apply.sh`, `handover.sh`, `join.sh`, `fluxbot.sh` and `cleanup.sh` | no, it runs nothing |
 | `apply.sh` | fills ConfigHub with a parallel copy nothing reads, and one layers Space per cluster (needs `CONFIGHUB_OCI`) | no |
 | `handover.sh` | on a cluster running the layers from Git, puts one root on the cluster, which takes each layer over | yes, this is the step that moves it |
 | `join.sh` | on a new cluster with Flux and none of the layers, puts the root there and waits for the layers to arrive | yes, it adds to an empty cluster |
 | `watch` | proposes each cluster added to the fleet repository, and releases it once a person approves | no, it runs `apply.sh`; `join.sh` stays yours |
 | `cleanup.sh` | takes what `apply.sh` made back out of ConfigHub, layers Spaces first | no |
 | `check` | compares what each layer applied with the published release; `--record` keeps the verdict as a `LiveCheck` attestation | reads it; changes nothing, except that `--record` writes to ConfigHub |
-| `status` | records what Flux applied as live status on the release it applied, which the Healthy gate reads | reads it; writes only to ConfigHub |
+| `fluxbot.sh` | runs the live-status reporter on the cluster, so nobody has to keep `status --watch` running | yes, it adds one pod and its ServiceAccount, Role and Secret, in the Flux namespace |
+| `status` | records what Flux applied as live status on the release it applied, which the Healthy gate reads; `--watch` keeps it current, and `--discover` finds the layers on the cluster, which is what fluxbot runs | reads it; writes only to ConfigHub |
 
 `flux-system` is never repointed: it reconciles the Flux controllers
 themselves, so it stays on Git as the recovery path. It also holds the root and
@@ -32,7 +33,7 @@ a Space per cluster, and one root that reads it.
 ## Install
 
 ```bash
-cub plugin install confighub/examples@cub-flux-v0.3.2 --name flux
+cub plugin install confighub/examples@cub-flux-v0.4.0 --name flux
 cub plugin list                  # flux should be listed, status ok
 cub flux plan <your fleet repository>
 ```
@@ -41,7 +42,7 @@ cub flux plan <your fleet repository>
 command on your own estate. Already on an earlier release?
 
 ```bash
-cub plugin upgrade flux@cub-flux-v0.3.2
+cub plugin upgrade flux@cub-flux-v0.4.0
 ```
 
 Needs `cub` v0.7.0 or newer; live status needs ConfigHub v0.8.2 or newer.

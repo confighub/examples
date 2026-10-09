@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -111,6 +112,77 @@ const statusMessageLimit = 200
 var workloadKinds = map[string]bool{
 	"Deployment": true, "StatefulSet": true, "DaemonSet": true, "ReplicaSet": true,
 	"Job": true, "CronJob": true, "Pod": true, "HelmRelease": true,
+}
+
+// DiscoverLayers is every layer on the cluster that reads a ConfigHub Space:
+// each Kustomization in the controller's namespace whose source is an
+// OCIRepository at the gateway's /space/<space>. It is what a reporter on the
+// cluster reports, where there is no fleet repository to plan from. With a
+// prefix, only Spaces of that prefix: the ones this fleet's worker may write.
+func DiscoverLayers(run Runner, prefix string) ([]Check, error) {
+	out, err := run("kubectl", "-n", checkNamespace, "get", "ocirepositories.source.toolkit.fluxcd.io", "-o", "json")
+	if err != nil {
+		return nil, fmt.Errorf("listing OCIRepositories in %s: %w", checkNamespace, err)
+	}
+	var sources struct {
+		Items []struct {
+			Metadata struct {
+				Name string `json:"name"`
+			} `json:"metadata"`
+			Spec struct {
+				URL string `json:"url"`
+			} `json:"spec"`
+		} `json:"items"`
+	}
+	if err := json.Unmarshal(out, &sources); err != nil {
+		return nil, fmt.Errorf("listing OCIRepositories in %s: %w", checkNamespace, err)
+	}
+	spaces := map[string]string{}
+	for _, s := range sources.Items {
+		url := strings.TrimSuffix(s.Spec.URL, "/")
+		i := strings.LastIndex(url, "/space/")
+		if i < 0 {
+			continue
+		}
+		space := url[i+len("/space/"):]
+		if space == "" || strings.Contains(space, "/") || (prefix != "" && !strings.HasPrefix(space, prefix+"-")) {
+			continue
+		}
+		spaces[s.Metadata.Name] = space
+	}
+	out, err = run("kubectl", "-n", checkNamespace, "get", "kustomizations.kustomize.toolkit.fluxcd.io", "-o", "json")
+	if err != nil {
+		return nil, fmt.Errorf("listing Kustomizations in %s: %w", checkNamespace, err)
+	}
+	var layers struct {
+		Items []struct {
+			Metadata struct {
+				Name string `json:"name"`
+			} `json:"metadata"`
+			Spec struct {
+				SourceRef struct {
+					Kind      string `json:"kind"`
+					Name      string `json:"name"`
+					Namespace string `json:"namespace"`
+				} `json:"sourceRef"`
+			} `json:"spec"`
+		} `json:"items"`
+	}
+	if err := json.Unmarshal(out, &layers); err != nil {
+		return nil, fmt.Errorf("listing Kustomizations in %s: %w", checkNamespace, err)
+	}
+	var checks []Check
+	for _, k := range layers.Items {
+		ref := k.Spec.SourceRef
+		if ref.Kind != "OCIRepository" || (ref.Namespace != "" && ref.Namespace != checkNamespace) {
+			continue
+		}
+		if space, ok := spaces[ref.Name]; ok {
+			checks = append(checks, Check{Kustomization: k.Metadata.Name, Space: space})
+		}
+	}
+	sort.Slice(checks, func(i, j int) bool { return checks[i].Kustomization < checks[j].Kustomization })
+	return checks, nil
 }
 
 // ReadStatus reads one layer and says what ConfigHub should hear, and about

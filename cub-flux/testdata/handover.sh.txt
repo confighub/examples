@@ -514,6 +514,8 @@ echo 'GitRepository team-checkout promoted by branch. That is now the workflow'\
 
 finished=1
 echo
+echo "ConfigHub does not know what this cluster runs until something reports it. On the cluster itself:"
+echo "  FLUX_CONTEXT='$ctx' CLUSTER='$cluster' CONFIGHUB_URL=<ConfigHub address> bash fluxbot.sh"
 echo 'Every layer is Ready from ConfigHub, through the root. To see them:'
 echo "  kubectl --context '$ctx' -n $ns get kustomizations -o custom-columns=NAME:.metadata.name,SOURCE:.spec.sourceRef.kind,READY:.status.conditions[0].status"
 echo 'Nothing was deleted. To go back, in this order: stop the root pruning, restore BOTH fields on each layer as recorded before it moved, then remove the root:'

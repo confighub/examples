@@ -565,6 +565,8 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("")
 	raw(`finished=1`)
 	add("echo")
+	raw(`echo "ConfigHub does not know what this cluster runs until something reports it. On the cluster itself:"`)
+	raw(`echo "  FLUX_CONTEXT='$ctx' CLUSTER='$cluster' CONFIGHUB_URL=<ConfigHub address> bash fluxbot.sh"`)
 	add("echo %s", q("Every layer is Ready from ConfigHub, through the root. To see them:"))
 	raw(`echo "  kubectl --context '$ctx' -n $ns get kustomizations -o custom-columns=NAME:.metadata.name,SOURCE:.spec.sourceRef.kind,READY:.status.conditions[0].status"`)
 	// The way back restores two fields, not one, and restores them to what the

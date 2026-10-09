@@ -93,7 +93,8 @@ func JoinScript(p *Plan, prefix string) string {
 	}
 	add(`echo`)
 	add(`echo "Joined. Commit bootstrap/$cluster/ into this cluster's flux-system path so the root survives a reconcile."`)
-	add(`echo "Report its status with: cub flux status <fleet> --cluster $cluster --kube-context $ctx --watch"`)
+	add(`echo "Report its status from the cluster itself: FLUX_CONTEXT=$ctx CLUSTER=$cluster CONFIGHUB_URL=<ConfigHub address> bash fluxbot.sh"`)
+	add(`echo "or from here, for as long as you keep it running: cub flux status <fleet> --cluster $cluster --kube-context $ctx --watch"`)
 	return strings.Join(L, "\n") + "\n"
 }
 

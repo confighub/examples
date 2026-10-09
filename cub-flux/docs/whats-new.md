@@ -3,6 +3,30 @@
 Each release is tagged `cub-flux-v<version>` in confighub/examples and installs
 with `cub plugin install confighub/examples@cub-flux-v<version> --name flux`.
 
+## 0.4.0, 2026-10-09
+
+- **fluxbot: the live-status reporter, on the cluster.** Flux has no reporter
+  of its own, so `cub flux status --watch` had to be kept running somewhere
+  for the Healthy gate to open. `cub flux apply` now also writes `fluxbot.sh`,
+  which runs that reporter as one pod in the Flux namespace, signed in as the
+  Targets' worker, as argobot is for Argo CD. It grants that worker
+  `EditChildren` on the cluster's Target, and adds a Secret, a ServiceAccount
+  that may read `Kustomization`s and `OCIRepository`s in that namespace, and a
+  Deployment. No image is built for it: the pod fetches this release's binary
+  from GitHub, checks it against the release's checksum, and runs it in the
+  Kubernetes project's `kubectl` image. Run live: a change released to dev
+  reached the next stage 87 seconds after its publish with no command running.
+- **`cub flux status --discover`** reports every layer on the cluster that
+  reads a ConfigHub Space of the fleet, read from the cluster each pass, with
+  no fleet repository. It is what fluxbot runs, and works by hand too.
+- **`cub flux status --as-worker`** signs in to `CONFIGHUB_URL` as the worker
+  `CONFIGHUB_WORKER_ID` and `CONFIGHUB_WORKER_SECRET` name, and stops at once if
+  it cannot. Without the flag those variables are not read. `--ready-file`
+  writes a file once it has signed in, which the pod's readiness probe reads,
+  so a reporter that cannot sign in never replaces one that can.
+- **Every request to ConfigHub has a time limit**, so a stalled connection is
+  an error rather than a silence.
+
 ## 0.3.2, 2026-10-09
 
 - **A recorded check judges health.** `cub flux check --fields --record`
