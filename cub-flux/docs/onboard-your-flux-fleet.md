@@ -147,11 +147,11 @@ the layers you already run.
 ## Install
 
 ```bash
-cub plugin install confighub/examples@cub-flux-v0.3.0 --name flux
+cub plugin install confighub/examples@cub-flux-v0.3.1 --name flux
 cub plugin list   # flux should be listed, status ok
 ```
 
-This release needs `cub` and ConfigHub v0.7.0 or newer; `cub version` shows both.
+This release needs `cub` v0.7.0 or newer and ConfigHub v0.8.2 or newer; `cub version` shows both.
 
 Upgrade later by naming the new release: `cub plugin upgrade flux@cub-flux-v<version>`.
 To build from source instead (needs Go):
@@ -560,12 +560,17 @@ of every variant is made before anything reads ConfigHub, so `apply.sh` makes
 those under a workflow without it, and puts the real one in place once they
 are done.
 
-**Run live on 2026-09-30**, against ConfigHub v0.6.8 and Flux v2.8.6, with
-`--require Healthy`, when live status was still the Space annotation: a change
-released to dev was refused promotion towards prod until the reporter had
-written Synced and Healthy at the digest Flux applied, and then went through.
-Recording on the Release is covered by tests, and by a stub of ConfigHub's API
-that pins what is sent; it has not been run against a live server yet.
+**Run live on 2026-10-09** against ConfigHub v0.8.10 and Flux v2.8.6, with
+`--require Healthy`:
+- A change was released to dev and promoted towards prod. ConfigHub refused it:
+  "Variant 'dev' has no live status for release 2 yet". Release 1's passing
+  status did not count.
+- Once Flux applied release 2, the reporter recorded Synced/Healthy/Succeeded
+  on it, and the promotion went through. A second pass wrote nothing.
+- The layer was then rolled back to release 1. The reporter recorded that on
+  release 1 and withdrew its reading from release 2, which closed the gate.
+
+The run log: [runs/2026-10-09-live-status-on-the-release.md](runs/2026-10-09-live-status-on-the-release.md).
 
 ## What the plugin checks for you, and what it cannot
 

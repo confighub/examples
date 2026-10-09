@@ -154,11 +154,11 @@ cluster that has none. Repointing is for the Applications you already run.
 ## Install
 
 ```bash
-cub plugin install confighub/examples@cub-argo-v0.3.0 --name argo
+cub plugin install confighub/examples@cub-argo-v0.3.1 --name argo
 cub plugin list   # argo should be listed, status ok
 ```
 
-This release needs `cub` and ConfigHub v0.7.0 or newer; `cub version` shows both.
+This release needs `cub` v0.7.0 or newer and ConfigHub v0.8.2 or newer; `cub version` shows both.
 
 Upgrade later by naming the new release: `cub plugin upgrade argo@cub-argo-v<version>`.
 To build from source instead (needs Go):
@@ -977,8 +977,13 @@ Recording takes Edit on the Release: your own, or `EditChildren` on its Target
 for a worker.
 
 `--dry-run` shows what it would write; `--json` prints what it read and did.
-The run that proved the reporter, against the Space annotation of the time, from handover to a reviewed release to the way back,
-is [docs/runs/2026-09-30-status-and-in-cluster.md](runs/2026-09-30-status-and-in-cluster.md).
+Run live on 2026-10-09 against ConfigHub v0.8.10: five Applications recorded on
+the releases they synced, and a reading following Argo CD from one release to
+the next after a hard refresh:
+[runs/2026-10-09-live-status-on-the-release.md](runs/2026-10-09-live-status-on-the-release.md).
+The earlier run, against the Space annotation of the time, from handover to a
+reviewed release to the way back, is
+[runs/2026-09-30-status-and-in-cluster.md](runs/2026-09-30-status-and-in-cluster.md).
 
 ## Making a change afterwards
 

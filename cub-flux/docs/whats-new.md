@@ -3,7 +3,7 @@
 Each release is tagged `cub-flux-v<version>` in confighub/examples and installs
 with `cub plugin install confighub/examples@cub-flux-v<version> --name flux`.
 
-## 0.3.1, unreleased
+## 0.3.1, 2026-10-09
 
 Needs ConfigHub v0.8.2 or newer for live status.
 
