@@ -200,6 +200,17 @@ fluxbot-5ccdd7684c-t9x8g 1/1 Running restarts=0; fluxbot-76759b96db-h52l7 0/1 Cr
 - **With the node restarted**, the fetch ran again over the binary it had left
   and finished, and the reporter carried on.
 
+Once 0.4.0 was published, the test install was taken out with the one
+`kubectl delete` the script prints, and `fluxbot.sh` from the released plugin
+run with no `FLUXBOT_URL`: the pod fetched `cub-flux-linux-arm64` from the
+GitHub release, its checksum matched, and it reported as before.
+
+```text
+from=${FLUXBOT_URL:-https://github.com/confighub/examples/releases/download/cub-flux-v0.4.0}
+deployment "fluxbot" successfully rolled out
+the binary in the pod: cub flux 0.4.0 (3cdc771a816223146707fd4bb648a512fb1bc31d, 2026-10-09T10:51:35Z)
+```
+
 The reporter's account was asked what it may do: get and list
 `Kustomization`s and `OCIRepository`s in `flux-system`, yes; Secrets, pods, a
 patch to a `Kustomization`, or anything in another namespace, no.
