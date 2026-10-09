@@ -13,6 +13,7 @@ const (
 	unitID  = "22222222-2222-4222-8222-222222222222"
 	tagID   = "33333333-3333-4333-8333-333333333333"
 	revID   = "44444444-4444-4444-8444-444444444444"
+	rel2ID  = "66666666-6666-4666-8666-666666666666"
 )
 
 // stubHub is ConfigHub's API as the SDK client meets it: one Space, one Unit,
@@ -24,7 +25,7 @@ func stubHub(t *testing.T) (*SDKHub, *[]string) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
 		q := r.URL.Query()
-		asked = append(asked, r.Method+" "+r.URL.Path+" where="+q.Get("where")+" body="+string(body))
+		asked = append(asked, r.Method+" "+r.URL.Path+" where="+q.Get("where")+" body="+string(body)+" select="+q.Get("select"))
 		w.Header().Set("Content-Type", "application/json")
 		p := r.URL.Path
 		switch {
@@ -38,10 +39,13 @@ func stubHub(t *testing.T) (*SDKHub, *[]string) {
 			} else {
 				w.Write([]byte(`[]`))
 			}
+		case r.Method == http.MethodPatch && strings.HasSuffix(p, "/release/"+rel2ID):
+			w.Write([]byte(`{"ReleaseID":"` + rel2ID + `"}`))
 		case strings.HasSuffix(p, "/release"):
 			all := []string{
 				`{"Release":{"ReleaseNum":1,"ManifestDigest":"sha256:m1","Published":true,"TagID":"` + tagID + `"}}`,
-				`{"Release":{"ReleaseNum":2,"ManifestDigest":"sha256:m2","Published":true,"TagID":"` + tagID + `"}}`,
+				`{"Release":{"ReleaseID":"` + rel2ID + `","ReleaseNum":2,"ManifestDigest":"sha256:m2","Published":true,"TagID":"` + tagID + `",
+				  "LiveStatus":{"Reporter":"argobot","DataSource":"app","Sync":"Synced","Health":"Healthy","Operation":"Succeeded","ReporterSync":"Synced","Message":"m","ObservedAt":"2026-10-09T08:00:00Z"}}}`,
 				`{"Release":{"ReleaseNum":3,"ManifestDigest":"sha256:m3","Published":false}}`,
 			}
 			switch q.Get("where") {
@@ -49,6 +53,8 @@ func stubHub(t *testing.T) (*SDKHub, *[]string) {
 				all = all[:2]
 			case "ManifestDigest = 'sha256:m1'":
 				all = all[:1]
+			case "ReleaseNum = 2":
+				all = all[1:2]
 			case "":
 			default:
 				all = nil
@@ -148,13 +154,49 @@ func TestSDKHubRecordsAnAttestation(t *testing.T) {
 	}
 }
 
-// Live status is a merge patch on the Space, and the annotations come back.
-func TestSDKHubReadsAndPatchesASpace(t *testing.T) {
+// What a tool reported on a release comes back with the release, and a new
+// status is a merge patch on that Release naming every field, the empty ones
+// as null, so nothing an earlier reporter wrote stays beside it.
+func TestSDKHubReadsAndRecordsLiveStatus(t *testing.T) {
 	h, asked := stubHub(t)
-	ann, err := h.SpaceAnnotations("s")
-	if err != nil || ann["k"] != "v" {
-		t.Errorf("the Space's annotations: %v %v", ann, err)
+	all, err := h.Releases("s")
+	if err != nil || all[0].Live != nil || all[1].Live == nil {
+		t.Fatalf("only release 2 has been reported on: %+v %v", all, err)
 	}
+	// The fields are named, so a release's bundle is not fetched with it.
+	if !strings.HasSuffix(last(asked), "select=ReleaseID,ReleaseNum,SpaceID,OrganizationID,Published,ManifestDigest,TagID,LiveStatus") {
+		t.Errorf("want the fields named: %s", last(asked))
+	}
+	if got, want := *all[1].Live, (LiveStatus{Reporter: "argobot", DataSource: "app", Sync: "Synced", Health: "Healthy", Operation: "Succeeded",
+		ReporterSync: "Synced", Message: "m", ObservedAt: "2026-10-09T08:00:00Z"}); got != want {
+		t.Errorf("want %+v, got %+v", want, got)
+	}
+	st := LiveStatus{Reporter: "cub-flux", DataSource: "apps", Sync: "OutOfSync", Health: "Progressing", ObservedAt: "2026-10-09T09:00:00Z"}
+	if err := h.SetLiveStatus("s", 2, st); err != nil {
+		t.Fatal(err)
+	}
+	sent := last(asked)
+	if !strings.HasPrefix(sent, "PATCH /api/space/"+spaceID+"/release/"+rel2ID+" ") {
+		t.Fatalf("want a PATCH of release 2: %s", sent)
+	}
+	for _, want := range []string{`"LiveStatus":{`, `"Reporter":"cub-flux"`, `"Sync":"OutOfSync"`, `"Health":"Progressing"`, `"ObservedAt":"2026-10-09T09:00:00Z"`,
+		`"Operation":null`, `"ReporterSync":null`, `"Message":null`} {
+		if !strings.Contains(sent, want) {
+			t.Errorf("want %s in %s", want, sent)
+		}
+	}
+	if err := h.SetLiveStatus("s", 9, st); err == nil {
+		t.Error("a release that does not exist must be an error, not a silent nothing")
+	}
+	st.ObservedAt = ""
+	if err := h.SetLiveStatus("s", 2, st); err == nil {
+		t.Error("a status with no time is refused here rather than by the server")
+	}
+}
+
+// The watcher's note on a layers Space is a merge patch on that Space.
+func TestSDKHubPatchesASpace(t *testing.T) {
+	h, asked := stubHub(t)
 	if err := h.PatchSpace("s", []byte(`{"Annotations":{"a":"b"}}`)); err != nil {
 		t.Fatal(err)
 	}

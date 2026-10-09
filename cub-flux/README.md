@@ -20,7 +20,7 @@ that move a cluster:
 | `watch` | proposes each cluster added to the fleet repository, and releases it once a person approves | no, it runs `apply.sh`; `join.sh` stays yours |
 | `cleanup.sh` | takes what `apply.sh` made back out of ConfigHub, layers Spaces first | no |
 | `check` | compares what each layer applied with the published release; `--record` keeps the verdict as a `LiveCheck` attestation | reads it; changes nothing, except that `--record` writes to ConfigHub |
-| `status` | reports what Flux applied as ConfigHub live status, which the Healthy gate reads | reads it; writes only to ConfigHub |
+| `status` | records what Flux applied as live status on the release it applied, which the Healthy gate reads | reads it; writes only to ConfigHub |
 
 `flux-system` is never repointed: it reconciles the Flux controllers
 themselves, so it stays on Git as the recovery path. It also holds the root and
@@ -32,7 +32,7 @@ a Space per cluster, and one root that reads it.
 ## Install
 
 ```bash
-cub plugin install confighub/examples@cub-flux-v0.3.0 --name flux
+cub plugin install confighub/examples@cub-flux-v0.3.1 --name flux
 cub plugin list                  # flux should be listed, status ok
 cub flux plan <your fleet repository>
 ```
@@ -41,7 +41,7 @@ cub flux plan <your fleet repository>
 command on your own estate. Already on an earlier release?
 
 ```bash
-cub plugin upgrade flux@cub-flux-v0.3.0
+cub plugin upgrade flux@cub-flux-v0.3.1
 ```
 
 Releases are tagged `cub-flux-v<version>` in this repository, and what each one

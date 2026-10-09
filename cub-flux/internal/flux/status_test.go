@@ -73,34 +73,35 @@ const spaceURL = "oci://gw.example/space/flux-apps-dev"
 
 func TestStatusMapping(t *testing.T) {
 	for _, tc := range []struct {
-		name                     string
-		mutate                   func(k map[string]any)
-		sync, health, phase, rev string
-		gate                     bool
-		says                     string
+		name                    string
+		mutate                  func(k map[string]any)
+		sync, health, operation string
+		release                 int // where it is recorded; 0 is nowhere
+		gate                    bool
+		says                    string
 	}{
 		{"newest release applied, workloads checked", nil,
-			"Synced", "Healthy", "Succeeded", d2, true, "release 2 applied"},
+			"Synced", "Healthy", "Succeeded", 2, true, "release 2 applied"},
 		{"an older release applied", func(k map[string]any) {
 			status(k)["lastAppliedRevision"] = "latest@" + d1
 			status(k)["lastAttemptedRevision"] = "latest@" + d1
-		}, "OutOfSync", "Healthy", "Succeeded", d1, false, "release 1 is applied; release 2 is published and not applied yet"},
+		}, "Synced", "Healthy", "Succeeded", 1, false, "release 1 applied; release 2 is published and not applied yet"},
 		{"an unpublished digest applied", func(k map[string]any) {
 			status(k)["lastAppliedRevision"] = "latest@" + dX
 			status(k)["lastAttemptedRevision"] = "latest@" + dX
-		}, "Unknown", "Healthy", "Succeeded", dX, false, "no published release"},
+		}, "Synced", "Healthy", "Succeeded", 0, false, "no published release"},
 		{"workloads nobody checked", func(k map[string]any) {
 			spec(k)["wait"] = false
-		}, "Synced", "Unknown", "Succeeded", d2, false, "Ready means applied, not healthy"},
+		}, "Synced", "Unknown", "Succeeded", 2, false, "Ready means applied, not healthy"},
 		{"healthChecks covering every workload count as checked", func(k map[string]any) {
 			spec(k)["wait"] = false
 			spec(k)["healthChecks"] = []any{map[string]any{"kind": "Deployment", "name": "frontend", "namespace": "apptique-dev"}}
-		}, "Synced", "Healthy", "Succeeded", d2, true, "release 2 applied"},
+		}, "Synced", "Healthy", "Succeeded", 2, true, "release 2 applied"},
 		{"healthChecks in the targetNamespace by default", func(k map[string]any) {
 			spec(k)["wait"] = false
 			spec(k)["targetNamespace"] = "apptique-dev"
 			spec(k)["healthChecks"] = []any{map[string]any{"kind": "Deployment", "name": "frontend"}}
-		}, "Synced", "Healthy", "Succeeded", d2, true, "release 2 applied"},
+		}, "Synced", "Healthy", "Succeeded", 2, true, "release 2 applied"},
 		{"healthChecks covering one workload of two", func(k map[string]any) {
 			spec(k)["wait"] = false
 			spec(k)["healthChecks"] = []any{map[string]any{"kind": "Deployment", "name": "frontend", "namespace": "apptique-dev"}}
@@ -108,46 +109,63 @@ func TestStatusMapping(t *testing.T) {
 				map[string]any{"id": "apptique-dev_frontend_apps_Deployment", "v": "v1"},
 				map[string]any{"id": "apptique-dev_cart_apps_Deployment", "v": "v1"},
 			}}
-		}, "Synced", "Unknown", "Succeeded", d2, false, "Deployment apptique-dev/cart"},
+		}, "Synced", "Unknown", "Succeeded", 2, false, "Deployment apptique-dev/cart"},
 		{"no workloads, nothing to check", func(k map[string]any) {
 			spec(k)["wait"] = false
 			status(k)["inventory"] = map[string]any{"entries": []any{map[string]any{"id": "_apptique-dev__Namespace", "v": "v1"}}}
-		}, "Synced", "Healthy", "Succeeded", d2, true, "release 2 applied"},
-		{"applying a newer digest", func(k map[string]any) {
+		}, "Synced", "Healthy", "Succeeded", 2, true, "release 2 applied"},
+		{"applying the newest release: the reading is about that one", func(k map[string]any) {
+			status(k)["lastAppliedRevision"] = "latest@" + d1
+		}, "OutOfSync", "Progressing", "Running", 2, false, "Flux is applying this release; it last applied " + d1},
+		{"applying a digest that is no published release", func(k map[string]any) {
 			status(k)["lastAttemptedRevision"] = "latest@" + dX
-		}, "OutOfSync", "Progressing", "Running", d2, false, "applying " + dX},
-		{"Ready False", func(k map[string]any) {
+		}, "OutOfSync", "Progressing", "Running", 0, false, "no published release"},
+		{"Ready False: the release Flux tried is the one that failed", func(k map[string]any) {
 			status(k)["conditions"] = []any{map[string]any{"type": "Ready", "status": "False", "observedGeneration": 3, "message": "health check failed"}}
-		}, "OutOfSync", "Degraded", "Failed", "", false, "health check failed"},
+		}, "OutOfSync", "Degraded", "Failed", 2, false, "health check failed"},
+		{"Ready False with no message still says so", func(k map[string]any) {
+			status(k)["conditions"] = []any{map[string]any{"type": "Ready", "status": "False", "observedGeneration": 3}}
+		}, "OutOfSync", "Degraded", "Failed", 2, false, "not ready"},
 		{"stalled", func(k map[string]any) {
 			status(k)["conditions"] = append(status(k)["conditions"].([]any), map[string]any{"type": "Stalled", "status": "True", "message": "path not found"})
-		}, "OutOfSync", "Degraded", "Failed", "", false, "stalled: path not found"},
-		{"reconciling", func(k map[string]any) {
+		}, "OutOfSync", "Degraded", "Failed", 2, false, "stalled: path not found"},
+		{"reconciling a release it has not applied yet", func(k map[string]any) {
+			status(k)["lastAppliedRevision"] = "latest@" + d1
 			status(k)["conditions"] = append(status(k)["conditions"].([]any), map[string]any{"type": "Reconciling", "status": "True", "message": "applying"})
-		}, "OutOfSync", "Progressing", "Running", "", false, "applying"},
+		}, "OutOfSync", "Progressing", "Running", 2, false, "applying"},
 		{"a generation Flux has not seen", func(k map[string]any) {
 			k["metadata"].(map[string]any)["generation"] = 4
-		}, "Unknown", "Progressing", "Running", "", false, "current generation"},
+		}, "Unknown", "Progressing", "Running", 2, false, "current generation"},
 		{"Ready from an old generation", func(k map[string]any) {
 			status(k)["conditions"] = []any{map[string]any{"type": "Ready", "status": "True", "observedGeneration": 2}}
-		}, "Unknown", "Progressing", "Running", "", false, "current generation"},
+		}, "Unknown", "Progressing", "Running", 2, false, "current generation"},
 		{"suspended", func(k map[string]any) {
 			spec(k)["suspend"] = true
-		}, "Unknown", "Suspended", "", "", false, "suspended"},
+		}, "Unknown", "Suspended", "", 2, false, "suspended"},
+		{"nothing applied or attempted yet", func(k map[string]any) {
+			delete(status(k), "lastAppliedRevision")
+			delete(status(k), "lastAttemptedRevision")
+			status(k)["conditions"] = []any{map[string]any{"type": "Ready", "status": "False", "observedGeneration": 3, "message": "artifact not found"}}
+		}, "OutOfSync", "Degraded", "Failed", 0, false, "artifact not found"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			s := readWith(t, ks(t, tc.mutate), spaceURL).Status
-			if s.SyncStatus != tc.sync || s.HealthStatus != tc.health || s.OperationPhase != tc.phase || s.Revision != tc.rev {
-				t.Errorf("want %s/%s/%s at %q, got %s/%s/%s at %q", tc.sync, tc.health, tc.phase, tc.rev, s.SyncStatus, s.HealthStatus, s.OperationPhase, s.Revision)
+			r := readWith(t, ks(t, tc.mutate), spaceURL)
+			s := r.Status
+			if s.Sync != tc.sync || s.Health != tc.health || s.Operation != tc.operation || r.Release != tc.release {
+				t.Errorf("want %s/%s/%s on release %d, got %s/%s/%s on release %d", tc.sync, tc.health, tc.operation, tc.release, s.Sync, s.Health, s.Operation, r.Release)
 			}
-			if s.Gate() != tc.gate {
-				t.Errorf("gate: want %v, got %v for %s", tc.gate, s.Gate(), s)
+			// The gate reads the newest release only.
+			if gate := s.Gate() && r.Release == r.Newest; gate != tc.gate {
+				t.Errorf("gate: want %v, got %v for %s on release %d of %d", tc.gate, gate, s, r.Release, r.Newest)
 			}
-			if !strings.Contains(s.Message, tc.says) {
-				t.Errorf("message %q should say %q", s.Message, tc.says)
+			if says := s.Message + " " + r.Unrecorded; !strings.Contains(says, tc.says) {
+				t.Errorf("%q should say %q", says, tc.says)
 			}
-			if s.Source != StatusSource || s.App != "apps" || s.ObservedAt != "2026-09-30T12:00:00Z" {
-				t.Errorf("source, app or time wrong: %+v", s)
+			if (r.Release == 0) != (r.Unrecorded != "") {
+				t.Errorf("a reading with no release to record it on says why, and only then: %+v", r)
+			}
+			if s.Reporter != StatusReporter || s.DataSource != "apps" || s.ObservedAt != "2026-09-30T12:00:00Z" || r.Newest != 2 {
+				t.Errorf("reporter, source, time or newest release wrong: %+v", r)
 			}
 		})
 	}
@@ -180,32 +198,26 @@ func TestStatusMessageIsClipped(t *testing.T) {
 	r := readWith(t, ks(t, func(k map[string]any) {
 		status(k)["conditions"] = []any{map[string]any{"type": "Ready", "status": "False", "observedGeneration": 3, "message": long}}
 	}), spaceURL)
-	p, err := StatusPatch(r.Status)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var body struct{ Annotations map[string]string }
-	if err := json.Unmarshal(p, &body); err != nil {
-		t.Fatal(err)
-	}
-	if v := body.Annotations[LiveStatusAnnotation]; len(v) > 1024 {
-		t.Errorf("ConfigHub allows 1024 bytes an annotation; this is %d", len(v))
+	if len(r.Status.Message) > statusMessageLimit {
+		t.Errorf("a message is clipped to %d bytes; this is %d", statusMessageLimit, len(r.Status.Message))
 	}
 }
 
-// holding is a ConfigHub whose Space flux-apps-dev holds that reading, or none.
-func holding(s *LiveStatus) *fakeHub {
-	ann := map[string]string{"other": "kept"}
-	if s != nil {
-		doc, _ := json.Marshal(s)
-		ann = map[string]string{LiveStatusAnnotation: string(doc)}
-	}
-	return &fakeHub{annotations: map[string]map[string]string{"flux-apps-dev": ann}}
+var fluxCheck = Check{Kustomization: "apps", Space: "flux-apps-dev"}
+
+// at is a reading of release 2, the newest, and what that Release holds.
+func at(status LiveStatus, held *LiveStatus) Reading {
+	return Reading{Check: fluxCheck, Status: status, Revision: d2, Release: 2, Newest: 2, Held: held}
 }
 
 func TestReportStatusWritesOnlyWhatChanged(t *testing.T) {
 	now := time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)
-	fresh := LiveStatus{Source: StatusSource, App: "apps", SyncStatus: "Synced", HealthStatus: "Healthy", OperationPhase: "Succeeded", Revision: d2, ObservedAt: now.Format(time.RFC3339)}
+	reading := LiveStatus{Reporter: StatusReporter, DataSource: "apps", Sync: "Synced", Health: "Healthy", Operation: "Succeeded", ObservedAt: now.Format(time.RFC3339)}
+	held := func(reporter, sync string, age time.Duration) *LiveStatus {
+		h := reading
+		h.Reporter, h.Sync, h.ObservedAt = reporter, sync, now.Add(-age).Format(time.RFC3339)
+		return &h
+	}
 	for _, tc := range []struct {
 		name string
 		held *LiveStatus
@@ -213,28 +225,112 @@ func TestReportStatusWritesOnlyWhatChanged(t *testing.T) {
 		did  string
 	}{
 		{"nothing held", nil, false, "written"},
-		{"same, recent", &LiveStatus{Source: fresh.Source, App: "apps", SyncStatus: "Synced", HealthStatus: "Healthy", OperationPhase: "Succeeded", Revision: d2, ObservedAt: now.Add(-time.Minute).Format(time.RFC3339)}, false, "unchanged"},
-		{"same, old enough to refresh", &LiveStatus{Source: fresh.Source, App: "apps", SyncStatus: "Synced", HealthStatus: "Healthy", OperationPhase: "Succeeded", Revision: d2, ObservedAt: now.Add(-time.Hour).Format(time.RFC3339)}, false, "written"},
-		{"changed", &LiveStatus{Source: fresh.Source, App: "apps", SyncStatus: "OutOfSync", HealthStatus: "Healthy", OperationPhase: "Succeeded", Revision: d1, ObservedAt: now.Add(-time.Minute).Format(time.RFC3339)}, false, "written"},
+		{"same, recent", held(StatusReporter, "Synced", time.Minute), false, "unchanged"},
+		{"same, old enough to refresh", held(StatusReporter, "Synced", time.Hour), false, "written"},
+		{"changed", held(StatusReporter, "OutOfSync", time.Minute), false, "written"},
+		{"argobot reporting", held("argobot", "OutOfSync", time.Minute), false, "left"},
+		{"argobot stopped long ago", held("argobot", "OutOfSync", time.Hour), false, "written"},
 		{"dry run", nil, true, "dry-run"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			hub := holding(tc.held)
-			outs, err := ReportStatus(hub, []Reading{{Check: Check{Kustomization: "apps", Space: "flux-apps-dev"}, Status: fresh}}, 10*time.Minute, tc.dry, now)
+			hub := &fakeHub{}
+			outs, err := ReportStatus(hub, []Reading{at(reading, tc.held)}, 10*time.Minute, tc.dry, now)
 			if err != nil {
 				t.Fatal(err)
 			}
-			wrote := hub.patches
 			if outs[0].Did != tc.did {
 				t.Errorf("want %s, got %s", tc.did, outs[0].Did)
 			}
+			wrote := hub.recorded
 			if (tc.did == "written") != (len(wrote) == 1) {
 				t.Errorf("wrote %d times for %s", len(wrote), tc.did)
 			}
-			if len(wrote) == 1 && (!strings.Contains(wrote[0], `"Annotations":{"confighub.com/live-status":`) || strings.Contains(wrote[0], "Slug")) {
-				t.Errorf("the patch must set only the live-status annotation: %s", wrote[0])
+			if len(wrote) == 1 && !strings.HasPrefix(wrote[0], `flux-apps-dev release 2 {"reporter":"cub-flux"`) {
+				t.Errorf("the status goes on release 2 of the Space, as ours: %s", wrote[0])
+			}
+			if tc.did == "left" && !strings.Contains(outs[0].Why, "argobot") {
+				t.Errorf("say whose reading was left alone: %q", outs[0].Why)
 			}
 		})
+	}
+}
+
+// A reading with no Release to record it on is written nowhere, and said.
+func TestReportStatusRecordsNothingWithoutARelease(t *testing.T) {
+	hub := &fakeHub{}
+	r := Reading{Check: fluxCheck, Status: LiveStatus{Reporter: StatusReporter, Sync: "Unknown", Health: "Healthy"}, Newest: 2,
+		Unrecorded: "Flux reports no revision"}
+	outs, err := ReportStatus(hub, []Reading{r}, time.Minute, false, time.Now())
+	if err != nil || len(hub.recorded) != 0 || outs[0].Did != "unrecorded" {
+		t.Fatalf("want nothing recorded: %v %v %+v", err, hub.recorded, outs)
+	}
+	var b strings.Builder
+	PrintOutcomes(&b, outs)
+	if !strings.Contains(b.String(), "not recorded") || !strings.Contains(b.String(), "no revision") || !strings.Contains(b.String(), "gate reads release 2, the newest, which nothing has reported on") {
+		t.Errorf("say that nothing was recorded, why, and what it means for the gate: %s", b.String())
+	}
+}
+
+// After a handback to Git, the newest Release still holds the last reading,
+// and the Healthy gate would pass on it. A reading this reporter wrote is
+// replaced; another reporter's is left alone.
+func TestLeftSpaceReplacesOurStaleReading(t *testing.T) {
+	now := time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)
+	ours := &LiveStatus{Reporter: StatusReporter, DataSource: "apps", Sync: "Synced", Health: "Healthy", Operation: "Succeeded", ObservedAt: now.Format(time.RFC3339)}
+	theirs := &LiveStatus{Reporter: "argobot", DataSource: "apps", Sync: "Synced", Health: "Healthy", Operation: "Succeeded", ObservedAt: now.Add(-time.Hour).Format(time.RFC3339)}
+	for _, tc := range []struct {
+		name string
+		held *LiveStatus
+		did  string
+	}{{"ours", ours, "written"}, {"another reporter's", theirs, "skipped"}, {"nothing held", nil, "skipped"}} {
+		t.Run(tc.name, func(t *testing.T) {
+			hub := &fakeHub{}
+			gone := Reading{Check: fluxCheck, Skip: "reads https://github.com/acme/fleet, not Space argo-apps", Release: 2, Newest: 2, Held: tc.held}
+			outs, err := ReportStatus(hub, []Reading{gone}, 10*time.Minute, false, now)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if outs[0].Did != tc.did {
+				t.Fatalf("want %s, got %s", tc.did, outs[0].Did)
+			}
+			if tc.did == "written" {
+				wrote := strings.Join(hub.recorded, "")
+				if outs[0].Status.Gate() || !strings.Contains(wrote, "release 2 ") || !strings.Contains(wrote, "no longer reads this Space") {
+					t.Errorf("the replacement goes on the newest release, must not pass the gate, and must say why: %s", wrote)
+				}
+			}
+		})
+	}
+}
+
+// What the newest Release holds is read for a layer that has left its Space,
+// so a reading of ours left behind there can be found.
+func TestStatusOfALeftSpaceNamesTheNewestRelease(t *testing.T) {
+	ours := &LiveStatus{Reporter: StatusReporter, Sync: "Synced", Health: "Healthy"}
+	withStatus := []HubRelease{releases[0], {Num: 2, ManifestDigest: d2, Published: true, Live: ours}, releases[2]}
+	onGit := ks(t, func(k map[string]any) {
+		spec(k)["sourceRef"] = map[string]any{"kind": "GitRepository", "name": "fleet-repo"}
+	})
+	r, err := ReadStatus(fake(map[string]string{"get kustomization": onGit}), &fakeHub{releases: withStatus}, fluxCheck, time.Now())
+	if err != nil || r.Skip == "" || r.Release != 2 || r.Held != ours {
+		t.Errorf("want the skip, and release 2 with what it holds: %+v %v", r, err)
+	}
+}
+
+// One Release that cannot be written must not stop the others being reported.
+func TestReportStatusCarriesOnPastAnUnwritableSpace(t *testing.T) {
+	now := time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)
+	st := LiveStatus{Reporter: StatusReporter, Sync: "Synced", Health: "Healthy", Operation: "Succeeded", ObservedAt: now.Format(time.RFC3339)}
+	hub := &fakeHub{unwritable: map[string]bool{"gone": true}}
+	outs, err := ReportStatus(hub, []Reading{
+		{Check: Check{Kustomization: "a", Space: "gone"}, Status: st, Release: 1, Newest: 1},
+		{Check: Check{Kustomization: "b", Space: "here"}, Status: st, Release: 1, Newest: 1},
+	}, time.Minute, false, now)
+	if err == nil || !strings.Contains(err.Error(), "gone") {
+		t.Errorf("the unwritable Space should be reported: %v", err)
+	}
+	if wrote := hub.recorded; len(wrote) != 1 || !strings.HasPrefix(wrote[0], "here ") || len(outs) != 1 {
+		t.Errorf("the next Space should still be written: wrote %v, outcomes %v", wrote, outs)
 	}
 }
 
@@ -267,51 +363,121 @@ func TestRequireHealthyAfterOnboarding(t *testing.T) {
 	}
 }
 
-// After a handback to Git, the Space still holds the last reading, and the
-// Healthy gate would pass on it. A reading this reporter wrote is replaced;
-// another reporter's is left alone.
-func TestLeftSpaceReplacesOurStaleReading(t *testing.T) {
+// A reading is true of one Release. A passing reading this reporter left on
+// the newest Release is withdrawn when Flux now reports another release,
+// or none: the gate reads the newest, and would go on passing on it.
+func TestWithdrawsAPassingReadingThatIsNoLongerTrue(t *testing.T) {
 	now := time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)
-	gone := Reading{Check: Check{Kustomization: "apps", Space: "flux-apps-dev"}, Skip: "reads GitRepository fleet-repo, not ConfigHub"}
-	ours := &LiveStatus{Source: StatusSource, App: "apps", SyncStatus: "Synced", HealthStatus: "Healthy", OperationPhase: "Succeeded", Revision: d2, ObservedAt: now.Format(time.RFC3339)}
-	theirs := &LiveStatus{Source: "argobot", App: "apps", SyncStatus: "Synced", HealthStatus: "Healthy", OperationPhase: "Succeeded", ObservedAt: now.Format(time.RFC3339)}
+	passing := func(reporter string) *LiveStatus {
+		return &LiveStatus{Reporter: reporter, DataSource: "apps", Sync: "Synced", Health: "Healthy", Operation: "Succeeded", ObservedAt: now.Format(time.RFC3339)}
+	}
+	on := func(newest *LiveStatus) *fakeHub {
+		return &fakeHub{releases: []HubRelease{releases[0], {Num: 2, ManifestDigest: d2, Published: true, Live: newest}, releases[2]}}
+	}
+	rolledBack := ks(t, func(k map[string]any) {
+		status(k)["lastAppliedRevision"] = "latest@" + d1
+		status(k)["lastAttemptedRevision"] = "latest@" + d1
+	})
+	notCompared := ks(t, func(k map[string]any) {
+		delete(status(k), "lastAppliedRevision")
+		delete(status(k), "lastAttemptedRevision")
+		status(k)["conditions"] = []any{map[string]any{"type": "Ready", "status": "False", "observedGeneration": 3, "message": "artifact not found"}}
+	})
 	for _, tc := range []struct {
-		name string
-		held *LiveStatus
-		did  string
-	}{{"ours", ours, "written"}, {"another reporter's", theirs, "skipped"}, {"nothing held", nil, "skipped"}} {
+		name     string
+		app      string
+		newest   *LiveStatus
+		withdrew string
+		says     string
+	}{
+		{"rolled back to release 1", rolledBack, passing(StatusReporter), "written", `release 2 {"reporter":"cub-flux","dataSource":"apps","sync":"OutOfSync","health":"Unknown","message":"not what is running: Flux reports release 1"`},
+		{"no reading at all", notCompared, passing(StatusReporter), "written", `release 2 {"reporter":"cub-flux","dataSource":"apps","sync":"Unknown","health":"Unknown","message":"not known to be running: artifact not found`},
+		{"argobot's reading is not ours to withdraw", rolledBack, passing("argobot"), "", ""},
+		{"another Application's reading is not this one's", rolledBack, func() *LiveStatus { p := passing(StatusReporter); p.DataSource = "other"; return p }(), "", ""},
+		{"nothing on the newest release", rolledBack, nil, "", ""},
+	} {
 		t.Run(tc.name, func(t *testing.T) {
-			hub := holding(tc.held)
-			outs, err := ReportStatus(hub, []Reading{gone}, 10*time.Minute, false, now)
+			hub := on(tc.newest)
+			r, err := ReadStatus(fake(map[string]string{"get kustomization": tc.app, "get ocirepository": spaceURL}), hub, fluxCheck, now)
 			if err != nil {
 				t.Fatal(err)
 			}
-			wrote := strings.Join(hub.patches, "")
-			if outs[0].Did != tc.did {
-				t.Fatalf("want %s, got %s", tc.did, outs[0].Did)
+			outs, err := ReportStatus(hub, []Reading{r}, 10*time.Minute, false, now)
+			if err != nil {
+				t.Fatal(err)
 			}
-			if tc.did == "written" {
-				if outs[0].Status.Gate() || !strings.Contains(wrote, "no longer reads this Space") {
-					t.Errorf("the replacement must not pass the gate and must say why: %s", wrote)
-				}
+			if outs[0].Withdrew != tc.withdrew {
+				t.Fatalf("withdrew: want %q, got %q", tc.withdrew, outs[0].Withdrew)
+			}
+			wrote := strings.Join(hub.recorded, "\n")
+			if tc.says != "" && !strings.Contains(wrote, "flux-apps-dev "+tc.says) {
+				t.Errorf("want %s in:\n%s", tc.says, wrote)
+			}
+			if tc.withdrew == "" && strings.Contains("\n"+wrote, "\nflux-apps-dev release 2 ") {
+				t.Errorf("release 2 must be left as it is:\n%s", wrote)
+			}
+			var b strings.Builder
+			PrintOutcomes(&b, outs)
+			if tc.newest != nil && tc.withdrew == "" && !strings.Contains(b.String(), "holds Synced/Healthy/Succeeded from "+tc.newest.Reporter) {
+				t.Errorf("say what the newest release holds, since the gate reads it: %s", b.String())
+			}
+			if tc.withdrew != "" && !strings.Contains(b.String(), "withdrawn") {
+				t.Errorf("say the reading was withdrawn: %s", b.String())
 			}
 		})
 	}
 }
 
-// One Space that cannot be read must not stop the others being reported.
-func TestReportStatusCarriesOnPastAnUnreadableSpace(t *testing.T) {
+// argobot writes only when something changes, so an old reading of its that
+// says the same is not a stopped reporter, and is left alone.
+func TestLeavesAnOldReadingOfAnotherReporterThatSaysTheSame(t *testing.T) {
 	now := time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)
-	st := LiveStatus{Source: StatusSource, SyncStatus: "Synced", HealthStatus: "Healthy", OperationPhase: "Succeeded", ObservedAt: now.Format(time.RFC3339)}
-	hub := &fakeHub{unreadable: map[string]bool{"gone": true}}
-	outs, err := ReportStatus(hub, []Reading{
-		{Check: Check{Kustomization: "a", Space: "gone"}, Status: st},
-		{Check: Check{Kustomization: "b", Space: "here"}, Status: st},
-	}, time.Minute, false, now)
-	if err == nil || !strings.Contains(err.Error(), "gone") {
-		t.Errorf("the unreadable Space should be reported: %v", err)
+	reading := LiveStatus{Reporter: StatusReporter, DataSource: "apps", Sync: "Synced", Health: "Healthy", Operation: "Succeeded", ObservedAt: now.Format(time.RFC3339)}
+	theirs := reading
+	theirs.Reporter, theirs.Message, theirs.ObservedAt = "argobot", "its own words", now.Add(-24*time.Hour).Format(time.RFC3339)
+	hub := &fakeHub{}
+	outs, err := ReportStatus(hub, []Reading{at(reading, &theirs)}, 10*time.Minute, false, now)
+	if err != nil || outs[0].Did != "left" || len(hub.recorded) != 0 || !strings.Contains(outs[0].Why, "argobot reported the same") {
+		t.Errorf("want it left alone, and said why: %+v %v %v", outs, hub.recorded, err)
 	}
-	if wrote := hub.patches; len(wrote) != 1 || !strings.HasPrefix(wrote[0], "here ") || len(outs) != 1 {
-		t.Errorf("the next Space should still be written: wrote %v, outcomes %v", wrote, outs)
+}
+
+// A message is cut on a character: half of one would read back as another,
+// and the reading would be rewritten on every pass.
+func TestClipCutsOnACharacter(t *testing.T) {
+	got := clip(strings.Repeat("é", 150))
+	if len(got) > statusMessageLimit || strings.ContainsRune(got, '\uFFFD') || !strings.HasSuffix(got, "é...") {
+		t.Errorf("want whole characters within %d bytes: %d bytes, %q", statusMessageLimit, len(got), got[len(got)-8:])
+	}
+}
+
+// Flux marks a layer Reconciling at the start of every pass, including the one
+// it makes each interval over a release it applied long ago. That says nothing
+// new, so nothing is written and what is recorded stands.
+func TestStatusOfARoutineReconcileStands(t *testing.T) {
+	for name, mutate := range map[string]func(k map[string]any){
+		"Reconciling": func(k map[string]any) {
+			status(k)["conditions"] = append(status(k)["conditions"].([]any), map[string]any{"type": "Reconciling", "status": "True", "message": "Reconciliation in progress"})
+		},
+		"readiness unknown": func(k map[string]any) {
+			status(k)["conditions"] = []any{map[string]any{"type": "Ready", "status": "Unknown", "observedGeneration": 3, "message": "Reconciliation in progress"}}
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			r := readWith(t, ks(t, mutate), spaceURL)
+			if r.Pending == "" || r.Release != 0 {
+				t.Fatalf("want nothing new to say: %+v", r)
+			}
+			hub := &fakeHub{}
+			outs, err := ReportStatus(hub, []Reading{r}, time.Minute, false, time.Now())
+			if err != nil || len(hub.recorded) != 0 || outs[0].Did != "pending" {
+				t.Errorf("want nothing written: %+v %v %v", outs, hub.recorded, err)
+			}
+			var b strings.Builder
+			PrintOutcomes(&b, outs)
+			if !strings.Contains(b.String(), "what is recorded stands") {
+				t.Errorf("say so: %s", b.String())
+			}
+		})
 	}
 }

@@ -3,10 +3,12 @@ package flux
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/confighub/sdk/core/cubapi"
 	goclientnew "github.com/confighub/sdk/core/openapi/goclient-new"
@@ -60,7 +62,10 @@ func (h *SDKHub) releases(ctx context.Context, where string, space string) ([]Hu
 	if err != nil {
 		return nil, err
 	}
-	params := &goclientnew.ListExtendedReleasesParams{}
+	// Named fields only: a release's bundle is large, and none of it is
+	// wanted here.
+	fields := "ReleaseID,ReleaseNum,SpaceID,OrganizationID,Published,ManifestDigest,TagID,LiveStatus"
+	params := &goclientnew.ListExtendedReleasesParams{Select: &fields}
 	if where != "" {
 		params.Where = &where
 	}
@@ -77,6 +82,17 @@ func (h *SDKHub) releases(ctx context.Context, where string, space string) ([]Hu
 			continue
 		}
 		r := HubRelease{Num: int(er.Release.ReleaseNum), ManifestDigest: er.Release.ManifestDigest, Published: er.Release.Published}
+		if ls := er.Release.LiveStatus; ls != nil {
+			r.Live = &LiveStatus{
+				Reporter: ls.Reporter, DataSource: ls.DataSource,
+				Sync: string(ls.Sync), Health: string(ls.Health), Operation: string(ls.Operation),
+				ReporterSync: ls.ReporterSync, ReporterHealth: ls.ReporterHealth, ReporterOperation: ls.ReporterOperation,
+				Message: ls.Message,
+			}
+			if !ls.ObservedAt.IsZero() {
+				r.Live.ObservedAt = ls.ObservedAt.UTC().Format(time.RFC3339)
+			}
+		}
 		if er.Release.TagID != nil {
 			r.TagID = er.Release.TagID.String()
 		}
@@ -204,17 +220,61 @@ func (h *SDKHub) UnitHead(space, unit string) (int, error) {
 	return int(u.HeadRevisionNum), nil
 }
 
-func (h *SDKHub) SpaceAnnotations(space string) (map[string]string, error) {
+// SetLiveStatus patches the Release with the whole status. Every field is
+// sent, the empty ones as null: a merge patch leaves out what it does not
+// name, and what an earlier reporter wrote must not stay beside this.
+func (h *SDKHub) SetLiveStatus(space string, release int, st LiveStatus) error {
 	ctx := context.Background()
 	c, err := h.client(ctx)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	s, err := cubapi.ResolveSpace(ctx, c, cubapi.ParseRef(space), cubapi.ResolveOpts{})
+	id, err := h.space(ctx, c, space)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return s.Space.Annotations, nil
+	where := "ReleaseNum = " + strconv.Itoa(release)
+	only := "ReleaseID,ReleaseNum,SpaceID,OrganizationID"
+	res, err := c.API.ListExtendedReleasesWithResponse(ctx, id, &goclientnew.ListExtendedReleasesParams{Where: &where, Select: &only})
+	if cubapi.IsAPIError(err, res) {
+		return cubapi.InterpretErrorGeneric(err, res)
+	}
+	var releaseID *goclientnew.UUID
+	if res.JSON200 != nil {
+		for _, er := range *res.JSON200 {
+			if er.Release != nil && int(er.Release.ReleaseNum) == release {
+				releaseID = &er.Release.ReleaseID
+			}
+		}
+	}
+	if releaseID == nil {
+		return fmt.Errorf("release %d not found in space %s", release, space)
+	}
+	if _, err := time.Parse(time.RFC3339, st.ObservedAt); err != nil {
+		return fmt.Errorf("the status names no time it was observed: %w", err)
+	}
+	fields := map[string]any{}
+	for name, value := range map[string]string{
+		"Reporter": st.Reporter, "DataSource": st.DataSource,
+		"Sync": st.Sync, "Health": st.Health, "Operation": st.Operation,
+		"ReporterSync": st.ReporterSync, "ReporterHealth": st.ReporterHealth, "ReporterOperation": st.ReporterOperation,
+		"Message": st.Message, "ObservedAt": st.ObservedAt,
+	} {
+		if value == "" {
+			fields[name] = nil
+		} else {
+			fields[name] = value
+		}
+	}
+	patch, err := json.Marshal(map[string]any{"LiveStatus": fields})
+	if err != nil {
+		return err
+	}
+	pres, err := c.API.PatchReleaseWithBodyWithResponse(ctx, id, *releaseID, &goclientnew.PatchReleaseParams{}, "application/merge-patch+json", bytes.NewReader(patch))
+	if cubapi.IsAPIError(err, pres) {
+		return cubapi.InterpretErrorGeneric(err, pres)
+	}
+	return nil
 }
 
 func (h *SDKHub) PatchSpace(space string, patch []byte) error {

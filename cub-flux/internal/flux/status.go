@@ -4,47 +4,45 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"sort"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
-// Live status is how ConfigHub hears what a cluster is running: a small JSON
-// document in the confighub.com/live-status annotation of the variant's Space.
-// argobot writes it for Argo CD and `cub sveltos status` for Sveltos; this
-// writes it for Flux, in the same shape, so the Healthy gate, change order
-// stages and the UI read all three alike.
+// Live status is how ConfigHub hears what a cluster is running. It is
+// recorded on the Release: what the tool deploying that Release says about it
+// running. ConfigHub's Healthy gate reads the newest published Release of a
+// Space and nothing else, so a Release no tool has reported on is not healthy,
+// however the one before it was. argobot records it for Argo CD; this records
+// it for Flux, in the same normalized words, so the gate, change order stages
+// and the UI read both alike.
 //
 // Two things make it more than a mirror of Flux's own conditions:
 //
-//   - ConfigHub's Healthy gate passes only on the exact words Synced,
-//     Succeeded and Healthy, and nothing else checks what a reading claims. So
-//     a reading says Synced only when the digest Flux applied is the newest
-//     published release of that Space, and Healthy only when Flux actually
-//     checked the workloads.
-//   - ConfigHub advances a change order when a reading's revision equals one of
-//     its releases' manifest digests. So the revision written is the digest Flux
-//     reports it applied, never one inferred from times, which is what Sveltos
-//     has to do.
+//   - Which Release a reading is recorded on is decided by the digest Flux
+//     reports: the one it applied, or the one it is trying to apply when the
+//     reading is about that attempt. It is never inferred from times, which is
+//     what Sveltos has to do.
+//   - Nothing else checks what a reading claims, so it says Healthy only when
+//     Flux actually checked the workloads.
 
-// LiveStatusAnnotation is the Space annotation ConfigHub reads.
-const LiveStatusAnnotation = "confighub.com/live-status"
+// StatusReporter names this reporter on each Release it reports on.
+const StatusReporter = "cub-flux"
 
-// StatusSource names this reporter. The UI shows a Flux mark for any source
-// containing "flux".
-const StatusSource = "cub-flux"
-
-// LiveStatus is ConfigHub's live-status document. The words are Argo CD's,
-// because that is what ConfigHub's gate and UI read.
+// LiveStatus is what is recorded on a Release. Sync, Health and Operation are
+// ConfigHub's normalized words, which its gates read; the Reporter fields
+// keep Flux's own beside them.
 type LiveStatus struct {
-	Source         string `json:"source"`
-	App            string `json:"app,omitempty"`
-	SyncStatus     string `json:"syncStatus,omitempty"`
-	HealthStatus   string `json:"healthStatus,omitempty"`
-	OperationPhase string `json:"operationPhase,omitempty"`
-	Revision       string `json:"revision,omitempty"`
-	Message        string `json:"message,omitempty"`
-	ObservedAt     string `json:"observedAt"`
+	Reporter          string `json:"reporter"`
+	DataSource        string `json:"dataSource,omitempty"`
+	Sync              string `json:"sync"`
+	Health            string `json:"health"`
+	Operation         string `json:"operation,omitempty"`
+	ReporterSync      string `json:"reporterSync,omitempty"`
+	ReporterHealth    string `json:"reporterHealth,omitempty"`
+	ReporterOperation string `json:"reporterOperation,omitempty"`
+	Message           string `json:"message,omitempty"`
+	ObservedAt        string `json:"observedAt"`
 }
 
 // Same reports whether two readings say the same thing, whenever each was
@@ -55,37 +53,56 @@ func (s LiveStatus) Same(o LiveStatus) bool {
 }
 
 // Gate reports whether ConfigHub's Healthy prerequisite would pass on this
-// reading.
+// reading, were it on the Space's newest published Release: synced, healthy,
+// and no operation running or failed.
 func (s LiveStatus) Gate() bool {
-	return s.SyncStatus == "Synced" && s.OperationPhase == "Succeeded" && s.HealthStatus == "Healthy"
+	return s.Sync == "Synced" && s.Health == "Healthy" && s.Operation != "Running" && s.Operation != "Failed"
 }
 
 func (s LiveStatus) String() string {
-	parts := []string{s.SyncStatus, s.HealthStatus}
-	if s.OperationPhase != "" {
-		parts = append(parts, s.OperationPhase)
+	parts := []string{s.Sync, s.Health}
+	if s.Operation != "" {
+		parts = append(parts, s.Operation)
 	}
 	out := strings.Join(parts, "/")
-	if s.Revision != "" {
-		out += " at " + s.Revision
-	}
 	if s.Message != "" {
 		out += ": " + s.Message
 	}
 	return out
 }
 
-// Reading is what one layer says about itself, before anything is written.
+// Reading is what one layer says about itself, and the Release it says it
+// about, before anything is written.
 type Reading struct {
 	Check  Check      `json:"check"`
 	Status LiveStatus `json:"status"`
+	// Revision is the digest Flux reports, which names the Release the
+	// reading is about.
+	Revision string `json:"revision,omitempty"`
+	// Release is the published release with that digest, where the reading is
+	// recorded; 0 when there is none. Newest is the Space's newest published
+	// release, the one the Healthy gate reads.
+	Release int `json:"release,omitempty"`
+	Newest  int `json:"newest,omitempty"`
+	// Held is what that Release holds now, if a tool has reported on it.
+	Held *LiveStatus `json:"held,omitempty"`
+	// NewestHeld is what the newest Release holds, which is what the gate
+	// would find.
+	NewestHeld *LiveStatus `json:"newestHeld,omitempty"`
+	// Unrecorded, when set, is why the reading names no Release to record it
+	// on.
+	Unrecorded string `json:"unrecorded,omitempty"`
+	// Pending, when set, is why this pass has nothing new to say and what is
+	// recorded stands: Flux is reconciling the release it already applied,
+	// which it does on every interval.
+	Pending string `json:"pending,omitempty"`
 	// Skip, when set, is why nothing is reported for this layer: it does not
 	// read the Space the reading would be written to.
 	Skip string `json:"skip,omitempty"`
 }
 
-// statusMessageLimit keeps a reading well inside the 1024 bytes ConfigHub
-// allows an annotation value.
+// statusMessageLimit keeps a message short enough to read in a list; ConfigHub
+// allows 1024 bytes.
 const statusMessageLimit = 200
 
 // workloadKinds are what a layer runs, as opposed to what it merely declares.
@@ -96,9 +113,9 @@ var workloadKinds = map[string]bool{
 	"Job": true, "CronJob": true, "Pod": true, "HelmRelease": true,
 }
 
-// ReadStatus reads one layer and says what ConfigHub should hear. A read that
-// fails returns an error and no reading: a guess written here could open a
-// gate or advance a change order.
+// ReadStatus reads one layer and says what ConfigHub should hear, and about
+// which Release. A read that fails returns an error and no reading: a guess
+// written here could open a gate or advance a change order.
 func ReadStatus(run Runner, hub Hub, c Check, now time.Time) (Reading, error) {
 	r := Reading{Check: c}
 	out, err := run("kubectl", "-n", checkNamespace, "get", "kustomization", c.Kustomization, "-o", "json")
@@ -111,6 +128,7 @@ func ReadStatus(run Runner, hub Hub, c Check, now time.Time) (Reading, error) {
 	}
 	if k.Spec.SourceRef.Kind != "OCIRepository" {
 		r.Skip = fmt.Sprintf("reads %s %s, not ConfigHub, so there is nothing of ConfigHub's to report", k.Spec.SourceRef.Kind, k.Spec.SourceRef.Name)
+		r.leftBehind(hub)
 		return r, nil
 	}
 	srcNS := k.Spec.SourceRef.Namespace
@@ -125,20 +143,95 @@ func ReadStatus(run Runner, hub Hub, c Check, now time.Time) (Reading, error) {
 	// layer reading another Space's release is not this variant's to report.
 	if url := strings.TrimSpace(string(out)); !strings.HasSuffix(strings.TrimSuffix(url, "/"), "/space/"+c.Space) {
 		r.Skip = fmt.Sprintf("reads %s, not Space %s", url, c.Space)
+		r.leftBehind(hub)
 		return r, nil
 	}
-	releases, err := publishedReleases(hub, c.Space)
+	releases, err := hub.Releases(c.Space)
 	if err != nil {
-		return r, err
+		return r, fmt.Errorf("listing the releases of %s: %w", c.Space, err)
 	}
-	r.Status = k.status(releases)
-	r.Status.Source = StatusSource
-	r.Status.App = c.Kustomization
+	var why string
+	r.Status, r.Revision, why, r.Pending = k.status()
+	if r.Pending != "" {
+		return r, nil
+	}
+	r.Status.Reporter = StatusReporter
+	r.Status.DataSource = c.Kustomization
 	r.Status.ObservedAt = now.UTC().Format(time.RFC3339)
-	if len(r.Status.Message) > statusMessageLimit {
-		r.Status.Message = r.Status.Message[:statusMessageLimit-3] + "..."
-	}
+	r.place(releases, why)
+	r.Status.Message = clip(r.Status.Message)
 	return r, nil
+}
+
+// leftBehind notes what the Space's newest Release holds, for a reading that
+// is skipped: that decides whether a reading of ours is left behind on it. A
+// Space that cannot be read has nothing of ours to replace.
+func (r *Reading) leftBehind(hub Hub) {
+	releases, err := hub.Releases(r.Check.Space)
+	if err != nil {
+		return
+	}
+	if newest := newestPublished(releases); newest != nil {
+		r.Release, r.Newest, r.Held, r.NewestHeld = newest.Num, newest.Num, newest.Live, newest.Live
+	}
+}
+
+func clip(msg string) string {
+	if len(msg) <= statusMessageLimit {
+		return msg
+	}
+	// Cut on a character, not inside one: half a character reads back as a
+	// different one, and the reading would never match what was written.
+	cut := statusMessageLimit - 3
+	for cut > 0 && !utf8.RuneStart(msg[cut]) {
+		cut--
+	}
+	return msg[:cut] + "..."
+}
+
+func newestPublished(releases []HubRelease) *HubRelease {
+	var newest *HubRelease
+	for i := range releases {
+		if releases[i].Published && (newest == nil || releases[i].Num > newest.Num) {
+			newest = &releases[i]
+		}
+	}
+	return newest
+}
+
+// place finds the Release a reading is about: the newest published one with
+// the digest Flux reports. why is what an applied release's message should
+// add about its health.
+func (r *Reading) place(releases []HubRelease, why string) {
+	newest := newestPublished(releases)
+	if newest != nil {
+		r.Newest, r.NewestHeld = newest.Num, newest.Live
+	}
+	if r.Revision == "" {
+		r.Unrecorded = r.Status.Message
+		if r.Unrecorded == "" {
+			r.Unrecorded = "Flux reports no revision"
+		}
+		return
+	}
+	var this *HubRelease
+	for i := range releases {
+		if releases[i].Published && releases[i].ManifestDigest == r.Revision && (this == nil || releases[i].Num > this.Num) {
+			this = &releases[i]
+		}
+	}
+	if this == nil {
+		r.Unrecorded = "Flux reports " + r.Revision + ", which is no published release of this Space"
+		return
+	}
+	r.Release, r.Held = this.Num, this.Live
+	if r.Status.Message == "" {
+		behind := ""
+		if this.Num != newest.Num {
+			behind = fmt.Sprintf("; release %d is published and not applied yet", newest.Num)
+		}
+		r.Status.Message = fmt.Sprintf("release %d applied%s%s", this.Num, behind, why)
+	}
 }
 
 type condition struct {
@@ -218,59 +311,67 @@ func (k kustomization) unchecked() []string {
 	return out
 }
 
-// status maps a Kustomization onto ConfigHub's words.
-func (k kustomization) status(releases []release) LiveStatus {
+// status maps a Kustomization onto ConfigHub's words, and names the digest
+// the reading is about: the one Flux applied, or the one it is trying to apply
+// when the reading is about that attempt. why is what to add about health once
+// the release is known.
+func (k kustomization) status() (st LiveStatus, revision, why, pending string) {
+	applied := digestOf(k.Status.LastAppliedRevision)
+	attempted := digestOf(k.Status.LastAttemptedRevision)
+	if attempted == "" {
+		attempted = applied
+	}
 	if k.Spec.Suspend {
-		return LiveStatus{SyncStatus: "Unknown", HealthStatus: "Suspended", Message: "the Kustomization is suspended, so Flux applies nothing"}
+		return LiveStatus{Sync: "Unknown", Health: "Suspended", Message: "the Kustomization is suspended, so Flux applies nothing"}, applied, "", ""
 	}
 	ready := k.condition("Ready")
 	if k.Status.ObservedGeneration != k.Metadata.Generation || ready == nil || ready.ObservedGeneration != k.Metadata.Generation {
-		return LiveStatus{SyncStatus: "Unknown", HealthStatus: "Progressing", OperationPhase: "Running", Message: "Flux has not reported on the current generation yet"}
+		return LiveStatus{Sync: "Unknown", Health: "Progressing", Operation: "Running", Message: "Flux has not reported on the current generation yet"}, attempted, "", ""
 	}
 	if s := k.condition("Stalled"); s != nil && s.Status == "True" {
-		return LiveStatus{SyncStatus: "OutOfSync", HealthStatus: "Degraded", OperationPhase: "Failed", Message: "stalled: " + s.Message}
+		return LiveStatus{Sync: "OutOfSync", Health: "Degraded", Operation: "Failed", Message: "stalled: " + s.Message}, attempted, "", ""
 	}
+	// Flux marks a layer Reconciling, and its readiness unknown, at the start
+	// of every pass, including the one it makes each interval over a release
+	// it applied long ago. That pass says nothing new about the release, and
+	// reporting it would close the gate for a few seconds every interval.
+	again := applied != "" && attempted == applied
+	const stands = "Flux is reconciling the release it already applied; what is recorded stands until it finishes"
 	if rc := k.condition("Reconciling"); rc != nil && rc.Status == "True" {
-		return LiveStatus{SyncStatus: "OutOfSync", HealthStatus: "Progressing", OperationPhase: "Running", Message: rc.Message}
+		if again {
+			return LiveStatus{}, applied, "", stands
+		}
+		return LiveStatus{Sync: "OutOfSync", Health: "Progressing", Operation: "Running", Message: orSay(rc.Message, "reconciling")}, attempted, "", ""
 	}
 	switch ready.Status {
 	case "False":
-		return LiveStatus{SyncStatus: "OutOfSync", HealthStatus: "Degraded", OperationPhase: "Failed", Message: ready.Message}
+		return LiveStatus{Sync: "OutOfSync", Health: "Degraded", Operation: "Failed", Message: orSay(ready.Message, "not ready")}, attempted, "", ""
 	case "True":
 	default:
-		return LiveStatus{SyncStatus: "OutOfSync", HealthStatus: "Progressing", OperationPhase: "Running", Message: ready.Message}
+		if again {
+			return LiveStatus{}, applied, "", stands
+		}
+		return LiveStatus{Sync: "OutOfSync", Health: "Progressing", Operation: "Running", Message: orSay(ready.Message, "readiness unknown")}, attempted, "", ""
 	}
-
-	applied := digestOf(k.Status.LastAppliedRevision)
-	if a := k.Status.LastAttemptedRevision; a != "" && digestOf(a) != applied {
-		return LiveStatus{SyncStatus: "OutOfSync", HealthStatus: "Progressing", OperationPhase: "Running", Revision: applied,
-			Message: "applying " + digestOf(a)}
+	if attempted != applied {
+		return LiveStatus{Sync: "OutOfSync", Health: "Progressing", Operation: "Running", Message: "Flux is applying this release; it last applied " + orSay(applied, "none")}, attempted, "", ""
 	}
-	health, why := "Healthy", ""
+	health := "Healthy"
 	if u := k.unchecked(); len(u) > 0 {
 		// Ready then means applied, not running, for what Flux was not asked
 		// to look at.
 		health, why = "Unknown", "; Ready means applied, not healthy, for "+strings.Join(u, ", ")+": neither spec.wait nor a health check covers it"
 	}
-	var this, newest *release
-	for i := range releases {
-		if releases[i].Digest == applied {
-			this = &releases[i]
-		}
-		if newest == nil || releases[i].Num > newest.Num {
-			newest = &releases[i]
-		}
+	return LiveStatus{Sync: "Synced", Health: health, Operation: "Succeeded"}, applied, why, ""
+}
+
+// orSay is msg, or what to say when Flux gave none: an empty message would be
+// taken for an applied release's.
+func orSay(msg, otherwise string) string {
+	if msg == "" {
+		return otherwise
 	}
-	switch {
-	case this == nil:
-		return LiveStatus{SyncStatus: "Unknown", HealthStatus: health, OperationPhase: "Succeeded", Revision: applied,
-			Message: "Flux applied " + applied + ", which is no published release of this Space" + why}
-	case this.Num != newest.Num:
-		return LiveStatus{SyncStatus: "OutOfSync", HealthStatus: health, OperationPhase: "Succeeded", Revision: applied,
-			Message: fmt.Sprintf("release %d is applied; release %d is published and not applied yet%s", this.Num, newest.Num, why)}
-	}
-	return LiveStatus{SyncStatus: "Synced", HealthStatus: health, OperationPhase: "Succeeded", Revision: applied,
-		Message: fmt.Sprintf("release %d applied%s", this.Num, why)}
+	return msg
 }
 
 // digestOf takes the digest out of Flux's "<tag>@sha256:..." revision.
@@ -281,115 +382,113 @@ func digestOf(revision string) string {
 	return revision
 }
 
-type release struct {
-	Num    int
-	Digest string
-}
-
-func publishedReleases(hub Hub, space string) ([]release, error) {
-	list, err := hub.Releases(space)
-	if err != nil {
-		return nil, fmt.Errorf("listing the releases of %s: %w", space, err)
-	}
-	var rs []release
-	for _, l := range list {
-		if l.Published {
-			rs = append(rs, release{Num: l.Num, Digest: l.ManifestDigest})
-		}
-	}
-	sort.Slice(rs, func(i, j int) bool { return rs[i].Num < rs[j].Num })
-	return rs, nil
-}
-
-// HeldStatus is the reading ConfigHub holds for a Space now, if any.
-func HeldStatus(hub Hub, space string) (LiveStatus, bool, error) {
-	a, err := hub.SpaceAnnotations(space)
-	if err != nil {
-		return LiveStatus{}, false, fmt.Errorf("reading Space %s: %w", space, err)
-	}
-	raw, ok := a[LiveStatusAnnotation]
-	if !ok {
-		return LiveStatus{}, false, nil
-	}
-	var held LiveStatus
-	if err := json.Unmarshal([]byte(raw), &held); err != nil {
-		// Unreadable is as good as absent: it will be replaced.
-		return LiveStatus{}, false, nil
-	}
-	return held, true, nil
-}
-
-// StatusPatch is the body that sets only the live-status annotation, leaving
-// every other field and annotation of the Space as it is.
-func StatusPatch(s LiveStatus) ([]byte, error) {
-	doc, err := json.Marshal(s)
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(map[string]any{"Annotations": map[string]string{LiveStatusAnnotation: string(doc)}})
-}
-
 // Outcome is what reporting did for one layer.
 type Outcome struct {
 	Reading
-	// Did is one of written, unchanged, dry-run or skipped.
+	// Did is one of written, unchanged, dry-run, skipped, left, unrecorded or
+	// pending.
 	Did string `json:"did"`
+	// Why says, for left, whose reading was left alone.
+	Why string `json:"why,omitempty"`
+	// Withdrew is what was done about a passing reading of ours left on the
+	// newest Release when the reading is now of another: written, unchanged,
+	// left or dry-run.
+	Withdrew string `json:"withdrew,omitempty"`
 }
 
-// ReportStatus writes each reading that says something new, or that ConfigHub
-// has held for longer than refresh: observedAt is the only sign a reporter is
-// still running, so an unchanged reading is written again now and then.
+// ReportStatus records each reading that says something new on its Release, or
+// that the Release has held for longer than refresh: observedAt is the only
+// sign this reporter is still running, so an unchanged reading is written
+// again now and then.
+//
+// A reading another reporter wrote, argobot say, is left alone while it is
+// fresher than refresh, and for as long as it says the same: argobot writes
+// only when something changes, so an old reading of its is not a stopped
+// reporter. It is replaced only when it is both old and different.
+//
+// A reading is true of one Release. When the newest Release holds a passing
+// reading of ours and Flux now reports another release, or none, that
+// reading is no longer true and the Healthy gate would go on passing on it,
+// so it is withdrawn.
 func ReportStatus(hub Hub, readings []Reading, refresh time.Duration, dryRun bool, now time.Time) ([]Outcome, error) {
 	var out []Outcome
-	// A Space that cannot be read or written is reported, and the rest are
-	// still reported: one deleted Space must not freeze every reading after it.
+	// A Release that cannot be written is reported, and the rest are still
+	// reported: one deleted Space must not freeze every reading after it.
 	var errs []string
 	for _, r := range readings {
 		o := Outcome{Reading: r}
-		held, ok, err := HeldStatus(hub, r.Check.Space)
-		if err != nil {
-			errs = append(errs, err.Error())
+		source := r.Check.Kustomization
+		ours := func(h *LiveStatus) bool {
+			return h != nil && h.Reporter == StatusReporter && h.DataSource == source
+		}
+		record := func(release int, held *LiveStatus, st LiveStatus) (did, why string) {
+			fresh := false
+			if held != nil {
+				if at, err := time.Parse(time.RFC3339, held.ObservedAt); err == nil && now.Sub(at) < refresh {
+					fresh = true
+				}
+			}
+			if held != nil && held.Reporter != StatusReporter {
+				same := held.Sync == st.Sync && held.Health == st.Health && held.Operation == st.Operation
+				switch {
+				case fresh:
+					return "left", fmt.Sprintf("%s reported on release %d at %s; two reporters would overwrite each other", held.Reporter, release, held.ObservedAt)
+				case same:
+					return "left", fmt.Sprintf("%s reported the same on release %d at %s", held.Reporter, release, held.ObservedAt)
+				}
+			}
+			if ours(held) && held.Same(st) && fresh {
+				return "unchanged", ""
+			}
+			if dryRun {
+				return "dry-run", ""
+			}
+			if err := hub.SetLiveStatus(r.Check.Space, release, st); err != nil {
+				errs = append(errs, fmt.Sprintf("recording the live status of release %d of %s: %v", release, r.Check.Space, err))
+				return "", ""
+			}
+			return "written", ""
+		}
+		if r.Pending != "" {
+			// Nothing new is known, so what is recorded stands.
+			o.Did = "pending"
+			out = append(out, o)
 			continue
 		}
 		if r.Skip != "" {
 			// A layer that has left this Space, handed back to Git say, leaves
-			// behind the last reading written for it, and the Healthy gate
-			// would go on passing on it. So a reading this reporter wrote is
-			// replaced with one that says the layer no longer reads the Space.
-			// Another reporter's reading is not ours to change.
-			if !ok || held.Source != StatusSource {
+			// behind the last reading recorded for it, and the Healthy gate
+			// would go on passing on it. So a reading this reporter wrote on
+			// the newest Release is replaced with one that says the layer no
+			// longer reads the Space. Another reporter's reading is not ours
+			// to change.
+			if !ours(r.Held) {
 				o.Did = "skipped"
 				out = append(out, o)
 				continue
 			}
-			r.Status = LiveStatus{Source: StatusSource, App: r.Check.Kustomization, SyncStatus: "Unknown", HealthStatus: "Unknown",
-				Message: "the layer no longer reads this Space: it " + r.Skip, ObservedAt: now.UTC().Format(time.RFC3339)}
-			if len(r.Status.Message) > statusMessageLimit {
-				r.Status.Message = r.Status.Message[:statusMessageLimit-3] + "..."
-			}
+			r.Status = LiveStatus{Reporter: StatusReporter, DataSource: source, Sync: "Unknown", Health: "Unknown",
+				Message: clip("the layer no longer reads this Space: it " + r.Skip), ObservedAt: now.UTC().Format(time.RFC3339)}
 			o.Reading = r
 		}
-		if ok && held.Same(r.Status) {
-			if at, err := time.Parse(time.RFC3339, held.ObservedAt); err == nil && now.Sub(at) < refresh {
-				o.Did = "unchanged"
-				out = append(out, o)
+		if r.Release == 0 {
+			o.Did = "unrecorded"
+		} else if o.Did, o.Why = record(r.Release, r.Held, r.Status); o.Did == "" {
+			continue
+		}
+		if r.Skip == "" && r.Newest != 0 && r.Release != r.Newest && ours(r.NewestHeld) && r.NewestHeld.Gate() {
+			w := LiveStatus{Reporter: StatusReporter, DataSource: source, Sync: "Unknown", Health: "Unknown", ObservedAt: now.UTC().Format(time.RFC3339)}
+			if r.Release != 0 {
+				w.Sync = "OutOfSync"
+				w.Message = fmt.Sprintf("not what is running: Flux reports release %d", r.Release)
+			} else {
+				w.Message = clip("not known to be running: " + r.Unrecorded)
+			}
+			if o.Withdrew, _ = record(r.Newest, r.NewestHeld, w); o.Withdrew == "" {
 				continue
 			}
+			o.NewestHeld = &w
 		}
-		if dryRun {
-			o.Did = "dry-run"
-			out = append(out, o)
-			continue
-		}
-		patch, err := StatusPatch(r.Status)
-		if err != nil {
-			return out, err
-		}
-		if err := hub.PatchSpace(r.Check.Space, patch); err != nil {
-			errs = append(errs, fmt.Sprintf("writing the live status of %s: %v", r.Check.Space, err))
-			continue
-		}
-		o.Did = "written"
 		out = append(out, o)
 	}
 	if len(errs) > 0 {
@@ -401,14 +500,39 @@ func ReportStatus(hub Hub, readings []Reading, refresh time.Duration, dryRun boo
 // PrintOutcomes says what happened, one layer to a line.
 func PrintOutcomes(w io.Writer, outs []Outcome) {
 	for _, o := range outs {
-		if o.Skip != "" && o.Did == "skipped" {
-			fmt.Fprintf(w, "%s: not reported: %s\n", o.Check.Kustomization, o.Skip)
+		name := o.Check.Kustomization
+		// newest is what the gate would find on the release it reads.
+		newest := "nothing has reported on"
+		if o.NewestHeld != nil {
+			newest = fmt.Sprintf("holds %s from %s", o.NewestHeld, o.NewestHeld.Reporter)
+		}
+		if o.Withdrew != "" {
+			newest += fmt.Sprintf(" (%s: the passing reading this reporter left there is withdrawn)", o.Withdrew)
+		}
+		switch {
+		case o.Did == "pending":
+			fmt.Fprintf(w, "%s -> %s: %s\n", name, o.Check.Space, o.Pending)
+			continue
+		case o.Did == "left":
+			fmt.Fprintf(w, "%s -> %s: left alone: %s\n", name, o.Check.Space, o.Why)
+			continue
+		case o.Did == "skipped":
+			fmt.Fprintf(w, "%s: not reported: %s\n", name, o.Skip)
+			continue
+		case o.Did == "unrecorded" && o.Newest == 0:
+			fmt.Fprintf(w, "%s -> %s: not recorded, there is no release to record it on: %s (the Healthy gate would not pass)\n", name, o.Check.Space, o.Unrecorded)
+			continue
+		case o.Did == "unrecorded":
+			fmt.Fprintf(w, "%s -> %s: not recorded, there is no release to record it on: %s (the Healthy gate reads release %d, the newest, which %s)\n", name, o.Check.Space, o.Unrecorded, o.Newest, newest)
 			continue
 		}
 		gate := "the Healthy gate would not pass"
-		if o.Status.Gate() {
+		switch {
+		case o.Release != o.Newest:
+			gate = fmt.Sprintf("the Healthy gate would not pass: it reads release %d, the newest, which %s", o.Newest, newest)
+		case o.Status.Gate():
 			gate = "the Healthy gate would pass"
 		}
-		fmt.Fprintf(w, "%s -> %s: %s (%s; %s)\n", o.Check.Kustomization, o.Check.Space, o.Status, o.Did, gate)
+		fmt.Fprintf(w, "%s -> %s release %d: %s (%s; %s)\n", name, o.Check.Space, o.Release, o.Status, o.Did, gate)
 	}
 }

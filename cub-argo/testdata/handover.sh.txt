@@ -426,8 +426,8 @@ echo 'was still serving the previous release 90 seconds later. A hard refresh re
 echo 'the tag to a digest and the release lands:'
 printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'annotate application <name> argocd.argoproj.io/refresh=hard --overwrite' | sed "s|<gateway>|${addr:-<gateway>}|")"
 echo 'argobot does this for you: argobot.sh runs it beside Argo CD with the Targets'\'' worker,'
-echo 'so it refreshes each Application reading a Space when that Space publishes, and writes'
-echo 'each Application'\''s live status back to its Space. Without argobot, keep this running'
-echo 'beside the cluster instead: it asks for that refresh once per release, and writes the'
+echo 'so it refreshes each Application reading a Space when that Space publishes, and records'
+echo 'each Application'\''s live status on the release it synced. Without argobot, keep this running'
+echo 'beside the cluster instead: it asks for that refresh once per release, and records the'
 echo 'same live status, which is what the Healthy gate and change orders read:'
 echo "  cub argo status <what you planned, with the same flags> --prefix argo --kube-context $ctx --watch --hard-refresh"

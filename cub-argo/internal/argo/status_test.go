@@ -67,27 +67,28 @@ func readApp(t *testing.T, ajson string) Reading {
 
 func TestArgoStatusMapping(t *testing.T) {
 	for _, tc := range []struct {
-		name                     string
-		mutate                   func(a map[string]any)
-		sync, health, phase, rev string
-		gate                     bool
-		says                     string
+		name                    string
+		mutate                  func(a map[string]any)
+		sync, health, operation string
+		release                 int // where it is recorded; 0 is nowhere
+		gate                    bool
+		says                    string
 	}{
 		{"newest release synced and healthy", nil,
-			"Synced", "Healthy", "Succeeded", d2, true, "release 2 synced"},
+			"Synced", "Healthy", "Succeeded", 2, true, "release 2 synced"},
 		{"an older release synced: Argo has not read the gateway again yet", func(a map[string]any) {
 			syncOf(a)["revision"] = d1
-		}, "OutOfSync", "Healthy", "Succeeded", d1, false, "release 1 is synced; release 2 is published"},
+		}, "Synced", "Healthy", "Succeeded", 1, false, "release 1 synced; release 2 is published and Argo CD has not read it"},
 		{"an unpublished digest synced", func(a map[string]any) {
 			syncOf(a)["revision"] = dX
-		}, "Unknown", "Healthy", "Succeeded", dX, false, "no published release"},
+		}, "Synced", "Healthy", "Succeeded", 0, false, "no published release"},
 		{"Argo says OutOfSync", func(a map[string]any) {
 			syncOf(a)["status"] = "OutOfSync"
 			appStatusOf(a)["health"] = map[string]any{"status": "Progressing", "message": "Waiting for rollout"}
-		}, "OutOfSync", "Progressing", "Succeeded", d2, false, "Waiting for rollout"},
+		}, "OutOfSync", "Progressing", "Succeeded", 2, false, "Waiting for rollout"},
 		{"degraded", func(a map[string]any) {
 			appStatusOf(a)["health"] = map[string]any{"status": "Degraded", "message": "Deployment has timed out progressing"}
-		}, "Synced", "Degraded", "Succeeded", d2, false, "release 2 synced"},
+		}, "Synced", "Degraded", "Succeeded", 2, false, "release 2 synced"},
 		{"Argo names what is out of sync, not the last operation's success", func(a map[string]any) {
 			syncOf(a)["status"] = "OutOfSync"
 			appStatusOf(a)["resources"] = []any{
@@ -97,52 +98,76 @@ func TestArgoStatusMapping(t *testing.T) {
 				map[string]any{"kind": "Application", "namespace": "argocd", "name": "b", "status": "OutOfSync"},
 				map[string]any{"kind": "Application", "namespace": "argocd", "name": "c", "status": "OutOfSync"},
 			}
-		}, "OutOfSync", "Healthy", "Succeeded", d2, false, "4 out of sync: Deployment apptique-dev/frontend, Application argocd/a, Application argocd/b and 1 more"},
+		}, "OutOfSync", "Healthy", "Succeeded", 2, false, "4 out of sync: Deployment apptique-dev/frontend, Application argocd/a, Application argocd/b and 1 more"},
 		{"a failed sync", func(a map[string]any) {
 			syncOf(a)["status"] = "OutOfSync"
 			appStatusOf(a)["operationState"] = map[string]any{"phase": "Failed", "message": "one or more objects failed to apply"}
-		}, "OutOfSync", "Healthy", "Failed", d2, false, "failed to apply"},
+		}, "OutOfSync", "Healthy", "Failed", 2, false, "failed to apply"},
+		{"Argo's Error phase is a failed operation", func(a map[string]any) {
+			appStatusOf(a)["operationState"] = map[string]any{"phase": "Error", "message": "context deadline exceeded"}
+		}, "Unknown", "Healthy", "Failed", 2, false, "context deadline exceeded"},
+		{"a sync still running", func(a map[string]any) {
+			appStatusOf(a)["operationState"] = map[string]any{"phase": "Running", "message": "waiting for healthy state"}
+		}, "Synced", "Healthy", "Running", 2, false, "release 2 synced"},
 		{"a comparison error", func(a map[string]any) {
 			syncOf(a)["status"] = "Unknown"
 			appStatusOf(a)["conditions"] = []any{map[string]any{"type": "ComparisonError", "message": "failed to fetch oci manifest"}}
-		}, "Unknown", "Healthy", "Succeeded", d2, false, "failed to fetch oci manifest"},
+		}, "Unknown", "Healthy", "Succeeded", 2, false, "failed to fetch oci manifest"},
 		{"an error condition while Argo still says Synced", func(a map[string]any) {
 			appStatusOf(a)["conditions"] = []any{map[string]any{"type": "ComparisonError", "message": "rpc error: manifest unknown"}}
-		}, "Unknown", "Healthy", "Succeeded", d2, false, "manifest unknown"},
+		}, "Unknown", "Healthy", "Succeeded", 2, false, "manifest unknown"},
 		{"a warning condition is not a problem", func(a map[string]any) {
 			appStatusOf(a)["conditions"] = []any{map[string]any{"type": "OrphanedResourceWarning", "message": "1 orphaned resource"}}
-		}, "Synced", "Healthy", "Succeeded", d2, true, "release 2 synced"},
+		}, "Synced", "Healthy", "Succeeded", 2, true, "release 2 synced"},
 		{"still compared with the Git source it had before the repoint", func(a map[string]any) {
 			syncOf(a)["comparedTo"] = map[string]any{"source": map[string]any{"repoURL": "https://github.com/acme/fleet", "targetRevision": "main", "path": "apps/apptique/overlays/dev"}}
-		}, "Unknown", "Healthy", "Succeeded", "", false, "has not compared the Application with its ConfigHub source"},
-		{"no sync operation yet", func(a map[string]any) {
+		}, "Unknown", "Healthy", "Succeeded", 0, false, "has not compared the Application with its ConfigHub source"},
+		{"no sync operation yet: nothing is running or failed, so the gate passes", func(a map[string]any) {
 			delete(appStatusOf(a), "operationState")
-		}, "Synced", "Healthy", "", d2, false, "run no sync operation"},
+		}, "Synced", "Healthy", "", 2, true, "release 2 synced"},
 		{"no health reported", func(a map[string]any) {
 			delete(appStatusOf(a), "health")
-		}, "Synced", "Unknown", "Succeeded", d2, false, "release 2 synced"},
+		}, "Synced", "Unknown", "Succeeded", 2, false, "release 2 synced"},
 		{"multi-source, one source reads the Space", func(a map[string]any) {
 			other := map[string]any{"repoURL": "https://charts.example", "targetRevision": "1.0.0"}
 			own := map[string]any{"repoURL": spaceURL, "targetRevision": "latest", "path": "."}
 			a["spec"] = map[string]any{"sources": []any{other, own}}
 			syncOf(a)["comparedTo"] = map[string]any{"sources": []any{other, own}}
-		}, "Synced", "Healthy", "Succeeded", d2, true, "release 2 synced"},
+			delete(syncOf(a), "revision")
+			syncOf(a)["revisions"] = []any{"1.0.0", d2}
+		}, "Synced", "Healthy", "Succeeded", 2, true, "release 2 synced"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			s := readApp(t, app(t, tc.mutate)).Status
-			if s.SyncStatus != tc.sync || s.HealthStatus != tc.health || s.OperationPhase != tc.phase || s.Revision != tc.rev {
-				t.Errorf("want %s/%s/%s at %q, got %s/%s/%s at %q", tc.sync, tc.health, tc.phase, tc.rev, s.SyncStatus, s.HealthStatus, s.OperationPhase, s.Revision)
+			r := readApp(t, app(t, tc.mutate))
+			s := r.Status
+			if s.Sync != tc.sync || s.Health != tc.health || s.Operation != tc.operation || r.Release != tc.release {
+				t.Errorf("want %s/%s/%s on release %d, got %s/%s/%s on release %d", tc.sync, tc.health, tc.operation, tc.release, s.Sync, s.Health, s.Operation, r.Release)
 			}
-			if s.Gate() != tc.gate {
-				t.Errorf("gate: want %v, got %v for %s", tc.gate, s.Gate(), s)
+			// The gate reads the newest release only.
+			if gate := s.Gate() && r.Release == r.Newest; gate != tc.gate {
+				t.Errorf("gate: want %v, got %v for %s on release %d of %d", tc.gate, gate, s, r.Release, r.Newest)
 			}
-			if !strings.Contains(s.Message, tc.says) {
-				t.Errorf("message %q should say %q", s.Message, tc.says)
+			if says := s.Message + " " + r.Unrecorded; !strings.Contains(says, tc.says) {
+				t.Errorf("%q should say %q", says, tc.says)
 			}
-			if s.Source != StatusSource || s.App != "apptique-dev" || s.ObservedAt != "2026-09-30T12:00:00Z" {
-				t.Errorf("source, app or time wrong: %+v", s)
+			if (r.Release == 0) != (r.Unrecorded != "") {
+				t.Errorf("a reading with no release to record it on says why, and only then: %+v", r)
+			}
+			if s.Reporter != StatusReporter || s.DataSource != "apptique-dev" || s.ObservedAt != "2026-09-30T12:00:00Z" || r.Newest != 2 {
+				t.Errorf("reporter, source, time or newest release wrong: %+v", r)
 			}
 		})
+	}
+}
+
+// Argo CD's own words are kept beside ConfigHub's, including when the
+// normalized one is held back.
+func TestArgoStatusKeepsArgosOwnWords(t *testing.T) {
+	r := readApp(t, app(t, func(a map[string]any) {
+		appStatusOf(a)["operationState"] = map[string]any{"phase": "Error", "message": "boom"}
+	}))
+	if s := r.Status; s.ReporterSync != "Synced" || s.ReporterHealth != "Healthy" || s.ReporterOperation != "Error" || s.Sync != "Unknown" || s.Operation != "Failed" {
+		t.Errorf("want Argo's Synced/Healthy/Error beside Unknown and Failed: %+v", s)
 	}
 }
 
@@ -178,36 +203,22 @@ func TestArgoStatusMessageIsClipped(t *testing.T) {
 	r := readApp(t, app(t, func(a map[string]any) {
 		appStatusOf(a)["conditions"] = []any{map[string]any{"type": "SyncError", "message": strings.Repeat("x", 2000)}}
 	}))
-	p, err := StatusPatch(r.Status)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var body struct{ Annotations map[string]string }
-	if err := json.Unmarshal(p, &body); err != nil {
-		t.Fatal(err)
-	}
-	if v := body.Annotations[LiveStatusAnnotation]; len(v) > 1024 {
-		t.Errorf("ConfigHub allows 1024 bytes an annotation; this is %d", len(v))
+	if len(r.Status.Message) > statusMessageLimit {
+		t.Errorf("a message is clipped to %d bytes; this is %d", statusMessageLimit, len(r.Status.Message))
 	}
 }
 
-// holding is a ConfigHub whose Space argo-apptique-dev holds that reading, or
-// none.
-func holding(s *LiveStatus) *fakeHub {
-	ann := map[string]string{"other": "kept"}
-	if s != nil {
-		doc, _ := json.Marshal(s)
-		ann = map[string]string{LiveStatusAnnotation: string(doc)}
-	}
-	return &fakeHub{annotations: map[string]map[string]string{"argo-apptique-dev": ann}}
+// at is a reading of release 2, the newest, and what that Release holds.
+func at(status LiveStatus, held *LiveStatus) Reading {
+	return Reading{Check: statusCheck, Status: status, Revision: d2, Release: 2, Newest: 2, Held: held}
 }
 
 func TestArgoReportStatusWritesOnlyWhatChanged(t *testing.T) {
 	now := time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)
-	reading := LiveStatus{Source: StatusSource, App: "apptique-dev", SyncStatus: "Synced", HealthStatus: "Healthy", OperationPhase: "Succeeded", Revision: d2, ObservedAt: now.Format(time.RFC3339)}
-	held := func(source, sync string, age time.Duration) *LiveStatus {
+	reading := LiveStatus{Reporter: StatusReporter, DataSource: "apptique-dev", Sync: "Synced", Health: "Healthy", Operation: "Succeeded", ObservedAt: now.Format(time.RFC3339)}
+	held := func(reporter, sync string, age time.Duration) *LiveStatus {
 		h := reading
-		h.Source, h.SyncStatus, h.ObservedAt = source, sync, now.Add(-age).Format(time.RFC3339)
+		h.Reporter, h.Sync, h.ObservedAt = reporter, sync, now.Add(-age).Format(time.RFC3339)
 		return &h
 	}
 	for _, tc := range []struct {
@@ -217,28 +228,28 @@ func TestArgoReportStatusWritesOnlyWhatChanged(t *testing.T) {
 		did  string
 	}{
 		{"nothing held", nil, false, "written"},
-		{"same, recent", held(StatusSource, "Synced", time.Minute), false, "unchanged"},
-		{"same, old enough to refresh", held(StatusSource, "Synced", time.Hour), false, "written"},
-		{"changed", held(StatusSource, "OutOfSync", time.Minute), false, "written"},
+		{"same, recent", held(StatusReporter, "Synced", time.Minute), false, "unchanged"},
+		{"same, old enough to refresh", held(StatusReporter, "Synced", time.Hour), false, "written"},
+		{"changed", held(StatusReporter, "OutOfSync", time.Minute), false, "written"},
 		{"argobot reporting", held("argobot", "OutOfSync", time.Minute), false, "left"},
 		{"argobot stopped long ago", held("argobot", "OutOfSync", time.Hour), false, "written"},
 		{"dry run", nil, true, "dry-run"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			hub := holding(tc.held)
-			outs, err := ReportStatus(hub, []Reading{{Check: statusCheck, Status: reading}}, 10*time.Minute, tc.dry, now)
+			hub := &fakeHub{}
+			outs, err := ReportStatus(hub, []Reading{at(reading, tc.held)}, 10*time.Minute, tc.dry, now)
 			if err != nil {
 				t.Fatal(err)
 			}
-			wrote := hub.patches
 			if outs[0].Did != tc.did {
 				t.Errorf("want %s, got %s", tc.did, outs[0].Did)
 			}
+			wrote := hub.recorded
 			if (tc.did == "written") != (len(wrote) == 1) {
 				t.Errorf("wrote %d times for %s", len(wrote), tc.did)
 			}
-			if len(wrote) == 1 && (!strings.Contains(wrote[0], `"Annotations":{"confighub.com/live-status":`) || strings.Contains(wrote[0], "Slug")) {
-				t.Errorf("the patch must set only the live-status annotation: %s", wrote[0])
+			if len(wrote) == 1 && !strings.HasPrefix(wrote[0], `argo-apptique-dev release 2 {"reporter":"cub-argo"`) {
+				t.Errorf("the status goes on release 2 of the Space, as ours: %s", wrote[0])
 			}
 			if tc.did == "left" && !strings.Contains(outs[0].Why, "argobot") {
 				t.Errorf("say whose reading was left alone: %q", outs[0].Why)
@@ -247,51 +258,96 @@ func TestArgoReportStatusWritesOnlyWhatChanged(t *testing.T) {
 	}
 }
 
-// After a handback to Git, the Space still holds the last reading, and the
-// Healthy gate would pass on it. A reading this reporter wrote is replaced;
-// another reporter's is left alone.
+// A reading with no Release to record it on is written nowhere, and said.
+func TestArgoReportStatusRecordsNothingWithoutARelease(t *testing.T) {
+	hub := &fakeHub{}
+	r := Reading{Check: statusCheck, Status: LiveStatus{Reporter: StatusReporter, Sync: "Unknown", Health: "Healthy"}, Newest: 2,
+		Unrecorded: "Argo CD has not compared the Application with its ConfigHub source yet"}
+	outs, err := ReportStatus(hub, []Reading{r}, time.Minute, false, time.Now())
+	if err != nil || len(hub.recorded) != 0 || outs[0].Did != "unrecorded" {
+		t.Fatalf("want nothing recorded: %v %v %+v", err, hub.recorded, outs)
+	}
+	var b strings.Builder
+	PrintOutcomes(&b, outs)
+	if !strings.Contains(b.String(), "not recorded") || !strings.Contains(b.String(), "has not compared") || !strings.Contains(b.String(), "gate reads release 2, the newest, which nothing has reported on") {
+		t.Errorf("say that nothing was recorded, why, and what it means for the gate: %s", b.String())
+	}
+}
+
+// A reading recorded on an older release is true of that release, and the gate
+// reads the newest: say so rather than "would pass".
+func TestArgoOutcomeOnAnOlderReleaseDoesNotPassTheGate(t *testing.T) {
+	r := readApp(t, app(t, func(a map[string]any) { syncOf(a)["revision"] = d1 }))
+	outs, err := ReportStatus(&fakeHub{}, []Reading{r}, time.Minute, false, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var b strings.Builder
+	PrintOutcomes(&b, outs)
+	if !strings.Contains(b.String(), "release 1: Synced/Healthy") || !strings.Contains(b.String(), "would not pass: it reads release 2") {
+		t.Errorf("want release 1 reported and the gate explained: %s", b.String())
+	}
+}
+
+// After a handback to Git, the newest Release still holds the last reading,
+// and the Healthy gate would pass on it. A reading this reporter wrote is
+// replaced; another reporter's is left alone.
 func TestArgoLeftSpaceReplacesOurStaleReading(t *testing.T) {
 	now := time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)
-	gone := Reading{Check: statusCheck, Skip: "reads https://github.com/acme/fleet, not Space argo-apptique-dev"}
-	ours := &LiveStatus{Source: StatusSource, App: "apptique-dev", SyncStatus: "Synced", HealthStatus: "Healthy", OperationPhase: "Succeeded", Revision: d2, ObservedAt: now.Format(time.RFC3339)}
-	theirs := &LiveStatus{Source: "argobot", App: "apptique-dev", SyncStatus: "Synced", HealthStatus: "Healthy", OperationPhase: "Succeeded", ObservedAt: now.Add(-time.Hour).Format(time.RFC3339)}
+	ours := &LiveStatus{Reporter: StatusReporter, DataSource: "apptique-dev", Sync: "Synced", Health: "Healthy", Operation: "Succeeded", ObservedAt: now.Format(time.RFC3339)}
+	theirs := &LiveStatus{Reporter: "argobot", DataSource: "apptique-dev", Sync: "Synced", Health: "Healthy", Operation: "Succeeded", ObservedAt: now.Add(-time.Hour).Format(time.RFC3339)}
 	for _, tc := range []struct {
 		name string
 		held *LiveStatus
 		did  string
 	}{{"ours", ours, "written"}, {"another reporter's", theirs, "skipped"}, {"nothing held", nil, "skipped"}} {
 		t.Run(tc.name, func(t *testing.T) {
-			hub := holding(tc.held)
+			hub := &fakeHub{}
+			gone := Reading{Check: statusCheck, Skip: "reads https://github.com/acme/fleet, not Space argo-apptique-dev", Release: 2, Newest: 2, Held: tc.held}
 			outs, err := ReportStatus(hub, []Reading{gone}, 10*time.Minute, false, now)
 			if err != nil {
 				t.Fatal(err)
 			}
-			wrote := strings.Join(hub.patches, "")
 			if outs[0].Did != tc.did {
 				t.Fatalf("want %s, got %s", tc.did, outs[0].Did)
 			}
 			if tc.did == "written" {
-				if outs[0].Status.Gate() || !strings.Contains(wrote, "no longer reads this Space") {
-					t.Errorf("the replacement must not pass the gate and must say why: %s", wrote)
+				wrote := strings.Join(hub.recorded, "")
+				if outs[0].Status.Gate() || !strings.Contains(wrote, "release 2 ") || !strings.Contains(wrote, "no longer reads this Space") {
+					t.Errorf("the replacement goes on the newest release, must not pass the gate, and must say why: %s", wrote)
 				}
 			}
 		})
 	}
 }
 
-// One Space that cannot be read must not stop the others being reported.
-func TestArgoReportStatusCarriesOnPastAnUnreadableSpace(t *testing.T) {
+// What the newest Release holds is read for an Application that has left its
+// Space, so a reading of ours left behind there can be found.
+func TestArgoStatusOfALeftSpaceNamesTheNewestRelease(t *testing.T) {
+	ours := &LiveStatus{Reporter: StatusReporter, Sync: "Synced", Health: "Healthy"}
+	withStatus := []HubRelease{releases[0], {Num: 2, ManifestDigest: d2, Published: true, Live: ours}, releases[2]}
+	onGit := app(t, func(a map[string]any) {
+		a["spec"] = map[string]any{"source": map[string]any{"repoURL": "https://github.com/acme/fleet", "targetRevision": "main", "path": "apps/apptique"}}
+	})
+	r, err := ReadStatus(fake(map[string]string{"get application": onGit}), &fakeHub{releases: withStatus}, statusCheck, time.Now())
+	if err != nil || r.Skip == "" || r.Release != 2 || r.Held != ours {
+		t.Errorf("want the skip, and release 2 with what it holds: %+v %v", r, err)
+	}
+}
+
+// One Release that cannot be written must not stop the others being reported.
+func TestArgoReportStatusCarriesOnPastAnUnwritableSpace(t *testing.T) {
 	now := time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)
-	st := LiveStatus{Source: StatusSource, SyncStatus: "Synced", HealthStatus: "Healthy", OperationPhase: "Succeeded", ObservedAt: now.Format(time.RFC3339)}
-	hub := &fakeHub{unreadable: map[string]bool{"gone": true}}
+	st := LiveStatus{Reporter: StatusReporter, Sync: "Synced", Health: "Healthy", Operation: "Succeeded", ObservedAt: now.Format(time.RFC3339)}
+	hub := &fakeHub{unwritable: map[string]bool{"gone": true}}
 	outs, err := ReportStatus(hub, []Reading{
-		{Check: StatusCheck{Application: "a", Space: "gone"}, Status: st},
-		{Check: StatusCheck{Application: "b", Space: "here"}, Status: st},
+		{Check: StatusCheck{Application: "a", Space: "gone"}, Status: st, Release: 1, Newest: 1},
+		{Check: StatusCheck{Application: "b", Space: "here"}, Status: st, Release: 1, Newest: 1},
 	}, time.Minute, false, now)
 	if err == nil || !strings.Contains(err.Error(), "gone") {
-		t.Errorf("the unreadable Space should be reported: %v", err)
+		t.Errorf("the unwritable Space should be reported: %v", err)
 	}
-	if wrote := hub.patches; len(wrote) != 1 || !strings.HasPrefix(wrote[0], "here ") || len(outs) != 1 {
+	if wrote := hub.recorded; len(wrote) != 1 || !strings.HasPrefix(wrote[0], "here ") || len(outs) != 1 {
 		t.Errorf("the next Space should still be written: wrote %v, outcomes %v", wrote, outs)
 	}
 }
@@ -349,5 +405,115 @@ func TestHardRefreshOncePerRelease(t *testing.T) {
 	behind.Unread = dX
 	if did, _ := f.Refresh([]Reading{behind}); len(did) != 1 {
 		t.Errorf("a newer release is asked for again: %v", did)
+	}
+}
+
+// A reading is true of one Release. A passing reading this reporter left on
+// the newest Release is withdrawn when Argo CD now reports another release,
+// or none: the gate reads the newest, and would go on passing on it.
+func TestArgoWithdrawsAPassingReadingThatIsNoLongerTrue(t *testing.T) {
+	now := time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)
+	passing := func(reporter string) *LiveStatus {
+		return &LiveStatus{Reporter: reporter, DataSource: "apptique-dev", Sync: "Synced", Health: "Healthy", Operation: "Succeeded", ObservedAt: now.Format(time.RFC3339)}
+	}
+	on := func(newest *LiveStatus) *fakeHub {
+		return &fakeHub{releases: []HubRelease{releases[0], {Num: 2, ManifestDigest: d2, Published: true, Live: newest}, releases[2]}}
+	}
+	rolledBack := app(t, func(a map[string]any) { syncOf(a)["revision"] = d1 })
+	notCompared := app(t, func(a map[string]any) {
+		syncOf(a)["comparedTo"] = map[string]any{"source": map[string]any{"repoURL": "https://github.com/acme/fleet", "targetRevision": "main", "path": "x"}}
+	})
+	for _, tc := range []struct {
+		name     string
+		app      string
+		newest   *LiveStatus
+		withdrew string
+		says     string
+	}{
+		{"rolled back to release 1", rolledBack, passing(StatusReporter), "written", `release 2 {"reporter":"cub-argo","dataSource":"apptique-dev","sync":"OutOfSync","health":"Unknown","message":"not what is running: Argo CD reports release 1"`},
+		{"no reading at all", notCompared, passing(StatusReporter), "written", `release 2 {"reporter":"cub-argo","dataSource":"apptique-dev","sync":"Unknown","health":"Unknown","message":"not known to be running: Argo CD has not compared`},
+		{"argobot's reading is not ours to withdraw", rolledBack, passing("argobot"), "", ""},
+		{"another Application's reading is not this one's", rolledBack, func() *LiveStatus { p := passing(StatusReporter); p.DataSource = "other"; return p }(), "", ""},
+		{"nothing on the newest release", rolledBack, nil, "", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			hub := on(tc.newest)
+			r, err := ReadStatus(fake(map[string]string{"get application": tc.app}), hub, statusCheck, now)
+			if err != nil {
+				t.Fatal(err)
+			}
+			outs, err := ReportStatus(hub, []Reading{r}, 10*time.Minute, false, now)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if outs[0].Withdrew != tc.withdrew {
+				t.Fatalf("withdrew: want %q, got %q", tc.withdrew, outs[0].Withdrew)
+			}
+			wrote := strings.Join(hub.recorded, "\n")
+			if tc.says != "" && !strings.Contains(wrote, "argo-apptique-dev "+tc.says) {
+				t.Errorf("want %s in:\n%s", tc.says, wrote)
+			}
+			if tc.withdrew == "" && strings.Contains("\n"+wrote, "\nargo-apptique-dev release 2 ") {
+				t.Errorf("release 2 must be left as it is:\n%s", wrote)
+			}
+			var b strings.Builder
+			PrintOutcomes(&b, outs)
+			if tc.newest != nil && tc.withdrew == "" && !strings.Contains(b.String(), "holds Synced/Healthy/Succeeded from "+tc.newest.Reporter) {
+				t.Errorf("say what the newest release holds, since the gate reads it: %s", b.String())
+			}
+			if tc.withdrew != "" && !strings.Contains(b.String(), "withdrawn") {
+				t.Errorf("say the reading was withdrawn: %s", b.String())
+			}
+		})
+	}
+}
+
+// argobot writes only when something changes, so an old reading of its that
+// says the same is not a stopped reporter, and is left alone.
+func TestArgoLeavesAnOldReadingOfAnotherReporterThatSaysTheSame(t *testing.T) {
+	now := time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)
+	reading := LiveStatus{Reporter: StatusReporter, DataSource: "apptique-dev", Sync: "Synced", Health: "Healthy", Operation: "Succeeded", ObservedAt: now.Format(time.RFC3339)}
+	theirs := reading
+	theirs.Reporter, theirs.Message, theirs.ObservedAt = "argobot", "its own words", now.Add(-24*time.Hour).Format(time.RFC3339)
+	hub := &fakeHub{}
+	outs, err := ReportStatus(hub, []Reading{at(reading, &theirs)}, 10*time.Minute, false, now)
+	if err != nil || outs[0].Did != "left" || len(hub.recorded) != 0 || !strings.Contains(outs[0].Why, "argobot reported the same") {
+		t.Errorf("want it left alone, and said why: %+v %v %v", outs, hub.recorded, err)
+	}
+}
+
+// An Application with several sources has no single synced revision: Argo CD
+// lists one for each, in the order of the sources.
+func TestArgoStatusReadsTheRevisionOfTheSourceThatReadsTheSpace(t *testing.T) {
+	r := readApp(t, app(t, func(a map[string]any) {
+		other := map[string]any{"repoURL": "https://charts.example", "targetRevision": "1.0.0"}
+		own := map[string]any{"repoURL": spaceURL, "targetRevision": "latest", "path": "."}
+		a["spec"] = map[string]any{"sources": []any{other, own}}
+		syncOf(a)["comparedTo"] = map[string]any{"sources": []any{other, own}}
+		delete(syncOf(a), "revision")
+		syncOf(a)["revisions"] = []any{"1.0.0", d1}
+	}))
+	if r.Revision != d1 || r.Release != 1 {
+		t.Errorf("want the second source's digest, release 1: %+v", r)
+	}
+}
+
+// Argo CD out of sync with nothing to say why is not "synced".
+func TestArgoOutOfSyncWithNoReasonDoesNotSaySynced(t *testing.T) {
+	r := readApp(t, app(t, func(a map[string]any) {
+		syncOf(a)["status"] = "OutOfSync"
+		delete(appStatusOf(a), "operationState")
+	}))
+	if strings.Contains(r.Status.Message, "synced") || !strings.Contains(r.Status.Message, "release 2: Argo CD reports OutOfSync") {
+		t.Errorf("want the release and Argo's word: %q", r.Status.Message)
+	}
+}
+
+// A message is cut on a character: half of one would read back as another,
+// and the reading would be rewritten on every pass.
+func TestClipCutsOnACharacter(t *testing.T) {
+	got := clip(strings.Repeat("é", 150))
+	if len(got) > statusMessageLimit || strings.ContainsRune(got, '\uFFFD') || !strings.HasSuffix(got, "é...") {
+		t.Errorf("want whole characters within %d bytes: %d bytes, %q", statusMessageLimit, len(got), got[len(got)-8:])
 	}
 }

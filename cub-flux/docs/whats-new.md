@@ -3,6 +3,32 @@
 Each release is tagged `cub-flux-v<version>` in confighub/examples and installs
 with `cub plugin install confighub/examples@cub-flux-v<version> --name flux`.
 
+## 0.3.1, 2026-10-09
+
+Needs ConfigHub v0.8.2 or newer for live status.
+
+- **Live status is recorded where ConfigHub now reads it.** From ConfigHub
+  v0.8.2, live status lives on the Release, and the Healthy gate reads the
+  newest published release of a Space and nothing else. `cub flux status` wrote
+  the Space annotation `confighub.com/live-status`, which a current server does
+  not read, so a fleet planned with `--require Healthy` never passed the gate.
+  It now records each reading on the release whose digest Flux reports, in
+  ConfigHub's normalized words.
+- **A failing release is reported on the release that failed.** When Flux is
+  applying a release, or stalled on one, the reading goes on that release
+  rather than the one applied before it, so the gate says that release is not
+  synced, instead of that it has no live status yet.
+- **A reading that is no longer true is withdrawn.** If the newest release
+  holds a passing reading this reporter wrote and Flux now reports another
+  release, or none, that reading is replaced, so the gate does not go on
+  passing on it.
+- **A routine reconcile does not close the gate.** Flux marks a layer
+  Reconciling at the start of every pass, including the one it makes each
+  interval over a release it already applied. That pass is no longer reported
+  as out of sync; what is recorded stands until it finishes.
+- **Another reporter's reading is left alone** while it is fresh, or says the
+  same.
+
 ## 0.3.0, 2026-10-02
 
 Needs `cub` and ConfigHub v0.7.0 or newer.

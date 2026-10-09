@@ -321,20 +321,29 @@ One cluster at a time: pass --kube-context for the cluster to read.`,
 		Long: `Report what Flux applied on a cluster as ConfigHub live status.
 
 For each layer that reads its ConfigHub Space, it reads the Kustomization and
-writes the Space's confighub.com/live-status: the words ConfigHub's Healthy
-gate, its change orders and its UI read.
+records its live status on the Release Flux applied: what ConfigHub's Healthy
+gate, its change orders and its UI read. Nothing else records it for Flux. It
+needs ConfigHub v0.8.2 or newer, which is where live status moved from the
+Space onto the Release.
 
-  Synced     only when the digest Flux applied is the newest published
-             release of that Space; an older one is OutOfSync
+  release    the published release whose digest Flux reports: the one it
+             applied, or the one it is applying or failing to apply. The
+             Healthy gate reads the newest release only, so a reading of an
+             older one does not pass it
   Healthy    only when Flux checked the workloads (spec.wait or
              healthChecks), or the layer runs none; otherwise Unknown
-  revision   the digest Flux applied, never one inferred
 
 A layer still reading Git, or another Space, is not reported. A read that
 fails writes nothing. It writes only when a reading changes, or when the one
-ConfigHub holds is older than --refresh, which shows the reporter is alive.
+the Release holds is older than --refresh, which shows the reporter is alive.
+A reading another reporter wrote is left alone while it is fresher than
+--refresh or says the same. A passing reading of its own on the newest release
+is withdrawn when Flux now reports another release, or none. A layer Flux is
+reconciling again at the release it already applied is not reported until
+that pass finishes.
 
-One cluster at a time, like check. It writes as the cub user it runs as.`,
+One cluster at a time, like check. It writes as the cub user it runs as, which
+takes Edit on the Release: your own, or EditChildren on its Target.`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
 			flux.KubeContext = stContext

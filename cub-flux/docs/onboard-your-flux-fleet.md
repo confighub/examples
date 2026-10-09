@@ -147,11 +147,11 @@ the layers you already run.
 ## Install
 
 ```bash
-cub plugin install confighub/examples@cub-flux-v0.3.0 --name flux
+cub plugin install confighub/examples@cub-flux-v0.3.1 --name flux
 cub plugin list   # flux should be listed, status ok
 ```
 
-This release needs `cub` and ConfigHub v0.7.0 or newer; `cub version` shows both.
+This release needs `cub` v0.7.0 or newer and ConfigHub v0.8.2 or newer; `cub version` shows both.
 
 Upgrade later by naming the new release: `cub plugin upgrade flux@cub-flux-v<version>`.
 To build from source instead (needs Go):
@@ -507,10 +507,10 @@ any other. It is no longer an edit to a `Kustomization` in Git.
 
 ## 5. Tell ConfigHub what the cluster is running
 
-Once a layer reads ConfigHub, `cub flux status` reports what Flux applied as
-the Space's live status: the `confighub.com/live-status` annotation that
-ConfigHub's Healthy gate, its change orders and its UI read. It is what argobot
-does for Argo CD and `cub sveltos status` for Sveltos, in the same shape.
+Once a layer reads ConfigHub, `cub flux status` records what Flux applied as
+live status on the Release it applied: what ConfigHub's Healthy gate, its
+change orders and its UI read. It is what argobot does for Argo CD, in the
+same words, and nothing else does it for Flux.
 
 ```bash
 cub flux status ./my-fleet --cluster dev-1 --kube-context <dev-1> --watch
@@ -520,42 +520,57 @@ cub flux status ./my-fleet --cluster dev-1 --kube-context <dev-1> --watch
 flowchart LR
   k["Kustomization apps<br/>Ready, lastAppliedRevision"] --> s["cub flux status"]
   r["published releases<br/>of the Space"] --> s
-  s -->|"Synced / Healthy / Succeeded<br/>at the applied digest"| a["Space annotation<br/>confighub.com/live-status"]
-  a --> g["Healthy gate<br/>before the next stage"]
+  s -->|"Synced / Healthy / Succeeded"| a["the Release with<br/>the applied digest"]
+  a --> g["Healthy gate reads<br/>the newest release"]
 ```
+
+ConfigHub's Healthy gate reads the newest published release of a Space and
+nothing else, so a release nothing has reported on is not healthy, however the
+one before it was. This is how ConfigHub v0.8.2 and newer work. Before that,
+live status was one annotation on the Space, `confighub.com/live-status`,
+which is what `cub flux` 0.3.0 and earlier wrote; a current server does not
+read it, so with those versions a fleet planned with `--require Healthy` never
+passes the gate.
 
 It says only what it can back:
 
-| Reading | When |
+| What | How it is decided |
 | --- | --- |
-| `Synced` | the digest Flux applied is the **newest** published release of that Space. An older one is `OutOfSync`, with both release numbers |
+| Which release | the published release whose digest Flux reports: the one it applied, or the one it is applying or failing to apply, when the reading is about that attempt. Never inferred from times. A digest that is no published release is recorded nowhere, and the command says so |
+| `Synced` | Flux is Ready at that digest. An older release applied is recorded on that older release, where it is true; the newest stays unreported until Flux applies it |
 | `Healthy` | Flux checked the workloads (`spec.wait` or `healthChecks`), or the layer runs none. Otherwise `Unknown`: `Ready` then means applied, not running |
-| `revision` | the digest Flux reports it applied, never one inferred from times |
-| nothing | the layer reads Git, or another Space. A reading it wrote earlier is replaced with `Unknown`, so a layer handed back to Git does not leave a green gate behind |
+| failed or running | Flux is stalled or not Ready (`Degraded`, failed), or still reconciling (`Progressing`, running). The gate refuses both |
+| nothing | the layer reads Git, or another Space. A reading it recorded earlier on the newest release is replaced with `Unknown`, so a layer handed back to Git does not leave a green gate behind |
 
 A read that fails writes nothing. It writes only when a reading changes, or
-when the one ConfigHub holds is older than `--refresh` (10 minutes), which is
-how a reader tells a running reporter from a stopped one. It runs as the `cub`
-user you run it as, one cluster at a time.
+when the one the release holds is older than `--refresh` (10 minutes), which is
+how a reader tells a running reporter from a stopped one. A reading another
+reporter wrote is left alone while it is fresh or says the same. A passing
+reading of its own that is no longer true, because Flux now reports another
+release or none, is withdrawn from the newest release. A layer Flux is
+reconciling again at the release it already applied, as it does every
+interval, is not reported until that pass finishes. It runs as the `cub` user you
+run it as, one cluster at a time, and recording takes Edit on the Release:
+your own, or `EditChildren` on its Target for a worker.
 
 **To make promotions wait for it,** plan and apply with `--require Healthy`.
-Each stage after the first then also waits for the stage before to read Synced,
-Succeeded and Healthy. The first release of every variant is made before
-anything reads ConfigHub, so `apply.sh` makes those under a workflow without
-it, and puts the real one in place once they are done.
+Each stage after the first then also waits for the stage before: its newest
+release synced, healthy, and no operation running or failed. The first release
+of every variant is made before anything reads ConfigHub, so `apply.sh` makes
+those under a workflow without it, and puts the real one in place once they
+are done.
 
-**Run live on 2026-09-30** against ConfigHub v0.6.8 and Flux v2.8.6, with
+**Run live on 2026-10-09** against ConfigHub v0.8.10 and Flux v2.8.6, with
 `--require Healthy`:
-- A change was released to dev and promoted towards prod. ConfigHub refused it
-  twice: "live-status not found for Variant 'dev'" with no reading, and "Variant
-  'dev' is not synced" while Flux still held release 1, which the reporter wrote
-  as `OutOfSync`.
-- Once Flux applied release 2, the reporter wrote Synced/Healthy/Succeeded at
-  that digest, and the promotion went through.
-- The Space's other annotations were untouched. A second pass wrote nothing. `--watch` stopped cleanly on an interrupt.
+- A change was released to dev and promoted towards prod. ConfigHub refused it:
+  "Variant 'dev' has no live status for release 2 yet". Release 1's passing
+  status did not count.
+- Once Flux applied release 2, the reporter recorded Synced/Healthy/Succeeded
+  on it, and the promotion went through. A second pass wrote nothing.
+- The layer was then rolled back to release 1. The reporter recorded that on
+  release 1 and withdrew its reading from release 2, which closed the gate.
 
-Replacing a stale reading after a layer returns to Git was added after that run,
-so it is covered by tests, not yet by a live run.
+The run log: [runs/2026-10-09-live-status-on-the-release.md](runs/2026-10-09-live-status-on-the-release.md).
 
 ## What the plugin checks for you, and what it cannot
 

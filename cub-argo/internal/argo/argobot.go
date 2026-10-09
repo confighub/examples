@@ -18,8 +18,8 @@ const argobotBySource = "v0.1.9"
 
 // ArgobotScript writes argobot.sh, which runs argobot beside Argo CD with the
 // Targets' server worker as its identity, the one `cub cluster up` gives it.
-// argobot is what reports each Application's live status back to the Space it
-// reads, and what makes a published release land at once.
+// argobot is what records each Application's live status on the Release it
+// synced, and what makes a published release land at once.
 func ArgobotScript(prefix string) string {
 	targets := prefix + "-targets"
 	var L []string
@@ -36,9 +36,9 @@ func ArgobotScript(prefix string) string {
 	add("# - When a variant's Space publishes a release, it hard-refreshes the")
 	add("#   Applications reading that Space. Argo CD caches the digest a tag resolved")
 	add("#   to, so without this a release waits for Argo's own poll.")
-	add("# - It writes each Application's live state (sync, health, operation, the")
-	add("#   revision it synced) back to the Space it reads, as confighub.com/live-status,")
-	add("#   which the Healthy gate and the ConfigHub UI read.")
+	add("# - It records each Application's live state (sync, health, operation) on the")
+	add("#   Release the Application synced, which the Healthy gate and the ConfigHub")
+	add("#   UI read.")
 	add("#")
 	add("# Both find an Application by the Space its source reads, which needs argobot")
 	add("# %s or later; an earlier one looks for an Application named after the Space,", argobotBySource)
@@ -91,7 +91,7 @@ func ArgobotScript(prefix string) string {
 	add("")
 	add(`echo "argobot $version runs as %s/server-worker. What it does:"`, targets)
 	add(`echo "  kubectl --context $ctx -n argobot logs deploy/argobot"`)
-	add(`echo "Each Space an Application reads carries its live status once it syncs:"`)
-	add(`echo "  cub space get <variant Space> -o json | jq -r '.Space.Annotations[\"confighub.com/live-status\"]'"`)
+	add(`echo "Each release an Application syncs carries its live status:"`)
+	add(`echo "  cub release list --space <variant Space>"`)
 	return strings.Join(L, "\n") + "\n"
 }

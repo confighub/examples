@@ -154,11 +154,11 @@ cluster that has none. Repointing is for the Applications you already run.
 ## Install
 
 ```bash
-cub plugin install confighub/examples@cub-argo-v0.3.0 --name argo
+cub plugin install confighub/examples@cub-argo-v0.3.1 --name argo
 cub plugin list   # argo should be listed, status ok
 ```
 
-This release needs `cub` and ConfigHub v0.7.0 or newer; `cub version` shows both.
+This release needs `cub` v0.7.0 or newer and ConfigHub v0.8.2 or newer; `cub version` shows both.
 
 Upgrade later by naming the new release: `cub plugin upgrade argo@cub-argo-v<version>`.
 To build from source instead (needs Go):
@@ -908,9 +908,9 @@ Targets:
 
 - on each `release.published` it hard-refreshes the Applications reading that
   Space, so an approved release reaches the cluster at once;
-- it writes each Application's live state — sync, health, operation, the digest
-  it synced — back to the Space it reads, as `confighub.com/live-status`, which
-  the ConfigHub UI and the Healthy gate read.
+- it records each Application's live state — sync, health, operation — on the
+  release the Application synced, which the ConfigHub UI and the Healthy gate
+  read.
 
 Both find an Application by the Space its source reads, since a moved estate
 keeps Argo's names (`dev-1-apptique` reads `argo-apptique-dev-1`). The status
@@ -942,31 +942,48 @@ the approval gate you built governs nothing.
 
 ## What ConfigHub hears back: live status
 
-ConfigHub learns what a cluster runs from one annotation on each Space,
-`confighub.com/live-status`. Its Healthy gate reads it, its change orders
-advance on it, and its UI shows it. argobot writes it where it runs. Without
-argobot, `cub argo status` writes it, in the same shape, from each Application
-that reads its Space:
+ConfigHub learns what a cluster runs from the live status on each Release:
+what the tool deploying that release says about it running. Its Healthy gate
+reads the newest published release of a Space and nothing else, so a release
+no tool has reported on is not healthy, however the one before it was. Its
+change orders advance on it, and its UI shows it. argobot records it where it
+runs. Without argobot, `cub argo status` records it, in the same words, from
+each Application that reads its Space.
 
-| Word | When `cub argo status` says it |
+This is how ConfigHub v0.8.2 and newer work. Before that, live status was one
+annotation on the Space, `confighub.com/live-status`, which is what `cub argo`
+0.3.0 and earlier wrote; a current server does not read it.
+
+| What | How `cub argo status` decides it |
 | --- | --- |
-| `Synced` | Argo says Synced, and the digest it synced is the newest published release of that Space. Argo synced at an older release is `OutOfSync`, naming both releases; at a digest that is no release, `Unknown` |
+| Which release | the published release whose digest is in the Application's `status.sync.revision`, never inferred. Argo synced at an older release is recorded on that older release, where it is true, and the newest stays unreported until Argo reads it. A digest that is no published release is recorded nowhere, and the command says so |
+| sync | Argo's own. `Unknown` while Argo reports an error condition, even if it still says Synced |
 | health | Argo CD's own, which covers every resource the Application owns |
-| `revision` | the digest in `status.sync.revision`, never inferred |
-| `Unknown` | Argo has not compared the Application with its ConfigHub source yet, or reports an error condition |
+| operation | Argo's phase: running, succeeded or failed. The gate refuses a release whose operation is running or failed |
+| nothing recorded | Argo has not compared the Application with its ConfigHub source yet |
 
 Given the same input as `plan`, it reports every variant and every app of apps
 whose children moved into a control Space. An Application still reading Git is
 not reported, and one that has gone back to Git has its old reading replaced by
 one that closes the gate. A read that fails writes nothing. It writes only when
-a reading changes, or when the one ConfigHub holds is older than `--refresh`
+a reading changes, or when the one the release holds is older than `--refresh`
 (10 minutes), which shows the reporter is alive. A reading another reporter
-wrote, argobot say, is left alone while it is fresh, so the two do not
-overwrite each other.
+wrote, argobot say, is left alone while it is fresh or says the same: argobot
+writes only when something changes, so an old reading of its is not a stopped
+reporter. A passing reading of its own that is no longer true, because Argo
+now reports another release or none, is withdrawn from the newest release.
+
+Recording takes Edit on the Release: your own, or `EditChildren` on its Target
+for a worker.
 
 `--dry-run` shows what it would write; `--json` prints what it read and did.
-The run that proved it, from handover to a reviewed release to the way back,
-is [docs/runs/2026-09-30-status-and-in-cluster.md](runs/2026-09-30-status-and-in-cluster.md).
+Run live on 2026-10-09 against ConfigHub v0.8.10: five Applications recorded on
+the releases they synced, and a reading following Argo CD from one release to
+the next after a hard refresh:
+[runs/2026-10-09-live-status-on-the-release.md](runs/2026-10-09-live-status-on-the-release.md).
+The earlier run, against the Space annotation of the time, from handover to a
+reviewed release to the way back, is
+[runs/2026-09-30-status-and-in-cluster.md](runs/2026-09-30-status-and-in-cluster.md).
 
 ## Making a change afterwards
 

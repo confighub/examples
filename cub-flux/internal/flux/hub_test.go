@@ -1,9 +1,12 @@
 package flux
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 // fakeHub stands in for ConfigHub. Its zero value holds nothing: no release,
-// no Units, no Targets, no annotations.
+// no Units, no Targets.
 type fakeHub struct {
 	release     *HubRelease     // what Release answers for any Space; nil is "no release"
 	released    map[string]bool // or: the Spaces that have a release
@@ -15,10 +18,10 @@ type fakeHub struct {
 	head        int
 	units       []string
 	targets     map[string]bool
-	annotations map[string]map[string]string
-	unreadable  map[string]bool // Spaces that cannot be read
+	unwritable  map[string]bool // Spaces whose Releases cannot be written
 
 	asked    []string
+	recorded []string // "<space> release <n> <status as JSON>"
 	patches  []string
 	attested []Attestation
 }
@@ -56,11 +59,13 @@ func (f *fakeHub) UnitHead(space, unit string) (int, error) {
 	return f.head, nil
 }
 
-func (f *fakeHub) SpaceAnnotations(space string) (map[string]string, error) {
-	if f.unreadable[space] {
-		return nil, fmt.Errorf("space %s not found", space)
+func (f *fakeHub) SetLiveStatus(space string, release int, st LiveStatus) error {
+	if f.unwritable[space] {
+		return fmt.Errorf("space %s not found", space)
 	}
-	return f.annotations[space], nil
+	doc, _ := json.Marshal(st)
+	f.recorded = append(f.recorded, fmt.Sprintf("%s release %d %s", space, release, doc))
+	return nil
 }
 
 func (f *fakeHub) PatchSpace(space string, patch []byte) error {

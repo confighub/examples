@@ -334,21 +334,26 @@ thing, to ConfigHub: each verdict as a LiveCheck attestation.`,
 		Long: `Report what Argo CD synced as ConfigHub live status.
 
 For each Application that reads its ConfigHub Space, it reads the Application
-and writes the Space's confighub.com/live-status: the words ConfigHub's Healthy
-gate, its change orders and its UI read. On a cluster 'cub cluster up' made,
-argobot does this; an estate onboarded with this plugin has no argobot.
+and records its live status on the Release it synced: what ConfigHub's Healthy
+gate, its change orders and its UI read. argobot does the same where it runs;
+this is for an estate that runs none. It needs ConfigHub v0.8.2 or newer, which
+is where live status moved from the Space onto the Release.
 
-  Synced     only when the digest Argo CD synced is the newest published
-             release of that Space; an older one is OutOfSync
+  release    the published release whose digest Argo CD records in
+             status.sync.revision. The Healthy gate reads the newest release
+             only, so a reading of an older one does not pass it
+  sync       Argo CD's own; Unknown while Argo CD reports an error
   health     Argo CD's own, which covers every resource it owns
-  revision   the digest Argo CD records in status.sync.revision
 
 Given the same input as plan, it reports every Application the plan governs:
 each variant, and each app of apps whose children moved into a control Space.
 An Application still reading Git is not reported. A read that fails writes
-nothing. It writes only when a reading changes, or when the one ConfigHub holds
-is older than --refresh, which shows the reporter is alive. A reading another
-reporter (argobot) wrote is left alone while it is fresher than --refresh.
+nothing. It writes only when a reading changes, or when the one the Release
+holds is older than --refresh, which shows the reporter is alive. A reading
+another reporter (argobot) wrote is left alone while it is fresher than
+--refresh or says the same. A passing reading of its own on the newest release
+is withdrawn when Argo CD now reports another release, or none. Recording takes Edit on the Release: your own, or EditChildren on
+its Target.
 
 It writes as the cub user it runs as.
 
