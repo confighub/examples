@@ -351,7 +351,8 @@ An Application still reading Git is not reported. A read that fails writes
 nothing. It writes only when a reading changes, or when the one the Release
 holds is older than --refresh, which shows the reporter is alive. A reading
 another reporter (argobot) wrote is left alone while it is fresher than
---refresh. Recording takes Edit on the Release: your own, or EditChildren on
+--refresh or says the same. A passing reading of its own on the newest release
+is withdrawn when Argo CD now reports another release, or none. Recording takes Edit on the Release: your own, or EditChildren on
 its Target.
 
 It writes as the cub user it runs as.

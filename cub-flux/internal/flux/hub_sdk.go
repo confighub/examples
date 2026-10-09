@@ -62,7 +62,10 @@ func (h *SDKHub) releases(ctx context.Context, where string, space string) ([]Hu
 	if err != nil {
 		return nil, err
 	}
-	params := &goclientnew.ListExtendedReleasesParams{}
+	// Named fields only: a release's bundle is large, and none of it is
+	// wanted here.
+	fields := "ReleaseID,ReleaseNum,SpaceID,OrganizationID,Published,ManifestDigest,TagID,LiveStatus"
+	params := &goclientnew.ListExtendedReleasesParams{Select: &fields}
 	if where != "" {
 		params.Where = &where
 	}
@@ -231,7 +234,8 @@ func (h *SDKHub) SetLiveStatus(space string, release int, st LiveStatus) error {
 		return err
 	}
 	where := "ReleaseNum = " + strconv.Itoa(release)
-	res, err := c.API.ListExtendedReleasesWithResponse(ctx, id, &goclientnew.ListExtendedReleasesParams{Where: &where})
+	only := "ReleaseID,ReleaseNum,SpaceID,OrganizationID"
+	res, err := c.API.ListExtendedReleasesWithResponse(ctx, id, &goclientnew.ListExtendedReleasesParams{Where: &where, Select: &only})
 	if cubapi.IsAPIError(err, res) {
 		return cubapi.InterpretErrorGeneric(err, res)
 	}

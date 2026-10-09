@@ -16,10 +16,18 @@ Needs ConfigHub v0.8.2 or newer for live status.
   ConfigHub's normalized words.
 - **A failing release is reported on the release that failed.** When Flux is
   applying a release, or stalled on one, the reading goes on that release
-  rather than the one applied before it, so the gate says "still being
-  deployed" or "failed to deploy" instead of "no live status yet".
-- **Another reporter's fresh reading is left alone**, as `cub argo status`
-  already did.
+  rather than the one applied before it, so the gate says that release is not
+  synced, instead of that it has no live status yet.
+- **A reading that is no longer true is withdrawn.** If the newest release
+  holds a passing reading this reporter wrote and Flux now reports another
+  release, or none, that reading is replaced, so the gate does not go on
+  passing on it.
+- **A routine reconcile does not close the gate.** Flux marks a layer
+  Reconciling at the start of every pass, including the one it makes each
+  interval over a release it already applied. That pass is no longer reported
+  as out of sync; what is recorded stands until it finishes.
+- **Another reporter's reading is left alone** while it is fresh, or says the
+  same.
 
 ## 0.3.0, 2026-10-02
 

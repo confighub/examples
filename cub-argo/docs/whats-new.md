@@ -17,6 +17,16 @@ Needs ConfigHub v0.8.2 or newer for live status.
   reading of an older release is recorded on that release, and the command
   says the gate reads the newest. A reading that names no published release is
   recorded nowhere, and said.
+- **A reading that is no longer true is withdrawn.** If the newest release
+  holds a passing reading this reporter wrote and Argo CD now reports another
+  release, or none, that reading is replaced, so the gate does not go on
+  passing on it.
+- **Applications with several sources are reported.** Argo CD lists one synced
+  revision for each source; the one for the source that reads the Space is
+  used. Before, such an Application had no revision to go by.
+- **argobot's reading is left alone while it says the same.** argobot writes
+  only when something changes, so an old reading of its is not a stopped
+  reporter. It is replaced only when it is both old and different.
 - **The gate's rule is the server's.** A release passes when it is synced and
   healthy with no operation running or failed. An Application Argo has run no
   sync operation on no longer counts against it.

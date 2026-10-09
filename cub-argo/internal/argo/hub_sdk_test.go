@@ -25,7 +25,7 @@ func stubHub(t *testing.T) (*SDKHub, *[]string) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
 		q := r.URL.Query()
-		asked = append(asked, r.Method+" "+r.URL.Path+" where="+q.Get("where")+" body="+string(body))
+		asked = append(asked, r.Method+" "+r.URL.Path+" where="+q.Get("where")+" body="+string(body)+" select="+q.Get("select"))
 		w.Header().Set("Content-Type", "application/json")
 		p := r.URL.Path
 		switch {
@@ -156,6 +156,10 @@ func TestSDKHubReadsAndRecordsLiveStatus(t *testing.T) {
 	all, err := h.Releases("s")
 	if err != nil || all[0].Live != nil || all[1].Live == nil {
 		t.Fatalf("only release 2 has been reported on: %+v %v", all, err)
+	}
+	// The fields are named, so a release's bundle is not fetched with it.
+	if !strings.HasSuffix(last(asked), "select=ReleaseID,ReleaseNum,SpaceID,OrganizationID,Published,ManifestDigest,TagID,LiveStatus") {
+		t.Errorf("want the fields named: %s", last(asked))
 	}
 	if got, want := *all[1].Live, (LiveStatus{Reporter: "argobot", DataSource: "app", Sync: "Synced", Health: "Healthy", Operation: "Succeeded",
 		ReporterSync: "Synced", Message: "m", ObservedAt: "2026-10-09T08:00:00Z"}); got != want {

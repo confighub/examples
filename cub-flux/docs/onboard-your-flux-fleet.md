@@ -545,7 +545,11 @@ It says only what it can back:
 A read that fails writes nothing. It writes only when a reading changes, or
 when the one the release holds is older than `--refresh` (10 minutes), which is
 how a reader tells a running reporter from a stopped one. A reading another
-reporter wrote is left alone while it is fresh. It runs as the `cub` user you
+reporter wrote is left alone while it is fresh or says the same. A passing
+reading of its own that is no longer true, because Flux now reports another
+release or none, is withdrawn from the newest release. A layer Flux is
+reconciling again at the release it already applied, as it does every
+interval, is not reported until that pass finishes. It runs as the `cub` user you
 run it as, one cluster at a time, and recording takes Edit on the Release:
 your own, or `EditChildren` on its Target for a worker.
 

@@ -968,8 +968,10 @@ not reported, and one that has gone back to Git has its old reading replaced by
 one that closes the gate. A read that fails writes nothing. It writes only when
 a reading changes, or when the one the release holds is older than `--refresh`
 (10 minutes), which shows the reporter is alive. A reading another reporter
-wrote, argobot say, is left alone while it is fresh, so the two do not
-overwrite each other.
+wrote, argobot say, is left alone while it is fresh or says the same: argobot
+writes only when something changes, so an old reading of its is not a stopped
+reporter. A passing reading of its own that is no longer true, because Argo
+now reports another release or none, is withdrawn from the newest release.
 
 Recording takes Edit on the Release: your own, or `EditChildren` on its Target
 for a worker.

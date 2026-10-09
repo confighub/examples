@@ -6,6 +6,7 @@ import (
 	"io"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 // Live status is how ConfigHub hears what a cluster is running. It is
@@ -85,9 +86,16 @@ type Reading struct {
 	Newest  int `json:"newest,omitempty"`
 	// Held is what that Release holds now, if a tool has reported on it.
 	Held *LiveStatus `json:"held,omitempty"`
+	// NewestHeld is what the newest Release holds, which is what the gate
+	// would find.
+	NewestHeld *LiveStatus `json:"newestHeld,omitempty"`
 	// Unrecorded, when set, is why the reading names no Release to record it
 	// on.
 	Unrecorded string `json:"unrecorded,omitempty"`
+	// Pending, when set, is why this pass has nothing new to say and what is
+	// recorded stands: Flux is reconciling the release it already applied,
+	// which it does on every interval.
+	Pending string `json:"pending,omitempty"`
 	// Skip, when set, is why nothing is reported for this layer: it does not
 	// read the Space the reading would be written to.
 	Skip string `json:"skip,omitempty"`
@@ -143,7 +151,10 @@ func ReadStatus(run Runner, hub Hub, c Check, now time.Time) (Reading, error) {
 		return r, fmt.Errorf("listing the releases of %s: %w", c.Space, err)
 	}
 	var why string
-	r.Status, r.Revision, why = k.status()
+	r.Status, r.Revision, why, r.Pending = k.status()
+	if r.Pending != "" {
+		return r, nil
+	}
 	r.Status.Reporter = StatusReporter
 	r.Status.DataSource = c.Kustomization
 	r.Status.ObservedAt = now.UTC().Format(time.RFC3339)
@@ -161,15 +172,21 @@ func (r *Reading) leftBehind(hub Hub) {
 		return
 	}
 	if newest := newestPublished(releases); newest != nil {
-		r.Release, r.Newest, r.Held = newest.Num, newest.Num, newest.Live
+		r.Release, r.Newest, r.Held, r.NewestHeld = newest.Num, newest.Num, newest.Live, newest.Live
 	}
 }
 
 func clip(msg string) string {
-	if len(msg) > statusMessageLimit {
-		return msg[:statusMessageLimit-3] + "..."
+	if len(msg) <= statusMessageLimit {
+		return msg
 	}
-	return msg
+	// Cut on a character, not inside one: half a character reads back as a
+	// different one, and the reading would never match what was written.
+	cut := statusMessageLimit - 3
+	for cut > 0 && !utf8.RuneStart(msg[cut]) {
+		cut--
+	}
+	return msg[:cut] + "..."
 }
 
 func newestPublished(releases []HubRelease) *HubRelease {
@@ -188,7 +205,7 @@ func newestPublished(releases []HubRelease) *HubRelease {
 func (r *Reading) place(releases []HubRelease, why string) {
 	newest := newestPublished(releases)
 	if newest != nil {
-		r.Newest = newest.Num
+		r.Newest, r.NewestHeld = newest.Num, newest.Live
 	}
 	if r.Revision == "" {
 		r.Unrecorded = r.Status.Message
@@ -298,34 +315,46 @@ func (k kustomization) unchecked() []string {
 // the reading is about: the one Flux applied, or the one it is trying to apply
 // when the reading is about that attempt. why is what to add about health once
 // the release is known.
-func (k kustomization) status() (st LiveStatus, revision, why string) {
+func (k kustomization) status() (st LiveStatus, revision, why, pending string) {
 	applied := digestOf(k.Status.LastAppliedRevision)
 	attempted := digestOf(k.Status.LastAttemptedRevision)
 	if attempted == "" {
 		attempted = applied
 	}
 	if k.Spec.Suspend {
-		return LiveStatus{Sync: "Unknown", Health: "Suspended", Message: "the Kustomization is suspended, so Flux applies nothing"}, applied, ""
+		return LiveStatus{Sync: "Unknown", Health: "Suspended", Message: "the Kustomization is suspended, so Flux applies nothing"}, applied, "", ""
 	}
 	ready := k.condition("Ready")
 	if k.Status.ObservedGeneration != k.Metadata.Generation || ready == nil || ready.ObservedGeneration != k.Metadata.Generation {
-		return LiveStatus{Sync: "Unknown", Health: "Progressing", Operation: "Running", Message: "Flux has not reported on the current generation yet"}, attempted, ""
+		return LiveStatus{Sync: "Unknown", Health: "Progressing", Operation: "Running", Message: "Flux has not reported on the current generation yet"}, attempted, "", ""
 	}
 	if s := k.condition("Stalled"); s != nil && s.Status == "True" {
-		return LiveStatus{Sync: "OutOfSync", Health: "Degraded", Operation: "Failed", Message: "stalled: " + s.Message}, attempted, ""
+		return LiveStatus{Sync: "OutOfSync", Health: "Degraded", Operation: "Failed", Message: "stalled: " + s.Message}, attempted, "", ""
 	}
+	// Flux marks a layer Reconciling, and its readiness unknown, at the start
+	// of every pass, including the one it makes each interval over a release
+	// it applied long ago. That pass says nothing new about the release, and
+	// reporting it would close the gate for a few seconds every interval.
+	again := applied != "" && attempted == applied
+	const stands = "Flux is reconciling the release it already applied; what is recorded stands until it finishes"
 	if rc := k.condition("Reconciling"); rc != nil && rc.Status == "True" {
-		return LiveStatus{Sync: "OutOfSync", Health: "Progressing", Operation: "Running", Message: orSay(rc.Message, "reconciling")}, attempted, ""
+		if again {
+			return LiveStatus{}, applied, "", stands
+		}
+		return LiveStatus{Sync: "OutOfSync", Health: "Progressing", Operation: "Running", Message: orSay(rc.Message, "reconciling")}, attempted, "", ""
 	}
 	switch ready.Status {
 	case "False":
-		return LiveStatus{Sync: "OutOfSync", Health: "Degraded", Operation: "Failed", Message: orSay(ready.Message, "not ready")}, attempted, ""
+		return LiveStatus{Sync: "OutOfSync", Health: "Degraded", Operation: "Failed", Message: orSay(ready.Message, "not ready")}, attempted, "", ""
 	case "True":
 	default:
-		return LiveStatus{Sync: "OutOfSync", Health: "Progressing", Operation: "Running", Message: orSay(ready.Message, "readiness unknown")}, attempted, ""
+		if again {
+			return LiveStatus{}, applied, "", stands
+		}
+		return LiveStatus{Sync: "OutOfSync", Health: "Progressing", Operation: "Running", Message: orSay(ready.Message, "readiness unknown")}, attempted, "", ""
 	}
 	if attempted != applied {
-		return LiveStatus{Sync: "OutOfSync", Health: "Progressing", Operation: "Running", Message: "Flux is applying this release; it last applied " + applied}, attempted, ""
+		return LiveStatus{Sync: "OutOfSync", Health: "Progressing", Operation: "Running", Message: "Flux is applying this release; it last applied " + orSay(applied, "none")}, attempted, "", ""
 	}
 	health := "Healthy"
 	if u := k.unchecked(); len(u) > 0 {
@@ -333,7 +362,7 @@ func (k kustomization) status() (st LiveStatus, revision, why string) {
 		// to look at.
 		health, why = "Unknown", "; Ready means applied, not healthy, for "+strings.Join(u, ", ")+": neither spec.wait nor a health check covers it"
 	}
-	return LiveStatus{Sync: "Synced", Health: health, Operation: "Succeeded"}, applied, why
+	return LiveStatus{Sync: "Synced", Health: health, Operation: "Succeeded"}, applied, why, ""
 }
 
 // orSay is msg, or what to say when Flux gave none: an empty message would be
@@ -356,21 +385,31 @@ func digestOf(revision string) string {
 // Outcome is what reporting did for one layer.
 type Outcome struct {
 	Reading
-	// Did is one of written, unchanged, dry-run, skipped, left or unrecorded.
+	// Did is one of written, unchanged, dry-run, skipped, left, unrecorded or
+	// pending.
 	Did string `json:"did"`
 	// Why says, for left, whose reading was left alone.
 	Why string `json:"why,omitempty"`
+	// Withdrew is what was done about a passing reading of ours left on the
+	// newest Release when the reading is now of another: written, unchanged,
+	// left or dry-run.
+	Withdrew string `json:"withdrew,omitempty"`
 }
 
 // ReportStatus records each reading that says something new on its Release, or
 // that the Release has held for longer than refresh: observedAt is the only
-// sign a reporter is still running, so an unchanged reading is written again
-// now and then.
+// sign this reporter is still running, so an unchanged reading is written
+// again now and then.
 //
 // A reading another reporter wrote, argobot say, is left alone while it is
-// fresher than refresh: two reporters on one Release would overwrite each
-// other on every pass. One older than that is from a reporter that has
-// stopped, and is replaced.
+// fresher than refresh, and for as long as it says the same: argobot writes
+// only when something changes, so an old reading of its is not a stopped
+// reporter. It is replaced only when it is both old and different.
+//
+// A reading is true of one Release. When the newest Release holds a passing
+// reading of ours and Flux now reports another release, or none, that
+// reading is no longer true and the Healthy gate would go on passing on it,
+// so it is withdrawn.
 func ReportStatus(hub Hub, readings []Reading, refresh time.Duration, dryRun bool, now time.Time) ([]Outcome, error) {
 	var out []Outcome
 	// A Release that cannot be written is reported, and the rest are still
@@ -378,12 +417,43 @@ func ReportStatus(hub Hub, readings []Reading, refresh time.Duration, dryRun boo
 	var errs []string
 	for _, r := range readings {
 		o := Outcome{Reading: r}
-		held := r.Held
-		fresh := false
-		if held != nil {
-			if at, err := time.Parse(time.RFC3339, held.ObservedAt); err == nil && now.Sub(at) < refresh {
-				fresh = true
+		source := r.Check.Kustomization
+		ours := func(h *LiveStatus) bool {
+			return h != nil && h.Reporter == StatusReporter && h.DataSource == source
+		}
+		record := func(release int, held *LiveStatus, st LiveStatus) (did, why string) {
+			fresh := false
+			if held != nil {
+				if at, err := time.Parse(time.RFC3339, held.ObservedAt); err == nil && now.Sub(at) < refresh {
+					fresh = true
+				}
 			}
+			if held != nil && held.Reporter != StatusReporter {
+				same := held.Sync == st.Sync && held.Health == st.Health && held.Operation == st.Operation
+				switch {
+				case fresh:
+					return "left", fmt.Sprintf("%s reported on release %d at %s; two reporters would overwrite each other", held.Reporter, release, held.ObservedAt)
+				case same:
+					return "left", fmt.Sprintf("%s reported the same on release %d at %s", held.Reporter, release, held.ObservedAt)
+				}
+			}
+			if ours(held) && held.Same(st) && fresh {
+				return "unchanged", ""
+			}
+			if dryRun {
+				return "dry-run", ""
+			}
+			if err := hub.SetLiveStatus(r.Check.Space, release, st); err != nil {
+				errs = append(errs, fmt.Sprintf("recording the live status of release %d of %s: %v", release, r.Check.Space, err))
+				return "", ""
+			}
+			return "written", ""
+		}
+		if r.Pending != "" {
+			// Nothing new is known, so what is recorded stands.
+			o.Did = "pending"
+			out = append(out, o)
+			continue
 		}
 		if r.Skip != "" {
 			// A layer that has left this Space, handed back to Git say, leaves
@@ -392,41 +462,33 @@ func ReportStatus(hub Hub, readings []Reading, refresh time.Duration, dryRun boo
 			// the newest Release is replaced with one that says the layer no
 			// longer reads the Space. Another reporter's reading is not ours
 			// to change.
-			if held == nil || held.Reporter != StatusReporter {
+			if !ours(r.Held) {
 				o.Did = "skipped"
 				out = append(out, o)
 				continue
 			}
-			r.Status = LiveStatus{Reporter: StatusReporter, DataSource: r.Check.Kustomization, Sync: "Unknown", Health: "Unknown",
+			r.Status = LiveStatus{Reporter: StatusReporter, DataSource: source, Sync: "Unknown", Health: "Unknown",
 				Message: clip("the layer no longer reads this Space: it " + r.Skip), ObservedAt: now.UTC().Format(time.RFC3339)}
 			o.Reading = r
 		}
 		if r.Release == 0 {
 			o.Did = "unrecorded"
-			out = append(out, o)
+		} else if o.Did, o.Why = record(r.Release, r.Held, r.Status); o.Did == "" {
 			continue
 		}
-		if held != nil && held.Reporter != StatusReporter && fresh {
-			o.Did = "left"
-			o.Why = fmt.Sprintf("%s reported on release %d at %s; two reporters would overwrite each other", held.Reporter, r.Release, held.ObservedAt)
-			out = append(out, o)
-			continue
+		if r.Skip == "" && r.Newest != 0 && r.Release != r.Newest && ours(r.NewestHeld) && r.NewestHeld.Gate() {
+			w := LiveStatus{Reporter: StatusReporter, DataSource: source, Sync: "Unknown", Health: "Unknown", ObservedAt: now.UTC().Format(time.RFC3339)}
+			if r.Release != 0 {
+				w.Sync = "OutOfSync"
+				w.Message = fmt.Sprintf("not what is running: Flux reports release %d", r.Release)
+			} else {
+				w.Message = clip("not known to be running: " + r.Unrecorded)
+			}
+			if o.Withdrew, _ = record(r.Newest, r.NewestHeld, w); o.Withdrew == "" {
+				continue
+			}
+			o.NewestHeld = &w
 		}
-		if held != nil && held.Same(r.Status) && fresh {
-			o.Did = "unchanged"
-			out = append(out, o)
-			continue
-		}
-		if dryRun {
-			o.Did = "dry-run"
-			out = append(out, o)
-			continue
-		}
-		if err := hub.SetLiveStatus(r.Check.Space, r.Release, r.Status); err != nil {
-			errs = append(errs, fmt.Sprintf("recording the live status of release %d of %s: %v", r.Release, r.Check.Space, err))
-			continue
-		}
-		o.Did = "written"
 		out = append(out, o)
 	}
 	if len(errs) > 0 {
@@ -438,24 +500,39 @@ func ReportStatus(hub Hub, readings []Reading, refresh time.Duration, dryRun boo
 // PrintOutcomes says what happened, one layer to a line.
 func PrintOutcomes(w io.Writer, outs []Outcome) {
 	for _, o := range outs {
+		name := o.Check.Kustomization
+		// newest is what the gate would find on the release it reads.
+		newest := "nothing has reported on"
+		if o.NewestHeld != nil {
+			newest = fmt.Sprintf("holds %s from %s", o.NewestHeld, o.NewestHeld.Reporter)
+		}
+		if o.Withdrew != "" {
+			newest += fmt.Sprintf(" (%s: the passing reading this reporter left there is withdrawn)", o.Withdrew)
+		}
 		switch {
+		case o.Did == "pending":
+			fmt.Fprintf(w, "%s -> %s: %s\n", name, o.Check.Space, o.Pending)
+			continue
 		case o.Did == "left":
-			fmt.Fprintf(w, "%s -> %s: left alone: %s\n", o.Check.Kustomization, o.Check.Space, o.Why)
+			fmt.Fprintf(w, "%s -> %s: left alone: %s\n", name, o.Check.Space, o.Why)
 			continue
 		case o.Did == "skipped":
-			fmt.Fprintf(w, "%s: not reported: %s\n", o.Check.Kustomization, o.Skip)
+			fmt.Fprintf(w, "%s: not reported: %s\n", name, o.Skip)
+			continue
+		case o.Did == "unrecorded" && o.Newest == 0:
+			fmt.Fprintf(w, "%s -> %s: not recorded, there is no release to record it on: %s (the Healthy gate would not pass)\n", name, o.Check.Space, o.Unrecorded)
 			continue
 		case o.Did == "unrecorded":
-			fmt.Fprintf(w, "%s -> %s: not recorded, there is no release to record it on: %s (the Healthy gate would not pass)\n", o.Check.Kustomization, o.Check.Space, o.Unrecorded)
+			fmt.Fprintf(w, "%s -> %s: not recorded, there is no release to record it on: %s (the Healthy gate reads release %d, the newest, which %s)\n", name, o.Check.Space, o.Unrecorded, o.Newest, newest)
 			continue
 		}
 		gate := "the Healthy gate would not pass"
 		switch {
 		case o.Release != o.Newest:
-			gate = fmt.Sprintf("the Healthy gate would not pass: it reads release %d, the newest, which nothing has reported on", o.Newest)
+			gate = fmt.Sprintf("the Healthy gate would not pass: it reads release %d, the newest, which %s", o.Newest, newest)
 		case o.Status.Gate():
 			gate = "the Healthy gate would pass"
 		}
-		fmt.Fprintf(w, "%s -> %s release %d: %s (%s; %s)\n", o.Check.Kustomization, o.Check.Space, o.Release, o.Status, o.Did, gate)
+		fmt.Fprintf(w, "%s -> %s release %d: %s (%s; %s)\n", name, o.Check.Space, o.Release, o.Status, o.Did, gate)
 	}
 }

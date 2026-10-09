@@ -129,7 +129,8 @@ func TestStatusMapping(t *testing.T) {
 		{"stalled", func(k map[string]any) {
 			status(k)["conditions"] = append(status(k)["conditions"].([]any), map[string]any{"type": "Stalled", "status": "True", "message": "path not found"})
 		}, "OutOfSync", "Degraded", "Failed", 2, false, "stalled: path not found"},
-		{"reconciling", func(k map[string]any) {
+		{"reconciling a release it has not applied yet", func(k map[string]any) {
+			status(k)["lastAppliedRevision"] = "latest@" + d1
 			status(k)["conditions"] = append(status(k)["conditions"].([]any), map[string]any{"type": "Reconciling", "status": "True", "message": "applying"})
 		}, "OutOfSync", "Progressing", "Running", 2, false, "applying"},
 		{"a generation Flux has not seen", func(k map[string]any) {
@@ -265,7 +266,7 @@ func TestReportStatusRecordsNothingWithoutARelease(t *testing.T) {
 	}
 	var b strings.Builder
 	PrintOutcomes(&b, outs)
-	if !strings.Contains(b.String(), "not recorded") || !strings.Contains(b.String(), "no revision") || !strings.Contains(b.String(), "gate would not pass") {
+	if !strings.Contains(b.String(), "not recorded") || !strings.Contains(b.String(), "no revision") || !strings.Contains(b.String(), "gate reads release 2, the newest, which nothing has reported on") {
 		t.Errorf("say that nothing was recorded, why, and what it means for the gate: %s", b.String())
 	}
 }
@@ -359,5 +360,124 @@ func TestRequireHealthyAfterOnboarding(t *testing.T) {
 	}
 	if _, err := Build(in, Options{Prefix: "flux", RepoRoot: repoRoot(t), Require: []string{"Validated"}}); err == nil {
 		t.Error("only Healthy is offered")
+	}
+}
+
+// A reading is true of one Release. A passing reading this reporter left on
+// the newest Release is withdrawn when Flux now reports another release,
+// or none: the gate reads the newest, and would go on passing on it.
+func TestWithdrawsAPassingReadingThatIsNoLongerTrue(t *testing.T) {
+	now := time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)
+	passing := func(reporter string) *LiveStatus {
+		return &LiveStatus{Reporter: reporter, DataSource: "apps", Sync: "Synced", Health: "Healthy", Operation: "Succeeded", ObservedAt: now.Format(time.RFC3339)}
+	}
+	on := func(newest *LiveStatus) *fakeHub {
+		return &fakeHub{releases: []HubRelease{releases[0], {Num: 2, ManifestDigest: d2, Published: true, Live: newest}, releases[2]}}
+	}
+	rolledBack := ks(t, func(k map[string]any) {
+		status(k)["lastAppliedRevision"] = "latest@" + d1
+		status(k)["lastAttemptedRevision"] = "latest@" + d1
+	})
+	notCompared := ks(t, func(k map[string]any) {
+		delete(status(k), "lastAppliedRevision")
+		delete(status(k), "lastAttemptedRevision")
+		status(k)["conditions"] = []any{map[string]any{"type": "Ready", "status": "False", "observedGeneration": 3, "message": "artifact not found"}}
+	})
+	for _, tc := range []struct {
+		name     string
+		app      string
+		newest   *LiveStatus
+		withdrew string
+		says     string
+	}{
+		{"rolled back to release 1", rolledBack, passing(StatusReporter), "written", `release 2 {"reporter":"cub-flux","dataSource":"apps","sync":"OutOfSync","health":"Unknown","message":"not what is running: Flux reports release 1"`},
+		{"no reading at all", notCompared, passing(StatusReporter), "written", `release 2 {"reporter":"cub-flux","dataSource":"apps","sync":"Unknown","health":"Unknown","message":"not known to be running: artifact not found`},
+		{"argobot's reading is not ours to withdraw", rolledBack, passing("argobot"), "", ""},
+		{"another Application's reading is not this one's", rolledBack, func() *LiveStatus { p := passing(StatusReporter); p.DataSource = "other"; return p }(), "", ""},
+		{"nothing on the newest release", rolledBack, nil, "", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			hub := on(tc.newest)
+			r, err := ReadStatus(fake(map[string]string{"get kustomization": tc.app, "get ocirepository": spaceURL}), hub, fluxCheck, now)
+			if err != nil {
+				t.Fatal(err)
+			}
+			outs, err := ReportStatus(hub, []Reading{r}, 10*time.Minute, false, now)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if outs[0].Withdrew != tc.withdrew {
+				t.Fatalf("withdrew: want %q, got %q", tc.withdrew, outs[0].Withdrew)
+			}
+			wrote := strings.Join(hub.recorded, "\n")
+			if tc.says != "" && !strings.Contains(wrote, "flux-apps-dev "+tc.says) {
+				t.Errorf("want %s in:\n%s", tc.says, wrote)
+			}
+			if tc.withdrew == "" && strings.Contains("\n"+wrote, "\nflux-apps-dev release 2 ") {
+				t.Errorf("release 2 must be left as it is:\n%s", wrote)
+			}
+			var b strings.Builder
+			PrintOutcomes(&b, outs)
+			if tc.newest != nil && tc.withdrew == "" && !strings.Contains(b.String(), "holds Synced/Healthy/Succeeded from "+tc.newest.Reporter) {
+				t.Errorf("say what the newest release holds, since the gate reads it: %s", b.String())
+			}
+			if tc.withdrew != "" && !strings.Contains(b.String(), "withdrawn") {
+				t.Errorf("say the reading was withdrawn: %s", b.String())
+			}
+		})
+	}
+}
+
+// argobot writes only when something changes, so an old reading of its that
+// says the same is not a stopped reporter, and is left alone.
+func TestLeavesAnOldReadingOfAnotherReporterThatSaysTheSame(t *testing.T) {
+	now := time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)
+	reading := LiveStatus{Reporter: StatusReporter, DataSource: "apps", Sync: "Synced", Health: "Healthy", Operation: "Succeeded", ObservedAt: now.Format(time.RFC3339)}
+	theirs := reading
+	theirs.Reporter, theirs.Message, theirs.ObservedAt = "argobot", "its own words", now.Add(-24*time.Hour).Format(time.RFC3339)
+	hub := &fakeHub{}
+	outs, err := ReportStatus(hub, []Reading{at(reading, &theirs)}, 10*time.Minute, false, now)
+	if err != nil || outs[0].Did != "left" || len(hub.recorded) != 0 || !strings.Contains(outs[0].Why, "argobot reported the same") {
+		t.Errorf("want it left alone, and said why: %+v %v %v", outs, hub.recorded, err)
+	}
+}
+
+// A message is cut on a character: half of one would read back as another,
+// and the reading would be rewritten on every pass.
+func TestClipCutsOnACharacter(t *testing.T) {
+	got := clip(strings.Repeat("é", 150))
+	if len(got) > statusMessageLimit || strings.ContainsRune(got, '\uFFFD') || !strings.HasSuffix(got, "é...") {
+		t.Errorf("want whole characters within %d bytes: %d bytes, %q", statusMessageLimit, len(got), got[len(got)-8:])
+	}
+}
+
+// Flux marks a layer Reconciling at the start of every pass, including the one
+// it makes each interval over a release it applied long ago. That says nothing
+// new, so nothing is written and what is recorded stands.
+func TestStatusOfARoutineReconcileStands(t *testing.T) {
+	for name, mutate := range map[string]func(k map[string]any){
+		"Reconciling": func(k map[string]any) {
+			status(k)["conditions"] = append(status(k)["conditions"].([]any), map[string]any{"type": "Reconciling", "status": "True", "message": "Reconciliation in progress"})
+		},
+		"readiness unknown": func(k map[string]any) {
+			status(k)["conditions"] = []any{map[string]any{"type": "Ready", "status": "Unknown", "observedGeneration": 3, "message": "Reconciliation in progress"}}
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			r := readWith(t, ks(t, mutate), spaceURL)
+			if r.Pending == "" || r.Release != 0 {
+				t.Fatalf("want nothing new to say: %+v", r)
+			}
+			hub := &fakeHub{}
+			outs, err := ReportStatus(hub, []Reading{r}, time.Minute, false, time.Now())
+			if err != nil || len(hub.recorded) != 0 || outs[0].Did != "pending" {
+				t.Errorf("want nothing written: %+v %v %v", outs, hub.recorded, err)
+			}
+			var b strings.Builder
+			PrintOutcomes(&b, outs)
+			if !strings.Contains(b.String(), "what is recorded stands") {
+				t.Errorf("say so: %s", b.String())
+			}
+		})
 	}
 }

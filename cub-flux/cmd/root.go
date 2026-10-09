@@ -337,7 +337,10 @@ A layer still reading Git, or another Space, is not reported. A read that
 fails writes nothing. It writes only when a reading changes, or when the one
 the Release holds is older than --refresh, which shows the reporter is alive.
 A reading another reporter wrote is left alone while it is fresher than
---refresh.
+--refresh or says the same. A passing reading of its own on the newest release
+is withdrawn when Flux now reports another release, or none. A layer Flux is
+reconciling again at the release it already applied is not reported until
+that pass finishes.
 
 One cluster at a time, like check. It writes as the cub user it runs as, which
 takes Edit on the Release: your own, or EditChildren on its Target.`,
