@@ -212,7 +212,7 @@ thing, to ConfigHub: each verdict as a LiveCheck attestation.`,
 				}
 			}
 			w := c.OutOrStdout()
-			bad := 0
+			bad, notPassed := 0, 0
 			for i := range checks {
 				checks[i].Release = checkRelease
 			}
@@ -244,6 +244,17 @@ thing, to ConfigHub: each verdict as a LiveCheck attestation.`,
 						return err
 					}
 					r.Recorded = id
+					switch {
+					case id == "":
+						r.Verdict = "none"
+					case !r.OK() || r.Unhealthy != "":
+						r.Verdict = "rejection"
+					default:
+						r.Verdict = "pass"
+					}
+					if r.Verdict != "pass" {
+						notPassed++
+					}
 				}
 				if checkJSON {
 					results = append(results, r)
@@ -252,10 +263,18 @@ thing, to ConfigHub: each verdict as a LiveCheck attestation.`,
 				fmt.Fprintf(w, "%s: release %d (%s) holds %s at revision %d\n", ck.Application, r.Release.Num, r.Release.ManifestDigest, ck.Unit, r.Release.UnitRevision)
 				if r.Recorded != "" {
 					verdict := "a Pass"
-					if !r.OK() {
+					if r.Verdict == "rejection" {
 						verdict = "a rejection"
 					}
 					fmt.Fprintf(w, "  recorded %s: LiveCheck attestation %s on %s/%s revision %d\n", verdict, r.Recorded, ck.Space, ck.Unit, r.Release.UnitRevision)
+				} else if checkRecord {
+					fmt.Fprintf(w, "  recorded nothing yet: %s, which is neither a Pass nor a rejection; check again once that changes\n", r.NotYet)
+				}
+				switch {
+				case r.Unhealthy != "":
+					fmt.Fprintf(w, "  health: %s\n", r.Unhealthy)
+				case r.NotYet != "" && r.Verdict != "none":
+					fmt.Fprintf(w, "  health: %s\n", r.NotYet)
 				}
 				if a := r.Release.HeadAhead(); a != "" {
 					fmt.Fprintf(w, "  note: %s\n", a)
@@ -293,15 +312,20 @@ thing, to ConfigHub: each verdict as a LiveCheck attestation.`,
 				if err := enc.Encode(results); err != nil {
 					return err
 				}
-				if bad > 0 {
+				if bad > 0 || notPassed > 0 {
 					return errProblems{}
 				}
 				return nil
 			}
 			if len(checks) > 1 {
 				fmt.Fprintf(w, "\n%d of %d clean\n", len(checks)-bad, len(checks))
+				if checkRecord {
+					fmt.Fprintf(w, "%d of %d recorded a Pass\n", len(checks)-notPassed, len(checks))
+				}
 			}
-			if bad > 0 {
+			// With --record the question is whether a Pass was recorded, so
+			// a rejection for health, or nothing recorded yet, fails too.
+			if bad > 0 || notPassed > 0 {
 				return errProblems{}
 			}
 			return nil
@@ -322,7 +346,7 @@ thing, to ConfigHub: each verdict as a LiveCheck attestation.`,
 	check.Flags().StringVar(&destDeclared, "destination", "", "the Argo destination (server address or cluster name) --destination-context reaches, when kubectl reaches it by another address")
 	check.Flags().StringVar(&kubeContext, "kube-context", "", "the kubectl context of the cluster Argo CD runs on, where Applications are read; without it kubectl's current context is used, which may be another cluster")
 	check.Flags().BoolVar(&checkJSON, "json", false, "print the comparison as JSON")
-	check.Flags().BoolVar(&checkRecord, "record", false, "record each verdict in ConfigHub as a LiveCheck attestation on the revision the release bundled: a Pass, or a rejection naming what differs (needs --fields)")
+	check.Flags().BoolVar(&checkRecord, "record", false, "record each verdict in ConfigHub as a LiveCheck attestation on the revision the release bundled: a Pass, which also says Argo CD reports the Application Healthy; a rejection naming what differs, or that it is Degraded or Missing; nothing while it is still progressing (needs --fields). With it, the command fails unless every check recorded a Pass")
 
 	var stNS, stApp, stSpace, stContext, stStages string
 	var stJSON, stWatch, stDry, stHard bool

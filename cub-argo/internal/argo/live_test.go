@@ -19,7 +19,7 @@ func fake(out map[string]string) Runner {
 	}
 }
 
-const appStatus = `{"spec":{"syncPolicy":{"automated":{"prune":true}}},"status":{"resources":[
+const appStatus = `{"spec":{"syncPolicy":{"automated":{"prune":true}}},"status":{"health":{"status":"Degraded"},"resources":[
  {"group":"apps","kind":"Deployment","namespace":"storefront-prod","name":"frontend","requiresPruning":true},
  {"group":"","kind":"Service","namespace":"storefront-prod","name":"frontend","requiresPruning":true},
  {"group":"","kind":"ConfigMap","namespace":"storefront-prod","name":"legacy-tuning","requiresPruning":true},
@@ -33,6 +33,9 @@ func TestInventoryFindsWhatWouldBePruned(t *testing.T) {
 	live, err := LiveInventory(fake(map[string]string{"get application": appStatus}), "argocd", "prod-1-apptique")
 	if err != nil {
 		t.Fatal(err)
+	}
+	if live.Health != "Degraded" {
+		t.Errorf("Argo's own word for the Application's health is read: %q", live.Health)
 	}
 	stored, err := ObjectsIn([]byte(`
 apiVersion: apps/v1

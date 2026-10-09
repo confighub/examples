@@ -15,8 +15,12 @@ import (
 // LiveCheckType is the attestation type a recorded check carries.
 const LiveCheckType = "LiveCheck"
 
-// RecordCheck records one check's verdict. It needs a field comparison: a
-// claim that the cluster runs this release rests on more than the object set.
+// RecordCheck records one check's verdict, and returns the attestation's ID.
+// It needs a field comparison: a claim that the cluster runs this release
+// rests on more than the object set. Health is part of the claim: a Pass says
+// the Application is Healthy, a Degraded or Missing one is a rejection, and
+// one still on its way records nothing and returns no ID, since it is
+// neither yet.
 func RecordCheck(hub Hub, r Result) (string, error) {
 	if r.Fields == nil {
 		return "", fmt.Errorf("%s: --record needs --fields, so the claim rests on every field the release sets", r.Check.Application)
@@ -35,7 +39,13 @@ func RecordCheck(hub Hub, r Result) (string, error) {
 	if r.Fields.Compared < r.Fields.Total {
 		problems = append(problems, fmt.Sprintf("fields compared on %d of %d objects", r.Fields.Compared, r.Fields.Total))
 	}
-	note := fmt.Sprintf("cub argo check: %d objects match what Argo owns, and every field the release sets matches on all %d", r.Inventory.Same, r.Fields.Total)
+	if r.Unhealthy != "" {
+		problems = append(problems, r.Unhealthy)
+	}
+	if len(problems) == 0 && r.NotYet != "" {
+		return "", nil
+	}
+	note := fmt.Sprintf("cub argo check: %d objects match what Argo owns, every field the release sets matches on all %d, and Argo CD reports it Healthy", r.Inventory.Same, r.Fields.Total)
 	reject := len(problems) > 0
 	if reject {
 		note = "cub argo check: " + strings.Join(problems, "; ")
@@ -50,6 +60,7 @@ func RecordCheck(hub Hub, r Result) (string, error) {
 		Type: LiveCheckType,
 		Claims: map[string]string{
 			"argocd.argoproj.io/application": r.Check.Application,
+			"argocd.argoproj.io/health":      orWord(r.Health, "none"),
 			"confighub.com/release":          r.Release.ManifestDigest,
 		},
 		Reject: reject, Note: note,

@@ -80,7 +80,7 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	// cub auth status, not a list call: a list goes through the entity API and
 	// fails on a client/server version skew while the session is fine. See the
 	// note in ApplyScript.
-	add(`cub auth status >/dev/null 2>&1 || { echo "cub is not logged in: run cub auth login"; exit 1; }`)
+	add(`cub auth status >/dev/null 2>&1 || { echo "cub is not signed in to ConfigHub: run 'cub auth login', or 'cub auth login --private-key=<key>' on a server with no identity provider"; exit 1; }`)
 	add(`echo "  every kubectl call below uses context $ctx"`)
 	add(`k get namespace "$ns" >/dev/null || { echo "no $ns namespace: is this the right cluster?"; exit 1; }`)
 	add("# flux-system reconciles the Flux controllers themselves. It is the way back")
@@ -265,11 +265,13 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("# part of this fleet that stays on Git; every layer after them comes from the")
 	add("# cluster's layers Space in ConfigHub.")
 	add(`addr=${CONFIGHUB_OCI:-}`)
+	add("# Every use below writes the scheme itself, so take it off if it was given.")
+	add(`addr=${addr#oci://}`)
 	add(`if [ -z "$addr" ]; then`)
 	// The Target does not carry the gateway's host: apply.sh creates it with
 	// empty parameters, and cub reports none. So this asks rather than guessing,
 	// and says where the answer comes from for both kinds of installation.
-	add(`  echo "Set CONFIGHUB_OCI to the gateway host this cluster reaches, without a scheme."`)
+	add(`  echo "Set CONFIGHUB_OCI to the gateway host this cluster reaches; oci://<host> is taken too."`)
 	add(`  echo "  ConfigHub cloud:  oci.hub.confighub.com"`)
 	add(`  echo "  self-hosted:      the host and port of the confighub-oci-server service,"`)
 	add(`  echo "                    as reachable FROM this cluster, not from your laptop;"`)

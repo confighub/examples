@@ -40,13 +40,15 @@ func JoinScript(p *Plan, prefix string) string {
 		}
 	}
 	add(`addr=${CONFIGHUB_OCI:-}`)
+	add("# Every use below writes the scheme itself, so take it off if it was given.")
+	add(`addr=${addr#oci://}`)
 	add(`[ -n "$addr" ] || { echo "set CONFIGHUB_OCI to the gateway host this cluster reaches (CONFIGHUB_OCI_PLAIN_HTTP=1 if it serves plain HTTP)"; exit 1; }`)
 	add(`step() { printf '\n== %%s\n' "$*"; }`)
 	add("")
 
 	add(`step "1/3 Check before changing anything"`)
 	add(`echo "  every kubectl call below uses context $ctx"`)
-	add(`cub auth status >/dev/null 2>&1 || { echo "cub is not logged in: run cub auth login"; exit 1; }`)
+	add(`cub auth status >/dev/null 2>&1 || { echo "cub is not signed in to ConfigHub: run 'cub auth login', or 'cub auth login --private-key=<key>' on a server with no identity provider"; exit 1; }`)
 	add(`k get crd kustomizations.kustomize.toolkit.fluxcd.io >/dev/null || { echo "Flux is not installed on $ctx: run flux install first"; exit 1; }`)
 	add("# A layer already here is one to hand over, not to create: the root would")
 	add("# take it over without the checks handover.sh makes first.")

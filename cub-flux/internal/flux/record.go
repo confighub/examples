@@ -15,8 +15,13 @@ import (
 // LiveCheckType is the attestation type a recorded check carries.
 const LiveCheckType = "LiveCheck"
 
-// RecordCheck records one check's verdict. It needs a field comparison: a
-// claim that the cluster runs this release rests on more than the object set.
+// RecordCheck records one check's verdict, and returns the attestation's ID.
+// It needs a field comparison: a claim that the cluster runs this release
+// rests on more than the object set. Health is part of the claim: a layer
+// Flux reports stalled or not ready is a rejection, and one still reconciling
+// records nothing and returns no ID, since it is neither yet. A Pass names
+// the health it rests on, which is Unknown where Flux was not asked to check
+// the workloads.
 func RecordCheck(hub Hub, r Result) (string, error) {
 	if r.Fields == nil {
 		return "", fmt.Errorf("%s: --record needs --fields, so the claim rests on every field the release sets", r.Check.Kustomization)
@@ -36,7 +41,16 @@ func RecordCheck(hub Hub, r Result) (string, error) {
 		problems = append(problems, fmt.Sprintf("fields compared on %d of %d objects", r.Fields.Compared, r.Fields.Total))
 	}
 	ns := checkNamespace
-	note := fmt.Sprintf("cub flux check: %d objects match what the layer applied, and every field the release sets matches on all %d", r.Inventory.Same, r.Fields.Total)
+	if r.Unhealthy != "" {
+		problems = append(problems, r.Unhealthy)
+	}
+	if len(problems) == 0 && r.NotYet != "" {
+		return "", nil
+	}
+	note := fmt.Sprintf("cub flux check: %d objects match what the layer applied, every field the release sets matches on all %d, and Flux reports it ready", r.Inventory.Same, r.Fields.Total)
+	if r.Health == "Unknown" {
+		note += "; Flux was not asked to check its workloads, so that means applied, not healthy"
+	}
 	reject := len(problems) > 0
 	if reject {
 		note = "cub flux check: " + strings.Join(problems, "; ")
@@ -51,6 +65,7 @@ func RecordCheck(hub Hub, r Result) (string, error) {
 		Type: LiveCheckType,
 		Claims: map[string]string{
 			"kustomize.toolkit.fluxcd.io/kustomization": ns + "/" + r.Check.Kustomization,
+			"kustomize.toolkit.fluxcd.io/health":        orSay(r.Health, "none"),
 			"confighub.com/release":                     r.Release.ManifestDigest,
 		},
 		Reject: reject, Note: note,

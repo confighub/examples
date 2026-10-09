@@ -25,7 +25,7 @@ REPO_ROOT=${REPO_ROOT:-'<repo>'}
 case "$cluster" in dev-1|staging-1|prod-1) ;; *) echo "set CLUSTER=<one of: dev-1, staging-1, prod-1> so the right Target is used"; exit 1 ;; esac
 
 step "0/4 Check before changing anything"
-cub auth status >/dev/null 2>&1 || { echo "cub is not logged in: run cub auth login"; exit 1; }
+cub auth status >/dev/null 2>&1 || { echo "cub is not signed in to ConfigHub: run 'cub auth login', or 'cub auth login --private-key=<key>' on a server with no identity provider"; exit 1; }
 echo "  every kubectl call below uses context $ctx"
 k get namespace "$ns" >/dev/null || { echo "no $ns namespace: is this the right cluster?"; exit 1; }
 # flux-system reconciles the Flux controllers themselves. It is the way back
@@ -227,8 +227,10 @@ step "2/4 Add the gateway to flux-system: the credential and the root"
 # part of this fleet that stays on Git; every layer after them comes from the
 # cluster's layers Space in ConfigHub.
 addr=${CONFIGHUB_OCI:-}
+# Every use below writes the scheme itself, so take it off if it was given.
+addr=${addr#oci://}
 if [ -z "$addr" ]; then
-  echo "Set CONFIGHUB_OCI to the gateway host this cluster reaches, without a scheme."
+  echo "Set CONFIGHUB_OCI to the gateway host this cluster reaches; oci://<host> is taken too."
   echo "  ConfigHub cloud:  oci.hub.confighub.com"
   echo "  self-hosted:      the host and port of the confighub-oci-server service,"
   echo "                    as reachable FROM this cluster, not from your laptop;"

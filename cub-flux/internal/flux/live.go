@@ -65,6 +65,11 @@ type Live struct {
 	// explicit choice and can be false. It decides whether an object the layer
 	// applied and a new source does not hold is deleted or merely left behind.
 	Prunes bool
+	// Health is what Flux says of the layer, in ConfigHub's words: Healthy,
+	// Unknown where Flux was not asked to check the workloads, Degraded,
+	// Progressing or Suspended. Unhealthy, when set, says what is wrong;
+	// NotYet, when set, says why it is neither healthy nor wrong yet.
+	Health, Unhealthy, NotYet string
 }
 
 // LiveInventory reads what a Flux Kustomization says it applied. This is the
@@ -96,6 +101,11 @@ func LiveInventory(run Runner, namespace, name string) (Live, error) {
 		return Live{}, fmt.Errorf("Kustomization %s reports an empty inventory. It may not have reconciled yet, and a handover cannot be checked against nothing", name)
 	}
 	l := Live{Prunes: k.Spec.Prune}
+	var ks kustomization
+	if err := json.Unmarshal(out, &ks); err != nil {
+		return Live{}, fmt.Errorf("reading Kustomization %s: %w", name, err)
+	}
+	l.Health, l.Unhealthy, l.NotYet = ks.health(name)
 	for _, e := range entries {
 		o, err := parseID(e.ID)
 		if err != nil {

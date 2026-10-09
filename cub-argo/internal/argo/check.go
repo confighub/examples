@@ -51,8 +51,35 @@ type Result struct {
 	// the cluster says is not there: Argo's record is behind, so it is not a
 	// record a handover can be checked against.
 	Stale []string `json:"staleInventory,omitempty"`
-	// Recorded is the ID of the LiveCheck attestation --record wrote.
+	// Health is Argo CD's own word for the Application's health. It is part
+	// of what --record claims, not of whether a handover would change the
+	// cluster: Unhealthy, when set, makes the record a rejection, and
+	// NotYet, when set, is why nothing is recorded yet.
+	Health    string `json:"health,omitempty"`
+	Unhealthy string `json:"unhealthy,omitempty"`
+	NotYet    string `json:"notYet,omitempty"`
+	// Recorded is the ID of the LiveCheck attestation --record wrote, and
+	// Verdict what --record came to: pass, rejection, or none when nothing
+	// was recorded yet.
 	Recorded string `json:"recorded,omitempty"`
+	Verdict  string `json:"verdict,omitempty"`
+}
+
+// judgeHealth makes health part of what a recorded check claims. Only Healthy
+// can be a Pass. Degraded and Missing are wrong. Anything else, such as
+// Progressing, is "not yet": it may still become Healthy, so it is neither a
+// Pass nor a rejection.
+func (r *Result) judgeHealth(health string) {
+	r.Health = health
+	switch health {
+	case "Healthy":
+	case "Degraded", "Missing":
+		r.Unhealthy = fmt.Sprintf("Argo CD reports %s as %s", r.Check.Application, health)
+	case "":
+		r.NotYet = fmt.Sprintf("Argo CD reports no health for %s yet", r.Check.Application)
+	default:
+		r.NotYet = fmt.Sprintf("Argo CD reports %s as %s", r.Check.Application, health)
+	}
 }
 
 // OK reports whether moving this Application's source would leave the cluster
@@ -80,6 +107,7 @@ func RunCheck(run Runner, hub Hub, c Check, fields bool, workloads func(Destinat
 		return Result{}, err
 	}
 	r := Result{Check: c, Release: rel, Inventory: CompareInventory(live, held, c.Namespace)}
+	r.judgeHealth(live.Health)
 	if fields {
 		at, err := workloads(live.Destination)
 		if err != nil {

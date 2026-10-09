@@ -26,7 +26,7 @@ The commands and scripts, in order; the first two change nothing:
 ## Install
 
 ```bash
-cub plugin install confighub/examples@cub-argo-v0.3.1 --name argo
+cub plugin install confighub/examples@cub-argo-v0.3.2 --name argo
 cub plugin list                  # argo should be listed, status ok
 cub argo plan <the repository your Argo CD syncs, or a kubectl export>
 ```
@@ -35,9 +35,10 @@ cub argo plan <the repository your Argo CD syncs, or a kubectl export>
 command on your own estate. Already on an earlier release?
 
 ```bash
-cub plugin upgrade argo@cub-argo-v0.3.1
+cub plugin upgrade argo@cub-argo-v0.3.2
 ```
 
+Needs `cub` v0.7.0 or newer; live status needs ConfigHub v0.8.2 or newer.
 Releases are tagged `cub-argo-v<version>` in this repository, and what each one
 changed is in [docs/whats-new.md](docs/whats-new.md).
 
@@ -123,7 +124,8 @@ Reads cluster, list and matrix (two generators) generators; Go templates
 (`goTemplate`) and `{{param}}` templates; label selectors with `In`, `NotIn`,
 `Exists` and `DoesNotExist`; sync waves; sync windows; overlay image tags.
 
-Reads a source path as Argo does: a kustomization is built with kustomize, and
+Reads a source path as Argo does: a kustomization is one the scripts build with
+`kustomize build` (the plugin itself renders nothing), and
 a plain directory of manifests is read file by file, recursively with
 `directory.recurse`. Argo CD's own cluster, `in-cluster`, needs no cluster
 Secret.

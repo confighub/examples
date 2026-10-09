@@ -89,6 +89,9 @@ type Live struct {
 	// Destination is where the Application deploys: the cluster whose
 	// objects a field comparison has to read.
 	Destination Destination
+	// Health is Argo CD's own word for the Application: Healthy, Progressing,
+	// Degraded, Suspended, Missing, or none yet.
+	Health string
 }
 
 // LiveInventory reads what Argo CD says an Application owns right now. This is
@@ -120,6 +123,9 @@ func LiveInventory(run Runner, namespace, app string) (Live, error) {
 				Hook            bool   `json:"hook"`
 				RequiresPruning bool   `json:"requiresPruning"`
 			} `json:"resources"`
+			Health struct {
+				Status string `json:"status"`
+			} `json:"health"`
 		} `json:"status"`
 	}
 	if err := json.Unmarshal(out, &a); err != nil {
@@ -131,6 +137,7 @@ func LiveInventory(run Runner, namespace, app string) (Live, error) {
 	l := Live{
 		Prunes:      a.Spec.SyncPolicy.Automated != nil && a.Spec.SyncPolicy.Automated.Prune,
 		Destination: Destination{Server: a.Spec.Destination.Server, Name: a.Spec.Destination.Name},
+		Health:      a.Status.Health.Status,
 	}
 	for _, r := range a.Status.Resources {
 		l.Owned = append(l.Owned, Owned{Group: r.Group, Kind: r.Kind, Namespace: r.Namespace, Name: r.Name, Hook: r.Hook, Pruning: r.RequiresPruning})
