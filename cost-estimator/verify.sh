@@ -66,7 +66,7 @@ if [[ -n "$WHERE_SPACE" ]]; then
 else
   selected_spaces=$($cub space list -o jq='.[].Space.Slug' 2>/dev/null | tr -d '"')
 fi
-k8s_spaces=$($cub unit list --space "*" --where "ToolchainType = 'Kubernetes/YAML'" \
+k8s_spaces=$($cub unit list --where "ToolchainType = 'Kubernetes/YAML'" \
   -o jq='.[].Space.Slug' 2>/dev/null | tr -d '"' | sort -u)
 scope=$(comm -12 <(echo "$selected_spaces" | sort -u) <(echo "$k8s_spaces") | grep -vx "$POLICY_SPACE" || true)
 

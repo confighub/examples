@@ -108,8 +108,8 @@ cub space list --where "Labels.Purpose = 'initiatives-demo'"
 cub unit list --space eshop
 
 # List units across all component spaces by Space label
-cub unit list --space "*" --where "Space.Labels.Component = 'aichat'"
-cub unit list --space "*" --where "Space.Labels.Owner = 'Support'"
+cub unit list --where "Space.Labels.Component = 'aichat'"
+cub unit list --where "Space.Labels.Owner = 'Support'"
 
 # List all initiative views (they live in the platform space)
 cub view list --space initiatives-demo --where "Labels.initiative = 'true'"

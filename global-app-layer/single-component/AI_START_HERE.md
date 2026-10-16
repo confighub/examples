@@ -51,7 +51,7 @@ cd global-app-layer/single-component
 which cub
 cub version
 cub context list --json | jq
-cub target list --space "*" --json | jq '.[] | {space: .Space.Slug, target: .Target.Slug, providerType: .Target.ProviderType}'
+cub target list --json | jq '.[] | {space: .Space.Slug, target: .Target.Slug, providerType: .Target.ProviderType}'
 ```
 
 What to explain:

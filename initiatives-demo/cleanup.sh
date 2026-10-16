@@ -56,7 +56,7 @@ if $cub space get "$PLATFORM_SPACE" --quiet &>/dev/null; then
   if [[ -n "$worker_ids" ]]; then
     while IFS= read -r wid; do
       [[ -z "$wid" ]] && continue
-      $cub trigger delete --space "*" \
+      $cub trigger delete \
         --where "BridgeWorkerID = '$wid'" --quiet >/dev/null 2>&1 || true
     done <<< "$worker_ids"
   fi

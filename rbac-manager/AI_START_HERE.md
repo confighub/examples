@@ -42,7 +42,7 @@ which cluster is another issue."
 
 ```bash
 # Every variant of the developer persona, across all clusters, one query
-cub unit list --space "*" --where "Labels.persona = 'developer'"
+cub unit list --where "Labels.persona = 'developer'"
 
 # What changed locally since the clone? (dev developers gained delete, on purpose)
 cub unit diff -u developer --space rbac-demo-dev --from=1 --to=HeadRevisionNum
@@ -88,7 +88,7 @@ Here it is as one operation over a fleet selector — server-side, so YAML
 comments and formatting are preserved:
 
 ```bash
-cub function do --space "*" \
+cub function do \
   --where "Labels.persona = 'developer' AND Labels.env = 'staging'" \
   --change-desc "Allow developers to deletecollection in staging" \
   -- yq-i 'select(.kind == "ClusterRole").rules[0].verbs += ["deletecollection"]'

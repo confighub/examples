@@ -79,7 +79,7 @@ target_space="${target_ref%%/*}"
 target_slug="${target_ref##*/}"
 
 target_doc="$(
-  cub target list --space "*" --json \
+  cub target list --json \
     | jq --arg space "${target_space}" --arg target "${target_slug}" '
         [ .[] | select(.Space.Slug == $space and .Target.Slug == $target) ][0]
       '
@@ -109,7 +109,7 @@ Why:
 
 What to do next:
 1. stay in ConfigHub-only mode
-2. run: cub target list --space "*" --json | jq
+2. run: cub target list --json | jq
 3. choose a real <space/target> and run this preflight again
 EOF_NOT_FOUND
   fi

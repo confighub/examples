@@ -216,7 +216,7 @@ else
   selected_spaces=$($cub space list -o jq='.[].Space.Slug' 2>/dev/null | tr -d '"')
 fi
 
-k8s_spaces=$($cub unit list --space "*" --where "ToolchainType = 'Kubernetes/YAML'" \
+k8s_spaces=$($cub unit list --where "ToolchainType = 'Kubernetes/YAML'" \
   -o jq='.[].Space.Slug' 2>/dev/null | tr -d '"' | sort -u)
 
 scope=$(comm -12 <(echo "$selected_spaces" | sort -u) <(echo "$k8s_spaces") | grep -vx "$POLICY_SPACE" || true)
@@ -266,7 +266,7 @@ cat <<EOF
 Done. Created ${created} object(s), wired ${wired} Space(s), skipped ${skipped} already set, reported ${reported} Space(s) with custom trigger wiring.
 
 Violations now surface as ValidationWarnings (advisory). Review them with:
-  $cub unit list --space "*" --where "LEN(ValidationWarnings) > 0"
+  $cub unit list --where "LEN(ValidationWarnings) > 0"
 
 Scan your fleet so no-critical-cves has CVE verdicts to act on:
   ./scanner/secscan scan-fleet --space "<your-spaces>" --write-back

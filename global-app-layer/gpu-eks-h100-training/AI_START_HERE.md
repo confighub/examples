@@ -47,7 +47,7 @@ cd global-app-layer/gpu-eks-h100-training
 which cub
 cub version
 cub context list --json | jq
-cub target list --space "*" --json | jq '.[] | {space: .Space.Slug, target: .Target.Slug, provider: .Target.ProviderType}'
+cub target list --json | jq '.[] | {space: .Space.Slug, target: .Target.Slug, provider: .Target.ProviderType}'
 ```
 
 What to explain:

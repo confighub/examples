@@ -84,7 +84,7 @@ export CONFIGHUB_URL="https://hub.confighub.com" CONFIGHUB_TOKEN="$(cub auth get
 ./scanner/secscan inventory --space "sec-demo-*"
 
 # which Units did the scanner mark CRITICAL? (verdict stored as data)
-cub unit list --space "*" --where "Annotations.'sec-scanner.confighub.com/max-severity' = 'CRITICAL'"
+cub unit list --where "Annotations.'sec-scanner.confighub.com/max-severity' = 'CRITICAL'"
 ```
 
 Expected: the inventory lists each Unit's image; the query returns the dev

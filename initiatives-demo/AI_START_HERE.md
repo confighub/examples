@@ -93,14 +93,14 @@ cub space list --where "Labels.Purpose = 'initiatives-demo'"
 cub unit list --space aichat --json | jq '.[].Unit.Slug'
 
 # List units across all component spaces by Space label
-cub unit list --space "*" --where "Space.Labels.Component = 'eshop'" --json | jq '.[].Unit.Slug'
-cub unit list --space "*" --where "Space.Labels.Owner = 'Support'" --json | jq '.[].Unit.Slug'
+cub unit list --where "Space.Labels.Component = 'eshop'" --json | jq '.[].Unit.Slug'
+cub unit list --where "Space.Labels.Owner = 'Support'" --json | jq '.[].Unit.Slug'
 ```
 
 What to explain:
 - Each component has its own Space, labeled with `Component` (aichat, eshop, …)
   and `Owner` (Support, Product, Marketing) — the labels live on the Space
-- `--space "*"` searches across spaces; the `Space.Labels.*` predicates select
+- without `--space`, the list searches across spaces; the `Space.Labels.*` predicates select
   units by their Space's labels
 - Each initiative filters units by these Space labels
 

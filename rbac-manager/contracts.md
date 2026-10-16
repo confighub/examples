@@ -79,7 +79,7 @@ Stable, machine-checkable behavior for this example. See
 - stable fields: key `rbac-demo-policy/no-wildcards/vet-celexpr` with value `true`
 - proves: guardrail policies are enforced as Validation Errors, not advisory lint
 
-### `cub function do --space "*" --where "Labels.persona = 'developer' AND Labels.env = 'staging'" --change-desc "..." -- yq-i '...'`
+### `cub function do --where "Labels.persona = 'developer' AND Labels.env = 'staging'" --change-desc "..." -- yq-i '...'`
 
 - mutates: yes (ConfigHub)
 - output shape: plain text per-unit success + persisted revision with the

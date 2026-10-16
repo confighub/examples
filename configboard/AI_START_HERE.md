@@ -16,7 +16,7 @@ open.
 ```bash
 ./preflight.sh --json | jq     # what dimensions this org actually has
 cub space list -o json
-cub target list --space "*" -o json
+cub target list -o json
 ```
 
 `preflight.sh` mutates nothing. Note `-o json`, not the deprecated `--json`.

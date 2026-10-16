@@ -146,7 +146,7 @@ describe('cubCommand', () => {
       NOW,
     );
     expect(cubCommand(spec)).toBe(
-      `cub unit list --space "*" --where "Space.Labels.Environment = 'prod'"`,
+      `cub unit list --where "Space.Labels.Environment = 'prod'"`,
     );
   });
 });

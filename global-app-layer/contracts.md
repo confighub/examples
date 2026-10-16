@@ -51,7 +51,7 @@ This package supports multiple delivery modes. Know which one applies before mak
 - proves: whether the current shell has a usable ConfigHub CLI context
 - note: for the current context, use `cub context list` plain output and look for the `CURRENT` marker
 
-### `cub target list --space "*" --json`
+### `cub target list --json`
 
 - mutates: no
 - output shape: JSON array of targets visible to the current context

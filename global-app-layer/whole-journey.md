@@ -30,7 +30,7 @@ Check capability first:
 which cub
 cub version
 cub context list --json | jq
-cub target list --space "*" --json | jq
+cub target list --json | jq
 ```
 
 If no target is available, stop after the ConfigHub-only path.
