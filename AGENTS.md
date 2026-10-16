@@ -38,7 +38,7 @@ Use:
 ```bash
 cub context list --json
 cub space list --json
-cub target list --space "*" --json
+cub target list --json
 ```
 
 These are read-only.
@@ -52,7 +52,7 @@ git rev-parse --show-toplevel
 ./scripts/verify.sh
 cub context list --json
 cub space list --json
-cub target list --space "*" --json
+cub target list --json
 ```
 
 These commands do not mutate:
@@ -90,7 +90,7 @@ Correct:
 
 ```bash
 cub space list --where "Labels.ExampleName = 'global-app-layer-realistic-app'" --json
-cub unit list --space "*" --where "Labels.Component = 'backend'" --json
+cub unit list --where "Labels.Component = 'backend'" --json
 ```
 
 Wrong:
@@ -106,7 +106,7 @@ Read-only:
 - `./scripts/verify.sh`
 - `cub context list --json`
 - `cub space list --json`
-- `cub target list --space "*" --json`
+- `cub target list --json`
 - `./find-runs.sh`
 - `./setup.sh --explain`
 - `./setup.sh --explain-json`

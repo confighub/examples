@@ -149,7 +149,7 @@ export CONFIGHUB_URL="https://hub.confighub.com" CONFIGHUB_TOKEN="$(cub auth get
 cub unit get legacy-frontend --space sec-demo-dev -o jq=".Unit.ValidationErrors"
 
 # Which clusters were scanned CRITICAL? (data written back by the scanner)
-cub unit list --space "*" --where "Annotations.'sec-scanner.confighub.com/max-severity' = 'CRITICAL'"
+cub unit list --where "Annotations.'sec-scanner.confighub.com/max-severity' = 'CRITICAL'"
 ```
 
 For a paced, stage-by-stage walkthrough, see [AI_START_HERE.md](AI_START_HERE.md).

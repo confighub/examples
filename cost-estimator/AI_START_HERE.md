@@ -77,7 +77,7 @@ export CONFIGHUB_URL="https://hub.confighub.com" CONFIGHUB_TOKEN="$(cub auth get
 ./estimator/costest inventory --space "cost-demo-*"
 
 # which Units did the estimator mark OVER budget? (verdict stored as data)
-cub unit list --space "*" --where "Annotations.'cost-estimator.confighub.com/budget-status' = 'OVER'"
+cub unit list --where "Annotations.'cost-estimator.confighub.com/budget-status' = 'OVER'"
 ```
 
 Expected: the inventory lists each Unit's cost and budget status; the query

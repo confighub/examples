@@ -74,7 +74,7 @@ What the placeholder means:
 To find a real target reference:
 
 ```bash
-cub target list --space "*" --json
+cub target list --json
 ```
 
 That is the core delivery loop:

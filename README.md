@@ -34,7 +34,7 @@ verifier runs local tests and checks example contracts.
 ./scripts/verify.sh
 cub context list --json
 cub space list --json
-cub target list --space "*" --json
+cub target list --json
 ```
 
 If you are not logged in yet, run `cub auth login` before the `cub` commands.

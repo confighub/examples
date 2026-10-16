@@ -118,7 +118,7 @@ After `setup.sh`, `seed-initiatives.sh`, and the apply step, here's what's worth
 ### The variant chain
 
 ```bash
-cub unit tree --edge clone --space "*" \
+cub unit tree --edge clone \
   --where "Labels.ExampleChain = '$(source .state/state.env && echo $PREFIX)'"
 ```
 Each of the four components shows up walking from `base → kgpu → h100 → medium → enterprise-rag` and forking into the three deploy variants. The `direct` leaf for `tenant-acme` is `Ready`; Flux and Argo are `NotLive` (no target bound).

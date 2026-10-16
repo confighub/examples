@@ -225,7 +225,7 @@ else
   selected_spaces=$($cub space list -o jq='.[].Space.Slug' 2>/dev/null | tr -d '"')
 fi
 
-k8s_spaces=$($cub unit list --space "*" --where "ToolchainType = 'Kubernetes/YAML'" \
+k8s_spaces=$($cub unit list --where "ToolchainType = 'Kubernetes/YAML'" \
   -o jq='.[].Space.Slug' 2>/dev/null | tr -d '"' | sort -u)
 
 scope=$(comm -12 <(echo "$selected_spaces" | sort -u) <(echo "$k8s_spaces") | grep -vx "$POLICY_SPACE" || true)
@@ -275,7 +275,7 @@ for space in $scope; do
 done
 
 # Targets with their own trigger selection get the same report-only treatment.
-targets_with_config=$($cub target list --space "*" \
+targets_with_config=$($cub target list \
   -o jq='.[] | select((.Target.TriggerFilterID != null) or ((.Target.WhereTrigger // "") != "")) | "\(.Space.Slug)/\(.Target.Slug)"' 2>/dev/null | tr -d '"' || true)
 if [[ -n "$targets_with_config" ]]; then
   echo
@@ -289,7 +289,7 @@ Done. Created ${created} object(s), wired ${wired} Space(s), skipped ${skipped} 
 
 Violations now surface as ValidationWarnings (advisory). Review them in the RBAC
 manager app or with:
-  $cub unit list --space "*" --where "LEN(ValidationWarnings) > 0"
+  $cub unit list --where "LEN(ValidationWarnings) > 0"
 
 Promote a guardrail to blocking (ValidationErrors) — one change, fleet-wide:
   $cub trigger update no-rbac-wildcards --space ${POLICY_SPACE} --unwarn

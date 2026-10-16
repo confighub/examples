@@ -329,7 +329,7 @@ Done. Created ${created} entities, skipped ${skipped} existing.
 Inspect the result:
   $cub unit list --space ${DEV_SPACE}
   $cub unit get legacy-wildcard-admin --space ${DEV_SPACE} -o jq=".Unit.ValidationErrors"
-  $cub unit list --space "*" --where "Labels.persona = 'developer'"
+  $cub unit list --where "Labels.persona = 'developer'"
 
 Next: ./demo-verify.sh confirms the seeded fleet, including that the planted
 violations carry the expected Validation Errors.

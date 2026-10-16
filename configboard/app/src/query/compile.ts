@@ -221,22 +221,22 @@ export function cubCommand(spec: RequestSpec): string {
   const parts: string[] = [];
   switch (spec.source) {
     case 'Unit':
-      parts.push('cub unit list --space "*"');
+      parts.push('cub unit list');
       break;
     case 'Space':
       parts.push('cub space list');
       break;
     case 'Revision':
-      parts.push('cub revision list --space "*"');
+      parts.push('cub revision list');
       break;
     case 'Target':
-      parts.push('cub target list --space "*"');
+      parts.push('cub target list');
       break;
     case 'Resource':
-      parts.push('cub function do --space "*" -o json -- get-resources --body=none');
+      parts.push('cub function do -o json -- get-resources --body=none');
       break;
     case 'Finding':
-      parts.push('cub unit list --space "*" --select "Slug,ValidationErrors,ValidationWarnings"');
+      parts.push('cub unit list --select "Slug,ValidationErrors,ValidationWarnings"');
       break;
   }
   if (spec.where) parts.push(`--where "${spec.where}"`);

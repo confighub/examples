@@ -556,7 +556,7 @@ part that waits on the bump.
 - **Drill-down:** a panel's context menu opens the underlying rows as a table,
   each row deep-linking to `{serverURL}/units/{spaceID}/{unitID}`.
 - **Show me the query:** every panel can print its equivalent `cub` command
-  (`cub unit list --space "*" --where "…" --view configboard/kind-dims`). This is
+  (`cub unit list --where "…" --view configboard/kind-dims`). This is
   what turns the example from a demo into a teaching tool — the chart and the CLI
   are visibly the same query.
 - **Save as Filter/View:** promote an ad-hoc panel query into real ConfigHub

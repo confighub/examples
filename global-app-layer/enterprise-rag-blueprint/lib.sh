@@ -441,14 +441,14 @@ get_target_json() {
   if [[ "${target_ref}" == */* ]]; then
     local target_space="${target_ref%%/*}"
     local target_slug="${target_ref##*/}"
-    cub target list --space "*" -o json \
+    cub target list -o json \
       | jq --arg space "${target_space}" --arg target "${target_slug}" '
           [ .[] | select(.Space.Slug == $space and .Target.Slug == $target) ][0]
         '
     return
   fi
 
-  cub target list --space "*" -o json \
+  cub target list -o json \
     | jq --arg target "${target_ref}" '
         [ .[] | select(.Target.Slug == $target) ][0]
       '

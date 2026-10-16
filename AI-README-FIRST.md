@@ -42,7 +42,7 @@ Use:
 cub auth login
 cub context list --json
 cub space list --json
-cub target list --space "*" --json
+cub target list --json
 ```
 
 ## 4. Important CLI Gotchas
@@ -87,7 +87,7 @@ cd <your-examples-checkout>
 rg --files .
 cub context list --json
 cub space list --json
-cub target list --space "*" --json
+cub target list --json
 ```
 
 If you already know a specific unit:
@@ -162,7 +162,7 @@ Treat these as stable repo-wide contracts:
 | `./scripts/verify.sh` | exit code + plain text verifier output | no |
 | `cub context list --json` | JSON array of contexts | no |
 | `cub space list --json` | JSON array of spaces | no |
-| `cub target list --space "*" --json` | JSON array of targets | no |
+| `cub target list --json` | JSON array of targets | no |
 | `cub unit get --space <space> --json <unit>` | JSON object for one unit | no |
 | `cub function do --dry-run --json ...` | JSON invocation response | no config write |
 | `cub release list --json` | JSON array of releases | no |

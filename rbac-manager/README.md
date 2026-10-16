@@ -88,13 +88,13 @@ Use `PREFIX=my-prefix ./demo-setup.sh` to change the `rbac-demo-` Space prefix.
 
 ```bash
 # The missing fleet inventory: one query across all clusters
-cub unit list --space "*" --where "Labels.persona = 'developer'"
+cub unit list --where "Labels.persona = 'developer'"
 
 # A gated violation, with the gate that blocks it
 cub unit get legacy-wildcard-admin --space rbac-demo-dev -o jq=".Unit.ValidationErrors"
 
 # One fleet edit across a selector of clusters (server-side, comment-preserving)
-cub function do --space "*" --where "Labels.persona = 'developer' AND Labels.env = 'staging'" \
+cub function do --where "Labels.persona = 'developer' AND Labels.env = 'staging'" \
   --change-desc "Allow developers to deletecollection in staging" \
   -- yq-i 'select(.kind == "ClusterRole").rules[0].verbs += ["deletecollection"]'
 

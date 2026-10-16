@@ -46,7 +46,7 @@ cd global-app-layer/frontend-postgres
 which cub
 cub version
 cub context list --json | jq
-cub target list --space "*" --json | jq '.[] | {space: .Space.Slug, target: .Target.Slug}'
+cub target list --json | jq '.[] | {space: .Space.Slug, target: .Target.Slug}'
 ```
 
 What to explain:

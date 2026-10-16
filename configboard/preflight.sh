@@ -25,8 +25,8 @@ if ! cub space list -o json >/dev/null 2>&1; then
 fi
 
 SPACES_JSON=$(cub space list -o json)
-TARGETS_JSON=$(cub target list --space "*" -o json 2>/dev/null || echo '[]')
-UNITS_JSON=$(cub unit list --space "*" -o json --select "Slug,TargetID,ToolchainType" 2>/dev/null || echo '[]')
+TARGETS_JSON=$(cub target list -o json 2>/dev/null || echo '[]')
+UNITS_JSON=$(cub unit list -o json --select "Slug,TargetID,ToolchainType" 2>/dev/null || echo '[]')
 
 space_count=$(jq 'length' <<<"$SPACES_JSON")
 target_count=$(jq 'length' <<<"$TARGETS_JSON")

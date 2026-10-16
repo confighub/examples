@@ -210,7 +210,7 @@ echo ""
 ##################################
 echo "Phase 7: Upgrading all units to upstream head revision..."
 
-$CUB unit update --space '*' \
+$CUB unit update \
   --where "Labels.ExampleName = '${EXAMPLE_NAME}' AND UpstreamUnitID IS NOT NULL" \
   --upgrade --patch --quiet
 
@@ -219,7 +219,7 @@ echo ""
 
 echo "Phase 7b: Applying all units (noop worker — no real effect)..."
 
-$CUB unit apply --space '*' \
+$CUB unit apply \
   --where "Labels.ExampleName = '${EXAMPLE_NAME}' AND TargetID IS NOT NULL" \
   --wait=false
 
