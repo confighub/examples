@@ -12,26 +12,27 @@ for tool in cub go grep; do
 done
 
 SPACE="hello-world-function-demo-$(( RANDOM % 9000 + 1000 ))"
-WORKER="hello-world-worker"
+CHANNEL="functions"
 UNIT="hello-world-demo"
 GREETING="Hello from ConfigHub!"
-WORKER_PID=""
+BOT_PID=""
+BOT_LOG="$(mktemp)"
 OUTPUT_FILE="$(mktemp)"
 
 echo "=== Hello World Function Demo ==="
-echo "Space:  $SPACE"
-echo "Worker: $WORKER"
-echo "Unit:   $UNIT"
+echo "Space:   $SPACE"
+echo "Channel: $SPACE/$CHANNEL"
+echo "Unit:    $UNIT"
 echo ""
 
 cleanup() {
-  if [ -n "$WORKER_PID" ] && kill -0 "$WORKER_PID" 2>/dev/null; then
-    echo "--- Stopping worker (PID $WORKER_PID) ---"
-    kill -- -"$WORKER_PID" 2>/dev/null || kill "$WORKER_PID" 2>/dev/null || true
-    wait "$WORKER_PID" 2>/dev/null || true
+  if [ -n "$BOT_PID" ] && kill -0 "$BOT_PID" 2>/dev/null; then
+    echo "--- Stopping function bot (PID $BOT_PID) ---"
+    kill "$BOT_PID" 2>/dev/null || true
+    wait "$BOT_PID" 2>/dev/null || true
   fi
 
-  rm -f "$OUTPUT_FILE"
+  rm -f "$BOT_LOG" "$OUTPUT_FILE"
 
   if [ "${NOCLEANUP:-}" = "1" ]; then
     echo ""
@@ -42,31 +43,42 @@ cleanup() {
 
   echo ""
   echo "=== Cleaning up ==="
-  cub space delete "$SPACE" --force 2>/dev/null || true
+  cub space delete "$SPACE" --recursive 2>/dev/null || true
   echo "Done."
 }
 trap cleanup EXIT INT TERM
 
-echo "--- Building worker ---"
+echo "--- Building function bot ---"
 go build -o ./hello-world-function .
 echo ""
 
-echo "--- Creating space ---"
+echo "--- Creating space and channel ---"
 cub space create "$SPACE"
+cub channel create --space "$SPACE" "$CHANNEL"
 echo ""
 
-echo "--- Starting function executor ---"
-set -m
-cub worker create --space "$SPACE" "$WORKER"
-(
-  # The function executor reads the Worker's credentials and the server from its environment.
-  eval "$(cub worker get-envs --space "$SPACE" "$WORKER")"
-  export CONFIGHUB_URL="${CONFIGHUB_URL:-$(cub context get -o jq=.coordinate.serverURL)}"
-  exec ./hello-world-function
-) &
-WORKER_PID=$!
-set +m
-echo "Function executor started (PID $WORKER_PID)"
+echo "--- Starting function bot ---"
+# The bot authenticates as you, through the active cub context, and declares its functions
+# on the channel when it starts.
+./hello-world-function "$SPACE/$CHANNEL" >"$BOT_LOG" 2>&1 &
+BOT_PID=$!
+for _ in $(seq 1 30); do
+  if [ "$(cub channel get "$SPACE/$CHANNEL" -o jq=.Channel.Condition)" = "Claimed" ]; then
+    break
+  fi
+  if ! kill -0 "$BOT_PID" 2>/dev/null; then
+    echo "FAIL: the function bot exited"
+    cat "$BOT_LOG"
+    exit 1
+  fi
+  sleep 1
+done
+if [ "$(cub channel get "$SPACE/$CHANNEL" -o jq=.Channel.Condition)" != "Claimed" ]; then
+  echo "FAIL: the function bot never claimed the channel"
+  cat "$BOT_LOG"
+  exit 1
+fi
+echo "Function bot started (PID $BOT_PID) and claimed the channel"
 echo ""
 
 echo "--- Creating sample unit ---"
@@ -74,33 +86,23 @@ cub unit create --space "$SPACE" "$UNIT" test_input.yaml
 echo ""
 
 echo "--- Invoking hello-world function ---"
-success=0
-for attempt in 1 2 3 4 5; do
-  if cub function do \
-    --space "$SPACE" \
-    --worker "$WORKER" \
-    --where "Slug = '$UNIT'" \
-    --show data \
-    hello-world "$GREETING" >"$OUTPUT_FILE"; then
-    success=1
-    break
-  fi
-  echo "Worker not ready yet; retrying ($attempt/5)..."
-  sleep 2
-done
-
-if [ "$success" -ne 1 ]; then
-  echo "FAIL: function invocation never succeeded"
-  exit 1
-fi
+cub function do \
+  --space "$SPACE" \
+  --channel "$SPACE/$CHANNEL" \
+  --where "Slug = '$UNIT'" \
+  --show data \
+  hello-world "$GREETING" >"$OUTPUT_FILE"
+echo ""
 
 echo "--- Verifying annotation ---"
 if grep -q "confighub-example/hello-world-greeting: $GREETING" "$OUTPUT_FILE"; then
   echo "PASS: greeting annotation was added"
 else
-  echo "FAIL: greeting annotation not found in function output"
+  echo "FAIL: greeting annotation not found in the unit"
   echo ""
   cat "$OUTPUT_FILE"
+  echo ""
+  cat "$BOT_LOG"
   exit 1
 fi
 echo ""
