@@ -33,15 +33,19 @@ func newConsistencyCmd() *cobra.Command {
 	var inconsistentOnly bool
 	cmd := &cobra.Command{
 		Use:   "consistency",
-		Short: "Cross-variant consistency: is a component's namespace name + pod-security identical across its variant Spaces?",
+		Short: "Cross-variant consistency: does each of a component's workloads run in the same namespace on every cluster?",
 		Long: `consistency groups the fleet's namespaces by their Space's Component label and
-reports, per component, whether the namespace name and pod-security enforce level
-are identical across every variant Space (environment / region / cluster).
+reports, per component, whether each of its workloads runs in the same
+namespace on every cluster, and whether its pod-security enforce level is the
+same in every variant Space (environment / region / cluster).
 
-The invariant is that a component uses the same namespace everywhere; this is the
-read side of that invariant (its enforcement is a per-cluster set-namespace
-Trigger). Only Spaces carrying a Component label participate; canonical base
-Spaces are excluded.
+The invariant is that a workload keeps its namespace from cluster to cluster;
+this is the read side of that invariant (its enforcement is a per-cluster
+set-namespace Trigger). A component may span several namespaces, and a variant
+may run parts another does not. Variants that share a cluster, such as staging
+beside prod or one preview per pull request, have to use different namespaces,
+so they are not compared. Only Spaces carrying a Component label participate;
+canonical base Spaces are excluded.
 
 This is a fleet-wide property no per-cluster controller or per-resource validator
 can see. Filter with --component and --inconsistent-only.`,

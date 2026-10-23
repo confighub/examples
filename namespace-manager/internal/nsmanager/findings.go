@@ -25,7 +25,7 @@ type Finding struct {
 //   - missing-pod-security   (Namespace object without a pod-security enforce label)
 //   - missing-namespace-object (occupied namespace with no v1/Namespace Unit)
 //   - duplicate-namespace    (two Namespace objects colliding on name + Target)
-//   - namespace-name-inconsistent (a component's namespace name varies across variants)
+//   - namespace-name-inconsistent (a component runs a workload in different namespaces on different clusters)
 //   - pod-security-inconsistent   (a component's pod-security level varies across variants)
 func AnalyzeFindings(clusters map[string]*ClusterNamespaces) []Finding {
 	var fs []Finding
@@ -65,7 +65,7 @@ func AnalyzeFindings(clusters map[string]*ClusterNamespaces) []Finding {
 			fs = append(fs, Finding{
 				Analyzer: "namespace-name-inconsistent", Severity: api.ScoreMedium,
 				Component: cc.Component,
-				Message:   fmt.Sprintf("component %q uses different namespace names across its variant Spaces: %s", cc.Component, joinQuoted(cc.Namespaces)),
+				Message:   fmt.Sprintf("component %q runs workloads in different namespaces on different clusters: %s", cc.Component, describeMismatches(cc.NamespaceMismatches)),
 			})
 		}
 		if !cc.PodSecurityConsistent {

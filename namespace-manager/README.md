@@ -37,7 +37,7 @@ All read commands default to JSON (`-o json`); pass `-o table` for a human view.
 | `snapshot` | read | Per-cluster inventory: namespace and workload counts + gated/unapplied Units |
 | `list` | read | Enumerate Namespaces and the workloads occupying them across the fleet |
 | `envelope` | read | Per-namespace completeness — which namespaces lack a Namespace object or pod-security label, plus duplicate-namespace-per-Target collisions |
-| `consistency` | read | Per-component: is the namespace name + pod-security level identical across its variant Spaces? |
+| `consistency` | read | Per-component: does each workload run in the same namespace on every cluster, and is the pod-security level the same in every variant Space? |
 | `findings` | read | Severity-ranked governance findings (envelope gaps + duplicates + cross-variant inconsistency) |
 | `apply-envelope` | write | Stamp pod-security defaults on a Space's Namespace Unit(s) (fixes `missing-pod-security`) |
 | `backfill` | write | Clone a base envelope Space's Units into an existing Space, re-homed via `set-namespace` |
