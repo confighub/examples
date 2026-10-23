@@ -37,9 +37,11 @@ func TestAnalyzeConsistency(t *testing.T) {
 		resFull("dev", "web-dev", "web", workloadDoc("Deployment", "web", "web")),
 		resFull("prod", "web-prod", "web", nsDoc("web", psaBaseline)),
 		resFull("prod", "web-prod", "web", workloadDoc("Deployment", "web", "web")),
-		// component "api": namespace name differs across variants.
+		// component "api": its server runs in a different namespace in prod.
 		resFull("dev", "api-dev", "api", nsDoc("api", psaBaseline)),
+		resFull("dev", "api-dev", "api", workloadDoc("Deployment", "server", "api")),
 		resFull("prod", "api-prod", "api", nsDoc("api-prod", psaBaseline)),
+		resFull("prod", "api-prod", "api", workloadDoc("Deployment", "server", "api-prod")),
 		// component "cache": pod-security level differs across variants.
 		resFull("dev", "cache-dev", "cache", nsDoc("cache", map[string]any{PodSecurityEnforceLabel: "baseline"})),
 		resFull("prod", "cache-prod", "cache", nsDoc("cache", map[string]any{PodSecurityEnforceLabel: "restricted"})),
@@ -71,5 +73,50 @@ func TestAnalyzeConsistency(t *testing.T) {
 
 	if findComponent(got, "") != nil {
 		t.Error("resources without a Component label should be skipped")
+	}
+}
+
+// A workload's namespace is compared only across clusters: a component may span
+// several namespaces, a variant may run parts another does not, and variants
+// sharing a cluster must use different namespaces.
+func TestAnalyzeConsistencyComparesWorkloadsAcrossClusters(t *testing.T) {
+	resources := []FleetResource{
+		// platform spans several namespaces, and prod runs a part dev does not.
+		resFull("dev", "platform-dev", "platform", workloadDoc("Deployment", "cert-manager", "cert-manager")),
+		resFull("dev", "platform-dev", "platform", workloadDoc("Deployment", "traefik", "traefik")),
+		resFull("prod", "platform-prod", "platform", workloadDoc("Deployment", "cert-manager", "cert-manager")),
+		resFull("prod", "platform-prod", "platform", workloadDoc("Deployment", "traefik", "traefik")),
+		resFull("prod", "platform-prod", "platform", workloadDoc("Deployment", "ack-s3", "ack-system")),
+		// app's staging and prod share a cluster, so their namespaces must differ.
+		resFull("prod", "app-prod", "app", workloadDoc("Deployment", "server", "app")),
+		resFull("prod", "app-staging", "app", workloadDoc("Deployment", "server", "app-staging")),
+		// preview has one variant per pull request on one cluster, and a base
+		// whose namespace is still a placeholder.
+		resFull("dev", "preview-pr-1", "preview", workloadDoc("Deployment", "ui", "pr-1")),
+		resFull("dev", "preview-pr-2", "preview", workloadDoc("Deployment", "ui", "pr-2")),
+		resFull("None", "preview-base", "preview", workloadDoc("Deployment", "ui", PlaceholderNamespace)),
+		// site moves its server to another namespace in prod.
+		resFull("dev", "site-dev", "site", workloadDoc("Deployment", "server", "site")),
+		resFull("dev", "site-dev", "site", workloadDoc("Deployment", "worker", "site")),
+		resFull("prod", "site-prod", "site", workloadDoc("Deployment", "server", "site-prod")),
+		resFull("prod", "site-prod", "site", workloadDoc("Deployment", "worker", "site")),
+	}
+	got := AnalyzeConsistency(BuildFleet(resources))
+
+	for _, comp := range []string{"platform", "app", "preview"} {
+		if cc := findComponent(got, comp); cc == nil || !cc.NamespaceConsistent {
+			t.Errorf("%s should be namespace-consistent, got %+v", comp, cc)
+		}
+	}
+	site := findComponent(got, "site")
+	if site == nil || site.NamespaceConsistent {
+		t.Fatalf("site should be namespace-inconsistent, got %+v", site)
+	}
+	if len(site.NamespaceMismatches) != 1 || site.NamespaceMismatches[0].Workload != "Deployment/server" {
+		t.Errorf("site mismatches = %+v, want only Deployment/server", site.NamespaceMismatches)
+	}
+	want := `workloads run in different namespaces on different clusters: Deployment/server is in "site" in site-dev, "site-prod" in site-prod`
+	if len(site.Issues) != 1 || site.Issues[0] != want {
+		t.Errorf("site issues = %q, want [%q]", site.Issues, want)
 	}
 }

@@ -54,9 +54,9 @@ func TestAnalyzeFindingsDuplicateAndInconsistency(t *testing.T) {
 		// duplicate namespace "shared" on target prod.
 		resFull("prod", "a-prod", "a", nsDoc("shared", nil)),
 		resFull("prod", "b-prod", "b", nsDoc("shared", nil)),
-		// component "billing": namespace name inconsistent across variants.
-		resFull("dev", "billing-dev", "billing", nsDoc("billing", nil)),
-		resFull("prod", "billing-prod", "billing", nsDoc("billing-prod", nil)),
+		// component "billing": its api runs in a different namespace in prod.
+		resFull("dev", "billing-dev", "billing", workloadDoc("Deployment", "api", "billing")),
+		resFull("prod", "billing-prod", "billing", workloadDoc("Deployment", "api", "billing-prod")),
 	}
 	fs := AnalyzeFindings(BuildFleet(resources))
 

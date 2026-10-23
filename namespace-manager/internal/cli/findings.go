@@ -39,7 +39,7 @@ func newFindingsCmd() *cobra.Command {
   missing-pod-security         Namespace object with no pod-security enforce label
   missing-namespace-object     occupied namespace with no v1/Namespace Unit
   duplicate-namespace          two Namespace Units collide on name + Target (one cluster)
-  namespace-name-inconsistent  a component's namespace name varies across its variants
+  namespace-name-inconsistent  a component runs a workload in different namespaces on different clusters
   pod-security-inconsistent    a component's pod-security level varies across its variants
 
 These are properties of the whole set of resources across the fleet — the read a

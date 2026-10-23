@@ -7,11 +7,11 @@ allowed-tools: Bash(cub-namespace --help) Bash(cub-namespace * --help) Bash(cub 
 
 # namespace-consistency
 
-Report, per component, whether its **namespace name** and **pod-security enforce level** are identical across every variant Space it lives in. It never mutates.
+Report, per component, whether each of its workloads runs in the **same namespace** on every cluster and its **pod-security enforce level** is the same in every variant Space. It never mutates.
 
 ## Why this matters
 
-The invariant is that a component uses the *same* namespace everywhere — dev, staging, every prod region and cluster. Whether that actually holds is a property of a **set of Spaces** (the component's variants), which no per-cluster controller and no per-resource validator can see: each sees only one cluster or one object. `cub-namespace consistency` groups the fleet's namespaces by their Space's `Component` label and compares across the variants. This is the read side of the namespace-name invariant; enforcing it is a separate per-cluster `set-namespace` Trigger. Only Spaces carrying a `Component` label participate; canonical base Spaces are excluded.
+The invariant is that a workload keeps its namespace on every cluster — dev, every prod region. A component may span several namespaces, and a variant may run parts another does not. Variants that share a cluster, such as staging beside prod or a preview per pull request, have to use different namespaces, so they are not compared with each other or the rest. Whether that actually holds is a property of a **set of Spaces** (the component's variants), which no per-cluster controller and no per-resource validator can see: each sees only one cluster or one object. `cub-namespace consistency` groups the fleet's namespaces by their Space's `Component` label and compares across the variants. This is the read side of the namespace-name invariant; enforcing it is a separate per-cluster `set-namespace` Trigger. Only Spaces carrying a `Component` label participate; canonical base Spaces are excluded.
 
 ## When to use
 
@@ -42,7 +42,7 @@ cub-namespace consistency --inconsistent-only -o table   # just the drift
 cub-namespace consistency --component-name apptique
 ```
 
-A component is **inconsistent** when its variants disagree on the namespace name (the invariant is broken — the fix is `set-namespace` per variant, a later write skill) or on the pod-security level.
+A component is **inconsistent** when a workload runs in a different namespace on one cluster than another (the invariant is broken — the fix is `set-namespace` per variant, a later write skill) or on the pod-security level.
 
 ### Scoping the fleet
 
