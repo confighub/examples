@@ -37,7 +37,7 @@ func newFindingsCmd() *cobra.Command {
 		Long: `findings runs the v1 analyzer set over the fleet:
 
   missing-pod-security         Namespace object with no pod-security enforce label
-  missing-namespace-object     occupied namespace with no v1/Namespace Unit
+  missing-namespace-object     occupied namespace with no v1/Namespace Unit (built-in ones excepted)
   duplicate-namespace          two Namespace Units collide on name + Target (one cluster)
   namespace-name-inconsistent  a component runs a workload in different namespaces on different clusters
   pod-security-inconsistent    a component's pod-security level varies across its variants

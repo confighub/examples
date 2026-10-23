@@ -3,7 +3,11 @@
 
 package nsmanager
 
-import "sort"
+import (
+	"sort"
+
+	"github.com/confighub/sdk/configkit/k8skit"
+)
 
 // PlaceholderNamespace is the base-template placeholder value (set-namespace
 // replaces it at render). Resources still carrying it are unrendered bases that
@@ -37,7 +41,9 @@ type NamespaceEnvelope struct {
 // AnalyzeCluster computes the envelope verdict for every namespace in one
 // cluster. A namespace is analyzed if it has a Namespace object or any occupant
 // (workload, NetworkPolicy, or RBAC object). The placeholder namespace is
-// skipped.
+// skipped, and so are the built-in namespaces (kube-system, default, ...): the
+// cluster creates and owns them, so they need no Namespace Unit and carry no
+// tenant's envelope.
 func AnalyzeCluster(c *ClusterNamespaces) []NamespaceEnvelope {
 	// Index by namespace name.
 	nsObjects := map[string]*NamespaceEntity{}
@@ -53,7 +59,7 @@ func AnalyzeCluster(c *ClusterNamespaces) []NamespaceEnvelope {
 	// as the namespace of some occupant.
 	names := map[string]bool{}
 	add := func(ns string) {
-		if ns != "" && ns != PlaceholderNamespace {
+		if ns != "" && ns != PlaceholderNamespace && !k8skit.IsBuiltInNamespace(ns) {
 			names[ns] = true
 		}
 	}
