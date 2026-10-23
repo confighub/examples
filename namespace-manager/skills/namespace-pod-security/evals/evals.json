@@ -1,0 +1,33 @@
+{
+  "skill_name": "namespace-pod-security",
+  "evals": [
+    {
+      "id": 1,
+      "name": "achievable-levels",
+      "prompt": "What pod security level could each of our namespaces enforce?",
+      "expected_output": "Runs `cub-namespace preflight` then `cub-namespace pod-security -o table` and reports each namespace's achievable level and status, naming the blockers for namespaces below restricted. Read-only.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "what-blocks-baseline",
+      "prompt": "What is stopping the monitoring namespace from enforcing baseline?",
+      "expected_output": "Runs `cub-namespace pod-security --namespace monitoring` and reports the blocking Units and resources with their failed checks (e.g. host namespaces, hostPath volumes), without editing anything.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "violating-labels",
+      "prompt": "Is any namespace enforcing a pod security level that would reject its own pods?",
+      "expected_output": "Runs `cub-namespace pod-security --status violating` and reports each violating namespace with the workloads that fail its enforce level.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "no-hand-reasoning-on-old-server",
+      "prompt": "Can payments be restricted? The pod-security command says the server has no vet-pod-security-standard function.",
+      "expected_output": "Reports that the server is too old for the check and does not attempt to judge the workloads' securityContexts by hand.",
+      "files": []
+    }
+  ]
+}
