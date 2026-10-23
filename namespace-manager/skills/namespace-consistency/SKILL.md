@@ -1,6 +1,6 @@
 ---
 name: namespace-consistency
-description: 'Check whether a component''s namespace name and pod-security level are identical across all of its variant Spaces (environments / regions / clusters) in ConfigHub, using the cub-namespace CLI. Use for "is our namespace the same across dev/staging/prod?", "which components have drifted namespace names?", "is pod-security consistent across variants of X?", "check cross-variant namespace consistency". Not for per-namespace envelope completeness (use namespace-audit) or the full ranked findings list (use namespace-findings); read-only, ConfigHub-managed Units only.'
+description: 'Check whether each of a component''s workloads runs in the same namespace on every cluster, and its pod-security level is the same across its variant Spaces (environments / regions / clusters) in ConfigHub, using the cub-namespace CLI. Use for "is our namespace the same across dev/staging/prod?", "which components have drifted namespace names?", "is pod-security consistent across variants of X?", "check cross-variant namespace consistency". Not for per-namespace envelope completeness (use namespace-audit) or the full ranked findings list (use namespace-findings); read-only, ConfigHub-managed Units only.'
 phase: verify
 allowed-tools: Bash(cub-namespace --help) Bash(cub-namespace * --help) Bash(cub auth status) Bash(cub-namespace preflight) Bash(cub-namespace consistency) Bash(cub-namespace consistency *)
 ---

@@ -37,6 +37,7 @@ All read commands default to JSON (`-o json`); pass `-o table` for a human view.
 | `snapshot` | read | Per-cluster inventory: namespace and workload counts + gated/unapplied Units |
 | `list` | read | Enumerate Namespaces and the workloads occupying them across the fleet |
 | `envelope` | read | Per-namespace completeness — which namespaces lack a Namespace object or pod-security label, plus duplicate-namespace-per-Target collisions |
+| `pod-security` | read | Per-namespace: the strictest Pod Security Standard all its workloads meet (via the server's `vet-pod-security-standard`), how that compares with the Namespace's `enforce` label, and the Units / resources blocking the next level |
 | `consistency` | read | Per-component: does each workload run in the same namespace on every cluster, and is the pod-security level the same in every variant Space? |
 | `findings` | read | Severity-ranked governance findings (envelope gaps + duplicates + cross-variant inconsistency) |
 | `apply-envelope` | write | Stamp pod-security defaults on a Space's Namespace Unit(s) (fixes `missing-pod-security`) |
@@ -116,12 +117,13 @@ them from deploying.
 
 ## Agent skills
 
-`skills/` holds five ConfigHub-format agent skills (read vs. write split, scoped
+`skills/` holds six ConfigHub-format agent skills (read vs. write split, scoped
 `allowed-tools`, preflight gates, evals):
 
 | Skill | Kind | Surface |
 |---|---|---|
 | `namespace-audit` | read | `snapshot`, `list`, `envelope` |
+| `namespace-pod-security` | read | `pod-security` |
 | `namespace-consistency` | read | `consistency` |
 | `namespace-findings` | read | `findings` |
 | `namespace-backfill` | write | `apply-envelope`, `backfill` |
@@ -138,6 +140,10 @@ them from deploying.
 - **Engine** (`internal/nsmanager`) — a deterministic, table-tested analysis
   package: the typed model, per-namespace envelope completeness, and the
   duplicate-namespace check.
+- **Pod security** (`pod-security`) — runs the server's
+  `vet-pod-security-standard` function, the PodSecurity admission controller's
+  own checks, at `restricted` and `baseline` over the Units holding workloads,
+  as dry runs, and the engine joins each failing resource to its namespace.
 
 > Clusters are ConfigHub Targets. Base/template Units are best bound to a
 > **Noop** Target (a no-apply, server-hosted ProviderType), so every Unit has a

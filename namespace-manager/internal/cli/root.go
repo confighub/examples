@@ -65,6 +65,7 @@ are not signed in.`,
 		newListCmd(),
 		// Analysis
 		newEnvelopeCmd(),
+		newPodSecurityCmd(),
 		newConsistencyCmd(),
 		newFindingsCmd(),
 		// Write (config-as-data fixes; dry-run unless --commit)
