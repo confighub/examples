@@ -69,6 +69,21 @@ func TestAnalyzeClusterSkipsPlaceholder(t *testing.T) {
 	}
 }
 
+// The cluster creates and owns its built-in namespaces, so a workload in
+// kube-system needs no Namespace Unit, and a Unit declaring one is not asked
+// for a tenant's pod-security level.
+func TestAnalyzeClusterSkipsBuiltInNamespaces(t *testing.T) {
+	clusters := BuildFleet([]FleetResource{
+		res("c1", "c1", "dns", workloadDoc("Deployment", "coredns", "kube-system")),
+		res("c1", "c1", "csi", nsDoc("kube-system", nil)),
+		res("c1", "c1", "web", workloadDoc("Deployment", "web", "default")),
+	})
+	got := AnalyzeCluster(clusters["c1"])
+	if len(got) != 0 {
+		t.Errorf("built-in namespaces should be skipped, got %+v", got)
+	}
+}
+
 func TestDuplicateNamespaces(t *testing.T) {
 	resources := []FleetResource{
 		// Two Namespace objects named "payments" on target prod → collision.

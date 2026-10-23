@@ -18,7 +18,7 @@ Each finding is a property of the *whole set* of resources — "this namespace h
 | Analyzer | Severity | Fires when |
 | --- | --- | --- |
 | `duplicate-namespace` | high | two Namespace Units collide on name + Target (one cluster) |
-| `missing-namespace-object` | medium | occupied namespace with no `v1/Namespace` Unit |
+| `missing-namespace-object` | medium | occupied namespace with no `v1/Namespace` Unit (built-in ones such as `kube-system` excepted) |
 | `missing-pod-security` | medium | Namespace object with no `pod-security.kubernetes.io/enforce` label |
 | `namespace-name-inconsistent` | medium | a component runs a workload in different namespaces on different clusters |
 | `pod-security-inconsistent` | low | a component's pod-security level varies across its variants |
