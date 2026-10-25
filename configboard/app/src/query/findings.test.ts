@@ -21,7 +21,6 @@ const unit = (over: Partial<NonNullable<ExtendedUnitRead['Unit']>> = {}): Extend
   Space: { Slug: 'apptique-prod', Labels: { Environment: 'prod', Component: 'apptique' } },
   Target: {
     Slug: 'prod-cluster',
-    BridgeWorkerID: 'w1',
     ProviderType: 'Kubernetes',
     ToolchainType: 'Kubernetes/YAML',
   },
