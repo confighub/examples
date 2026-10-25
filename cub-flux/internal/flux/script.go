@@ -230,13 +230,14 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 
 	add(`step "1/5 One named Target per cluster, in %s"`, targets)
 	add("cub space create %s --allow-exists --quiet", targets)
-	add("# A server-hosted worker has no process behind it and no role in the")
-	add("# organization; it is the credential Flux reads with. Its bot user holds View")
-	add("# and ViewChildren on each Target, to find it and pull its Releases.")
-	add("cub worker create --space %s server-worker --is-server-worker --org-role none --allow-exists --quiet", targets)
-	add(`bot_user="$(cub worker get --space %s server-worker -o jq=.BridgeWorker.UserID | tr -d '"\n')"`, targets)
+	add("# A service account with no role in the organization is the identity Flux")
+	add("# reads with. It holds View and ViewChildren on each Target, to find it and")
+	add("# pull its Releases. Service accounts belong to the organization, so it is")
+	add("# named for this prefix.")
+	add("cub serviceaccount create %s --org-role none --allow-exists --quiet", targets)
+	add(`sa="serviceaccount:%s"`, targets)
 	for _, c := range p.Clusters {
-		add(`cub target create %s --space %s --permission "View:${bot_user}" --permission "ViewChildren:${bot_user}" --allow-exists --quiet`, c.Name, targets)
+		add(`cub target create %s --space %s --permission "View:${sa}" --permission "ViewChildren:${sa}" --allow-exists --quiet`, c.Name, targets)
 	}
 	add("")
 

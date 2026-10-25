@@ -3,6 +3,27 @@
 Each release is tagged `cub-flux-v<version>` in confighub/examples and installs
 with `cub plugin install confighub/examples@cub-flux-v<version> --name flux`.
 
+## 0.5.0, unreleased
+
+- **A service account replaces the server worker.** ConfigHub is retiring
+  workers, so `apply.sh` creates a service account, `<prefix>-targets`, with
+  no organization role, and grants it `View` and `ViewChildren` on each
+  Target, where it used to create the worker `<prefix>-targets/server-worker`
+  and grant its bot user. `handover.sh` and `join.sh` write the pull Secret
+  each OCIRepository reads as the username `token` and a long-lived token of
+  the service account, issued with `cub serviceaccount token create`; a re-run
+  keeps a Secret it already wrote for the same address. `cleanup.sh` deletes
+  the service account, which revokes its tokens and keys.
+- **fluxbot signs in with a key.** `fluxbot.sh` grants the service account
+  `EditChildren` on the cluster's Target and gives fluxbot a key of its own, in
+  the Secret `fluxbot` as `CONFIGHUB_AUTH_PRIVATE_KEY`. `cub flux status
+  --as-service-account` replaces `--as-worker`: it signs in to `CONFIGHUB_URL`
+  with that key and signs in again whenever its session expires.
+- **To move a fleet onboarded with 0.4,** run `cub flux apply` again with 0.5,
+  then `apply.sh`, `handover.sh` or `join.sh` on each cluster, and `fluxbot.sh`.
+  The worker stays until you delete it: `cub worker delete --space
+  <prefix>-targets server-worker`.
+
 ## 0.4.1, 2026-10-25
 
 - **The first release works on ConfigHub v0.9.** `apply.sh` stopped at the

@@ -77,7 +77,7 @@ case " $* " in
   *" release get "*)
     n=$(( $(cat "$STUB_LOG.releases" 2>/dev/null || echo 0) + 1 )); echo $n > "$STUB_LOG.releases"
     if [ -n "${RELEASE_MOVES_AFTER:-}" ] && [ "$n" -gt "$RELEASE_MOVES_AFTER" ]; then echo '"sha256:newer"'; else echo '"sha256:checked"'; fi ;;
-  *" worker get "*) echo '"id"' ;;
+  *" serviceaccount token create "*) echo '"tok"' ;;
 esac
 exit 0
 `

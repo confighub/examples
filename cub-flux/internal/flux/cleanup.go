@@ -142,8 +142,12 @@ func CleanupScript(p *Plan, prefix string) string {
 	for _, c := range p.Components {
 		add("cub component delete %s-%s --quiet 2>/dev/null", prefix, c.Name)
 	}
-	add("# The pull Secret handover.sh or join.sh wrote holds the worker deleted")
-	add("# above; left behind, a later onboarding under this prefix would read with it.")
+	add("# The service account Flux and fluxbot ran as belongs to the organization, so")
+	add("# deleting the Spaces leaves it. Deleting it revokes every token and key it had.")
+	add("cub serviceaccount delete %s --quiet 2>/dev/null || true", targets)
+	add("# The pull Secret handover.sh or join.sh wrote holds a token of the service")
+	add("# account deleted above; left behind, a later onboarding under this prefix")
+	add("# would read with it.")
 	add(`if [ -n "$contexts" ]; then`)
 	add(`  for c in $contexts; do`)
 	add(`    kubectl --context "$c" -n "${FLUX_NAMESPACE:-flux-system}" delete secret confighub-%s --ignore-not-found`, targets)
