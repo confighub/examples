@@ -118,6 +118,10 @@ func newFixSubCmd(use, short, yqExpr, action string, guard func(*netpol.NetworkP
 				return fmt.Errorf("no NetworkPolicy Unit %q found in space %q", unit, space)
 			}
 			if skip, reason := guard(np); skip {
+				r := fixResult{Action: action, Space: space, Unit: unit, DryRun: dryRun, Skipped: reason}
+				if done, err := managerkit.Render(cmd.OutOrStdout(), output, r); done || err != nil {
+					return err
+				}
 				fprintln(cmd.OutOrStdout(), fmt.Sprintf("%s/%s: %s — nothing to do.", space, unit, reason))
 				return nil
 			}
@@ -141,6 +145,8 @@ type fixResult struct {
 	Unit    string `json:"unit"`
 	DryRun  bool   `json:"dryRun"`
 	Mutated bool   `json:"mutated"`
+	// Skipped says why the policy needed no fix, when it didn't.
+	Skipped string `json:"skipped,omitempty"`
 	Error   string `json:"error,omitempty"`
 	// Diffs are what the fix did to the Unit, or on a dry run would do.
 	Diffs []write.UnitDiff `json:"diffs,omitempty"`
@@ -157,13 +163,20 @@ func reportFix(cmd *cobra.Command, res *cubapi.Result, space, unit, action strin
 		}
 	}
 	r.Diffs = write.Diffs(res)
-	if done, err := managerkit.Render(cmd.OutOrStdout(), output, r); done || err != nil {
+	done, err := managerkit.Render(cmd.OutOrStdout(), output, r)
+	if err != nil {
 		return err
+	}
+	// The report is written whichever way was asked for; a failure still exits
+	// non-zero.
+	if r.Error != "" {
+		return fmt.Errorf("fix failed on %s/%s: %s", space, unit, r.Error)
+	}
+	if done {
+		return nil
 	}
 	out := cmd.OutOrStdout()
 	switch {
-	case r.Error != "":
-		return fmt.Errorf("fix failed on %s/%s: %s", space, unit, r.Error)
 	case dryRun && r.Mutated:
 		fprintln(out, fmt.Sprintf("Dry run — would %s on %s/%s. Re-run with --commit --change-desc \"…\".", action, space, unit))
 	case dryRun:

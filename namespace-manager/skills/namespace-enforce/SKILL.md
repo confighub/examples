@@ -73,7 +73,7 @@ metadata:
     exceptions.guardrails.confighub.com/namespace-has-pod-security: "kube-system: managed by the cluster provider"
 ```
 
-That rule's Trigger skips the resources carrying it; the other rules still check them. Adding one is a config change for the user to make deliberately (`cub function do set-annotation` on the Unit, with `--where-resource` naming the one resource), not a way to silence a warning.
+That rule's Trigger skips the resources carrying it; the other rules still check them. Adding one is a config change for the user to make deliberately (`cub function set -- set-annotation` on the Unit, with `--where-resource` naming the one resource, as in `ConfigHub.ResourceName = '<namespace>/<name>'`, or `'/<name>'` for a cluster-scoped one), not a way to silence a warning.
 
 ## Stop conditions
 

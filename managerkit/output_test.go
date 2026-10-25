@@ -7,6 +7,8 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+
+	"github.com/spf13/cobra"
 )
 
 type row struct {
@@ -78,6 +80,30 @@ func TestRenderRefusesColumnFormatsAndGarbage(t *testing.T) {
 			if strings.Contains(err.Error(), absent) && !strings.Contains(output, absent) {
 				t.Errorf("-o %q error offers %q, which the command refuses", output, absent)
 			}
+		}
+	}
+}
+
+func TestProgressWriterKeepsStructuredStdoutClean(t *testing.T) {
+	for _, tc := range []struct {
+		output     string
+		wantStdout bool
+	}{
+		{"table", true},
+		{"json", false},
+		{"", false}, // the default is JSON
+		{"yaml", false},
+		{"jq=.", false},
+		{"yq=.", false},
+	} {
+		var stdout, stderr bytes.Buffer
+		cmd := &cobra.Command{}
+		cmd.SetOut(&stdout)
+		cmd.SetErr(&stderr)
+		_, _ = ProgressWriter(cmd, tc.output).Write([]byte("wired x\n"))
+		if got := stdout.Len() > 0; got != tc.wantStdout {
+			t.Errorf("-o %q: progress on stdout = %v, want %v (stdout %q, stderr %q)",
+				tc.output, got, tc.wantStdout, stdout.String(), stderr.String())
 		}
 	}
 }

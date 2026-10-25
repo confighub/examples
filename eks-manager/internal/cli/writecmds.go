@@ -191,6 +191,11 @@ func runEdit(cmd *cobra.Command, commit cliutil.CommitFlags, output, target, com
 		return err
 	}
 	if len(edits) == 0 {
+		r := editReport{Command: command, Space: ref.spaceSlug, Unit: ref.unitSlug, ResourceType: resourceType,
+			Edits: []pathEdit{}, DryRun: dryRun, Warnings: warnings}
+		if done, err := managerkit.Render(cmd.OutOrStdout(), output, r); done || err != nil {
+			return err
+		}
 		fprintln(cmd.OutOrStdout(), "No change needed.")
 		return nil
 	}

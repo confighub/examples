@@ -82,7 +82,7 @@ metadata:
     exceptions.guardrails.confighub.com/no-rbac-wildcards: "argocd manages every resource type"
 ```
 
-Each rule's Trigger skips the resources carrying its exception annotation; the other rules still check them. Adding one is a config change for the user to make deliberately (`cub function do set-annotation` on the Unit, with `--where-resource` naming the one resource), not something to add to silence a warning.
+Each rule's Trigger skips the resources carrying its exception annotation; the other rules still check them. Adding one is a config change for the user to make deliberately (`cub function set -- set-annotation` on the Unit, with `--where-resource` naming the one resource, as in `ConfigHub.ResourceName = '<namespace>/<name>'`, or `'/<name>'` for a cluster-scoped one), not something to add to silence a warning.
 
 ## Flags
 
