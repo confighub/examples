@@ -59,12 +59,31 @@ promote() {
 # only. `cub flux watch` runs the script this way when a cluster joins; the
 # pattern is cub sveltos watch's.
 approve() { [ -n "${PROPOSE_ONLY:-}" ] || cub variant approve --change-order "$1" --stage "$2" --quiet; }
+# A variant made after its base already held the change takes nothing from
+# the change order: ConfigHub passes over every Unit of the base as
+# AlreadyTaken, no Revision carries the change order, and since ConfigHub
+# v0.9 a release by change order then has no Revision to approve and is
+# refused. Such a variant holds what its own source renders, which is what
+# the cluster runs today, so there is no change to approve and its first
+# release is what it holds. Run again, the same change order then marks no
+# Revision of a Unit that has a release, and the same check applies. Any
+# other refusal stops the script.
+publish_taken() {
+  local skipped id out
+  skipped=" $(cub changeorder get --space "${2%/*}" "${2#*/}" -o 'jq=(.ChangeOrder.SkippedUnits // {}) | to_entries | map(.key + "=" + .value) | join(" ")' | tr -d '"') "
+  for id in $(cub unit list --space "${2%/*}" -o 'jq=[.[].Unit.UnitID] | join(" ")' | tr -d '"'); do
+    case "$skipped" in *" $id=AlreadyTaken "*) ;; *) echo "$3" >&2; return 1 ;; esac
+  done
+  out=$(cub release publish "$1" --quiet 2>&1) && { echo "  $1: the change order carried nothing new for it, so it is released as it stands"; return 0; }
+  case "$out" in *"no changes were made since :latest bundle"*) echo "$1 already released" ;; *) echo "$out" >&2; return 1 ;; esac
+}
 publish() {
   local out
   holds "$1" "$3" || return 1
   out=$(cub release publish "$1" --revision "ChangeOrder:$2" --quiet 2>&1) && return 0
   case "$out" in
     *"no changes were made since :latest bundle"*) echo "$1 already released" ;;
+    *"no Revision was found to evaluate it on"*|*"the tag marks no revision of a unit that has been released"*) publish_taken "$1" "$2" "$out" ;;
     *"requires "*"attestation(s)"*)
       [ -n "${PROPOSE_ONLY:-}" ] || { echo "$out" >&2; return 1; }
       echo "$1 waits for approval: cub variant approve --change-order $2 --stage $4" ;;
