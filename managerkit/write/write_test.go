@@ -4,8 +4,12 @@
 package write
 
 import (
+	"bytes"
 	"context"
+	"strings"
 	"testing"
+
+	"github.com/spf13/cobra"
 
 	"github.com/confighub/sdk/core/cubapi"
 	goclientnew "github.com/confighub/sdk/core/openapi/goclient-new"
@@ -40,6 +44,82 @@ func TestChangeIsDryRunWhenUndescribed(t *testing.T) {
 	ch := Change("scale to 3", false)
 	if ch.DryRun() || ch.Description != "scale to 3" {
 		t.Errorf("commit = %+v", ch)
+	}
+	// Both ask for the diff, which is what lets a dry run show what it would do.
+	if !Change("", true).Diff || !ch.Diff {
+		t.Error("Change does not ask for the diff")
+	}
+}
+
+func replicasDiff(from, to string) *goclientnew.ConfigDiff {
+	update := goclientnew.Update
+	return &goclientnew.ConfigDiff{Resources: []goclientnew.ResourceDiff{{
+		Resource:   &goclientnew.ResourceInfo{ResourceType: "apps/v1/Deployment", ResourceName: "prod/web"},
+		ChangeType: &update,
+		Changes:    []goclientnew.PathChange{{DisplayPath: "spec.replicas", ChangeType: "Update", FromValue: from, ToValue: to}},
+	}}}
+}
+
+// A Unit's diffs are kept in the order its invocations ran; one that changed
+// nothing adds none.
+func TestSummarizeKeepsDiffs(t *testing.T) {
+	first := &cubapi.Result{Outcomes: []cubapi.UnitOutcome{
+		{UnitID: "u-web", SpaceSlug: "prod", UnitSlug: "web", Success: true, HasMutations: true, Diff: replicasDiff("1", "3")},
+		{UnitID: "u-api", SpaceSlug: "prod", UnitSlug: "api", Success: true, Diff: &goclientnew.ConfigDiff{}},
+	}}
+	second := &cubapi.Result{Outcomes: []cubapi.UnitOutcome{
+		{UnitID: "u-web", SpaceSlug: "prod", UnitSlug: "web", Success: true, HasMutations: true, Diff: replicasDiff("3", "4")},
+	}}
+	rep := Summarize("scale", "prod", true, first, second)
+	api, web := rep.Outcomes[0], rep.Outcomes[1]
+	if len(api.Diffs) != 0 {
+		t.Errorf("api diffs = %+v, want none for an unchanged Unit", api.Diffs)
+	}
+	if len(web.Diffs) != 2 || web.Diffs[0].Resources[0].Changes[0].ToValue != "3" || web.Diffs[1].Resources[0].Changes[0].ToValue != "4" {
+		t.Errorf("web diffs = %+v, want both in order", web.Diffs)
+	}
+}
+
+// A command with a report of its own gets the same diffs, keyed by Unit.
+func TestDiffsForBespokeReports(t *testing.T) {
+	res := &cubapi.Result{Outcomes: []cubapi.UnitOutcome{
+		{UnitID: "u-web", SpaceSlug: "prod", UnitSlug: "web", Success: true, HasMutations: true, Diff: replicasDiff("1", "3")},
+		{UnitID: "u-api", SpaceSlug: "prod", UnitSlug: "api", Success: true},
+	}}
+	diffs := Diffs(res)
+	if len(diffs) != 1 || diffs[0].Space != "prod" || diffs[0].Unit != "web" {
+		t.Fatalf("diffs = %+v, want only web's", diffs)
+	}
+	var out bytes.Buffer
+	WriteUnitDiffs(&out, "fix", diffs)
+	if !strings.Contains(out.String(), "Changes to unit prod/web from fix:") {
+		t.Errorf("output = %q", out.String())
+	}
+}
+
+// The table is followed by each changed Unit's diff, uncolored when not written
+// to a terminal.
+func TestReportMutationsShowsDiffs(t *testing.T) {
+	res := &cubapi.Result{DryRun: true, Outcomes: []cubapi.UnitOutcome{
+		{UnitID: "u-web", SpaceSlug: "prod", UnitSlug: "web", Success: true, HasMutations: true, Diff: replicasDiff("1", "3")},
+	}}
+	var out bytes.Buffer
+	cmd := &cobra.Command{}
+	cmd.SetOut(&out)
+	if err := ReportMutations(cmd, "scale", "prod", true, "table", res); err != nil {
+		t.Fatal(err)
+	}
+	got := out.String()
+	for _, want := range []string{
+		"scale: 1 of 1 Unit(s) would change",
+		"Changes to unit prod/web from scale:\nResource: apps/v1/Deployment prod/web\n  ~ [Update] spec.replicas\n      1 → 3\n",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("output lacks %q:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "\033[") {
+		t.Errorf("output to a buffer is colored:\n%s", got)
 	}
 }
 

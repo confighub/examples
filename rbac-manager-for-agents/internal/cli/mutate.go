@@ -10,17 +10,20 @@ import (
 
 	"github.com/confighub/sdk/cliutil"
 	"github.com/confighub/sdk/core/cubapi"
+
+	"github.com/confighub/examples/managerkit/write"
 )
 
 // commitChange converts the shared dry-run/commit flags (cliutil.CommitFlags)
-// into a cubapi.Change: empty on dry-run, the change description on commit. It
-// enforces that a commit carries a description (summary is suggested in the error).
+// into a cubapi.Change: empty on dry-run, the change description on commit,
+// asking for each Unit's diff either way. It enforces that a commit carries a
+// description (summary is suggested in the error).
 func commitChange(c cliutil.CommitFlags, summary string) (cubapi.Change, error) {
-	desc, _, err := c.Validate(summary)
+	desc, dryRun, err := c.Validate(summary)
 	if err != nil {
 		return cubapi.Change{}, err
 	}
-	return cubapi.Change{Description: desc}, nil
+	return write.Change(desc, dryRun), nil
 }
 
 // changedUnits returns the "space/unit" labels of the Units an invocation

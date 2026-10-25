@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/confighub/examples/managerkit"
+	"github.com/confighub/examples/managerkit/write"
 	"github.com/confighub/sdk/cliutil"
 	"github.com/confighub/sdk/core/cubapi"
 
@@ -48,6 +49,8 @@ type upgradePlan struct {
 	// Blocked is true when node groups must be caught up before the control
 	// plane can move at all, so nothing is written this run.
 	Blocked bool `json:"blocked"`
+	// Diffs are what the control-plane edit did, on a commit.
+	Diffs []write.UnitDiff `json:"diffs,omitempty"`
 }
 
 func newUpgradeClusterCmd() *cobra.Command {
@@ -139,7 +142,7 @@ Dry-run by default; pass --commit --change-desc "..." to write stage 1.`,
 				ref.spaceID = sp.Space.SpaceID
 				res, err := cub.SetPath(cmd.Context(), client, "set-string-path",
 					c.APIVersion+"/Cluster", "spec.forProvider.version", target.String(),
-					ref.selector(), cubapi.Change{Description: changeDesc})
+					ref.selector(), write.Change(changeDesc, false))
 				if err != nil {
 					return fmt.Errorf("set control-plane version: %w", err)
 				}
@@ -148,6 +151,7 @@ Dry-run by default; pass --commit --change-desc "..." to write stage 1.`,
 						plan.Mutated++
 					}
 				}
+				plan.Diffs = write.Diffs(res)
 				for i := range plan.Stages {
 					if plan.Stages[i].Order == plan.ControlPlaneStage {
 						plan.Stages[i].Applied = true
@@ -159,6 +163,7 @@ Dry-run by default; pass --commit --change-desc "..." to write stage 1.`,
 				return err
 			}
 			printUpgradePlan(cmd, plan)
+			write.WriteUnitDiffs(cmd.OutOrStdout(), "upgrade", plan.Diffs)
 			return nil
 		},
 	}

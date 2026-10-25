@@ -13,6 +13,7 @@ import (
 	"github.com/confighub/sdk/core/cubapi"
 	goclientnew "github.com/confighub/sdk/core/openapi/goclient-new"
 
+	"github.com/confighub/examples/managerkit/write"
 	"github.com/confighub/examples/rbac-manager-for-agents/internal/cub"
 	"github.com/confighub/examples/rbac-manager-for-agents/internal/rbac"
 )
@@ -162,7 +163,7 @@ func runEdit(cmd *cobra.Command, unitRef string, edit rbac.EditInvocation, c cli
 	if err != nil {
 		return err
 	}
-	return reportFleet(cmd, c, edit.Summary, changed)
+	return reportFleet(cmd, c, edit.Summary, changed, write.Diffs(res))
 }
 
 // resolveEditInvocation finds a stored edit Invocation by slug in the edit

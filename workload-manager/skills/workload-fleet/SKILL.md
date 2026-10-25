@@ -47,7 +47,7 @@ All **edit/create Units but do not publish them**.
    cub-workload profile list -o table
    cub-workload fleet-edit --profile harden-restricted --environment prod
    ```
-   `fleet-edit` reports how many of the matched Units *would* change. Inspect the selector carefully — a broad `--where` touches many Units.
+   `fleet-edit` reports how many of the matched Units *would* change, then each one's diff: every path the profile would set, with the value before and after. Inspect the selector and the diffs carefully — a broad `--where` touches many Units.
 2. **Commit** with `--commit --change-desc`:
    ```bash
    cub-workload fleet-edit --profile harden-restricted --environment prod --commit \

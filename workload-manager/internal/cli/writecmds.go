@@ -23,18 +23,23 @@ func newHardenCmd() *cobra.Command {
 		Use:   "harden <space>/<unit>",
 		Short: "Apply pod/container security-context defaults and disable SA-token automount",
 		Long: `harden runs the hermetic, idempotent security defaulting functions over a
-workload Unit:
+workload Unit, in one change:
 
-  - set-pod-container-security-context-defaults (runAsNonRoot, seccomp
-    RuntimeDefault, drop ALL, readOnlyRootFilesystem, no privilege escalation)
+  - set-pod-container-security-context-defaults (runAsNonRoot, runAsUser 1000,
+    runAsGroup 3000, fsGroup 2000, seccomp RuntimeDefault; per container
+    readOnlyRootFilesystem, no privilege escalation, not privileged, drop ALL)
   - set-automount-service-account-token-false
 
-The Unit is edited, not published — rolling it out is a separate
-'cub release publish <space>'. Dry-run unless --commit --change-desc; never
-bypasses ValidationErrors.
+Both set only what the Unit leaves unset (or holds a placeholder for), so a
+value already chosen -- readOnlyRootFilesystem: false for a container that
+writes to its filesystem, automountServiceAccountToken: true for one that calls
+the Kubernetes API -- is kept. Check that the image runs as 1000:3000, or set
+runAsUser/runAsGroup first, since those are filled in when unset.
 
-Note: if a container legitimately needs a writable root filesystem or the
-ServiceAccount token, record an exception rather than hardening it blindly.`,
+The dry run prints the diff: each path the functions would set, with its value
+before and after. The Unit is edited, not published — rolling it out is a
+separate 'cub release publish <space>'. Dry-run unless --commit --change-desc;
+never bypasses ValidationErrors.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			changeDesc, dryRun, err := commit.Validate(fmt.Sprintf("harden workload %s", args[0]))
@@ -49,16 +54,14 @@ ServiceAccount token, record an exception rather than hardening it blindly.`,
 			if err != nil {
 				return err
 			}
-			ch := write.Change(changeDesc, dryRun)
-			sec, err := cub.InvokeMutation(cmd.Context(), client, "set-pod-container-security-context-defaults", nil, ref.Selector(), ch)
+			res, err := cub.InvokeMutations(cmd.Context(), client, []api.FunctionInvocation{
+				{FunctionName: "set-pod-container-security-context-defaults"},
+				{FunctionName: "set-automount-service-account-token-false"},
+			}, ref.Selector(), write.Change(changeDesc, dryRun))
 			if err != nil {
 				return err
 			}
-			automount, err := cub.InvokeMutation(cmd.Context(), client, "set-automount-service-account-token-false", nil, ref.Selector(), ch)
-			if err != nil {
-				return err
-			}
-			return write.ReportMutations(cmd, "harden", ref.SpaceSlug, dryRun, output, sec, automount)
+			return write.ReportMutations(cmd, "harden", ref.SpaceSlug, dryRun, output, res)
 		},
 	}
 	addOutputFlag(cmd, &output)

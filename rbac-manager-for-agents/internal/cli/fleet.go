@@ -12,6 +12,7 @@ import (
 	"github.com/confighub/sdk/cliutil"
 	"github.com/confighub/sdk/core/cubapi"
 
+	"github.com/confighub/examples/managerkit/write"
 	"github.com/confighub/examples/rbac-manager-for-agents/internal/cub"
 	"github.com/confighub/examples/rbac-manager-for-agents/internal/rbac"
 )
@@ -133,13 +134,16 @@ func runFleetEdit(cmd *cobra.Command, fl fleetFlags, edit rbac.EditInvocation) e
 	if err != nil {
 		return err
 	}
-	return reportFleet(cmd, fl.CommitFlags, edit.Summary+" — fleet: "+sel, changed)
+	return reportFleet(cmd, fl.CommitFlags, edit.Summary+" — fleet: "+sel, changed, write.Diffs(res))
 }
 
 // --- promote (variant propagation) ---
 
-func reportFleet(cmd *cobra.Command, c cliutil.CommitFlags, summary string, changed []string) error {
+// reportFleet lists the Units an edit changed, or on a dry run would change,
+// followed by what it did to each.
+func reportFleet(cmd *cobra.Command, c cliutil.CommitFlags, summary string, changed []string, diffs []write.UnitDiff) error {
 	out := cmd.OutOrStdout()
+	defer write.WriteUnitDiffs(out, "edit", diffs)
 	if !c.Commit {
 		fprintln(out, "Dry run — "+summary)
 		if len(changed) == 0 {

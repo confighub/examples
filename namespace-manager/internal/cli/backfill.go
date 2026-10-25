@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/confighub/examples/managerkit"
+	"github.com/confighub/examples/managerkit/write"
 	"github.com/confighub/sdk/cliutil"
 	"github.com/confighub/sdk/core/cubapi"
 	api "github.com/confighub/sdk/core/function/api"
@@ -29,6 +30,8 @@ type backfillReport struct {
 	WouldClone []string `json:"wouldClone,omitempty"`
 	Cloned     []string `json:"cloned,omitempty"`
 	Rehomed    int      `json:"rehomed"`
+	// Diffs are what set-namespace did to each clone.
+	Diffs []write.UnitDiff `json:"diffs,omitempty"`
 }
 
 func newBackfillCmd() *cobra.Command {
@@ -146,7 +149,7 @@ Unit creation has no server-side dry-run, so dry-run lists the plan and only
 				sel := cubapi.Selector{Where: fmt.Sprintf("SpaceID = '%s' AND Slug IN (%s)", dest.Space.SpaceID.String(), inList(clonedSlugs))}
 				res, err := cub.InvokeMutation(cmd.Context(), client, "set-namespace",
 					[]api.FunctionArgument{{ParameterName: "namespace-name", Value: namespace}},
-					sel, cubapi.Change{Description: changeDesc})
+					sel, write.Change(changeDesc, false))
 				if err != nil {
 					return fmt.Errorf("re-home cloned Units to namespace %q: %w", namespace, err)
 				}
@@ -155,6 +158,7 @@ Unit creation has no server-side dry-run, so dry-run lists the plan and only
 						report.Rehomed++
 					}
 				}
+				report.Diffs = write.Diffs(res)
 			}
 			return reportBackfill(cmd, report, output)
 		},
@@ -195,5 +199,6 @@ func reportBackfill(cmd *cobra.Command, r backfillReport, output string) error {
 	for _, s := range r.Cloned {
 		fprintln(cmd.OutOrStdout(), "  "+s)
 	}
+	write.WriteUnitDiffs(cmd.OutOrStdout(), "set-namespace", r.Diffs)
 	return nil
 }

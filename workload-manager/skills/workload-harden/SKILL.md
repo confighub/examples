@@ -51,7 +51,7 @@ Per-object validators return pass/fail and a human then `kubectl edit`s the clus
    cub-workload ensure-pdb apptique-prod/frontend
    cub-workload ensure-spread apptique-prod/frontend            # soft anti-affinity
    ```
-   Each reports whether the Unit *would* change (a no-op where the fix is already present).
+   Each reports whether the Unit *would* change (a no-op where the fix is already present) and, for an edit to an existing Unit, the diff: every path it would set, with the value before and after. Read the diff before committing, and show it to the user — it is what they are agreeing to.
 3. **Commit** with `--commit --change-desc` (compose the description: summary, verbatim user prompt, condensed clarifications):
    ```bash
    cub-workload harden apptique-prod/frontend --commit \
@@ -64,7 +64,7 @@ Per-object validators return pass/fail and a human then `kubectl edit`s the clus
 ## Safety
 
 - Prefer `ensure-spread --anti-affinity soft`; `hard` (`requiredDuringScheduling`) can leave replicas `Pending` when the cluster has fewer eligible nodes than replicas.
-- `harden` sets `readOnlyRootFilesystem: true`; if a container legitimately writes to its filesystem or needs the ServiceAccount token, record an exception rather than hardening it blindly.
+- `harden` fills security-context fields only where the Unit leaves them unset, so a value already chosen (`readOnlyRootFilesystem: false` for a container that writes to its filesystem, `automountServiceAccountToken: true` for one that calls the Kubernetes API) is kept. Where it fills `readOnlyRootFilesystem: true`, `runAsUser: 1000` or `runAsGroup: 3000`, check the diff against what the image needs — the image's `USER`, and the paths it writes — before committing.
 - Warn before a `set-resources` whose limits are low enough to risk OOMKill/throttle on a running workload.
 
 ## Stop conditions
