@@ -9,6 +9,7 @@ import (
 
 	"github.com/confighub/sdk/core/cubapi"
 	api "github.com/confighub/sdk/core/function/api"
+	goclientnew "github.com/confighub/sdk/core/openapi/goclient-new"
 )
 
 // StatusRow is one Unit carrying a ValidationWarning or a ValidationError.
@@ -19,7 +20,7 @@ type StatusRow struct {
 	Errors   int    `json:"errors"`
 }
 
-// Status lists the Units a pack's Triggers have marked, warnings and gates
+// Status lists the Units guardrail Triggers have marked, warnings and gates
 // alike, sorted by space and unit.
 //
 // It reports what any Trigger attached, not only this pack's: a Unit does not
@@ -105,6 +106,50 @@ func listSpaces(ctx context.Context, client *cubapi.Client, whereSpace string) (
 		infos = append(infos, spaceInfo{
 			SpaceID: es.Space.SpaceID, Slug: es.Space.Slug,
 			WhereTrigger: es.Space.WhereTrigger, TriggerFilterID: triggerFilterID,
+		})
+	}
+	return infos, nil
+}
+
+// spaceInfo is the Space metadata the plan reasons about.
+type spaceInfo struct {
+	SpaceID         goclientnew.UUID
+	Slug            string
+	WhereTrigger    string
+	TriggerFilterID string
+}
+
+// targetInfo is the Target metadata the plan reasons about.
+type targetInfo struct {
+	SpaceID         goclientnew.UUID
+	TargetID        goclientnew.UUID
+	Space           string
+	Slug            string
+	WhereTrigger    string
+	TriggerFilterID string
+}
+
+// listTargets returns the Target metadata the plan reasons about, optionally
+// narrowed by a Target filter.
+func listTargets(ctx context.Context, client *cubapi.Client, whereTarget string) ([]targetInfo, error) {
+	targets, err := cubapi.ListTargets(ctx, client, cubapi.NewWhere(whereTarget),
+		cubapi.ListOpts{Select: "Slug,SpaceID,SpaceSlug,TargetID,WhereTrigger,TriggerFilterID"})
+	if err != nil {
+		return nil, err
+	}
+	infos := make([]targetInfo, 0, len(targets))
+	for _, et := range targets {
+		if et.Target == nil {
+			continue
+		}
+		triggerFilterID := ""
+		if et.Target.TriggerFilterID != nil {
+			triggerFilterID = et.Target.TriggerFilterID.String()
+		}
+		infos = append(infos, targetInfo{
+			SpaceID: et.Target.SpaceID, TargetID: et.Target.TargetID,
+			Space: et.Target.SpaceSlug, Slug: et.Target.Slug,
+			WhereTrigger: et.Target.WhereTrigger, TriggerFilterID: triggerFilterID,
 		})
 	}
 	return infos, nil

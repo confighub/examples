@@ -3,8 +3,8 @@
 
 package cli
 
-// This tool's guardrail pack. The mechanism -- policy Space, Triggers, shared
-// Filter, wiring each in-scope Space, and reporting the Units a Trigger marked
+// This tool's guardrail pack. The mechanism -- policy Space, Triggers, the group
+// selection on each in-scope Space, and reporting the Units a Trigger marked
 // -- is managerkit/guardrails'. What is this tool's is the rules.
 
 import (
@@ -29,7 +29,7 @@ const celTolerationNeedsPlacement = "!(r.kind in " + controllerKinds + ")" +
 	" || (has(r.spec.template.spec.affinity) && has(r.spec.template.spec.affinity.nodeAffinity) && has(r.spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution))"
 
 var pack = guardrails.Pack{
-	Label: "scheduling-guardrails",
+	Group: "scheduling",
 	Rules: []guardrails.Rule{
 		{Slug: "workload-toleration-needs-placement",
 			Description: "Warns on a controller that tolerates a taint but has no nodeSelector or required node affinity (may schedule onto general nodes). Fix: `cub-scheduling set-node-selector` / `set-node-affinity`, or a placement profile.",
@@ -44,7 +44,7 @@ func newGuardrailsCmd() *cobra.Command {
 		Use:   "guardrails",
 		Short: "Install and inspect the placement guardrail policy pack",
 		Long: `guardrails manages a pack of placement validation policies, defined once in a
-policy Space and enforced fleet-wide via a shared Trigger Filter:
+policy Space and enforced in each Space that opts into the group:
 
   workload-toleration-needs-placement   a controller that tolerates a taint must
                                         pin where it lands (nodeSelector or

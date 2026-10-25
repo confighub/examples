@@ -4,7 +4,7 @@
 package cli
 
 // The NetworkPolicy guardrail pack. The mechanism -- policy Space, Triggers,
-// shared Filter, wiring each in-scope Space, and reporting the Units a Trigger
+// the group selection on each in-scope Space, and reporting the Units a Trigger
 // marked -- is managerkit/guardrails'. What is netpol's is the rules, and the
 // annotate command, which turns a coverage finding no single resource can
 // express into an annotation the pack's own rule then warns on.
@@ -41,7 +41,7 @@ const (
 )
 
 var pack = guardrails.Pack{
-	Label: "netpol-guardrails",
+	Group: "netpol",
 	Rules: []guardrails.Rule{
 		{Slug: "netpol-no-allow-all-ingress", Description: "Warns on a NetworkPolicy ingress rule with an empty `from` (admits all sources). Fix: enumerate the allowed sources.", Expression: celNoAllowAllIngress},
 		{Slug: "netpol-no-wide-cidr-egress", Description: "Warns on an egress rule permitting 0.0.0.0/0. Fix: restrict the CIDR and exclude the cloud-metadata IP.", Expression: celNoWideCidrEgress},
@@ -56,7 +56,7 @@ func newGuardrailsCmd() *cobra.Command {
 		Use:   "guardrails",
 		Short: "Install, inspect, and feed the NetworkPolicy guardrail policy pack",
 		Long: `guardrails manages a pack of NetworkPolicy validation policies, defined once in a
-policy Space and enforced fleet-wide via a shared Trigger Filter:
+policy Space and enforced in each Space that opts into the group:
 
   netpol-no-allow-all-ingress  ingress rules must name their sources
   netpol-no-wide-cidr-egress   no egress to 0.0.0.0/0

@@ -26,54 +26,83 @@ type Preflight func(context.Context) (*cubapi.Client, error)
 
 // InstallCmd is `guardrails install` for this pack.
 func (p Pack) InstallCmd(preflight Preflight) *cobra.Command {
-	var policySpace, whereSpace, output string
+	var policySpace, output string
+	var scope Scope
 	var commit bool
 	cmd := &cobra.Command{
 		Use:   "install",
-		Short: "Install the guardrail pack and wire in-scope Spaces (dry-run by default)",
-		Long: `install creates the policy Space, the Warn=true guardrail Triggers, and the
-shared Trigger Filter, then points each in-scope Space's TriggerFilterID at it.
+		Short: "Install the guardrail group and add it to in-scope Spaces (dry-run by default)",
+		Long: `install creates the policy Space and the Warn=true guardrail Triggers, labeled
+` + GroupLabel + `: ` + p.Group + `, then adds the group to each in-scope Space's WhereTrigger.
 
-The Space and the Filter are shared with the sibling tools. A Space has exactly
-one TriggerFilterID, so a Filter per tool could not compose: the first pack
-installed would claim a Space and the rest would find it taken. Instead every
-pack's Triggers carry a common label, one Filter selects them, and installing
-another pack adds its rules to every Space already wired.
+A Space opts into guardrails by listing groups, from one policy Space:
+
+  ` + p.exampleSelection() + `
+
+so installing another tool's group adds its rules only to the Spaces that
+install wires, and a Trigger labeled into a group anywhere else is never
+selected. Rules that check only released Units are labeled ` + AppliedToLabel + `: ` + AppliedToTarget + `
+and selected by Targets instead.
+
+Each rule skips the resources annotated ` + ExceptionAnnotationPrefix + `<rule>,
+whose value says why the resource is excepted.
 
 Dry-run by default: it prints the plan and changes nothing. Re-run with --commit
 to apply. Spaces that already select Triggers another way are reported, not
-modified. Narrow which Spaces get wired with --where-space.`,
+modified. Narrow which Spaces get wired with --where-space. Re-running updates
+the Triggers to this version of the rules.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := preflight(cmd.Context())
 			if err != nil {
 				return err
 			}
-			plan, err := p.BuildPlan(cmd.Context(), client, policySpace, whereSpace)
+			plan, err := p.BuildPlan(cmd.Context(), client, policySpace, scope)
 			if err != nil {
 				return err
 			}
-			if commit {
-				out := cmd.OutOrStdout()
-				if err := p.Execute(cmd.Context(), client, policySpace, plan,
-					func(line string) { cliutil.Fprintln(out, line) }); err != nil {
-					return err
-				}
-				plan.Committed = true
-			}
-			if done, err := managerkit.Render(cmd.OutOrStdout(), output, plan); done || err != nil {
-				return err
-			}
-			PrintPlan(cmd, plan)
-			return nil
+			return p.Report(cmd, client, plan, commit, output)
 		},
 	}
-	cmd.Flags().StringVar(&policySpace, "policy-space", DefaultPolicySpace,
-		"Space holding the guardrail Triggers and the shared Filter; every tool defaults to the same one")
-	cmd.Flags().StringVar(&whereSpace, "where-space", "", "ConfigHub filter over Spaces to narrow which Spaces get wired")
-	cmd.Flags().BoolVar(&commit, "commit", false, "apply the plan (default is dry-run)")
-	managerkit.AddOutputFlag(cmd, &output)
+	p.BindInstallFlags(cmd, &policySpace, &commit, &output)
+	cmd.Flags().StringVar(&scope.WhereSpace, "where-space", "", "ConfigHub filter over Spaces to narrow which Spaces get wired")
+	if p.hasTargetRules() {
+		cmd.Flags().StringVar(&scope.WhereTarget, "where-target", "", "ConfigHub filter over Targets to narrow which Targets get wired")
+	}
 	return cmd
+}
+
+// BindInstallFlags binds the flags every install command shares, for a tool
+// that builds its own install over PlanFor.
+func (p Pack) BindInstallFlags(cmd *cobra.Command, policySpace *string, commit *bool, output *string) {
+	cmd.Flags().StringVar(policySpace, "policy-space", DefaultPolicySpace,
+		"Space holding the guardrail Triggers; every tool defaults to the same one")
+	cmd.Flags().BoolVar(commit, "commit", false, "apply the plan (default is dry-run)")
+	managerkit.AddOutputFlag(cmd, output)
+}
+
+// Report applies plan when commit is set, then renders it.
+func (p Pack) Report(cmd *cobra.Command, client *cubapi.Client, plan Plan, commit bool, output string) error {
+	if commit {
+		out := cmd.OutOrStdout()
+		if err := p.Execute(cmd.Context(), client, plan.PolicySpace, plan,
+			func(line string) { cliutil.Fprintln(out, line) }); err != nil {
+			return err
+		}
+		plan.Committed = true
+	}
+	if done, err := managerkit.Render(cmd.OutOrStdout(), output, plan); done || err != nil {
+		return err
+	}
+	PrintPlan(cmd, plan)
+	return nil
+}
+
+// exampleSelection is the selection of a Space that has opted into this group
+// alone, for help text.
+func (p Pack) exampleSelection() string {
+	where, _ := Selection{PolicySpace: DefaultPolicySpace, Groups: []string{p.Group}}.Where()
+	return where
 }
 
 // StatusCmd is `guardrails status`: which Units the Triggers have marked.
@@ -116,23 +145,35 @@ func PrintPlan(cmd *cobra.Command, plan Plan) {
 	if plan.Committed {
 		verb = "Applied"
 	}
-	cliutil.Fprintln(out, fmt.Sprintf("%s — policy pack %q, filter %q", verb, plan.PolicySpace, plan.Filter))
+	cliutil.Fprintln(out, fmt.Sprintf("%s — guardrail group %q in policy Space %q", verb, plan.Group, plan.PolicySpace))
 	cliutil.Fprintln(out, "  triggers: "+strings.Join(plan.Triggers, ", "))
-	cliutil.Fprintln(out, fmt.Sprintf("  spaces to wire (%d): %s", len(plan.Wire), strings.Join(plan.Wire, ", ")))
+	if len(plan.Wire) == 0 {
+		cliutil.Fprintln(out, "  to wire: none")
+	} else {
+		cliutil.Fprintln(out, fmt.Sprintf("  to wire (%d): %s", len(plan.Wire), strings.Join(names(plan.Wire), ", ")))
+	}
 	if len(plan.AlreadyWired) > 0 {
-		cliutil.Fprintln(out, fmt.Sprintf("  already wired (%d): %s", len(plan.AlreadyWired), strings.Join(plan.AlreadyWired, ", ")))
+		cliutil.Fprintln(out, fmt.Sprintf("  already wired (%d): %s", len(plan.AlreadyWired), strings.Join(names(plan.AlreadyWired), ", ")))
 	}
 	if len(plan.Skipped) > 0 {
 		tw := tabwriter.NewWriter(out, 0, 2, 2, ' ', 0)
 		fmt.Fprintln(tw, "  SKIPPED\tREASON")
 		for _, s := range plan.Skipped {
-			fmt.Fprintf(tw, "  %s\t%s\n", s.Space, s.Reason)
+			fmt.Fprintf(tw, "  %s\t%s\n", s.Name(), s.Reason)
 		}
 		_ = tw.Flush()
 	}
 	if !plan.Committed {
 		cliutil.Fprintln(out, "\nNothing changed. Re-run with --commit to apply.")
 	}
+}
+
+func names(ws []Wiring) []string {
+	out := make([]string, len(ws))
+	for i, w := range ws {
+		out[i] = w.Name()
+	}
+	return out
 }
 
 // PrintStatus renders the marked Units as a table.

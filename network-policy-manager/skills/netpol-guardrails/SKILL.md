@@ -1,13 +1,13 @@
 ---
 name: netpol-guardrails
-description: 'Install, inspect, and feed the NetworkPolicy guardrail policy pack in ConfigHub with the cub-netpol CLI — making NetworkPolicy findings enforced (advisory ValidationWarnings) instead of just reported. Use for "enforce our network-policy rules", "block allow-all policies", "warn on egress to 0.0.0.0/0", "set up NetworkPolicy guardrails", "which Units have NetworkPolicy warnings?", "annotate the uncovered Units so they get flagged". Installs Warn=true vet-celexpr Triggers + a Filter (annotate-then-validate for coverage); dry-run by default. Not for one-off checks (use netpol-findings) or fixing config (use netpol-fix).'
+description: 'Install, inspect, and feed the NetworkPolicy guardrail policy pack in ConfigHub with the cub-netpol CLI — making NetworkPolicy findings enforced (advisory ValidationWarnings) instead of just reported. Use for "enforce our network-policy rules", "block allow-all policies", "warn on egress to 0.0.0.0/0", "set up NetworkPolicy guardrails", "which Units have NetworkPolicy warnings?", "annotate the uncovered Units so they get flagged". Installs Warn=true vet-celexpr Triggers in the netpol guardrail group (annotate-then-validate for coverage); dry-run by default. Not for one-off checks (use netpol-findings) or fixing config (use netpol-fix).'
 phase: act
 allowed-tools: Bash(cub-netpol --help) Bash(cub-netpol * --help) Bash(cub auth status) Bash(cub-netpol preflight) Bash(cub-netpol findings *) Bash(cub-netpol guardrails install *) Bash(cub-netpol guardrails status *) Bash(cub-netpol guardrails annotate *)
 ---
 
 # netpol-guardrails
 
-Make NetworkPolicy findings **enforced**, not advisory. Installs a pack of validation policies (defined once in a policy Space, enforced fleet-wide via a shared Filter) and the annotate-then-validate loop that turns a coverage finding into a ValidationWarning.
+Make NetworkPolicy findings **enforced**, not advisory. Installs a pack of validation policies (defined once in a policy Space, enforced in each Space that opts into the `netpol` group) and the annotate-then-validate loop that turns a coverage finding into a ValidationWarning.
 
 ## Why this matters
 
@@ -41,7 +41,7 @@ The manager itself cannot set ValidationWarnings/ValidationErrors — only a fai
 
 ## The loop
 
-1. **Preview** the install (dry-run by default): it prints the policy Space, the Triggers, the Filter, and which Spaces it would wire (and which it would skip).
+1. **Preview** the install (dry-run by default): it prints the policy Space, the group, the Triggers, and which Spaces it would wire (and which it would skip).
    ```bash
    cub-netpol guardrails install --where-space "Labels.Component = 'rbac'" -o table
    ```
@@ -49,7 +49,7 @@ The manager itself cannot set ValidationWarnings/ValidationErrors — only a fai
    ```bash
    cub-netpol guardrails install --where-space "Slug LIKE 'apptique-%'" --commit
    ```
-   Spaces with a pre-existing custom `WhereTrigger` are skipped (not clobbered) and reported; wire those deliberately with `cub space update <space> --trigger-filter common/netpol-guardrails --where-trigger "-"` (see **triggers-and-applygates**).
+   Spaces with a pre-existing custom `WhereTrigger` are skipped (not clobbered) and reported; add the `netpol` group to their `WhereTrigger` deliberately (see **triggers-and-applygates**).
 3. **Annotate** coverage findings so the coverage Trigger flags them (dry-run by default):
    ```bash
    cub-netpol guardrails annotate --commit --change-desc "Flag uncovered Units. User prompt: ..."
@@ -60,6 +60,18 @@ The manager itself cannot set ValidationWarnings/ValidationErrors — only a fai
    cub-netpol guardrails status -o table
    ```
 5. **Promote a rule to blocking** later (the manager never does this silently): `cub trigger update <slug> --space common --unwarn`.
+
+## Exceptions
+
+A resource that is meant to break one rule is excepted from it with an annotation naming the rule, whose value says why:
+
+```yaml
+metadata:
+  annotations:
+    exceptions.guardrails.confighub.com/netpol-no-wide-cidr-egress: "egress gateway; reaches the internet by design"
+```
+
+That rule's Trigger skips the resources carrying it; the other rules still check them. Adding one is a config change for the user to make deliberately (`cub function do set-annotation` on the Unit, with `--where-resource` naming the one resource), not a way to silence a warning.
 
 ## Stop conditions
 

@@ -241,15 +241,16 @@ $ cub-workload fleet-edit --profile resources-medium --environment dev --param c
 
 `guardrails install` stands up a policy pack — `Warn=true` `vet-cel` Triggers
 (memory limits, run-as-non-root, terminationMessagePolicy) plus an
-annotate-then-validate Trigger for PDB coverage — and wires in-scope Spaces to a
-shared Trigger Filter. It's dry-run by default and **conservative**: it skips
-Spaces that already select Triggers their own way rather than clobbering them.
+annotate-then-validate Trigger for PDB coverage — labeled `Guardrails: workload`,
+and adds the `workload` group to each in-scope Space's `WhereTrigger`. It's
+dry-run by default and **conservative**: it skips Spaces that already select
+Triggers their own way rather than clobbering them.
 
 ```console
 $ cub-workload guardrails install -o table
-Plan (dry-run) — policy pack "common", filter "common/workload-guardrails"
+Plan (dry-run) — guardrail group "workload" in policy Space "common"
   triggers: workload-has-limits, workload-runs-nonroot, workload-termination-message-policy, workload-pdb-coverage
-  spaces to wire (0):
+  to wire: none
   already wired (1): platform-dev
 ```
 

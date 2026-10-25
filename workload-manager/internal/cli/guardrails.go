@@ -3,8 +3,8 @@
 
 package cli
 
-// This tool's guardrail pack. The mechanism -- policy Space, Triggers, shared
-// Filter, wiring each in-scope Space, and reporting the Units a Trigger marked
+// This tool's guardrail pack. The mechanism -- policy Space, Triggers, the group
+// selection on each in-scope Space, and reporting the Units a Trigger marked
 // -- is managerkit/guardrails'. What is this tool's is the rules, and which
 // Units the annotate command has something to say about.
 
@@ -44,7 +44,7 @@ const (
 )
 
 var pack = guardrails.Pack{
-	Label: "workload-guardrails",
+	Group: "workload",
 	Rules: []guardrails.Rule{
 		{Slug: "workload-has-limits", Description: "Warns on a controller whose containers don't all set resources.limits.memory. Fix: `cub-workload set-resources <space>/<unit>`.", Expression: celHasLimits},
 		{Slug: "workload-runs-nonroot", Description: "Warns on a controller not running as non-root (pod or all containers). Fix: `cub-workload harden <space>/<unit>`.", Expression: celRunsNonRoot},
@@ -60,7 +60,7 @@ func newGuardrailsCmd() *cobra.Command {
 		Use:   "guardrails",
 		Short: "Install, inspect, and feed the workload-readiness guardrail policy pack",
 		Long: `guardrails manages a pack of workload-readiness validation policies, defined once
-in a policy Space and enforced fleet-wide via a shared Trigger Filter:
+in a policy Space and enforced in each Space that opts into the group:
 
   workload-has-limits                controller containers set a memory limit
   workload-runs-nonroot              controller runs as non-root

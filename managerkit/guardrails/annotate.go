@@ -86,7 +86,7 @@ func (p Pack) AnnotateCmd(preflight Preflight, spec AnnotateSpec) *cobra.Command
 		Long:  spec.Long,
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			changeDesc, dryRun, err := commit.Validate("annotate Units with " + p.Label + " findings")
+			changeDesc, dryRun, err := commit.Validate("annotate Units with " + p.Group + " guardrail findings")
 			if err != nil {
 				return err
 			}
