@@ -151,40 +151,9 @@ GUI feature ask: Deployment variant matrix view showing direct/flux/argo side by
 
 ---
 
-## Stage 5: "Optional: Preflight Live Readiness" (read-only)
+## Stage 5: "Optional: Bind Live Targets" (mutates ConfigHub)
 
 Only proceed if the human wants the live path.
-
-Run:
-
-```bash
-cd ..
-./preflight-live.sh <space/target>
-./preflight-live.sh <space/target> --json | jq
-```
-
-What to explain:
-
-- Target visibility is not the same as apply readiness
-- Only proceed if `applyReady: true`
-- The helper routes targets by provider type:
-  - `Kubernetes` → direct deployment variant
-  - `FluxOCI` / `FluxOCIWriter` → Flux deployment variant
-  - `ArgoOCI` → Argo deployment variant
-
-GUI now: No GUI checkpoint for this stage.
-
-GUI gap: No preflight status shown on target card.
-
-GUI feature ask: Preflight check result on target card before binding. No issue filed yet.
-
-**PAUSE.** Wait for the human.
-
----
-
-## Stage 6: "Optional: Bind Live Targets" (mutates ConfigHub)
-
-Only proceed if preflight passed.
 
 Run:
 
@@ -210,35 +179,30 @@ GUI feature ask: Deployment variant matrix with binding and readiness status. No
 
 ---
 
-## Stage 7: "Optional: Apply Live" (mutates live infrastructure)
+## Stage 6: "Optional: Publish A Release" (mutates ConfigHub)
 
-Only proceed if targets are bound.
+Only proceed if a target is bound.
 
 Run:
 
 ```bash
 source .state/state.env
-# For direct variant:
-cub unit apply --space "${PREFIX}-deploy-cluster-a" gpu-operator-cluster-a
+cub space update "${PREFIX}-deploy-cluster-a-flux" --release-target <space/target>
+cub release publish "${PREFIX}-deploy-cluster-a-flux"
 ```
 
 What to explain:
 
-- Apply sends rendered config to the target
-- For Flux OCI: worker publishes to ConfigHub-native OCI origin, Flux reconciles
-- For Argo OCI: worker publishes to ConfigHub-native OCI origin, ArgoCD reconciles
+- A Release bundles the Units in the Space that are assigned to the Space's release Target, and serves them from ConfigHub's OCI registry
+- Argo CD or Flux pulls the Release from there; argobot syncs on release events
 
-GUI now: Inspect the unit after apply.
-
-GUI gap: No live status badge showing apply success/failure.
-
-GUI feature ask: Apply status with timestamp on unit card. No issue filed yet.
+GUI now: Inspect the Release in the deploy space.
 
 **PAUSE.** Wait for the human.
 
 ---
 
-## Stage 8: "Cleanup"
+## Stage 7: "Cleanup"
 
 Run:
 
@@ -258,7 +222,7 @@ This removes all spaces and units created by the demo.
 | `./setup.sh` | ConfigHub spaces, units, links, recipe manifest, local `.state/`, local `.logs/` |
 | `./verify.sh` | local `.logs/verify.latest.log` |
 | `./set-target.sh` | ConfigHub target bindings for compatible variants, local `.logs/set-target.latest.log` |
-| `cub unit apply` | Live target state |
+| `cub release publish` | A Release served from ConfigHub's OCI registry |
 
 ## Related Files
 

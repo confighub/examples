@@ -28,7 +28,7 @@ cd spring-platform/springboot-platform-app-centric
 
 If `cub space list --json` fails because auth is missing or expired, run `cub auth login` before any mutating stage.
 
-This path is read-only. It is useful for orientation, but it does **not** prove that setup, mutation, or apply actually work.
+This path is read-only. It is useful for orientation, but it does **not** prove that setup or mutation actually work.
 
 ## Fast Operational Evaluation
 
@@ -50,8 +50,6 @@ cub function do --space inventory-api-prod --unit inventory-api \
 
 cub mutation list --space inventory-api-prod --json inventory-api | \
   jq '.[] | {mutationNum: .Mutation.MutationNum, source: .Revision.Source, description: .Revision.Description, createdAt: .Mutation.CreatedAt, author: .Author.Email}'
-
-cub unit apply --space inventory-api-prod inventory-api
 ```
 
 Then stop before `./cleanup.sh` unless the human asks for cleanup.
@@ -62,7 +60,6 @@ This proves:
 - the three mutation outcomes are still explained with stable CLI output
 - one real `apply-here` mutation works
 - mutation history is captured
-- noop-target apply can be initiated through ConfigHub
 
 ## Pairing Modes
 
@@ -93,7 +90,7 @@ After this demo, the human will understand:
 - The three mutation outcomes (apply-here, lift-upstream, block-escalate)
 - How to run mutations with full audit trail
 
-No cluster required. Uses noop targets.
+No cluster required. Units live in ConfigHub only.
 
 ## Stage 1: "What Is This App?" (read-only)
 
@@ -143,9 +140,8 @@ cub space list --where "Labels.ExampleName = 'springboot-platform-app-centric'" 
 ```
 
 You'll see:
-- 4 spaces created (3 env + 1 infra)
-- Each env space has a unit and noop target
-- The noop target accepts applies but doesn't deliver
+- 3 spaces created (dev, stage, prod)
+- Each space has one unit
 
 GUI now: ConfigHub → Spaces → filter `ExampleName=springboot-platform-app-centric`
 
@@ -199,26 +195,7 @@ GUI feature ask: Inline mutation diff viewer. No issue filed yet.
 
 **PAUSE.** Wait for the human.
 
-## Stage 6: "Apply To Target" (mutates target — noop in this example)
-
-```bash
-cub unit apply --space inventory-api-prod inventory-api
-```
-
-You'll see:
-- ConfigHub accepts the apply request for the noop target
-- Noop target accepts but doesn't deliver to a real cluster
-- In a real setup, this would begin a real delivery path, but this example does not prove cluster rollout completion
-
-GUI now: Unit → Apply status should show that an apply request was recorded.
-
-GUI gap: No live cluster feedback in this noop example.
-
-GUI feature ask: Apply status with cluster health indicator. No issue filed yet.
-
-**PAUSE.** Wait for the human.
-
-## Stage 7: "Cleanup"
+## Stage 6: "Cleanup"
 
 ```bash
 ./cleanup.sh
@@ -232,9 +209,8 @@ This removes all spaces and units created by this demo.
 |---------|--------|
 | `./setup.sh --explain` | Nothing |
 | `./setup.sh --explain-json` | Nothing |
-| `./setup.sh` | ConfigHub spaces, units, targets |
+| `./setup.sh` | ConfigHub spaces and units |
 | `cub function do` | Unit mutation |
-| `cub unit apply` | Target apply (noop in this example) |
 | `./cleanup.sh` | Deletes ConfigHub objects |
 
 ## Not Yet Implemented

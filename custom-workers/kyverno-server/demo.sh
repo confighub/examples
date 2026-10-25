@@ -2,7 +2,7 @@
 # Copyright (C) ConfigHub, Inc.
 # SPDX-License-Identifier: MIT
 #
-# End-to-end demo of the kyverno-server example worker.
+# End-to-end demo of the kyverno-server example function bot.
 #
 # Prerequisites:
 #   - kind, kubectl, cub, docker installed
@@ -26,10 +26,13 @@ done
 # --- Configuration -----------------------------------------------------------
 
 CLUSTER_NAME="kyverno-demo-$(( RANDOM % 9000 + 1000 ))"
-SPACE="kyverno-demo-$(( RANDOM % 9000 + 1000 ))"
-KYVERNO_WORKER="kyverno-worker"
-KYVERNO_WORKER_NAMESPACE="kyverno-worker"
-IMAGE_NAME="kyverno-server-worker:demo"
+SUFFIX="$(( RANDOM % 9000 + 1000 ))"
+SPACE="kyverno-demo-$SUFFIX"
+# The bot's service account, its Channel and its Deployment share this name. Service
+# accounts belong to the organization, so the name carries the run's suffix.
+BOT="kyverno-bot-$SUFFIX"
+BOT_NAMESPACE="kyverno-bot"
+IMAGE_NAME="kyverno-server-bot:demo"
 
 echo "=== Kyverno Server Demo ==="
 echo "Cluster:  $CLUSTER_NAME"
@@ -44,11 +47,14 @@ cleanup() {
     echo "=== Skipping cleanup (NOCLEANUP=1) ==="
     echo "Cluster: $CLUSTER_NAME"
     echo "Space:   $SPACE"
+    echo "Service account: $BOT"
     return
   fi
   echo ""
   echo "=== Cleaning up ==="
   kind delete cluster --name "$CLUSTER_NAME" 2>/dev/null || true
+  cub space delete "$SPACE" --recursive 2>/dev/null || true
+  cub serviceaccount delete "$BOT" 2>/dev/null || true
   echo "Done."
 }
 trap cleanup EXIT
@@ -110,7 +116,7 @@ spec:
       matchExpressions:
         - key: kubernetes.io/metadata.name
           operator: NotIn
-          values: [kyverno, kyverno-worker, confighub, kube-system]
+          values: [kyverno, kyverno-bot, confighub, kube-system]
   validations:
     - expression: >
         has(object.metadata.labels) &&
@@ -138,7 +144,7 @@ spec:
       matchExpressions:
         - key: kubernetes.io/metadata.name
           operator: NotIn
-          values: [kyverno, kyverno-worker, confighub, kube-system]
+          values: [kyverno, kyverno-bot, confighub, kube-system]
   validations:
     - expression: >
         object.spec.template.spec.containers.all(c,
@@ -148,21 +154,22 @@ spec:
 POLICY
 echo ""
 
-# --- Deploy kyverno-server function executor ---------------------------------
+# --- Deploy kyverno-server function bot ---------------------------------------
 
-echo "--- Deploying kyverno-server function executor ---"
-# The function executor lists ValidatingWebhookConfigurations to find Kyverno's webhooks.
+echo "--- Deploying kyverno-server function bot ---"
+# The bot lists ValidatingWebhookConfigurations to find Kyverno's webhooks.
 kubectl create clusterrole kyverno-webhook-reader \
   --verb=list,watch --resource=validatingwebhookconfigurations.admissionregistration.k8s.io
-kubectl create clusterrolebinding kyverno-worker-webhook-reader \
+kubectl create clusterrolebinding kyverno-bot-webhook-reader \
   --clusterrole=kyverno-webhook-reader \
-  --group="system:serviceaccounts:$KYVERNO_WORKER_NAMESPACE"
+  --group="system:serviceaccounts:$BOT_NAMESPACE"
 
-# A Secret with the Worker's credentials and a Deployment that reads it.
-"$(dirname "$0")/../deploy-worker.sh" "$SPACE" "$KYVERNO_WORKER" "$KYVERNO_WORKER_NAMESPACE" "$IMAGE_NAME" \
+# A service account with Claim on a Channel that declares the bot's functions, a Secret
+# with the service account's key, and a Deployment that reads it.
+"$(dirname "$0")/../deploy-bot.sh" "$SPACE" "$BOT" "$BOT_NAMESPACE" "$IMAGE_NAME" \
   KYVERNO_URL=https://kyverno-svc.kyverno.svc:443 \
   KYVERNO_SKIP_TLS_VERIFY=true
-echo "Kyverno function executor is ready."
+echo "Kyverno function bot is ready."
 echo ""
 
 # --- Create test units -------------------------------------------------------
@@ -229,15 +236,15 @@ sleep 10
 # --- Run validation ----------------------------------------------------------
 
 echo "--- Running vet-kyverno-server on pod-with-labels (should pass) ---"
-cub function do vet-kyverno-server --space "$SPACE" --unit pod-with-labels --worker "$SPACE/$KYVERNO_WORKER"
+cub function do vet-kyverno-server --space "$SPACE" --unit pod-with-labels --channel "$SPACE/$BOT"
 echo ""
 
 echo "--- Running vet-kyverno-server on pod-without-labels (should fail) ---"
-cub function do vet-kyverno-server --space "$SPACE" --unit pod-without-labels --worker "$SPACE/$KYVERNO_WORKER"
+cub function do vet-kyverno-server --space "$SPACE" --unit pod-without-labels --channel "$SPACE/$BOT"
 echo ""
 
 echo "--- Running vet-kyverno-server on deploy-latest-tag (should fail) ---"
-cub function do vet-kyverno-server --space "$SPACE" --unit deploy-latest-tag --worker "$SPACE/$KYVERNO_WORKER"
+cub function do vet-kyverno-server --space "$SPACE" --unit deploy-latest-tag --channel "$SPACE/$BOT"
 echo ""
 
 echo "=== Demo complete ==="

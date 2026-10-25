@@ -109,8 +109,8 @@ In ConfigHub-only mode:
 
 In live mode:
 - deployment units bound to a target
-- successful `./apply-live.sh`
-- live resources visible in the chosen target path
+- a published Release (`cub release publish`)
+- the Release pulled by Argo CD or Flux in the chosen target path
 
 ## AI-Safe Path
 
@@ -246,31 +246,20 @@ If you did not pass a target during setup:
 ./set-target.sh <space/target>
 ```
 
-The simplest honest live path is:
+Then set the deployment Space's release Target and publish a Release for it. Argo CD or Flux pulls the Release from ConfigHub's OCI registry:
 
 ```bash
-./apply-live.sh
+cub space update <prefix>-deploy-cluster-a --release-target <space/target>
+cub release publish <prefix>-deploy-cluster-a
 ```
 
-`apply-live.sh` now does the whole safe live sequence for you:
-- preflights the target and stops if it is not actually apply-ready
-- refreshes the deploy-space clones from the latest upstream recipe revisions
-- refreshes the app-level recipe receipt
-- applies the deployment bootstrap namespace unit first
-- then applies the backend, frontend, and postgres deployment units
-- waits for completion instead of treating "apply started" as success
-
 Important:
-- this example's proven live path is the direct `Kubernetes` target
 - the deployment units here are raw Kubernetes manifests, not Argo CD `Application` resources
-- so `ArgoCDRenderer` is not a drop-in target swap for `realistic-app` today; the helper scripts now stop early and tell you that instead of failing later with `failed to parse Application`
+- so `ArgoCDRenderer` is not a drop-in target swap for `realistic-app` today; `set-target.sh` stops early and says so
 
 The bundle belongs to the target path, not to the recipe itself:
 
-- for the direct Kubernetes path, the honest proof is the applied live state and
-  the deployment receipts
-- for Flux OCI or Argo OCI paths, the bundle would be the controller-consumed
-  OCI artifact
+- the bundle is the Release: the OCI artifact Argo CD or Flux consumes
 
 The explicit recipe manifest records the layered provenance for the whole app
 and can carry bundle hints once a target is set, but it is not the deployable

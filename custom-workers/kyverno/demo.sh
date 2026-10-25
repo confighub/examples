@@ -2,9 +2,9 @@
 # Copyright (C) ConfigHub, Inc.
 # SPDX-License-Identifier: MIT
 #
-# End-to-end demo of the kyverno example worker.
+# End-to-end demo of the kyverno example function bot.
 #
-# Unlike the kyverno-server example, this worker uses the kyverno CLI for
+# Unlike the kyverno-server example, this bot uses the kyverno CLI for
 # offline validation — policies are passed as a function parameter, so Kyverno
 # does not need to be deployed in the cluster.
 #
@@ -30,10 +30,13 @@ done
 # --- Configuration -----------------------------------------------------------
 
 CLUSTER_NAME="kyverno-cli-demo-$(( RANDOM % 9000 + 1000 ))"
-SPACE="kyverno-cli-demo-$(( RANDOM % 9000 + 1000 ))"
-KYVERNO_WORKER="kyverno-cli-worker"
-KYVERNO_WORKER_NAMESPACE="kyverno-cli-worker"
-IMAGE_NAME="kyverno-cli-worker:demo"
+SUFFIX="$(( RANDOM % 9000 + 1000 ))"
+SPACE="kyverno-cli-demo-$SUFFIX"
+# The bot's service account, its Channel and its Deployment share this name. Service
+# accounts belong to the organization, so the name carries the run's suffix.
+BOT="kyverno-cli-bot-$SUFFIX"
+BOT_NAMESPACE="kyverno-cli-bot"
+IMAGE_NAME="kyverno-cli-bot:demo"
 
 echo "=== Kyverno CLI Demo ==="
 echo "Cluster:  $CLUSTER_NAME"
@@ -48,11 +51,14 @@ cleanup() {
     echo "=== Skipping cleanup (NOCLEANUP=1) ==="
     echo "Cluster: $CLUSTER_NAME"
     echo "Space:   $SPACE"
+    echo "Service account: $BOT"
     return
   fi
   echo ""
   echo "=== Cleaning up ==="
   kind delete cluster --name "$CLUSTER_NAME" 2>/dev/null || true
+  cub space delete "$SPACE" --recursive 2>/dev/null || true
+  cub serviceaccount delete "$BOT" 2>/dev/null || true
   echo "Done."
 }
 trap cleanup EXIT
@@ -79,12 +85,13 @@ echo "--- Creating ConfigHub space ---"
 cub space create "$SPACE"
 echo ""
 
-# --- Install kyverno CLI worker ----------------------------------------------
+# --- Deploy the kyverno CLI function bot -------------------------------------
 
-echo "--- Deploying kyverno CLI function executor ---"
-# A Secret with the Worker's credentials and a Deployment that reads it.
-"$(dirname "$0")/../deploy-worker.sh" "$SPACE" "$KYVERNO_WORKER" "$KYVERNO_WORKER_NAMESPACE" "$IMAGE_NAME"
-echo "Kyverno CLI function executor is ready."
+echo "--- Deploying kyverno CLI function bot ---"
+# A service account with Claim on a Channel that declares the bot's functions, a Secret
+# with the service account's key, and a Deployment that reads it.
+"$(dirname "$0")/../deploy-bot.sh" "$SPACE" "$BOT" "$BOT_NAMESPACE" "$IMAGE_NAME"
+echo "Kyverno CLI function bot is ready."
 echo ""
 
 # --- Load policies and resources from demo-data/ -----------------------------
@@ -121,12 +128,12 @@ echo ""
 
 echo "--- Running vet-kyverno on deploy-with-labels (should pass) ---"
 cub function do vet-kyverno "$REQUIRE_LABELS_POLICY" \
-  --space "$SPACE" --unit deploy-with-labels --worker "$SPACE/$KYVERNO_WORKER"
+  --space "$SPACE" --unit deploy-with-labels --channel "$SPACE/$BOT"
 echo ""
 
 echo "--- Running vet-kyverno on deploy-without-labels (should fail) ---"
 cub function do vet-kyverno "$REQUIRE_LABELS_POLICY" \
-  --space "$SPACE" --unit deploy-without-labels --worker "$SPACE/$KYVERNO_WORKER"
+  --space "$SPACE" --unit deploy-without-labels --channel "$SPACE/$BOT"
 echo ""
 
 # --- Run validation with Kubernetes ValidatingAdmissionPolicy -----------------
@@ -136,12 +143,12 @@ echo ""
 
 echo "--- Running vet-kyverno on deploy-with-labels (should pass) ---"
 cub function do vet-kyverno "$DISALLOW_LATEST_TAG_VAP" \
-  --space "$SPACE" --unit deploy-with-labels --worker "$SPACE/$KYVERNO_WORKER"
+  --space "$SPACE" --unit deploy-with-labels --channel "$SPACE/$BOT"
 echo ""
 
 echo "--- Running vet-kyverno on deploy-latest-tag (should fail) ---"
 cub function do vet-kyverno "$DISALLOW_LATEST_TAG_VAP" \
-  --space "$SPACE" --unit deploy-latest-tag --worker "$SPACE/$KYVERNO_WORKER"
+  --space "$SPACE" --unit deploy-latest-tag --channel "$SPACE/$BOT"
 echo ""
 
 # --- Run validation with mixed policies --------------------------------------
@@ -151,7 +158,7 @@ echo ""
 
 echo "--- Running vet-kyverno on deploy-latest-tag (should fail both) ---"
 cub function do vet-kyverno "$MIXED_POLICIES" \
-  --space "$SPACE" --unit deploy-latest-tag --worker "$SPACE/$KYVERNO_WORKER"
+  --space "$SPACE" --unit deploy-latest-tag --channel "$SPACE/$BOT"
 echo ""
 
 echo "=== Demo complete ==="

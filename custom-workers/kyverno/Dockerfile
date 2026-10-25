@@ -13,7 +13,7 @@ RUN go mod download
 
 # Copy source code and build
 COPY . .
-RUN CGO_ENABLED=0 go build -o /go/bin/kyverno-worker .
+RUN CGO_ENABLED=0 go build -o /go/bin/kyverno-bot .
 
 # Install kyverno CLI from release binary (building from source requires too many deps)
 ARG KYVERNO_VERSION=v1.17.1
@@ -34,7 +34,7 @@ RUN addgroup -g 3000 appgroup && adduser -u 1000 -g appgroup --disabled-password
 USER 1000:3000
 
 WORKDIR /app
-COPY --from=builder /go/bin/kyverno-worker .
+COPY --from=builder /go/bin/kyverno-bot .
 COPY --from=builder /go/bin/kyverno /usr/local/bin/kyverno
 
-ENTRYPOINT ["/app/kyverno-worker"]
+ENTRYPOINT ["/app/kyverno-bot"]

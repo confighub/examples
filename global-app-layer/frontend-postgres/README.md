@@ -14,7 +14,7 @@ The recipe is still the ordered chain of variants, not the bundle. The differenc
 
 | Delivery Mode | Status | Notes |
 |---------------|--------|-------|
-| **Direct Kubernetes** | Fully working | Worker applies YAML via `kubectl apply`. |
+| **Direct Kubernetes** | Not available | ConfigHub no longer applies to a cluster itself. The direct variant's plain manifests can be delivered through a Release like the others. |
 | **Flux OCI** | Not yet implemented | Same contract as `single-component`. |
 | **Argo OCI** | Not yet implemented | Target-state direction. |
 | **ArgoCDRenderer** | Incompatible | Expects Argo `Application` payloads, not raw manifests. |
@@ -68,7 +68,7 @@ In ConfigHub-only mode:
 
 In live mode:
 - deployment units bound to a target
-- successful `cub unit apply`
+- a published Release (`cub release publish`)
 - live resources visible in the chosen target path
 
 ## AI-Safe Path
@@ -185,11 +185,11 @@ If you did not pass a target during setup:
 ./set-target.sh <space/target>
 ```
 
-Then you can use normal ConfigHub apply flow on both deployment units:
+Then set the deployment Space's release Target and publish a Release for it. Argo CD or Flux pulls the Release from ConfigHub's OCI registry:
 
 ```bash
-cub unit apply --space <prefix>-deploy-cluster-a frontend-cluster-a
-cub unit apply --space <prefix>-deploy-cluster-a postgres-cluster-a
+cub space update <prefix>-deploy-cluster-a --release-target <space/target>
+cub release publish <prefix>-deploy-cluster-a
 ```
 
 The bundle belongs to the target. The recipe manifest records the layered provenance for both components and includes a bundle hint once a target is set.

@@ -27,8 +27,7 @@ Before each command:
 - stop and branch clearly if auth or targets are missing
 - use the documented jq anchors for inspection commands
 - after setup, surface the printed GUI URLs and `.logs/*.latest.log` files
-- do not treat `cub target list` or `./set-target.sh` as proof that apply will work
-- run `../preflight-live.sh <space/target>` before the live branch
+- do not treat `cub target list` or `./set-target.sh` as proof that delivery works
 - for this raw-manifest GPU example, route live targets by provider type:
   - `Kubernetes` -> direct deployment variant
   - `FluxOCI` or `FluxOCIWriter` -> Flux deployment variant
@@ -61,6 +60,5 @@ Be explicit about the difference between:
 - real NVIDIA deployment proof with real images and GPU-capable nodes
 
 Use `whole-journey.md` and the documented contracts rather than guessing.
-- run `../preflight-live.sh <space/target>` before binding or applying
-- only call the live path ready if preflight reports `applyReady: true`
+- only call delivery successful once a published Release has been pulled and synced by Argo CD or Flux
 - keep the distinction clear between the direct deployment variant and the Flux deployment variant

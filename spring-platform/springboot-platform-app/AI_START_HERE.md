@@ -204,19 +204,6 @@ GUI feature ask: Red "blocked" badge on platform-owned fields. No issue filed ye
 
 This removes all spaces and units created by this demo.
 
-## Optional: Real Kubernetes
-
-Requires Kind cluster:
-
-```bash
-./bin/create-cluster && ./bin/build-image
-CUB_SPACE=springboot-infra ./bin/install-worker
-export KUBECONFIG=var/springboot-platform.kubeconfig WORKER_SPACE=springboot-infra
-./confighub-setup.sh --with-targets
-./verify-e2e.sh
-./bin/teardown
-```
-
 ## What Mutates What
 
 | Command | Writes |

@@ -11,8 +11,9 @@ set -euo pipefail
 #   - cub auth get-token works
 #
 # Initiatives are created without vet-kyverno triggers in this example. The
-# initiatives-demo (../../initiatives-demo/) shows how to attach triggers when
-# a vet-kyverno-capable worker is connected.
+# initiatives-demo (../../initiatives-demo/) shows how to attach them: it runs
+# vet-kyverno as a function bot on a ConfigHub Channel (custom-workers/kyverno,
+# deployed with custom-workers/deploy-bot.sh) and points the triggers at that Channel.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=./lib.sh
@@ -196,5 +197,5 @@ for slug in pin-model-versions embed-index-dim-match gpu-resource-limits guardra
   fi
 done
 echo
-echo "To attach vet-kyverno triggers (live policy enforcement), connect a"
-echo "vet-kyverno-capable bridge worker and adapt initiatives-demo/setup.sh."
+echo "To attach vet-kyverno triggers (live policy enforcement), run vet-kyverno as a"
+echo "function bot on a Channel and adapt initiatives-demo/setup.sh."

@@ -30,7 +30,7 @@ Why this applies here:
 The change:
   - Stored in ConfigHub for inventory-api-prod
   - Survives future refreshes (policy-driven merge)
-  - Can be applied to target immediately
+  - Visible in the unit's mutation history
 
 EOF
 
@@ -39,8 +39,6 @@ EOF
 Try it:
   cub function do --space inventory-api-prod --unit inventory-api \
     set-env inventory-api FEATURE_INVENTORY_RESERVATIONMODE=optimistic
-
-  cub unit apply --space inventory-api-prod inventory-api
 
 EOF
   fi

@@ -13,7 +13,7 @@ RUN go mod download
 
 # Copy source code and build
 COPY . .
-RUN CGO_ENABLED=0 go build -o /go/bin/kubescape-worker .
+RUN CGO_ENABLED=0 go build -o /go/bin/kubescape-bot .
 
 # Build kubescape CLI from source (go install doesn't work due to replace directives)
 RUN apk add --no-cache git && \
@@ -31,7 +31,7 @@ RUN addgroup -g 3000 appgroup && adduser -u 1000 -g appgroup --disabled-password
 USER 1000:3000
 
 WORKDIR /app
-COPY --from=builder /go/bin/kubescape-worker .
+COPY --from=builder /go/bin/kubescape-bot .
 COPY --from=builder /go/bin/kubescape /usr/local/bin/kubescape
 
-ENTRYPOINT ["/app/kubescape-worker"]
+ENTRYPOINT ["/app/kubescape-bot"]

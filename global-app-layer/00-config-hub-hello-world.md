@@ -56,13 +56,14 @@ What happened:
 - the unit now lives in one ConfigHub space
 - nothing layered happened yet
 
-## Optional: Apply It to a Real Target
+## Optional: Deliver It to a Real Target
 
-If you already have a worker and target:
+If you already have a target that Argo CD or Flux pulls from:
 
 ```bash
 cub unit set-target --space "${SPACE}" hello-backend <space/target>
-cub unit apply --space "${SPACE}" hello-backend
+cub space update "${SPACE}" --release-target <space/target>
+cub release publish "${SPACE}"
 ```
 
 What the placeholder means:
@@ -81,7 +82,7 @@ That is the core delivery loop:
 
 - store config in ConfigHub
 - bind it to a target
-- apply it through a worker
+- publish a Release, which Argo CD or Flux pulls from ConfigHub's OCI registry
 
 ## GUI Check
 

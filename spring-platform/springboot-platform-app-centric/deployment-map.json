@@ -9,37 +9,27 @@
       "name": "dev",
       "space": "inventory-api-dev",
       "purpose": "Development environment for iteration",
-      "default_target_mode": "noop"
+      "default_target_mode": "unbound"
     },
     {
       "name": "stage",
       "space": "inventory-api-stage",
       "purpose": "Staging environment for validation",
-      "default_target_mode": "noop"
+      "default_target_mode": "unbound"
     },
     {
       "name": "prod",
       "space": "inventory-api-prod",
       "purpose": "Production environment",
-      "default_target_mode": "noop"
+      "default_target_mode": "unbound"
     }
   ],
   "target_modes": {
     "unbound": {
-      "description": "No target. Units exist in ConfigHub only.",
-      "cluster_required": false,
-      "setup_flag": "--confighub-only"
-    },
-    "noop": {
-      "description": "Noop targets. Apply workflow works, but no real cluster delivery.",
+      "description": "No target. Units exist in ConfigHub only; delivery to a cluster is out of scope for this example.",
       "cluster_required": false,
       "setup_flag": null,
       "default": true
-    },
-    "real": {
-      "description": "Real Kubernetes targets. Apply delivers to live cluster.",
-      "cluster_required": true,
-      "setup_flag": "--with-targets"
     }
   },
   "mutation_outcomes": [

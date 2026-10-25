@@ -185,55 +185,37 @@ Only proceed if the human wants the live path AND a suitable target exists.
 Run:
 
 ```bash
-# Check preflight first
-cd ..
-./preflight-live.sh <space/target>
-./preflight-live.sh <space/target> --json | jq
-
-# If ready, bind the target
-cd single-component
 ./set-target.sh <space/target>
 ```
 
 What to explain:
 
-- Target visibility is not the same as apply readiness
-- Preflight checks that the worker is actually ready
 - `set-target.sh` binds the deployment unit to the target
 
 GUI now: Inspect the unit and confirm target binding is visible.
-
-GUI gap: No preflight status shown on target before binding.
-
-GUI ask: Preflight check result shown on target card before any binding.
 
 **PAUSE.** Wait for the human.
 
 ---
 
-## Stage 7: "Optional: Apply Live" (mutates live infrastructure)
+## Stage 7: "Optional: Publish A Release" (mutates ConfigHub)
 
-Only proceed if target is bound AND preflight passed.
+Only proceed if a target is bound.
 
 Run:
 
 ```bash
 source .state/state.env
-cub unit apply --space "${PREFIX}-deploy-cluster-a" backend-cluster-a
+cub space update "${PREFIX}-deploy-cluster-a-flux" --release-target <space/target>
+cub release publish "${PREFIX}-deploy-cluster-a-flux"
 ```
 
 What to explain:
 
-- Apply sends the rendered config to the target
-- For Direct Kubernetes: worker applies via kubectl
-- For Flux OCI: worker publishes to ConfigHub-native OCI, Flux reconciles
-- For Argo OCI: worker publishes to ConfigHub-native OCI, Argo reconciles
+- A Release bundles the Units in the Space that are assigned to the Space's release Target, and serves them from ConfigHub's OCI registry
+- Argo CD or Flux pulls the Release from there; argobot syncs on release events
 
-GUI now: Inspect the unit after apply. Compare intended state vs live result.
-
-GUI gap: No live status badge showing apply success/failure.
-
-GUI ask: Apply status with timestamp and evidence link on unit card.
+GUI now: Inspect the Release in the deploy space.
 
 **PAUSE.** Wait for the human.
 
@@ -259,7 +241,7 @@ This removes all spaces and units created by the demo.
 | `./setup.sh` | ConfigHub spaces, units, links, recipe manifest, local `.state/`, local `.logs/` |
 | `./verify.sh` | local `.logs/verify.latest.log` |
 | `./set-target.sh` | ConfigHub target bindings, local `.logs/set-target.latest.log` |
-| `cub unit apply` | Live target state |
+| `cub release publish` | A Release served from ConfigHub's OCI registry |
 
 ## Related Files
 

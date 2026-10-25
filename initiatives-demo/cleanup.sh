@@ -5,18 +5,19 @@
 # The demo spans several spaces:
 #   - component spaces (Labels.Purpose=<purpose>, Labels.Layer=App): aichat,
 #     portal, eshop, docs, website — hold the application units.
-#   - the platform space (default: initiatives-demo) — holds the workers,
-#     filters, views, and triggers.
+#   - the platform space (default: initiatives-demo) — holds the bot's
+#     Channel, filters, views, and triggers.
 #
 # Ordering matters:
-#   1. Delete any Trigger — in ANY space — that references this demo's workers.
-#      (ConfigHub blocks worker deletes while a Trigger references them.)
+#   1. Delete any Trigger — in ANY space — that runs on this demo's Channel.
+#      (ConfigHub blocks Channel deletes while a Trigger references them.)
 #   2. Delete the component spaces first (they reference the platform's trigger
 #      filter via TriggerFilterID; clearing them before the platform avoids
 #      dangling references).
-#   3. Delete the platform space (units/views/filters/triggers/workers) with
+#   3. Delete the platform space (units/views/filters/triggers/Channel) with
 #      --recursive-force.
-#   4. Delete the local kind cluster created by setup.sh (best effort).
+#   4. Delete the bot's service account.
+#   5. Delete the local kind cluster created by setup.sh (best effort).
 #
 # Everything talks to ConfigHub via the `cub` CLI so the script automatically
 # uses whichever server the current cub context points at.
@@ -42,23 +43,20 @@ if ! $cub auth get-token &>/dev/null; then
   exit 1
 fi
 
-# ── Clear cross-space trigger references on our workers ─────────────────────
+# ── Clear trigger references to the bot's Channel ───────────────────────────
 #
-# Workers in the platform space may be referenced by Triggers in OTHER spaces.
-# Those references block the recursive space delete. For each worker in the
-# platform space, bulk-delete any trigger that references it, regardless of
-# which space the trigger lives in. Best-effort — failures must not block the
+# A Trigger that runs on a Channel blocks the Channel's deletion, and so the
+# recursive space delete, wherever the Trigger lives. Bulk-delete every trigger
+# that runs on the demo's Channel. Best-effort — failures must not block the
 # main delete.
 
+KYVERNO_BOT="$PLATFORM_SPACE-kyverno"
 if $cub space get "$PLATFORM_SPACE" --quiet &>/dev/null; then
-  worker_ids=$($cub worker list --space "$PLATFORM_SPACE" \
-    -o jq='.[].BridgeWorker.BridgeWorkerID' 2>/dev/null || true)
-  if [[ -n "$worker_ids" ]]; then
-    while IFS= read -r wid; do
-      [[ -z "$wid" ]] && continue
-      $cub trigger delete \
-        --where "BridgeWorkerID = '$wid'" --quiet >/dev/null 2>&1 || true
-    done <<< "$worker_ids"
+  channel_id=$($cub channel get "$PLATFORM_SPACE/$KYVERNO_BOT" \
+    -o jq='.Channel.ChannelID' 2>/dev/null || true)
+  if [[ -n "$channel_id" ]]; then
+    $cub trigger delete \
+      --where "ChannelID = '$channel_id'" --quiet >/dev/null 2>&1 || true
   fi
 fi
 
@@ -99,6 +97,12 @@ if $cub space get "$PLATFORM_SPACE" --quiet &>/dev/null; then
 else
   echo "Platform space '$PLATFORM_SPACE' not found — skipping."
 fi
+
+# ── Delete the bot's service account ─────────────────────────────────────────
+#
+# Service accounts belong to the organization, so the space delete leaves it.
+
+$cub serviceaccount delete "$KYVERNO_BOT" --quiet >/dev/null 2>&1 || true
 
 # ── Delete the local kind cluster ────────────────────────────────────────────
 

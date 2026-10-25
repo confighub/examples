@@ -410,12 +410,9 @@ assert_supported_live_target() {
 Target ${target_ref} uses provider type ${provider_type}.
 
 ${EXAMPLE_NAME} materializes raw Kubernetes manifests (Namespace, Deployment, Service, Ingress, StatefulSet).
-The current ArgoCDRenderer worker expects units whose payload is an Argo CD Application resource
-(apiVersion: argoproj.io/v1alpha1, kind: Application).
-
-So this example can prove direct worker delivery today, but it cannot yet use ArgoCDRenderer as a drop-in target swap.
-Use a Kubernetes target such as gitops-import-test/worker-kubernetes-yaml-cluster for the honest live path,
-or switch to an Application-shaped GitOps example before claiming real Argo-backed reconciliation.
+ArgoCDRenderer expects units whose payload is an Argo CD Application resource
+(apiVersion: argoproj.io/v1alpha1, kind: Application), so it cannot be used as a drop-in target swap.
+Use an Application-shaped GitOps example before claiming real Argo-backed reconciliation.
 EOF_TARGET
   exit 1
 }
@@ -882,9 +879,8 @@ Logs:
 
 Next steps:
 1. ./verify.sh
-2. ./apply-live.sh                    # preflights target, refreshes deploy clones, then applies namespace + app units
-3. ./upgrade-chain.sh ${DEFAULT_BACKEND_TAG} ${DEFAULT_FRONTEND_TAG} ${DEFAULT_POSTGRES_TAG}
-4. Review recipe manifest: cub unit data --space $(recipe_space) ${RECIPE_MANIFEST_UNIT}
+2. ./upgrade-chain.sh ${DEFAULT_BACKEND_TAG} ${DEFAULT_FRONTEND_TAG} ${DEFAULT_POSTGRES_TAG}
+3. Review recipe manifest: cub unit data --space $(recipe_space) ${RECIPE_MANIFEST_UNIT}
 EOF_SUMMARY
   else
     cat <<EOF_SUMMARY
@@ -932,7 +928,6 @@ Next steps:
 1. ./verify.sh
 2. ./upgrade-chain.sh ${DEFAULT_BACKEND_TAG} ${DEFAULT_FRONTEND_TAG} ${DEFAULT_POSTGRES_TAG}
 3. ./set-target.sh <space/target>  # optional, binds target + prepares namespace bootstrap unit
-4. ./apply-live.sh                 # optional, preflights target, refreshes deploy clones, then applies namespace + app units
 EOF_SUMMARY
   fi
 }

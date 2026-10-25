@@ -211,8 +211,8 @@ Better follow-on:
 
 ## Delivery Path
 
-Start with a simple direct ConfigHub-to-cluster apply path before adding a full
-GitOps controller requirement.
+Delivery to a cluster goes through Releases and a GitOps controller (Argo CD or
+Flux), which this example does not set up.
 
 Recommended v2 phases:
 
@@ -222,12 +222,11 @@ Recommended v2 phases:
    Build a container image and run it locally or in kind.
 3. **ConfigHub-only**
    Materialize `dev`, `stage`, and `prod` operational config in ConfigHub.
-4. **Live target**
-   Bind a target and deploy one or more variants.
-5. **Lift upstream**
+4. **Lift upstream**
    Prove a GitHub PR flow for Redis adoption.
-6. **Optional GitOps follow-on**
-   Add Argo or Flux only after the ConfigHub and GitHub story is already clear.
+5. **Optional GitOps follow-on**
+   Publish Releases and deliver them with Argo CD or Flux once the ConfigHub and
+   GitHub story is clear.
 
 ## Read-Only First Commands For v2
 

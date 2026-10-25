@@ -2,7 +2,7 @@
 # ConfigHub Demo Cleanup
 #
 # Deletes all demo data by label. This removes all spaces (and their units,
-# targets, workers, etc.) that were created by setup.sh.
+# targets, etc.) that were created by setup.sh.
 #
 # Usage:
 #   ./cleanup.sh

@@ -32,9 +32,7 @@ From `../springboot-platform-app/operational/field-routes.yaml`:
 2. ConfigHub checks field routes
 3. Route says `mutable-in-ch` -> change is allowed
 4. ConfigHub stores the mutation with audit trail
-5. Unit is marked dirty (pending apply)
-6. `cub unit apply` delivers to target
-7. Future refreshes preserve this mutation (policy-driven merge)
+5. Future refreshes preserve this mutation (policy-driven merge)
 
 ## Try It
 
@@ -48,9 +46,6 @@ cub unit get --space inventory-api-prod inventory-api --json | jq '.Unit.Objects
 cub function do --space inventory-api-prod --unit inventory-api \
   --change-desc "rollout: optimistic reservation mode" \
   set-env inventory-api FEATURE_INVENTORY_RESERVATIONMODE=optimistic
-
-# Apply to target
-cub unit apply --space inventory-api-prod inventory-api
 
 # Verify the change
 cub unit get --space inventory-api-prod inventory-api --json | jq '.Unit.Objects'
@@ -68,4 +63,3 @@ This is the "golden path" for operational tuning. The change is:
 - Safe to apply locally
 - Audited in ConfigHub
 - Preserved across refreshes
-- Immediately deliverable to targets

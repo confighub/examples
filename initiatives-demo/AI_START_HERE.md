@@ -34,7 +34,7 @@ After this demo, the human will understand:
 - How the same app model (aichat, eshop, etc.) works across demos
 
 No cluster required to explore. The optional vet-kyverno triggers require the
-worker that `setup.sh` installs into a local kind cluster.
+function bot that `setup.sh` runs in a local kind cluster.
 
 ## Stage 1: "Understand Initiatives" (read-only)
 
@@ -66,12 +66,12 @@ GUI feature ask: Initiative template gallery. No issue filed yet.
 ```
 
 What to explain:
-- Creates the platform Space `initiatives-demo` (workers, filters, views, triggers)
+- Creates the platform Space `initiatives-demo` (the bot's Channel, filters, views, triggers)
 - Creates one Space per component (aichat, portal, eshop, docs, website), each
   stamped with the component labels and `Purpose=initiatives-demo`
 - Creates 18 units from the promotion demo YAML files, in their component Space
 - Creates 5 initiative views whose filters select units across the component spaces
-- If a worker is detected, triggers are attached (disabled by default, then
+- If the function bot claims its Channel, triggers are attached (disabled by default, then
   enabled one at a time)
 
 GUI now: ConfigHub → Spaces → filter by `Purpose=initiatives-demo` → see the
@@ -152,7 +152,7 @@ cub view get --space initiatives-demo --json liveness-and-readiness-probes | jq 
 What to explain:
 - `initiative-description`: Human-readable goal
 - `initiative-deadline`: Target completion date
-- `initiative-trigger-id`: Associated vet-kyverno trigger (if worker available)
+- `initiative-trigger-id`: Associated vet-kyverno trigger (if the function bot is running)
 - The View's filter selects which units this initiative evaluates, across spaces
   (this one: `Space.Labels.Owner = 'Support'`)
 
@@ -175,7 +175,7 @@ This removes the component spaces and the `initiatives-demo` platform space
 
 ## Optional: vet-kyverno Triggers
 
-`setup.sh` already installs a vet-kyverno worker into a local kind cluster and
+`setup.sh` already runs a vet-kyverno function bot in a local kind cluster and
 attaches a trigger per initiative. To exercise one, mutate a unit and watch the
 result land in `ValidationWarnings` (advisory) or `ValidationErrors` (the enforced
 "Disallow Host Ports" initiative):
@@ -190,7 +190,7 @@ cub unit get aichat-redis --space aichat -o "jq=.Unit.ValidationResults"
 
 | Command | Writes |
 |---------|--------|
-| `./setup.sh` | 6 spaces (1 platform + 5 component), 18 units, 5 views/filters/triggers, workers |
+| `./setup.sh` | 6 spaces (1 platform + 5 component), 18 units, 5 views/filters/triggers, a Channel and its bot's service account |
 | `cub space list` | Nothing |
 | `cub unit list` | Nothing |
 | `cub view list` | Nothing |

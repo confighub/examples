@@ -66,8 +66,8 @@ jq -e '.deployments | length == 3' "${SCRIPT_DIR}/deployment-map.json" >/dev/nul
   errors=$((errors + 1))
 }
 
-jq -e '.target_modes | keys | length == 3' "${SCRIPT_DIR}/deployment-map.json" >/dev/null || {
-  echo "error: deployment-map.json should have 3 target modes" >&2
+jq -e '.target_modes | keys == ["unbound"]' "${SCRIPT_DIR}/deployment-map.json" >/dev/null || {
+  echo "error: deployment-map.json should have only the unbound target mode" >&2
   errors=$((errors + 1))
 }
 

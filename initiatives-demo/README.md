@@ -9,13 +9,13 @@ Use this to explore the Initiatives feature in ConfigHub: filtering units across
 - [`cub` CLI](https://docs.confighub.com/get-started/setup/#install-the-cli) installed and on PATH.
 - Run `cub upgrade` to ensure you have the latest build.
 - Authenticated to ConfigHub: `cub auth login`
-- `kind`, `kubectl`, `docker`, `jq` on PATH — `setup.sh` stands up a local kind cluster and installs a vet-kyverno worker into it so initiative triggers have somewhere to run.
+- `kind`, `kubectl`, `docker`, `jq` on PATH — `setup.sh` stands up a local kind cluster and runs a vet-kyverno function bot in it so initiative triggers have somewhere to run.
 - The `promotion-demo-data/` and `custom-workers/kyverno/` directories must be present alongside this one (they ship with this repo).
 
 ## Quick Start
 
 ```bash
-./setup.sh      # Create kind cluster, workers, component spaces, units, and initiatives
+./setup.sh      # Create kind cluster, function bot, component spaces, units, and initiatives
 ./cleanup.sh    # Delete everything (all spaces + kind cluster) when you're done
 ```
 
@@ -42,7 +42,7 @@ This demo uses the **component model**: every application component gets its own
 | `website` | website | base | Marketing | Web | App | initiatives-demo |
 | `initiatives-demo` | — | — | — | — | Platform | initiatives-demo |
 
-`initiatives-demo` is the **platform Space**: it holds the shared entities — the kyverno Worker, the initiative Views and their Filters, and the vet-kyverno Triggers — but **no application units**. The `Purpose=initiatives-demo` label ties all the demo's spaces together so the initiative filters (and `cleanup.sh`) can find them regardless of how they're named.
+`initiatives-demo` is the **platform Space**: it holds the shared entities — the Channel the kyverno function bot serves, the initiative Views and their Filters, and the vet-kyverno Triggers — but **no application units**. The `Purpose=initiatives-demo` label ties all the demo's spaces together so the initiative filters (and `cleanup.sh`) can find them regardless of how they're named.
 
 ### Units (18)
 
@@ -58,7 +58,7 @@ Kubernetes manifests sourced from `promotion-demo-data/config-data/`, created on
 
 ### Initiatives (5)
 
-Each initiative is a **View** in the platform Space with a **Filter** and initiative metadata stored in Labels and Annotations. The Filter selects units **across the component Spaces** by their Space labels (`Space.Labels.Component` / `Space.Labels.Owner`, scoped by `Space.Labels.Purpose`). An optional **Trigger** runs `vet-kyverno` against the matched units when a Ready worker is connected.
+Each initiative is a **View** in the platform Space with a **Filter** and initiative metadata stored in Labels and Annotations. The Filter selects units **across the component Spaces** by their Space labels (`Space.Labels.Component` / `Space.Labels.Owner`, scoped by `Space.Labels.Purpose`). An optional **Trigger** runs `vet-kyverno` against the matched units when the function bot holds its Channel.
 
 | Initiative | Priority | Status | Filter (cross-space) | Pass/Fail |
 |----------|----------|--------|----------------------|-----------|
@@ -92,9 +92,11 @@ Initiatives use ConfigHub Labels and Annotations on Views to store their state:
 
 ## How the Triggers Fire Across Spaces
 
-`setup.sh` installs a `vet-kyverno` worker into the platform Space (running in the local kind cluster) and creates one Trigger per initiative there, each labeled `initiative-check=true`. A `From=Trigger` Filter (`initiative-checks`) selects those triggers, and every component Space references it via `--trigger-filter`. That's how a Trigger defined in `initiatives-demo` runs against units that live in `aichat`, `eshop`, and the rest.
+`setup.sh` runs a `vet-kyverno` function bot in the local kind cluster, serving a Channel in the platform Space as the service account `<platform-space>-kyverno`, and creates one Trigger per initiative there on that Channel, each labeled `initiative-check=true`. A `From=Trigger` Filter (`initiative-checks`) selects those triggers, and every component Space references it via `--trigger-filter`. That's how a Trigger defined in `initiatives-demo` runs against units that live in `aichat`, `eshop`, and the rest.
 
-The worker search is intentionally scoped to the platform Space — no other demo's worker can be silently picked up, and tearing down this demo never touches another demo's state.
+Each demo brings its own Channel and service account, named for the platform Space, so tearing down this demo never touches another demo's state.
+
+A Trigger on a Channel fails closed. While the bot is not running, a unit changed in a component Space keeps its `awaiting/triggers` gate, and ConfigHub retries the trigger with back-off until the bot is back. Run `./cleanup.sh` rather than deleting the kind cluster alone.
 
 To exercise a trigger, mutate one of the units (in the ConfigHub UI or via `cub unit update`) — failures land in `ValidationWarnings` (advisory) for in-progress initiatives, or `ValidationErrors` (blocking) for the completed "Disallow Host Ports" initiative.
 

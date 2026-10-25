@@ -6,7 +6,7 @@
 # Usage:
 #   ./setup.sh --explain       Human-readable preview (read-only)
 #   ./setup.sh --explain-json  Machine-readable preview (read-only)
-#   ./setup.sh                 Create all spaces and units (noop targets)
+#   ./setup.sh                 Create all spaces and units
 
 set -euo pipefail
 
@@ -45,14 +45,9 @@ APPS ON THIS PLATFORM
 
 WHAT THIS CREATES
 -----------------
-- 1 infra space: springboot-platform-infra (server worker)
 - 5 app spaces: inventory-api-{dev,stage,prod}, catalog-api-{dev,prod}
 - 5 units: one per space
-- 5 noop targets: apply workflow works without a cluster
-
-TARGET MODES
-------------
-Default: noop (apply workflow works, no real cluster needed)
+- No targets: delivery to a cluster is out of scope for this example
 
 All objects are labeled: ExampleName=springboot-platform-platform-centric
 
@@ -98,23 +93,8 @@ echo "Platform: springboot-platform"
 echo "Apps: inventory-api, catalog-api"
 echo ""
 
-# Phase 1: Create infra space with server worker
-echo "Phase 1: Creating infra space..."
-${CUB} space create "springboot-platform-infra" \
-  --label "ExampleName=${EXAMPLE_LABEL}" \
-  --label "Platform=springboot-platform" \
-  --label "Role=infra" \
-  --allow-exists \
-  --quiet
-echo "  Created: springboot-platform-infra"
-
-${CUB} worker create worker --space "springboot-platform-infra" --quiet --is-server-worker \
-  --allow-exists 2>/dev/null || true
-echo "  Created: springboot-platform-infra/worker"
-echo ""
-
-# Phase 2: Create inventory-api spaces and units (delegate to parent)
-echo "Phase 2: Creating inventory-api (3 deployments)..."
+# Phase 1: Create inventory-api spaces and units
+echo "Phase 1: Creating inventory-api (3 deployments)..."
 for env in dev stage prod; do
   space="inventory-api-${env}"
   yaml_file="${SHARED_DIR}/confighub/inventory-api-${env}.yaml"
@@ -138,20 +118,11 @@ for env in dev stage prod; do
     --label "Environment=${env}" \
     --quiet
   echo "  Created: ${space}/inventory-api"
-
-  # Create noop target
-  ${CUB} target create "${env}" '{}' "springboot-platform-infra/worker" -p Noop \
-    --space "${space}" \
-    --label "ExampleName=${EXAMPLE_LABEL}" \
-    --allow-exists \
-    --quiet
-
-  ${CUB} unit set-target "${env}" --space "${space}" --unit inventory-api --quiet
 done
 echo ""
 
-# Phase 3: Create catalog-api spaces and units (minimal app)
-echo "Phase 3: Creating catalog-api (2 deployments)..."
+# Phase 2: Create catalog-api spaces and units (minimal app)
+echo "Phase 2: Creating catalog-api (2 deployments)..."
 for env in dev prod; do
   space="catalog-api-${env}"
 
@@ -175,27 +146,6 @@ for env in dev prod; do
     --label "Environment=${env}" \
     --quiet
   echo "  Created: ${space}/catalog-api"
-
-  # Create noop target
-  ${CUB} target create "${env}" '{}' "springboot-platform-infra/worker" -p Noop \
-    --space "${space}" \
-    --label "ExampleName=${EXAMPLE_LABEL}" \
-    --allow-exists \
-    --quiet
-
-  ${CUB} unit set-target "${env}" --space "${space}" --unit catalog-api --quiet
-done
-echo ""
-
-# Phase 4: Apply all units
-echo "Phase 4: Applying all units..."
-for space in inventory-api-dev inventory-api-stage inventory-api-prod; do
-  ${CUB} unit apply --space "${space}" inventory-api --quiet
-  echo "  Applied: ${space}/inventory-api"
-done
-for space in catalog-api-dev catalog-api-prod; do
-  ${CUB} unit apply --space "${space}" catalog-api --quiet
-  echo "  Applied: ${space}/catalog-api"
 done
 echo ""
 

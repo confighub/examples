@@ -12,9 +12,8 @@ apply-here, lift-upstream, or block/escalate.
 ./setup.sh --explain
 ```
 
-This example has the most complete teaching proof path: real Kubernetes delivery
-via Kind, field-by-field lineage tracing, and all three mutation routes shown
-end to end. The apply-here route is proven with audited mutation; lift-upstream
+This example has the most complete teaching proof path: field-by-field lineage
+tracing and all three mutation routes shown end to end. The apply-here route is proven with audited mutation; lift-upstream
 and block-escalate are still bundle-and-boundary workflows rather than
 server-enforced behavior.
 
@@ -34,15 +33,8 @@ server-enforced behavior.
 ./confighub-cleanup.sh         # delete
 ```
 
-### Real Kubernetes (requires Kind cluster)
-
-```bash
-./bin/create-cluster && ./bin/build-image
-CUB_SPACE=springboot-infra ./bin/install-worker
-export KUBECONFIG=var/springboot-platform.kubeconfig WORKER_SPACE=springboot-infra
-./confighub-setup.sh --with-targets
-./verify-e2e.sh
-```
+Delivery to a cluster is out of scope for this example. ConfigHub delivers
+Releases to clusters through Argo CD or Flux, driven by a bot such as argobot.
 
 ## The Artifact Chain
 
@@ -130,14 +122,14 @@ The scaffold is regression-checked (`./bin/verify-scaffold`). Full details: [`..
 | `operational/field-routes.yaml` | Field ownership rules |
 | `lift-upstream.sh` | Lift-upstream bundle preview |
 | `block-escalate.sh` | Block/escalate boundary preview |
-| `bin/*` | Kind cluster and worker setup |
+| `bin/*` | Image build and scaffolding for your own app |
 
 ## Prerequisites
 
 - `bash`, `jq` for structural proof
 - Java 21+, Maven for local app
 - `cub` CLI for ConfigHub
-- `kind`, `kubectl`, Docker for real deployment
+- Docker to build the app image (`./bin/build-image`)
 
 ## Related
 

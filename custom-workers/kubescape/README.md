@@ -5,7 +5,7 @@ This example demonstrates a custom ConfigHub function that validates Kubernetes 
 ## Prerequisites
 
 - The `kubescape` CLI must be installed and available in `PATH`. See [kubescape installation](https://github.com/kubescape/kubescape/blob/master/docs/getting-started.md).
-- A running ConfigHub server (for the worker mode).
+- A ConfigHub organization you can log in to with `cub auth login`.
 
 ## Quick Start
 
@@ -17,41 +17,37 @@ Build the kubescape CLI (if not already installed):
     # Or install from release:
     # See https://github.com/kubescape/kubescape#install
 
-Build the example function executor:
+Build the example function bot:
 
     go build
 
 ### Running locally
 
-Create a Worker, put its credentials in your shell, name the server, and start the function executor:
+Create a Channel and start the bot on it:
 
-    cub worker create --space $SPACE my-kubescape-worker
-    eval "$(cub worker get-envs --space $SPACE my-kubescape-worker)"
-    export CONFIGHUB_URL=https://hub.confighub.com
-    ./kubescape
+    cub channel create --space $SPACE kubescape
+    ./kubescape $SPACE/kubescape
 
-The function executor reads `CONFIGHUB_WORKER_ID`, `CONFIGHUB_WORKER_SECRET` and `CONFIGHUB_URL` from its environment and connects to ConfigHub as that Worker. The `kubescape` CLI must be in PATH.
+The bot authenticates as you, through your active cub context, and declares the `vet-kubescape` function on the Channel when it starts. The `kubescape` CLI must be in PATH.
 
 ### Running in a Kubernetes cluster
 
 Build and push a container image:
 
-    docker build -f Dockerfile -t my-registry/kubescape-worker:latest .
-    docker push my-registry/kubescape-worker:latest
+    docker build -f Dockerfile -t my-registry/kubescape-bot:latest .
+    docker push my-registry/kubescape-bot:latest
 
-Then give the cluster the Worker's credentials as a Secret and run the image with a Deployment that reads it. [`deploy-worker.sh`](../deploy-worker.sh) does both, and waits for the rollout:
+In a cluster the bot runs as a service account. [`deploy-bot.sh`](../deploy-bot.sh) creates the service account, gives it Claim on a Channel, declares the bot's functions on the Channel from `--print-commands`, puts a new key for the service account in a Secret, and runs the image with a Deployment that reads it. It waits until the bot holds the Channel:
 
-    IMAGE_PULL_POLICY=IfNotPresent ../deploy-worker.sh $SPACE my-kubescape-worker confighub my-registry/kubescape-worker:latest
+    IMAGE_PULL_POLICY=IfNotPresent ../deploy-bot.sh $SPACE kubescape-bot confighub my-registry/kubescape-bot:latest
 
-[External Functions](https://docs.confighub.com/guide/external-functions/#in-kubernetes) in the ConfigHub docs shows the Secret and the Deployment it applies, if you would rather write them yourself or keep the Deployment in a Unit.
-
-The function executor connects to ConfigHub and registers the `vet-kubescape` function with the Worker.
+The bot serves the Channel `$SPACE/kubescape-bot`.
 
 ## Usage
 
 The `vet-kubescape` function takes no parameters and runs all default kubescape security controls.
 
-    cub function do vet-kubescape --where "Slug='my-unit'" --worker "my-space/my-worker"
+    cub function do vet-kubescape --where "Slug='my-unit'" --channel "my-space/kubescape"
 
 If any security controls fail, validation fails.
 

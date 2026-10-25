@@ -13,7 +13,7 @@ RUN go mod download
 
 # Copy source code and build
 COPY . .
-RUN CGO_ENABLED=0 go build -o /go/bin/kube-score-worker .
+RUN CGO_ENABLED=0 go build -o /go/bin/kube-score-bot .
 
 # Install kube-score CLI
 RUN go install github.com/zegl/kube-score/cmd/kube-score@latest
@@ -28,7 +28,7 @@ RUN addgroup -g 3000 appgroup && adduser -u 1000 -g appgroup --disabled-password
 USER 1000:3000
 
 WORKDIR /app
-COPY --from=builder /go/bin/kube-score-worker .
+COPY --from=builder /go/bin/kube-score-bot .
 COPY --from=builder /go/bin/kube-score /usr/local/bin/kube-score
 
-ENTRYPOINT ["/app/kube-score-worker"]
+ENTRYPOINT ["/app/kube-score-bot"]

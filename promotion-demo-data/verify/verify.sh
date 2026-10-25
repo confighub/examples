@@ -215,11 +215,11 @@ if [[ "${JSON_OUTPUT}" != "true" ]]; then
   echo "Checking space counts..."
 fi
 
-# Expected: 1 worker space + 7 infra spaces + 42 app spaces = 50
+# Expected: 7 infra spaces + 42 app spaces = 49
 total_spaces=$(count_lines "${CUB}" space list --where "Labels.ExampleName = '${EXAMPLE_NAME}'" --no-header)
 check_gte "total_demo_spaces" "49" "$total_spaces"
 
-# Platform owns: 1 worker + 7 infra + 7 platform app spaces = 15
+# Platform owns: 7 infra + 7 platform app spaces = 14
 infra_spaces=$(count_lines "${CUB}" space list --where "Labels.ExampleName = '${EXAMPLE_NAME}' AND Labels.AppOwner = 'Platform'" --no-header)
 check_gte "platform_owned_spaces" "8" "$infra_spaces"
 

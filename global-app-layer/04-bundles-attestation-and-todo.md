@@ -19,7 +19,6 @@ It has:
 - a more realistic app proof: [`realistic-app`](./realistic-app/)
 - a domain-shaped GPU recipe proof: [`gpu-eks-h100-training`](./gpu-eks-h100-training/)
 - a practical explanation of ConfigHub's value on top of AICR: [confighub-aicr-value-add.md](./confighub-aicr-value-add.md)
-- a package-owned e2e layer: [e2e/](./e2e/)
 
 That is enough to teach the core model and run believable demos.
 

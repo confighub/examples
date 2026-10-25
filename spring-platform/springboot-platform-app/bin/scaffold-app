@@ -352,7 +352,7 @@ After adaptation, run:
 \`\`\`bash
 cd ${OUTPUT_DIR##*/}
 ./verify.sh
-./confighub-setup.sh --with-noop-targets
+./confighub-setup.sh
 ./confighub-verify.sh
 \`\`\`
 

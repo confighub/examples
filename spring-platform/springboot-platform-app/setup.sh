@@ -28,10 +28,8 @@ WHAT THIS SHOWS:
   - How field ownership determines what can be mutated where
   - How changes flow: apply-here, lift-upstream, or block/escalate
 
-TARGET MODES:
-  - ConfigHub-only: ./confighub-setup.sh (no cluster)
-  - Noop targets: ./confighub-setup.sh --with-noop-targets (simulation)
-  - Real Kubernetes: ./confighub-setup.sh --with-targets (requires cluster)
+CONFIGHUB SETUP:
+  - ./confighub-setup.sh creates the spaces and units (no cluster)
 
 NEXT STEPS:
   ./verify.sh                        Check fixture consistency

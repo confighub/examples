@@ -13,7 +13,7 @@ RUN go mod download
 
 # Copy source code and build
 COPY . .
-RUN CGO_ENABLED=0 go build -o /go/bin/kubepug-worker .
+RUN CGO_ENABLED=0 go build -o /go/bin/kubepug-bot .
 
 # Install kubepug CLI
 RUN go install github.com/kubepug/kubepug@latest
@@ -28,7 +28,7 @@ RUN addgroup -g 3000 appgroup && adduser -u 1000 -g appgroup --disabled-password
 USER 1000:3000
 
 WORKDIR /app
-COPY --from=builder /go/bin/kubepug-worker .
+COPY --from=builder /go/bin/kubepug-bot .
 COPY --from=builder /go/bin/kubepug /usr/local/bin/kubepug
 
-ENTRYPOINT ["/app/kubepug-worker"]
+ENTRYPOINT ["/app/kubepug-bot"]

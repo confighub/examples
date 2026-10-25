@@ -12,7 +12,7 @@ The flow is:
 1. preview the recipe
 2. materialize it in ConfigHub
 3. verify it in ConfigHub
-4. bind a live target and apply
+4. bind a live target and publish a Release
 5. update the shared upstream chain
 6. create a custom downstream deployment variant
 
@@ -37,8 +37,7 @@ If no target is available, stop after the ConfigHub-only path.
 
 Important:
 - `cub target list` only proves a target is visible in ConfigHub
-- it does **not** prove the target's worker is online
-- do not call the live path ready until `./preflight-live.sh <space/target>` reports `applyReady: true`
+- it does **not** prove that Argo CD or Flux pulls the target's Releases
 
 ## 1. Preview The Recipe
 
@@ -69,23 +68,11 @@ At this point you have:
 - one recipe manifest
 - no live deployment yet
 
-## 3. Bind A Live Target And Apply
-
-Before binding or applying, preflight the target:
-
-```bash
-cd global-app-layer
-./preflight-live.sh <space/target>
-./preflight-live.sh <space/target> --json | jq
-```
-
-If preflight fails, stop the live branch there.
-You can still continue with ConfigHub-only upgrades and custom downstream variants.
+## 3. Bind A Live Target And Publish A Release
 
 If you already know the target:
 
 ```bash
-../preflight-live.sh <space/target>
 ./setup.sh <prefix> <space/target>
 ./verify.sh
 ```
@@ -93,30 +80,26 @@ If you already know the target:
 If you started ConfigHub-only, continue like this:
 
 ```bash
-../preflight-live.sh <space/target>
 ./set-target.sh <space/target>
 ./verify.sh
 ```
 
-Then apply the deployment units:
+Then set the deployment Space's release Target and publish a Release. Argo CD or Flux pulls it from ConfigHub's OCI registry, and argobot syncs on the release event:
 
 ```bash
-./apply-live.sh
+source .state/state.env
+cub space update "${PREFIX}-deploy-cluster-a" --release-target <space/target>
+cub release publish "${PREFIX}-deploy-cluster-a"
 ```
-
-`./apply-live.sh` is the preferred live path because it:
-- re-checks that the target is actually apply-ready
-- refreshes the deployment clones from upstream before delivery
-- applies the namespace bootstrap unit first
-- waits for completion instead of treating "apply started" as success
 
 What to inspect next:
 - the deploy space URL printed by `./setup.sh` or `./set-target.sh`
 - one deployment unit, for example `backend-cluster-a`
 - `.logs/set-target.latest.log`
-- `.logs/apply-live.latest.log`
+- `cub release list --space "${PREFIX}-deploy-cluster-a"`
 
 ## 4. Update The Shared Upstream Chain
+
 
 This proves the value of clone-linked variants: update upstream once, then move it downstream safely.
 
@@ -125,10 +108,10 @@ This proves the value of clone-linked variants: update upstream once, then move 
 ./verify.sh
 ```
 
-If you already have a target and want to push the updated deployment live:
+If you already have a target and want to deliver the updated deployment, publish a new Release:
 
 ```bash
-./apply-live.sh
+cub release publish "${PREFIX}-deploy-cluster-a"
 ```
 
 ## 5. Create A Custom Downstream Deployment Variant
@@ -189,7 +172,7 @@ cub unit list --space "${CUSTOM_SPACE}" --quiet --json | jq '.[] | {slug: .Unit.
 cub unit data --space "${CUSTOM_SPACE}" backend-${CUSTOM_CLUSTER} | grep -E "(namespace:|CLUSTER|host:)"
 ```
 
-If you have a second live target, you can bind and apply this custom variant too:
+If you have a second live target, you can bind this custom variant to it and publish a Release:
 
 ```bash
 SECOND_TARGET="<space/target>"
@@ -198,10 +181,8 @@ cub unit set-target "${SECOND_TARGET}" --space "${CUSTOM_SPACE}" backend-${CUSTO
 cub unit set-target "${SECOND_TARGET}" --space "${CUSTOM_SPACE}" frontend-${CUSTOM_CLUSTER}
 cub unit set-target "${SECOND_TARGET}" --space "${CUSTOM_SPACE}" postgres-${CUSTOM_CLUSTER}
 
-
-cub unit apply --space "${CUSTOM_SPACE}" backend-${CUSTOM_CLUSTER}
-cub unit apply --space "${CUSTOM_SPACE}" frontend-${CUSTOM_CLUSTER}
-cub unit apply --space "${CUSTOM_SPACE}" postgres-${CUSTOM_CLUSTER}
+cub space update "${CUSTOM_SPACE}" --release-target "${SECOND_TARGET}"
+cub release publish "${CUSTOM_SPACE}"
 ```
 
 This is the main customization proof:
@@ -209,30 +190,13 @@ This is the main customization proof:
 - keep one shared upgrade path
 - create an extra downstream deployment variant only where needed
 
-## 6. Cluster-Proof End-To-End
-
-If you want automated live cluster proof instead of a manual walkthrough, use the greenfield e2e flow:
-
-```bash
-./global-app-layer/e2e/02-greenfield.sh
-```
-
-Or deliver one already-materialized example directly:
-
-```bash
-./global-app-layer/e2e/deliver-direct.sh realistic-app
-./global-app-layer/e2e/assert-cluster.sh realistic-app
-```
-
-See [e2e/README.md](./e2e/README.md) for prerequisites and flow details.
-
 ## GPU Note
 
 For `gpu-eks-h100-training`, the same lifecycle applies:
 - preview
 - materialize
 - verify
-- bind/apply
+- bind/publish
 - upgrade
 - create extra downstream deployment variants
 

@@ -29,9 +29,23 @@ Pieces:
   initial data for a long-lived ConfigHub unit (`promoter` in the
   `prod-use2-ui-preview` space) — the deployment is itself managed as
   ConfigHub config, and Argo CD syncs it from the space's OCI bundle.
-- `../../.github/workflows/deploy-promoter.yml` — on push to main, builds
-  and pushes `ghcr.io/confighub/promoter:<sha>`, then updates the unit's
-  image reference with `cub function do set-image-reference`.
+- Deploying is a manual step. Build and push the image from the repository
+  root, then point the unit at it and publish the space's Release, which Argo
+  CD syncs:
+
+  ```sh
+  tag=$(git rev-parse HEAD)
+  docker build --build-arg VITE_CONFIGHUB_BASE_URL=https://hub.confighub.com \
+    --build-arg VITE_OAUTH_CLIENT_ID=<client-id> \
+    -t ghcr.io/confighub/promoter:$tag -f promoter/deploy/Dockerfile .
+  docker push ghcr.io/confighub/promoter:$tag
+
+  cub unit create promoter promoter/deploy/k8s.yaml --space prod-use2-ui-preview \
+    --target prod-use2/prod-use2-oci --delete-gate critical   # first deploy only
+  cub function do --space prod-use2-ui-preview --unit promoter \
+    set-image-reference promoter ":$tag"
+  cub release publish prod-use2-ui-preview
+  ```
 
 The hostname rides the existing `*.test.confighub.net` wildcard DNS and TLS
 cert used by UI previews, so no DNS or cert changes are needed. Two things do
@@ -40,42 +54,26 @@ client (its redirect URI) and be allowed by the API's **CORS** policy.
 
 ## One-time setup
 
-0. Register this deployment's OAuth client and expose its id to CI as a repo
-   **variable** (it's a public PKCE client id, not a secret):
+0. Register this deployment's OAuth client. Its id is the
+   `VITE_OAUTH_CLIENT_ID` build arg; it is a public PKCE client id:
 
    ```sh
    cub oauthclient create promoter-prod --redirect-uri https://promoter.test.confighub.net/
-   gh variable set PROMOTER_OAUTH_CLIENT_ID --repo confighub/examples   # paste the id
    ```
 
    Also confirm hub.confighub.com's CORS policy allows
    `https://promoter.test.confighub.net`.
 
 
-1. Deploy credentials: this workflow **reuses the rbac-manager deploy worker**
-   (`RBAC_MANAGER_DEPLOY_WORKER_ID` / `RBAC_MANAGER_DEPLOY_WORKER_SECRET` repo
-   secrets). That worker lives in `prod-use2-ui-preview`, the same space the
-   promoter unit deploys to, and worker auth is scoped per space — so no new
-   worker is needed. To use a dedicated worker instead, create one and point
-   the `CONFIGHUB_WORKER_*` env in `deploy-promoter.yml` at its secrets:
-
-   ```sh
-   cub worker create promoter-deploy --space prod-use2-ui-preview
-   cub worker get-secret promoter-deploy --space prod-use2-ui-preview
-
-   gh secret set PROMOTER_DEPLOY_WORKER_ID --repo confighub/examples
-   gh secret set PROMOTER_DEPLOY_WORKER_SECRET --repo confighub/examples
-   ```
-
-2. After the first workflow run pushes the image, make the
+1. After the first deploy pushes the image, make the
    `ghcr.io/confighub/promoter` package **public** (GitHub → org Packages
    → promoter → Package settings → Change visibility). The manifest
    deliberately has no `imagePullSecrets`; until the package is public the
    pod will sit in ImagePullBackOff, and it recovers on its own once flipped.
 
-The first workflow run creates the `promoter` unit from `k8s.yaml`
-automatically (with a `critical` delete gate, since Argo prunes live
-resources if the unit is deleted). Subsequent runs only bump the image tag —
+The first deploy creates the `promoter` unit from `k8s.yaml`, with a `critical`
+delete gate, since Argo prunes live resources if the unit is deleted.
+Later deploys only bump the image tag —
 the unit, not this file, is the source of truth for any later config edits.
 
 ## Hosting your own UI like this

@@ -66,9 +66,9 @@ Explain:
 
 - this mutates ConfigHub state only
 - it does not write Git
-- it uses Noop targets, so it does not deploy to a live cluster
+- its targets have no cluster behind them, so it deploys nothing
 
-GUI now: open ConfigHub and inspect the generated spaces, especially `demo-infra`, `us-prod-1-eshop`, and `eu-prod-1-eshop`.
+GUI now: open ConfigHub and inspect the generated spaces, especially `us-prod-1`, `us-prod-1-eshop`, and `eu-prod-1-eshop`.
 
 GUI gap: there is no one-click “show me only this example's spaces” landing page.
 

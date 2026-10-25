@@ -60,13 +60,8 @@ if ! jq -e '.apps | length == 2' "${SCRIPT_DIR}/platform-map.json" >/dev/null 2>
 fi
 
 # Verify target modes match actual implementation
-if ! jq -e '.target_modes.noop.implemented == true' "${SCRIPT_DIR}/platform-map.json" >/dev/null 2>&1; then
-  echo "error: platform-map.json should mark noop as implemented" >&2
-  errors=$((errors + 1))
-fi
-
-if ! jq -e '.target_modes.real.implemented == false' "${SCRIPT_DIR}/platform-map.json" >/dev/null 2>&1; then
-  echo "error: platform-map.json should mark real as not implemented" >&2
+if ! jq -e '(.target_modes | keys == ["unbound"]) and .target_modes.unbound.implemented == true' "${SCRIPT_DIR}/platform-map.json" >/dev/null 2>&1; then
+  echo "error: platform-map.json should have only the implemented unbound target mode" >&2
   errors=$((errors + 1))
 fi
 

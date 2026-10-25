@@ -1,6 +1,6 @@
 # How This Works
 
-This document explains the mechanics behind the four `global-app-layer` examples: how manifests move through ConfigHub, how name conflicts are avoided, what the worker does, and where AI fits.
+This document explains the mechanics behind the four `global-app-layer` examples: how manifests move through ConfigHub, how name conflicts are avoided, how configuration reaches a cluster, and where AI fits.
 
 ## 1. Config Manifests live in the Database
 
@@ -13,7 +13,7 @@ flowchart LR
   Variant1 --> Variant2["Variant unit"]
   Variant2 --> Deploy["Deployment unit"]
   Deploy --> Target["Target binding"]
-  Target --> Apply["Worker apply or publish"]
+  Target --> Release["Release, pulled by Argo CD or Flux"]
 ```
 
 The user-facing idea is a **layered variant chain**:
@@ -115,147 +115,37 @@ The important shift is:
 - ConfigHub stores each layer outcome as a real unit
 - clone links record how one specialized variant came from an earlier one
 
-## 3. GitOps with Workers and Targets
+## 3. Delivery: Releases and Targets
 
-Traditional GitOps sources YAML from Git. ConfigHub is different: config units are literal deployment manifests that are **deployed to targets** — named delivery endpoints.
+Traditional GitOps sources YAML from Git. In ConfigHub, units are the deployment manifests themselves, and they reach a cluster as **Releases**.
 
-All targets are created, registered, and managed using **workers**. Each **worker** is a long-lived agent running inside the Kubernetes cluster (in the `confighub` namespace). It maintains a persistent connection to the ConfigHub management plane and registers one or more **targets**, scoped to the worker's space.
-
-When you `cub unit set-target` + `cub unit apply`:
-
-1. ConfigHub renders the unit's current data (the accumulated base + all clone mutations)
-2. Sends it to the worker via the target reference
-3. The worker applies the rendered YAML to the cluster
-
-That final step looks slightly different by delivery mode:
-
-- direct Kubernetes: the deployment variant is applied directly, with no
-  separate exported bundle to inspect
-- Flux OCI: the worker publishes an OCI artifact, then Flux consumes it
-- Argo OCI: the worker publishes an OCI artifact, then Argo consumes it
-- ArgoCDRenderer: Argo renders `Application` objects, but this is not workload
-  delivery by itself
-
-Important:
-
-- a visible target is not enough for a believable demo
-- a good demo should show that the worker is actually ready before mutation
-- in this package, `./preflight-live.sh <space/target>` is the safest way to show that readiness
-
-The worker supports three relevant target types in this package:
-
-| Target | Slug | What it does | Status |
-|---|---|---|---|
-| **Direct Kubernetes** | `worker-kubernetes-yaml-cluster` | Worker applies YAML directly via `kubectl apply` | Fully working. Simplest real proof. |
-| **Flux OCI** | `worker-fluxoci-kubernetes-yaml-cluster` | Worker publishes to ConfigHub-native OCI origin, Flux reconciles workloads | Current standard controller path. |
-| **Argo OCI** | `worker-argocdoci-kubernetes-yaml-cluster` | Worker publishes to ConfigHub-native OCI origin, Argo reconciles workloads | Implemented. |
-| **ArgoCDRenderer** | `worker-argocdrenderer-kubernetes-yaml-cluster` | Worker sends Argo `Application` CRDs to ArgoCD for rendering | Renderer path only. Not workload delivery. |
-
-**Important distinctions:**
-
-- **Flux OCI** is the current standard for controller-oriented bundle delivery
-- **Argo OCI** is implemented — claim it with controller and live evidence
-- **ArgoCDRenderer** is a renderer path — it expects Argo `Application` payloads, not raw manifests, and does not reconcile workloads
-
-**Payload compatibility matters:**
-
-| Example | Kubernetes Target | ArgoCDRenderer Target |
-|---------|-------------------|----------------------|
-| `realistic-app` | ✅ | ❌ (raw manifests, not Application CRDs) |
-| `single-component` | ✅ | ❌ |
-| `frontend-postgres` | ✅ | ❌ |
-| `gpu-eks-h100-training` | ✅ | ❌ |
-| Brownfield-imported Applications | ✅ | ✅ |
-
-In these examples the direct target is still the simplest fully proven delivery path today.
-The layered variant chain is unchanged conceptually when you change executors, but the unit payload still has to match the target type. Raw-manifest examples are a good fit for direct Kubernetes delivery and can also be modeled as Flux deployment variants when a `FluxOCI` target is available. They are not a one-line swap to `ArgoCDRenderer`, and a good delegated-delivery proof still needs explicit controller-side evidence, not only target binding.
-
-Flux note:
-- `FluxOCI` is compatible with raw Kubernetes manifest payloads
-- explicit Flux deployment variants are only wired where the example says so
-- `gpu-eks-h100-training` now includes that explicit Flux leaf variant
-
-### How ArgoCDRenderer Works (Renderer Path, Not OCI Delivery)
-
-When you use the `ArgoCDRenderer` target, the flow is:
-
-```
-ConfigHub (materialized Application)
-    → worker (in-cluster agent)
-        → ArgoCD API (render/hydrate)
-            → rendered manifests returned to ConfigHub
-```
-
-**This is not Argo OCI delivery.** `ArgoCDRenderer` is a renderer path:
-
-- It works with Argo CD `Application` resources only, not raw Kubernetes manifests
-- It disables autosync — ArgoCD does not reconcile workloads
-- ArgoCD is used as a render/hydration engine, not a deployment controller
-- The raw-manifest examples in this package do not work with `ArgoCDRenderer`
-
-**Argo OCI** is different:
-
-- ConfigHub publishes an OCI artifact
-- Argo `Application` points at that OCI artifact as its source
-- Argo reconciles workloads from the OCI artifact
-- That path now exists for `single-component` and `gpu-eks-h100-training`
-
-Do not conflate `ArgoCDRenderer` with Argo OCI delivery. They are different paths with different purposes.
-
-### How Flux OCI Works (Current Standard Controller Path)
-
-When you use the `FluxOCI` target, the flow is:
+A **Target** names where a Space's configuration is destined. Each deployment Space has a release Target, set with `cub space update <space> --release-target <space/target>`. `cub release publish <space>` then bundles the Units in that Space that are assigned to the Target, at a point in time, and serves the bundle from ConfigHub's OCI registry. A GitOps tool in the cluster pulls it:
 
 ```
 ConfigHub (materialized raw Kubernetes YAML)
-    → worker (in-cluster agent)
-        → OCI artifact published to ConfigHub-native OCI origin
-            → Flux OCIRepository + Kustomization or HelmRelease CRs
-                → Flux reconciles workloads in the cluster
+    → Release, served from ConfigHub's OCI registry
+        → Flux OCIRepository or Argo CD Application with an OCI source
+            → Flux or Argo CD reconciles workloads in the cluster
 ```
 
-**Flux OCI is the current standard for controller-oriented bundle delivery:**
+The identity that pulls is a service account with View and ViewChildren on the Target. argobot runs in the cluster and syncs the Argo CD Application or Flux source when a Release is published, so a change shows up without waiting for the next poll.
 
-- Raw Kubernetes YAML payloads work directly with Flux OCI
-- The worker publishes to ConfigHub's native OCI origin, then creates Flux resources to consume it
-- External registries (caches, mirrors) are optional, not required for the default path
-- Flux manages the workload lifecycle (reconciliation, drift detection, rollback)
-- Full proof requires: ConfigHub revision → OCI ref/digest → controller source → live workload evidence
+The layered variant chain is the same whichever tool pulls. The Flux and Argo deployment variants at the leaf of `single-component` and `gpu-eks-h100-training` carry what each tool needs. The direct variant holds plain manifests; ConfigHub no longer applies to a cluster itself, so it is delivered through a Release like the others.
 
-In `gpu-eks-h100-training`, Flux OCI is modeled as a sibling deployment variant at the leaf rather than pretending direct and Flux paths are the same unit.
-
-**Proof requirements for each delivery mode:**
+**Proof requirements:**
 
 | Delivery Mode | What to show |
 |---------------|--------------|
-| Direct Kubernetes | Worker readiness, `cub unit apply`, live cluster resources |
-| Flux OCI | Worker readiness, OCI artifact published, Flux reconciliation evidence, live cluster resources |
-| Argo OCI | Worker readiness, OCI artifact published, Argo `Application` with OCI source, Argo reconciliation evidence, live cluster resources |
-| ArgoCDRenderer | Worker readiness, Argo `Application` objects, rendered manifests (not workload delivery) |
+| Flux OCI | Release published, OCI ref/digest, Flux reconciliation evidence, live cluster resources |
+| Argo OCI | Release published, Argo `Application` with OCI source, Argo reconciliation evidence, live cluster resources |
 
-Do not call `ArgoCDRenderer` a real Argo-sync proof for workloads. Do not treat hybrid helpers that run `kubectl apply` and then create an Argo Application as the same thing as a real OCI-backed controller proof.
-
-### Brownfield: The Reverse Direction
-
-The brownfield flow goes the other way — `cub gitops discover` finds existing ArgoCD Applications on the cluster and `cub gitops import` pulls their rendered manifests into ConfigHub as units. That's Git→Argo→ConfigHub (one-time import). After that, the ongoing renderer flow is ConfigHub→worker→Argo render API→rendered manifests.
+A full proof runs from ConfigHub revision to OCI ref/digest to controller source to live workload evidence.
 
 ### Label Mapping (Open Design Question)
 
 When ArgoCD Applications carry labels like `team=payments` or `env=prod`, there is currently no deterministic convention for how those map to ConfigHub spaces and unit labels. This is a known gap. The labels are preserved in imported YAML but don't yet influence ConfigHub organizational placement.
 
-## 4. End-to-End Testing
-
-The [e2e/](./e2e/) directory now contains the full lifecycle tests for this package.
-
-It covers:
-
-- **Brownfield**: import an existing cluster app into ConfigHub, mutate it, apply
-- **Greenfield**: create layered chains from scratch, deploy all four recipes
-- **Bridge**: import first, then layer greenfield config on top
-- **Direct delivery**: apply a single materialized example through the worker
-- **Argo-oriented delivery**: compare the hybrid helper path with the renderer-oriented `ArgoCDRenderer` target, while keeping real Argo-managed sync as a separate future proof
-
-## 5. Role of AI
+## 4. Role of AI
 
 ConfigHub does **not use AI internally** but we recommend using it to "drive" the management plane and config data APIs.
 
@@ -274,7 +164,7 @@ Where AI fits in the ConfigHub vision is **operating assistance** — helping hu
 
 In this demo our example scripts were written with AI assistance (designing the layering structure, debugging deployment failures, creating stub dependencies, iterating on the chain design). But the artifacts produced are plain bash scripts calling deterministic CLI commands. There is no AI in the loop at runtime.
 
-## 6. Avoiding Name Conflicts
+## 5. Avoiding Name Conflicts
 
 Each recipe run gets a random prefix (e.g. `hug-hug`, `den-cub`, `roll-cub`, `berry-sun`) generated by `cub space new-prefix`. Every space name is `{prefix}-{suffix}`:
 

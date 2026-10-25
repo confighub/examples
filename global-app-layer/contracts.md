@@ -8,7 +8,7 @@ This package supports multiple delivery modes. Know which one applies before mak
 
 | Delivery Mode | Status | Payload Compatibility | What it proves |
 |---------------|--------|----------------------|----------------|
-| **Direct Kubernetes** | Fully working | Raw K8s manifests | Worker applies directly to cluster |
+| **Direct Kubernetes** | Not available | Raw K8s manifests | ConfigHub no longer applies to a cluster itself; deliver through a Release |
 | **Flux OCI** | Current standard | Raw K8s manifests | ConfigHub-native OCI origin → Flux reconciles workloads |
 | **Argo OCI** | Implemented | Raw K8s manifests (where explicit Argo variant exists) | ConfigHub-native OCI origin → Argo reconciles workloads |
 | **ArgoCDRenderer** | Working, limited scope | Argo `Application` CRDs only | Renderer path. Not OCI delivery. |
@@ -56,26 +56,6 @@ This package supports multiple delivery modes. Know which one applies before mak
 - mutates: no
 - output shape: JSON array of targets visible to the current context
 - proves: whether the optional live-delivery path is even visible
-- note: this does **not** prove the worker is ready for apply
-
-### `./preflight-live.sh <space/target> --json`
-
-- mutates: no
-- output shape: JSON object
-- proves:
-  - whether the target exists
-  - whether the target maps to direct apply or Argo-render-style delivery
-  - whether the attached worker is actually ready for apply
-- expected anchors:
-  - `.mutates == false`
-  - `.targetExists == true`
-  - `.providerType`
-  - `.deliveryMode`
-  - `.bridgeWorker.slug`
-  - `.applyReady`
-  - `.reasons`
-- note: this proves worker/target readiness, not payload compatibility; a raw Kubernetes unit can still be incompatible with an `ArgoCDRenderer` target that expects an Argo CD `Application`
-- note: for `ArgoCDRenderer`, readiness means the renderer target is reachable, not that Argo-managed workload sync is proven
 
 ### `./.logs/setup.latest.log`
 
@@ -169,30 +149,6 @@ Not all units work with all targets. The payload format must match the target's 
 | `gpu-eks-h100-training` | Raw manifests | ✅ Compatible | ❌ Incompatible |
 | Brownfield-imported Application units | Application CRD | ✅ Compatible | ✅ Compatible |
 
-### Proving ArgoCDRenderer Works
-
-To prove ArgoCDRenderer delivery, use **brownfield-imported Application units**, not the raw-manifest examples:
-
-```bash
-# These units contain Application CRDs and work with ArgoCDRenderer:
-cub unit data --space gitops-import-test argocd-cubbychat-Application-dry | head -5
-# apiVersion: argoproj.io/v1alpha1
-# kind: Application
-
-# Apply through ArgoCDRenderer:
-cub unit set-target --space gitops-import-test argocd-cubbychat-Application-dry gitops-import-test/worker-argocdrenderer-kubernetes-yaml-cluster
-cub unit apply --space gitops-import-test argocd-cubbychat-Application-dry
-```
-
-### Why e2e/deliver-argo.sh Is Not ArgoCDRenderer Proof
-
-The `e2e/deliver-argo.sh` helper is a **hybrid** path:
-1. Exports raw manifests to `.gitops-stage/`
-2. Applies them via `kubectl apply` (direct, not Argo)
-3. Creates an ArgoCD Application for drift detection only
-
-This does not prove ArgoCDRenderer delivery. It proves kubectl delivery with Argo visibility.
-
 ## Expected Output Signals
 
 When a run succeeds in ConfigHub-only mode, expect:
@@ -202,9 +158,6 @@ When a run succeeds in ConfigHub-only mode, expect:
 - `verify.sh` printing a final `All ... checks passed.` line
 
 When the live path also succeeds, expect:
-- `./preflight-live.sh <space/target>` to report `applyReady: true`
-- `./preflight-live.sh <space/target> --json` to make the delivery mode explicit (`direct`, `flux-oci`, `argo-oci`, or `argocd-render`)
 - target binding visible on deployment units
-- successful `cub unit apply`
-- for direct targets: resulting live state visible via ConfigHub and the cluster target
-- for delegated targets: resulting live state visible via ConfigHub, the delegated agent, and the cluster target
+- a published Release (`cub release publish`) for the deployment Space
+- the Release pulled and synced by Argo CD or Flux, with the resulting live state visible in the cluster

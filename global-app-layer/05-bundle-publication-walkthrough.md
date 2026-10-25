@@ -39,7 +39,7 @@ It does not yet fully prove:
 
 | Delivery Mode | Status | Bundle Story |
 |---------------|--------|--------------|
-| **Direct Kubernetes** | Fully working | Worker applies, no OCI bundle |
+| **Direct Kubernetes** | Not available | ConfigHub no longer applies to a cluster itself; deliver through a Release |
 | **Flux OCI** | Current standard | OCI bundle published, Flux reconciles |
 | **Argo OCI** | Implemented | OCI bundle published to ConfigHub-native origin, Argo reconciles |
 | **ArgoCDRenderer** | Working, limited scope | Renderer path only, not bundle delivery |
@@ -244,7 +244,6 @@ That means showing one of:
 
 | Delivery Mode | What Gets Published | What Consumes It |
 |---------------|---------------------|------------------|
-| Direct Kubernetes | Nothing (worker applies directly) | Cluster via worker |
 | **Flux OCI** (current standard) | OCI artifact to ConfigHub-native origin | Flux OCIRepository + Kustomization |
 | **Argo OCI** (implemented) | OCI artifact to ConfigHub-native origin | Argo Application with OCI source |
 | ArgoCDRenderer | Argo Application CRD | ArgoCD renderer API (not workload delivery) |

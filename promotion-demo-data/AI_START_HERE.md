@@ -29,7 +29,7 @@ After this demo, the human will understand:
 - Multi-dimensional filtering by component, role, region, and owner
 - Version skew detection across environments
 
-No cluster required. Uses server-hosted noop workers.
+No cluster required. The targets have no cluster behind them.
 
 ## Stage 1: "Understand The Model" (read-only)
 
@@ -63,7 +63,7 @@ What to explain:
 - 7 infrastructure spaces (one per target)
 - 42 component deployment spaces
 - ~154 units across all spaces
-- Uses noop workers (no real cluster needed)
+- Creates targets with no cluster behind them
 
 GUI now: ConfigHub → Spaces → filter `ExampleName=demo-data`
 
@@ -159,7 +159,7 @@ This removes all 49 spaces and their units.
 
 | Command | Writes |
 |---------|--------|
-| `./setup.sh` | 49 ConfigHub spaces, ~154 units, 7 workers, 7 targets |
+| `./setup.sh` | 49 ConfigHub spaces, ~154 units, 7 targets |
 | `cub space list` | Nothing |
 | `cub function do get-image` | Nothing |
 | `./cleanup.sh` | Deletes all demo spaces |

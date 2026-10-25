@@ -92,22 +92,6 @@ app_team() {
   esac
 }
 
-WORKER_SPACE="demo-infra"
-
-# Create the shared worker space
-create_worker_space() {
-  $CUB space create "$WORKER_SPACE" \
-    --label "ExampleName=${EXAMPLE_NAME}" \
-    --label "Owner=Platform" \
-    --quiet
-
-  $CUB worker create worker --space "$WORKER_SPACE" \
-    --label "ExampleName=${EXAMPLE_NAME}" \
-    --quiet --is-server-worker
-
-  echo "  Created worker space: $WORKER_SPACE"
-}
-
 # Create an infrastructure space with target
 create_infra_space() {
   local target="$1"

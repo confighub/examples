@@ -13,7 +13,6 @@ Scripts and data files to populate a ConfigHub org with a representative multi-c
 WARNING: These scripts do not set any prefixes on spaces being created in your ConfigHub org, so there is a possibility of conflict with existing spaces. The following spaces are created:
 
 ```
-demo-infra
 eu-*
 us-*
 ```
@@ -99,7 +98,7 @@ Note that `us-dev-1` and `us-dev-2` both have TargetRole=Dev and TargetRegion=US
 
 ### Total: 49 spaces, ~154 units
 
-- 7 infrastructure spaces (one per target, each with a worker + target)
+- 7 infrastructure spaces (one per target, each with its target)
 - 42 component deployment spaces (`{target}-{component}`, e.g. `us-prod-1-aichat`)
 
 ## Label Reference
@@ -173,7 +172,6 @@ demo-data/
   setup.sh          Main setup script
   cleanup.sh        Delete all demo data
   lib.sh            Shared variables and helpers
-  worker.json       Worker template for placeholder workers
   config-data/      Base Kubernetes YAML templates
     aichat/         AI chat component (5 units)
     website/        Marketing website (3 units)
@@ -183,6 +181,6 @@ demo-data/
     platform/       Shared infrastructure (4 units)
 ```
 
-## The "noop" target bridge
+## Targets without clusters
 
-To simplify the setup of this demo, it uses a server hosted worker so you do not have to run any Kubernetes clusters. All targets point to the "noop" bridge hosted on the server. This bridge is a "no operations" bridge which allows you to perform apply and destroy operations in the UI that don't have any effect.
+The demo's targets are plain ConfigHub Targets with no cluster behind them, so you do not have to run any Kubernetes clusters. A Target is where a Space's Releases are destined; nothing pulls these.
