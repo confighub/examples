@@ -43,7 +43,7 @@ echo "cub $*" >> "$STUB_LOG"
 case " $* " in
   *" release get "*) echo '"sha256:root"' ;;
   *" unit data "*) echo "kind: Same" ;;
-  *" worker get "*) echo 'id' ;;
+  *" token create "*) echo '"tok"' ;;
   *" argo check "*) exit 0 ;;
 esac
 exit 0

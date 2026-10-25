@@ -1,10 +1,10 @@
 # Argo OCI Specification
 
-**Status:** Implementation exists. Ready for example variants.
-**Provider Type:** `ArgoCDOCI`
+**Status:** The worker-based `ArgoCDOCI` provider is being removed, with ConfigHub Workers. Argo OCI delivery is now a published Release that Argo CD pulls from ConfigHub's OCI gateway as a service account; see [Current implementation](#current-implementation-releases-and-the-oci-gateway).
+**Provider Type:** `ArgoCDOCI` (historical)
 **ArgoCD Support:** Confirmed. ArgoCD v3.1+ (August 2025) has native OCI support.
 
-This document specifies the Argo OCI delivery path for ConfigHub. The worker implementation already exists at `confighub/public/bridge-impl/argocd/argocd_oci.go`.
+This document specifies the Argo OCI delivery path for ConfigHub. It was written against the `ArgoCDOCI` bridge worker, which is being removed with ConfigHub Workers; the contracts below (raw manifests in, an OCI artifact out, an Argo `Application` reading it) still hold, and [Current implementation](#current-implementation-releases-and-the-oci-gateway) says how they are met today.
 
 ## Why This Spec Exists
 
@@ -191,66 +191,47 @@ ConfigHub unit revision → OCI artifact digest → Argo targetRevision → depl
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| ArgoCDOCI provider type | **Exists** | `confighub/public/bridge-impl/argocd/argocd_oci.go` |
-| OCI publication logic | Exists | Built into ArgoCDOCI provider |
-| Argo Application creation | Exists | Auto-generates Application CRs |
+| ArgoCDOCI provider type | **Removed** | It was a bridge worker; it goes away with ConfigHub Workers |
+| OCI publication logic | Exists | `cub release publish` publishes a Space's Release to ConfigHub's OCI gateway |
+| Argo Application creation | Not automatic | The Application is written by the operator, or stored as a Unit (as `cub argo` does) |
 | Application source contract | Exists | ArgoCD v3.1+ OCI source format |
-| Repo credentials | Exists | Auto-generates repo-creds Secret |
+| Repo credentials | Manual | A repo-creds Secret holding a service account token; see below |
 | Verification helpers | Needed | Add to example scripts |
-| Example deployment variant | **Ready to add** | No blockers |
 
-## Existing Worker Implementation
+## Current Implementation: Releases and the OCI Gateway
 
-The `ArgoCDOCI` provider already exists and implements:
+ConfigHub publishes a Space's Release to its OCI gateway, which serves one repository per Space at `oci://<gateway>/space/<space-slug>`, tag `latest` or a digest. Argo CD pulls it like any OCI source. [`cub-argo`](../cub-argo/) is a worked example of the whole path.
 
-```go
-type ArgoCDOCIWorker struct {
-    KubernetesBridgeWorker
-    workerID     string  // For OCI auth
-    workerSecret string  // For OCI auth
-}
-```
+### Repository credentials
 
-### Key Features
-
-- **OCI URL handling**: Auto-constructs `oci://host/confighub/space-slug/unit-slug:reference`
-- **Application generation**: Creates ArgoCD Application CRs with OCI source
-- **Repo credentials**: Auto-generates `confighub-oci-creds-{host}` Secret
-- **Sync monitoring**: Tracks sync status, health status, and operation state
-- **Drift detection**: Detects content drift via diff-patch analysis
-- **Helm support**: Auto-detects Helm units and generates Helm-style Applications
-
-### Configuration Parameters
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `ArgoCDNamespace` | `argocd` | Where to create Application CRs |
-| `DestinationServer` | `https://kubernetes.default.svc` | Target cluster |
-| `DestinationNamespace` | `default` | Target namespace |
-| `Project` | `default` | ArgoCD project |
-| `SyncPolicy` | `manual` | `automated` or `manual` |
-| `PruneEnabled` | false | ArgoCD prune option |
-| `SelfHealEnabled` | false | ArgoCD self-heal option |
-
-### Adding Example Variant
-
-Now that the provider exists, adding the variant is straightforward:
+The gateway serves a Release only to a caller with ViewChildren permission on the Target it was published for. Argo CD pulls as a service account with no organization role, granted View (to find the Target) and ViewChildren (to pull its Releases) on that Target, using a long-lived token of it:
 
 ```bash
-# In lib.sh
-DEPLOY_ARGO_SPACE_SUFFIX="deploy-cluster-a-argo"
-DEPLOY_ARGO_UNIT="backend-cluster-a-argo"
-DEPLOY_VARIANTS=(direct flux argo)
-
-# In setup.sh
-create_space_if_missing "$(argo_deploy_space)" "${argo_deploy_space_labels[@]}"
-create_clone_unit "$(argo_deploy_space)" "${DEPLOY_ARGO_UNIT}" "$(recipe_space)" "${RECIPE_UNIT}"
-
-# In set-target.sh
-case "${provider_type}" in
-  ArgoCDOCI) variant="argo" ;;
-esac
+cub serviceaccount create argo
+cub target update --space platform-dev cluster \
+  --permission View:serviceaccount:argo \
+  --permission ViewChildren:serviceaccount:argo
+cub serviceaccount token create argo --description "Argo CD, cluster" -o jq=.Token
 ```
+
+The token is printed once. Put it in a repo-creds Secret whose username is the word `token` and whose password is the token:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: confighub-oci
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: repo-creds
+stringData:
+  type: oci
+  url: oci://<gateway>/space/
+  username: token
+  password: <the token>
+```
+
+`cub serviceaccount token list argo` shows each token and when it was last used, and `cub serviceaccount token revoke` retires one.
 
 ## Comparison With Flux OCI
 
@@ -329,7 +310,7 @@ Should ConfigHub control sync policy, or leave it to operator configuration?
 ## Next Steps
 
 1. ~~Confirm Argo OCI source support and version requirements~~ **DONE** — ArgoCD v3.1+ confirmed
-2. ~~Implement ArgoCDOCI provider type in worker~~ **EXISTS** — `confighub/public/bridge-impl/argocd/argocd_oci.go`
+2. ~~Implement ArgoCDOCI provider type in worker~~ **REMOVED** with ConfigHub Workers; Releases on the OCI gateway replace it
 3. ~~Add ArgoCDOCI deployment variant to `single-component`~~ **DONE**
 4. ~~Add ArgoCDOCI deployment variant to `gpu-eks-h100-training`~~ **DONE**
 5. Add verification scripts for Argo sync/health evidence

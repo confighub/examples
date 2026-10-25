@@ -142,7 +142,10 @@ func CleanupScript(p *Plan, prefix string) string {
 	for _, c := range p.Components {
 		add("cub component delete %s-%s --quiet 2>/dev/null", prefix, c.Name)
 	}
-	add("# The pull Secret handover.sh or join.sh wrote holds the worker deleted")
+	add("# The service account Flux pulled with and fluxbot reported as. Deleting it")
+	add("# revokes its tokens and keys.")
+	add("cub serviceaccount delete %s --quiet 2>/dev/null", deliveryAccount(prefix))
+	add("# The pull Secret handover.sh or join.sh wrote holds a token of it, revoked")
 	add("# above; left behind, a later onboarding under this prefix would read with it.")
 	add(`if [ -n "$contexts" ]; then`)
 	add(`  for c in $contexts; do`)

@@ -237,12 +237,16 @@ if [ -z "$addr" ]; then
   echo "                    set CONFIGHUB_OCI_PLAIN_HTTP=1 if it serves plain HTTP."
   echo "Then: CONFIGHUB_OCI=<host> CLUSTER=$cluster bash handover.sh"; exit 1
 fi
-# The ID and secret go from cub into the Secret through command substitution
-# and are never written to disk. --dry-run | apply keeps this re-runnable.
+# The token goes from cub into the Secret through a variable and is never
+# written to disk. --dry-run | apply keeps this re-runnable.
+# A new token each run; one an earlier run wrote stays valid until revoked:
+# cub serviceaccount token list flux-delivery shows each one and when it was last used.
+token=$(cub serviceaccount token create flux-delivery --description "Flux, cluster $cluster" -o jq=.Token | tr -d '"\n')
+[ -n "$token" ] && [ "$token" != null ] || { echo "could not issue a token for flux-delivery"; exit 1; }
 k create secret docker-registry confighub-flux-targets --namespace "$ns" \
   --docker-server="$addr" \
-  --docker-username="$(cub worker get --space flux-targets server-worker -o jq=.BridgeWorker.BridgeWorkerID | tr -d '\"\n')" \
-  --docker-password="$(cub worker get --space flux-targets server-worker --include-secret -o jq=.BridgeWorker.Secret | tr -d '\"\n')" \
+  --docker-username=token \
+  --docker-password="$token" \
   --dry-run=client -o yaml | k apply -f -
 
 # The root: one source and one Kustomization, reading this cluster's layers

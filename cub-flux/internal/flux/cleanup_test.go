@@ -58,7 +58,7 @@ func TestFluxCleanupRefusesWhileALayerReadsASpace(t *testing.T) {
 }
 
 // Once nothing reads them, it deletes the Spaces and, on each cluster, the
-// pull Secret that holds the deleted worker.
+// pull Secret that holds a token of the deleted service account.
 func TestFluxCleanupDeletesSpacesAndTheCredential(t *testing.T) {
 	out, log, err := runFluxCleanup(t, `flux-system/fleet oci://ghcr.io/acme/fleet\n`, "FLUX_CONTEXTS=ctx-dev ctx-prod")
 	if err != nil {
@@ -68,6 +68,7 @@ func TestFluxCleanupDeletesSpacesAndTheCredential(t *testing.T) {
 		"kubectl --context ctx-dev get ocirepositories -A",
 		"kubectl --context ctx-prod get ocirepositories -A",
 		"cub space delete flux-targets --recursive --detach",
+		"cub serviceaccount delete flux-delivery",
 		"kubectl --context ctx-dev -n flux-system delete secret confighub-flux-targets --ignore-not-found",
 		"kubectl --context ctx-prod -n flux-system delete secret confighub-flux-targets --ignore-not-found",
 	} {

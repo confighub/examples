@@ -63,11 +63,7 @@ func JoinScript(p *Plan, prefix string) string {
 	add("")
 
 	add(`step "2/3 The credential and the root"`)
-	add(`k create secret docker-registry confighub-%s --namespace "$ns" \`, targets)
-	add(`  --docker-server="$addr" \`)
-	add(`  --docker-username="$(cub worker get --space %s server-worker -o jq=.BridgeWorker.BridgeWorkerID | tr -d '\"\n')" \`, targets)
-	add(`  --docker-password="$(cub worker get --space %s server-worker --include-secret -o jq=.BridgeWorker.Secret | tr -d '\"\n')" \`, targets)
-	add(`  --dry-run=client -o yaml | k apply -f -`)
+	L = append(L, pullSecretLines(prefix, targets)...)
 	L = append(L, rootLines(prefix)...)
 	add(`layers_still_current`)
 	add(`k apply -f "bootstrap/$cluster/%s.yaml"`, RootName)
@@ -118,6 +114,25 @@ func rootLines(prefix string) []string {
 		fmt.Sprintf(`cat <<'YAML' | sed -e "s|%s|$addr|" -e "s|%s|$insecure|" -e "s|%s|$ns|" -e "s|__CLUSTER__|$cluster|" > "bootstrap/$cluster/%s.yaml"`, gatewayMarker, insecureMarker, namespaceMarker, RootName),
 		strings.TrimRight(RootManifests(prefix, "__CLUSTER__"), "\n"),
 		"YAML",
+	}
+}
+
+// pullSecretLines write the Secret Flux pulls from the gateway with, in the
+// cluster being handed over or joined: a new token of the fleet's service
+// account, the username being the word token. A docker-registry Secret, which
+// is what an OCIRepository reads. --dry-run | apply keeps it re-runnable.
+func pullSecretLines(prefix, targets string) []string {
+	account := deliveryAccount(prefix)
+	return []string{
+		"# A new token each run; one an earlier run wrote stays valid until revoked:",
+		fmt.Sprintf("# cub serviceaccount token list %s shows each one and when it was last used.", account),
+		fmt.Sprintf(`token=$(cub serviceaccount token create %s --description "Flux, cluster $cluster" -o jq=.Token | tr -d '"\n')`, account),
+		fmt.Sprintf(`[ -n "$token" ] && [ "$token" != null ] || { echo "could not issue a token for %s"; exit 1; }`, account),
+		fmt.Sprintf(`k create secret docker-registry confighub-%s --namespace "$ns" \`, targets),
+		`  --docker-server="$addr" \`,
+		`  --docker-username=token \`,
+		`  --docker-password="$token" \`,
+		`  --dry-run=client -o yaml | k apply -f -`,
 	}
 }
 

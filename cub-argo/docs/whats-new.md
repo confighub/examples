@@ -3,6 +3,24 @@
 Each release is tagged `cub-argo-v<version>` in confighub/examples and installs
 with `cub plugin install confighub/examples@cub-argo-v<version> --name argo`.
 
+## Unreleased
+
+- **A service account replaces the server worker.** ConfigHub is removing
+  workers. `apply.sh` creates the service account `<prefix>-delivery`, with no
+  organization role, and grants it `View`, `ViewChildren` and `EditChildren` on
+  each Target, also on a Target an earlier `apply.sh` made. `handover.sh`
+  issues a token of it with `cub serviceaccount token create` and writes the
+  repo-creds Secret with the username `token` and the token as password.
+  `argobot.sh` installs argobot v0.2.3, which runs as that service account with
+  a key in its Secret and listens on the Channel `<prefix>-targets/argobot`,
+  which the script creates; it refuses an `ARGOBOT_VERSION` before 0.2.
+  `cleanup.sh` deletes the service account, which revokes its tokens and keys.
+  An estate onboarded with an earlier version moves over by running `apply.sh`
+  again, setting the repo-creds Secret `confighub-<prefix>-targets` to the
+  username `token` and a token from
+  `cub serviceaccount token create <prefix>-delivery`, and running `argobot.sh`
+  again. After that nothing uses the worker.
+
 ## 0.3.3, 2026-10-25
 
 - **The first release works on ConfigHub v0.9.** `apply.sh` stopped at the

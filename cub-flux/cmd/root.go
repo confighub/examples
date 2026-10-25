@@ -340,7 +340,7 @@ One cluster at a time: pass --kube-context for the cluster to read.`,
 	check.Flags().BoolVar(&ckRecord, "record", false, "record each verdict in ConfigHub as a LiveCheck attestation on the revision the release bundled: a Pass, which also names the health Flux reports; a rejection naming what differs, or that Flux reports the layer stalled or not ready; nothing while it is still reconciling (needs --fields). With it, the command fails unless every check recorded a Pass")
 
 	var stNS, stName, stSpace, stUnit, stTarget, stContext, stCluster string
-	var stJSON, stWatch, stDry, stDiscover, stAsWorker bool
+	var stJSON, stWatch, stDry, stDiscover, stAsAccount bool
 	var stReadyFile, stReady string
 	var stInterval, stRefresh time.Duration
 	var stOpts flux.Options
@@ -376,8 +376,9 @@ takes Edit on the Release: your own, or EditChildren on its Target.
 
 With --discover it needs no fleet repository: it reports every layer on the
 cluster that reads a ConfigHub Space named <prefix>-…. That is how it runs on
-the cluster itself, which fluxbot.sh sets up, with --as-worker: signed in with
-CONFIGHUB_WORKER_ID and CONFIGHUB_WORKER_SECRET to CONFIGHUB_URL.`,
+the cluster itself, which fluxbot.sh sets up, with --as-service-account: signed
+in to CONFIGHUB_URL as the service account whose private key
+CONFIGHUB_AUTH_PRIVATE_KEY holds.`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
 			flux.KubeContext = stContext
@@ -392,8 +393,8 @@ CONFIGHUB_WORKER_ID and CONFIGHUB_WORKER_SECRET to CONFIGHUB_URL.`,
 				// One left by a run before this one says nothing about this one.
 				_ = os.Remove(stReadyFile)
 			}
-			if stAsWorker {
-				hub.AsWorker()
+			if stAsAccount {
+				hub.AsServiceAccount()
 				// On a cluster nobody is watching the first lines: a wrong
 				// address or credential stops it here, so the pod is seen to
 				// fail rather than run and report nothing.
@@ -463,7 +464,7 @@ CONFIGHUB_WORKER_ID and CONFIGHUB_WORKER_SECRET to CONFIGHUB_URL.`,
 		},
 	}
 	status.Flags().BoolVar(&stDiscover, "discover", false, "report every layer on the cluster that reads a ConfigHub Space named <prefix>-..., read from the cluster each pass, with no fleet repository: what fluxbot.sh runs on the cluster")
-	status.Flags().BoolVar(&stAsWorker, "as-worker", false, "sign in to CONFIGHUB_URL as the worker CONFIGHUB_WORKER_ID and CONFIGHUB_WORKER_SECRET name, rather than as the signed-in cub user, and stop at once if that fails: what fluxbot.sh runs on the cluster")
+	status.Flags().BoolVar(&stAsAccount, "as-service-account", false, "sign in to CONFIGHUB_URL as the service account whose private key CONFIGHUB_AUTH_PRIVATE_KEY holds, as a JWK, rather than as the signed-in cub user, and stop at once if that fails: what fluxbot.sh runs on the cluster")
 	status.Flags().StringVar(&stReadyFile, "ready-file", "", "write this file once signed in, for a readiness probe to find with 'cub flux status --ready <file>'")
 	status.Flags().StringVar(&stReady, "ready", "", "exit 0 if this file exists and 1 if not, and do nothing else: the readiness probe fluxbot.sh gives the pod")
 	status.Flags().StringVar(&stCluster, "cluster", "", "the cluster being reported, when reading a fleet repository")

@@ -165,9 +165,10 @@ else
 fi
 
 step "1/5 The credential Argo reads the gateway with"
-# A repository Secret for the gateway, holding the server worker the Targets grant access to.
-# The ID and secret go from cub into the Secret through file descriptors,
-# never to disk, the command line, or the terminal.
+# A repository Secret for the gateway, holding a token of argo-delivery, the service
+# account the Targets grant access to. The token goes from cub into the Secret
+# through a variable and a heredoc, never to disk, the command line, or the
+# terminal.
 addr=${CONFIGHUB_OCI:-}
 # The address is asked for as oci://<host>, and every use below writes the
 # scheme itself, so take it off here: left on, each URL would carry it twice.
@@ -180,13 +181,14 @@ if [ -z "$addr" ]; then
   echo "then re-run with CONFIGHUB_OCI=<address> bash handover.sh"; exit 1
 fi
 # The repository Secret's shape was verified against Argo CD v3.5.3:
-#   type: oci, url with the oci:// scheme, the worker as username and
-#   password. The Application's repoURL needs the scheme too — without it
-#   Argo treats the address as a git repository and fails on "list refs".
+#   type: oci, url with the oci:// scheme, a username and password. The
+#   username is the word token and the password the token. The Application's
+#   repoURL needs the scheme too — without it Argo treats the address as a git
+#   repository and fails on "list refs".
 # insecureOCIForceHttp is only for a gateway served over plain HTTP.
 creds_url="oci://${addr}/space/argo-"
 # Another repo-creds Secret for this same prefix, or a longer one, would be
-# the one Argo uses for these Spaces, and it holds another worker. A read
+# the one Argo uses for these Spaces, and it holds another credential. A read
 # that fails stops here: a check that cannot run has not passed.
 creds=$(k -n "$ns" get secrets -l argocd.argoproj.io/secret-type=repo-creds -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.data.url}{"\n"}{end}') || { echo "could not read the repo-creds Secrets in $ns"; exit 1; }
 while read -r other url64; do
@@ -199,6 +201,10 @@ while read -r other url64; do
 done <<< "$creds"
 plain_http=""
 [ -n "${CONFIGHUB_OCI_PLAIN_HTTP:-}" ] && plain_http='  insecureOCIForceHttp: "true"'
+# A new token each run; the one an earlier run wrote stays valid until revoked:
+# cub serviceaccount token list argo-delivery shows each one and when it was last used.
+token=$(cub serviceaccount token create argo-delivery --description "Argo CD, argo estate" -o jq=.Token | tr -d '"\n')
+[ -n "$token" ] && [ "$token" != null ] || { echo "could not issue a token for argo-delivery"; exit 1; }
 cat <<YAML | k apply -f -
 apiVersion: v1
 kind: Secret
@@ -210,8 +216,8 @@ metadata:
 stringData:
   type: oci
   url: ${creds_url}
-  username: "$(cub worker get --space argo-targets server-worker -o jq=.BridgeWorker.BridgeWorkerID | tr -d '\n')"
-  password: "$(cub worker get --space argo-targets server-worker --include-secret -o jq=.BridgeWorker.Secret | tr -d '\n')"
+  username: token
+  password: "${token}"
 ${plain_http}
 YAML
 
@@ -425,7 +431,7 @@ echo 'reach the cluster on its own. Argo caches the digest it resolved for the t
 echo 'was still serving the previous release 90 seconds later. A hard refresh re-resolves'
 echo 'the tag to a digest and the release lands:'
 printf '  kubectl --context %s -n %s %s\n' "$ctx" "$ns" "$(printf '%s' 'annotate application <name> argocd.argoproj.io/refresh=hard --overwrite' | sed "s|<gateway>|${addr:-<gateway>}|")"
-echo 'argobot does this for you: argobot.sh runs it beside Argo CD with the Targets'\'' worker,'
+echo 'argobot does this for you: argobot.sh runs it beside Argo CD as the Targets'\'' service account,'
 echo 'so it refreshes each Application reading a Space when that Space publishes, and records'
 echo 'each Application'\''s live status on the release it synced. Without argobot, keep this running'
 echo 'beside the cluster instead: it asks for that refresh once per release, and records the'
