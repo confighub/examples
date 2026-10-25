@@ -4,12 +4,15 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"slices"
 	"strings"
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
+
+	"github.com/confighub/sdk/core/cubapi"
 
 	"github.com/confighub/examples/managerkit"
 	"github.com/confighub/examples/namespace-manager/internal/cub"
@@ -50,6 +53,7 @@ func newPodSecurityCmd() *cobra.Command {
 	var output string
 	var filter filterFlags
 	var clusterFilter, namespaceFilter, statusFilter, version string
+	var bases bool
 	cmd := &cobra.Command{
 		Use:   "pod-security",
 		Short: "Which Pod Security Standard each namespace's workloads meet, and which workloads block a stricter one",
@@ -70,6 +74,16 @@ pod-security.kubernetes.io/enforce label:
   tightenable  the workloads meet a stricter level than the label enforces
   at-level     the label enforces exactly the level the workloads meet
 
+UNLABELED counts, in a namespace that enforces a level, the workloads that do
+not carry it in their own pod-security.kubernetes.io/enforce label: the
+namespace-pod-security-standard guardrail checks each workload at its own label,
+so it does not check these. 'apply-envelope' labels them.
+
+To raise a namespace's level: pod-security; fix what blocks the next level
+('cub-workload harden', for one); pod-security again to confirm; then
+'apply-envelope', which labels the namespace and its workloads with the level
+they meet.
+
 Filter with --cluster, --namespace and --status; --version checks against a
 Kubernetes minor version of the standards instead of the latest.`,
 		Args: cobra.NoArgs,
@@ -85,20 +99,12 @@ Kubernetes minor version of the standards instead of the latest.`,
 			if err != nil {
 				return err
 			}
-			snap, err := snapshot.Load(cmd.Context(), client, where)
+			fleet, err := loadPodSecurity(cmd.Context(), client, where, version, bases)
 			if err != nil {
 				return err
 			}
-			unitIDs := nsmanager.PodSecurityUnitIDs(snap.Clusters)
-			results := nsmanager.PodSecurityResults{Unchecked: map[string]string{}}
-			if results.Restricted, err = cub.VetPodSecurity(cmd.Context(), client, nsmanager.LevelRestricted, version, unitIDs, results.Unchecked); err != nil {
-				return err
-			}
-			if results.Baseline, err = cub.VetPodSecurity(cmd.Context(), client, nsmanager.LevelBaseline, version, unitIDs, results.Unchecked); err != nil {
-				return err
-			}
-			report := buildPodSecurityReport(nsmanager.AnalyzePodSecurity(snap.Clusters, results), clusterFilter, namespaceFilter, statusFilter)
-			report.Unchecked = uncheckedUnits(snap, results.Unchecked)
+			report := buildPodSecurityReport(fleet.postures, clusterFilter, namespaceFilter, statusFilter)
+			report.Unchecked = fleet.unchecked
 			report.Version = version
 			if report.Version == "" {
 				report.Version = "latest"
@@ -116,6 +122,7 @@ Kubernetes minor version of the standards instead of the latest.`,
 	cmd.Flags().StringVar(&namespaceFilter, "namespace", "", "filter by namespace")
 	cmd.Flags().StringVar(&statusFilter, "status", "", "filter by status: "+strings.Join(podSecurityStatuses, " | "))
 	cmd.Flags().StringVar(&version, "version", "", `Pod Security Standards version to check against: "latest" (the default) or a Kubernetes minor version such as "v1.30"`)
+	cmd.Flags().BoolVar(&bases, "bases", false, "check base (Variant=base) Spaces instead of deployed ones, each Space on its own, listed under its slug as the cluster")
 	return cmd
 }
 
@@ -153,6 +160,44 @@ func buildPodSecurityReport(all []nsmanager.NamespacePodSecurity, clusterFilter,
 	return report
 }
 
+// podSecurityFleet is the fleet's namespaces, with each one's pod-security
+// posture from vet-pod-security-standard.
+type podSecurityFleet struct {
+	snap *snapshot.Snapshot
+	// clusters are the snapshot's clusters, or with bases its base Spaces.
+	clusters  map[string]*nsmanager.ClusterNamespaces
+	postures  []nsmanager.NamespacePodSecurity
+	unchecked []uncheckedUnit
+}
+
+// loadPodSecurity snapshots the Units where selects and checks their workloads
+// at restricted and baseline, at version ("" for latest): those deployed to the
+// fleet's clusters, or with bases those in base Spaces, each Space on its own.
+func loadPodSecurity(ctx context.Context, client *cubapi.Client, where, version string, bases bool) (*podSecurityFleet, error) {
+	snap, err := snapshot.Load(ctx, client, where)
+	if err != nil {
+		return nil, err
+	}
+	clusters := snap.Clusters
+	if bases {
+		clusters = snap.Bases
+	}
+	unitIDs := nsmanager.PodSecurityUnitIDs(clusters)
+	results := nsmanager.PodSecurityResults{Unchecked: map[string]string{}}
+	if results.Restricted, err = cub.VetPodSecurity(ctx, client, nsmanager.LevelRestricted, version, unitIDs, results.Unchecked); err != nil {
+		return nil, err
+	}
+	if results.Baseline, err = cub.VetPodSecurity(ctx, client, nsmanager.LevelBaseline, version, unitIDs, results.Unchecked); err != nil {
+		return nil, err
+	}
+	return &podSecurityFleet{
+		snap:      snap,
+		clusters:  clusters,
+		postures:  nsmanager.AnalyzePodSecurity(clusters, results),
+		unchecked: uncheckedUnits(snap, results.Unchecked),
+	}, nil
+}
+
 // uncheckedUnits names the Units the function could not check, sorted.
 func uncheckedUnits(snap *snapshot.Snapshot, unchecked map[string]string) []uncheckedUnit {
 	out := make([]uncheckedUnit, 0, len(unchecked))
@@ -172,7 +217,7 @@ func uncheckedUnits(snap *snapshot.Snapshot, unchecked map[string]string) []unch
 func printPodSecurityTable(cmd *cobra.Command, r podSecurityReport) {
 	w := cmd.OutOrStdout()
 	tw := tabwriter.NewWriter(w, 0, 2, 2, ' ', 0)
-	fmt.Fprintln(tw, "CLUSTER\tNAMESPACE\tWORKLOADS\tENFORCE\tACHIEVABLE\tSTATUS\tBLOCKERS")
+	fmt.Fprintln(tw, "CLUSTER\tNAMESPACE\tWORKLOADS\tENFORCE\tACHIEVABLE\tSTATUS\tUNLABELED\tBLOCKERS")
 	for _, p := range r.Namespaces {
 		blockers := "-"
 		if len(p.Blockers) > 0 {
@@ -181,8 +226,12 @@ func printPodSecurityTable(cmd *cobra.Command, r podSecurityReport) {
 		if p.Unchecked > 0 {
 			blockers += fmt.Sprintf(" (+%d unchecked)", p.Unchecked)
 		}
-		fmt.Fprintf(tw, "%s\t%s\t%d\t%s\t%s\t%s\t%s\n",
-			p.Cluster, p.Namespace, p.Workloads, dash(p.Enforce), p.Achievable, p.Status, blockers)
+		unlabeled := "-"
+		if p.Unlabeled > 0 {
+			unlabeled = fmt.Sprintf("%d", p.Unlabeled)
+		}
+		fmt.Fprintf(tw, "%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\n",
+			p.Cluster, p.Namespace, p.Workloads, dash(p.Enforce), p.Achievable, p.Status, unlabeled, blockers)
 	}
 	_ = tw.Flush()
 	fprintln(w, fmt.Sprintf(
@@ -201,6 +250,14 @@ func printPodSecurityTable(cmd *cobra.Command, r podSecurityReport) {
 			}
 			fprintln(w, fmt.Sprintf("  %s/%s %s/%s: %s", b.Space, b.UnitSlug, b.Kind, b.Name, strings.Join(reasons, "; ")))
 		}
+	}
+	unlabeled := 0
+	for _, p := range r.Namespaces {
+		unlabeled += p.Unlabeled
+	}
+	if unlabeled > 0 {
+		fprintln(w, fmt.Sprintf("\n%d workload(s) lack their namespace's %s label, so the namespace-pod-security-standard guardrail does not check them; `apply-envelope` labels them.",
+			unlabeled, nsmanager.PodSecurityEnforceLabel))
 	}
 	if len(r.Unchecked) > 0 {
 		fprintln(w, fmt.Sprintf("\n%d Unit(s) could not be checked, so their namespaces' levels are upper bounds:", len(r.Unchecked)))

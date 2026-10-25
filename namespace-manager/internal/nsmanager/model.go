@@ -70,10 +70,18 @@ func (n *NamespaceEntity) PodSecurityEnforce() string {
 // DaemonSet, ReplicaSet, Job, CronJob, or bare Pod) — used to identify which
 // namespaces are occupied and therefore want an envelope.
 type WorkloadEntity struct {
-	Kind      string         `json:"kind"`
-	Name      string         `json:"name"`
-	Namespace string         `json:"namespace"`
-	Origin    ResourceOrigin `json:"origin"`
+	Kind      string            `json:"kind"`
+	Name      string            `json:"name"`
+	Namespace string            `json:"namespace"`
+	Labels    map[string]string `json:"labels,omitempty"`
+	Origin    ResourceOrigin    `json:"origin"`
+}
+
+// PodSecurityEnforce returns the Pod Security level the workload's own labels
+// hold it to -- a copy of its namespace's, which vet-pod-security-standard checks
+// it against -- or "" if none is set.
+func (w *WorkloadEntity) PodSecurityEnforce() string {
+	return w.Labels[PodSecurityEnforceLabel]
 }
 
 // ClusterNamespaces holds the envelope-relevant entities of one cluster.
@@ -132,7 +140,7 @@ func BuildFleet(resources []FleetResource) map[string]*ClusterNamespaces {
 			})
 		case workloadKinds[kind]:
 			cluster.Workloads = append(cluster.Workloads, &WorkloadEntity{
-				Kind: kind, Name: name, Namespace: namespace, Origin: fr.Origin,
+				Kind: kind, Name: name, Namespace: namespace, Labels: labels, Origin: fr.Origin,
 			})
 		}
 	}

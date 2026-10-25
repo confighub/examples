@@ -23,6 +23,13 @@ func InvokeMutation(ctx context.Context, c *cubapi.Client, fn string, args []api
 		api.FunctionInvocation{FunctionName: fn, Arguments: args}, sel, ch)
 }
 
+// InvokeMutations runs several mutating functions over the Units matched by sel
+// in one request, each on the output of the one before: one Revision per Unit on
+// commit, and on a dry run one diff of their combined effect.
+func InvokeMutations(ctx context.Context, c *cubapi.Client, fns []api.FunctionInvocation, sel cubapi.Selector, ch cubapi.Change) (*cubapi.Result, error) {
+	return cubapi.InvokeFunctions(ctx, c, fns, sel, ch)
+}
+
 // BulkCloneUnits clones the Units matched by srcWhere into the Space(s) matched
 // by destWhere, via the BulkCreateUnits API, applying a no-op merge patch (the
 // clones are re-homed afterwards with set-namespace). Unlike a function

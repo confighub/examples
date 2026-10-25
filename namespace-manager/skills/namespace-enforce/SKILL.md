@@ -18,6 +18,7 @@ The manager itself cannot set ValidationWarnings/ValidationErrors — only a fai
 | Trigger | Checks |
 | --- | --- |
 | `namespace-has-pod-security` | a `v1/Namespace` must carry a `pod-security.kubernetes.io/enforce` label |
+| `namespace-pod-security-standard` | a workload must meet the Pod Security Standard level in its own `pod-security.kubernetes.io/enforce` label, which `cub-namespace apply-envelope` copies from its namespace — so admission would not reject its pods. Unlabeled workloads are not checked; `cub-namespace pod-security` counts them as UNLABELED. Runs `vet-pod-security-standard` with no level, so `install` refuses a server whose function still requires one |
 | `namespace-envelope-finding` | warns while a `namespace.confighub.com/finding` annotation is present |
 
 The **namespace-name invariant** (`metadata.namespace == normalizeName(Component)`) is enforced separately by a cluster-selected **mutating `set-namespace` Trigger** — active correction, the promotable option, wired outside this advisory pack.
