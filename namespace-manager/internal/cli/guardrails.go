@@ -10,6 +10,7 @@ package cli
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -42,11 +43,31 @@ var pack = guardrails.Pack{
 	Label: "namespace-guardrails",
 	Rules: []guardrails.Rule{
 		{Slug: "namespace-has-pod-security", Description: "Warns on a Namespace with no pod-security.kubernetes.io/enforce label. Fix: `cub-namespace apply-envelope --space <s>`.", Expression: celHasPodSecurity},
+		{Slug: "namespace-pod-security-standard", Description: "Warns on a workload that does not meet the Pod Security Standard level in its own pod-security.kubernetes.io/enforce label, which `cub-namespace apply-envelope` copies from its namespace -- so admission would reject its pods. Unlabeled workloads are not checked. Fix: `cub-workload harden`, or what `cub-namespace pod-security` lists.", Function: cub.VetPodSecurityFunction},
 		{Slug: "namespace-envelope-finding", Description: "Warns while a namespace.confighub.com/finding annotation is present (set by `cub-namespace guardrails annotate`). Fix: close the envelope gap, then re-run annotate.", Expression: celNoEnvelopeFinding},
 	},
 }
 
 func preflight(ctx context.Context) (*cubapi.Client, error) { return cub.Preflight(ctx) }
+
+// installPreflight also refuses a server whose vet-pod-security-standard needs a
+// level: the namespace-pod-security-standard rule passes none, so it would fail
+// on every Unit there.
+func installPreflight(ctx context.Context) (*cubapi.Client, error) {
+	c, err := preflight(ctx)
+	if err != nil {
+		return nil, err
+	}
+	ok, err := cub.ChecksLabeledLevels(ctx, c)
+	if err != nil {
+		return nil, fmt.Errorf("check the server's %s: %w", cub.VetPodSecurityFunction, err)
+	}
+	if !ok {
+		return nil, fmt.Errorf("this ConfigHub server's %s needs a level, so the namespace-pod-security-standard rule would fail on every Unit; it needs a server whose %s checks each workload at its own %s label",
+			cub.VetPodSecurityFunction, cub.VetPodSecurityFunction, nsmanager.PodSecurityEnforceLabel)
+	}
+	return c, nil
+}
 
 func newGuardrailsCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -55,8 +76,10 @@ func newGuardrailsCmd() *cobra.Command {
 		Long: `guardrails manages a pack of namespace-governance validation policies, defined
 once in a policy Space and enforced fleet-wide via a shared Trigger Filter:
 
-  namespace-has-pod-security   a Namespace must carry a pod-security enforce label
-  namespace-envelope-finding   warns while an envelope finding is annotated (§ annotate)
+  namespace-has-pod-security       a Namespace must carry a pod-security enforce label
+  namespace-pod-security-standard  a workload must meet the level in its own enforce
+                                   label, which apply-envelope copies from its namespace
+  namespace-envelope-finding       warns while an envelope finding is annotated (§ annotate)
 
 Triggers are created with Warn=true (advisory ValidationWarnings, never blocking).
 Promote one to blocking later with:
@@ -71,7 +94,7 @@ The namespace-name invariant (metadata.namespace == normalizeName(Component)) is
 enforced separately, by a cluster-selected mutating set-namespace Trigger — the
 promotable active-correction option, wired outside this advisory pack.`,
 	}
-	cmd.AddCommand(pack.InstallCmd(preflight), pack.StatusCmd(preflight), pack.AnnotateCmd(preflight, annotateSpec))
+	cmd.AddCommand(pack.InstallCmd(installPreflight), pack.StatusCmd(preflight), pack.AnnotateCmd(preflight, annotateSpec))
 	return cmd
 }
 

@@ -40,7 +40,7 @@ All read commands default to JSON (`-o json`); pass `-o table` for a human view.
 | `pod-security` | read | Per-namespace: the strictest Pod Security Standard all its workloads meet (via the server's `vet-pod-security-standard`), how that compares with the Namespace's `enforce` label, and the Units / resources blocking the next level |
 | `consistency` | read | Per-component: does each workload run in the same namespace on every cluster, and is the pod-security level the same in every variant Space? |
 | `findings` | read | Severity-ranked governance findings (envelope gaps + duplicates + cross-variant inconsistency) |
-| `apply-envelope` | write | Stamp pod-security defaults on a Space's Namespace Unit(s) (fixes `missing-pod-security`) |
+| `apply-envelope` | write | Set each selected namespace's Pod Security Standard to the most restrictive level its workloads meet (or `--level`), never lowering one, and copy it onto the namespace's workloads for the `namespace-pod-security-standard` guardrail (fixes `missing-pod-security`) |
 | `backfill` | write | Clone a base envelope Space's Units into an existing Space, re-homed via `set-namespace` |
 | `guardrails install\|status\|annotate` | write | The enforcement pack — `Warn=true` `vet-celexpr` Triggers + annotate-then-validate for envelope gaps |
 

@@ -12,6 +12,7 @@ import (
 
 	"github.com/confighub/sdk/core/cubapi"
 	api "github.com/confighub/sdk/core/function/api"
+	goclientnew "github.com/confighub/sdk/core/openapi/goclient-new"
 
 	"github.com/confighub/examples/namespace-manager/internal/nsmanager"
 )
@@ -20,6 +21,22 @@ import (
 // Pod Security Standard, with the same checks the PodSecurity admission
 // controller runs.
 const VetPodSecurityFunction = "vet-pod-security-standard"
+
+// ChecksLabeledLevels reports whether the server's vet-pod-security-standard can
+// run without a level, checking each workload at its own enforce label. A server
+// whose function still requires a level would fail a Trigger that passes none on
+// every Unit it runs on.
+func ChecksLabeledLevels(ctx context.Context, c *cubapi.Client) (bool, error) {
+	res, err := c.API.ListOrgFunctionsWithResponse(ctx, &goclientnew.ListOrgFunctionsParams{})
+	if cubapi.IsAPIError(err, res) {
+		return false, cubapi.InterpretErrorGeneric(err, res)
+	}
+	if res.JSON200 == nil {
+		return false, nil
+	}
+	sig, ok := (*res.JSON200)[cubapi.DefaultToolchainType][VetPodSecurityFunction]
+	return ok && sig.RequiredParameters == 0, nil
+}
 
 // unitsPerInvocation bounds the UnitID IN (...) list of one invocation.
 const unitsPerInvocation = 100

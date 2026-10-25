@@ -19,7 +19,7 @@ A namespace's enforce label decides which pods admission accepts. Raising it is 
 - "Which namespaces could be tightened?" → `pod-security --status tightenable`.
 - "Is any namespace enforcing a level its workloads fail?" → `pod-security --status violating`.
 - "What keeps monitoring from baseline?" → `pod-security --namespace monitoring`.
-- Before stamping pod-security defaults with `apply-envelope` (which sets `enforce: baseline`): check that the namespace's workloads meet baseline.
+- "Can namespace X move to restricted?" → `pod-security --namespace X`; fix the blockers (`cub-workload harden`, for one), re-run to confirm, then hand off to `apply-envelope` (namespace-backfill), which applies the level and copies it onto the workloads.
 
 ## Do not load for
 
@@ -56,6 +56,8 @@ Statuses:
 
 `blockers` lists only what stands between the achievable level and the next one: a privileged namespace's blockers are its baseline failures. `checks[].message` is worded as admission words its rejection and names the containers and fields to change.
 
+`unlabeled` counts, in a namespace that enforces a level, the workloads not carrying it in their own `pod-security.kubernetes.io/enforce` label. The `namespace-pod-security-standard` guardrail checks each workload at its own label, so it does not check these; `apply-envelope` labels them.
+
 Units the function could not check are listed under `unchecked` with the reason; a namespace counting `unchecked` workloads has an achievable level that is only an upper bound.
 
 ### Scoping the fleet
@@ -64,7 +66,7 @@ Same server-side scoping as the other commands: `--where` (Unit / `Space.*` / `T
 
 ## Stop conditions
 
-- The user wants to *raise* a label — report the achievable level and blockers, and hand off to the write skills (`apply-envelope`, or a `set-label` edit on the Namespace Unit); do not edit here.
+- The user wants to *raise* a label — report the achievable level and blockers, and hand off to `apply-envelope` (namespace-backfill); do not edit here.
 - The user wants a blocker *fixed* — name the Unit, resource and failed checks; changing a workload's securityContext belongs to the workload's owner.
 
 ## Tool boundary

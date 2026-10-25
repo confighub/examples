@@ -87,6 +87,11 @@ type NamespacePodSecurity struct {
 	// Unchecked counts the workloads whose Unit could not be checked. Achievable
 	// covers only the others, so with any unchecked it is an upper bound.
 	Unchecked int `json:"unchecked,omitempty"`
+	// Unlabeled counts, when the namespace enforces a level, the workloads that do
+	// not carry that level in their own enforce label. vet-pod-security-standard
+	// checks a workload at its own label, so these are the ones it does not hold
+	// to the namespace's level; apply-envelope labels them.
+	Unlabeled int `json:"unlabeled,omitempty"`
 	// BlockedLevel is the level one step stricter than Achievable, which the
 	// Blockers fail; empty when Achievable is restricted.
 	BlockedLevel string               `json:"blockedLevel,omitempty"`
@@ -118,6 +123,9 @@ func AnalyzePodSecurity(clusters map[string]*ClusterNamespaces, results PodSecur
 			for _, w := range workloads {
 				if _, ok := results.Unchecked[w.Origin.UnitID]; ok {
 					p.Unchecked++
+				}
+				if p.Enforce != "" && w.PodSecurityEnforce() != p.Enforce {
+					p.Unlabeled++
 				}
 			}
 			baselineBlockers := blockersFor(workloads, results.Baseline)
