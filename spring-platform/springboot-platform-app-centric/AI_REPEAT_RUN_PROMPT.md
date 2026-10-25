@@ -51,7 +51,6 @@ In the operational evaluation, include `./demo.sh` even if you already ran it du
 - Do not stop after preview and call the example "working."
 - Do not run cleanup unless I explicitly ask for it.
 - If a command or contract is stale, say so clearly and recover using the live CLI/help surface.
-- Treat `cub unit apply` output that says `Action Apply ... started` as proof that ConfigHub accepted the apply request, not as proof of completed delivery.
 - If the prompt does not provide an official current pattern status, assume the current status is `repeatable-with-steering`.
 - Do not recommend moving straight to `boring` from a single successful run.
 - At most, recommend a one-step status change from the assumed or stated current status.
@@ -101,7 +100,6 @@ Begin.
 - `./demo.sh` is included in the operational evaluation, not just preview
 - one representative `apply-here` mutation succeeds
 - mutation history is shown cleanly
-- noop-target apply is explained honestly
 - the closeout distinguishes:
   - what was proven
   - what was not proven
@@ -112,5 +110,4 @@ Begin.
 - claiming `./verify.sh` proves live post-setup ConfigHub state
 - skipping `./demo.sh` during the operational path
 - unclear mutation audit reporting
-- treating `Action Apply ... started` as completed delivery
-- overstating what noop target mode proves
+- claiming the example delivers to a cluster

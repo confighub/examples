@@ -57,7 +57,7 @@ spec:
           unit: confighubplaceholder-gpu-operator-deployment-direct-unit
           revision: confighubplaceholder-gpu-operator-deployment-direct-revision
           dataHash: confighubplaceholder-gpu-operator-deployment-direct-hash
-          mutationDelta: set namespace=cluster-a and CLUSTER=cluster-a for direct worker delivery
+          mutationDelta: set namespace=cluster-a and CLUSTER=cluster-a for direct delivery
         - name: flux
           space: confighubplaceholder-gpu-operator-deployment-flux-space
           unit: confighubplaceholder-gpu-operator-deployment-flux-unit
@@ -108,7 +108,7 @@ spec:
           unit: confighubplaceholder-nvidia-device-plugin-deployment-direct-unit
           revision: confighubplaceholder-nvidia-device-plugin-deployment-direct-revision
           dataHash: confighubplaceholder-nvidia-device-plugin-deployment-direct-hash
-          mutationDelta: set namespace=cluster-a and CLUSTER=cluster-a for direct worker delivery
+          mutationDelta: set namespace=cluster-a and CLUSTER=cluster-a for direct delivery
         - name: flux
           space: confighubplaceholder-nvidia-device-plugin-deployment-flux-space
           unit: confighubplaceholder-nvidia-device-plugin-deployment-flux-unit

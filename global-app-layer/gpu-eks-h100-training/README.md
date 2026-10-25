@@ -20,7 +20,7 @@ The point is not to recreate all of NVIDIA AICR. The point is to show how Config
 
 | Delivery Mode | Status | Notes |
 |---------------|--------|-------|
-| **Direct Kubernetes** | Fully working | Worker applies YAML via `kubectl apply`. |
+| **Direct Kubernetes** | Not available | ConfigHub no longer applies to a cluster itself. The direct variant's plain manifests can be delivered through a Release like the others. |
 | **Flux OCI** | Fully working | Explicit Flux deployment variant. Current standard controller path. |
 | **Argo OCI** | Implemented | Explicit Argo deployment variant. Requires ArgoCD v3.1+. See [`07-argo-oci-spec.md`](../07-argo-oci-spec.md). |
 | **ArgoCDRenderer** | Incompatible | Expects Argo `Application` payloads, not raw manifests. |
@@ -82,7 +82,7 @@ In ConfigHub-only mode:
 
 In live mode:
 - deployment variants bound to compatible targets
-- successful `cub unit apply`
+- a published Release (`cub release publish`)
 - live resources or delegated delivery objects visible
 
 ## AI-Safe Path
@@ -236,27 +236,11 @@ If you did not pass a target during setup:
 ./set-target.sh <argocdoci-target>
 ```
 
-Then you can use normal ConfigHub apply flow on any deployment variant.
-
-Direct Kubernetes variant:
+Then set the deployment Space's release Target and publish a Release for it. Argo CD or Flux pulls the Release from ConfigHub's OCI registry:
 
 ```bash
-cub unit apply --space <prefix>-deploy-cluster-a gpu-operator-cluster-a
-cub unit apply --space <prefix>-deploy-cluster-a nvidia-device-plugin-cluster-a
-```
-
-Flux deployment variant:
-
-```bash
-cub unit apply --space <prefix>-deploy-cluster-a-flux gpu-operator-cluster-a-flux
-cub unit apply --space <prefix>-deploy-cluster-a-flux nvidia-device-plugin-cluster-a-flux
-```
-
-Argo deployment variant:
-
-```bash
-cub unit apply --space <prefix>-deploy-cluster-a-argo gpu-operator-cluster-a-argo
-cub unit apply --space <prefix>-deploy-cluster-a-argo nvidia-device-plugin-cluster-a-argo
+cub space update <prefix>-deploy-cluster-a-flux --release-target <space/target>
+cub release publish <prefix>-deploy-cluster-a-flux
 ```
 
 Important:

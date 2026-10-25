@@ -1,2 +1,3 @@
 kube-score
-kube-score-worker
+kube-score-bot
+*.jwk

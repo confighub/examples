@@ -2,9 +2,9 @@
 # Copyright (C) ConfigHub, Inc.
 # SPDX-License-Identifier: MIT
 #
-# End-to-end demo of the kube-linter example worker.
+# End-to-end demo of the kube-linter example function bot.
 #
-# This script builds the function code, runs it locally, connected to ConfigHub using a Worker identity,
+# This script builds the function bot, runs it locally on a ConfigHub Channel as you,
 # and exercises the vet-kube-linter function against units with various
 # best-practice violations.
 #
@@ -29,8 +29,8 @@ done
 # --- Configuration -----------------------------------------------------------
 
 SPACE="kube-linter-demo-$(( RANDOM % 9000 + 1000 ))"
-WORKER="kube-linter-worker"
-WORKER_PID=""
+CHANNEL="kube-linter"
+BOT_PID=""
 
 echo "=== Kube-Linter Demo ==="
 echo "Space: $SPACE"
@@ -39,11 +39,11 @@ echo ""
 # --- Cleanup trap ------------------------------------------------------------
 
 cleanup() {
-  # Kill the function executor's process group: the executable and anything it started.
-  if [ -n "$WORKER_PID" ] && kill -0 "$WORKER_PID" 2>/dev/null; then
-    echo "--- Stopping function executor (PID $WORKER_PID) ---"
-    kill -- -"$WORKER_PID" 2>/dev/null || kill "$WORKER_PID" 2>/dev/null || true
-    wait "$WORKER_PID" 2>/dev/null || true
+  # Kill the function bot's process group: the executable and anything it started.
+  if [ -n "$BOT_PID" ] && kill -0 "$BOT_PID" 2>/dev/null; then
+    echo "--- Stopping function bot (PID $BOT_PID) ---"
+    kill -- -"$BOT_PID" 2>/dev/null || kill "$BOT_PID" 2>/dev/null || true
+    wait "$BOT_PID" 2>/dev/null || true
   fi
   echo ""
   echo "Space $SPACE left intact for inspection."
@@ -53,42 +53,49 @@ trap cleanup EXIT INT TERM
 
 # --- Build -------------------------------------------------------------------
 
-echo "--- Building kube-linter worker ---"
-go build -o ./kube-linter-worker .
+echo "--- Building kube-linter bot ---"
+go build -o ./kube-linter-bot .
 echo ""
 
 # --- Create ConfigHub space --------------------------------------------------
 
-echo "--- Creating ConfigHub space ---"
+echo "--- Creating ConfigHub space and Channel ---"
 cub space create "$SPACE"
+cub channel create --space "$SPACE" "$CHANNEL"
 echo ""
 
-# --- Start worker ------------------------------------------------------------
+# --- Start function bot ------------------------------------------------------
 
-WORKER_LOG=$(mktemp /tmp/kube-linter-worker.XXXXXX)
-echo "--- Starting function executor ---"
-echo "Worker log: $WORKER_LOG"
+BOT_LOG=$(mktemp /tmp/kube-linter-bot.XXXXXX)
+echo "--- Starting function bot ---"
+echo "Bot log: $BOT_LOG"
+# The bot authenticates as you, through the active cub context, and declares its
+# functions on the Channel when it starts.
 set -m  # Enable job control so the background job gets its own process group
-cub worker create --space "$SPACE" "$WORKER"
-(
-  # The function executor reads the Worker's credentials and the server from its environment.
-  eval "$(cub worker get-envs --space "$SPACE" "$WORKER")"
-  export CONFIGHUB_URL="${CONFIGHUB_URL:-$(cub context get -o jq=.coordinate.serverURL)}"
-  exec ./kube-linter-worker
-) &>"$WORKER_LOG" &
-WORKER_PID=$!
+./kube-linter-bot "$SPACE/$CHANNEL" &>"$BOT_LOG" &
+BOT_PID=$!
 set +m
-echo "Function executor started (PID $WORKER_PID)"
+echo "Function bot started (PID $BOT_PID)"
 
-echo "--- Waiting for worker to be ready ---"
+echo "--- Waiting for the bot to claim the Channel ---"
 for i in $(seq 1 30); do
-  if cub worker list-function --space "$SPACE" "$WORKER" --names 2>/dev/null | grep -q vet-kube-linter; then
+  if [ "$(cub channel get "$SPACE/$CHANNEL" -o jq=.Channel.Condition)" = "Claimed" ]; then
     break
+  fi
+  if ! kill -0 "$BOT_PID" 2>/dev/null; then
+    echo "FAIL: the function bot exited"
+    cat "$BOT_LOG"
+    exit 1
   fi
   sleep 1
 done
-echo "Worker functions:"
-cub worker list-function --space "$SPACE" "$WORKER"
+if [ "$(cub channel get "$SPACE/$CHANNEL" -o jq=.Channel.Condition)" != "Claimed" ]; then
+  echo "FAIL: the function bot never claimed the Channel"
+  cat "$BOT_LOG"
+  exit 1
+fi
+echo "Functions on the Channel:"
+cub command list --space "$SPACE"
 echo ""
 
 # --- Create test units -------------------------------------------------------
@@ -160,12 +167,12 @@ echo ""
 
 echo "--- vet-kube-linter High on good-deploy (should pass: findings are Medium < High) ---"
 cub function do vet-kube-linter 'High' \
-  --space "$SPACE" --where "Slug = 'good-deploy'" --worker "$SPACE/$WORKER"
+  --space "$SPACE" --where "Slug = 'good-deploy'" --channel "$SPACE/$CHANNEL"
 echo ""
 
 echo "--- vet-kube-linter Medium on bad-deploy (should fail: findings are Medium >= Medium) ---"
 cub function do vet-kube-linter 'Medium' \
-  --space "$SPACE" --where "Slug = 'bad-deploy'" --worker "$SPACE/$WORKER"
+  --space "$SPACE" --where "Slug = 'bad-deploy'" --channel "$SPACE/$CHANNEL"
 echo ""
 
 echo "=== Demo complete ==="

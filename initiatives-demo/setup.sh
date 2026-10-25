@@ -7,7 +7,7 @@
 #       Component, Variant=base, Owner, Team, Layer=App, Purpose=initiatives-demo
 #     and references the shared compliance Triggers via --trigger-filter.
 #   - One "platform" Space — initiatives-demo — that holds NO application units,
-#     only the cross-cutting entities: the kyverno/k8s Workers, the initiative
+#     only the cross-cutting entities: the vet-kyverno Channel, the initiative
 #     Views + their Filters, and the vet-kyverno Triggers.
 #
 # Each initiative is a View with Labels (initiative=true, initiative-priority,
@@ -20,7 +20,7 @@
 # Prerequisites:
 #   - cub CLI installed: https://docs.confighub.com/get-started/setup/#install-the-cli
 #   - Authenticated: cub auth login
-#   - kind, kubectl, docker, jq on PATH (used to stand up the local kyverno worker)
+#   - kind, kubectl, docker, jq on PATH (used to stand up the local kyverno function bot)
 #
 # Usage:
 #   ./setup.sh
@@ -38,7 +38,7 @@ set -euo pipefail
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
-# The platform space holds the demo's shared entities (workers, filters, views,
+# The platform space holds the demo's shared entities (the bot's Channel, filters, views,
 # triggers) — but no application units. SPACE is accepted as a legacy alias.
 PLATFORM_SPACE="${PLATFORM_SPACE:-${SPACE:-initiatives-demo}}"
 # Purpose label stamped on every component space so the initiative filters can
@@ -47,7 +47,7 @@ PURPOSE="${PURPOSE:-initiatives-demo}"
 
 # A WhereTrigger predicate that matches no Trigger. An *empty* WhereTrigger is
 # not "no triggers" — the server defaults it to `SpaceID = <this space>`, which
-# would make the platform space validate its own units (the worker unit) with
+# would make the platform space validate its own units with
 # the demo's triggers. Setting an impossible predicate (no Trigger lives in the
 # nil-UUID space) opts the platform space out without a TriggerFilterID.
 NO_TRIGGERS_WHERE="SpaceID = '00000000-0000-0000-0000-000000000000'"
@@ -69,7 +69,7 @@ if ! $cub auth status &>/dev/null; then
   exit 1
 fi
 
-# Verify the tools we need to stand up the local kind cluster + kyverno worker.
+# Verify the tools we need to stand up the local kind cluster + kyverno function bot.
 for tool in kind kubectl docker jq; do
   if ! command -v "$tool" &>/dev/null; then
     echo "ERROR: $tool is required but not found in PATH" >&2
@@ -84,10 +84,10 @@ if [[ ! -d "$PROMO_DIR" ]]; then
   exit 1
 fi
 
-# Verify the kyverno worker source ships alongside this demo.
+# Verify the kyverno function bot source ships alongside this demo.
 KYVERNO_DIR="${SCRIPT_DIR}/../custom-workers/kyverno"
 if [[ ! -d "$KYVERNO_DIR" ]]; then
-  echo "ERROR: Kyverno worker source not found at $KYVERNO_DIR" >&2
+  echo "ERROR: Kyverno function bot source not found at $KYVERNO_DIR" >&2
   exit 1
 fi
 
@@ -156,10 +156,10 @@ make_slug() {
   echo "$1" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/^-//;s/-$//' | cut -c1-50
 }
 
-# Create the platform space. It holds the workers, filters, views, and triggers
+# Create the platform space. It holds the bot's Channel, filters, views, and triggers
 # — but no application units. We point its WhereTrigger at an impossible
 # predicate so the demo's own vet-kyverno triggers (which live here) do NOT fire
-# against the platform space's worker unit; the triggers only reach the
+# against the platform space's own units; the triggers only reach the
 # component spaces, which opt in via --trigger-filter.
 create_platform_space() {
   if $cub space get "$PLATFORM_SPACE" --quiet 2>/dev/null; then
@@ -217,27 +217,6 @@ create_unit() {
 
 resolve_space_id() {
   $cub space get "$1" -o jq=".Space.SpaceID" 2>/dev/null
-}
-
-# Find a Ready bridge worker that supports vet-kyverno *within the platform
-# space*. We deliberately do not search globally — sharing a worker across
-# demos couples their lifecycles, so each demo brings its own. `--select "*"`
-# is required: ProvidedInfo.FunctionWorkerInfo.SupportedFunctions is not among
-# the default columns `cub worker list` returns. Some workers expose
-# SupportedFunctions as null, so we normalise to {} before iterating.
-find_kyverno_worker() {
-  $cub worker list --space "$PLATFORM_SPACE" --select "*" -o json 2>/dev/null | jq -r --arg sid "$PLATFORM_SPACE_ID" '
-    [ .[]
-      | select(.BridgeWorker.SpaceID == $sid)
-      | select(.BridgeWorker.Condition == "Ready")
-      | select(
-          ((.BridgeWorker.ProvidedInfo.FunctionWorkerInfo.SupportedFunctions // {})
-             | to_entries
-             | map(.value | has("vet-kyverno"))
-             | any)
-        )
-      | .BridgeWorker.BridgeWorkerID
-    ][0] // empty'
 }
 
 # ── Non-compliant variant ────────────────────────────────────────────────────
@@ -399,7 +378,7 @@ create_initiative() {
   local where_clause="$8"
   local policy_func="$9"
   local check_summary="${10}"
-  local worker_id="${11:-}"
+  local channel_ref="${11:-}"  # the Channel serving vet-kyverno, as space/slug
   local enforce="${12:-false}"  # true → gate (ValidationErrors); false → warning (ValidationWarnings)
 
   local slug
@@ -442,8 +421,8 @@ create_initiative() {
   #    --trigger-filter. --disable creates it paused (Step 8 enables). --warn
   #    makes failures advisory (ValidationWarnings); omitting it makes the trigger an
   #    enforced gate (ValidationErrors).
-  if [[ -n "$worker_id" ]]; then
-    local -a trig_flags=(--worker "$worker_id" --label "initiative-check=true" --disable)
+  if [[ -n "$channel_ref" ]]; then
+    local -a trig_flags=(--channel "$channel_ref" --label "initiative-check=true" --disable)
     [[ "$enforce" != "true" ]] && trig_flags+=(--warn)
 
     # 4. Create the trigger and capture its id straight from the create response
@@ -480,18 +459,20 @@ fi
 echo "SpaceID: $PLATFORM_SPACE_ID"
 echo ""
 
-# ── Step 2: Local kind cluster + kyverno worker ──────────────────────────────
+# ── Step 2: Local kind cluster + kyverno function bot ────────────────────────
 #
-# The demo brings its own kind cluster and vet-kyverno function executor so
-# initiative triggers have somewhere to run. Workers live in the platform
-# space. Everything is namespaced under CLUSTER_NAME (defaults to the platform
+# The demo brings its own kind cluster and vet-kyverno function bot so
+# initiative triggers have somewhere to run. The bot serves a Channel in the
+# platform space, as a service account of the same name. Everything is namespaced under CLUSTER_NAME (defaults to the platform
 # space slug) so cleanup.sh can find it.
 
 CLUSTER_NAME="${CLUSTER_NAME:-$PLATFORM_SPACE}"
 KCTX="kind-$CLUSTER_NAME"
-KYVERNO_WORKER="kyverno-cli-worker"
-KYVERNO_WORKER_NAMESPACE="kyverno-cli-worker"
-KYVERNO_IMAGE="kyverno-cli-worker:initiatives-demo"
+# Service accounts belong to the organization, so the bot's name carries the
+# platform space's.
+KYVERNO_BOT="$PLATFORM_SPACE-kyverno"
+KYVERNO_BOT_NAMESPACE="kyverno-cli-bot"
+KYVERNO_IMAGE="kyverno-cli-bot:initiatives-demo"
 
 echo "--- Setting up kind cluster '$CLUSTER_NAME' ---"
 if kind get clusters 2>/dev/null | grep -qx "$CLUSTER_NAME"; then
@@ -502,26 +483,22 @@ fi
 kubectl cluster-info --context "$KCTX" >/dev/null
 echo ""
 
-echo "--- Building and loading kyverno worker image ---"
+echo "--- Building and loading kyverno function bot image ---"
 docker build -t "$KYVERNO_IMAGE" "$KYVERNO_DIR"
 kind load docker-image "$KYVERNO_IMAGE" --name "$CLUSTER_NAME"
 echo ""
 
-echo "--- Deploying kyverno CLI function executor ---"
-# A Secret with the Worker's credentials and a Deployment that reads it. Applying
-# them again is harmless, so a rerun needs no check for an existing Worker.
-CUB="$cub" KUBECTL_CONTEXT="$KCTX" "$KYVERNO_DIR/../deploy-worker.sh" \
-  "$PLATFORM_SPACE" "$KYVERNO_WORKER" "$KYVERNO_WORKER_NAMESPACE" "$KYVERNO_IMAGE"
-echo "Kyverno CLI function executor is ready."
-echo ""
-
-# ── Step 3: Detect kyverno worker ────────────────────────────────────────────
-
-WORKER_ID=$(find_kyverno_worker) || true
-if [[ -n "$WORKER_ID" ]]; then
-  echo "Kyverno worker: $WORKER_ID"
+echo "--- Deploying kyverno CLI function bot ---"
+# A service account with Claim on a Channel that declares the bot's functions, a
+# Secret with the service account's key, and a Deployment that reads it. Running
+# it again redeploys with the same key.
+KYVERNO_CHANNEL=""
+if CUB="$cub" KUBECTL_CONTEXT="$KCTX" "$KYVERNO_DIR/../deploy-bot.sh" \
+  "$PLATFORM_SPACE" "$KYVERNO_BOT" "$KYVERNO_BOT_NAMESPACE" "$KYVERNO_IMAGE"; then
+  KYVERNO_CHANNEL="$PLATFORM_SPACE/$KYVERNO_BOT"
+  echo "Kyverno CLI function bot serves $KYVERNO_CHANNEL."
 else
-  echo "WARNING: vet-kyverno worker did not register with ConfigHub — initiatives will be created without triggers."
+  echo "WARNING: the vet-kyverno function bot did not claim its Channel — initiatives will be created without triggers."
 fi
 echo ""
 
@@ -566,7 +543,7 @@ create_initiative \
   "Space.Labels.Owner = 'Support' AND Space.Labels.Purpose = '$PURPOSE'" \
   policy_require_probes \
   "{\"passing\":4,\"failing\":4,\"total\":8,\"checkedAt\":\"$(days_ago_iso 0)\"}" \
-  "$WORKER_ID"
+  "$KYVERNO_CHANNEL"
 
 # 2. Image Registry Restriction — Owner = Product (eshop + docs)
 #    Pass: eshop-api, eshop-frontend, eshop-worker, docs-server
@@ -579,7 +556,7 @@ create_initiative \
   "Space.Labels.Owner = 'Product' AND Space.Labels.Purpose = '$PURPOSE'" \
   policy_restrict_image_registries \
   "{\"passing\":4,\"failing\":3,\"total\":7,\"checkedAt\":\"$(days_ago_iso 0)\"}" \
-  "$WORKER_ID"
+  "$KYVERNO_CHANNEL"
 
 # 3. Run-As-NonRoot Enforcement — Component = aichat (2 passing / 3 failing)
 #    Pass: aichat-api, aichat-frontend (have securityContext.runAsNonRoot)
@@ -592,7 +569,7 @@ create_initiative \
   "Space.Labels.Component = 'aichat' AND Space.Labels.Purpose = '$PURPOSE'" \
   policy_require_run_as_nonroot \
   "{\"passing\":2,\"failing\":3,\"total\":5,\"checkedAt\":\"$(days_ago_iso 0)\"}" \
-  "$WORKER_ID"
+  "$KYVERNO_CHANNEL"
 
 # 4. Resource Limits Enforcement — Component = website (2 passing / 1 failing)
 #    Pass: website-web, website-postgres
@@ -605,7 +582,7 @@ create_initiative \
   "Space.Labels.Component = 'website' AND Space.Labels.Purpose = '$PURPOSE'" \
   policy_require_resource_limits \
   "{\"passing\":2,\"failing\":1,\"total\":3,\"checkedAt\":\"$(days_ago_iso 1)\"}" \
-  "$WORKER_ID"
+  "$KYVERNO_CHANNEL"
 
 # 5. Disallow Host Ports — Component = docs, completed + enforced (2 passing / 0 failing)
 #    Pass: docs-server, docs-search
@@ -618,7 +595,7 @@ create_initiative \
   "Space.Labels.Component = 'docs' AND Space.Labels.Purpose = '$PURPOSE'" \
   policy_disallow_host_ports \
   "{\"passing\":2,\"failing\":0,\"total\":2,\"checkedAt\":\"$(days_ago_iso 3)\"}" \
-  "$WORKER_ID" \
+  "$KYVERNO_CHANNEL" \
   "true"
 echo ""
 
@@ -686,7 +663,7 @@ echo ""
 # (TRIGGER_ENABLE_DELAY seconds apart); each refresh fans every initiative check
 # out across that space's units.
 
-if [[ -n "$WORKER_ID" ]]; then
+if [[ -n "$KYVERNO_CHANNEL" ]]; then
   echo "--- Enabling triggers ---"
   $cub trigger update --space "$PLATFORM_SPACE" --patch \
     --where "Labels.initiative-check = 'true'" --enable --quiet >/dev/null \
@@ -719,12 +696,12 @@ echo "  Units:           $created_units"
 echo "  Spaces created:  $created_spaces"
 echo ""
 echo "Open the ConfigHub UI and navigate to Initiatives to see them."
-if [[ -n "$WORKER_ID" ]]; then
+if [[ -n "$KYVERNO_CHANNEL" ]]; then
   echo "Triggers were enabled and each component space refreshed one at a time"
   echo "(${TRIGGER_ENABLE_DELAY}s apart) so the per-space fan-outs land in sequence."
   echo "Override the pacing with TRIGGER_ENABLE_DELAY=N (seconds)."
 else
-  echo "Worker did not register — re-run after fixing to attach policy check triggers."
+  echo "The function bot did not claim its Channel — re-run after fixing to attach policy check triggers."
 fi
 echo ""
 echo "To clean up (spaces + kind cluster), run: ./cleanup.sh"

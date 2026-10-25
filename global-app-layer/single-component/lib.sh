@@ -796,10 +796,7 @@ Next steps:
 3. ./set-target.sh <kubernetes-target>        # binds the direct deployment variant
 4. ./set-target.sh <fluxoci-target>           # binds the Flux deployment variant
 5. ./set-target.sh <argocdoci-target>         # binds the Argo deployment variant
-6. cub unit apply --space $(deploy_space) ${DEPLOY_UNIT}
-7. cub unit apply --space $(flux_deploy_space) ${DEPLOY_FLUX_UNIT}
-8. cub unit apply --space $(argo_deploy_space) ${DEPLOY_ARGO_UNIT}
-9. Review recipe manifest: cub unit data --space $(recipe_space) ${RECIPE_MANIFEST_UNIT}
+6. Review recipe manifest: cub unit data --space $(recipe_space) ${RECIPE_MANIFEST_UNIT}
 EOF_SUMMARY
 }
 

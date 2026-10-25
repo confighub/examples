@@ -2,7 +2,7 @@
 
 One platform, two apps, five deployments. See what's platform-owned vs app-owned.
 
-**Experimental:** Noop targets only in this example.
+**Experimental:** ConfigHub only. This example creates no targets and delivers nothing to a cluster.
 
 ```bash
 ./setup.sh --explain
@@ -14,7 +14,7 @@ This example shows `springboot-platform` providing managed services to `inventor
 
 ```bash
 ./setup.sh --explain    # see the platform model (read-only)
-./setup.sh              # create 6 spaces, 5 units, 5 noop targets
+./setup.sh              # create 5 spaces and 5 units
 ./verify.sh             # check consistency
 ./cleanup.sh            # delete everything
 ```

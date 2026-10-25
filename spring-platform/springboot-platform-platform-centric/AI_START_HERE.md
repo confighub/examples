@@ -2,7 +2,7 @@
 
 Read [`README.md`](./README.md) first. This page is for running the example yourself or pairing with an AI assistant.
 
-**Experimental:** Noop targets only in this example.
+**Experimental:** ConfigHub only. This example creates no targets and delivers nothing to a cluster.
 
 ## Fast Path
 
@@ -53,7 +53,7 @@ Pause here if you're doing a guided walkthrough.
 ./setup.sh --explain
 ```
 
-You'll see: 6 spaces (1 infra + 5 app), all with noop targets.
+You'll see: 5 app spaces, each with one unit.
 
 Pause here if you're doing a guided walkthrough.
 

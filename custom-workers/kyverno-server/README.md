@@ -14,8 +14,8 @@ Policies are not passed as parameters — they must be deployed in the Kyverno c
 ## Prerequisites
 
 - Kyverno deployed in a Kubernetes cluster with policies configured. See [Kyverno installation](https://kyverno.io/docs/installation/).
-- Network access from the worker to the Kyverno webhook service.
-- A running ConfigHub server (for the worker mode).
+- Network access from the bot to the Kyverno webhook service.
+- A ConfigHub organization you can log in to with `cub auth login`.
 
 ## Configuration
 
@@ -33,46 +33,42 @@ The function uses environment variables to connect to the Kyverno server:
 
 The kyverno-server function expects to run in a Kubernetes cluster so that it can call Kyverno's admission webhook.
 
-To deploy the worker in a cluster, first build and push a container image:
+To deploy the bot in a cluster, first build and push a container image:
 
-    docker build -f Dockerfile -t my-registry/kyverno-server-worker:latest .
-    docker push my-registry/kyverno-server-worker:latest
+    docker build -f Dockerfile -t my-registry/kyverno-server-bot:latest .
+    docker push my-registry/kyverno-server-bot:latest
 
-Let the function executor list ValidatingWebhookConfigurations, which is how it finds the webhooks to call:
+Let the bot list ValidatingWebhookConfigurations, which is how it finds the webhooks to call:
 
     kubectl create clusterrole webhook-reader \
       --verb=list,watch --resource=validatingwebhookconfigurations.admissionregistration.k8s.io
-    kubectl create clusterrolebinding worker-webhook-reader \
+    kubectl create clusterrolebinding kyverno-bot-webhook-reader \
       --clusterrole=webhook-reader \
-      --group="system:serviceaccounts:kyverno-worker"
+      --group="system:serviceaccounts:kyverno-bot"
 
-Then give the cluster the Worker's credentials as a Secret and run the image with a Deployment that reads it. [`deploy-worker.sh`](../deploy-worker.sh) does both, and waits for the rollout:
+In a cluster the bot runs as a service account. [`deploy-bot.sh`](../deploy-bot.sh) creates the service account, gives it Claim on a Channel, declares the bot's functions on the Channel from `--print-commands`, puts a new key for the service account in a Secret, and runs the image with a Deployment that reads it. It waits until the bot holds the Channel:
 
-    IMAGE_PULL_POLICY=IfNotPresent ../deploy-worker.sh $SPACE my-kyverno-server kyverno-worker my-registry/kyverno-server-worker:latest \
+    IMAGE_PULL_POLICY=IfNotPresent ../deploy-bot.sh $SPACE kyverno-bot kyverno-bot my-registry/kyverno-server-bot:latest \
       KYVERNO_URL=https://kyverno-svc.kyverno.svc:443 \
       KYVERNO_SKIP_TLS_VERIFY=true
 
-[External Functions](https://docs.confighub.com/guide/external-functions/#in-kubernetes) in the ConfigHub docs shows the Secret and the Deployment it applies, if you would rather write them yourself or keep the Deployment in a Unit.
-
 For a complete end-to-end demo using Kind, see [demo.sh](demo.sh).
 
-The function executor connects to ConfigHub and registers the `vet-kyverno-server` function with the Worker.
+The bot serves `vet-kyverno-server` on the Channel `$SPACE/kyverno-bot`.
 
 ### Running out-of-cluster
 
-You can also run the worker outside the cluster using `kubectl port-forward` to access the Kyverno webhook:
+You can also run the bot outside the cluster using `kubectl port-forward` to access the Kyverno webhook:
 
     # Port-forward the Kyverno webhook service
     kubectl -n kyverno port-forward svc/kyverno-svc 8443:443 &
 
-    # Set up ConfigHub worker environment
-    eval "$(cub worker get-envs --space $SPACE my-kyverno-worker)"
+    # Create a Channel for the bot
+    cub channel create --space $SPACE kyverno-server
 
     # Set Kyverno environment
     export KYVERNO_URL=https://localhost:8443
     export KYVERNO_SKIP_TLS_VERIFY=true
 
-    # Run the worker
-    ./kyverno-server
-
-`CONFIGHUB_URL` must also be set, to the server you are logged in to: `export CONFIGHUB_URL=https://hub.confighub.com`.
+    # Run the bot, as you, through your active cub context
+    ./kyverno-server $SPACE/kyverno-server

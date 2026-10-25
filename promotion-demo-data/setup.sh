@@ -18,22 +18,20 @@ source "${SCRIPT_DIR}/lib.sh"
 
 echo "=== ConfigHub Demo Setup ==="
 echo ""
-echo "This will create 50 spaces (~154 units) in your org."
+echo "This will create 49 spaces (~154 units) in your org."
 echo "All entities are labeled ExampleName=${EXAMPLE_NAME} for easy cleanup."
 echo ""
 
 ##################################
 # Phase 1: Infrastructure spaces
 ##################################
-echo "Phase 1: Creating shared worker and infrastructure spaces..."
-
-create_worker_space
+echo "Phase 1: Creating infrastructure spaces..."
 
 for target in "${TARGETS[@]}"; do
   create_infra_space "$target"
 done
 
-echo "  Done. Created 1 worker space + ${#TARGETS[@]} infrastructure spaces."
+echo "  Done. Created ${#TARGETS[@]} infrastructure spaces."
 echo ""
 
 ##################################
@@ -206,7 +204,7 @@ done
 echo ""
 
 ##################################
-# Phase 7: Upgrade and apply all units
+# Phase 7: Upgrade all units
 ##################################
 echo "Phase 7: Upgrading all units to upstream head revision..."
 
@@ -217,19 +215,10 @@ $CUB unit update \
 echo "  Done."
 echo ""
 
-echo "Phase 7b: Applying all units (noop worker — no real effect)..."
-
-$CUB unit apply \
-  --where "Labels.ExampleName = '${EXAMPLE_NAME}' AND TargetID IS NOT NULL" \
-  --wait=false
-
-echo "  Done. Units are being applied in the background."
-echo ""
-
 ##################################
 # Phase 8: Create intentional version skew
 ##################################
-# This runs AFTER upgrade+apply so the skew is the only unapplied change.
+# This runs AFTER the upgrade so the skew is the only difference between targets.
 echo "Phase 8: Creating version skew for eshop..."
 
 $CUB function do set-image-reference api ":4.2.0" \

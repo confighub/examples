@@ -14,7 +14,7 @@ The recipe is the ordered chain of variants, not the bundle.
 
 | Delivery Mode | Status | Notes |
 |---------------|--------|-------|
-| **Direct Kubernetes** | Fully working | Worker applies YAML via `kubectl apply`. Smallest real proof. |
+| **Direct Kubernetes** | Not available | ConfigHub no longer applies to a cluster itself. The direct variant's plain manifests can be delivered through a Release like the others. |
 | **Flux OCI** | Fully working | Explicit Flux deployment variant. Current standard controller path. |
 | **Argo OCI** | Implemented | Explicit Argo deployment variant. Requires ArgoCD v3.1+. See [`07-argo-oci-spec.md`](../07-argo-oci-spec.md). |
 | **ArgoCDRenderer** | Incompatible | Expects Argo `Application` payloads, not raw manifests. |
@@ -79,8 +79,7 @@ In ConfigHub-only mode:
 
 In live mode:
 - deployment variants bound to compatible targets
-- successful `cub unit apply`
-- for direct targets: worker-mediated apply evidence plus live cluster resources
+- a published Release (`cub release publish`)
 - for Flux OCI targets: OCI ref/digest published to ConfigHub-native OCI origin, Flux OCIRepository pointing at that digest, reconciliation evidence, plus live cluster resources
 - for Argo OCI targets: OCI ref/digest published, ArgoCD Application with OCI source, Synced and Healthy status, plus live cluster resources
 
@@ -186,21 +185,11 @@ If you did not pass targets during setup:
 ./set-target.sh <argocdoci-target>    # binds the Argo deployment variant
 ```
 
-Then you can use normal ConfigHub apply flow on any deployment variant:
+Then set the deployment Space's release Target and publish a Release for it. Argo CD or Flux pulls the Release from ConfigHub's OCI registry:
 
-Direct variant:
 ```bash
-cub unit apply --space <prefix>-deploy-cluster-a backend-cluster-a
-```
-
-Flux variant:
-```bash
-cub unit apply --space <prefix>-deploy-cluster-a-flux backend-cluster-a-flux
-```
-
-Argo variant:
-```bash
-cub unit apply --space <prefix>-deploy-cluster-a-argo backend-cluster-a-argo
+cub space update <prefix>-deploy-cluster-a-flux --release-target <space/target>
+cub release publish <prefix>-deploy-cluster-a-flux
 ```
 
 The bundle belongs to the target. The recipe manifest records the chain that produced the deployment, and includes bundle hints once targets are set.
@@ -260,4 +249,4 @@ A working Flux OCI proof must show the complete chain:
 
 1. Flux deployment unit exists with correct upstream (recipe unit)
 2. Flux deployment unit is bound to a `FluxOCI` or `FluxOCIWriter` target
-3. `cub unit apply` publishes to ConfigHub-native OCI origin with recorded **ref and digest**
+3. `cub release publish` publishes to ConfigHub-native OCI origin with recorded **ref and digest**

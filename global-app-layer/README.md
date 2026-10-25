@@ -87,14 +87,13 @@ This package uses a few words very deliberately:
   SBOMs, attestations, or GUI views
 
 Not every example publishes a bundle. Some examples stop at ConfigHub
-materialization or use direct Kubernetes delivery, where the live proof is the
-applied cluster state rather than a separate exported artifact.
+materialization.
 
 ## Delivery Matrix
 
 | Mode | Status | Use case |
 |------|--------|----------|
-| **Direct Kubernetes** | Fully working | Simplest real proof |
+| **Direct Kubernetes** | Not available | ConfigHub no longer applies to a cluster itself; deliver through a Release |
 | **Flux OCI** | Current standard | Controller-oriented delivery with OCI proof |
 | **Argo OCI** | Implemented in selected examples | Use only when controller + live evidence are both shown |
 | **ArgoCDRenderer** | Working | Renderer path only, not OCI delivery |
@@ -107,7 +106,7 @@ These examples start by materializing intended state in ConfigHub.
 2. Materialize with `./setup.sh`
 3. Verify with `./verify.sh`
 4. Optional: bind a target with `./set-target.sh`
-5. Optional: apply live with `cub unit apply`
+5. Optional: publish a Release with `cub release publish`, for Argo CD or Flux to pull from ConfigHub's OCI registry
 
 Live delivery is a later explicit step, not the starting point.
 
@@ -125,13 +124,6 @@ For AI-safe or CI-safe dry inspection, use the read-only setup preview first:
 ```bash
 ./setup.sh --explain
 ./setup.sh --explain-json | jq .
-```
-
-To check live readiness before binding:
-
-```bash
-./preflight-live.sh <space/target>
-./preflight-live.sh <space/target> --json | jq
 ```
 
 ---
@@ -185,7 +177,7 @@ See [how-it-works.md](./how-it-works.md) for the full explanation.
 | `cub` CLI | ConfigHub commands |
 | `cub auth login` | Authenticated session |
 | `jq` | JSON processing |
-| Kubernetes cluster + worker | For live delivery (optional) |
+| Kubernetes cluster with Argo CD or Flux | For live delivery (optional) |
 
 ## AI-Safe Path
 
@@ -202,4 +194,3 @@ See [how-it-works.md](./how-it-works.md) for the full explanation.
 - [04-bundles-attestation-and-todo.md](./04-bundles-attestation-and-todo.md) — bundle gaps
 - [06-bundle-evidence-gui-spec.md](./06-bundle-evidence-gui-spec.md) — GUI spec
 - [07-argo-oci-spec.md](./07-argo-oci-spec.md) — Argo OCI details
-- [e2e/](./e2e/) — end-to-end tests

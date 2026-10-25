@@ -31,9 +31,7 @@ Before each command:
 - stop and branch clearly if auth or targets are missing
 - use the documented JSON/jq contracts rather than inventing field paths
 - after setup, use the printed GUI URLs and `.logs/*.latest.log` files instead of relying on scrollback
-- before any live claim, run `./preflight-live.sh <space/target>` and treat `applyReady: true` as the gate
-- when exploring Argo integration, distinguish renderer evidence from real sync evidence; `ArgoCDRenderer` is not by itself a workload-sync proof, and `e2e/deliver-argo.sh` is also not sufficient
-- for raw-manifest examples such as `realistic-app`, do not assume `ArgoCDRenderer` compatibility just because preflight passes; verify the unit payload shape first
+- before any live claim, show a published Release and Argo CD or Flux syncing it
 
 Start with `realistic-app` unless you think another example is a better fit.
 
@@ -46,7 +44,7 @@ Use `global-app-layer` in ConfigHub-only mode:
 - create the recipe chain
 - verify it
 - show me the important spaces, units, and recipe manifest
-- do not bind a target or apply anything live
+- do not bind a target or publish a Release
 - include GUI checkpoints as you go
 
 ## 4. NVIDIA-Shaped Walkthrough
@@ -56,7 +54,7 @@ Use `gpu-eks-h100-training` to explain how NVIDIA AICR-style layers map to Confi
 Start read-only.
 Then materialize the example in ConfigHub.
 Then verify it.
-Only offer the live path if a real target exists and `./preflight-live.sh <space/target>` says `applyReady: true`.
+Only offer the live path if a real target exists and Argo CD or Flux in the cluster pulls its Releases.
 
 ## 5. Verify Everything
 
@@ -66,10 +64,10 @@ After running a `global-app-layer` example, verify:
 - the layered variant ancestry
 - the recipe manifest
 - target binding if used
-- live apply state if used
+- published Releases if used
 
 Summarize what definitely happened, what did not happen, and what still depends on missing infrastructure.
-If live delivery was involved, separate direct-worker evidence from delegated-agent evidence.
+If live delivery was involved, separate what ConfigHub recorded (the Release) from what the GitOps tool reports (sync status).
 
 ## 6. Whole Lifecycle Walkthrough
 
@@ -77,7 +75,7 @@ Guide me through the full `global-app-layer` journey using `realistic-app`.
 
 Start with preview and ConfigHub materialization, then continue through:
 - target binding
-- live apply
+- publishing a Release
 - shared upstream update
 - one custom downstream deployment variant
 
@@ -87,7 +85,6 @@ Before each command:
 - say what success looks like
 - say what GUI page or CLI object to inspect next
 - stop clearly if required infrastructure is missing
-- do not treat target visibility or set-target success as proof that apply will work
-- run `./preflight-live.sh <space/target>` before the live branch
+- do not treat target visibility or set-target success as proof that delivery works
 
 Use `whole-journey.md` and the example docs instead of inventing steps.

@@ -44,7 +44,7 @@ The scaffold handles mechanical renaming. You still need to:
 - **Review ports and health paths** if yours differ from the default
 - **Review field ownership** in `operational/field-routes.yaml`
 - **Update environment variables** for your service's needs
-- **Configure image registry** if not using local Kind loading
+- **Configure image registry** in `bin/build-image` and the image references
 
 The generated `ADAPTATION-CHECKLIST.md` lists these items with checkboxes.
 
@@ -54,7 +54,7 @@ From [`springboot-platform-app`](./springboot-platform-app/):
 
 - the Spring Boot shape: app config, profiles, Docker image, health checks
 - the ConfigHub setup path: `./confighub-setup.sh`, `./confighub-verify.sh`, `./confighub-cleanup.sh`
-- the real Kubernetes proof path: `./bin/create-cluster`, `./bin/build-image`, `./bin/install-worker`, `./confighub-setup.sh --with-targets`
+- the image build: `./bin/build-image`
 - the mutation story: apply-here, lift-upstream, block/escalate
 - the visibility tools: `./generator/render.sh --trace`, `./generator/render.sh --explain-field`, `./confighub-compare.sh`, `./confighub-refresh-preview.sh`
 
@@ -66,21 +66,12 @@ After scaffolding and adapting:
 cd my-service  # your scaffolded directory
 ./setup.sh --explain
 ./verify.sh
-./confighub-setup.sh --with-noop-targets
+./confighub-setup.sh
 ./confighub-verify.sh
 ```
 
-If you want real Kubernetes delivery:
-
-```bash
-./bin/create-cluster
-./bin/build-image
-CUB_SPACE=springboot-infra ./bin/install-worker
-export KUBECONFIG=var/springboot-platform.kubeconfig
-export WORKER_SPACE=springboot-infra
-./confighub-setup.sh --with-targets
-./verify-e2e.sh
-```
+Delivery to a cluster is out of scope for this example. ConfigHub delivers
+Releases to clusters through Argo CD or Flux, driven by a bot such as argobot.
 
 ## From This Example to the Real Tool
 
@@ -117,8 +108,7 @@ If you are evaluating this with a real team, do it in this order:
 2. Confirm the team understands the three mutation routes.
 3. Replace the app with one internal service.
 4. Keep the platform policy small and explicit.
-5. Prove the service on noop targets first.
-6. Only then run the Kind path.
+5. Prove the service in ConfigHub before wiring up delivery.
 
 This keeps the evaluation focused on the model, not on porting five things at once.
 

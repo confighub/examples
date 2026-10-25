@@ -131,7 +131,7 @@ Examples:
   actually performs that action
 - do not imply `block/escalate` is enforced unless the example actually proves
   server-side blocking or escalation
-- do not describe Noop target mode as real Kubernetes delivery
+- do not imply the examples deliver to a cluster
 
 ### Rule 7: The three examples must be directly comparable
 
@@ -254,8 +254,6 @@ Required rows:
 - ConfigHub mutation storage
 - mutation history / audit trail
 - refresh preview
-- real Kubernetes delivery
-- Noop target simulation
 - running app HTTP verification
 - `lift upstream` automated PR
 - `block/escalate` server-side enforcement
@@ -366,7 +364,6 @@ Current script inventory to classify:
 - `block-escalate.sh`
 - `block-escalate-verify.sh`
 - `demo-full-loop.sh`
-- `verify-e2e.sh`
 
 The rewrite must make it obvious which of these are user-facing and which are
 not.

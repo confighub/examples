@@ -46,9 +46,9 @@ differ in *perspective* and *what you can run*.
 **[`springboot-platform-app`](./springboot-platform-app/)** — Start here.
 One app, one environment. You run shell scripts that generate Kubernetes
 manifests from Spring config, then explain each field: who owns it, how it
-can change, and why. If you have a Kind cluster, you can deploy and verify
-end-to-end. If not, the scripts still work -- they show the transformation
-and field routing without a cluster.
+can change, and why. The scripts show the transformation and field routing
+without a cluster. Delivery to a cluster is out of scope for this example;
+ConfigHub delivers Releases to clusters through Argo CD or Flux.
 
 **[`springboot-platform-app-centric`](./springboot-platform-app-centric/)** —
 Same app, now across three environments (dev, stage, prod). Each environment
@@ -305,7 +305,7 @@ Component -> Deployment Variants -> Targets.
 ```bash
 cd springboot-platform-app-centric
 ./setup.sh --explain          # Component -> Deployment Variants -> Targets
-./setup.sh                    # create spaces, units, noop targets
+./setup.sh                    # create spaces and units
 ./demo.sh                     # walk through all three mutation outcomes
 ```
 
@@ -314,7 +314,7 @@ cd springboot-platform-app-centric
 ```bash
 cd springboot-platform-platform-centric
 ./setup.sh --explain          # the platform view
-./setup.sh                    # create 6 spaces, 5 units
+./setup.sh                    # create 5 spaces, 5 units
 ./platform.sh --summary       # what the platform provides
 ./platform.sh --apps          # which apps run on it
 ./platform.sh --explain-field spring.datasource.url   # BLOCKED — for all apps on this platform
@@ -327,8 +327,7 @@ cd springboot-platform-platform-centric
 | Generator transformation | Real |
 | Field lineage / explain-field | Real |
 | ConfigHub mutation + audit history | Real |
-| Real Kubernetes delivery (Kind) | Real (Phase 1 only) |
-| Noop target simulation | Real |
+| Delivery to a cluster | Out of scope |
 | Refresh-survival preview | Simulated (client-side) |
 | Direct embedded apply-here helper | Productized in `cub-gen`, not this repo |
 | ConfigHub Initiative GUI card | Productized in `cub-gen`, not this repo |

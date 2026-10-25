@@ -33,9 +33,23 @@ Pieces:
   initial data for a long-lived ConfigHub unit (`rbac-manager` in the
   `prod-use2-ui-preview` space) — the deployment is itself managed as
   ConfigHub config, and Argo CD syncs it from the space's OCI bundle.
-- `../../.github/workflows/deploy-rbac-manager.yml` — on push to main, builds
-  and pushes `ghcr.io/confighub/rbac-manager:<sha>`, then updates the unit's
-  image reference with `cub function do set-image-reference`.
+- Deploying is a manual step. Build and push the image from the repository
+  root, then point the unit at it and publish the space's Release, which Argo
+  CD syncs:
+
+  ```sh
+  tag=$(git rev-parse HEAD)
+  docker build --build-arg VITE_CONFIGHUB_BASE_URL=https://hub.confighub.com \
+    --build-arg VITE_OAUTH_CLIENT_ID=<client-id> \
+    -t ghcr.io/confighub/rbac-manager:$tag -f rbac-manager/deploy/Dockerfile .
+  docker push ghcr.io/confighub/rbac-manager:$tag
+
+  cub unit create rbac-manager rbac-manager/deploy/k8s.yaml --space prod-use2-ui-preview \
+    --target prod-use2/prod-use2-oci --delete-gate critical   # first deploy only
+  cub function do --space prod-use2-ui-preview --unit rbac-manager \
+    set-image-reference rbac-manager ":$tag"
+  cub release publish prod-use2-ui-preview
+  ```
 
 The hostname rides the existing `*.test.confighub.net` wildcard DNS, TLS cert,
 and Keycloak redirect-URI allowlist used by UI previews, so no DNS, cert, or
@@ -43,26 +57,15 @@ IdP changes are needed.
 
 ## One-time setup (already done for this repo)
 
-1. Create a deploy worker in the target space and store its credentials as
-   repo secrets:
-
-   ```sh
-   cub worker create rbac-manager-deploy --space prod-use2-ui-preview
-   cub worker get-secret rbac-manager-deploy --space prod-use2-ui-preview
-
-   gh secret set RBAC_MANAGER_DEPLOY_WORKER_ID --repo confighub/examples
-   gh secret set RBAC_MANAGER_DEPLOY_WORKER_SECRET --repo confighub/examples
-   ```
-
-2. After the first workflow run pushes the image, make the
+1. After the first deploy pushes the image, make the
    `ghcr.io/confighub/rbac-manager` package **public** (GitHub → org Packages
    → rbac-manager → Package settings → Change visibility). The manifest
    deliberately has no `imagePullSecrets`; until the package is public the
    pod will sit in ImagePullBackOff, and it recovers on its own once flipped.
 
-The first workflow run creates the `rbac-manager` unit from `k8s.yaml`
-automatically (with a `critical` delete gate, since Argo prunes live
-resources if the unit is deleted). Subsequent runs only bump the image tag —
+The first deploy creates the `rbac-manager` unit from `k8s.yaml`, with a `critical`
+delete gate, since Argo prunes live resources if the unit is deleted.
+Later deploys only bump the image tag —
 the unit, not this file, is the source of truth for any later config edits.
 
 ## Hosting your own UI like this

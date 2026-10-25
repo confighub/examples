@@ -101,7 +101,6 @@ Layer mutations per component (sketched):
 Same `setup.sh / verify.sh / cleanup.sh / upgrade-chain.sh / set-target.sh` contract as the existing examples, plus:
 
 - `seed-initiatives.sh` — create the five Views + Triggers over the deployment-layer units
-- `query.sh` (Ollama path only) — fire a sample RAG query through the deployed rag-server and print the answer
 
 Crossover hits:
 

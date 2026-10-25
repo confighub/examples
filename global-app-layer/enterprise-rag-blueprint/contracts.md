@@ -91,6 +91,3 @@ When `./verify.sh` succeeds, expect:
 - no "value: ..." mismatches in any layer
 - if `STACK=ollama`, the direct deployment unit for rag-server contains `host.docker.internal`
 
-When `./query.sh` (STACK=ollama path) succeeds, expect:
-- `/health` JSON has `ok: true`, `stack: "ollama"`, and the model/host fields populated
-- `/answer` JSON has a non-empty `answer` field with no `(LLM call ... failed:` prefix

@@ -5,7 +5,7 @@ This example demonstrates a custom ConfigHub function that validates Kubernetes 
 ## Prerequisites
 
 - The `kube-linter` CLI must be installed and available in `PATH`. See [kube-linter installation](https://github.com/stackrox/kube-linter#installing-kubelinter).
-- A running ConfigHub server (for the worker mode).
+- A ConfigHub organization you can log in to with `cub auth login`.
 
 ## Quick Start
 
@@ -17,41 +17,37 @@ Build the kube-linter CLI (if not already installed):
     # Or install from release:
     # See https://github.com/stackrox/kube-linter#installing-kubelinter
 
-Build the example function executor:
+Build the example function bot:
 
     go build
 
 ### Running locally
 
-Create a Worker, put its credentials in your shell, name the server, and start the function executor:
+Create a Channel and start the bot on it:
 
-    cub worker create --space $SPACE my-kube-linter-worker
-    eval "$(cub worker get-envs --space $SPACE my-kube-linter-worker)"
-    export CONFIGHUB_URL=https://hub.confighub.com
-    ./kube-linter
+    cub channel create --space $SPACE kube-linter
+    ./kube-linter $SPACE/kube-linter
 
-The function executor reads `CONFIGHUB_WORKER_ID`, `CONFIGHUB_WORKER_SECRET` and `CONFIGHUB_URL` from its environment and connects to ConfigHub as that Worker. The `kube-linter` CLI must be in PATH.
+The bot authenticates as you, through your active cub context, and declares the `vet-kube-linter` function on the Channel when it starts. The `kube-linter` CLI must be in PATH.
 
 ### Running in a Kubernetes cluster
 
 Build and push a container image:
 
-    docker build -f Dockerfile -t my-registry/kube-linter-worker:latest .
-    docker push my-registry/kube-linter-worker:latest
+    docker build -f Dockerfile -t my-registry/kube-linter-bot:latest .
+    docker push my-registry/kube-linter-bot:latest
 
-Then give the cluster the Worker's credentials as a Secret and run the image with a Deployment that reads it. [`deploy-worker.sh`](../deploy-worker.sh) does both, and waits for the rollout:
+In a cluster the bot runs as a service account. [`deploy-bot.sh`](../deploy-bot.sh) creates the service account, gives it Claim on a Channel, declares the bot's functions on the Channel from `--print-commands`, puts a new key for the service account in a Secret, and runs the image with a Deployment that reads it. It waits until the bot holds the Channel:
 
-    IMAGE_PULL_POLICY=IfNotPresent ../deploy-worker.sh $SPACE my-kube-linter-worker confighub my-registry/kube-linter-worker:latest
+    IMAGE_PULL_POLICY=IfNotPresent ../deploy-bot.sh $SPACE kube-linter-bot confighub my-registry/kube-linter-bot:latest
 
-[External Functions](https://docs.confighub.com/guide/external-functions/#in-kubernetes) in the ConfigHub docs shows the Secret and the Deployment it applies, if you would rather write them yourself or keep the Deployment in a Unit.
-
-The function executor connects to ConfigHub and registers the `vet-kube-linter` function with the Worker.
+The bot serves the Channel `$SPACE/kube-linter-bot`.
 
 ## Usage
 
 The `vet-kube-linter` function takes no parameters and runs all default kube-linter checks.
 
-    cub function do vet-kube-linter --where "Slug='my-unit'" --worker "my-space/my-worker"
+    cub function do vet-kube-linter --where "Slug='my-unit'" --channel "my-space/kube-linter"
 
 If any lint violations are found, validation fails.
 

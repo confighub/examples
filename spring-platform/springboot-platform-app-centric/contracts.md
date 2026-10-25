@@ -14,8 +14,6 @@ Stable command outputs for automation and testing.
   - `deployments[].name`
   - `deployments[].space`
   - `target_modes.unbound`
-  - `target_modes.noop`
-  - `target_modes.real`
   - `mutation_outcomes[].name`
   - `mutation_outcomes[].example_field`
   - `mutation_outcomes[].flow`
@@ -58,22 +56,11 @@ Stable command outputs for automation and testing.
 ### `./setup.sh`
 
 - Mutates: yes (ConfigHub)
-- Default mode creates:
-  - 4 spaces (3 env + 1 infra)
+- Creates:
+  - 3 spaces (dev, stage, prod)
   - 3 units
-  - 3 noop targets
-  - Applies all units
+  - No targets
 - Proves: the deployment map can be materialized into real ConfigHub objects
-
-### `./setup.sh --confighub-only`
-
-- Mutates: yes (ConfigHub only)
-- Creates spaces and units without targets
-
-### `./setup.sh --with-targets`
-
-- Mutates: yes (ConfigHub and Kubernetes cluster)
-- Deploys to real Kubernetes cluster
 
 ### `./cleanup.sh`
 
@@ -119,10 +106,3 @@ Stable command outputs for automation and testing.
   - `.[].Author.Email`
 - Proves: mutation history captures mutation order and revision description, and usually exposes a usable timestamp through `Revision.CreatedAt`
 - Does **not** prove: every surface will populate actor email or `Mutation.CreatedAt`
-
-### `cub unit apply --space inventory-api-prod inventory-api`
-
-- Mutates: yes (target apply)
-- Output: plain text acceptance message including `Action Apply on unit inventory-api started`
-- Proves: ConfigHub accepted the apply request and started the noop-target apply path
-- Does **not** prove: completed delivery, completed reconciliation, or real cluster rollout

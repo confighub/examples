@@ -5,7 +5,7 @@ This example demonstrates a custom ConfigHub function that validates Kubernetes 
 ## Prerequisites
 
 - The `kyverno` CLI must be installed and available in `PATH`. See [Kyverno CLI installation](https://kyverno.io/docs/installation/#install-kyverno-cli).
-- A running ConfigHub server (for the worker mode).
+- A ConfigHub organization you can log in to with `cub auth login`.
 
 ## Quick Start
 
@@ -17,41 +17,37 @@ Build the kyverno CLI (if not already installed):
     # Or install from release:
     # See https://kyverno.io/docs/installation/#install-kyverno-cli
 
-Build the example function executor:
+Build the example function bot:
 
     go build
 
 ### Running locally
 
-Create a Worker, put its credentials in your shell, name the server, and start the function executor:
+Create a Channel and start the bot on it:
 
-    cub worker create --space $SPACE my-kyverno-worker
-    eval "$(cub worker get-envs --space $SPACE my-kyverno-worker)"
-    export CONFIGHUB_URL=https://hub.confighub.com
-    ./kyverno
+    cub channel create --space $SPACE kyverno
+    ./kyverno $SPACE/kyverno
 
-The function executor reads `CONFIGHUB_WORKER_ID`, `CONFIGHUB_WORKER_SECRET` and `CONFIGHUB_URL` from its environment and connects to ConfigHub as that Worker. The `kyverno` CLI must be in PATH.
+The bot authenticates as you, through your active cub context, and declares the `vet-kyverno` function on the Channel when it starts. The `kyverno` CLI must be in PATH.
 
 ### Running in a Kubernetes cluster
 
 Build and push a container image:
 
-    docker build -f Dockerfile -t my-registry/kyverno-worker:latest .
-    docker push my-registry/kyverno-worker:latest
+    docker build -f Dockerfile -t my-registry/kyverno-bot:latest .
+    docker push my-registry/kyverno-bot:latest
 
-Then give the cluster the Worker's credentials as a Secret and run the image with a Deployment that reads it. [`deploy-worker.sh`](../deploy-worker.sh) does both, and waits for the rollout:
+In a cluster the bot runs as a service account. [`deploy-bot.sh`](../deploy-bot.sh) creates the service account, gives it Claim on a Channel, declares the bot's functions on the Channel from `--print-commands`, puts a new key for the service account in a Secret, and runs the image with a Deployment that reads it. It waits until the bot holds the Channel:
 
-    IMAGE_PULL_POLICY=IfNotPresent ../deploy-worker.sh $SPACE my-kyverno-worker confighub my-registry/kyverno-worker:latest
+    IMAGE_PULL_POLICY=IfNotPresent ../deploy-bot.sh $SPACE kyverno-bot confighub my-registry/kyverno-bot:latest
 
-[External Functions](https://docs.confighub.com/guide/external-functions/#in-kubernetes) in the ConfigHub docs shows the Secret and the Deployment it applies, if you would rather write them yourself or keep the Deployment in a Unit.
-
-The function executor connects to ConfigHub and registers the `vet-kyverno` function with the Worker.
+The bot serves the Channel `$SPACE/kyverno-bot`.
 
 ## Usage
 
 The `vet-kyverno` function takes a single parameter: a YAML document containing one or more Kyverno policies (ValidatingPolicy, ClusterPolicy, or Policy resources) or Kubernetes [ValidatingAdmissionPolicy](https://kubernetes.io/docs/reference/access-authn-authz/validating-admission-policy/) resources.
 
-    cub function do vet-kyverno '<policy-yaml>' --where "Slug='my-unit'" --worker "my-space/my-worker"
+    cub function do vet-kyverno '<policy-yaml>' --where "Slug='my-unit'" --channel "my-space/kyverno"
 
 Policies from https://kyverno.io/policies/ can be used directly. Kubernetes native ValidatingAdmissionPolicy resources are also supported, allowing pre-deployment validation with the same CEL-based policies used for admission control.
 
@@ -64,11 +60,11 @@ Policies from https://kyverno.io/policies/ can be used directly. Kubernetes nati
 
 ## End-to-End Demo
 
-For a complete end-to-end demo using Kind, see [demo.sh](demo.sh). Run from the `public/` directory:
+For a complete end-to-end demo using Kind, see [demo.sh](demo.sh). Run it from this directory:
 
-    bash examples/kyverno/demo.sh
+    bash demo.sh
 
-The demo creates a Kind cluster, deploys a kyverno CLI worker, and validates test resources against both Kyverno ValidatingPolicy and Kubernetes ValidatingAdmissionPolicy.
+The demo creates a Kind cluster, deploys the kyverno CLI function bot, and validates test resources against both Kyverno ValidatingPolicy and Kubernetes ValidatingAdmissionPolicy.
 
 ## Running Tests
 

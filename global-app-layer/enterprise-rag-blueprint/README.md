@@ -23,11 +23,11 @@ A companion example in this same package, [`gpu-eks-h100-training`](../gpu-eks-h
 
 3. **Standard compliance settings.** Five compliance checks come pre-built: model versions are pinned, the embedder and vector store agree on dimensions, GPU limits are set, the rag-server has a guardrail policy, every component has resource limits.
 
-4. **A receipt of what's actually deployed.** ConfigHub records the applied revision and content hash of every component, plus the target it's bound to. Useful for audits and regulated-industry reviews.
+4. **A receipt of what's actually deployed.** Each Release ConfigHub publishes records the revision and content hash of every component it bundles, plus the Target it is for. Useful for audits and regulated-industry reviews.
 
-5. **Developer and demo friendly footprint.** Everything works on a MacBook through Ollama: setup, compliance checks, even a live RAG query that returns a real answer. The same recipe targets real NIM containers when you have a GPU cluster.
+5. **Developer and demo friendly footprint.** Everything works on a MacBook: setup, compliance checks and upgrade propagation. The same recipe targets real NIM containers when you have a GPU cluster.
 
-6. **Direct deploy or use CNCF GitOps tools.** The same recipe produces outputs for direct apply, Flux, or Argo. NVIDIA doesn't have to recommend one tool over another, and customers keep their existing pipeline.
+6. **Direct deploy or use CNCF GitOps tools.** The same recipe produces outputs for plain Kubernetes manifests, Flux, or Argo. NVIDIA doesn't have to recommend one tool over another, and customers keep their existing pipeline.
 
 **When not to recommend it.** One Blueprint, one tenant, no governance to worry about, the published Helm chart works fine — ConfigHub is overkill.
 
@@ -37,7 +37,7 @@ NVIDIA publishes Enterprise RAG as a [**NIM Blueprint**](https://build.nvidia.co
 
 CONFIGHUB is a system of record for managing your configs and organising them into application models. Locating ConfigHub in between source code (in Git) and live production (eg K8s, GitOps) lets a user see live operational truth, verify it, and operate on it directly. This example takes the Blueprint and breaks it into its layers — base, platform, accelerator, model profile, use case, deployment — and stores each layer as a versioned ConfigHub config object. Each of the four components walks through the same chain of layers; three delivery variants (direct, Flux OCI, Argo OCI) come off the recipe layer. That mirrors the operational problem NVIDIA called out in the RAG repo: multiple chart variants per config, plus performance and accuracy benchmark runs that need to compare those variants without losing lineage.
 
-This works out of the box with real models. In this example: A query through the deployed pipeline returns a real answer from your model. On a Mac that could be eg. `llama3.2:3b` running on the Metal GPU on the host, called from the in-cluster `rag-server` pod through `host.docker.internal`. On a CUDA cluster it's `llama-3.1-70b-instruct` served from a real NIM container.
+The recipe is wired for real models. With `STACK=ollama` it points the `rag-server` pod at `llama3.2:3b` on the host's Metal GPU through `host.docker.internal`. With `STACK=nim` it points at `llama-3.1-70b-instruct` served from a real NIM container.
 
 ## Components
 
@@ -50,16 +50,13 @@ ConfigHub manages dependencies and layers for you, so that any Blueprint compone
 | `nim-embedding` | embedding model, same shape | yes |
 | `vector-db` | Qdrant or Milvus stand-in | no |
 
-## Quick start (Ollama path on Apple Silicon)
+## Quick start
 
 First, log in to ConfigHub by running `cub auth login` at your command line. Then follow the steps below — and keep [hub.confighub.com](https://hub.confighub.com) open in a browser tab so you can watch the spaces and units appear as each step runs.
 
 ```bash
 # Prerequisites
-brew install ollama jq kind kubectl
-ollama serve >/tmp/ollama.log 2>&1 &
-ollama pull llama3.2:3b
-ollama pull nomic-embed-text
+brew install jq
 cub auth login
 
 cd global-app-layer/enterprise-rag-blueprint
@@ -74,46 +71,15 @@ STACK=ollama ./setup.sh
 
 # 3. Layer five initiatives over the chain
 ./seed-initiatives.sh    # prints View Explorer URLs
-
-# 4. Bring up cluster + worker + bind direct variant
-kind create cluster --name rag
-source .state/state.env
-deploy="${PREFIX}-deploy-tenant-acme"
-
-cub worker create --space "${deploy}" rag-worker
-cub worker run    --space "${deploy}" rag-worker -t kubernetes -d
-sleep 5
-target_ref=$(cub target list --space "${deploy}" -o json \
-  | jq -r '.[] | select(.Target.Slug | endswith("kind-rag")) | "\(.Space.Slug)/\(.Target.Slug)"')
-./set-target.sh "${target_ref}"
-
-# 5. Apply + run a real RAG query
-kubectl --context kind-rag create namespace tenant-acme
-for u in vector-db-tenant-acme nim-embedding-tenant-acme nim-llm-tenant-acme rag-server-tenant-acme; do
-  cub unit apply --space "${deploy}" "${u}"
-done
-kubectl --context kind-rag -n tenant-acme rollout status deploy/rag-server
-
-./query.sh "What is the capital of France?"
 ```
 
-Expected `query.sh` output:
+## Delivering to a cluster
 
-```json
-{
-  "query": "What is the capital of France?",
-  "answer": "The capital of France is Paris.",
-  "tenant": "tenant-acme",
-  "model": "llama3.2:3b",
-  "stack": "ollama"
-}
-```
-
-That answer was generated by `llama3.2:3b` on the host's Metal GPU, called from the in-cluster `rag-server` pod via `host.docker.internal:11434`. Every value in the response (model name, tenant, stack) traces back through the recipe chain to a layer mutation in ConfigHub.
+ConfigHub delivers configuration as Releases. A Release bundles the Units of a Space that are assigned to the Space's release Target, and serves them from ConfigHub's OCI registry, where Argo CD or Flux pulls them. The Flux and Argo deployment variants are the ones shaped for that. See `cub release publish --help` and `cub target create --help` for how a Target and its pull credentials are set up.
 
 ## What to look at once it's running
 
-After `setup.sh`, `seed-initiatives.sh`, and the apply step, here's what's worth checking and where to find it. Replace `<prefix>` below with the value in `.state/state.env`'s `PREFIX`.
+After `setup.sh` and `seed-initiatives.sh`, here's what's worth checking and where to find it. Replace `<prefix>` below with the value in `.state/state.env`'s `PREFIX`.
 
 ### The variant chain
 
@@ -121,7 +87,7 @@ After `setup.sh`, `seed-initiatives.sh`, and the apply step, here's what's worth
 cub unit tree --edge clone \
   --where "Labels.ExampleChain = '$(source .state/state.env && echo $PREFIX)'"
 ```
-Each of the four components shows up walking from `base → kgpu → h100 → medium → enterprise-rag` and forking into the three deploy variants. The `direct` leaf for `tenant-acme` is `Ready`; Flux and Argo are `NotLive` (no target bound).
+Each of the four components shows up walking from `base → kgpu → h100 → medium → enterprise-rag` and forking into the three deploy variants.
 
 In the GUI, open the recipe space — the table shows all four chain leaves side by side with revisions and labels.
 
@@ -158,32 +124,6 @@ for slug in pin-model-versions embed-index-dim-match gpu-resource-limits guardra
 done
 ```
 
-### The live cluster
-
-`cub-scout` reads the cluster and shows what owns what:
-
-```bash
-cub-scout doctor
-cub-scout map list --namespace tenant-acme
-cub-scout tree ownership --namespace tenant-acme
-```
-Of the 10 resources in `tenant-acme`, nine are owned by ConfigHub; `kube-root-ca.crt` is the only Native one (Kubernetes auto-creates it). Each running deployment traces back to a ConfigHub unit by name.
-
-To trace one specific pod:
-```bash
-cub-scout explain deployment/rag-server --namespace tenant-acme
-kubectl --context kind-rag -n tenant-acme get pods -o wide
-kubectl --context kind-rag -n tenant-acme logs deploy/rag-server | tail -20
-```
-
-### The runtime path
-
-```bash
-./query.sh                                    # default question
-./query.sh "Summarise the Hawaiian language."
-```
-The script port-forwards to `rag-server` and hits two endpoints. `/health` returns the env vars it's running with — `MODEL_NAME`, `LLM_HOST`, `EMBED_MODEL_NAME`, `RAG_TOP_K`, `PROMPT_TEMPLATE`, `GUARDRAIL_POLICY` — and every one of them was set by a layer mutation in ConfigHub. `/answer` calls host Ollama and returns the result.
-
 ### Upgrade propagation
 
 ```bash
@@ -193,12 +133,6 @@ cub unit data --space "$(source .state/state.env && echo ${PREFIX}-deploy-tenant
   rag-server-tenant-acme | grep -E "MODEL_NAME|LLM_HOST|TENANT|REGION"
 ```
 `MODEL_NAME` is now `llama3.2:1b` (propagated through the chain). `LLM_HOST=host.docker.internal:11434`, `TENANT=tenant-acme`, and `REGION=us-east` are unchanged — those are the deployment-layer overrides that should survive an upstream bump.
-
-To push the new value to the running pod:
-```bash
-cub unit apply --space "$(source .state/state.env && echo ${PREFIX}-deploy-tenant-acme)" rag-server-tenant-acme
-./query.sh    # /health now shows the new model
-```
 
 ## STACK selector
 
@@ -226,11 +160,11 @@ You can swap the model with one line at the profile layer:
 ./upgrade-chain.sh qwen2.5:7b       # different family
 ```
 
-The point isn't which exact model — it's that the model name is a config value flowing through the chain, and changing it propagates correctly to running pods without flattening tenant-local overrides.
+The model name is a config value flowing through the chain, and changing it propagates to every deployment variant without flattening tenant-local overrides.
 
 ### NIM stack notes
 
-For STACK=nim, manually edit profile-layer units to point at `nvcr.io/nim/...` images before applying — `cub function set-image-reference` only accepts `:tag` or `@digest`, not full image refs.
+For STACK=nim, manually edit profile-layer units to point at `nvcr.io/nim/...` images before publishing a Release — `cub function set-image-reference` only accepts `:tag` or `@digest`, not full image refs.
 
 ## Files
 
@@ -243,7 +177,6 @@ For STACK=nim, manually edit profile-layer units to point at `nvcr.io/nim/...` i
 | `upgrade-chain.sh` | Bump model versions at the profile layer; propagate through the chain |
 | `set-target.sh` | Bind targets after setup; routed by provider type |
 | `seed-initiatives.sh` | Create 5 Views with Filters covering blueprint compliance |
-| `query.sh` | Live runtime test (STACK=ollama only). Real query → real Metal answer |
 | `recipe.base.yaml` | Templated recipe manifest, rendered by `lib.sh` with revision/hash provenance |
 | `*.base.yaml` | Per-component K8s manifests with stub-friendly defaults |
 
@@ -283,24 +216,10 @@ cub function do set-env rag-server "REGION=eu-west" --space "${deploy_b}" --unit
 ./upgrade-chain.sh llama3.2:1b
 ```
 
-## Functional vs structural
-
-The **structure** (recipe chain, initiatives, upgrade propagation, target routing) is real on any cluster.
-
-The **runtime** is real on three different hardware substrates:
-
-- `STACK=stub` → real cluster, stub pods that just exist (proves apply path works)
-- `STACK=ollama` → real cluster, real Python rag-server, real Metal-accelerated LLM via host bridge
-- `STACK=nim` → real cluster, real NIM containers (requires NVIDIA + NGC creds)
-
-Same recipe; the deployment-layer override (`LLM_HOST`) is what differs.
-
 ## Cleanup
 
 ```bash
-./cleanup.sh                       # removes all 8 spaces, ~33 units, 5 Views, 1 Filter
-kind delete cluster --name rag     # removes local cluster
-cub worker stop rag-worker         # stops daemon worker (if still running)
+./cleanup.sh    # removes all 8 spaces, ~33 units, 5 Views, 1 Filter
 ```
 
 ## Related reading

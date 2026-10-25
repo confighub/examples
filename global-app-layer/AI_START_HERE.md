@@ -145,21 +145,14 @@ From here, switch to the example's own `AI_START_HERE.md`:
 
 | Mode | Status |
 |------|--------|
-| **Direct Kubernetes** | Fully working |
+| **Direct Kubernetes** | Not available: deliver through a Release |
 | **Flux OCI** | Current standard |
 | **Argo OCI** | Implemented in selected examples |
 | **ArgoCDRenderer** | Renderer path only |
 
-## Preflight Before Live
+## Live Delivery
 
-Do not rely on target visibility alone. Before the live path:
-
-```bash
-./preflight-live.sh <space/target>
-./preflight-live.sh <space/target> --json | jq
-```
-
-Only proceed if `applyReady: true`.
+Live delivery is a Release: `cub release publish` bundles a deployment Space's Units for its release Target and serves them from ConfigHub's OCI registry, where Argo CD or Flux pulls them. Do not call the live path done until the GitOps tool has synced the Release.
 
 ## Related Files
 

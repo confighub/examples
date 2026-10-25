@@ -50,7 +50,7 @@ If you are not logged in yet, run `cub auth login` before the `cub` commands.
 - [`gitops`](./gitops/README.md): index of canonical Argo CD and Flux example repo shapes, by tool and skill level. Start here if you run Argo CD or Flux and want an example that looks like your repo.
 - [`promotion-demo-data`](./promotion-demo-data/README.md): quickest no-cluster demo data for learning ConfigHub's App-Deployment-Target model and promotion flow.
 - [`initiatives-demo`](./initiatives-demo/README.md): 5 compliance initiatives backed by Kyverno CEL policies, with sample Kubernetes units to evaluate.
-- [`custom-workers`](./custom-workers/): worker extension examples, including bridge, function, and policy workers.
+- [`custom-workers`](./custom-workers/): custom functions served by function bots on ConfigHub Channels, including Kyverno, OPA Gatekeeper, kube-linter, kube-score, kubepug and kubescape validators.
 - [`pilot-example-addons-manager`](./pilot-example-addons-manager/README.md): standalone generated operational app with Variant-first GUI, CLI sibling, production ConfigHub browser OAuth registration, and live-binding proof gates.
 - [`cost-management-app`](./cost-management-app/README.md): generated operational app with a real cost engine: org-wide waste findings priced from config data, then a finding-owned dry run, short-lived exact review, explicit execution confirmation, revision-verified mutation, and receipt. The reduction plane beside [`cost-estimator`](./cost-estimator/README.md)'s enforcement plane.
 - [`configboard`](./configboard/README.md): BI-style dashboards over the configuration in your organization — what version of what is where, which guardrails are failing, how many resources you manage, how long changes take to land. Read-only and seeds nothing. Dashboards are `AppConfig/YAML` units, so they carry revision history and promote like any other config, and every panel prints its equivalent `cub` command. Includes a 3-minute silent [demo video](./configboard/demo/configboard-demo.mp4) and [transcript](./configboard/demo/TRANSCRIPT.md).
@@ -68,7 +68,7 @@ If you are not logged in yet, run `cub auth login` before the `cub` commands.
   [`configboard`](./configboard/README.md) — it seeds nothing, and its
   [demo video](./configboard/demo/configboard-demo.mp4) covers the six bundled
   dashboards in three minutes.
-- If you want worker extensibility, start with [`custom-workers`](./custom-workers/).
+- If you want to write your own functions, start with [`custom-workers/hello-world-function`](./custom-workers/hello-world-function/README.md).
 
 Note on contract standard: [`EXAMPLE_CONTRACT_STANDARD.md`](./EXAMPLE_CONTRACT_STANDARD.md)
 

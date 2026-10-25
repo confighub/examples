@@ -46,19 +46,19 @@
           "name": "dev",
           "space": "inventory-api-dev",
           "unit": "inventory-api",
-          "default_target_mode": "noop"
+          "default_target_mode": "unbound"
         },
         {
           "name": "stage",
           "space": "inventory-api-stage",
           "unit": "inventory-api",
-          "default_target_mode": "noop"
+          "default_target_mode": "unbound"
         },
         {
           "name": "prod",
           "space": "inventory-api-prod",
           "unit": "inventory-api",
-          "default_target_mode": "noop"
+          "default_target_mode": "unbound"
         }
       ],
       "app_owned_fields": [
@@ -85,13 +85,13 @@
           "name": "dev",
           "space": "catalog-api-dev",
           "unit": "catalog-api",
-          "default_target_mode": "noop"
+          "default_target_mode": "unbound"
         },
         {
           "name": "prod",
           "space": "catalog-api-prod",
           "unit": "catalog-api",
-          "default_target_mode": "noop"
+          "default_target_mode": "unbound"
         }
       ],
       "app_owned_fields": [
@@ -104,23 +104,11 @@
     }
   ],
   "target_modes": {
-    "noop": {
-      "description": "Apply workflow works. Noop worker accepts but doesn't deploy.",
+    "unbound": {
+      "description": "No targets. Units exist in ConfigHub only; delivery to a cluster is out of scope for this example.",
       "cluster_required": false,
       "implemented": true,
       "default": true
-    },
-    "unbound": {
-      "description": "No targets. Units exist in ConfigHub only.",
-      "cluster_required": false,
-      "implemented": false,
-      "note": "Not exposed by this example's setup.sh"
-    },
-    "real": {
-      "description": "Apply delivers to live Kubernetes cluster.",
-      "cluster_required": true,
-      "implemented": false,
-      "note": "Not implemented in this example. See springboot-platform-app for real Kubernetes delivery."
     }
   },
   "example_label": "springboot-platform-platform-centric"

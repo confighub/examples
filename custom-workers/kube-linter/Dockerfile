@@ -13,7 +13,7 @@ RUN go mod download
 
 # Copy source code and build
 COPY . .
-RUN CGO_ENABLED=0 go build -o /go/bin/kube-linter-worker .
+RUN CGO_ENABLED=0 go build -o /go/bin/kube-linter-bot .
 
 # Install kube-linter CLI
 RUN go install golang.stackrox.io/kube-linter/cmd/kube-linter@latest
@@ -28,7 +28,7 @@ RUN addgroup -g 3000 appgroup && adduser -u 1000 -g appgroup --disabled-password
 USER 1000:3000
 
 WORKDIR /app
-COPY --from=builder /go/bin/kube-linter-worker .
+COPY --from=builder /go/bin/kube-linter-bot .
 COPY --from=builder /go/bin/kube-linter /usr/local/bin/kube-linter
 
-ENTRYPOINT ["/app/kube-linter-worker"]
+ENTRYPOINT ["/app/kube-linter-bot"]

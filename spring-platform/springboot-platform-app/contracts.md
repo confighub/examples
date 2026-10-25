@@ -58,14 +58,6 @@ Stable command outputs for automation and testing.
   - `App=inventory-api`
   - `Environment=<env>`
 
-### `./confighub-setup.sh --with-targets`
-
-- Mutates: yes (ConfigHub and Kubernetes cluster)
-- Additional effects:
-  - Prod unit bound to Kubernetes target
-  - Prod unit applied to cluster
-  - Namespace `inventory-api` created
-
 ### `./confighub-verify.sh`
 
 - Mutates: no
@@ -118,14 +110,3 @@ Stable command outputs for automation and testing.
 - Mutates: no
 - Stable success text: `ok: springboot-platform-app block-escalate bundle is consistent`
 
-## End-to-End Contracts
-
-### `./verify-e2e.sh`
-
-- Mutates: no
-- Requires: Kind cluster with deployed app
-- Proves:
-  - Cluster is reachable
-  - Namespace, deployment, and pod exist
-  - Service answers `/api/inventory/summary`
-  - Reported `reservationMode` comes from actual deployed app

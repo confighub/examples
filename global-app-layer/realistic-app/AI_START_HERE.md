@@ -143,56 +143,44 @@ GUI feature ask: Green checkmark on units passing verification. No issue filed y
 
 ---
 
-## Stage 5: "Optional: Preflight Live Readiness" (read-only)
+## Stage 5: "Optional: Bind A Live Target" (mutates ConfigHub)
 
 Only proceed if the human wants the live path.
 
 Run:
 
 ```bash
-cd ..
-./preflight-live.sh <space/target>
-./preflight-live.sh <space/target> --json | jq
+cd realistic-app
+./set-target.sh <space/target>
 ```
 
 What to explain:
 
-- Target visibility is not the same as apply readiness
-- Only proceed if `applyReady: true`
-- If `providerType: "ArgoCDRenderer"`, stop — this example uses raw manifests, not Argo Application CRDs
-
-GUI now: No GUI checkpoint for this stage.
-
-GUI gap: No preflight status shown on target card.
-
-GUI feature ask: Preflight check result on target card before binding. No issue filed yet.
+- `set-target.sh` binds the deployment units to the target and prepares the namespace bootstrap unit
+- It rejects `ArgoCDRenderer` targets: this example materializes raw manifests
 
 **PAUSE.** Wait for the human.
 
 ---
 
-## Stage 6: "Optional: Bind And Apply Live" (mutates ConfigHub and live infrastructure)
+## Stage 6: "Optional: Publish A Release" (mutates ConfigHub)
 
-Only proceed if preflight passed.
+Only proceed if a target is bound.
 
 Run:
 
 ```bash
-cd realistic-app
-./set-target.sh <space/target>
-./apply-live.sh
+source .state/state.env
+cub space update "${PREFIX}-deploy-cluster-a" --release-target <space/target>
+cub release publish "${PREFIX}-deploy-cluster-a"
 ```
 
 What to explain:
 
-- `apply-live.sh` preflights the target, refreshes deployment units, applies namespace bootstrap first, then applies app units
-- It rejects `ArgoCDRenderer` targets with a clear error
+- A Release bundles the Units in the Space that are assigned to the Space's release Target, and serves them from ConfigHub's OCI registry
+- Argo CD or Flux pulls the Release from there; argobot syncs on release events
 
-GUI now: Inspect units after apply.
-
-GUI gap: No live status badge showing apply success/failure.
-
-GUI feature ask: Apply status with timestamp on unit card. No issue filed yet.
+GUI now: Inspect the Release in the deploy space.
 
 **PAUSE.** Wait for the human.
 
@@ -218,7 +206,7 @@ This removes all spaces and units created by the demo.
 | `./setup.sh` | ConfigHub spaces, units, links, recipe manifest, local `.state/`, local `.logs/` |
 | `./verify.sh` | local `.logs/verify.latest.log` |
 | `./set-target.sh` | ConfigHub target bindings, local `.logs/set-target.latest.log` |
-| `./apply-live.sh` | live target state, local `.logs/apply-live.latest.log` |
+| `cub release publish` | A Release served from ConfigHub's OCI registry |
 
 ## Related Files
 

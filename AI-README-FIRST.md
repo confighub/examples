@@ -124,7 +124,7 @@ Pick the family that matches the user's goal:
   [`gitops`](./gitops/README.md)
 - App mutation and platform flow:
   [`springboot-platform-app-centric`](./spring-platform/springboot-platform-app-centric/README.md)
-- Worker extensibility: [`custom-workers`](./custom-workers/)
+- Custom functions on Channels: [`custom-workers`](./custom-workers/)
 - Layered and advanced model:
   [`global-app-layer`](./global-app-layer/README.md)
 

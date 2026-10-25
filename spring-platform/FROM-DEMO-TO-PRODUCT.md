@@ -79,7 +79,7 @@ for details.
 | Block/escalate boundary | `./block-escalate.sh --render-attempt` | `./block-escalate.sh --render-attempt` |
 | Governed route proof | Model explanation | `./demo-governed-routes.sh` / `cub-gen springboot validate-mutation` |
 | Initiative GUI proof | Model explanation | `./demo-initiative-gui.sh` writes the compact gate card |
-| Real Kubernetes path | `./bin/create-cluster`, `./bin/build-image` | `./bin/create-cluster`, `./bin/build-image` |
+| Container image | `./bin/build-image` | `./bin/build-image` |
 | ConfigHub setup | `./confighub-setup.sh` | `./confighub-setup.sh` |
 | Cross-env comparison | `./confighub-compare.sh` | `./confighub-compare.sh` |
 | Refresh-survival preview | `./confighub-refresh-preview.sh` | `./confighub-refresh-preview.sh` |
@@ -175,7 +175,7 @@ teaching-era `set-env` shortcut:
 
 - **Field ownership model** — `feature.*` is app-owned, `spring.datasource.*` is platform-owned
 - **Mutation routes** — apply-here, lift-upstream, block/escalate work the same way
-- **ConfigHub evidence commands** — `cub unit apply`, `cub mutation list`, and connected demos remain useful; app-owned embedded config mutation is handled by `cub-gen springboot set-embedded-config`
+- **ConfigHub evidence commands** — `cub mutation list` and connected demos remain useful; app-owned embedded config mutation is handled by `cub-gen springboot set-embedded-config`
 - **Verification pattern** — `verify.sh` proves structural consistency in both repos
 
 ## What Changes

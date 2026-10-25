@@ -28,16 +28,12 @@ This is the app-layer counterpart to `gpu-eks-h100-training/`: NVIDIA's Enterpri
 - Four components moving together through the chain (rag-server, nim-llm, nim-embedding, vector-db)
 - Three deployment variants (direct, Flux, Argo) — same as the substrate rung
 - Five initiatives that turn blueprint compliance into kanban work
-- A real runtime path on Apple Silicon (Ollama + Metal GPU on the host, in-cluster pods talk to it)
 - The STACK selector that makes the same recipe work for stub, Ollama, or real NIM
 
 ## Prerequisites
 
 - `cub` in PATH and authenticated
 - `jq` for JSON preview and parsing
-- `kind` and `docker` for the runtime path
-- `kubectl` for the runtime path
-- `ollama` running on the host with `llama3.2:3b` and `nomic-embed-text` pulled (STACK=ollama only)
 
 ---
 
@@ -47,18 +43,14 @@ Run:
 
 ```bash
 cd global-app-layer/enterprise-rag-blueprint
-which cub jq kind kubectl ollama
+which cub jq
 cub version
 cub context list --json | jq
-ollama list
-curl -fsS http://localhost:11434/api/tags >/dev/null && echo "Ollama reachable"
 ```
 
 What to explain:
 
 - If `cub` auth fails, stay in preview mode (only `--explain` will work).
-- If `ollama` is missing or has no models, the runtime path won't work — fall back to STACK=stub for the rest of the demo.
-- If `kind` or `kubectl` is missing, the demo can still materialize the chain in ConfigHub; only the live-apply and query stages need them.
 
 GUI now: No GUI checkpoint for this stage.
 
@@ -142,7 +134,7 @@ What to explain:
 
 - Five initiatives now exist as ConfigHub Views with Filters and metadata.
 - They span pinned-model-versions, embed/index-dim match, GPU resource limits, guardrail policy, and resource limits.
-- They use the same View+Filter+Trigger shape as `../../initiatives-demo/`. No `vet-kyverno` triggers attached yet — connect a worker if live policy enforcement is needed.
+- They use the same View+Filter+Trigger shape as `../../initiatives-demo/`. No `vet-kyverno` triggers are attached yet. For live policy enforcement, run `vet-kyverno` as a function bot on a ConfigHub Channel, as `../../initiatives-demo/` does.
 - The script prints a View Explorer URL per initiative (`/x/view-explorer?view=<ViewID>`). The filters span all 8 spaces, so a single initiative covers direct + Flux + Argo variants.
 
 GUI now: Open one of the printed View Explorer URLs (e.g. GPU Resource Limits) — you should see 6 units (2 GPU components × 3 deploy variants).
@@ -151,100 +143,7 @@ GUI now: Open one of the printed View Explorer URLs (e.g. GPU Resource Limits) �
 
 ---
 
-## Stage 6: "Optional: Bring Up A Live Cluster" (mutates local Docker)
-
-Only proceed if the human wants the runtime path on a kind cluster.
-
-Run:
-
-```bash
-kind create cluster --name rag
-kubectl cluster-info --context kind-rag
-kubectl --context kind-rag create namespace tenant-acme
-```
-
-What to explain:
-
-- One single-node kind cluster is enough for the demo.
-- The rag-server pod will reach the host's Ollama via `host.docker.internal:11434`.
-- The deploy namespace must exist before applying — the worker applies into the namespace but does not create it.
-
-**PAUSE.** Wait for the human.
-
----
-
-## Stage 7: "Optional: Create Worker And Bind Target" (mutates ConfigHub)
-
-Run:
-
-```bash
-source .state/state.env
-deploy="${PREFIX}-deploy-tenant-acme"
-cub worker create --space "${deploy}" rag-worker
-cub worker run --space "${deploy}" rag-worker -t kubernetes -d
-sleep 5
-
-# The worker auto-discovers kubectl contexts and registers a target per cluster
-cub target list --space "${deploy}" -o json \
-  | jq -r '.[] | select(.Target.Slug | endswith("kind-rag")) | "\(.Space.Slug)/\(.Target.Slug)"'
-
-./set-target.sh <space>/<kubernetes-target>
-```
-
-What to explain:
-
-- The worker connects out to ConfigHub, registers itself, and exposes one target per kubectl context.
-- Targets are routed by provider type. `Kubernetes` → direct variant.
-- Setting a target re-renders the recipe-manifest unit with the bundle hint.
-
-**PAUSE.** Wait for the human.
-
----
-
-## Stage 8: "Optional: Apply Live" (mutates the kind cluster)
-
-Run (in order — the rag-server pod waits on the others to be reachable):
-
-```bash
-source .state/state.env
-deploy_space="${PREFIX}-deploy-tenant-acme"
-
-for unit in vector-db-tenant-acme nim-embedding-tenant-acme nim-llm-tenant-acme rag-server-tenant-acme; do
-  cub unit apply --space "${deploy_space}" "${unit}"
-done
-
-kubectl --context kind-rag -n tenant-acme rollout status deploy/rag-server
-```
-
-What to explain:
-
-- The worker takes each unit's rendered YAML and applies it to the kind cluster.
-- All four components run concurrently. rag-server is the only one that actually serves traffic in STACK=ollama; the others exist in-chain but do nothing useful (the LLM and embedding are bypassed to host Ollama).
-- If apply fails with `namespaces "tenant-acme" not found`, run `kubectl --context kind-rag create namespace tenant-acme` then retry the apply.
-
-**PAUSE.** Wait for the human.
-
----
-
-## Stage 9: "Optional: Real Query End-To-End" (live)
-
-Run:
-
-```bash
-./query.sh "What is the capital of France? Answer in one sentence."
-```
-
-What to explain:
-
-- The script port-forwards to rag-server, hits `/health` (dumps the env vars ConfigHub fed in), then `/answer`.
-- The answer comes from `llama3.2:3b` running on the host's Metal GPU, called by the in-cluster pod via `host.docker.internal`.
-- Every value in the `/health` response (model name, top-k, prompt template, guardrail policy, vector-db host) traces back through the recipe chain to a layer mutation in ConfigHub.
-
-**PAUSE.** Wait for the human.
-
----
-
-## Stage 10: "Optional: Show Upgrade Propagation" (mutates ConfigHub)
+## Stage 6: "Optional: Show Upgrade Propagation" (mutates ConfigHub)
 
 Run:
 
@@ -263,16 +162,15 @@ What to explain:
 
 ---
 
-## Stage 11: "Cleanup"
+## Stage 7: "Cleanup"
 
 Run:
 
 ```bash
 ./cleanup.sh
-kind delete cluster --name rag
 ```
 
-This removes every space and unit, plus the kind cluster.
+This removes every space and unit.
 
 ---
 
@@ -286,8 +184,6 @@ This removes every space and unit, plus the kind cluster.
 | `./seed-initiatives.sh` | ConfigHub Filters + Views in the recipe space |
 | `./set-target.sh` | ConfigHub target bindings + re-rendered recipe manifest |
 | `./upgrade-chain.sh` | ConfigHub unit data at profile/recipe/deployment layers |
-| `cub unit apply` | Live cluster state |
-| `./query.sh` | Nothing in ConfigHub; port-forwards to a pod and prints a query result |
 
 ## Related
 

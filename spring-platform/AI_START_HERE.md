@@ -220,7 +220,7 @@ Pause here if you're doing a guided walkthrough.
 
 ### Stage 2.2: Create and Demo (mutates ConfigHub)
 
-Ask: "This will create spaces, units, and noop targets. OK?"
+Ask: "This will create spaces and units. OK?"
 
 ```bash
 ./setup.sh

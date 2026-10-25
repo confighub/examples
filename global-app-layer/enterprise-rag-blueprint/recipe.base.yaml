@@ -60,7 +60,7 @@ spec:
           unit: confighubplaceholder-rag-server-deployment-direct-unit
           revision: confighubplaceholder-rag-server-deployment-direct-revision
           dataHash: confighubplaceholder-rag-server-deployment-direct-hash
-          mutationDelta: set namespace, TENANT, REGION, CLUSTER for direct worker delivery (STACK-aware LLM_HOST)
+          mutationDelta: set namespace, TENANT, REGION, CLUSTER for direct delivery (STACK-aware LLM_HOST)
         - name: flux
           space: confighubplaceholder-rag-server-deployment-flux-space
           unit: confighubplaceholder-rag-server-deployment-flux-unit
@@ -113,7 +113,7 @@ spec:
           unit: confighubplaceholder-nim-llm-deployment-direct-unit
           revision: confighubplaceholder-nim-llm-deployment-direct-revision
           dataHash: confighubplaceholder-nim-llm-deployment-direct-hash
-          mutationDelta: set namespace, TENANT, CLUSTER for direct worker delivery
+          mutationDelta: set namespace, TENANT, CLUSTER for direct delivery
         - name: flux
           space: confighubplaceholder-nim-llm-deployment-flux-space
           unit: confighubplaceholder-nim-llm-deployment-flux-unit
@@ -166,7 +166,7 @@ spec:
           unit: confighubplaceholder-nim-embedding-deployment-direct-unit
           revision: confighubplaceholder-nim-embedding-deployment-direct-revision
           dataHash: confighubplaceholder-nim-embedding-deployment-direct-hash
-          mutationDelta: set namespace, TENANT, CLUSTER for direct worker delivery
+          mutationDelta: set namespace, TENANT, CLUSTER for direct delivery
         - name: flux
           space: confighubplaceholder-nim-embedding-deployment-flux-space
           unit: confighubplaceholder-nim-embedding-deployment-flux-unit
@@ -219,7 +219,7 @@ spec:
           unit: confighubplaceholder-vector-db-deployment-direct-unit
           revision: confighubplaceholder-vector-db-deployment-direct-revision
           dataHash: confighubplaceholder-vector-db-deployment-direct-hash
-          mutationDelta: set namespace, TENANT, CLUSTER for direct worker delivery
+          mutationDelta: set namespace, TENANT, CLUSTER for direct delivery
         - name: flux
           space: confighubplaceholder-vector-db-deployment-flux-space
           unit: confighubplaceholder-vector-db-deployment-flux-unit
