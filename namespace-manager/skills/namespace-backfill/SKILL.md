@@ -44,7 +44,7 @@ A runtime tenancy controller injects policy objects into live namespaces; correc
    cub-namespace apply-envelope --space apptique-prod
    cub-namespace backfill --space apptique-prod --from namespace-envelope --namespace apptique
    ```
-   `apply-envelope` reports which Namespace Units *would* change (a no-op where pod-security is already present). `backfill` lists the base Units it would clone — it **excludes the base's Namespace when the dest already has one** (cloning it would create a `duplicate-namespace` collision), so it adds only the members the destination lacks.
+   `apply-envelope` reports which Namespace Units *would* change (a no-op where pod-security is already present), with each one's diff: the labels it would add and their values. Check them against `cub-namespace pod-security` first — `enforce: baseline` rejects pods in a namespace whose workloads need `privileged`. `backfill` lists the base Units it would clone — it **excludes the base's Namespace when the dest already has one** (cloning it would create a `duplicate-namespace` collision), so it adds only the members the destination lacks.
 3. **Commit** with `--commit --change-desc` (compose the description: summary, verbatim user prompt, condensed clarifications):
    ```bash
    cub-namespace apply-envelope --space apptique-prod --commit \

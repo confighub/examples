@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/confighub/examples/managerkit"
+	"github.com/confighub/examples/managerkit/write"
 	"github.com/confighub/sdk/cliutil"
 	"github.com/confighub/sdk/core/cubapi"
 	goclientnew "github.com/confighub/sdk/core/openapi/goclient-new"
@@ -43,6 +44,8 @@ type editReport struct {
 	DryRun        bool           `json:"dryRun"`
 	Mutated       int            `json:"mutated"`
 	Warnings      []string       `json:"warnings,omitempty"`
+	// Diffs are what each edit did to the Unit, or on a dry run would do.
+	Diffs []write.UnitDiff `json:"diffs,omitempty"`
 }
 
 // unitRef identifies a single Unit by "<space>/<unit>".
@@ -90,10 +93,7 @@ func gradeEdits(resourceType, kind string, edits []pathEdit) editReport {
 }
 
 func applyEdits(ctx context.Context, client *cubapi.Client, ref unitRef, r *editReport, changeDesc string, dryRun bool) error {
-	ch := cubapi.Change{}
-	if !dryRun {
-		ch = cubapi.Change{Description: changeDesc}
-	}
+	ch := write.Change(changeDesc, dryRun)
 	for _, e := range r.Edits {
 		res, err := cub.SetPath(ctx, client, e.Setter, r.ResourceType, e.Path, e.Value, ref.selector(), ch)
 		if err != nil {
@@ -104,6 +104,7 @@ func applyEdits(ctx context.Context, client *cubapi.Client, ref unitRef, r *edit
 				r.Mutated++
 			}
 		}
+		r.Diffs = append(r.Diffs, write.Diffs(res)...)
 	}
 	return nil
 }
@@ -213,6 +214,7 @@ func runEdit(cmd *cobra.Command, commit cliutil.CommitFlags, output, target, com
 		return err
 	}
 	printEditReport(cmd, r)
+	write.WriteUnitDiffs(cmd.OutOrStdout(), command, r.Diffs)
 	return nil
 }
 

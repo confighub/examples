@@ -58,8 +58,8 @@ Confirm the selector hits the intended Units first with **rbac-audit** (`cub-rba
    cub-rbac fleet-edit add-verb --where "Space.Labels.Environment = 'dev'" \
      --role-kind ClusterRole --role developer --rule 0 --verb deletecollection
    ```
-   "would change N Units" lists each `space/unit`.
-2. **Review the blast radius** with the user — fleet operations touch many Units. If the list is wrong, fix the `--where`; never commit an over-broad change.
+   "would change N Units" lists each `space/unit`, followed by each Unit's diff: every path the edit would change, with the value before and after.
+2. **Review the blast radius** with the user — fleet operations touch many Units. If the list or a diff is wrong, fix the `--where`; never commit an over-broad change.
 3. **Commit** with a real change description capturing the request and clarifications:
    ```bash
    cub-rbac fleet-edit add-verb --where "Space.Labels.Environment = 'dev'" \

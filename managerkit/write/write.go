@@ -3,7 +3,8 @@
 
 // Package write is the surface a mutating command in these tools shares: naming
 // the Unit to write to, saying whether this is a dry run, and reporting what a
-// function invocation did.
+// function invocation did -- including, path by path, what it changed or on a
+// dry run would change, so a reader can judge a change before committing it.
 //
 // It is deliberately the reporting half only. Which function to run, and with
 // what arguments, is what each tool is about; how the outcome is rendered is
@@ -14,6 +15,7 @@ package write
 import (
 	"context"
 	"fmt"
+	"io"
 	"sort"
 	"strings"
 	"text/tabwriter"
@@ -23,6 +25,7 @@ import (
 	"github.com/confighub/sdk/cliutil"
 	"github.com/confighub/sdk/core/cubapi"
 	goclientnew "github.com/confighub/sdk/core/openapi/goclient-new"
+	"github.com/confighub/sdk/cubutil/diffview"
 
 	"github.com/confighub/examples/managerkit"
 )
@@ -62,11 +65,12 @@ func ParseUnitRef(ctx context.Context, c *cubapi.Client, arg string) (UnitRef, e
 
 // Change turns dry-run/description into a cubapi.Change. An empty description is
 // what makes a call a dry run, so a dry run is spelled by not describing one.
+// Either way it asks for each Unit's diff, which ReportMutations shows.
 func Change(changeDesc string, dryRun bool) cubapi.Change {
 	if dryRun {
-		return cubapi.Change{}
+		return cubapi.Change{Diff: true}
 	}
-	return cubapi.Change{Description: changeDesc}
+	return cubapi.Change{Description: changeDesc, Diff: true}
 }
 
 // Outcome is one Unit's aggregated result from one or more mutating function
@@ -78,6 +82,10 @@ type Outcome struct {
 	Unit    string `json:"unit"`
 	Mutated bool   `json:"mutated"`
 	Error   string `json:"error,omitempty"`
+	// Diffs are what each contributing invocation did to the Unit, or on a dry
+	// run would do, in the order they ran. An invocation that changed nothing
+	// adds none.
+	Diffs []goclientnew.ConfigDiff `json:"diffs,omitempty"`
 
 	// succeeded is every contributing invocation's Success, ANDed. It decides
 	// whether a mutation counts as committed. It is not the same question as
@@ -99,7 +107,8 @@ type Report struct {
 // ReportMutations renders one or more cubapi function Results as JSON or a
 // table, aggregated per Unit -- so a command that runs several functions over
 // the same Unit shows a single row, mutated if any function changed it. On a dry
-// run the mutated count is what would change; on a commit it is what did.
+// run the mutated count is what would change; on a commit it is what did. The
+// table is followed by each changed Unit's diff, when the Change asked for one.
 func ReportMutations(cmd *cobra.Command, command, space string, dryRun bool, output string, results ...*cubapi.Result) error {
 	rep := Summarize(command, space, dryRun, results...)
 	if done, err := managerkit.Render(cmd.OutOrStdout(), output, rep); done || err != nil {
@@ -130,7 +139,54 @@ func ReportMutations(cmd *cobra.Command, command, space string, dryRun bool, out
 	}
 	cliutil.Fprintln(cmd.OutOrStdout(), fmt.Sprintf("\n%s: %d of %d Unit(s) %s%s",
 		command, rep.Mutated, len(rep.Outcomes), verb, DryRunSuffix(dryRun)))
+	WriteDiffs(cmd.OutOrStdout(), command, rep)
 	return nil
+}
+
+// WriteDiffs writes what each changed Unit in rep was changed by, or on a dry run
+// would be.
+func WriteDiffs(w io.Writer, command string, rep Report) {
+	var diffs []UnitDiff
+	for _, o := range rep.Outcomes {
+		for _, d := range o.Diffs {
+			diffs = append(diffs, UnitDiff{Space: o.Space, Unit: o.Unit, Diff: d})
+		}
+	}
+	WriteUnitDiffs(w, command, diffs)
+}
+
+// UnitDiff is what a change did to one Unit, or on a dry run would do. A command
+// with a report of its own carries these in it, from [Diffs].
+type UnitDiff struct {
+	Space string                 `json:"space,omitempty"`
+	Unit  string                 `json:"unit"`
+	Diff  goclientnew.ConfigDiff `json:"diff"`
+}
+
+// Diffs collects the non-empty diffs in results, per Unit and in the order the
+// invocations ran, sorted by Space and Unit as [Summarize] sorts its rows.
+func Diffs(results ...*cubapi.Result) []UnitDiff {
+	var diffs []UnitDiff
+	for _, o := range Summarize("", "", false, results...).Outcomes {
+		for _, d := range o.Diffs {
+			diffs = append(diffs, UnitDiff{Space: o.Space, Unit: o.Unit, Diff: d})
+		}
+	}
+	return diffs
+}
+
+// WriteUnitDiffs writes each diff under a header naming the Unit and the command,
+// colored only for a terminal.
+func WriteUnitDiffs(w io.Writer, command string, diffs []UnitDiff) {
+	style := diffview.Style{Color: diffview.ColorFor(w)}
+	for i := range diffs {
+		label := diffs[i].Unit
+		if diffs[i].Space != "" {
+			label = diffs[i].Space + "/" + diffs[i].Unit
+		}
+		cliutil.Fprintln(w, "")
+		diffview.WriteUnitChanges(w, label, command, &diffs[i].Diff, style)
+	}
 }
 
 // Summarize aggregates results per Unit without rendering them, for a command
@@ -162,6 +218,9 @@ func Summarize(command, space string, dryRun bool, results ...*cubapi.Result) Re
 			}
 			if o.Error != "" && out.Error == "" {
 				out.Error = o.Error
+			}
+			if o.Diff != nil && len(o.Diff.Resources) > 0 {
+				out.Diffs = append(out.Diffs, *o.Diff)
 			}
 		}
 	}

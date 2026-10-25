@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/confighub/examples/managerkit"
+	"github.com/confighub/examples/managerkit/write"
 	"github.com/confighub/sdk/cliutil"
 	"github.com/confighub/sdk/core/cubapi"
 	goclientnew "github.com/confighub/sdk/core/openapi/goclient-new"
@@ -320,6 +321,8 @@ func commitAllowPlans(cmd *cobra.Command, client *cubapi.Client, snap *snapshot.
 		Action string `json:"action"` // created | updated | unchanged | error
 		Added  int    `json:"added,omitempty"`
 		Error  string `json:"error,omitempty"`
+		// Diffs are what an update did to the policy.
+		Diffs []write.UnitDiff `json:"diffs,omitempty"`
 	}
 	var results []result
 	created, updated, unchanged := 0, 0, 0
@@ -342,10 +345,10 @@ func commitAllowPlans(cmd *cobra.Command, client *cubapi.Client, snap *snapshot.
 				break
 			}
 			expr := ".spec.ingress[0].from += [" + strings.Join(newPeers, ", ") + "]"
-			if _, err := cub.MutateUnitYQ(cmd.Context(), client, p.dest.spaceID, p.Unit, expr, cubapi.Change{Description: changeDesc}); err != nil {
+			if res, err := cub.MutateUnitYQ(cmd.Context(), client, p.dest.spaceID, p.Unit, expr, write.Change(changeDesc, false)); err != nil {
 				r.Action, r.Error = "error", err.Error()
 			} else {
-				r.Action, r.Added = "updated", len(newPeers)
+				r.Action, r.Added, r.Diffs = "updated", len(newPeers), write.Diffs(res)
 				updated++
 			}
 		}
@@ -363,6 +366,9 @@ func commitAllowPlans(cmd *cobra.Command, client *cubapi.Client, snap *snapshot.
 		fprintln(out, fmt.Sprintf("%-9s %s/%s %s", r.Action, r.Space, r.Unit, detail))
 	}
 	fprintln(out, fmt.Sprintf("\n%d created, %d updated, %d unchanged (not applied; apply when ready).", created, updated, unchanged))
+	for _, r := range results {
+		write.WriteUnitDiffs(out, "link-allow", r.Diffs)
+	}
 	return nil
 }
 

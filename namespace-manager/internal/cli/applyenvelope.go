@@ -51,11 +51,7 @@ never bypasses ValidationErrors.`,
 				Where:     fmt.Sprintf("SpaceID = '%s'", sp.Space.SpaceID.String()),
 				WhereData: "kind = 'Namespace'",
 			}
-			ch := cubapi.Change{}
-			if !dryRun {
-				ch = cubapi.Change{Description: changeDesc}
-			}
-			res, err := cub.InvokeMutation(cmd.Context(), client, "set-pod-security-defaults", nil, sel, ch)
+			res, err := cub.InvokeMutation(cmd.Context(), client, "set-pod-security-defaults", nil, sel, write.Change(changeDesc, dryRun))
 			if err != nil {
 				return err
 			}

@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/confighub/examples/managerkit"
+	"github.com/confighub/examples/managerkit/write"
 	"github.com/confighub/sdk/cliutil"
 	"github.com/confighub/sdk/core/cubapi"
 
@@ -121,11 +122,7 @@ func newFixSubCmd(use, short, yqExpr, action string, guard func(*netpol.NetworkP
 				return nil
 			}
 
-			ch := cubapi.Change{}
-			if !dryRun {
-				ch = cubapi.Change{Description: changeDesc}
-			}
-			res, err := cub.MutateUnitYQ(cmd.Context(), client, sp.Space.SpaceID, unit, yqExpr, ch)
+			res, err := cub.MutateUnitYQ(cmd.Context(), client, sp.Space.SpaceID, unit, yqExpr, write.Change(changeDesc, dryRun))
 			if err != nil {
 				return err
 			}
@@ -145,6 +142,8 @@ type fixResult struct {
 	DryRun  bool   `json:"dryRun"`
 	Mutated bool   `json:"mutated"`
 	Error   string `json:"error,omitempty"`
+	// Diffs are what the fix did to the Unit, or on a dry run would do.
+	Diffs []write.UnitDiff `json:"diffs,omitempty"`
 }
 
 func reportFix(cmd *cobra.Command, res *cubapi.Result, space, unit, action string, dryRun bool, output string) error {
@@ -157,6 +156,7 @@ func reportFix(cmd *cobra.Command, res *cubapi.Result, space, unit, action strin
 			r.Mutated = true
 		}
 	}
+	r.Diffs = write.Diffs(res)
 	if done, err := managerkit.Render(cmd.OutOrStdout(), output, r); done || err != nil {
 		return err
 	}
@@ -171,6 +171,7 @@ func reportFix(cmd *cobra.Command, res *cubapi.Result, space, unit, action strin
 	default:
 		fprintln(out, fmt.Sprintf("Patched %s/%s (%s).", space, unit, action))
 	}
+	write.WriteUnitDiffs(out, action, r.Diffs)
 	return nil
 }
 

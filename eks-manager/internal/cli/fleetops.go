@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/confighub/examples/managerkit"
+	"github.com/confighub/examples/managerkit/write"
 	"github.com/confighub/sdk/cliutil"
 	"github.com/confighub/sdk/core/cubapi"
 
@@ -40,6 +41,8 @@ type fleetReport struct {
 	Total    int            `json:"total"`
 	Refused  []string       `json:"refused,omitempty"`
 	Refusals int            `json:"refusals,omitempty"`
+	// Diffs are what the edit did to each Unit, or on a dry run would do.
+	Diffs []write.UnitDiff `json:"diffs,omitempty"`
 }
 
 func newFleetEditCmd() *cobra.Command {
@@ -111,11 +114,7 @@ Dry-run by default; pass --commit --change-desc "..." to write.`,
 				WhereData:     eksKindsWhereData,
 				WhereResource: fmt.Sprintf("ConfigHub.ResourceType LIKE 'eks.aws.upbound.io/%%/%s'", kind),
 			}
-			ch := cubapi.Change{}
-			if !dryRun {
-				ch = cubapi.Change{Description: changeDesc}
-			}
-			res, err := cub.SetPath(cmd.Context(), client, setter, resourceType, path, value, sel, ch)
+			res, err := cub.SetPath(cmd.Context(), client, setter, resourceType, path, value, sel, write.Change(changeDesc, dryRun))
 			if err != nil {
 				return err
 			}
@@ -138,6 +137,7 @@ Dry-run by default; pass --commit --change-desc "..." to write.`,
 				}
 				return r.Outcomes[i].Unit < r.Outcomes[j].Unit
 			})
+			r.Diffs = write.Diffs(res)
 
 			if done, err := managerkit.Render(cmd.OutOrStdout(), output, r); done || err != nil {
 				return err
@@ -182,6 +182,7 @@ func printFleetReport(cmd *cobra.Command, r fleetReport, what string) {
 	if !r.DryRun {
 		fprintln(out, "Not published — rolling out is a separate `cub release publish`.")
 	}
+	write.WriteUnitDiffs(out, r.Command, r.Diffs)
 }
 
 // joinWhere ANDs two predicates. ConfigHub `where` is flat AND-only, so this is

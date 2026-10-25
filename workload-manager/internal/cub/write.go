@@ -15,12 +15,19 @@ import (
 
 // InvokeMutation runs a mutating function over the Units matched by sel. An empty
 // ch.Description is a dry-run — the server previews the mutations without writing;
-// a non-empty one commits, recording ch.Description on the new revision. The
-// returned Result carries the per-Unit mutation diff. Units are edited, never
+// a non-empty one commits, recording ch.Description on the new revision. With
+// ch.Diff the returned Result carries each Unit's diff. Units are edited, never
 // applied to a cluster (that is a separate apply step).
 func InvokeMutation(ctx context.Context, c *cubapi.Client, fn string, args []api.FunctionArgument, sel cubapi.Selector, ch cubapi.Change) (*cubapi.Result, error) {
 	return cubapi.InvokeFunction(ctx, c,
 		api.FunctionInvocation{FunctionName: fn, Arguments: args}, sel, ch)
+}
+
+// InvokeMutations runs several mutating functions over the Units matched by sel
+// in one request, each on the output of the one before: one Revision per Unit on
+// commit, and on a dry run one diff of their combined effect.
+func InvokeMutations(ctx context.Context, c *cubapi.Client, fns []api.FunctionInvocation, sel cubapi.Selector, ch cubapi.Change) (*cubapi.Result, error) {
+	return cubapi.InvokeFunctions(ctx, c, fns, sel, ch)
 }
 
 // MutateUnitYQ runs the mutating set-yq function over the Units matched by sel
