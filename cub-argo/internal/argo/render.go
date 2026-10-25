@@ -35,6 +35,12 @@ func Render(p *Plan) string {
 	} else {
 		w("Read %d objects\n", p.Inputs.Objects)
 	}
+	if len(p.Inputs.Ignored) > 0 {
+		w("Left out %d file(s) git ignores, which Argo CD never reads from the repository:\n", len(p.Inputs.Ignored))
+		for _, ig := range p.Inputs.Ignored {
+			w("  %s\n", ig)
+		}
+	}
 
 	if len(p.Tree) > 0 {
 		w("\nControl tree (stays as it is: this is the management record)\n")

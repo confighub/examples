@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -31,11 +32,16 @@ type Input struct {
 	// Skipped are files under a directory that are not Kubernetes YAML, such
 	// as Helm chart templates, relative to the directory they were found in.
 	Skipped []string
+	// Ignored are YAML files under a directory that git ignores, relative to
+	// the directory they were found in. Argo CD reads the repository from
+	// git, so it never sees them, and neither does the plan.
+	Ignored []string
 }
 
 // Load reads each input: a YAML file, "-" for stdin, or a directory, which is
 // walked for *.yaml and *.yml files. In a directory, a file that does not parse
-// as YAML is skipped and listed rather than failing the whole read.
+// as YAML is skipped and listed rather than failing the whole read, and a file
+// git ignores is left out and listed.
 func Load(stdin io.Reader, inputs []string) (*Input, error) {
 	in := &Input{}
 	for _, arg := range inputs {
@@ -72,6 +78,7 @@ func Load(stdin io.Reader, inputs []string) (*Input, error) {
 			continue
 		}
 		in.Dirs = append(in.Dirs, abs)
+		ignored := gitIgnored(abs)
 		err = filepath.WalkDir(abs, func(p string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err
@@ -85,13 +92,17 @@ func Load(stdin io.Reader, inputs []string) (*Input, error) {
 			if ext := filepath.Ext(p); ext != ".yaml" && ext != ".yml" {
 				return nil
 			}
+			rel, _ := filepath.Rel(abs, p)
+			if ignored[filepath.ToSlash(rel)] {
+				in.Ignored = append(in.Ignored, rel)
+				return nil
+			}
 			data, err := os.ReadFile(p)
 			if err != nil {
 				return err
 			}
 			docs, err := parse(data, p)
 			if err != nil {
-				rel, _ := filepath.Rel(abs, p)
 				in.Skipped = append(in.Skipped, rel)
 				return nil
 			}
@@ -103,7 +114,30 @@ func Load(stdin io.Reader, inputs []string) (*Input, error) {
 		}
 	}
 	sort.Strings(in.Skipped)
+	sort.Strings(in.Ignored)
 	return in, nil
+}
+
+// gitIgnored is the set of files under dir that git ignores, relative to dir
+// in slash form, such as the var/ an example's setup.sh renders into. A
+// force-added file is tracked, so it is not in the set. Outside a git work
+// tree, without git, or when dir is itself ignored, because it was named on
+// purpose, the set is empty.
+func gitIgnored(dir string) map[string]bool {
+	if exec.Command("git", "-C", dir, "check-ignore", "-q", ".").Run() == nil {
+		return nil
+	}
+	out, err := exec.Command("git", "-C", dir, "ls-files", "-z", "--others", "--ignored", "--exclude-standard").Output()
+	if err != nil {
+		return nil
+	}
+	set := map[string]bool{}
+	for _, f := range strings.Split(string(out), "\x00") {
+		if f != "" {
+			set[f] = true
+		}
+	}
+	return set
 }
 
 // parse reads every object in a multi-document YAML or JSON stream, flattening
