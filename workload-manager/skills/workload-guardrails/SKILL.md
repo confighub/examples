@@ -1,6 +1,6 @@
 ---
 name: workload-guardrails
-description: 'Install and operate the workload-readiness enforcement pack with the cub-workload CLI — a common Space of Warn=true vet-cel Triggers (containers set a memory limit, run as non-root, set terminationMessagePolicy) plus an annotate-then-validate Trigger for cross-Unit PodDisruptionBudget coverage, wired to in-scope Spaces via a shared Trigger Filter. guardrails install (dry-run by default), status (Units with ValidationWarnings/Gates), annotate (write the PDB-coverage finding onto uncovered workloads). Use for "enforce workload readiness", "block workloads with no memory limit", "warn on workloads with no PDB", "which workloads are flagged?". Not for read-only scoring (use workload-audit / workload-findings) or fixing workloads (use workload-harden / workload-fleet).'
+description: 'Install and operate the workload-readiness enforcement pack with the cub-workload CLI — a common Space of Warn=true vet-cel Triggers (containers set a memory limit, run as non-root, set terminationMessagePolicy) plus an annotate-then-validate Trigger for cross-Unit PodDisruptionBudget coverage, added to in-scope Spaces as the workload guardrail group. guardrails install (dry-run by default), status (Units with ValidationWarnings/Gates), annotate (write the PDB-coverage finding onto uncovered workloads). Use for "enforce workload readiness", "block workloads with no memory limit", "warn on workloads with no PDB", "which workloads are flagged?". Not for read-only scoring (use workload-audit / workload-findings) or fixing workloads (use workload-harden / workload-fleet).'
 phase: act
 allowed-tools: Bash(cub-workload --help) Bash(cub-workload * --help) Bash(cub auth status) Bash(cub-workload preflight) Bash(cub-workload guardrails) Bash(cub-workload guardrails *)
 ---
@@ -9,13 +9,13 @@ allowed-tools: Bash(cub-workload --help) Bash(cub-workload * --help) Bash(cub au
 
 Turn workload-readiness policy into **enforcement** — advisory ValidationWarnings (promotable to blocking ValidationErrors) that fire in the normal apply pipeline. Three subcommands:
 
-- **`guardrails install`** — creates the `common` Space, four `Warn=true` `vet-cel` Triggers, and a shared Trigger Filter, then wires in-scope Spaces to it. **Dry-run by default**; re-run with `--commit`.
+- **`guardrails install`** — creates the `common` Space, four `Warn=true` `vet-cel` Triggers, labeled `Guardrails: workload`, then adds the `workload` group to each in-scope Space's `WhereTrigger`. **Dry-run by default**; re-run with `--commit`.
 - **`guardrails status`** — lists Units carrying workload-readiness ValidationWarnings or ValidationErrors.
 - **`guardrails annotate`** — writes the `workload.confighub.com/pdb-coverage` finding onto each uncovered multi-replica workload Unit (the producing half of annotate-then-validate). Dry-run unless `--commit --change-desc`.
 
 ## Why this matters
 
-The manager can't set ValidationWarnings directly — only a failed Trigger can. Three of the rules are plain **per-resource `vet-cel`** (a single Unit answers them): `workload-has-limits`, `workload-runs-nonroot`, `workload-termination-message-policy`. The fourth, **`workload-pdb-coverage`**, is the one property `vet-cel` can't see under one-resource-per-Unit — whether a *matching* PDB exists in another Unit — so it uses **annotate-then-validate**: `annotate` computes the cross-Unit coverage finding and stamps it on the workload Unit, and the Trigger turns that annotation into a warning. `install` is conservative: it skips Spaces that already select Triggers their own way (a custom WhereTrigger or a different TriggerFilterID) rather than clobbering them.
+The manager can't set ValidationWarnings directly — only a failed Trigger can. Three of the rules are plain **per-resource `vet-cel`** (a single Unit answers them): `workload-has-limits`, `workload-runs-nonroot`, `workload-termination-message-policy`. The fourth, **`workload-pdb-coverage`**, is the one property `vet-cel` can't see under one-resource-per-Unit — whether a *matching* PDB exists in another Unit — so it uses **annotate-then-validate**: `annotate` computes the cross-Unit coverage finding and stamps it on the workload Unit, and the Trigger turns that annotation into a warning. `install` is conservative: it skips Spaces that already select Triggers their own way (their own Triggers, a custom WhereTrigger, or a TriggerFilterID) rather than clobbering them.
 
 ## When to use
 
@@ -33,7 +33,7 @@ The manager can't set ValidationWarnings directly — only a failed Trigger can.
 ## Preflight gates
 
 1. `cub-workload preflight` succeeds. If it fails, ask the user to run `cub auth login` (interactive) and retry.
-2. The user has permission to create the policy Space, Triggers, and Filter, and to set Spaces' TriggerFilterID.
+2. The user has permission to create the policy Space and Triggers, and to update in-scope Spaces' WhereTrigger.
 
 ## The loop
 
@@ -56,9 +56,21 @@ The manager can't set ValidationWarnings directly — only a failed Trigger can.
 4. **Check** what's flagged: `cub-workload guardrails status -o table`.
 5. **Fix** flagged workloads via **workload-harden** / **workload-fleet**, then re-check.
 
+## Exceptions
+
+A resource that is meant to break one rule is excepted from it with an annotation naming the rule, whose value says why:
+
+```yaml
+metadata:
+  annotations:
+    exceptions.guardrails.confighub.com/workload-runs-nonroot: "vendor image needs root; tracked in SEC-123"
+```
+
+That rule's Trigger skips the resources carrying it; the other rules still check them. Adding one is a config change for the user to make deliberately (`cub function do set-annotation` on the Unit, with `--where-resource` naming the one resource), not a way to silence a warning.
+
 ## Stop conditions
 
-- A Space is skipped (custom WhereTrigger / different TriggerFilterID) — report it; wiring it means adding the guardrail Filter to that Space's existing selector (a `triggers-and-applygates` task), not overwriting.
+- A Space is skipped (its own Triggers, a custom WhereTrigger, or a TriggerFilterID) — report it; wiring it means adding the `workload` group to that Space's existing selection (a `triggers-and-applygates` task), not overwriting it.
 - The user wants a blocking gate now — install advisory first, verify, then `--unwarn` the specific Trigger.
 
 ## Tool boundary

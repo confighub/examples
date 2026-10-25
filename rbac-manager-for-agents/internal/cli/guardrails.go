@@ -3,8 +3,8 @@
 
 package cli
 
-// This tool's guardrail pack. The mechanism -- policy Space, Triggers, shared
-// Filter, wiring each in-scope Space, and reporting the Units a Trigger marked
+// This tool's guardrail pack. The mechanism -- policy Space, Triggers, the group
+// selection on each in-scope Space, and reporting the Units a Trigger marked
 // -- is managerkit/guardrails'. What is this tool's is the rules.
 
 import (
@@ -26,7 +26,7 @@ const (
 )
 
 var pack = guardrails.Pack{
-	Label: "rbac-guardrails",
+	Group: "rbac",
 	Rules: []guardrails.Rule{
 		{Slug: "no-rbac-wildcards", Description: "Warns on Roles/ClusterRoles with wildcard verbs, resources, or apiGroups. Fix: enumerate the specific verbs/resources the role needs.", Expression: celNoWildcards},
 		{Slug: "no-rbac-privilege-escalation", Description: "Warns on Roles/ClusterRoles granting escalate, bind, or impersonate. Fix: remove these verbs; they allow privilege escalation.", Expression: celNoEscalation},
@@ -41,7 +41,7 @@ func newGuardrailsCmd() *cobra.Command {
 		Use:   "guardrails",
 		Short: "Install and inspect the RBAC guardrail policy pack",
 		Long: `guardrails manages a small pack of RBAC validation policies, defined once in a
-policy Space and enforced fleet-wide via a shared Trigger Filter:
+policy Space and enforced in each Space that opts into the group:
 
   no-rbac-wildcards             no wildcard verbs/resources/apiGroups
   no-rbac-privilege-escalation  no escalate/bind/impersonate verbs

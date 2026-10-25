@@ -3,8 +3,8 @@
 
 package cli
 
-// This tool's guardrail pack. The mechanism -- policy Space, Triggers, shared
-// Filter, wiring each in-scope Space, and reporting the Units a Trigger marked
+// This tool's guardrail pack. The mechanism -- policy Space, Triggers, the group
+// selection on each in-scope Space, and reporting the Units a Trigger marked
 // -- is managerkit/guardrails'. What is this tool's is the rules, and which
 // Units the annotate command has something to say about.
 
@@ -32,7 +32,7 @@ const coverageAnnotation = "observability.confighub.com/coverage"
 const celNoCoverageFinding = "!has(r.metadata.annotations) || r.metadata.annotations == null || !('" + coverageAnnotation + "' in r.metadata.annotations)"
 
 var pack = guardrails.Pack{
-	Label: "observability-guardrails",
+	Group: "observability",
 	Rules: []guardrails.Rule{
 		{Slug: "servicemonitor-coverage",
 			Description: "Warns while an observability.confighub.com/coverage annotation is present (set by `cub-observability guardrails annotate`) — a metrics Service with no ServiceMonitor. Fix: `cub-observability ensure-servicemonitor`, then re-run annotate.",
@@ -47,7 +47,7 @@ func newGuardrailsCmd() *cobra.Command {
 		Use:   "guardrails",
 		Short: "Install, inspect, and feed the observability guardrail policy pack",
 		Long: `guardrails manages the observability guardrail pack, defined once in a policy
-Space and enforced fleet-wide via a shared Trigger Filter:
+Space and enforced in each Space that opts into the group:
 
   servicemonitor-coverage   warns while a Service is annotated as having no
                             ServiceMonitor (a metrics Service that isn't scraped)

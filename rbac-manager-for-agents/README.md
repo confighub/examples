@@ -119,7 +119,8 @@ Implemented (M0–M4):
 - Write commands: `edit` (add/remove verb & subject via server-side yq,
   dry-run→commit, `--change-desc`, never bypasses gates), `fleet-edit` (the same
   edits across many Units via `--where`, one server request), and `guardrails`
-  install/status (Warn=true Trigger pack + shared Filter, dry-run plan→commit).
+  install/status (Warn=true Trigger group selected by each wired Space's
+  WhereTrigger, dry-run plan→commit).
 - Agent Skills (read + write) with evals.
 
 All five proposal milestones (M0–M4) are implemented. See

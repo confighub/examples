@@ -13,12 +13,12 @@
 package managerkit
 
 // CommonSpace is the Space these tools put whatever an organization keeps in
-// common: the guardrail Triggers, the Filter that selects them, the profile
-// library, the Attributes a validating function reads.
+// common: the guardrail Triggers, the profile library, the Attributes a
+// validating function reads.
 //
-// One Space rather than one per tool. A Space has a single TriggerFilterID, so
-// per-tool policy Spaces cannot compose -- the first pack installed would claim
-// a Space and every later one would find it taken. Profiles have no such
+// One Space rather than one per tool. A Space selects guardrails with one
+// WhereTrigger naming one policy Space and the groups it has opted into, so
+// per-tool policy Spaces could not be combined in it. Profiles have no such
 // constraint, but an operator should still have one place to look rather than
 // one per tool they happen to have installed.
 //

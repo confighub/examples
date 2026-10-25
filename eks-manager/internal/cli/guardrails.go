@@ -3,8 +3,8 @@
 
 package cli
 
-// The EKS guardrail pack. The mechanism -- policy Space, Triggers, shared
-// Filter, deciding which Spaces to wire and which to leave alone, and reporting
+// The EKS guardrail pack. The mechanism -- policy Space, Triggers, the group
+// selection, deciding which Spaces to wire and which to leave alone, and reporting
 // the Units a Trigger marked -- is managerkit/guardrails'. What is EKS's is the
 // rules, and which Spaces are candidates at all: only those holding an EKS
 // control plane, since the rest have nothing for these rules to say.
@@ -18,14 +18,13 @@ import (
 
 	"github.com/confighub/examples/eks-manager/internal/cub"
 	"github.com/confighub/examples/eks-manager/internal/snapshot"
-	"github.com/confighub/examples/managerkit"
 	"github.com/confighub/examples/managerkit/guardrails"
 )
 
 // Each expression short-circuits on kind, so a rule is a no-op for resources it
 // does not govern rather than a failure.
 var pack = guardrails.Pack{
-	Label: "eks-guardrails",
+	Group: "eks",
 	Rules: []guardrails.Rule{
 		{
 			Slug:        "eks-automode-invariant",
@@ -79,10 +78,10 @@ func newGuardrailsInstallCmd() *cobra.Command {
 	var filter filterFlags
 	cmd := &cobra.Command{
 		Use:   "install",
-		Short: "Install the EKS validating Triggers and wire them to cluster Spaces",
-		Long: `guardrails install creates a policy Space holding validating Triggers, a Filter
-selecting them, and wires that Filter to every Space holding an EKS cluster in
-scope.
+		Short: "Install the EKS validating Triggers and add them to cluster Spaces",
+		Long: `guardrails install creates a policy Space holding validating Triggers, labeled
+` + guardrails.GroupLabel + `: ` + pack.Group + `, and adds the group to the WhereTrigger of every Space
+holding an EKS cluster in scope.
 
 The Triggers are created with Warn=true, so a failing rule attaches a
 non-blocking ValidationWarning rather than a ValidationError. Promote a rule to blocking
@@ -97,6 +96,9 @@ Every rule is a per-resource assertion that a single Unit can answer, which is
 what the validating function can evaluate. The one check that needs two
 revisions — "does this change replace the resource?" — is not expressible here,
 because a validator sees only the new data. That is what 'plan' computes.
+
+Each rule skips the resources annotated ` + guardrails.ExceptionAnnotationPrefix + `<rule>,
+whose value says why the resource is excepted.
 
 Spaces that already select Triggers another way are reported, not modified.
 Dry-run by default; pass --commit to write.`,
@@ -114,29 +116,14 @@ Dry-run by default; pass --commit to write.`,
 			if err != nil {
 				return err
 			}
-			plan, err := pack.PlanFor(cmd.Context(), client, policySpace, clusterSpaces(snap), "")
+			plan, err := pack.PlanFor(cmd.Context(), client, policySpace, clusterSpaces(snap), guardrails.Scope{})
 			if err != nil {
 				return err
 			}
-			if commit {
-				out := cmd.OutOrStdout()
-				if err := pack.Execute(cmd.Context(), client, policySpace, plan,
-					func(line string) { fprintln(out, line) }); err != nil {
-					return err
-				}
-				plan.Committed = true
-			}
-			if done, err := managerkit.Render(cmd.OutOrStdout(), output, plan); done || err != nil {
-				return err
-			}
-			guardrails.PrintPlan(cmd, plan)
-			return nil
+			return pack.Report(cmd, client, plan, commit, output)
 		},
 	}
-	cmd.Flags().StringVar(&policySpace, "policy-space", guardrails.DefaultPolicySpace,
-		"Space holding the guardrail Triggers and the shared Filter; every tool defaults to the same one")
-	cmd.Flags().BoolVar(&commit, "commit", false, "apply the plan (default is dry-run)")
-	addOutputFlag(cmd, &output)
+	pack.BindInstallFlags(cmd, &policySpace, &commit, &output)
 	addFilterFlags(cmd, &filter)
 	return cmd
 }

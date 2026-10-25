@@ -168,14 +168,16 @@ this tool.
 
 ## 7. Enforce with guardrails
 
-`guardrails install` stands up two `Warn=true` Triggers in an `common`
-Space and wires in-scope Spaces to them. It's dry-run by default and conservative —
-it skips Spaces that already select Triggers their own way:
+`guardrails install` stands up two `Warn=true` Triggers in the `common`
+Space, labeled `Guardrails: autoscale`, and adds the `autoscale` group to each
+in-scope Space's `WhereTrigger`. It's dry-run by default and conservative — it
+skips Spaces that already select Triggers their own way:
 
 ```console
 $ cub-autoscale guardrails install --commit -o table
-Policy pack ready in common.
-Applied — policy pack "common", filter "common/autoscale-guardrails"
+Guardrail group "autoscale" ready in common.
+  ...
+Applied — guardrail group "autoscale" in policy Space "common"
   triggers: autoscaler-not-pinned, schema-valid
   ...
 ```

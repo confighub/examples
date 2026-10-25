@@ -1,6 +1,6 @@
 ---
 name: autoscale-guardrails
-description: 'Install and inspect the autoscaling enforcement pack with the cub-autoscale CLI — an common Space with two Warn=true Triggers: a vet-cel rule that flags any HPA/ScaledObject that is pinned (min == max), and a vet-schemas rule that schema-validates every mutation (the post-convert check for convert-keda output, since keda.sh is in the schema catalog) — wired to in-scope Spaces via a shared Trigger Filter. guardrails install (dry-run by default) and status (Units with ValidationWarnings/Gates). Use for "enforce that no HPA is pinned", "make sure converted ScaledObjects pass schema validation", "which autoscalers are flagged?". Not for read-only findings (use autoscale-findings) or fixing autoscaling (use autoscale-edit).'
+description: 'Install and inspect the autoscaling enforcement pack with the cub-autoscale CLI — an common Space with two Warn=true Triggers: a vet-cel rule that flags any HPA/ScaledObject that is pinned (min == max), and a vet-schemas rule that schema-validates every mutation (the post-convert check for convert-keda output, since keda.sh is in the schema catalog) — added to in-scope Spaces as the autoscale guardrail group. guardrails install (dry-run by default) and status (Units with ValidationWarnings/Gates). Use for "enforce that no HPA is pinned", "make sure converted ScaledObjects pass schema validation", "which autoscalers are flagged?". Not for read-only findings (use autoscale-findings) or fixing autoscaling (use autoscale-edit).'
 phase: act
 allowed-tools: Bash(cub-autoscale --help) Bash(cub-autoscale * --help) Bash(cub auth status) Bash(cub-autoscale preflight) Bash(cub-autoscale guardrails) Bash(cub-autoscale guardrails *)
 ---
@@ -9,14 +9,14 @@ allowed-tools: Bash(cub-autoscale --help) Bash(cub-autoscale * --help) Bash(cub 
 
 Turn the autoscaling anti-patterns into **enforcement** — advisory ValidationWarnings (promotable to blocking ValidationErrors) that fire in the normal apply pipeline.
 
-- **`guardrails install`** — creates the `common` Space, two `Warn=true` Triggers, and a shared Trigger Filter, then wires in-scope Spaces to it. **Dry-run by default**; re-run with `--commit`.
+- **`guardrails install`** — creates the `common` Space, two `Warn=true` Triggers, labeled `Guardrails: autoscale`, then adds the `autoscale` group to each in-scope Space's `WhereTrigger`. **Dry-run by default**; re-run with `--commit`.
   - `autoscaler-not-pinned` (`vet-cel`) — an HPA/ScaledObject must not have `min == max`.
   - `schema-valid` (`vet-schemas`) — a resource must pass Kubernetes/CRD schema validation. This is the **post-convert check** for `convert-keda`: a committed ScaledObject fires the Mutation Trigger and is validated against `keda.sh`'s schema.
 - **`guardrails status`** — lists Units carrying autoscaling ValidationWarnings or ValidationErrors.
 
 ## Why this matters
 
-Both rules are plain **per-resource** checks — a single Unit answers each, so no annotate-then-validate is needed. The manager can't set warnings directly; only a failed Trigger can. `install` is conservative: it skips Spaces that already select Triggers their own way (a custom WhereTrigger or a different TriggerFilterID) rather than clobbering them — those are reported with the reason.
+Both rules are plain **per-resource** checks — a single Unit answers each, so no annotate-then-validate is needed. The manager can't set warnings directly; only a failed Trigger can. `install` is conservative: it skips Spaces that already select Triggers their own way (their own Triggers, a custom WhereTrigger, or a TriggerFilterID) rather than clobbering them — those are reported with the reason.
 
 ## When to use
 
@@ -33,7 +33,7 @@ Both rules are plain **per-resource** checks — a single Unit answers each, so 
 ## Preflight gates
 
 1. `cub-autoscale preflight` succeeds. If it fails, ask the user to run `cub auth login` (interactive) and retry.
-2. The user has permission to create the policy Space, Triggers, and Filter, and to set Spaces' TriggerFilterID.
+2. The user has permission to create the policy Space and Triggers, and to update in-scope Spaces' WhereTrigger.
 
 ## The loop
 
@@ -42,9 +42,21 @@ Both rules are plain **per-resource** checks — a single Unit answers each, so 
 3. **Check** what's flagged: `cub-autoscale guardrails status -o table`.
 4. **Fix** flagged autoscalers via **autoscale-edit**, then re-check.
 
+## Exceptions
+
+A resource that is meant to break one rule is excepted from it with an annotation naming the rule, whose value says why:
+
+```yaml
+metadata:
+  annotations:
+    exceptions.guardrails.confighub.com/autoscaler-not-pinned: "batch queue: fixed size by design"
+```
+
+That rule's Trigger skips the resources carrying it; the other rules still check them. Adding one is a config change for the user to make deliberately (`cub function do set-annotation` on the Unit, with `--where-resource` naming the one resource), not a way to silence a warning.
+
 ## Stop conditions
 
-- A Space is skipped (custom WhereTrigger / different TriggerFilterID) — report it; wiring means adding the guardrail Filter to that Space's existing selector, not overwriting.
+- A Space is skipped (its own Triggers, a custom WhereTrigger, or a TriggerFilterID) — report it; wiring it means adding the `autoscale` group to that Space's existing selection, not overwriting it.
 - The user wants a blocking gate now — install advisory first, verify, then `--unwarn`.
 
 ## Tool boundary

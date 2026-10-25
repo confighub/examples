@@ -9,7 +9,7 @@ allowed-tools: Bash(cub-observability --help) Bash(cub-observability * --help) B
 
 Turn the ServiceMonitor-coverage gap into **enforcement** — an advisory ValidationWarning (promotable to a blocking ValidationError) that fires in the normal apply pipeline.
 
-- **`guardrails install`** — creates the `common` Space, a `Warn=true` `vet-cel` Trigger (`servicemonitor-coverage`), and a shared Trigger Filter, then wires in-scope Spaces to it. **Dry-run by default**; re-run with `--commit`.
+- **`guardrails install`** — creates the `common` Space, a `Warn=true` `vet-cel` Trigger (`servicemonitor-coverage`), labeled `Guardrails: observability`, then adds the `observability` group to each in-scope Space's `WhereTrigger`. **Dry-run by default**; re-run with `--commit`.
 - **`guardrails status`** — lists Units carrying observability ValidationWarnings or ValidationErrors.
 - **`guardrails annotate`** — writes the `observability.confighub.com/coverage` finding onto each uncovered metrics-Service Unit (the producing half of annotate-then-validate). Dry-run unless `--commit --change-desc`.
 
@@ -32,7 +32,7 @@ ServiceMonitor coverage is a **cross-Unit** property (the ServiceMonitor and the
 ## Preflight gates
 
 1. `cub-observability preflight` succeeds. If it fails, ask the user to run `cub auth login` (interactive) and retry.
-2. The user has permission to create the policy Space, Trigger, and Filter, and to set Spaces' TriggerFilterID.
+2. The user has permission to create the policy Space and Trigger, and to update in-scope Spaces' WhereTrigger.
 
 ## The loop
 
@@ -42,9 +42,21 @@ ServiceMonitor coverage is a **cross-Unit** property (the ServiceMonitor and the
 4. **Check**: `cub-observability guardrails status -o table`.
 5. **Fix** flagged Services via **observability-instrument**, then re-check.
 
+## Exceptions
+
+A resource that is meant to break one rule is excepted from it with an annotation naming the rule, whose value says why:
+
+```yaml
+metadata:
+  annotations:
+    exceptions.guardrails.confighub.com/servicemonitor-coverage: "scraped by the sidecar, not a ServiceMonitor"
+```
+
+That rule's Trigger skips the resources carrying it; the other rules still check them. Adding one is a config change for the user to make deliberately (`cub function do set-annotation` on the Unit, with `--where-resource` naming the one resource), not a way to silence a warning.
+
 ## Stop conditions
 
-- A Space is skipped (custom WhereTrigger / different TriggerFilterID) — report it; wiring means adding the guardrail Filter to that Space's existing selector, not overwriting.
+- A Space is skipped (its own Triggers, a custom WhereTrigger, or a TriggerFilterID) — report it; wiring it means adding the `observability` group to that Space's existing selection, not overwriting it.
 - The user wants a blocking gate now — install advisory first, verify, then `--unwarn`.
 
 ## Tool boundary

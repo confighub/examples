@@ -159,7 +159,7 @@ Write (mutating — dry-run by default, require `--change-desc`, never bypass ga
 | Fleet bulk edit            | `cub-rbac fleet-edit --where … <op>`                            | Org-scoped `yq-i`; one server request, multi-diff preview.                      |
 | Variant propagation        | defer to `cub` + the `promote-release` skill                    | Promotion is evolving in `cub` and the server; not duplicated here.             |
 | Publish / Rollback         | defer to `cub release publish` + `cub unit update --restore`    | Routed via skills.                                                              |
-| Guardrail pack             | `cub-rbac guardrails install --policy-space … --where-space …`  | Triggers + Filter + `TriggerFilterID` wiring.                                   |
+| Guardrail pack             | `cub-rbac guardrails install --policy-space … --where-space …`  | Triggers + the `rbac` group in each Space's `WhereTrigger`.                     |
 
 ## 6. Agent Skills to ship
 

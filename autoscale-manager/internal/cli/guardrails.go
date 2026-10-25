@@ -3,8 +3,8 @@
 
 package cli
 
-// This tool's guardrail pack. The mechanism -- policy Space, Triggers, shared
-// Filter, wiring each in-scope Space, and reporting the Units a Trigger marked
+// This tool's guardrail pack. The mechanism -- policy Space, Triggers, the group
+// selection on each in-scope Space, and reporting the Units a Trigger marked
 // -- is managerkit/guardrails'. What is this tool's is the rules.
 
 import (
@@ -27,7 +27,7 @@ const celAutoscalerNotPinned = "!(r.kind in ['HorizontalPodAutoscaler', 'ScaledO
 	" || (r.kind == 'ScaledObject' && (!has(r.spec.minReplicaCount) || !has(r.spec.maxReplicaCount) || r.spec.minReplicaCount < r.spec.maxReplicaCount))"
 
 var pack = guardrails.Pack{
-	Label: "autoscale-guardrails",
+	Group: "autoscale",
 	Rules: []guardrails.Rule{
 		{Slug: "autoscaler-not-pinned",
 			Description: "Warns on an HPA/ScaledObject with min == max (it can't actually scale). Fix: `cub-autoscale set-hpa --min <lower> --max <higher>` or a profile.",
@@ -47,7 +47,7 @@ func newGuardrailsCmd() *cobra.Command {
 		Use:   "guardrails",
 		Short: "Install and inspect the autoscaling guardrail policy pack",
 		Long: `guardrails manages a pack of autoscaling validation policies, defined once in a
-policy Space and enforced fleet-wide via a shared Trigger Filter:
+policy Space and enforced in each Space that opts into the group:
 
   autoscaler-not-pinned   an HPA/ScaledObject must not have min == max (it would
                           be unable to scale) — a per-resource vet-cel check

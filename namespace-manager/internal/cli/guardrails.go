@@ -3,8 +3,8 @@
 
 package cli
 
-// This tool's guardrail pack. The mechanism -- policy Space, Triggers, shared
-// Filter, wiring each in-scope Space, and reporting the Units a Trigger marked
+// This tool's guardrail pack. The mechanism -- policy Space, Triggers, the group
+// selection on each in-scope Space, and reporting the Units a Trigger marked
 // -- is managerkit/guardrails'. What is this tool's is the rules, and which
 // Units the annotate command has something to say about.
 
@@ -40,7 +40,7 @@ const (
 )
 
 var pack = guardrails.Pack{
-	Label: "namespace-guardrails",
+	Group: "namespace",
 	Rules: []guardrails.Rule{
 		{Slug: "namespace-has-pod-security", Description: "Warns on a Namespace with no pod-security.kubernetes.io/enforce label. Fix: `cub-namespace apply-envelope --space <s>`.", Expression: celHasPodSecurity},
 		{Slug: "namespace-pod-security-standard", Description: "Warns on a workload that does not meet the Pod Security Standard level in its own pod-security.kubernetes.io/enforce label, which `cub-namespace apply-envelope` copies from its namespace -- so admission would reject its pods. Unlabeled workloads are not checked. Fix: `cub-workload harden`, or what `cub-namespace pod-security` lists.", Function: cub.VetPodSecurityFunction},
@@ -74,7 +74,7 @@ func newGuardrailsCmd() *cobra.Command {
 		Use:   "guardrails",
 		Short: "Install, inspect, and feed the namespace-envelope guardrail policy pack",
 		Long: `guardrails manages a pack of namespace-governance validation policies, defined
-once in a policy Space and enforced fleet-wide via a shared Trigger Filter:
+once in a policy Space and enforced in each Space that opts into the group:
 
   namespace-has-pod-security       a Namespace must carry a pod-security enforce label
   namespace-pod-security-standard  a workload must meet the level in its own enforce
