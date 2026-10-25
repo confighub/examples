@@ -5,6 +5,7 @@ package cli
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"text/tabwriter"
 
@@ -30,7 +31,9 @@ type applyEnvelopeReport struct {
 }
 
 func newApplyEnvelopeCmd() *cobra.Command {
-	var output, spaceSlug, clusterFilter, namespaceFilter, level, version string
+	var output, clusterFilter, namespaceFilter, level, version string
+	var spaces []string
+	var bases bool
 	var filter filterFlags
 	var commit cliutil.CommitFlags
 	cmd := &cobra.Command{
@@ -64,14 +67,18 @@ when some of its workloads could not be checked, when it has no workloads in
 ConfigHub and no --level was given, or when its workloads do not meet --level.
 
 Select namespaces by the Space holding their Namespace Unit (--space), --cluster
-or --namespace; the server-side filters scope which Units are read, and
-narrowing them can hide workloads that run in a namespace from other Spaces.
+or --namespace. With --bases it labels base Spaces instead, each judged by its
+own workloads (and listed under its slug as the cluster); the variants made from
+a base pick the labels up when they are upgraded from it.
+
+The server-side filters scope which Units are read; narrowing them can hide
+workloads that run in a namespace from other Spaces.
 The Units are edited, not published — rolling them out is a separate
 'cub release publish'. Dry-run unless --commit --change-desc; the dry run shows
 each Unit's diff.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if spaceSlug == "" && clusterFilter == "" && namespaceFilter == "" {
+			if len(spaces) == 0 && clusterFilter == "" && namespaceFilter == "" {
 				return fmt.Errorf("select the namespaces with --space, --cluster or --namespace")
 			}
 			switch level {
@@ -82,7 +89,7 @@ each Unit's diff.`,
 			if version == "" {
 				version = "latest"
 			}
-			changeDesc, dryRun, err := commit.Validate("apply the Pod Security Standard level their workloads meet to " + describeSelection(spaceSlug, clusterFilter, namespaceFilter))
+			changeDesc, dryRun, err := commit.Validate("apply the Pod Security Standard level their workloads meet to " + describeSelection(spaces, clusterFilter, namespaceFilter))
 			if err != nil {
 				return err
 			}
@@ -94,16 +101,16 @@ each Unit's diff.`,
 			if err != nil {
 				return err
 			}
-			fleet, err := loadPodSecurity(cmd.Context(), client, where, version)
+			fleet, err := loadPodSecurity(cmd.Context(), client, where, version, bases)
 			if err != nil {
 				return err
 			}
 			selected := func(n *nsmanager.NamespaceEntity) bool {
-				return (spaceSlug == "" || n.Origin.Space == spaceSlug) &&
+				return (len(spaces) == 0 || slices.Contains(spaces, n.Origin.Space)) &&
 					(clusterFilter == "" || n.Origin.Cluster == clusterFilter) &&
 					(namespaceFilter == "" || n.Name == namespaceFilter)
 			}
-			plans, edits := nsmanager.PlanPodSecurity(fleet.snap.Clusters, fleet.postures, level, version, selected)
+			plans, edits := nsmanager.PlanPodSecurity(fleet.clusters, fleet.postures, level, version, selected)
 
 			ch := write.Change(changeDesc, dryRun)
 			var results []*cubapi.Result
@@ -133,7 +140,8 @@ each Unit's diff.`,
 	addOutputFlag(cmd, &output)
 	addFilterFlags(cmd, &filter)
 	commit.Bind(cmd)
-	cmd.Flags().StringVar(&spaceSlug, "space", "", "label the namespaces whose Namespace Unit is in this Space")
+	cmd.Flags().StringSliceVar(&spaces, "space", nil, "label the namespaces whose Namespace Unit is in this Space (repeat, or comma-separate, for several)")
+	cmd.Flags().BoolVar(&bases, "bases", false, "label base (Variant=base) Spaces instead of deployed ones, each judged by its own workloads; variants then pick the labels up by upgrade")
 	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "label the namespaces on this cluster (Target slug, or None for Units whose Space has no release Target)")
 	cmd.Flags().StringVar(&namespaceFilter, "namespace", "", "label this namespace")
 	cmd.Flags().StringVar(&level, "level", "", "level to apply: privileged | baseline | restricted (default: the most restrictive one each namespace's workloads meet)")
@@ -158,7 +166,7 @@ func labelInvocations(edits []nsmanager.LabelEdit) []api.FunctionInvocation {
 	return invocations
 }
 
-func describeSelection(space, cluster, namespace string) string {
+func describeSelection(spaces []string, cluster, namespace string) string {
 	var parts []string
 	if namespace != "" {
 		parts = append(parts, "namespace "+namespace)
@@ -166,8 +174,8 @@ func describeSelection(space, cluster, namespace string) string {
 	if cluster != "" {
 		parts = append(parts, "cluster "+cluster)
 	}
-	if space != "" {
-		parts = append(parts, "the Namespace Units in "+space)
+	if len(spaces) > 0 {
+		parts = append(parts, "the Namespace Units in "+strings.Join(spaces, ", "))
 	}
 	return strings.Join(parts, " on ")
 }

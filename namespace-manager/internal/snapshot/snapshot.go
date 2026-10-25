@@ -28,6 +28,9 @@ type Snapshot struct {
 	// Clusters holds the analysis entities per cluster, excluding canonical
 	// (base/policy) definitions.
 	Clusters map[string]*nsmanager.ClusterNamespaces
+	// Bases holds the canonical definitions, keyed by Space slug in place of a
+	// cluster: a base deploys nowhere, so each base Space is analyzed on its own.
+	Bases map[string]*nsmanager.ClusterNamespaces
 	// Resources is every parsed resource, including canonical ones.
 	Resources []nsmanager.FleetResource
 	// Units is in-scope Unit metadata by UnitID.
@@ -77,14 +80,18 @@ func Load(ctx context.Context, c *cubapi.Client, where string) (*Snapshot, error
 		return nil, err
 	}
 	// Canonical definitions stay out of cluster analysis.
-	var forAnalysis []nsmanager.FleetResource
+	var forAnalysis, bases []nsmanager.FleetResource
 	for _, r := range snap.Resources {
 		if !r.Origin.Canonical {
 			forAnalysis = append(forAnalysis, r)
+			continue
 		}
+		r.Origin.Cluster = r.Origin.Space
+		bases = append(bases, r)
 	}
 	return &Snapshot{
 		Clusters:  nsmanager.BuildFleet(forAnalysis),
+		Bases:     nsmanager.BuildFleet(bases),
 		Resources: snap.Resources,
 		Units:     snap.Units,
 		Filter:    snap.Filter,
