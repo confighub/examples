@@ -84,7 +84,7 @@ func (p Pack) BindInstallFlags(cmd *cobra.Command, policySpace *string, commit *
 // Report applies plan when commit is set, then renders it.
 func (p Pack) Report(cmd *cobra.Command, client *cubapi.Client, plan Plan, commit bool, output string) error {
 	if commit {
-		out := cmd.OutOrStdout()
+		out := managerkit.ProgressWriter(cmd, output)
 		if err := p.Execute(cmd.Context(), client, plan.PolicySpace, plan,
 			func(line string) { cliutil.Fprintln(out, line) }); err != nil {
 			return err

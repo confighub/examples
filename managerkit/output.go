@@ -71,6 +71,16 @@ func Render(w io.Writer, output string, v any) (bool, error) {
 	return spec.Render(w, v)
 }
 
+// ProgressWriter is where a command writes the lines it prints while it works:
+// stdout under a table, which is text throughout, and stderr under every format
+// Render writes, whose stdout has to hold the value alone for it to parse.
+func ProgressWriter(cmd *cobra.Command, output string) io.Writer {
+	if spec, err := cliutil.ParseOutput(output); err == nil && spec.Kind == cliutil.OutputTable {
+		return cmd.OutOrStdout()
+	}
+	return cmd.ErrOrStderr()
+}
+
 func unsupported(output string) error {
 	return fmt.Errorf("--output=%s is not supported; use json, yaml, table, jq=<expr> or yq=<expr>", output)
 }

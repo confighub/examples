@@ -115,6 +115,10 @@ Dry-run by default; pass --commit --change-desc "..." to write stage 1.`,
 				return fmt.Errorf("%s", why)
 			}
 			if current.Compare(target) == 0 {
+				plan := upgradePlan{Cluster: cluster, From: current.String(), To: target.String(), Stages: []upgradeStage{}, DryRun: dryRun}
+				if done, err := managerkit.Render(cmd.OutOrStdout(), output, plan); done || err != nil {
+					return err
+				}
 				fprintln(cmd.OutOrStdout(), fmt.Sprintf("Cluster %s is already on %s.", cluster, to))
 				return nil
 			}
