@@ -3,6 +3,21 @@
 Each release is tagged `cub-argo-v<version>` in confighub/examples and installs
 with `cub plugin install confighub/examples@cub-argo-v<version> --name argo`.
 
+## 0.3.3, 2026-10-25
+
+- **The first release works on ConfigHub v0.9.** `apply.sh` stopped at the
+  release step with HTTP 422, "requires approval, but no Revision was found to
+  evaluate it on". `cub variant create` already gives each variant the base's
+  head, so the change order made afterwards passes over every Unit of the base
+  as AlreadyTaken and carries no Revision to approve. When the change order
+  skipped every Unit of the base that way, `apply.sh` now publishes what the
+  variant holds, which is what its own source renders and what the cluster runs
+  today. Any other refusal still stops the script, so a change that carries
+  Revisions still waits for its approval. A re-run reports the variant as
+  released rather than failing. Run on hub.confighub.com with the beginner
+  app of apps at confighub/examples 7f1b8f2f: a fresh run and a re-run both
+  finished, and each variant has one release.
+
 ## 0.3.2, 2026-10-09
 
 - **A recorded check judges health.** `cub argo check --fields --record`
