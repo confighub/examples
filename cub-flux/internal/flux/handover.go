@@ -71,9 +71,30 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add(`case "$cluster" in %s) ;; *) echo "set CLUSTER=<one of: %s> so the right Target is used"; exit 1 ;; esac`,
 		strings.ReplaceAll(clusterNames(p), ", ", "|"), clusterNames(p))
 	for _, c := range p.Clusters {
-		if c.LayersSpace != "" {
-			add(`[ "$cluster" != %s ] || { echo "%s is handed over already: its layers are Units in %s, read by its ConfigHub root."; exit 0; }`, q(c.Name), c.Name, c.LayersSpace)
+		if c.LayersSpace == "" {
+			continue
 		}
+		if c.PullSecret != "confighub-"+targets {
+			add(`[ "$cluster" != %s ] || { echo "%s is handed over already: its layers are Units in %s, read by its ConfigHub root."; exit 0; }`, q(c.Name), c.Name, c.LayersSpace)
+			continue
+		}
+		// A cluster an earlier version handed over is not handed over again,
+		// but its pull Secret is brought up to date, so that running this
+		// again is how an earlier version's credential is replaced: the
+		// worker's before 0.5.0, or 0.5.0's token, applied with a copy in an
+		// annotation and never revoked.
+		add(`if [ "$cluster" = %s ]; then`, q(c.Name))
+		add(`  echo "%s is handed over already: its layers are Units in %s, read by its ConfigHub root. Only its pull Secret is brought up to date."`, c.Name, c.LayersSpace)
+		add(`  cub auth status >/dev/null 2>&1 || { echo "cub is not signed in to ConfigHub: run 'cub auth login', or 'cub auth login --private-key=<key>' on a server with no identity provider"; exit 1; }`)
+		add("  # The gateway the Secret already names, unless CONFIGHUB_OCI says otherwise.")
+		add(`  addr=${CONFIGHUB_OCI:-$(k -n "$ns" get secret %s -o jsonpath='{.data.\.dockerconfigjson}' 2>/dev/null | base64 --decode 2>/dev/null | sed -n 's/^{"auths":{"\([^"]*\)".*/\1/p')}`, c.PullSecret)
+		add(`  addr=${addr#oci://}`)
+		add(`  [ -n "$addr" ] || { echo "set CONFIGHUB_OCI to the gateway host this cluster reaches"; exit 1; }`)
+		for _, l := range pullSecretLines(prefix, targets) {
+			L = append(L, "  "+l)
+		}
+		add(`  exit 0`)
+		add(`fi`)
 	}
 	add("")
 

@@ -2,6 +2,9 @@ package flux
 
 import (
 	"encoding/base64"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -77,5 +80,49 @@ func checkPullSecret(t *testing.T, r handoverRun, token string) {
 	}
 	if !strings.Contains(r.log, "replace -f -") && !strings.Contains(r.log, "create -f -") {
 		t.Errorf("no Secret is written with create or replace:\n%s", r.log)
+	}
+}
+
+// A cluster an earlier version handed over is not handed over again, but its
+// pull Secret is brought up to date: running handover.sh again is how 0.5.0's
+// applied, never-revoked token is replaced. With no CONFIGHUB_OCI it keeps
+// the gateway the Secret names.
+func TestHandoverRefreshesAHandedOverClustersPullSecret(t *testing.T) {
+	if _, err := exec.LookPath("bash"); err != nil {
+		t.Skip("no bash")
+	}
+	const fleet = "gitops/flux/expert-fleet"
+	p := planAt(t, handedOver(t, fleet, "dev", "flux-dev-1-layers"), fleet)
+	dir, bin := t.TempDir(), t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "handover.sh"), []byte(HandoverScript(p, "flux", ".")), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for name, body := range map[string]string{"kubectl": stubKubectl, "cub": stubCub} {
+		if err := os.WriteFile(filepath.Join(bin, name), []byte(body), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	calls := filepath.Join(t.TempDir(), "kubectl.log")
+	cmd := exec.Command("bash", filepath.Join(dir, "handover.sh"))
+	cmd.Env = append(os.Environ(), "PATH="+bin+string(os.PathListSeparator)+os.Getenv("PATH"),
+		"STUB_LOG="+calls, "CLUSTER=dev-1", "FLUX_CONTEXT=ctx-a", "LIVE_JTIS=j-one")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("%v\n%s", err, out)
+	}
+	log, _ := os.ReadFile(calls)
+	cub, _ := os.ReadFile(calls + ".cub")
+	pull, _ := os.ReadFile(calls + ".dockerconfig")
+	if !strings.Contains(string(out), "Only its pull Secret is brought up to date") {
+		t.Errorf("it says what it does:\n%s", out)
+	}
+	if !strings.Contains(string(cub), "token create flux-delivery --description Flux, cluster dev-1") || !strings.Contains(string(cub), "token revoke flux-delivery j-one --quiet") {
+		t.Errorf("a token is issued and the cluster's earlier one revoked:\n%s", cub)
+	}
+	if !strings.HasPrefix(string(pull), `{"auths":{"gw.example:5000":`) {
+		t.Errorf("the gateway the Secret named is kept: %s", pull)
+	}
+	if strings.Contains(string(log), "patch kustomization") || strings.Contains(string(log), "apply -f bootstrap/") {
+		t.Errorf("nothing is handed over again:\n%s", log)
 	}
 }

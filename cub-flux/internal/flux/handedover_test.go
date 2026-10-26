@@ -100,7 +100,7 @@ func TestHandedOverClusterIsNotReplanned(t *testing.T) {
 		t.Errorf("the plan should say so:\n%s", Render(p))
 	}
 	h := HandoverScript(p, "flux", ".")
-	if !strings.Contains(h, `[ "$cluster" != 'dev' ] || { echo "dev is handed over already`) {
+	if !strings.Contains(h, `if [ "$cluster" = 'dev' ]; then`) || !strings.Contains(h, `echo "dev is handed over already`) {
 		t.Error("handover.sh should stop for a cluster already handed over")
 	}
 }
