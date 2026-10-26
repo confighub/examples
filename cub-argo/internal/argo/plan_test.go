@@ -44,6 +44,9 @@ func TestExpertAppOfAppsGolden(t *testing.T) {
 	opts := staged
 	opts.RepoRoot = repoRoot(t)
 	p := planOf(t, example, opts)
+	// What git ignores depends on the checkout, such as the var/ the example's
+	// setup.sh renders into. The golden is the committed estate.
+	p.Inputs.Ignored = nil
 	got := Render(p)
 	golden := filepath.Join("..", "..", "testdata", "expert-app-of-apps.plan.txt")
 	if *update {
@@ -102,11 +105,14 @@ func TestExpertAppOfAppsAnswers(t *testing.T) {
 }
 
 // copyExample copies the example into a fresh checkout at the same repository
-// path, so Applications' source paths resolve the same way.
+// path, so Applications' source paths resolve the same way. Files git ignores,
+// such as the var/ the example's setup.sh renders into, are not part of a
+// checkout, so they are not copied.
 func copyExample(t *testing.T) (root, dir string) {
 	t.Helper()
 	root = t.TempDir()
 	dir = filepath.Join(root, "gitops", "argo", "expert-app-of-apps")
+	ignored := gitIgnored(example)
 	err := filepath.WalkDir(example, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -115,6 +121,9 @@ func copyExample(t *testing.T) (root, dir string) {
 		dst := filepath.Join(dir, rel)
 		if d.IsDir() {
 			return os.MkdirAll(dst, 0o755)
+		}
+		if ignored[filepath.ToSlash(rel)] {
+			return nil
 		}
 		data, err := os.ReadFile(p)
 		if err != nil {
