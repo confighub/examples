@@ -15,9 +15,14 @@ import (
 // script is safe to re-run.
 //
 // Targets are plain OCI, as Sveltos's are: ConfigHub publishes a release and
-// the controller pulls it. The ArgoCDOCI provider is the other direction, a
-// worker writing Applications into the cluster, which the handover here does
-// not use.
+// the controller pulls it. The ArgoCDOCI provider is the other direction,
+// ConfigHub writing Applications into the cluster, which the handover here
+// does not use.
+
+// deliveryAccount is the service account an estate delivers as: Argo CD pulls
+// its Releases with a token of it, and argobot runs as it. It holds grants on
+// the estate's Targets and no role in the organization.
+func deliveryAccount(prefix string) string { return prefix + "-delivery" }
 
 // q quotes a string for bash single quotes.
 func q(s string) string { return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'" }
@@ -140,6 +145,7 @@ func stageNames(c *Component) string {
 // handover.sh is what moves the estate onto it.
 func ApplyScript(p *Plan, prefix, repoRel string) string {
 	targets := prefix + "-targets"
+	account := deliveryAccount(prefix)
 	var L []string
 	add := func(f string, a ...any) { L = append(L, fmt.Sprintf(f, a...)) }
 
@@ -154,7 +160,7 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 	add("# ConfigHub ends up holding a parallel copy that nothing reads. handover.sh")
 	add("# is what moves the estate onto it; until you run that, nothing on any")
 	add("# cluster reads what this creates, and cleanup.sh beside this script takes")
-	add("# it all back out. ConfigHub refuses a Space while a Target, a worker, a")
+	add("# it all back out. ConfigHub refuses a Space while a Target, a Channel, a")
 	add("# Release or a Tag still points at it, so the order matters and that")
 	add("# script has it.")
 	add("#")
@@ -264,17 +270,19 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 
 	add(`step "1/5 One named Target per cluster, in %s"`, targets)
 	add("cub space create %s --allow-exists --quiet", targets)
-	add("# A server-hosted worker has no process behind it and no role in the")
-	add("# organization; it is the credential Argo reads with. Its bot user holds View")
-	add("# and ViewChildren on each Target, to find it and pull its Releases, and")
-	add("# EditChildren, which is what lets argobot record each Release's live status.")
-	add("cub worker create --space %s server-worker --is-server-worker --org-role none --allow-exists --quiet", targets)
-	add(`bot_user="$(cub worker get --space %s server-worker -o jq=.BridgeWorker.UserID | tr -d '\n')"`, targets)
+	add("# A service account with no role in the organization; Argo CD pulls with a")
+	add("# token of it, and argobot runs as it. It holds View and ViewChildren on each")
+	add("# Target, to find it and pull its Releases, and EditChildren, which is what")
+	add("# lets argobot record each Release's live status.")
+	add("cub serviceaccount create %s --allow-exists --quiet", account)
+	grants := fmt.Sprintf("--permission View:serviceaccount:%[1]s --permission ViewChildren:serviceaccount:%[1]s --permission EditChildren:serviceaccount:%[1]s", account)
 	add("# The cluster Argo CD itself runs on: the control objects are released here.")
-	add(`cub target create argocd --space %s --permission "View:${bot_user}" --permission "ViewChildren:${bot_user}" --permission "EditChildren:${bot_user}" --allow-exists --quiet`, targets)
+	add(`cub target create argocd --space %s --allow-exists --quiet`, targets)
 	for _, c := range p.targetClusters() {
-		add(`cub target create %s --space %s --permission "View:${bot_user}" --permission "ViewChildren:${bot_user}" --permission "EditChildren:${bot_user}" --allow-exists --quiet`, c, targets)
+		add(`cub target create %s --space %s --allow-exists --quiet`, c, targets)
 	}
+	add("# The grants, as an update so that a Target that already exists gets them too.")
+	add(`for t in %s; do cub target update "$t" --space %s %s --quiet; done`, strings.Join(append([]string{"argocd"}, p.targetClusters()...), " "), targets, grants)
 	add("")
 
 	// The control layers: one Space per app of apps, holding its children byte
@@ -306,7 +314,10 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 			add(`cub release publish %s --quiet 2>&1 | grep -v 'no changes were made' || true`, s.Space)
 		}
 		// cub variant create adds an Application for a new variant when its
-		// Target names the Space a root reads. The Application it writes
+		// Target names the Space a root reads: confighub.com/apps-space, with
+		// confighub.com/cluster-controller argo on the same Target. ConfigHub
+		// v0.8.35 replaced the per-controller confighub.com/argo-apps-space
+		// with these two (confighubai/confighub#5918) and no longer reads it. The Application it writes
 		// deploys to the cluster Argo CD runs on, so only that cluster's
 		// Target is marked; a variant for another cluster gets its Application
 		// from move-applications.sh, which keeps its destination.
@@ -320,7 +331,7 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 			if name == "in-cluster" || server[name] == localServer {
 				add("# A variant made later for %s, Argo CD's own cluster, gets its Application", name)
 				add("# in %s, which %s reads, from cub variant create itself.", cs[0].Space, cs[0].Parent)
-				add(`echo '{"Annotations":{"confighub.com/argo-apps-space":"%s"}}' | cub target update --patch --space %s %s --from-stdin --quiet`, cs[0].Space, targets, name)
+				add(`echo '{"Annotations":{"confighub.com/cluster-controller":"argo","confighub.com/apps-space":"%s"}}' | cub target update --patch --space %s %s --from-stdin --quiet`, cs[0].Space, targets, name)
 			}
 		}
 		add("")

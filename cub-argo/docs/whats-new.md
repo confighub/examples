@@ -3,6 +3,60 @@
 Each release is tagged `cub-argo-v<version>` in confighub/examples and installs
 with `cub plugin install confighub/examples@cub-argo-v<version> --name argo`.
 
+## 0.4.1, unreleased
+
+- **A re-run keeps the token, and revokes the ones it replaced.** 0.4.0's
+  `handover.sh` issued a new token each run and left the earlier ones valid.
+  It now records the token's id on the repo-creds Secret, as the annotation
+  `confighub.com/token-jti`, and keeps the token while ConfigHub lists it as
+  live. Otherwise it issues one and, once the Secret holds it, revokes the
+  estate's other tokens, the ones with the description
+  `Argo CD, <prefix> estate`. Run on an estate 0.4.0 handed over, it issues one
+  token and revokes the tokens 0.4.0 issued.
+- **Credentials are no longer copied into an annotation.** The repo-creds
+  Secret and argobot's Secret were written with `kubectl apply`, which keeps a
+  copy of what it applies, token or private key included, in the Secret's
+  `kubectl.kubernetes.io/last-applied-configuration` annotation. Both are now
+  written with `kubectl create`, or `kubectl replace` when they exist, which
+  also drops a copy 0.4.0 left. The token reaches the Secret through a file
+  descriptor, not a heredoc, which bash before 5.1 writes to a temporary file.
+- **argobot keeps a key ConfigHub lists, and replaces one it does not.**
+  `argobot.sh` records the key's id on the Secret, as `confighub.com/key-id`.
+  A run keeps the key while ConfigHub lists that id. Otherwise, as after the
+  service account was deleted and made again, or for a Secret 0.4.0 wrote,
+  it adds a key, removes argobot's earlier keys on that context, and restarts
+  argobot to read it.
+- Checked on 2026-10-26 on a kind cluster against ConfigHub v0.9.5, from
+  Secrets written as 0.4.0 writes them:
+  - the first run left each Secret with only its own annotation, and revoked
+    the two earlier tokens and the earlier key;
+  - a second run kept the token and the key;
+  - after the service account was made again, the run replaced both.
+
+## 0.4.0, 2026-10-26
+
+- **A service account replaces the server worker.** ConfigHub is removing
+  workers. `apply.sh` creates the service account `<prefix>-delivery`, with no
+  organization role, and grants it `View`, `ViewChildren` and `EditChildren` on
+  each Target, also on a Target an earlier `apply.sh` made. `handover.sh`
+  issues a token of it with `cub serviceaccount token create` and writes the
+  repo-creds Secret with the username `token` and the token as password.
+  `argobot.sh` installs argobot v0.2.3, which runs as that service account with
+  a key in its Secret and listens on the Channel `<prefix>-targets/argobot`,
+  which the script creates; it refuses an `ARGOBOT_VERSION` before 0.2.
+  `cleanup.sh` deletes the service account, which revokes its tokens and keys.
+  An estate onboarded with an earlier version moves over by running `apply.sh`
+  again, setting the repo-creds Secret `confighub-<prefix>-targets` to the
+  username `token` and a token from
+  `cub serviceaccount token create <prefix>-delivery`, and running `argobot.sh`
+  again. After that nothing uses the worker.
+- **`cub variant create` adds an Application again.** `apply.sh` marks the
+  Target of Argo CD's own cluster with `confighub.com/cluster-controller: argo`
+  and `confighub.com/apps-space`, the keys ConfigHub reads since v0.8.35
+  (confighubai/confighub#5918). It used to write `confighub.com/argo-apps-space`,
+  which ConfigHub no longer reads, so a variant made later got no Application.
+  An estate onboarded earlier moves over by running `apply.sh` again.
+
 ## 0.3.3, 2026-10-25
 
 - **The first release works on ConfigHub v0.9.** `apply.sh` stopped at the

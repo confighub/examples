@@ -30,6 +30,7 @@ func JoinScript(p *Plan, prefix string) string {
 	add(`ctx=${FLUX_CONTEXT:-$(kubectl config current-context 2>/dev/null || true)}`)
 	add(`[ -n "$ctx" ] || { echo "no kubectl context: set FLUX_CONTEXT to the cluster joining"; exit 1; }`)
 	add(`k() { kubectl --context "$ctx" "$@"; }`)
+	L = append(L, credentialHelpers()...)
 	add(`ns=${FLUX_NAMESPACE:-flux-system}`)
 	add(`cluster=${CLUSTER:-}`)
 	add(`case "$cluster" in %s) ;; *) echo "set CLUSTER=<one of: %s>"; exit 1 ;; esac`,
@@ -63,11 +64,7 @@ func JoinScript(p *Plan, prefix string) string {
 	add("")
 
 	add(`step "2/3 The credential and the root"`)
-	add(`k create secret docker-registry confighub-%s --namespace "$ns" \`, targets)
-	add(`  --docker-server="$addr" \`)
-	add(`  --docker-username="$(cub worker get --space %s server-worker -o jq=.BridgeWorker.BridgeWorkerID | tr -d '\"\n')" \`, targets)
-	add(`  --docker-password="$(cub worker get --space %s server-worker --include-secret -o jq=.BridgeWorker.Secret | tr -d '\"\n')" \`, targets)
-	add(`  --dry-run=client -o yaml | k apply -f -`)
+	L = append(L, pullSecretLines(prefix, targets)...)
 	L = append(L, rootLines(prefix)...)
 	add(`layers_still_current`)
 	add(`k apply -f "bootstrap/$cluster/%s.yaml"`, RootName)
@@ -118,6 +115,47 @@ func rootLines(prefix string) []string {
 		fmt.Sprintf(`cat <<'YAML' | sed -e "s|%s|$addr|" -e "s|%s|$insecure|" -e "s|%s|$ns|" -e "s|__CLUSTER__|$cluster|" > "bootstrap/$cluster/%s.yaml"`, gatewayMarker, insecureMarker, namespaceMarker, RootName),
 		strings.TrimRight(RootManifests(prefix, "__CLUSTER__"), "\n"),
 		"YAML",
+	}
+}
+
+// pullSecretLines write the Secret Flux pulls from the gateway with, in the
+// cluster being handed over or joined: a token of the fleet's service account,
+// the username being the word token. A dockerconfigjson Secret, which is what
+// an OCIRepository reads. A token the Secret holds is kept while ConfigHub
+// lists it as live; otherwise a new one is issued, and the cluster's earlier
+// ones are revoked once the Secret holds it. The Secret is written with create
+// or replace, not apply, which would keep a copy of the token in an
+// annotation, and the token reaches it through a file descriptor, on no
+// command line.
+func pullSecretLines(prefix, targets string) []string {
+	account := deliveryAccount(prefix)
+	secret := "confighub-" + targets
+	return []string{
+		fmt.Sprintf("# A token of %s the Secret already holds is kept while ConfigHub lists it", account),
+		"# as live; otherwise a new one is issued, and this cluster's others are",
+		"# revoked once the Secret holds it. The token goes from cub into the Secret",
+		"# through variables and a file descriptor, never to disk or a command line.",
+		`token_desc="Flux, cluster $cluster"`,
+		fmt.Sprintf(`held_jti=$(k -n "$ns" get secret %s -o jsonpath='{.metadata.annotations.confighub\.com/token-jti}' 2>/dev/null || true)`, secret),
+		`token=""; jti=""`,
+		fmt.Sprintf(`if [ -n "$held_jti" ] && live_tokens %s "$token_desc" | grep -xF "$held_jti" >/dev/null; then`, account),
+		fmt.Sprintf(`  token=$(k -n "$ns" get secret %s -o jsonpath='{.data.\.dockerconfigjson}' | base64 --decode | sed -n 's/.*"password":"\([^"]*\)".*/\1/p') || token=""`, secret),
+		fmt.Sprintf(`  [ -z "$token" ] || { jti=$held_jti; echo "the pull Secret's token of %s is live: kept"; }`, account),
+		`fi`,
+		`if [ -z "$token" ]; then`,
+		fmt.Sprintf(`  issued=$(cub serviceaccount token create %s --description "$token_desc" -o jq='.UserToken.Jti + " " + .Token' | tr -d '"\n') || issued=""`, account),
+		`  jti=${issued%% *}; token=${issued#* }`,
+		fmt.Sprintf(`  [ -n "$jti" ] && [ -n "$token" ] && [ "$jti" != "$token" ] || { echo "could not issue a token for %s"; exit 1; }`, account),
+		`fi`,
+		`auth=$(printf 'token:%s' "$token" | base64 | tr -d '\n')`,
+		fmt.Sprintf(`k -n "$ns" create secret generic %s --type=kubernetes.io/dockerconfigjson \`, secret),
+		`  --from-file=.dockerconfigjson=<(printf '{"auths":{"%s":{"username":"token","password":"%s","auth":"%s"}}}' "$addr" "$token" "$auth") \`,
+		fmt.Sprintf(`  --dry-run=client -o yaml | k annotate --local -f - confighub.com/token-jti="$jti" -o yaml | write_secret "$ns" %s`, secret),
+		`unset token issued auth`,
+		fmt.Sprintf(`live_tokens %s "$token_desc" | { while read -r old; do`, account),
+		`  [ "$old" != "$jti" ] || continue`,
+		fmt.Sprintf(`  cub serviceaccount token revoke %[1]s "$old" --quiet && echo "revoked an earlier token of %[1]s" || echo "could not revoke an earlier token of %[1]s: cub serviceaccount token revoke %[1]s $old"`, account),
+		fmt.Sprintf(`done; } || echo "could not list the tokens of %s, so earlier ones are not revoked"`, account),
 	}
 }
 

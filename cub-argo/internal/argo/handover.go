@@ -12,6 +12,7 @@ import (
 // syncing an empty source, and it prunes what it applied.
 func HandoverScript(p *Plan, prefix, repoRel string) string {
 	targets := prefix + "-targets"
+	account := deliveryAccount(prefix)
 	var L []string
 	add := func(f string, a ...any) { L = append(L, fmt.Sprintf(f, a...)) }
 
@@ -41,6 +42,7 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add(`[ -n "$ctx" ] || { echo "no kubectl context: set ARGOCD_CONTEXT to the cluster Argo CD runs on"; exit 1; }`)
 	add(`echo "every kubectl call below uses context $ctx"`)
 	add(`k() { kubectl --context "$ctx" "$@"; }`)
+	L = append(L, credentialHelpers()...)
 	// show prints a kubectl command for a person to run later, naming the
 	// context and namespace this run used rather than leaving them to whatever
 	// is current when it is pasted.
@@ -269,9 +271,10 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("")
 
 	add(`step "1/%d The credential Argo reads the gateway with"`, total)
-	add("# A repository Secret for the gateway, holding the server worker the Targets grant access to.")
-	add("# The ID and secret go from cub into the Secret through file descriptors,")
-	add("# never to disk, the command line, or the terminal.")
+	add("# A repository Secret for the gateway, holding a token of %s, the service", account)
+	add("# account the Targets grant access to. The token goes from cub into the Secret")
+	add("# through a variable and a heredoc, never to disk, the command line, or the")
+	add("# terminal.")
 	add(`addr=${CONFIGHUB_OCI:-}`)
 	add("# The address is asked for as oci://<host>, and every use below writes the")
 	add("# scheme itself, so take it off here: left on, each URL would carry it twice.")
@@ -293,22 +296,22 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	// The prefix is this plan's Spaces, oci://<gateway>/space/<prefix>-, not
 	// the whole gateway. Measured: two estates onboarded on one gateway each
 	// wrote a repo-creds Secret for oci://<gateway>; Argo picked the stale
-	// one, whose worker cleanup.sh had deleted, and the repointed root failed
+	// one, whose credential cleanup.sh had deleted, and the repointed root failed
 	// with 401 Unauthorized. Argo takes the longest matching prefix, so a
 	// credential scoped to its own Spaces is the one used for them.
 	add("# The repository Secret's shape was verified against Argo CD v3.5.3:")
-	add("#   type: oci, url with the oci:// scheme, the worker as username and")
-	add("#   password. The Application's repoURL needs the scheme too — without it")
-	add("#   Argo treats the address as a git repository and fails on \"list refs\".")
+	add("#   type: oci, url with the oci:// scheme, a username and password. The")
+	add("#   username is the word token and the password the token. The Application's")
+	add("#   repoURL needs the scheme too — without it Argo treats the address as a git")
+	add("#   repository and fails on \"list refs\".")
 	add("# insecureOCIForceHttp is only for a gateway served over plain HTTP.")
-	// Not ${VAR:+  insecureOCIForceHttp: "true"} inline below: the alternate
-	// word goes through quote removal, so the quotes are gone by the time the
-	// heredoc sees it and the API server rejects the Secret with
-	//   cannot unmarshal bool into Go struct field Secret.stringData
-	// A variable's value is not re-quoted, so this form keeps them.
+	// The Secret is built with kubectl create secret generic, so every value,
+	// insecureOCIForceHttp's "true" included, is a string, which is what Argo
+	// reads. A heredoc would also put the token in a temporary file under
+	// bash before 5.1, macOS's among them.
 	add(`creds_url="oci://${addr}/space/%s-"`, prefix)
 	add("# Another repo-creds Secret for this same prefix, or a longer one, would be")
-	add("# the one Argo uses for these Spaces, and it holds another worker. A read")
+	add("# the one Argo uses for these Spaces, and it holds another credential. A read")
 	add("# that fails stops here: a check that cannot run has not passed.")
 	add(`creds=$(k -n "$ns" get secrets -l argocd.argoproj.io/secret-type=repo-creds -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.data.url}{"\n"}{end}') || { echo "could not read the repo-creds Secrets in $ns"; exit 1; }`)
 	add(`while read -r other url64; do`)
@@ -319,23 +322,34 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add(`    echo "Remove it if it is left from an earlier onboarding: kubectl --context $ctx -n $ns delete secret $other"; exit 1 ;;`)
 	add(`  esac`)
 	add(`done <<< "$creds"`)
-	add(`plain_http=""`)
-	add(`[ -n "${CONFIGHUB_OCI_PLAIN_HTTP:-}" ] && plain_http='  insecureOCIForceHttp: "true"'`)
-	add(`cat <<YAML | k apply -f -`)
-	add("apiVersion: v1")
-	add("kind: Secret")
-	add("metadata:")
-	add("  name: confighub-%s", targets)
-	add(`  namespace: ${ns}`)
-	add("  labels:")
-	add("    argocd.argoproj.io/secret-type: repo-creds")
-	add("stringData:")
-	add("  type: oci")
-	add(`  url: ${creds_url}`)
-	add(`  username: "$(cub worker get --space %s server-worker -o jq=.BridgeWorker.BridgeWorkerID | tr -d '\n')"`, targets)
-	add(`  password: "$(cub worker get --space %s server-worker --include-secret -o jq=.BridgeWorker.Secret | tr -d '\n')"`, targets)
-	add(`${plain_http}`)
-	add("YAML")
+	add("# Argo CD reads the gateway with a token of %s. A token the Secret", account)
+	add("# already holds is kept while ConfigHub lists it as live; otherwise a new")
+	add("# one is issued, and the others issued for this estate are revoked once the")
+	add("# Secret holds it. The token goes from cub into the Secret through variables")
+	add("# and a file descriptor, never to disk or a command line.")
+	add(`token_desc=%s`, q("Argo CD, "+prefix+" estate"))
+	add(`held_jti=$(k -n "$ns" get secret confighub-%s -o jsonpath='{.metadata.annotations.confighub\.com/token-jti}' 2>/dev/null || true)`, targets)
+	add(`token=""; jti=""`)
+	add(`if [ -n "$held_jti" ] && live_tokens %s "$token_desc" | grep -xF "$held_jti" >/dev/null; then`, account)
+	add(`  token=$(k -n "$ns" get secret confighub-%s -o jsonpath='{.data.password}' | base64 --decode)`, targets)
+	add(`  jti=$held_jti`)
+	add(`  echo "the repo-creds Secret's token of %s is live: kept"`, account)
+	add("fi")
+	add(`if [ -z "$token" ]; then`)
+	add(`  issued=$(cub serviceaccount token create %s --description "$token_desc" -o jq='.UserToken.Jti + " " + .Token' | tr -d '"\n') || issued=""`, account)
+	add(`  jti=${issued%%%% *}; token=${issued#* }`)
+	add(`  [ -n "$jti" ] && [ -n "$token" ] && [ "$jti" != "$token" ] || { echo "could not issue a token for %s"; exit 1; }`, account)
+	add("fi")
+	add(`insecure=""; [ -z "${CONFIGHUB_OCI_PLAIN_HTTP:-}" ] || insecure=--from-literal=insecureOCIForceHttp=true`)
+	add(`k -n "$ns" create secret generic confighub-%s --from-literal=type=oci --from-literal=url="$creds_url" --from-literal=username=token \`, targets)
+	add(`  --from-file=password=<(printf '%%s' "$token") ${insecure:+"$insecure"} --dry-run=client -o yaml \`)
+	add(`  | k label --local -f - argocd.argoproj.io/secret-type=repo-creds -o yaml \`)
+	add(`  | k annotate --local -f - confighub.com/token-jti="$jti" -o yaml | write_secret "$ns" confighub-%s`, targets)
+	add(`unset token issued`)
+	add(`live_tokens %[1]s "$token_desc" | { while read -r old; do`, account)
+	add(`  [ "$old" != "$jti" ] || continue`)
+	add(`  cub serviceaccount token revoke %[1]s "$old" --quiet && echo "revoked an earlier token of %[1]s" || echo "could not revoke an earlier token of %[1]s: cub serviceaccount token revoke %[1]s $old"`, account)
+	add(`done; } || echo "could not list the tokens of %s, so earlier ones are not revoked"`, account)
 	add("")
 
 	cs := p.controlSpaces(prefix)
@@ -642,7 +656,7 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("echo %s", q("was still serving the previous release 90 seconds later. A hard refresh re-resolves"))
 	add("echo %s", q("the tag to a digest and the release lands:"))
 	show("annotate application <name> argocd.argoproj.io/refresh=hard --overwrite")
-	add("echo %s", q("argobot does this for you: argobot.sh runs it beside Argo CD with the Targets' worker,"))
+	add("echo %s", q("argobot does this for you: argobot.sh runs it beside Argo CD as the Targets' service account,"))
 	add("echo %s", q("so it refreshes each Application reading a Space when that Space publishes, and records"))
 	add("echo %s", q("each Application's live status on the release it synced. Without argobot, keep this running"))
 	add("echo %s", q("beside the cluster instead: it asks for that refresh once per release, and records the"))

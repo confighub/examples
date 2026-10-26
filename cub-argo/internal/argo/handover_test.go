@@ -16,6 +16,8 @@ const argoStubKubectl = `#!/usr/bin/env bash
 echo "$*" >> "$STUB_LOG"
 a=" $* "
 case "$a" in
+  *" get secret confighub-"*"token-jti"*) echo "${HELD_JTI:-}" ;;
+  *" get secret confighub-"*"data.password"*) printf 's3cr3t-held' | base64 ;;
   *" config current-context "*) echo ctx-current ;;
   *" get deployment argocd-repo-server "*) echo "quay.io/argoproj/argocd:v3.5.3" ;;
   *" get appproject "*) echo '["https://github.com/confighub/examples","oci://gw.example:5000/**"]' ;;
@@ -33,7 +35,8 @@ case "$a" in
   *" get application "*"spec.source.repoURL"*) echo "https://github.com/confighub/examples" ;;
   *" get application "*"status.sync.status"*) echo Synced ;;
   *" get application "*"status.sync.revision"*) echo sha256:root ;;
-  *" apply -f - "*) cat >/dev/null ;;
+  *" apply -f - "*|*" replace -f - "*|*" create -f - "*) cat >/dev/null ;;
+  *" --local "*) cat ;;
 esac
 exit 0
 `
@@ -43,7 +46,8 @@ echo "cub $*" >> "$STUB_LOG"
 case " $* " in
   *" release get "*) echo '"sha256:root"' ;;
   *" unit data "*) echo "kind: Same" ;;
-  *" worker get "*) echo 'id' ;;
+  *" token create "*) echo '"jti-new s3cr3t-new"' ;;
+  *" token list "*) for j in ${LIVE_JTIS:-}; do echo "$j Argo CD, argo estate"; done; echo "j-other Flux, cluster dev" ;;
   *" argo check "*) exit 0 ;;
 esac
 exit 0

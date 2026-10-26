@@ -62,6 +62,7 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add(`ctx=${FLUX_CONTEXT:-$(kubectl config current-context 2>/dev/null || true)}`)
 	add(`[ -n "$ctx" ] || { echo "no kubectl context: set FLUX_CONTEXT to the cluster to hand over"; exit 1; }`)
 	add(`k() { kubectl --context "$ctx" "$@"; }`)
+	L = append(L, credentialHelpers()...)
 	add(`step() { printf '\n== %%s\n' "$*"; }`)
 	add(`ns=${FLUX_NAMESPACE:-flux-system}`)
 	add(`cluster=${CLUSTER:-}`)
@@ -286,13 +287,7 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	// while the very same credentials work by hand. The error names the
 	// registry, so it reads like a bad password rather than a wrong Secret
 	// shape, which is what makes this worth a comment.
-	add("# The ID and secret go from cub into the Secret through command substitution")
-	add("# and are never written to disk. --dry-run | apply keeps this re-runnable.")
-	add(`k create secret docker-registry confighub-%s --namespace "$ns" \`, targets)
-	add(`  --docker-server="$addr" \`)
-	add(`  --docker-username="$(cub worker get --space %s server-worker -o jq=.BridgeWorker.BridgeWorkerID | tr -d '\"\n')" \`, targets)
-	add(`  --docker-password="$(cub worker get --space %s server-worker --include-secret -o jq=.BridgeWorker.Secret | tr -d '\"\n')" \`, targets)
-	add(`  --dry-run=client -o yaml | k apply -f -`)
+	L = append(L, pullSecretLines(prefix, targets)...)
 	add("")
 	add("# The root: one source and one Kustomization, reading this cluster's layers")
 	add("# Space, which apply.sh filled and released. It is all this cluster needs")

@@ -33,7 +33,7 @@ a Space per cluster, and one root that reads it.
 ## Install
 
 ```bash
-cub plugin install confighub/examples@cub-flux-v0.4.0 --name flux
+cub plugin install confighub/examples@cub-flux-v0.5.0 --name flux
 cub plugin list                  # flux should be listed, status ok
 cub flux plan <your fleet repository>
 ```
@@ -42,7 +42,7 @@ cub flux plan <your fleet repository>
 command on your own estate. Already on an earlier release?
 
 ```bash
-cub plugin upgrade flux@cub-flux-v0.4.0
+cub plugin upgrade flux@cub-flux-v0.5.0
 ```
 
 Needs `cub` v0.7.0 or newer; live status needs ConfigHub v0.8.2 or newer.
