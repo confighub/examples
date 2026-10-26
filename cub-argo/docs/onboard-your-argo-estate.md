@@ -424,6 +424,13 @@ stringData:
   insecureOCIForceHttp: "true"
 ```
 
+A re-run keeps the token while ConfigHub lists it as live: the Secret records
+its id as the annotation `confighub.com/token-jti`. Otherwise `handover.sh`
+issues a new one and then revokes the estate's earlier ones. It writes the
+Secret with `kubectl create`, or `kubectl replace` when it exists, never
+`kubectl apply`, which would keep a copy of the token in the Secret's
+`last-applied-configuration` annotation.
+
 **Nothing is deleted, and no finalizer is touched.** `root` and `storefront`
 carry `resources-finalizer.argocd.argoproj.io`, which deletes everything they
 deployed, and so does every Application an ApplicationSet generated, whether

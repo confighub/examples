@@ -3,6 +3,39 @@
 Each release is tagged `cub-flux-v<version>` in confighub/examples and installs
 with `cub plugin install confighub/examples@cub-flux-v<version> --name flux`.
 
+## 0.5.1, unreleased
+
+- **A re-run keeps the pull token, and revokes the ones it replaced.** 0.5.0's
+  `handover.sh` and `join.sh` issued a new token each run and left the earlier
+  ones valid. They now record the token's id on the pull Secret, as the
+  annotation `confighub.com/token-jti`, and keep the token while ConfigHub
+  lists it as live. Otherwise they issue one and, once the Secret holds it,
+  revoke that cluster's other tokens, the ones with the description
+  `Flux, cluster <cluster>`. Other clusters' tokens are left alone.
+- **Credentials are no longer copied into an annotation, or onto a command
+  line.** The pull Secret and fluxbot's Secret were written with
+  `kubectl apply`, which keeps a copy of what it applies, token or private key
+  included, in the Secret's `kubectl.kubernetes.io/last-applied-configuration`
+  annotation. Both are now written with `kubectl create`, or `kubectl replace`
+  when they exist, which also drops a copy 0.5.0 left. The pull Secret is the
+  same `kubernetes.io/dockerconfigjson` Secret, built from a file descriptor
+  rather than `--docker-password`, so the token is on no command line.
+- **fluxbot keeps a key ConfigHub lists, and replaces one it does not.**
+  `fluxbot.sh` records the key's id on the Secret, as `confighub.com/key-id`.
+  A run keeps the key while ConfigHub lists that id. Otherwise, as after the
+  service account was deleted and made again, or for a Secret 0.5.0 wrote,
+  it adds a key and removes fluxbot's earlier keys on that cluster. The pod
+  restarts, because what it was made from changed.
+- Checked on 2026-10-26 on a kind cluster against ConfigHub v0.9.5, from
+  Secrets written as 0.5.0 writes them:
+  - the first run left each Secret with only its own annotation, and revoked
+    the two earlier tokens and the earlier key, but not another cluster's
+    token;
+  - the pull Secret matched what `kubectl create secret docker-registry`
+    writes;
+  - a second run kept the token and the key;
+  - after the service account was made again, the run replaced both.
+
 ## 0.5.0, 2026-10-26
 
 Built with ConfigHub SDK v0.9.4.
@@ -30,7 +63,8 @@ again, pointing each cluster's pull Secret at a token
 (`cub serviceaccount token create <prefix>-delivery`, then
 `kubectl -n flux-system create secret docker-registry confighub-<prefix>-targets
 --docker-server=<gateway> --docker-username=token --docker-password=<token>
---dry-run=client -o yaml | kubectl apply -f -`), and running `fluxbot.sh`
+--dry-run=client -o yaml | kubectl replace -f -`; `replace`, not `apply`, so
+no copy of the token is kept in an annotation), and running `fluxbot.sh`
 again where it runs. After that nothing uses the worker.
 
 ## 0.4.1, 2026-10-25

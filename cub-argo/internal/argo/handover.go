@@ -42,6 +42,7 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add(`[ -n "$ctx" ] || { echo "no kubectl context: set ARGOCD_CONTEXT to the cluster Argo CD runs on"; exit 1; }`)
 	add(`echo "every kubectl call below uses context $ctx"`)
 	add(`k() { kubectl --context "$ctx" "$@"; }`)
+	L = append(L, credentialHelpers()...)
 	// show prints a kubectl command for a person to run later, naming the
 	// context and namespace this run used rather than leaving them to whatever
 	// is current when it is pasted.
@@ -304,11 +305,10 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("#   repoURL needs the scheme too — without it Argo treats the address as a git")
 	add("#   repository and fails on \"list refs\".")
 	add("# insecureOCIForceHttp is only for a gateway served over plain HTTP.")
-	// Not ${VAR:+  insecureOCIForceHttp: "true"} inline below: the alternate
-	// word goes through quote removal, so the quotes are gone by the time the
-	// heredoc sees it and the API server rejects the Secret with
-	//   cannot unmarshal bool into Go struct field Secret.stringData
-	// A variable's value is not re-quoted, so this form keeps them.
+	// The Secret is built with kubectl create secret generic, so every value,
+	// insecureOCIForceHttp's "true" included, is a string, which is what Argo
+	// reads. A heredoc would also put the token in a temporary file under
+	// bash before 5.1, macOS's among them.
 	add(`creds_url="oci://${addr}/space/%s-"`, prefix)
 	add("# Another repo-creds Secret for this same prefix, or a longer one, would be")
 	add("# the one Argo uses for these Spaces, and it holds another credential. A read")
@@ -322,27 +322,34 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add(`    echo "Remove it if it is left from an earlier onboarding: kubectl --context $ctx -n $ns delete secret $other"; exit 1 ;;`)
 	add(`  esac`)
 	add(`done <<< "$creds"`)
-	add(`plain_http=""`)
-	add(`[ -n "${CONFIGHUB_OCI_PLAIN_HTTP:-}" ] && plain_http='  insecureOCIForceHttp: "true"'`)
-	add("# A new token each run; the one an earlier run wrote stays valid until revoked:")
-	add("# cub serviceaccount token list %s shows each one and when it was last used.", account)
-	add(`token=$(cub serviceaccount token create %s --description "Argo CD, %s estate" -o jq=.Token | tr -d '"\n')`, account, prefix)
-	add(`[ -n "$token" ] && [ "$token" != null ] || { echo "could not issue a token for %s"; exit 1; }`, account)
-	add(`cat <<YAML | k apply -f -`)
-	add("apiVersion: v1")
-	add("kind: Secret")
-	add("metadata:")
-	add("  name: confighub-%s", targets)
-	add(`  namespace: ${ns}`)
-	add("  labels:")
-	add("    argocd.argoproj.io/secret-type: repo-creds")
-	add("stringData:")
-	add("  type: oci")
-	add(`  url: ${creds_url}`)
-	add("  username: token")
-	add(`  password: "${token}"`)
-	add(`${plain_http}`)
-	add("YAML")
+	add("# Argo CD reads the gateway with a token of %s. A token the Secret", account)
+	add("# already holds is kept while ConfigHub lists it as live; otherwise a new")
+	add("# one is issued, and the others issued for this estate are revoked once the")
+	add("# Secret holds it. The token goes from cub into the Secret through variables")
+	add("# and a file descriptor, never to disk or a command line.")
+	add(`token_desc=%s`, q("Argo CD, "+prefix+" estate"))
+	add(`held_jti=$(k -n "$ns" get secret confighub-%s -o jsonpath='{.metadata.annotations.confighub\.com/token-jti}' 2>/dev/null || true)`, targets)
+	add(`token=""; jti=""`)
+	add(`if [ -n "$held_jti" ] && live_tokens %s "$token_desc" | grep -xF "$held_jti" >/dev/null; then`, account)
+	add(`  token=$(k -n "$ns" get secret confighub-%s -o jsonpath='{.data.password}' | base64 --decode)`, targets)
+	add(`  jti=$held_jti`)
+	add(`  echo "the repo-creds Secret's token of %s is live: kept"`, account)
+	add("fi")
+	add(`if [ -z "$token" ]; then`)
+	add(`  issued=$(cub serviceaccount token create %s --description "$token_desc" -o jq='.UserToken.Jti + " " + .Token' | tr -d '"\n') || issued=""`, account)
+	add(`  jti=${issued%%%% *}; token=${issued#* }`)
+	add(`  [ -n "$jti" ] && [ -n "$token" ] && [ "$jti" != "$token" ] || { echo "could not issue a token for %s"; exit 1; }`, account)
+	add("fi")
+	add(`insecure=""; [ -z "${CONFIGHUB_OCI_PLAIN_HTTP:-}" ] || insecure=--from-literal=insecureOCIForceHttp=true`)
+	add(`k -n "$ns" create secret generic confighub-%s --from-literal=type=oci --from-literal=url="$creds_url" --from-literal=username=token \`, targets)
+	add(`  --from-file=password=<(printf '%%s' "$token") ${insecure:+"$insecure"} --dry-run=client -o yaml \`)
+	add(`  | k label --local -f - argocd.argoproj.io/secret-type=repo-creds -o yaml \`)
+	add(`  | k annotate --local -f - confighub.com/token-jti="$jti" -o yaml | write_secret "$ns" confighub-%s`, targets)
+	add(`unset token issued`)
+	add(`live_tokens %[1]s "$token_desc" | { while read -r old; do`, account)
+	add(`  [ "$old" != "$jti" ] || continue`)
+	add(`  cub serviceaccount token revoke %[1]s "$old" --quiet && echo "revoked an earlier token of %[1]s" || echo "could not revoke an earlier token of %[1]s: cub serviceaccount token revoke %[1]s $old"`, account)
+	add(`done; } || echo "could not list the tokens of %s, so earlier ones are not revoked"`, account)
 	add("")
 
 	cs := p.controlSpaces(prefix)

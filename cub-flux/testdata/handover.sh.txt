@@ -17,6 +17,33 @@ cd "$(dirname "$0")"
 ctx=${FLUX_CONTEXT:-$(kubectl config current-context 2>/dev/null || true)}
 [ -n "$ctx" ] || { echo "no kubectl context: set FLUX_CONTEXT to the cluster to hand over"; exit 1; }
 k() { kubectl --context "$ctx" "$@"; }
+# write_secret <namespace> <name>: writes the Secret the YAML on stdin
+# describes, with create, or replace when it exists. Not kubectl apply, which
+# keeps a copy of what it applies, credentials and all, in the Secret's
+# last-applied-configuration annotation; replace drops a copy left there.
+write_secret() {
+  local yaml
+  yaml=$(cat)
+  if k -n "$1" get secret "$2" >/dev/null 2>&1; then
+    printf '%s\n' "$yaml" | k replace -f - >/dev/null
+  else
+    printf '%s\n' "$yaml" | k create -f - >/dev/null
+  fi
+  echo "secret/$2 written in $1"
+}
+# live_tokens <account> <description>: the ids of the account's tokens with
+# that description that still work. token list shows revoked and expired
+# ones too.
+live_tokens() {
+  cub serviceaccount token list "$1" -o jq='.[].UserToken | select((.RevokedAt // "") == "" and ((.ExpiresAt // "") == "" or ((.ExpiresAt | sub("\\.[0-9]+"; "")) | fromdateiso8601) > now)) | .Jti + " " + (.Description // "")' | tr -d '"' |
+    while read -r id desc; do if [ "$desc" = "$2" ]; then echo "$id"; fi; done
+}
+# key_ids <account> [description]: the ids of the account's keys, or of those
+# with that description.
+key_ids() {
+  cub serviceaccount key list "$1" -o jq='.[].UserKey | .Kid + " " + (.Description // "")' | tr -d '"' |
+    while read -r id desc; do if [ $# -lt 2 ] || [ "$desc" = "$2" ]; then echo "$id"; fi; done
+}
 step() { printf '\n== %s\n' "$*"; }
 ns=${FLUX_NAMESPACE:-flux-system}
 cluster=${CLUSTER:-}
@@ -237,17 +264,31 @@ if [ -z "$addr" ]; then
   echo "                    set CONFIGHUB_OCI_PLAIN_HTTP=1 if it serves plain HTTP."
   echo "Then: CONFIGHUB_OCI=<host> CLUSTER=$cluster bash handover.sh"; exit 1
 fi
-# The token goes from cub into the Secret through a variable and is never
-# written to disk. --dry-run | apply keeps this re-runnable.
-# A new token each run; one an earlier run wrote stays valid until revoked:
-# cub serviceaccount token list flux-delivery shows each one and when it was last used.
-token=$(cub serviceaccount token create flux-delivery --description "Flux, cluster $cluster" -o jq=.Token | tr -d '"\n')
-[ -n "$token" ] && [ "$token" != null ] || { echo "could not issue a token for flux-delivery"; exit 1; }
-k create secret docker-registry confighub-flux-targets --namespace "$ns" \
-  --docker-server="$addr" \
-  --docker-username=token \
-  --docker-password="$token" \
-  --dry-run=client -o yaml | k apply -f -
+# A token of flux-delivery the Secret already holds is kept while ConfigHub lists it
+# as live; otherwise a new one is issued, and this cluster's others are
+# revoked once the Secret holds it. The token goes from cub into the Secret
+# through variables and a file descriptor, never to disk or a command line.
+token_desc="Flux, cluster $cluster"
+held_jti=$(k -n "$ns" get secret confighub-flux-targets -o jsonpath='{.metadata.annotations.confighub\.com/token-jti}' 2>/dev/null || true)
+token=""; jti=""
+if [ -n "$held_jti" ] && live_tokens flux-delivery "$token_desc" | grep -xF "$held_jti" >/dev/null; then
+  token=$(k -n "$ns" get secret confighub-flux-targets -o jsonpath='{.data.\.dockerconfigjson}' | base64 --decode | sed -n 's/.*"password":"\([^"]*\)".*/\1/p') || token=""
+  [ -z "$token" ] || { jti=$held_jti; echo "the pull Secret's token of flux-delivery is live: kept"; }
+fi
+if [ -z "$token" ]; then
+  issued=$(cub serviceaccount token create flux-delivery --description "$token_desc" -o jq='.UserToken.Jti + " " + .Token' | tr -d '"\n') || issued=""
+  jti=${issued%% *}; token=${issued#* }
+  [ -n "$jti" ] && [ -n "$token" ] && [ "$jti" != "$token" ] || { echo "could not issue a token for flux-delivery"; exit 1; }
+fi
+auth=$(printf 'token:%s' "$token" | base64 | tr -d '\n')
+k -n "$ns" create secret generic confighub-flux-targets --type=kubernetes.io/dockerconfigjson \
+  --from-file=.dockerconfigjson=<(printf '{"auths":{"%s":{"username":"token","password":"%s","auth":"%s"}}}' "$addr" "$token" "$auth") \
+  --dry-run=client -o yaml | k annotate --local -f - confighub.com/token-jti="$jti" -o yaml | write_secret "$ns" confighub-flux-targets
+unset token issued auth
+live_tokens flux-delivery "$token_desc" | { while read -r old; do
+  [ "$old" != "$jti" ] || continue
+  cub serviceaccount token revoke flux-delivery "$old" --quiet && echo "revoked an earlier token of flux-delivery" || echo "could not revoke an earlier token of flux-delivery: cub serviceaccount token revoke flux-delivery $old"
+done; } || echo "could not list the tokens of flux-delivery, so earlier ones are not revoked"
 
 # The root: one source and one Kustomization, reading this cluster's layers
 # Space, which apply.sh filled and released. It is all this cluster needs

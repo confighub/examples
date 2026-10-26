@@ -33,7 +33,10 @@ func runFluxbot(t *testing.T, version string, env ...string) (out, log string, e
 		"kubectl": `#!/usr/bin/env bash
 echo "kubectl $*" >> "$STUB_LOG"
 case " $* " in
+  *" get secret "*"key-id"*) echo "${HELD_KID:-}" ;;
   *" get secret "*) [ -n "${KEY_IN_SECRET:-}" ] || [ -f "$STUB_LOG.secret" ] && echo a2V5 ;;
+  *" --local "*) cat ;;
+  *" replace -f - "*|*" create -f - "*) cat >> "$STUB_LOG" ;;
   *" create secret generic "*)
     for a in "$@"; do case "$a" in --from-file=*) echo "# the Secret, from: $(cat "${a#--from-file=*=}")" ;; esac; done
     touch "$STUB_LOG.secret" ;;
@@ -46,7 +49,11 @@ exit 0
 echo "cub $*" >> "$STUB_LOG"
 case " $* " in
   *" target get "*) case " $* " in *" nosuch "*) exit 1 ;; esac ;;
-  *" key add "*) [ -z "${KEY_ADD_FAILS:-}" ] || exit 1; printf '{"d":"s3cret"}' > "${@: -3:1}" ;;
+  *" key add "*) [ -z "${KEY_ADD_FAILS:-}" ] || exit 1; printf '{"d":"s3cret"}' > "${@: -3:1}"; touch "$STUB_LOG.added" ;;
+  *" key list "*)
+    for k in ${KEYS:-}; do echo "$k fluxbot on dev"; done
+    echo "k-other argobot on ctx-a"
+    [ ! -f "$STUB_LOG.added" ] || echo "k-new fluxbot on dev" ;;
 esac
 exit 0
 `,
@@ -284,16 +291,48 @@ func TestFluxbotSaysWhyThePodDidNotComeUp(t *testing.T) {
 	}
 }
 
-// Run again, it keeps the key the Secret holds rather than adding another.
+// Run again, it keeps the key the Secret holds while ConfigHub lists it,
+// rather than adding another. The Secret is written again with it, which
+// drops a copy an earlier kubectl apply left, and only fluxbot's other keys
+// on this cluster are removed.
 func TestFluxbotKeepsTheKeyItHas(t *testing.T) {
-	out, log, err := runFluxbot(t, "0.4.0", "FLUX_CONTEXT=ctx-dev", "CLUSTER=dev", "CONFIGHUB_URL=https://hub.example", "KEY_IN_SECRET=1")
+	out, log, err := runFluxbot(t, "0.4.0", "FLUX_CONTEXT=ctx-dev", "CLUSTER=dev", "CONFIGHUB_URL=https://hub.example", "KEY_IN_SECRET=1", "HELD_KID=k-held", "KEYS=k-held k-old")
 	if err != nil {
 		t.Fatalf("%v\n%s", err, out)
 	}
-	if strings.Contains(log, "key add") || strings.Contains(log, "create secret generic") {
-		t.Errorf("a Secret that holds a key is left as it is:\n%s", log)
+	if strings.Contains(log, "key add") {
+		t.Errorf("a registered key is kept:\n%s", log)
+	}
+	if !strings.Contains(log, "# the Secret, from: key") || !strings.Contains(log, "confighub.com/key-id=k-held") {
+		t.Errorf("the Secret is written again with the key it held:\n%s", log)
+	}
+	if !strings.Contains(log, "key delete flux-delivery k-old") || strings.Contains(log, "delete flux-delivery k-held") || strings.Contains(log, "k-other") {
+		t.Errorf("only fluxbot's other keys on this cluster are removed:\n%s", log)
 	}
 	if !strings.Contains(log, "kind: Deployment") {
 		t.Errorf("the pod is still applied:\n%s", log)
+	}
+}
+
+// A key ConfigHub no longer lists, or a Secret from an earlier version that
+// records none, is replaced: the new key's id goes on the Secret, and
+// fluxbot's earlier keys on this cluster are removed.
+func TestFluxbotReplacesAKeyConfigHubDoesNotList(t *testing.T) {
+	for _, held := range []string{"HELD_KID=k-gone", "HELD_KID="} {
+		out, log, err := runFluxbot(t, "0.4.0", "FLUX_CONTEXT=ctx-dev", "CLUSTER=dev", "CONFIGHUB_URL=https://hub.example", "KEY_IN_SECRET=1", held, "KEYS=k-old")
+		if err != nil {
+			t.Fatalf("%s: %v\n%s", held, err, out)
+		}
+		if !strings.Contains(log, "key add flux-delivery --generate") || !strings.Contains(log, `# the Secret, from: {"d":"s3cret"}`) || !strings.Contains(log, "confighub.com/key-id=k-new") {
+			t.Errorf("%s: a new key goes in the Secret, with its id:\n%s", held, log)
+		}
+		if !strings.Contains(log, "key delete flux-delivery k-old") || strings.Contains(log, "delete flux-delivery k-new") || strings.Contains(log, "k-other") {
+			t.Errorf("%s: only fluxbot's earlier keys on this cluster are removed:\n%s", held, log)
+		}
+		for _, l := range strings.Split(log, "\n") {
+			if (strings.HasPrefix(l, "kubectl ") || strings.HasPrefix(l, "cub ")) && strings.Contains(l, "s3cret") {
+				t.Errorf("%s: the key is on a command line: %s", held, l)
+			}
+		}
 	}
 }
