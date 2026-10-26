@@ -3,7 +3,7 @@
 Each release is tagged `cub-argo-v<version>` in confighub/examples and installs
 with `cub plugin install confighub/examples@cub-argo-v<version> --name argo`.
 
-## Unreleased
+## 0.4.0, 2026-10-26
 
 - **A service account replaces the server worker.** ConfigHub is removing
   workers. `apply.sh` creates the service account `<prefix>-delivery`, with no
