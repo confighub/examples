@@ -314,7 +314,10 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 			add(`cub release publish %s --quiet 2>&1 | grep -v 'no changes were made' || true`, s.Space)
 		}
 		// cub variant create adds an Application for a new variant when its
-		// Target names the Space a root reads. The Application it writes
+		// Target names the Space a root reads: confighub.com/apps-space, with
+		// confighub.com/cluster-controller argo on the same Target. ConfigHub
+		// v0.8.35 replaced the per-controller confighub.com/argo-apps-space
+		// with these two (confighubai/confighub#5918) and no longer reads it. The Application it writes
 		// deploys to the cluster Argo CD runs on, so only that cluster's
 		// Target is marked; a variant for another cluster gets its Application
 		// from move-applications.sh, which keeps its destination.
@@ -328,7 +331,7 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 			if name == "in-cluster" || server[name] == localServer {
 				add("# A variant made later for %s, Argo CD's own cluster, gets its Application", name)
 				add("# in %s, which %s reads, from cub variant create itself.", cs[0].Space, cs[0].Parent)
-				add(`echo '{"Annotations":{"confighub.com/argo-apps-space":"%s"}}' | cub target update --patch --space %s %s --from-stdin --quiet`, cs[0].Space, targets, name)
+				add(`echo '{"Annotations":{"confighub.com/cluster-controller":"argo","confighub.com/apps-space":"%s"}}' | cub target update --patch --space %s %s --from-stdin --quiet`, cs[0].Space, targets, name)
 			}
 		}
 		add("")

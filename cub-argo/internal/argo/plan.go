@@ -53,6 +53,7 @@ type Plan struct {
 type Inputs struct {
 	Objects  int      `json:"objects"`
 	Skipped  []string `json:"skipped,omitempty"`
+	Ignored  []string `json:"ignored,omitempty"`
 	RepoRoot string   `json:"repoRoot,omitempty"`
 }
 
@@ -203,7 +204,7 @@ func Build(in *Input, opts Options) (*Plan, error) {
 	if b.root == "" && len(in.Dirs) > 0 {
 		b.root = findRepoRoot(in.Dirs[0])
 	}
-	p.Inputs = Inputs{Objects: len(in.Docs), Skipped: in.Skipped, RepoRoot: b.root}
+	p.Inputs = Inputs{Objects: len(in.Docs), Skipped: in.Skipped, Ignored: in.Ignored, RepoRoot: b.root}
 
 	// Without a checkout the source paths cannot be checked, and a path that
 	// does not exist is the failure this plan is most useful for catching. Say

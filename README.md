@@ -54,6 +54,7 @@ If you are not logged in yet, run `cub auth login` before the `cub` commands.
 - [`pilot-example-addons-manager`](./pilot-example-addons-manager/README.md): standalone generated operational app with Variant-first GUI, CLI sibling, production ConfigHub browser OAuth registration, and live-binding proof gates.
 - [`cost-management-app`](./cost-management-app/README.md): generated operational app with a real cost engine: org-wide waste findings priced from config data, then a finding-owned dry run, short-lived exact review, explicit execution confirmation, revision-verified mutation, and receipt. The reduction plane beside [`cost-estimator`](./cost-estimator/README.md)'s enforcement plane.
 - [`configboard`](./configboard/README.md): BI-style dashboards over the configuration in your organization — what version of what is where, which guardrails are failing, how many resources you manage, how long changes take to land. Read-only and seeds nothing. Dashboards are `AppConfig/YAML` units, so they carry revision history and promote like any other config, and every panel prints its equivalent `cub` command. Includes a 3-minute silent [demo video](./configboard/demo/configboard-demo.mp4) and [transcript](./configboard/demo/TRANSCRIPT.md).
+- [`ctrlplane`](./ctrlplane/README.md): read-only mapper from a [Ctrlplane](https://ctrlplane.dev) System bundle to a ConfigHub governed-app plan (spaces, units, targets, delivery strategy, gates).
 
 ## Recommended Starting Points
 
