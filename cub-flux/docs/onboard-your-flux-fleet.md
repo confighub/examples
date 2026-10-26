@@ -344,7 +344,12 @@ is `./`. Next to it is that `OCIRepository`. It reads the layer's variant Space,
 credential Secret `confighub-<prefix>-targets`, which holds a token of the
 service account `<prefix>-delivery`: `apply.sh` creates it and grants it
 `View` and `ViewChildren` on each Target, and `handover.sh` or `join.sh` issues
-the token. `insecure` is true only for a plain-HTTP gateway.
+the token. `insecure` is true only for a plain-HTTP gateway. A re-run keeps
+the token while ConfigHub lists it as live, since the Secret records its id
+as `confighub.com/token-jti`. Otherwise it issues a new one and revokes that
+cluster's earlier ones. The Secret is written with `kubectl create` or
+`kubectl replace`, never `kubectl apply`, which would keep a copy of the token
+in an annotation.
 
 ## 3. Hand one cluster over
 

@@ -52,8 +52,11 @@ case "$a" in
   *" patch imageupdateautomation "*) [ -n "${IUA_PATCH_FAIL:-}" ] && exit 1 ;;
   *" get imageupdateautomation "*spec.suspend*) echo "${IUA_SUSPEND:-true}" ;;
   *" get imageupdateautomation "*labels*) echo "${IUA_OWNER:-}" ;;
-  *" create secret "*) echo "kind: Secret" ;;
-  *" apply -f - "*) cat >/dev/null ;;
+  *" get secret confighub-"*"token-jti"*) echo "${HELD_JTI:-}" ;;
+  *" get secret confighub-"*"dockerconfigjson"*) printf '{"auths":{"gw.example:5000":{"username":"token","password":"s3cr3t-held","auth":"x"}}}' | base64 ;;
+  *" --local "*) cat ;;
+  *" create secret "*) for a in "$@"; do case "$a" in --from-file=*) cat "${a#--from-file=*=}" > "$STUB_LOG.dockerconfig" ;; esac; done; echo "kind: Secret" ;;
+  *" apply -f - "*|*" replace -f - "*|*" create -f - "*) cat >/dev/null ;;
   *" apply -f bootstrap/"*) touch "$STUB_LOG.root" ;;
 esac
 exit 0
@@ -71,13 +74,15 @@ exit 0
 `
 
 const stubCub = `#!/usr/bin/env bash
+echo "cub $*" >> "$STUB_LOG.cub"
 case " $* " in
   *" scout "*) exit 1 ;;
   *" unit data "*) echo "kind: Same" ;;
   *" release get "*)
     n=$(( $(cat "$STUB_LOG.releases" 2>/dev/null || echo 0) + 1 )); echo $n > "$STUB_LOG.releases"
     if [ -n "${RELEASE_MOVES_AFTER:-}" ] && [ "$n" -gt "$RELEASE_MOVES_AFTER" ]; then echo '"sha256:newer"'; else echo '"sha256:checked"'; fi ;;
-  *" token create "*) echo '"tok"' ;;
+  *" token create "*) echo '"jti-new s3cr3t-new"' ;;
+  *" token list "*) for j in ${LIVE_JTIS:-}; do echo "$j Flux, cluster $CLUSTER"; done; echo "j-other Argo CD, argo estate" ;;
 esac
 exit 0
 `
@@ -88,6 +93,8 @@ case "$1" in build) echo "kind: Same" ;; *) echo v5 ;; esac
 
 type handoverRun struct {
 	out, log string
+	cub      string
+	pull     string // the dockerconfigjson handed to kubectl create secret
 	state    string
 	dir      string
 	err      error
@@ -136,8 +143,10 @@ func runHandoverOn(t *testing.T, cluster string, env ...string) handoverRun {
 	cmd.Env = append(cmd.Env, env...)
 	out, err := cmd.CombinedOutput()
 	log, _ := os.ReadFile(calls)
+	cubLog, _ := os.ReadFile(calls + ".cub")
+	pull, _ := os.ReadFile(calls + ".dockerconfig")
 	state, _ := os.ReadFile(filepath.Join(dir, "handover-state", cluster+".log"))
-	return handoverRun{string(out), string(log), string(state), dir, err}
+	return handoverRun{string(out), string(log), string(cubLog), string(pull), string(state), dir, err}
 }
 
 // Every kubectl call, and every command printed for a person to run later,

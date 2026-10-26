@@ -3,6 +3,36 @@
 Each release is tagged `cub-argo-v<version>` in confighub/examples and installs
 with `cub plugin install confighub/examples@cub-argo-v<version> --name argo`.
 
+## 0.4.1, unreleased
+
+- **A re-run keeps the token, and revokes the ones it replaced.** 0.4.0's
+  `handover.sh` issued a new token each run and left the earlier ones valid.
+  It now records the token's id on the repo-creds Secret, as the annotation
+  `confighub.com/token-jti`, and keeps the token while ConfigHub lists it as
+  live. Otherwise it issues one and, once the Secret holds it, revokes the
+  estate's other tokens, the ones with the description
+  `Argo CD, <prefix> estate`. Run on an estate 0.4.0 handed over, it issues one
+  token and revokes the tokens 0.4.0 issued.
+- **Credentials are no longer copied into an annotation.** The repo-creds
+  Secret and argobot's Secret were written with `kubectl apply`, which keeps a
+  copy of what it applies, token or private key included, in the Secret's
+  `kubectl.kubernetes.io/last-applied-configuration` annotation. Both are now
+  written with `kubectl create`, or `kubectl replace` when they exist, which
+  also drops a copy 0.4.0 left. The token reaches the Secret through a file
+  descriptor, not a heredoc, which bash before 5.1 writes to a temporary file.
+- **argobot keeps a key ConfigHub lists, and replaces one it does not.**
+  `argobot.sh` records the key's id on the Secret, as `confighub.com/key-id`.
+  A run keeps the key while ConfigHub lists that id. Otherwise, as after the
+  service account was deleted and made again, or for a Secret 0.4.0 wrote,
+  it adds a key, removes argobot's earlier keys on that context, and restarts
+  argobot to read it.
+- Checked on 2026-10-26 on a kind cluster against ConfigHub v0.9.5, from
+  Secrets written as 0.4.0 writes them:
+  - the first run left each Secret with only its own annotation, and revoked
+    the two earlier tokens and the earlier key;
+  - a second run kept the token and the key;
+  - after the service account was made again, the run replaced both.
+
 ## 0.4.0, 2026-10-26
 
 - **A service account replaces the server worker.** ConfigHub is removing
