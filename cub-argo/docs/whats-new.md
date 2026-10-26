@@ -3,35 +3,55 @@
 Each release is tagged `cub-argo-v<version>` in confighub/examples and installs
 with `cub plugin install confighub/examples@cub-argo-v<version> --name argo`.
 
-## 0.4.1, unreleased
+## 0.4.1, 2026-10-26
 
-- **A re-run keeps the token, and revokes the ones it replaced.** 0.4.0's
-  `handover.sh` issued a new token each run and left the earlier ones valid.
-  It now records the token's id on the repo-creds Secret, as the annotation
-  `confighub.com/token-jti`, and keeps the token while ConfigHub lists it as
-  live. Otherwise it issues one and, once the Secret holds it, revokes the
-  estate's other tokens, the ones with the description
-  `Argo CD, <prefix> estate`. Run on an estate 0.4.0 handed over, it issues one
-  token and revokes the tokens 0.4.0 issued.
-- **Credentials are no longer copied into an annotation.** The repo-creds
-  Secret and argobot's Secret were written with `kubectl apply`, which keeps a
-  copy of what it applies, token or private key included, in the Secret's
-  `kubectl.kubernetes.io/last-applied-configuration` annotation. Both are now
-  written with `kubectl create`, or `kubectl replace` when they exist, which
-  also drops a copy 0.4.0 left. The token reaches the Secret through a file
-  descriptor, not a heredoc, which bash before 5.1 writes to a temporary file.
-- **argobot keeps a key ConfigHub lists, and replaces one it does not.**
-  `argobot.sh` records the key's id on the Secret, as `confighub.com/key-id`.
-  A run keeps the key while ConfigHub lists that id. Otherwise, as after the
-  service account was deleted and made again, or for a Secret 0.4.0 wrote,
-  it adds a key, removes argobot's earlier keys on that context, and restarts
-  argobot to read it.
-- Checked on 2026-10-26 on a kind cluster against ConfigHub v0.9.5, from
-  Secrets written as 0.4.0 writes them:
+**Upgrade if you handed an estate over with 0.4.0.** 0.4.0 had two credential
+faults, and 0.4.1 fixes both:
+
+- every run of `handover.sh` issued a new token of `<prefix>-delivery` and
+  left the earlier ones valid;
+- the token and argobot's private key were written with `kubectl apply`,
+  which also stores them in the Secret's
+  `kubectl.kubernetes.io/last-applied-configuration` annotation.
+
+To clean up an estate 0.4.0 handed over, upgrade, write the scripts again
+with the same `cub argo apply` command you ran before, and run two of them:
+
+```bash
+cub plugin upgrade argo@cub-argo-v0.4.1
+cub argo apply <your inputs> --out <dir>
+ARGOCD_CONTEXT=<context> CONFIGHUB_OCI=<gateway> bash <dir>/handover.sh
+ARGOCD_CONTEXT=<context> CONFIGHUB_URL=<ConfigHub URL> bash <dir>/argobot.sh
+```
+
+`handover.sh` moves no Application that already reads ConfigHub. It issues
+one token, writes it to the repo-creds Secret without the copy, and revokes
+the tokens 0.4.0 issued. `argobot.sh` adds a key, writes argobot's Secret
+without the copy, removes 0.4.0's key and restarts argobot.
+
+What changed:
+
+- **One token, kept.** The repo-creds Secret records its token's id as the
+  annotation `confighub.com/token-jti`. A run keeps the token while ConfigHub
+  lists it as live. Otherwise it issues one and, once the Secret holds it,
+  revokes the estate's other tokens, the ones described
+  `Argo CD, <prefix> estate`.
+- **No copy in an annotation.** Both Secrets are written with
+  `kubectl create`, or `kubectl replace` when they exist, never
+  `kubectl apply`. `replace` also drops the copy 0.4.0 left. The token
+  reaches the Secret through a file descriptor, not a heredoc, which bash
+  before 5.1 writes to a temporary file.
+- **argobot's key, kept or replaced.** argobot's Secret records its key's id
+  as `confighub.com/key-id`. A run keeps the key while ConfigHub lists it.
+  Otherwise, for a Secret 0.4.0 wrote or after the service account was made
+  again, it adds a key, removes argobot's earlier keys on that context, and
+  restarts argobot.
+- Checked on 2026-10-26 on a kind cluster against ConfigHub v0.9.5,
+  starting from Secrets as 0.4.0 writes them:
   - the first run left each Secret with only its own annotation, and revoked
-    the two earlier tokens and the earlier key;
+    the earlier tokens and key;
   - a second run kept the token and the key;
-  - after the service account was made again, the run replaced both.
+  - after the service account was made again, a run replaced both.
 
 ## 0.4.0, 2026-10-26
 

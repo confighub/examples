@@ -151,7 +151,7 @@ the layers you already run.
 ## Install
 
 ```bash
-cub plugin install confighub/examples@cub-flux-v0.5.0 --name flux
+cub plugin install confighub/examples@cub-flux-v0.5.1 --name flux
 cub plugin list   # flux should be listed, status ok
 ```
 

@@ -202,3 +202,20 @@ func checkKeyOffCommandLines(t *testing.T, log string) {
 		}
 	}
 }
+
+// Run again on an estate an earlier version handed over, handover.sh moves
+// nothing, and replaces that version's credential: the way 0.4.0's applied,
+// never-revoked tokens are cleaned up.
+func TestArgoHandoverRunAgainReplacesTheCredentialAndMovesNothing(t *testing.T) {
+	r := runArgoHandover(t, "ARGOCD_CONTEXT=ctx-a", "APPS_READ_OCI=1", "LIVE_JTIS=j-one j-two")
+	if r.err != nil {
+		t.Fatalf("%v\n%s", r.err, r.out)
+	}
+	if !strings.Contains(r.out, "already reads ConfigHub") || strings.Contains(r.log, "patch application") {
+		t.Errorf("an Application that reads ConfigHub is left as it is:\n%s\n%s", r.out, r.log)
+	}
+	if !strings.Contains(r.log, "confighub.com/token-jti=jti-new") || !strings.Contains(r.log, "token revoke argo-delivery j-one --quiet") || !strings.Contains(r.log, "token revoke argo-delivery j-two --quiet") {
+		t.Errorf("the credential is replaced and the earlier tokens revoked:\n%s", r.log)
+	}
+	checkSecretsWithoutApply(t, r.log, "s3cr3t")
+}

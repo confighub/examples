@@ -22,7 +22,7 @@ case "$a" in
   *" get deployment argocd-repo-server "*) echo "quay.io/argoproj/argocd:v3.5.3" ;;
   *" get appproject "*) echo '["https://github.com/confighub/examples","oci://gw.example:5000/**"]' ;;
   *" get application "*"jsonpath={.spec.source} "*) echo '{"repoURL":"https://github.com/confighub/examples","path":"gitops/argo/root","targetRevision":"main"}' ;;
-  *" get application root "*"spec.source.repoURL"*) echo "https://github.com/confighub/examples" ;;
+  *" get application root "*"spec.source.repoURL"*) if [ -n "${APPS_READ_OCI:-}" ]; then echo oci://gw.example:5000/space/argo-x; else echo "https://github.com/confighub/examples"; fi ;;
   *" get application root "*"status.sync.status"*) echo "${ROOT_READS:-Synced}" ;;
   *" get application root "*"status.sync.revision"*)
     # ROOT_SYNCED_AFTER=n: the Git revision until the nth look, as Argo reports
@@ -32,7 +32,7 @@ case "$a" in
       [ "$n" -ge "$ROOT_SYNCED_AFTER" ] && echo sha256:root || echo 148890b4cc77b7a908b748a7beb5ecbf7418a256
     else echo "${ROOT_SYNCED:-sha256:root}"; fi ;;
   *" get application root "*"conditions"*) echo "repository not accessible" ;;
-  *" get application "*"spec.source.repoURL"*) echo "https://github.com/confighub/examples" ;;
+  *" get application "*"spec.source.repoURL"*) if [ -n "${APPS_READ_OCI:-}" ]; then echo oci://gw.example:5000/space/argo-x; else echo "https://github.com/confighub/examples"; fi ;;
   *" get application "*"status.sync.status"*) echo Synced ;;
   *" get application "*"status.sync.revision"*) echo sha256:root ;;
   *" apply -f - "*|*" replace -f - "*|*" create -f - "*) cat >/dev/null ;;
