@@ -20,6 +20,12 @@ with `cub plugin install confighub/examples@cub-argo-v<version> --name argo`.
   username `token` and a token from
   `cub serviceaccount token create <prefix>-delivery`, and running `argobot.sh`
   again. After that nothing uses the worker.
+- **`cub variant create` adds an Application again.** `apply.sh` marks the
+  Target of Argo CD's own cluster with `confighub.com/cluster-controller: argo`
+  and `confighub.com/apps-space`, the keys ConfigHub reads since v0.8.35
+  (confighubai/confighub#5918). It used to write `confighub.com/argo-apps-space`,
+  which ConfigHub no longer reads, so a variant made later got no Application.
+  An estate onboarded earlier moves over by running `apply.sh` again.
 
 ## 0.3.3, 2026-10-25
 

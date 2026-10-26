@@ -984,9 +984,14 @@ func TestInClusterTargetIsMarkedForTheAppsSpace(t *testing.T) {
 	}
 	p := planOf(t, dir, Options{RepoRoot: repoRoot(t)})
 	s := ApplyScript(p, "argo", ".")
-	want := `echo '{"Annotations":{"confighub.com/argo-apps-space":"argo-apptique-apps-children"}}' | cub target update --patch --space argo-targets in-cluster`
+	want := `echo '{"Annotations":{"confighub.com/cluster-controller":"argo","confighub.com/apps-space":"argo-apptique-apps-children"}}' | cub target update --patch --space argo-targets in-cluster`
 	if !strings.Contains(s, want) {
 		t.Errorf("want the in-cluster Target marked:\n%s", want)
+	}
+	// ConfigHub reads the neutral keys since v0.8.35 (confighubai/confighub#5918)
+	// and no longer the per-controller one.
+	if strings.Contains(s, "confighub.com/argo-apps-space") {
+		t.Error("the Target is marked with confighub.com/argo-apps-space, which ConfigHub no longer reads")
 	}
 }
 
