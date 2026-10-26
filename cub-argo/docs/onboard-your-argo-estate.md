@@ -154,7 +154,7 @@ cluster that has none. Repointing is for the Applications you already run.
 ## Install
 
 ```bash
-cub plugin install confighub/examples@cub-argo-v0.3.2 --name argo
+cub plugin install confighub/examples@cub-argo-v0.4.0 --name argo
 cub plugin list   # argo should be listed, status ok
 ```
 
