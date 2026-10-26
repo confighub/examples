@@ -167,9 +167,13 @@ func CleanupScript(p *Plan, prefix string) string {
 	for _, c := range p.Components {
 		add("cub component delete %s-%s --quiet 2>/dev/null", prefix, c.Name)
 	}
-	add("# The repo-creds Secret handover.sh wrote holds the worker deleted above.")
-	add("# Left behind, it answers for these Spaces with a credential that no longer")
-	add("# exists, which a later onboarding under the same prefix would inherit.")
+	add("# The service account Argo and argobot ran as belongs to the organization, so")
+	add("# the Spaces took it with them only as far as their grants. Deleting it")
+	add("# revokes every token and key it had.")
+	add("cub serviceaccount delete %s --quiet 2>/dev/null || true", targets)
+	add("# The repo-creds Secret handover.sh wrote holds a token of the service account")
+	add("# deleted above. Left behind, it answers for these Spaces with a credential that")
+	add("# no longer works, which a later onboarding under the same prefix would inherit.")
 	add(`if [ -n "${ARGOCD_CONTEXT:-}" ]; then`)
 	add(`  kubectl --context "$ARGOCD_CONTEXT" -n argocd delete secret confighub-%s --ignore-not-found`, targets)
 	add("else")
