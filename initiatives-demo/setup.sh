@@ -547,7 +547,7 @@ create_initiative \
 
 # 2. Image Registry Restriction — Owner = Product (eshop + docs)
 #    Pass: eshop-api, eshop-frontend, eshop-worker, docs-server
-#    Fail: eshop-postgres (postgres:16-alpine), eshop-redis (redis:7-alpine), docs-search (meilisearch)
+#    Fail: eshop-postgres (postgres:17-alpine), eshop-redis (redis:7-alpine), docs-search (meilisearch)
 create_initiative \
   "Image Registry Restriction" \
   "All container images must be pulled from the approved registry (ghcr.io/acme). Public registries like Docker Hub are not permitted in production." \
