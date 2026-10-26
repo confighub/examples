@@ -200,7 +200,7 @@ The starter self-management pack lives under `confighub/`:
 
 The live app is not complete until those app-self-management artifacts are
 created as ConfigHub Units, promoted through real Variants, published as an
-immutable Release with `cub release publish` for an
+immutable Release with `cub release publish` through an
 `OCI` Target, consumed by the declared Argo or Flux controller,
 and proven running on Kubernetes.
 If the platform cannot atomically bind the expected Unit-revision manifest,

@@ -21,6 +21,9 @@ script_checks=(
   "${repo_root}/spring-platform/springboot-platform-app-centric/verify.sh"
   "${repo_root}/spring-platform/springboot-platform-app-centric/cleanup.sh"
   "${repo_root}/spring-platform/springboot-platform-app-centric/demo.sh"
+  "${repo_root}/ctrlplane/setup.sh"
+  "${repo_root}/ctrlplane/verify.sh"
+  "${repo_root}/ctrlplane/cleanup.sh"
   "${repo_root}/redis-platform-with-rbac-guardrails/setup.sh"
   "${repo_root}/redis-platform-with-rbac-guardrails/verify.sh"
   "${repo_root}/global-app-layer/single-component/lib.sh"
@@ -149,6 +152,7 @@ ai_guide_examples=(
   # standalone generated operational app (UI app + zero-dependency CLI, no setup.sh)
   "${repo_root}/pilot-example-addons-manager"
   # global-app-layer examples
+  "${repo_root}/ctrlplane"
   "${repo_root}/global-app-layer/single-component"
   "${repo_root}/global-app-layer/frontend-postgres"
   "${repo_root}/global-app-layer/realistic-app"

@@ -103,7 +103,9 @@ applied by hand, where no parent can repoint its template under review.
 ## Inputs
 
 - A repository directory, as above. Source paths are checked against the
-  checkout found by walking up to `.git`, or `--repo-root`.
+  checkout found by walking up to `.git`, or `--repo-root`. A file git ignores,
+  such as the `var/` an example's `setup.sh` renders into, is left out and
+  named, because Argo CD reads the repository from git and never sees it.
 - A live export, which also names the generated Applications a handover would
   keep:
 
