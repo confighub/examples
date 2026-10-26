@@ -3,9 +3,9 @@ module github.com/confighub/examples/custom-workers/opa-gatekeeper
 go 1.25.0
 
 require (
-	github.com/confighub/sdk/configkit/k8skit v0.9.4
-	github.com/confighub/sdk/core v0.9.4
-	github.com/confighub/sdk/worker-function-impl v0.9.4
+	github.com/confighub/sdk/configkit/k8skit v0.9.5
+	github.com/confighub/sdk/core v0.9.5
+	github.com/confighub/sdk/worker-function-impl v0.9.5
 )
 
 require (
