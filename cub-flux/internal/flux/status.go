@@ -118,7 +118,7 @@ var workloadKinds = map[string]bool{
 // each Kustomization in the controller's namespace whose source is an
 // OCIRepository at the gateway's /space/<space>. It is what a reporter on the
 // cluster reports, where there is no fleet repository to plan from. With a
-// prefix, only Spaces of that prefix: the ones this fleet's worker may write.
+// prefix, only Spaces of that prefix: the ones this fleet's service account may write.
 func DiscoverLayers(run Runner, prefix string) ([]Check, error) {
 	out, err := run("kubectl", "-n", checkNamespace, "get", "ocirepositories.source.toolkit.fluxcd.io", "-o", "json")
 	if err != nil {

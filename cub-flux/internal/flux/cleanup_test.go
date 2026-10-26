@@ -58,7 +58,7 @@ func TestFluxCleanupRefusesWhileALayerReadsASpace(t *testing.T) {
 }
 
 // Once nothing reads them, it deletes the Spaces and, on each cluster, the
-// pull Secret that holds the deleted worker.
+// pull Secret that holds a token of the deleted service account.
 func TestFluxCleanupDeletesSpacesAndTheCredential(t *testing.T) {
 	out, log, err := runFluxCleanup(t, `flux-system/fleet oci://ghcr.io/acme/fleet\n`, "FLUX_CONTEXTS=ctx-dev ctx-prod")
 	if err != nil {

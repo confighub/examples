@@ -19,12 +19,11 @@ import (
 // SDKHub answers Hub through the ConfigHub SDK, as the user cub is logged in
 // as: the context and token cub passes a plugin, or the active context.
 type SDKHub struct {
-	userAgent string
-	asWorker  bool
+	userAgent        string
+	asServiceAccount bool
 
-	mu          sync.Mutex
-	worker      *cubapi.Client
-	workerSince time.Time
+	mu             sync.Mutex
+	serviceAccount *cubapi.Client
 }
 
 // NewHub is the Hub the commands use. It connects when asked something, so a
@@ -34,26 +33,22 @@ func NewHub(version string) *SDKHub {
 }
 
 // The reporter that runs on a cluster has no signed-in user: it signs in as a
-// worker, with the ID and secret these name, to the server this names. They
-// are the names cub-worker uses, so they may be set in a shell for another
-// reason: they are read only by a Hub told to be a worker.
+// service account, with the private key this names, to the server this names.
+// They are the names argobot reads, so they may be set in a shell for another
+// reason: they are read only by a Hub told to be a service account.
 const (
-	EnvWorkerID     = "CONFIGHUB_WORKER_ID"
-	EnvWorkerSecret = "CONFIGHUB_WORKER_SECRET"
-	EnvServerURL    = "CONFIGHUB_URL"
+	EnvPrivateKey        = "CONFIGHUB_AUTH_PRIVATE_KEY"
+	EnvServerURL         = "CONFIGHUB_URL"
+	EnvAssertionAudience = "CONFIGHUB_ASSERTION_AUDIENCE"
 )
-
-// workerTokenAge is how long a worker's token is used before it signs in
-// again. A reporter runs for weeks; a token does not last that long.
-const workerTokenAge = 5 * time.Minute
 
 // requestTimeout bounds every request to ConfigHub. A reporter that waits
 // for ever on a stalled connection reports nothing, and says nothing.
 const requestTimeout = 60 * time.Second
 
-// AsWorker makes this Hub sign in as the worker the environment names, rather
-// than as the user cub is signed in as.
-func (h *SDKHub) AsWorker() { h.asWorker = true }
+// AsServiceAccount makes this Hub sign in as the service account whose key the
+// environment holds, rather than as the user cub is signed in as.
+func (h *SDKHub) AsServiceAccount() { h.asServiceAccount = true }
 
 // SignIn connects and asks ConfigHub who it is talking to, so a wrong address
 // or credential is found at the start rather than on the first write.
@@ -63,11 +58,11 @@ func (h *SDKHub) SignIn() error {
 	if err != nil {
 		return err
 	}
-	if h.asWorker {
-		// A worker is no organization member, so it is asked something it
+	if h.asServiceAccount {
+		// A service account with no organization role is asked something it
 		// may read instead.
 		if _, err := cubapi.ListSpaces(ctx, c, cubapi.Where{}, cubapi.ListOpts{}); err != nil {
-			return fmt.Errorf("ConfigHub at %s refused the worker: %w", c.Server, err)
+			return fmt.Errorf("ConfigHub at %s refused the service account: %w", c.Server, err)
 		}
 		return nil
 	}
@@ -79,11 +74,12 @@ func (h *SDKHub) SignIn() error {
 
 // client reads the login again for each question, as running cub did: that
 // is a file read, not a request, and a status or watch left running for days
-// then picks up a token that was renewed meanwhile. As a worker it signs in
-// with the worker's own credential, and again when that token has aged.
+// then picks up a token that was renewed meanwhile. As a service account it
+// builds one client, which signs in again with the key whenever its session
+// has expired.
 func (h *SDKHub) client(ctx context.Context) (*cubapi.Client, error) {
-	if h.asWorker {
-		return h.workerClient(os.Getenv(EnvWorkerID), os.Getenv(EnvWorkerSecret), strings.TrimRight(os.Getenv(EnvServerURL), "/"))
+	if h.asServiceAccount {
+		return h.serviceAccountClient(ctx, os.Getenv(EnvPrivateKey), strings.TrimRight(os.Getenv(EnvServerURL), "/"))
 	}
 	c, err := cubapi.ResolveClient(ctx, cubapi.ClientOptions{UserAgent: h.userAgent, HTTPClient: &http.Client{Timeout: requestTimeout}})
 	if err != nil {
@@ -92,29 +88,32 @@ func (h *SDKHub) client(ctx context.Context) (*cubapi.Client, error) {
 	return c, nil
 }
 
-func (h *SDKHub) workerClient(id, secret, server string) (*cubapi.Client, error) {
-	if id == "" || secret == "" || server == "" {
-		return nil, fmt.Errorf("signing in as a worker needs %s, %s and %s", EnvWorkerID, EnvWorkerSecret, EnvServerURL)
+func (h *SDKHub) serviceAccountClient(ctx context.Context, key, server string) (*cubapi.Client, error) {
+	if key == "" || server == "" {
+		return nil, fmt.Errorf("signing in as a service account needs %s and %s", EnvPrivateKey, EnvServerURL)
 	}
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	if h.worker != nil && time.Since(h.workerSince) < workerTokenAge {
-		return h.worker, nil
+	if h.serviceAccount != nil {
+		return h.serviceAccount, nil
 	}
-	// The SDK signs a worker in with the default client, which waits for
-	// ever unless told otherwise.
-	if http.DefaultClient.Timeout == 0 {
-		http.DefaultClient.Timeout = requestTimeout
-	}
-	session, err := cubapi.PerformWorkerAuth(server, id, secret)
+	signer, err := cubapi.NewAssertionSigner([]byte(key), "", os.Getenv(EnvAssertionAudience))
 	if err != nil {
-		return nil, fmt.Errorf("signing in to ConfigHub at %s as worker %s: %w", server, id, err)
+		return nil, fmt.Errorf("%s: %w", EnvPrivateKey, err)
 	}
-	c, err := cubapi.NewClient(cubapi.ClientOptions{ServerURL: server, Token: session.AccessToken, UserAgent: h.userAgent, HTTPClient: &http.Client{Timeout: requestTimeout}})
+	httpClient := &http.Client{Timeout: requestTimeout}
+	authenticate := func(ctx context.Context) (*cubapi.AuthSession, error) {
+		return cubapi.PerformAssertionAuthContext(ctx, httpClient, server, signer)
+	}
+	session, err := authenticate(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("signing in to ConfigHub at %s with key %s: %w", server, signer.Kid(), err)
+	}
+	c, err := cubapi.NewClient(cubapi.ClientOptions{ServerURL: server, Session: session, Authenticator: authenticate, UserAgent: h.userAgent, HTTPClient: httpClient})
 	if err != nil {
 		return nil, fmt.Errorf("connecting to ConfigHub: %w", err)
 	}
-	h.worker, h.workerSince = c, time.Now()
+	h.serviceAccount = c
 	return c, nil
 }
 

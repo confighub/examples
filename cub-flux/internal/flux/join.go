@@ -63,11 +63,7 @@ func JoinScript(p *Plan, prefix string) string {
 	add("")
 
 	add(`step "2/3 The credential and the root"`)
-	add(`k create secret docker-registry confighub-%s --namespace "$ns" \`, targets)
-	add(`  --docker-server="$addr" \`)
-	add(`  --docker-username="$(cub worker get --space %s server-worker -o jq=.BridgeWorker.BridgeWorkerID | tr -d '\"\n')" \`, targets)
-	add(`  --docker-password="$(cub worker get --space %s server-worker --include-secret -o jq=.BridgeWorker.Secret | tr -d '\"\n')" \`, targets)
-	add(`  --dry-run=client -o yaml | k apply -f -`)
+	L = append(L, pullSecretLines(targets)...)
 	L = append(L, rootLines(prefix)...)
 	add(`layers_still_current`)
 	add(`k apply -f "bootstrap/$cluster/%s.yaml"`, RootName)
@@ -133,4 +129,31 @@ func layersByCluster(p *Plan) map[string][]string {
 		}
 	}
 	return on
+}
+
+// pullSecretLines write the Secret each OCIRepository reads ConfigHub with: a
+// docker-registry Secret holding a token of the service account the Targets
+// grant access to, for the gateway at $addr in the namespace $ns.
+func pullSecretLines(targets string) []string {
+	var L []string
+	add := func(f string, a ...any) { L = append(L, fmt.Sprintf(f, a...)) }
+	add("# The token goes from cub into the Secret through command substitution and")
+	add("# is never written to disk. A token is shown once, when it is issued, so a")
+	add("# Secret that already holds one for this address is left as it is: each run")
+	add("# would otherwise issue another credential that nothing uses. The annotation")
+	add("# says what the Secret was made for.")
+	add(`made_for="serviceaccount:%s $addr"`, targets)
+	add(`have=$(k -n "$ns" get secret confighub-%s -o jsonpath='{.metadata.annotations.confighub\.com/credential}' 2>/dev/null || true)`, targets)
+	add(`if [ "$have" = "$made_for" ]; then`)
+	add(`  echo "  pull Secret confighub-%s already holds a token for $addr"`, targets)
+	add("else")
+	add(`  token=$(cub serviceaccount token create %s --description "Flux on $ctx: $addr" -o jq=.Token | tr -d '"\n')`, targets)
+	add(`  [ -n "$token" ] || { echo "could not issue a token for the service account %s"; exit 1; }`, targets)
+	add("  # The registry takes a ConfigHub token as the password of the user \"token\".")
+	add(`  k create secret docker-registry confighub-%s --namespace "$ns" \`, targets)
+	add(`    --docker-server="$addr" --docker-username=token --docker-password="$token" \`)
+	add(`    --dry-run=client -o yaml |`)
+	add(`    k annotate -f - --local -o yaml confighub.com/credential="$made_for" | k apply -f -`)
+	add("fi")
+	return L
 }

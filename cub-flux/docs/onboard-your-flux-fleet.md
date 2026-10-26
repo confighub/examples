@@ -186,7 +186,7 @@ Run from the root of your fleet repository. Each script is written by
 | 3 | `CONFIGHUB_OCI=<gateway> bash onboard/apply.sh` | fills ConfigHub: bases, variants, stages, first releases, each cluster's layers Space. Flux still reads Git | no | `bash onboard/cleanup.sh` |
 | 4 | `CONFIGHUB_OCI=<gateway> CLUSTER=<cluster> FLUX_CONTEXT=<context> bash onboard/handover.sh` | for a cluster already running the layers from Git: puts the root on it, and the root takes each layer over ([3](#3-hand-one-cluster-over)) | yes | printed when it stops, and at the end |
 | 4′ | `CONFIGHUB_OCI=<gateway> CLUSTER=<cluster> FLUX_CONTEXT=<context> bash onboard/join.sh` | for a new cluster with Flux and nothing else: the root brings every layer ([4](#4-join-a-new-cluster)) | yes | printed at the end |
-| 5 | `FLUX_CONTEXT=<context> CLUSTER=<cluster> CONFIGHUB_URL=<ConfigHub address> bash onboard/fluxbot.sh` | runs the reporter on the cluster: it keeps ConfigHub told what each layer applied, which `--require Healthy` waits for ([5](#5-tell-confighub-what-the-cluster-is-running)) | adds one pod, and grants its worker `EditChildren` on the cluster's Target | printed at the end |
+| 5 | `FLUX_CONTEXT=<context> CLUSTER=<cluster> CONFIGHUB_URL=<ConfigHub address> bash onboard/fluxbot.sh` | runs the reporter on the cluster: it keeps ConfigHub told what each layer applied, which `--require Healthy` waits for ([5](#5-tell-confighub-what-the-cluster-is-running)) | adds one pod, gives it a key of the fleet's service account, and grants that service account `EditChildren` on the cluster's Target | printed at the end |
 | 5, without it | `cub flux status . --cluster <cluster> --kube-context <context> --watch` | the same reporter, from where you run it, for as long as you keep it running | writes to ConfigHub only | stop it |
 | 6 | `CONFIGHUB_OCI=<gateway> cub flux watch . --require Healthy --out onboard --pull` | proposes each cluster added to `clusters/` ([4](#4-join-a-new-cluster)) | no; a person approves | stop it |
 
@@ -550,7 +550,7 @@ FLUX_CONTEXT=<dev-1> CLUSTER=dev-1 CONFIGHUB_URL=https://hub.confighub.com \
   bash onboard/fluxbot.sh
 ```
 
-It is the same command, `cub flux status --discover --as-worker --watch`, in
+It is the same command, `cub flux status --discover --as-service-account --watch`, in
 one pod in the Flux namespace. With `--discover` it needs no fleet repository:
 each pass it finds every `Kustomization` there whose source is a ConfigHub
 Space named `<prefix>-…`, so a layer handed over later is picked up without a
@@ -561,8 +561,9 @@ everything it adds:
 
 | Where | What | Why |
 | --- | --- | --- |
-| ConfigHub | `EditChildren` on this cluster's Target, for the Targets' worker | recording a release's live status takes it. That worker is the credential Flux already pulls with; before this it could only read |
-| The Flux namespace | a Secret holding that worker's ID and secret | the pod signs in to ConfigHub as the worker, not as a person |
+| ConfigHub | `EditChildren` on this cluster's Target, for the service account `<prefix>-targets` | recording a release's live status takes it. Flux already pulls as that service account, with a token; before this it could only read |
+| ConfigHub | a key of that service account | the pod signs in to ConfigHub with it, as the service account, not as a person |
+| The Flux namespace | a Secret `fluxbot` holding the key's private half | where the pod reads it. A re-run keeps the key the Secret already holds |
 | The Flux namespace | a ServiceAccount, and a Role to get and list `Kustomization`s and `OCIRepository`s there | all it reads on the cluster. No cluster-wide role |
 | The Flux namespace | a Deployment of one pod | the reporter |
 
@@ -619,8 +620,8 @@ release or none, is withdrawn from the newest release. A layer Flux is
 reconciling again at the release it already applied, as it does every
 interval, is not reported until that pass finishes. Run by hand it writes as the
 `cub` user you run it as, one cluster at a time; recording takes Edit on the
-Release, which is your own, or `EditChildren` on its Target for the worker
-fluxbot signs in as.
+Release, which is your own, or `EditChildren` on its Target for the service
+account fluxbot signs in as.
 
 **To make promotions wait for it,** plan and apply with `--require Healthy`.
 Each stage after the first then also waits for the stage before: its newest

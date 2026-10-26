@@ -237,13 +237,24 @@ if [ -z "$addr" ]; then
   echo "                    set CONFIGHUB_OCI_PLAIN_HTTP=1 if it serves plain HTTP."
   echo "Then: CONFIGHUB_OCI=<host> CLUSTER=$cluster bash handover.sh"; exit 1
 fi
-# The ID and secret go from cub into the Secret through command substitution
-# and are never written to disk. --dry-run | apply keeps this re-runnable.
-k create secret docker-registry confighub-flux-targets --namespace "$ns" \
-  --docker-server="$addr" \
-  --docker-username="$(cub worker get --space flux-targets server-worker -o jq=.BridgeWorker.BridgeWorkerID | tr -d '\"\n')" \
-  --docker-password="$(cub worker get --space flux-targets server-worker --include-secret -o jq=.BridgeWorker.Secret | tr -d '\"\n')" \
-  --dry-run=client -o yaml | k apply -f -
+# The token goes from cub into the Secret through command substitution and
+# is never written to disk. A token is shown once, when it is issued, so a
+# Secret that already holds one for this address is left as it is: each run
+# would otherwise issue another credential that nothing uses. The annotation
+# says what the Secret was made for.
+made_for="serviceaccount:flux-targets $addr"
+have=$(k -n "$ns" get secret confighub-flux-targets -o jsonpath='{.metadata.annotations.confighub\.com/credential}' 2>/dev/null || true)
+if [ "$have" = "$made_for" ]; then
+  echo "  pull Secret confighub-flux-targets already holds a token for $addr"
+else
+  token=$(cub serviceaccount token create flux-targets --description "Flux on $ctx: $addr" -o jq=.Token | tr -d '"\n')
+  [ -n "$token" ] || { echo "could not issue a token for the service account flux-targets"; exit 1; }
+  # The registry takes a ConfigHub token as the password of the user "token".
+  k create secret docker-registry confighub-flux-targets --namespace "$ns" \
+    --docker-server="$addr" --docker-username=token --docker-password="$token" \
+    --dry-run=client -o yaml |
+    k annotate -f - --local -o yaml confighub.com/credential="$made_for" | k apply -f -
+fi
 
 # The root: one source and one Kustomization, reading this cluster's layers
 # Space, which apply.sh filled and released. It is all this cluster needs
