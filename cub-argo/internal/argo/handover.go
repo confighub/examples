@@ -12,6 +12,7 @@ import (
 // syncing an empty source, and it prunes what it applied.
 func HandoverScript(p *Plan, prefix, repoRel string) string {
 	targets := prefix + "-targets"
+	account := deliveryAccount(prefix)
 	var L []string
 	add := func(f string, a ...any) { L = append(L, fmt.Sprintf(f, a...)) }
 
@@ -269,9 +270,10 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("")
 
 	add(`step "1/%d The credential Argo reads the gateway with"`, total)
-	add("# A repository Secret for the gateway, holding the server worker the Targets grant access to.")
-	add("# The ID and secret go from cub into the Secret through file descriptors,")
-	add("# never to disk, the command line, or the terminal.")
+	add("# A repository Secret for the gateway, holding a token of %s, the service", account)
+	add("# account the Targets grant access to. The token goes from cub into the Secret")
+	add("# through a variable and a heredoc, never to disk, the command line, or the")
+	add("# terminal.")
 	add(`addr=${CONFIGHUB_OCI:-}`)
 	add("# The address is asked for as oci://<host>, and every use below writes the")
 	add("# scheme itself, so take it off here: left on, each URL would carry it twice.")
@@ -293,13 +295,14 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	// The prefix is this plan's Spaces, oci://<gateway>/space/<prefix>-, not
 	// the whole gateway. Measured: two estates onboarded on one gateway each
 	// wrote a repo-creds Secret for oci://<gateway>; Argo picked the stale
-	// one, whose worker cleanup.sh had deleted, and the repointed root failed
+	// one, whose credential cleanup.sh had deleted, and the repointed root failed
 	// with 401 Unauthorized. Argo takes the longest matching prefix, so a
 	// credential scoped to its own Spaces is the one used for them.
 	add("# The repository Secret's shape was verified against Argo CD v3.5.3:")
-	add("#   type: oci, url with the oci:// scheme, the worker as username and")
-	add("#   password. The Application's repoURL needs the scheme too — without it")
-	add("#   Argo treats the address as a git repository and fails on \"list refs\".")
+	add("#   type: oci, url with the oci:// scheme, a username and password. The")
+	add("#   username is the word token and the password the token. The Application's")
+	add("#   repoURL needs the scheme too — without it Argo treats the address as a git")
+	add("#   repository and fails on \"list refs\".")
 	add("# insecureOCIForceHttp is only for a gateway served over plain HTTP.")
 	// Not ${VAR:+  insecureOCIForceHttp: "true"} inline below: the alternate
 	// word goes through quote removal, so the quotes are gone by the time the
@@ -308,7 +311,7 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	// A variable's value is not re-quoted, so this form keeps them.
 	add(`creds_url="oci://${addr}/space/%s-"`, prefix)
 	add("# Another repo-creds Secret for this same prefix, or a longer one, would be")
-	add("# the one Argo uses for these Spaces, and it holds another worker. A read")
+	add("# the one Argo uses for these Spaces, and it holds another credential. A read")
 	add("# that fails stops here: a check that cannot run has not passed.")
 	add(`creds=$(k -n "$ns" get secrets -l argocd.argoproj.io/secret-type=repo-creds -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.data.url}{"\n"}{end}') || { echo "could not read the repo-creds Secrets in $ns"; exit 1; }`)
 	add(`while read -r other url64; do`)
@@ -321,6 +324,10 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add(`done <<< "$creds"`)
 	add(`plain_http=""`)
 	add(`[ -n "${CONFIGHUB_OCI_PLAIN_HTTP:-}" ] && plain_http='  insecureOCIForceHttp: "true"'`)
+	add("# A new token each run; the one an earlier run wrote stays valid until revoked:")
+	add("# cub serviceaccount token list %s shows each one and when it was last used.", account)
+	add(`token=$(cub serviceaccount token create %s --description "Argo CD, %s estate" -o jq=.Token | tr -d '"\n')`, account, prefix)
+	add(`[ -n "$token" ] && [ "$token" != null ] || { echo "could not issue a token for %s"; exit 1; }`, account)
 	add(`cat <<YAML | k apply -f -`)
 	add("apiVersion: v1")
 	add("kind: Secret")
@@ -332,8 +339,8 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("stringData:")
 	add("  type: oci")
 	add(`  url: ${creds_url}`)
-	add(`  username: "$(cub worker get --space %s server-worker -o jq=.BridgeWorker.BridgeWorkerID | tr -d '\n')"`, targets)
-	add(`  password: "$(cub worker get --space %s server-worker --include-secret -o jq=.BridgeWorker.Secret | tr -d '\n')"`, targets)
+	add("  username: token")
+	add(`  password: "${token}"`)
 	add(`${plain_http}`)
 	add("YAML")
 	add("")
@@ -642,7 +649,7 @@ func HandoverScript(p *Plan, prefix, repoRel string) string {
 	add("echo %s", q("was still serving the previous release 90 seconds later. A hard refresh re-resolves"))
 	add("echo %s", q("the tag to a digest and the release lands:"))
 	show("annotate application <name> argocd.argoproj.io/refresh=hard --overwrite")
-	add("echo %s", q("argobot does this for you: argobot.sh runs it beside Argo CD with the Targets' worker,"))
+	add("echo %s", q("argobot does this for you: argobot.sh runs it beside Argo CD as the Targets' service account,"))
 	add("echo %s", q("so it refreshes each Application reading a Space when that Space publishes, and records"))
 	add("echo %s", q("each Application's live status on the release it synced. Without argobot, keep this running"))
 	add("echo %s", q("beside the cluster instead: it asks for that refresh once per release, and records the"))

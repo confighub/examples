@@ -58,7 +58,7 @@ This created:
 - Serves as authoritative artifact source
 
 **Extended Spegel (Distributed)**
-- Runs alongside cub workers on each cluster
+- Runs on each cluster
 - Caches OCI artifacts from central Zot
 - P2P distribution between nodes (Kademlia DHT)
 - Serves local Flux/Argo controllers
@@ -213,7 +213,7 @@ spec:
 
 ## Security Considerations
 
-1. **Authentication**: Proxy must forward credentials to upstream Zot
+1. **Authentication**: Proxy must forward credentials to upstream Zot. For ConfigHub's OCI gateway the credential is a service account token, sent as the password with the username `token`; see [Repository credentials](./07-argo-oci-spec.md#repository-credentials)
 2. **TLS**: All inter-node traffic should use mTLS
 3. **Content Verification**: Verify digests on fetch and serve
 4. **Network Policy**: Restrict proxy egress to known upstreams

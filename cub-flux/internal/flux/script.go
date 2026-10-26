@@ -12,6 +12,11 @@ import (
 // for this model: --allow-exists and --quiet throughout, each step checking
 // what ConfigHub already says, and the whole script safe to re-run.
 
+// deliveryAccount is the service account a fleet delivers as: Flux pulls its
+// Releases with a token of it, and fluxbot reports as it. It holds grants on
+// the fleet's Targets and no role in the organization.
+func deliveryAccount(prefix string) string { return prefix + "-delivery" }
+
 func q(s string) string { return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'" }
 
 func short(parts ...string) string {
@@ -91,6 +96,7 @@ func stageNames(c *Component) string {
 // reconciling Git throughout, and handover.sh is what moves the fleet.
 func ApplyScript(p *Plan, prefix, repoRel string) string {
 	targets := prefix + "-targets"
+	account := deliveryAccount(prefix)
 	var L []string
 	add := func(f string, a ...any) { L = append(L, fmt.Sprintf(f, a...)) }
 
@@ -230,14 +236,17 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 
 	add(`step "1/5 One named Target per cluster, in %s"`, targets)
 	add("cub space create %s --allow-exists --quiet", targets)
-	add("# A server-hosted worker has no process behind it and no role in the")
-	add("# organization; it is the credential Flux reads with. Its bot user holds View")
-	add("# and ViewChildren on each Target, to find it and pull its Releases.")
-	add("cub worker create --space %s server-worker --is-server-worker --org-role none --allow-exists --quiet", targets)
-	add(`bot_user="$(cub worker get --space %s server-worker -o jq=.BridgeWorker.UserID | tr -d '"\n')"`, targets)
+	add("# A service account with no role in the organization; Flux pulls with a")
+	add("# token of it. It holds View and ViewChildren on each Target, to find it and")
+	add("# pull its Releases.")
+	add("cub serviceaccount create %s --allow-exists --quiet", account)
+	var clusters []string
 	for _, c := range p.Clusters {
-		add(`cub target create %s --space %s --permission "View:${bot_user}" --permission "ViewChildren:${bot_user}" --allow-exists --quiet`, c.Name, targets)
+		add(`cub target create %s --space %s --allow-exists --quiet`, c.Name, targets)
+		clusters = append(clusters, c.Name)
 	}
+	add("# The grants, as an update so that a Target that already exists gets them too.")
+	add(`for t in %s; do cub target update "$t" --space %s --permission View:serviceaccount:%s --permission ViewChildren:serviceaccount:%s --quiet; done`, strings.Join(clusters, " "), targets, account, account)
 	add("")
 
 	add(`step "2/5 One component per layer: a base holding what it renders to, and a rollout workflow"`)

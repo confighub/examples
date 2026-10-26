@@ -191,7 +191,7 @@ Run from the root of the repository Argo CD syncs. Each script is written by
 | 4 | `ARGOCD_CONTEXT=<context> DEST_CONTEXT_<cluster>=<context> CONFIGHUB_OCI=<gateway> bash onboard/handover.sh` | points `root` at ConfigHub, prints the reviewed edit that does the same for each app of apps, then checks every Application's release against what Argo owns on its cluster — before any workload's source moves, then points each plain Application at its Space: one applied by hand itself, a child of an app of apps through the printed Unit edit ([3](#3-hand-the-estate-over)) | yes | printed when it stops, and at the end |
 | 5 | retire each ApplicationSet, as the "Retire each ApplicationSet" step of `handover.sh` prints | a reviewed edit to its Unit, so it generates nothing more ([why](#applicationsets-are-retired-not-repointed)) | yes | restore the Unit's earlier revision |
 | 6 | `ARGOCD_CONTEXT=<context> CONFIGHUB_OCI=<gateway> bash onboard/move-applications.sh canary`, then `secondary`, then `primary` | each generated Application becomes a Unit reading its own Space, one stage at a time ([more](#each-application-becomes-a-unit)) | yes | printed when it stops, and at the end |
-| 7 | `ARGOCD_CONTEXT=<context> CONFIGHUB_URL=<ConfigHub address> bash onboard/argobot.sh` | runs argobot: live status comes back ([more](#a-published-release-does-not-arrive-on-its-own)) | installs argobot, and grants its worker `EditChildren` on each Target | `kubectl delete -f https://raw.githubusercontent.com/confighub/argobot/v0.1.9/manifests/argobot.yaml` |
+| 7 | `ARGOCD_CONTEXT=<context> CONFIGHUB_URL=<ConfigHub address> bash onboard/argobot.sh` | runs argobot: live status comes back ([more](#a-published-release-does-not-arrive-on-its-own)) | installs argobot, creates its Channel, and grants its service account `EditChildren` on each Target | `kubectl delete -f https://raw.githubusercontent.com/confighub/argobot/v0.2.3/manifests/argobot.yaml` |
 | 7, without argobot | `cub argo status . clusters.json --stage-label rollout-phase --stages canary,secondary,primary --kube-context <context> --watch --hard-refresh` | writes the same live status from where you run it, and asks Argo to read each new release ([more](#what-confighub-hears-back-live-status)) | only the refresh annotation | stop it |
 | out | `ARGOCD_CONTEXT=<context> bash onboard/cleanup.sh` | once every source is back on Git: removes what `apply.sh` made and the gateway credential. It refuses, naming them, while any Application still reads ConfigHub | removes the credential | nothing to undo |
 
@@ -288,10 +288,11 @@ bash onboard/apply.sh
 `apply` writes files and five scripts, and runs nothing. `apply.sh` is the first to run. It checks `cub` is
 logged in and `kustomize` is present, then:
 
-1. Creates one server-hosted worker and one Target per cluster, named for it,
-   plus `argocd` for the cluster Argo runs on. A Target names no worker; the
-   worker's bot user is granted `View`, `ViewChildren` and `EditChildren` on
-   each, which is what lets it pull releases and record their live status.
+1. Creates the service account `<prefix>-delivery` and one Target per cluster,
+   named for it, plus `argocd` for the cluster Argo runs on. The service
+   account has no organization role; it is granted `View`, `ViewChildren` and
+   `EditChildren` on each Target, which is what lets Argo CD pull releases with
+   a token of it and argobot record their live status as it.
 2. Stores each app of apps' children as Units — your `AppProject`,
    `ApplicationSet` and child `Application` manifests, copied byte for byte, so
    reviewing what ConfigHub holds is reviewing what Argo reads today.
@@ -409,15 +410,16 @@ not a gate, and cub-scout's absence is not a failure.
 **The repo-creds Secret, verified against Argo CD v3.5.3.** The Application's
 `repoURL` and the Secret's `url` both need the `oci://` scheme — without it Argo
 treats the address as a git repository and fails with `list refs: invalid auth
-method`. The Secret's `type` is `oci`, and the worker is the username and
-password:
+method`. The Secret's `type` is `oci`, the username is the word `token`, and the
+password is a token of the service account `<prefix>-delivery`, which
+`handover.sh` issues with `cub serviceaccount token create`:
 
 ```yaml
 stringData:
   type: oci
   url: oci://<gateway>/space/<prefix>-
-  username: <the Targets' server worker id>
-  password: <its secret>
+  username: token
+  password: <a token of <prefix>-delivery>
   # only for a gateway served over plain HTTP:
   insecureOCIForceHttp: "true"
 ```
@@ -796,7 +798,7 @@ silently ignored, Argo fell back to anonymous **https**, and it failed with
 `repo-creds` is the prefix form, and it is scoped to this estate's Spaces,
 `oci://<gateway>/space/<prefix>-`, not the whole gateway. Measured on
 2026-09-30: two estates onboarded on one gateway each wrote a gateway-wide
-Secret, Argo used the stale one, whose worker `cleanup.sh` had deleted, and
+Secret, Argo used the stale one, whose credential `cleanup.sh` had deleted, and
 the repointed root failed with `401 Unauthorized`. Argo takes the longest
 matching prefix, so a scoped credential is the one used for its Spaces;
 `handover.sh` refuses when another Secret claims the same prefix, and
@@ -910,9 +912,11 @@ flowchart LR
 ```
 
 **[argobot](https://github.com/confighub/argobot) does this for you, and reports
-back.** `argobot.sh` runs it beside Argo CD with the Targets' server worker as
-its identity, the one `cub cluster up` gives it, so it acts for exactly these
-Targets:
+back.** `argobot.sh` runs it beside Argo CD as the service account the Targets
+grant, `<prefix>-delivery`, with a key of it in argobot's Secret, so it acts for
+exactly these Targets. It hears of each release on the Channel
+`<prefix>-targets/argobot`, which `argobot.sh` creates and lets the service
+account claim:
 
 - on each `release.published` it hard-refreshes the Applications reading that
   Space, so an approved release reaches the cluster at once;
@@ -921,12 +925,9 @@ Targets:
   read.
 
 Both find an Application by the Space its source reads, since a moved estate
-keeps Argo's names (`dev-1-apptique` reads `argo-apptique-dev-1`). The status
-does that in every argobot. The refresh does it from argobot v0.1.9, which is
-what `argobot.sh` installs: an earlier one looks only for an Application named
-after the Space. An argobot before v0.1.8 does not start against a current
-ConfigHub server at all, because it asks for its Targets by worker and a Target
-no longer names one. `ARGOBOT_VERSION` installs another release.
+keeps Argo's names (`dev-1-apptique` reads `argo-apptique-dev-1`). `argobot.sh`
+installs argobot v0.2.3; `ARGOBOT_VERSION` installs another release, which has
+to be 0.2 or later, since an earlier one cannot run as a service account.
 
 `argobot.sh` is a step of its own on purpose. The handover moves where Argo CD
 reads from and installs nothing; argobot is a workload that runs on your
@@ -987,7 +988,7 @@ reporter. A passing reading of its own that is no longer true, because Argo
 now reports another release or none, is withdrawn from the newest release.
 
 Recording takes Edit on the Release: your own, or `EditChildren` on its Target
-for a worker.
+for a service account.
 
 `--dry-run` shows what it would write; `--json` prints what it read and did.
 Run live on 2026-10-09 against ConfigHub v0.8.10: five Applications recorded on

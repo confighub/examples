@@ -9,7 +9,7 @@ import (
 // long as someone keeps it running where kubectl and a signed-in cub are. This
 // puts the same reporter on the cluster, as argobot is for Argo CD: one pod
 // that reads the layers and records each release's live status, signed in as
-// the Targets' worker.
+// the service account the Targets grant.
 //
 // It is this plugin's own binary, at its own release, fetched by an init
 // container and checked against the release's checksum, and run in the
@@ -33,6 +33,7 @@ var PluginVersion = "dev"
 // fetch, so the script then needs FLUXBOT_URL.
 func FluxbotScript(prefix, version string) string {
 	targets := prefix + "-targets"
+	account := deliveryAccount(prefix)
 	var L []string
 	add := func(f string, a ...any) { L = append(L, fmt.Sprintf(f, a...)) }
 	raw := func(s string) { L = append(L, s) }
@@ -54,11 +55,11 @@ func FluxbotScript(prefix, version string) string {
 	add("#")
 	add("# It changes nothing on the cluster but itself. What it adds:")
 	add("#")
-	add("# - in ConfigHub, EditChildren on this cluster's Target for the Targets'")
-	add("#   worker, which is what lets it record a release's live status. That worker")
-	add("#   is the credential Flux already pulls with;")
-	add("# - on the cluster, in the Flux namespace: a Secret with that worker's ID and")
-	add("#   secret, a ServiceAccount that may read Kustomizations and OCIRepositories")
+	add("# - in ConfigHub, for the service account %s, which Flux already pulls", account)
+	add("#   with: EditChildren on this cluster's Target, which is what lets it record")
+	add("#   a release's live status, and a key for the pod to sign in with;")
+	add("# - on the cluster, in the Flux namespace: a Secret with that key's private")
+	add("#   half, a ServiceAccount that may read Kustomizations and OCIRepositories")
 	add("#   there and nothing else, and a Deployment of one pod.")
 	add("#")
 	add("# The pod runs this plugin's own release binary, which an init container")
@@ -90,24 +91,27 @@ func FluxbotScript(prefix, version string) string {
 	add(`cub auth status >/dev/null 2>&1 || { echo "cub is not signed in to ConfigHub: run 'cub auth login', or 'cub auth login --private-key=<key>' on a server with no identity provider"; exit 1; }`)
 	add(`cub target get --space %s "$cluster" >/dev/null 2>&1 || { echo "%s/$cluster is not a Target: is CLUSTER right, and has apply.sh run?"; exit 1; }`, targets, targets)
 	add("")
-	add("# The grant first: a reporter without it is refused on every write.")
-	add(`bot_user=$(cub worker get --space %s server-worker -o jq=.BridgeWorker.UserID | tr -d '"\n')`, targets)
-	add(`case "$bot_user" in ""|null) echo "could not read the bot user of %s/server-worker"; exit 1 ;; esac`, targets)
-	add(`cub target update "$cluster" --space %s --permission "EditChildren:${bot_user}" --quiet`, targets)
+	add("# The grant first: a reporter without it is refused on every write. View and")
+	add("# ViewChildren, which apply.sh grants too, let it read the layers' releases.")
+	add("cub serviceaccount create %s --allow-exists --quiet", account)
+	add(`cub target update "$cluster" --space %[1]s --permission View:serviceaccount:%[2]s --permission ViewChildren:serviceaccount:%[2]s --permission EditChildren:serviceaccount:%[2]s --quiet`, targets, account)
 	add("")
-	add("# Its credential: the worker's ID and secret go from cub to kubectl through a")
-	add("# pipe, written by the shell itself: not on a command line, not in a file, and")
-	add("# not through this script's own text, so no character in them needs quoting.")
-	add("# Read first, so a failed read stops here rather than installing an empty one.")
-	add(`id=$(cub worker get --space %s server-worker -o jq=.BridgeWorker.BridgeWorkerID | tr -d '"\n')`, targets)
-	add(`secret=$(cub worker get --space %s server-worker --include-secret -o jq=.BridgeWorker.Secret | tr -d '"\n')`, targets)
-	add(`for v in "$bot_user" "$id" "$secret"; do case "$v" in ""|null) echo "could not read the worker %s/server-worker: its user, ID or secret is missing"; exit 1 ;; esac; done`, targets)
-	add(`printf 'CONFIGHUB_WORKER_ID=%%s\nCONFIGHUB_WORKER_SECRET=%%s\n' "$id" "$secret" |`)
-	add(`  k -n "$ns" create secret generic %s --from-env-file=/dev/stdin --dry-run=client -o yaml | k apply -f - >/dev/null`, fluxbotName)
+	add("# Its credential: a key of the service account. ConfigHub keeps only the")
+	add("# public half; the private half goes from a temporary directory into the")
+	add("# Secret. Only when the Secret holds no key yet, so a re-run keeps the key.")
+	add(`key=$(k -n "$ns" get secret %s -o jsonpath='{.data.CONFIGHUB_AUTH_PRIVATE_KEY}' 2>/dev/null || true)`, fluxbotName)
+	add(`if [ -z "$key" ]; then`)
+	add(`  key_dir=$(mktemp -d)`)
+	add(`  trap 'rm -rf "$key_dir"' EXIT`)
+	add(`  cub serviceaccount key add %s --generate "$key_dir/%s.jwk" --description "fluxbot on $cluster" || { echo "could not add a key for %s"; exit 1; }`, account, fluxbotName, account)
+	add(`  k -n "$ns" create secret generic %s --from-file=CONFIGHUB_AUTH_PRIVATE_KEY="$key_dir/%s.jwk" --dry-run=client -o yaml | k apply -f - >/dev/null`, fluxbotName, fluxbotName)
+	add(`  key=$(k -n "$ns" get secret %s -o jsonpath='{.data.CONFIGHUB_AUTH_PRIVATE_KEY}')`, fluxbotName)
+	add(`fi`)
+	add(`[ -n "$key" ] || { echo "the Secret %s in $ns holds no key"; exit 1; }`, fluxbotName)
 	add("# What the pod was made from, so that a change to any of it replaces the pod")
 	add("# and nothing else does.")
 	add(`digest() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi; }`)
-	add(`made_from=$(printf '%%s\n' "$id" "$secret" "$url" "$from" | digest | cut -c1-16)`)
+	add(`made_from=$(printf '%%s\n' "$key" "$url" "$from" | digest | cut -c1-16)`)
 	add("")
 	add("# What it may read, and the pod. The init container fetches the binary for the")
 	add("# node's architecture and stops unless its checksum is the release's.")
@@ -193,7 +197,7 @@ func FluxbotScript(prefix, version string) string {
 	add("          image: %s", fluxbotRuntime)
 	raw("          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}")
 	raw("          volumeMounts: [{name: tools, mountPath: /tools, readOnly: true}, {name: tmp, mountPath: /tmp}]")
-	add(`          command: ["/tools/cub-flux", "status", "--discover", "--as-worker", "--watch", "--ready-file", "/tmp/ready", "--prefix", "%s", "--namespace", "$ns"]`, prefix)
+	add(`          command: ["/tools/cub-flux", "status", "--discover", "--as-service-account", "--watch", "--ready-file", "/tmp/ready", "--prefix", "%s", "--namespace", "$ns"]`, prefix)
 	raw("          # Ready once it has signed in to ConfigHub, and not before: a pod that")
 	raw("          # cannot does not replace one that can.")
 	raw(`          readinessProbe: {exec: {command: ["/tools/cub-flux", "status", "--ready", "/tmp/ready"]}, periodSeconds: 5, failureThreshold: 2}`)
@@ -218,13 +222,13 @@ func FluxbotScript(prefix, version string) string {
 	add(`  exit 1`)
 	add(`fi`)
 	add("")
-	add(`echo "fluxbot runs in $ns as %s/server-worker. What it reports, each pass:"`, targets)
+	add(`echo "fluxbot runs in $ns as %s. What it reports, each pass:"`, account)
 	add(`echo "  kubectl --context $ctx -n $ns logs deploy/%s"`, fluxbotName)
 	add(`echo "Each release a layer applies carries its live status:"`)
 	add(`echo "  cub release list --space <variant Space>"`)
 	add(`echo "To take it out again:"`)
 	add(`echo "  kubectl --context $ctx -n $ns delete deployment,serviceaccount,role,rolebinding,secret %s"`, fluxbotName)
-	add(`echo "and, if nothing else of yours records live status as that worker, its grant:"`)
-	add(`echo "  cub target update $cluster --space %s --permission -EditChildren:$bot_user"`, targets)
+	add(`echo "and, if nothing else of yours records live status as %s, its grant:"`, account)
+	add(`echo "  cub target update $cluster --space %s --permission -EditChildren:serviceaccount:%s"`, targets, account)
 	return strings.Join(L, "\n") + "\n"
 }

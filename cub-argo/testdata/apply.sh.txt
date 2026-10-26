@@ -9,7 +9,7 @@
 # ConfigHub ends up holding a parallel copy that nothing reads. handover.sh
 # is what moves the estate onto it; until you run that, nothing on any
 # cluster reads what this creates, and cleanup.sh beside this script takes
-# it all back out. ConfigHub refuses a Space while a Target, a worker, a
+# it all back out. ConfigHub refuses a Space while a Target, a Channel, a
 # Release or a Tag still points at it, so the order matters and that
 # script has it.
 #
@@ -115,17 +115,18 @@ KUSTOMIZE_FLAGS=${KUSTOMIZE_FLAGS:---enable-helm}
 
 step "1/5 One named Target per cluster, in argo-targets"
 cub space create argo-targets --allow-exists --quiet
-# A server-hosted worker has no process behind it and no role in the
-# organization; it is the credential Argo reads with. Its bot user holds View
-# and ViewChildren on each Target, to find it and pull its Releases, and
-# EditChildren, which is what lets argobot record each Release's live status.
-cub worker create --space argo-targets server-worker --is-server-worker --org-role none --allow-exists --quiet
-bot_user="$(cub worker get --space argo-targets server-worker -o jq=.BridgeWorker.UserID | tr -d '\n')"
+# A service account with no role in the organization; Argo CD pulls with a
+# token of it, and argobot runs as it. It holds View and ViewChildren on each
+# Target, to find it and pull its Releases, and EditChildren, which is what
+# lets argobot record each Release's live status.
+cub serviceaccount create argo-delivery --allow-exists --quiet
 # The cluster Argo CD itself runs on: the control objects are released here.
-cub target create argocd --space argo-targets --permission "View:${bot_user}" --permission "ViewChildren:${bot_user}" --permission "EditChildren:${bot_user}" --allow-exists --quiet
-cub target create dev-1 --space argo-targets --permission "View:${bot_user}" --permission "ViewChildren:${bot_user}" --permission "EditChildren:${bot_user}" --allow-exists --quiet
-cub target create prod-1 --space argo-targets --permission "View:${bot_user}" --permission "ViewChildren:${bot_user}" --permission "EditChildren:${bot_user}" --allow-exists --quiet
-cub target create staging-1 --space argo-targets --permission "View:${bot_user}" --permission "ViewChildren:${bot_user}" --permission "EditChildren:${bot_user}" --allow-exists --quiet
+cub target create argocd --space argo-targets --allow-exists --quiet
+cub target create dev-1 --space argo-targets --allow-exists --quiet
+cub target create prod-1 --space argo-targets --allow-exists --quiet
+cub target create staging-1 --space argo-targets --allow-exists --quiet
+# The grants, as an update so that a Target that already exists gets them too.
+for t in argocd dev-1 prod-1 staging-1; do cub target update "$t" --space argo-targets --permission View:serviceaccount:argo-delivery --permission ViewChildren:serviceaccount:argo-delivery --permission EditChildren:serviceaccount:argo-delivery --quiet; done
 
 step "2/5 One Space per app of apps, holding the objects it syncs"
 cub component create argo-root-children --allow-exists --quiet
