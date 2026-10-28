@@ -2,15 +2,15 @@
 # Copyright (C) ConfigHub, Inc.
 # SPDX-License-Identifier: MIT
 #
-# End-to-end demo of the opa-gatekeeper example function bot.
+# End-to-end demo of the admission-webhook function bot against OPA Gatekeeper.
 #
 # Prerequisites:
 #   - kind, kubectl, cub, docker installed
 #   - Authenticated with: cub auth login
 #
 # Usage:
-#   cd custom-workers/opa-gatekeeper
-#   bash demo.sh
+#   cd custom-workers/admission-webhook
+#   bash demo-gatekeeper.sh
 
 set -euo pipefail
 
@@ -32,7 +32,7 @@ SPACE="gatekeeper-demo-$SUFFIX"
 # accounts belong to the organization, so the name carries the run's suffix.
 BOT="gatekeeper-bot-$SUFFIX"
 BOT_NAMESPACE="gatekeeper-bot"
-IMAGE_NAME="opa-gatekeeper-bot:demo"
+IMAGE_NAME="admission-webhook-bot:demo"
 
 echo "=== OPA Gatekeeper Demo ==="
 echo "Cluster:  $CLUSTER_NAME"
@@ -156,9 +156,9 @@ spec:
 CONSTRAINT
 echo ""
 
-# --- Deploy gatekeeper function bot ---------------------------------------
+# --- Deploy the admission-webhook function bot ------------------------------
 
-echo "--- Deploying gatekeeper function bot ---"
+echo "--- Deploying the admission-webhook function bot ---"
 # The bot lists ValidatingWebhookConfigurations to find Gatekeeper's webhooks.
 kubectl create clusterrole gatekeeper-webhook-reader \
   --verb=list,watch --resource=validatingwebhookconfigurations.admissionregistration.k8s.io

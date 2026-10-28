@@ -4,7 +4,7 @@
 #
 # End-to-end demo of the kyverno example function bot.
 #
-# Unlike the kyverno-server example, this bot uses the kyverno CLI for
+# Unlike the admission-webhook example, this bot uses the kyverno CLI for
 # offline validation — policies are passed as a function parameter, so Kyverno
 # does not need to be deployed in the cluster.
 #

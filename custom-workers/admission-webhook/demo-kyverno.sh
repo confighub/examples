@@ -2,15 +2,15 @@
 # Copyright (C) ConfigHub, Inc.
 # SPDX-License-Identifier: MIT
 #
-# End-to-end demo of the kyverno-server example function bot.
+# End-to-end demo of the admission-webhook function bot against Kyverno.
 #
 # Prerequisites:
 #   - kind, kubectl, cub, docker installed
 #   - Authenticated with: cub auth login
 #
 # Usage:
-#   cd custom-workers/kyverno-server
-#   bash demo.sh
+#   cd custom-workers/admission-webhook
+#   bash demo-kyverno.sh
 
 set -euo pipefail
 
@@ -32,7 +32,7 @@ SPACE="kyverno-demo-$SUFFIX"
 # accounts belong to the organization, so the name carries the run's suffix.
 BOT="kyverno-bot-$SUFFIX"
 BOT_NAMESPACE="kyverno-bot"
-IMAGE_NAME="kyverno-server-bot:demo"
+IMAGE_NAME="admission-webhook-bot:demo"
 
 echo "=== Kyverno Server Demo ==="
 echo "Cluster:  $CLUSTER_NAME"
@@ -154,9 +154,9 @@ spec:
 POLICY
 echo ""
 
-# --- Deploy kyverno-server function bot ---------------------------------------
+# --- Deploy the admission-webhook function bot ------------------------------
 
-echo "--- Deploying kyverno-server function bot ---"
+echo "--- Deploying the admission-webhook function bot ---"
 # The bot lists ValidatingWebhookConfigurations to find Kyverno's webhooks.
 kubectl create clusterrole kyverno-webhook-reader \
   --verb=list,watch --resource=validatingwebhookconfigurations.admissionregistration.k8s.io
