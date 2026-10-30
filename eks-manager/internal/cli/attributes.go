@@ -14,11 +14,11 @@ import (
 	"github.com/confighub/sdk/core/cubapi"
 	api "github.com/confighub/sdk/core/function/api"
 	goclientnew "github.com/confighub/sdk/core/openapi/goclient-new"
+	"github.com/confighub/sdk/managerkit"
+	"github.com/confighub/sdk/managerkit/guardrails"
 
 	"github.com/confighub/examples/eks-manager/internal/cub"
 	"github.com/confighub/examples/eks-manager/internal/eks"
-	"github.com/confighub/examples/managerkit"
-	"github.com/confighub/examples/managerkit/guardrails"
 )
 
 // disruptionAttributePrefix must match vet-disruption's default, which looks for

@@ -126,10 +126,11 @@ Some other examples
   [`rbac-manager`](./rbac-manager/README.md),
   [`sec-scanner`](./sec-scanner/README.md),
   [`fleet-ql`](./fleet-ql/README.md), and
-  [`cost-estimator`](./cost-estimator/README.md)) — and
-  [`managerkit`](./managerkit), the guardrail policy pack the `cub-*` fleet
-  managers share. What those managers used to share for reading a fleet and for
-  the command line is now in the Go SDK itself —
+  [`cost-estimator`](./cost-estimator/README.md)). What the `cub-*` fleet
+  managers share is in the Go SDK itself:
+  [`managerkit`](https://pkg.go.dev/github.com/confighub/sdk/managerkit)
+  (the guardrail policy pack, the profile library, and reporting what a write
+  changed),
   [`core/cubapi`](https://pkg.go.dev/github.com/confighub/sdk/core/cubapi)
   (`SnapshotLoader`, `MemoizedClient`) and
   [`cliutil`](https://pkg.go.dev/github.com/confighub/sdk/cliutil)

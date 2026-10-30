@@ -9,13 +9,13 @@ import (
 	"text/tabwriter"
 
 	api "github.com/confighub/sdk/core/function/api"
+	"github.com/confighub/sdk/managerkit"
 
 	"github.com/spf13/cobra"
 
 	"github.com/confighub/examples/eks-manager/internal/cub"
 	"github.com/confighub/examples/eks-manager/internal/eks"
 	"github.com/confighub/examples/eks-manager/internal/snapshot"
-	"github.com/confighub/examples/managerkit"
 )
 
 type findingsReport struct {

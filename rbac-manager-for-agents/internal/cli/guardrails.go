@@ -13,8 +13,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/confighub/sdk/core/cubapi"
+	"github.com/confighub/sdk/managerkit/guardrails"
 
-	"github.com/confighub/examples/managerkit/guardrails"
 	"github.com/confighub/examples/rbac-manager-for-agents/internal/cub"
 )
 

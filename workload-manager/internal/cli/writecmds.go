@@ -10,8 +10,8 @@ import (
 
 	"github.com/confighub/sdk/cliutil"
 	api "github.com/confighub/sdk/core/function/api"
+	"github.com/confighub/sdk/managerkit/write"
 
-	"github.com/confighub/examples/managerkit/write"
 	"github.com/confighub/examples/workload-manager/internal/cub"
 )
 

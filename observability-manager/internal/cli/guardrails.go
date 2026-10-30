@@ -14,8 +14,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/confighub/sdk/core/cubapi"
+	"github.com/confighub/sdk/managerkit/guardrails"
 
-	"github.com/confighub/examples/managerkit/guardrails"
 	"github.com/confighub/examples/observability-manager/internal/cub"
 	"github.com/confighub/examples/observability-manager/internal/observability"
 	"github.com/confighub/examples/observability-manager/internal/snapshot"
@@ -57,7 +57,7 @@ Service live in separate Units), so a per-Unit vet-cel can't compute it directly
 This realizes annotate-then-validate: 'guardrails annotate' writes the coverage
 finding onto each uncovered metrics-Service Unit, and this Trigger turns it into
 an advisory ValidationWarning. Triggers are Warn=true; promote to blocking with
-  cub trigger update servicemonitor-coverage --space observability-policy --unwarn`,
+  cub trigger update servicemonitor-coverage --space <policy-space> --unwarn`,
 	}
 	cmd.AddCommand(pack.InstallCmd(preflight), pack.StatusCmd(preflight), pack.AnnotateCmd(preflight, annotateSpec))
 	return cmd

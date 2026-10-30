@@ -36,8 +36,7 @@ example's README and contract for its actual effects and prerequisites.
 | Build useful operational applications | [configboard](../configboard/README.md), [fleet-ql](../fleet-ql/README.md), [pilot-example-addons-manager](../pilot-example-addons-manager/README.md) and [cost-management-app](../cost-management-app/README.md). |
 | Extend or transform configuration | [custom-workers](../custom-workers/), [k8s-to-score](../k8s-to-score/README.md) and [prompts for an existing repository](../prompts/README.md). |
 
-`managerkit` and `webkit` are shared implementation libraries, not additional
-user journeys. The [GitOps index](../gitops/README.md) remains the detailed map
+`webkit` is a shared implementation library, not an additional user journey. The [GitOps index](../gitops/README.md) remains the detailed map
 for Argo CD and Flux; this review does not replace it.
 
 ## Examples worth tracking in their existing homes

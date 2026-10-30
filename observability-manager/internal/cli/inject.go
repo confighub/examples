@@ -9,8 +9,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/confighub/sdk/cliutil"
+	"github.com/confighub/sdk/managerkit/write"
 
-	"github.com/confighub/examples/managerkit/write"
 	"github.com/confighub/examples/observability-manager/internal/cub"
 )
 

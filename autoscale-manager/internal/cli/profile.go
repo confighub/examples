@@ -14,9 +14,9 @@ import (
 	"github.com/spf13/cobra"
 
 	api "github.com/confighub/sdk/core/function/api"
+	"github.com/confighub/sdk/managerkit/profiles"
 
 	"github.com/confighub/examples/autoscale-manager/internal/cub"
-	"github.com/confighub/examples/managerkit/profiles"
 )
 
 // autoscalerKindsWhereData scopes fleet-edit to HPA / ScaledObject resources.

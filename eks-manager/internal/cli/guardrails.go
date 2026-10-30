@@ -15,10 +15,10 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/confighub/sdk/core/cubapi"
+	"github.com/confighub/sdk/managerkit/guardrails"
 
 	"github.com/confighub/examples/eks-manager/internal/cub"
 	"github.com/confighub/examples/eks-manager/internal/snapshot"
-	"github.com/confighub/examples/managerkit/guardrails"
 )
 
 // Each expression short-circuits on kind, so a rule is a no-op for resources it

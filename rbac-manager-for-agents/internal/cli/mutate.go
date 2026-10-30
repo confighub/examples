@@ -10,8 +10,7 @@ import (
 
 	"github.com/confighub/sdk/cliutil"
 	"github.com/confighub/sdk/core/cubapi"
-
-	"github.com/confighub/examples/managerkit/write"
+	"github.com/confighub/sdk/managerkit/write"
 )
 
 // commitChange converts the shared dry-run/commit flags (cliutil.CommitFlags)
