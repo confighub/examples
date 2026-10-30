@@ -79,7 +79,7 @@ func PlanPodSecurity(clusters map[string]*ClusterNamespaces, postures []Namespac
 	workloads := map[nsKey][]*WorkloadEntity{}
 	for _, c := range clusters {
 		for _, n := range c.Namespaces {
-			if n.Name != PlaceholderNamespace && selected(n) {
+			if !c.skipsNamespace(n.Name) && selected(n) {
 				k := nsKey{c.Cluster, n.Name}
 				objects[k] = append(objects[k], n)
 			}

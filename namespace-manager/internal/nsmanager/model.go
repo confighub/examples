@@ -89,6 +89,16 @@ type ClusterNamespaces struct {
 	Cluster    string             `json:"cluster"`
 	Namespaces []*NamespaceEntity `json:"namespaces"`
 	Workloads  []*WorkloadEntity  `json:"workloads"`
+	// Base is true for a base Space analyzed on its own in place of a cluster. Its namespace
+	// is usually the placeholder its variants replace, so there the placeholder is a namespace
+	// like any other rather than an unrendered one to skip.
+	Base bool `json:"base,omitempty"`
+}
+
+// skipsNamespace reports whether analysis passes over a namespace: one with no name, or the
+// placeholder of an unrendered base where the cluster is not that base itself.
+func (c *ClusterNamespaces) skipsNamespace(name string) bool {
+	return name == "" || (name == PlaceholderNamespace && !c.Base)
 }
 
 // workloadKinds is the set of pod-bearing kinds whose presence marks a namespace
