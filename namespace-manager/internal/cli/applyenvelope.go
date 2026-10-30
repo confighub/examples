@@ -67,9 +67,10 @@ when some of its workloads could not be checked, when it has no workloads in
 ConfigHub and no --level was given, or when its workloads do not meet --level.
 
 Select namespaces by the Space holding their Namespace Unit (--space), --cluster
-or --namespace. With --bases it labels base Spaces instead, each judged by its
-own workloads (and listed under its slug as the cluster); the variants made from
-a base pick the labels up when they are upgraded from it.
+or --namespace. With --bases it labels base Spaces instead -- Spaces with no
+release Target, which deploy nowhere -- each judged by its own workloads (and
+listed under its slug as the cluster); the variants made from a base pick the
+labels up when they are upgraded from it.
 
 The server-side filters scope which Units are read; narrowing them can hide
 workloads that run in a namespace from other Spaces.
@@ -141,7 +142,7 @@ each Unit's diff.`,
 	addFilterFlags(cmd, &filter)
 	commit.Bind(cmd)
 	cmd.Flags().StringSliceVar(&spaces, "space", nil, "label the namespaces whose Namespace Unit is in this Space (repeat, or comma-separate, for several)")
-	cmd.Flags().BoolVar(&bases, "bases", false, "label base (Variant=base) Spaces instead of deployed ones, each judged by its own workloads; variants then pick the labels up by upgrade")
+	cmd.Flags().BoolVar(&bases, "bases", false, "label base Spaces, those with no release Target, instead of deployed ones, each judged by its own workloads; variants then pick the labels up by upgrade")
 	cmd.Flags().StringVar(&clusterFilter, "cluster", "", "label the namespaces on this cluster (Target slug, or None for Units whose Space has no release Target)")
 	cmd.Flags().StringVar(&namespaceFilter, "namespace", "", "label this namespace")
 	cmd.Flags().StringVar(&level, "level", "", "level to apply: privileged | baseline | restricted (default: the most restrictive one each namespace's workloads meet)")

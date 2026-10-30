@@ -183,3 +183,37 @@ func TestAnalyzePodSecurityUnlabeled(t *testing.T) {
 		t.Errorf("web = %+v, want 1 unlabeled workload", p)
 	}
 }
+
+// A base's namespace is usually the placeholder its variants replace. In a cluster the
+// placeholder is an unrendered base and is skipped; in the base, analyzed on its own, it is
+// the namespace, and is judged and labeled like any other.
+func TestPodSecurityInABase(t *testing.T) {
+	resources := []FleetResource{
+		podRes("app-base", "namespace", "/"+PlaceholderNamespace, nsDoc(PlaceholderNamespace, nil)),
+		podRes("app-base", "web", PlaceholderNamespace+"/web", workloadDoc("Deployment", "web", PlaceholderNamespace)),
+	}
+	all := func(*NamespaceEntity) bool { return true }
+
+	deployed := BuildFleet(resources)
+	if ids := PodSecurityUnitIDs(deployed); len(ids) != 0 {
+		t.Errorf("in a cluster, PodSecurityUnitIDs = %v, want none", ids)
+	}
+	if plans, _ := PlanPodSecurity(deployed, AnalyzePodSecurity(deployed, PodSecurityResults{}), "", "latest", all); len(plans) != 0 {
+		t.Errorf("in a cluster, plans = %+v, want none", plans)
+	}
+
+	base := BuildFleet(resources)
+	for _, c := range base {
+		c.Base = true
+	}
+	if ids := PodSecurityUnitIDs(base); len(ids) != 1 || ids[0] != "web" {
+		t.Errorf("in the base, PodSecurityUnitIDs = %v, want [web]", ids)
+	}
+	plans, edits := PlanPodSecurity(base, AnalyzePodSecurity(base, PodSecurityResults{}), "", "latest", all)
+	if p := findApply(plans, PlaceholderNamespace); p == nil || p.Level != LevelRestricted {
+		t.Fatalf("in the base, plan = %+v, want the placeholder namespace at restricted", plans)
+	}
+	if len(unitEdits(edits, "namespace")) == 0 || len(unitEdits(edits, "web")) == 0 {
+		t.Errorf("in the base, edits = %+v, want the Namespace and its workload labeled", edits)
+	}
+}

@@ -28,9 +28,6 @@ type Snapshot struct {
 	// Clusters holds the analysis entities per cluster, excluding canonical
 	// (base/policy) definitions.
 	Clusters map[string]*nsmanager.ClusterNamespaces
-	// Bases holds the canonical definitions, keyed by Space slug in place of a
-	// cluster: a base deploys nowhere, so each base Space is analyzed on its own.
-	Bases map[string]*nsmanager.ClusterNamespaces
 	// Resources is every parsed resource, including canonical ones.
 	Resources []nsmanager.FleetResource
 	// Units is in-scope Unit metadata by UnitID.
@@ -80,19 +77,43 @@ func Load(ctx context.Context, c *cubapi.Client, where string) (*Snapshot, error
 		return nil, err
 	}
 	// Canonical definitions stay out of cluster analysis.
-	var forAnalysis, bases []nsmanager.FleetResource
+	var forAnalysis []nsmanager.FleetResource
 	for _, r := range snap.Resources {
 		if !r.Origin.Canonical {
 			forAnalysis = append(forAnalysis, r)
-			continue
 		}
-		r.Origin.Cluster = r.Origin.Space
-		bases = append(bases, r)
 	}
 	return &Snapshot{
 		Clusters:  nsmanager.BuildFleet(forAnalysis),
-		Bases:     nsmanager.BuildFleet(bases),
 		Resources: snap.Resources,
+		Units:     snap.Units,
+		Filter:    snap.Filter,
+	}, nil
+}
+
+// BaseWhere selects the Units of base Spaces: those with no release Target, which deploy
+// nowhere. It is the Spaces' own record of that, so it needs no label to be set on them.
+const BaseWhere = "Space.ReleaseTargetID IS NULL"
+
+// LoadBases is Load for the Units of base Spaces (BaseWhere), with each Space as the cluster
+// of its resources: a base deploys nowhere, so each is analyzed on its own.
+func LoadBases(ctx context.Context, c *cubapi.Client, where string) (*Snapshot, error) {
+	snap, err := loader.Load(ctx, c, cubapi.NewWhere(where).And(BaseWhere).String())
+	if err != nil {
+		return nil, err
+	}
+	resources := make([]nsmanager.FleetResource, len(snap.Resources))
+	for i, r := range snap.Resources {
+		r.Origin.Cluster = r.Origin.Space
+		resources[i] = r
+	}
+	clusters := nsmanager.BuildFleet(resources)
+	for _, c := range clusters {
+		c.Base = true
+	}
+	return &Snapshot{
+		Clusters:  clusters,
+		Resources: resources,
 		Units:     snap.Units,
 		Filter:    snap.Filter,
 	}, nil

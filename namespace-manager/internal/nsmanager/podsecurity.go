@@ -101,7 +101,8 @@ type NamespacePodSecurity struct {
 // AnalyzePodSecurity computes each occupied namespace's pod-security posture
 // from the workloads in clusters and the checks vet-pod-security-standard
 // reported for them. Namespaces with no workloads have no posture to report,
-// and the placeholder namespace of an unrendered base is skipped.
+// and the placeholder namespace of an unrendered base is skipped, except in the
+// base itself.
 func AnalyzePodSecurity(clusters map[string]*ClusterNamespaces, results PodSecurityResults) []NamespacePodSecurity {
 	var out []NamespacePodSecurity
 	for _, c := range clusters {
@@ -113,7 +114,7 @@ func AnalyzePodSecurity(clusters map[string]*ClusterNamespaces, results PodSecur
 		}
 		byNamespace := map[string][]*WorkloadEntity{}
 		for _, w := range c.Workloads {
-			if w.Namespace == "" || w.Namespace == PlaceholderNamespace {
+			if c.skipsNamespace(w.Namespace) {
 				continue
 			}
 			byNamespace[w.Namespace] = append(byNamespace[w.Namespace], w)
@@ -200,7 +201,7 @@ func PodSecurityUnitIDs(clusters map[string]*ClusterNamespaces) []string {
 	seen := map[string]bool{}
 	for _, c := range clusters {
 		for _, w := range c.Workloads {
-			if w.Namespace == "" || w.Namespace == PlaceholderNamespace || w.Origin.UnitID == "" {
+			if c.skipsNamespace(w.Namespace) || w.Origin.UnitID == "" {
 				continue
 			}
 			seen[w.Origin.UnitID] = true

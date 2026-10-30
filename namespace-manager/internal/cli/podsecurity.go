@@ -122,7 +122,7 @@ Kubernetes minor version of the standards instead of the latest.`,
 	cmd.Flags().StringVar(&namespaceFilter, "namespace", "", "filter by namespace")
 	cmd.Flags().StringVar(&statusFilter, "status", "", "filter by status: "+strings.Join(podSecurityStatuses, " | "))
 	cmd.Flags().StringVar(&version, "version", "", `Pod Security Standards version to check against: "latest" (the default) or a Kubernetes minor version such as "v1.30"`)
-	cmd.Flags().BoolVar(&bases, "bases", false, "check base (Variant=base) Spaces instead of deployed ones, each Space on its own, listed under its slug as the cluster")
+	cmd.Flags().BoolVar(&bases, "bases", false, "check base Spaces, those with no release Target, instead of deployed ones, each Space on its own, listed under its slug as the cluster")
 	return cmd
 }
 
@@ -172,16 +172,18 @@ type podSecurityFleet struct {
 
 // loadPodSecurity snapshots the Units where selects and checks their workloads
 // at restricted and baseline, at version ("" for latest): those deployed to the
-// fleet's clusters, or with bases those in base Spaces, each Space on its own.
+// fleet's clusters, or with bases those in base Spaces -- Spaces with no release Target --
+// each Space on its own.
 func loadPodSecurity(ctx context.Context, client *cubapi.Client, where, version string, bases bool) (*podSecurityFleet, error) {
-	snap, err := snapshot.Load(ctx, client, where)
+	load := snapshot.Load
+	if bases {
+		load = snapshot.LoadBases
+	}
+	snap, err := load(ctx, client, where)
 	if err != nil {
 		return nil, err
 	}
 	clusters := snap.Clusters
-	if bases {
-		clusters = snap.Bases
-	}
 	unitIDs := nsmanager.PodSecurityUnitIDs(clusters)
 	results := nsmanager.PodSecurityResults{Unchecked: map[string]string{}}
 	if results.Restricted, err = cub.VetPodSecurity(ctx, client, nsmanager.LevelRestricted, version, unitIDs, results.Unchecked); err != nil {
