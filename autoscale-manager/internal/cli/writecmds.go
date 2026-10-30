@@ -10,9 +10,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/confighub/sdk/cliutil"
+	"github.com/confighub/sdk/managerkit/write"
 
 	"github.com/confighub/examples/autoscale-manager/internal/cub"
-	"github.com/confighub/examples/managerkit/write"
 )
 
 // newSetHPACmd edits an existing HorizontalPodAutoscaler Unit's replica bounds

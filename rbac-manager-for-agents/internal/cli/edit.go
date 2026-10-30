@@ -12,8 +12,8 @@ import (
 	"github.com/confighub/sdk/cliutil"
 	"github.com/confighub/sdk/core/cubapi"
 	goclientnew "github.com/confighub/sdk/core/openapi/goclient-new"
+	"github.com/confighub/sdk/managerkit/write"
 
-	"github.com/confighub/examples/managerkit/write"
 	"github.com/confighub/examples/rbac-manager-for-agents/internal/cub"
 	"github.com/confighub/examples/rbac-manager-for-agents/internal/rbac"
 )

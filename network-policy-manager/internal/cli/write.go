@@ -13,8 +13,8 @@ import (
 
 	"github.com/confighub/sdk/core/cubapi"
 	goclientnew "github.com/confighub/sdk/core/openapi/goclient-new"
+	"github.com/confighub/sdk/managerkit"
 
-	"github.com/confighub/examples/managerkit"
 	"github.com/confighub/examples/network-policy-manager/internal/cub"
 	"github.com/confighub/examples/network-policy-manager/internal/netpol"
 	"github.com/confighub/examples/network-policy-manager/internal/snapshot"

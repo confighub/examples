@@ -9,8 +9,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/confighub/examples/managerkit"
 	"github.com/confighub/sdk/cliutil"
+	"github.com/confighub/sdk/managerkit"
 
 	"github.com/confighub/examples/autoscale-manager/internal/cub"
 	"github.com/confighub/examples/autoscale-manager/internal/localexec"

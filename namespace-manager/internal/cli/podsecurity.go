@@ -13,8 +13,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/confighub/sdk/core/cubapi"
+	"github.com/confighub/sdk/managerkit"
 
-	"github.com/confighub/examples/managerkit"
 	"github.com/confighub/examples/namespace-manager/internal/cub"
 	"github.com/confighub/examples/namespace-manager/internal/nsmanager"
 	"github.com/confighub/examples/namespace-manager/internal/snapshot"

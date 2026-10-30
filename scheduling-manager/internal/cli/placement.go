@@ -11,7 +11,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/confighub/examples/managerkit"
+	"github.com/confighub/sdk/managerkit"
+
 	"github.com/confighub/examples/scheduling-manager/internal/cub"
 	"github.com/confighub/examples/scheduling-manager/internal/scheduling"
 	"github.com/confighub/examples/scheduling-manager/internal/snapshot"

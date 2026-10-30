@@ -13,8 +13,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/confighub/sdk/core/cubapi"
+	"github.com/confighub/sdk/managerkit/guardrails"
 
-	"github.com/confighub/examples/managerkit/guardrails"
 	"github.com/confighub/examples/scheduling-manager/internal/cub"
 )
 
@@ -52,7 +52,7 @@ policy Space and enforced in each Space that opts into the group:
 
 The rule is a plain per-resource vet-cel check (a single Unit answers it), created
 with Warn=true (advisory ValidationWarnings, never blocking). Promote it to blocking
-with: cub trigger update <slug> --space scheduling-policy --unwarn`,
+with: cub trigger update <slug> --space <policy-space> --unwarn`,
 	}
 	cmd.AddCommand(pack.InstallCmd(preflight), pack.StatusCmd(preflight))
 	return cmd

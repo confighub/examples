@@ -10,7 +10,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/confighub/examples/managerkit"
+	"github.com/confighub/sdk/managerkit"
+
 	"github.com/confighub/examples/workload-manager/internal/cub"
 	"github.com/confighub/examples/workload-manager/internal/snapshot"
 	"github.com/confighub/examples/workload-manager/internal/workload"

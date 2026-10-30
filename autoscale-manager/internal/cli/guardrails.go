@@ -13,9 +13,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/confighub/sdk/core/cubapi"
+	"github.com/confighub/sdk/managerkit/guardrails"
 
 	"github.com/confighub/examples/autoscale-manager/internal/cub"
-	"github.com/confighub/examples/managerkit/guardrails"
 )
 
 // celAutoscalerNotPinned passes unless an autoscaler is pinned (min == max, so
@@ -58,7 +58,7 @@ policy Space and enforced in each Space that opts into the group:
 
 Both rules run per-resource (a single Unit answers each), created with Warn=true
 (advisory ValidationWarnings, never blocking). Promote one to blocking with:
-cub trigger update <slug> --space autoscale-policy --unwarn`,
+cub trigger update <slug> --space <policy-space> --unwarn`,
 	}
 	cmd.AddCommand(pack.InstallCmd(preflight), pack.StatusCmd(preflight))
 	return cmd

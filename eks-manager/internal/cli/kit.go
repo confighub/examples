@@ -12,9 +12,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/confighub/examples/managerkit"
 	"github.com/confighub/sdk/cliutil"
 	api "github.com/confighub/sdk/core/function/api"
+	"github.com/confighub/sdk/managerkit"
 )
 
 type filterFlags = cliutil.QueryFlags

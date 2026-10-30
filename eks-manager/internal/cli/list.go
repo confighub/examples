@@ -11,10 +11,11 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/confighub/sdk/managerkit"
+
 	"github.com/confighub/examples/eks-manager/internal/cub"
 	"github.com/confighub/examples/eks-manager/internal/eks"
 	"github.com/confighub/examples/eks-manager/internal/snapshot"
-	"github.com/confighub/examples/managerkit"
 )
 
 type resourceRow struct {

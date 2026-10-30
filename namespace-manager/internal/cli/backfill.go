@@ -10,11 +10,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/confighub/examples/managerkit"
-	"github.com/confighub/examples/managerkit/write"
 	"github.com/confighub/sdk/cliutil"
 	"github.com/confighub/sdk/core/cubapi"
 	api "github.com/confighub/sdk/core/function/api"
+	"github.com/confighub/sdk/managerkit"
+	"github.com/confighub/sdk/managerkit/write"
 
 	"github.com/confighub/examples/namespace-manager/internal/cub"
 	"github.com/confighub/examples/namespace-manager/internal/nsmanager"

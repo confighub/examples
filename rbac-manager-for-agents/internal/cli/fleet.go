@@ -11,8 +11,8 @@ import (
 
 	"github.com/confighub/sdk/cliutil"
 	"github.com/confighub/sdk/core/cubapi"
+	"github.com/confighub/sdk/managerkit/write"
 
-	"github.com/confighub/examples/managerkit/write"
 	"github.com/confighub/examples/rbac-manager-for-agents/internal/cub"
 	"github.com/confighub/examples/rbac-manager-for-agents/internal/rbac"
 )

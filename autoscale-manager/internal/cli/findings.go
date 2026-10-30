@@ -8,13 +8,13 @@ import (
 	"text/tabwriter"
 
 	api "github.com/confighub/sdk/core/function/api"
+	"github.com/confighub/sdk/managerkit"
 
 	"github.com/spf13/cobra"
 
 	"github.com/confighub/examples/autoscale-manager/internal/autoscale"
 	"github.com/confighub/examples/autoscale-manager/internal/cub"
 	"github.com/confighub/examples/autoscale-manager/internal/snapshot"
-	"github.com/confighub/examples/managerkit"
 )
 
 type findingsReport struct {

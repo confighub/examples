@@ -12,8 +12,8 @@ import (
 	"github.com/spf13/cobra"
 
 	api "github.com/confighub/sdk/core/function/api"
+	"github.com/confighub/sdk/managerkit/profiles"
 
-	"github.com/confighub/examples/managerkit/profiles"
 	"github.com/confighub/examples/scheduling-manager/internal/cub"
 )
 
