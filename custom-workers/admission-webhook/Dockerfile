@@ -13,7 +13,7 @@ RUN go mod download
 
 # Copy source code and build
 COPY . .
-RUN CGO_ENABLED=0 go build -o /go/bin/kyverno-server .
+RUN CGO_ENABLED=0 go build -o /go/bin/admission-webhook .
 
 #################
 # Runtime stage #
@@ -25,6 +25,6 @@ RUN addgroup -g 3000 appgroup && adduser -u 1000 -g appgroup --disabled-password
 USER 1000:3000
 
 WORKDIR /app
-COPY --from=builder /go/bin/kyverno-server .
+COPY --from=builder /go/bin/admission-webhook .
 
-ENTRYPOINT ["/app/kyverno-server"]
+ENTRYPOINT ["/app/admission-webhook"]
