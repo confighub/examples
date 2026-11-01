@@ -169,7 +169,7 @@ this tool.
 ## 7. Enforce with guardrails
 
 `guardrails install` stands up two `Warn=true` Triggers in the `common`
-Space, labeled `Guardrails: autoscale`, and adds the `autoscale` group to each
+Space, labeled `Pack: autoscale`, and adds the `autoscale` group to each
 in-scope Space's `WhereTrigger`. It's dry-run by default and conservative — it
 skips Spaces that already select Triggers their own way:
 

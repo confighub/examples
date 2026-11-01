@@ -9,7 +9,7 @@ allowed-tools: Bash(cub-scheduling --help) Bash(cub-scheduling * --help) Bash(cu
 
 Turn the placement anti-pattern into **enforcement** — an advisory ValidationWarning (promotable to a blocking ValidationError) that fires in the normal apply pipeline.
 
-- **`guardrails install`** — creates the `common` Space, a `Warn=true` `vet-cel` Trigger (`workload-toleration-needs-placement`), labeled `Guardrails: scheduling`, then adds the `scheduling` group to each in-scope Space's `WhereTrigger`. **Dry-run by default**; re-run with `--commit`.
+- **`guardrails install`** — creates the `common` Space, a `Warn=true` `vet-cel` Trigger (`workload-toleration-needs-placement`), labeled `Pack: scheduling`, then adds the `scheduling` group to each in-scope Space's `WhereTrigger`. **Dry-run by default**; re-run with `--commit`.
 - **`guardrails status`** — lists Units carrying placement ValidationWarnings or ValidationErrors.
 
 ## Why this matters
