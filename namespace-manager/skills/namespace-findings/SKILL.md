@@ -54,7 +54,7 @@ cub-namespace findings --cluster prod-cluster
 
 ### Scoping the fleet
 
-Scope server-side with a single Unit `--where` predicate (Unit / `Space.*` / `Target.*`), plus the label shorthands `--component`, `--environment`, `--region`, `--owner`, `--layer`, `--variant` (each compiles to `Space.Labels.<Key> = '<value>'`), AND-joined. ConfigHub `where` is flat AND-only — no parentheses, no `OR` (a parenthesized clause fails with `invalid attribute name`). Example: `--where "Target.ProviderType = 'OCI'"` (the ProviderType recommended for ArgoCD/Flux). `--cluster` is a client-side display filter.
+Scope server-side with a single Unit `--where` predicate (Unit / `Space.*` / `Target.*`), plus the label shorthands `--component`, `--environment`, `--region`, `--owner`, `--layer`, `--variant` (each compiles to `Space.Labels.<Key> = '<value>'`), AND-joined. ConfigHub `where` is flat AND-only — no parentheses, no `OR` (a parenthesized clause fails with `invalid attribute name`). Example: `--where "Unreleasable = false"` (the Units a Release delivers). `--cluster` is a client-side display filter.
 
 ## Stop conditions
 

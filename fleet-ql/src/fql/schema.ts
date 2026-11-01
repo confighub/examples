@@ -106,7 +106,7 @@ const UNITS: TableDef = {
       pushdown: { target: 'where', expr: 'UpstreamRevisionNum' },
     },
     upstreamUnitId: { type: 'string', pushdown: { target: 'where', expr: 'UpstreamUnitID' } },
-    providerType: { type: 'string', pushdown: { target: 'where', expr: 'ProviderType' } },
+    unreleasable: { type: 'boolean', pushdown: { target: 'where', expr: 'Unreleasable' } },
     // ConfigHub well-known fleet labels as first-class columns (sugar over the
     // labels.* map; push to where exactly like labels.Environment would).
     environment: { type: 'string', pushdown: { target: 'where', expr: 'Labels.Environment' } },

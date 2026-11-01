@@ -59,13 +59,13 @@ Client-side display filters on `list`: `--kind` (Role | ClusterRole | RoleBindin
 
 Both commands scope the fleet server-side with a single ConfigHub Unit `--where` filter. Because one Unit filter can reference Unit, Space, and Target attributes, there is no separate Space/Target filter:
 
-- `--where "Target.ProviderType = 'OCI'"` — by any Unit/Space/Target attribute (Slug, Labels.*, Space.*, Target.*).
+- `--where "Unreleasable = false"` — by any Unit/Space/Target attribute (Slug, Labels.*, Space.*, Target.*).
 - `--where "Slug = 'rbac'"` — by Unit slug across the fleet.
 - Label shorthands over `Space.Labels.*`: `--component`, `--environment`, `--region`, `--owner`, `--layer`, `--variant` (e.g. `--environment prod`).
 
 ConfigHub `where` is flat AND-only — no parentheses, no OR (a parenthesized clause fails with `invalid attribute name`); the shorthands AND onto any `--where`. Prefer scoping server-side with `--where` over post-filtering large JSON.
 
-> Base/template Units can bind a Noop-ProviderType dummy Target (server-hosted, never applied) so every Unit is targeted and `Target.Slug` is a consistent grouping key.
+> Base/template Units live in Spaces with no release Target, so they group under `None`.
 
 ## Working with output
 

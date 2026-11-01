@@ -61,7 +61,6 @@ What happened:
 If you already have a target that Argo CD or Flux pulls from:
 
 ```bash
-cub unit set-target --space "${SPACE}" hello-backend <space/target>
 cub space update "${SPACE}" --release-target <space/target>
 cub release publish "${SPACE}"
 ```

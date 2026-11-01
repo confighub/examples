@@ -156,7 +156,7 @@ cd realistic-app
 
 What to explain:
 
-- `set-target.sh` binds the deployment units to the target and prepares the namespace bootstrap unit
+- `set-target.sh` sets the deploy space's release target, which its deployment units take, and prepares the namespace bootstrap unit
 - It rejects `ArgoCDRenderer` targets: this example materializes raw manifests
 
 **PAUSE.** Wait for the human.

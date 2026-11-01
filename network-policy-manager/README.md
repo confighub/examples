@@ -81,8 +81,8 @@ Target filter — the server does the scoping and only the matching Units' confi
 is fetched.
 
 ```bash
-# Only Units bound to an OCI Target (the ProviderType ArgoCD/Flux pull from)
-bin/cub-netpol coverage --where "Target.ProviderType = 'OCI'" -o table
+# Only the Units a Release delivers
+bin/cub-netpol coverage --where "Unreleasable = false" -o table
 
 # By Slug, or any Space/Target attribute
 bin/cub-netpol snapshot --where "Space.Slug LIKE 'apptique-%'" -o table
@@ -108,9 +108,9 @@ or `None` for Units whose Space has no release Target — a server-side
 `Target.Slug` predicate would wrongly drop the unbound ones). Use them to focus
 output, not to scope the server-side fetch.
 
-> Tip: bind base/template Units to a **Noop-ProviderType** dummy Target — a
-> no-apply, server-hosted bridge that never touches a cluster — so every Unit is
-> targeted and `Target.Slug` is a consistent grouping key across the fleet.
+> Tip: a Unit takes its Space's release Target unless it is `Unreleasable`, so
+> keep base/template Units in Spaces with no release Target; they group under
+> `None`.
 
 ## Agent skills
 

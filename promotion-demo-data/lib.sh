@@ -135,6 +135,7 @@ create_app_space() {
     --label "Variant=${target}" \
     --label "TargetRole=$(target_role "$env")" \
     --label "TargetRegion=$(region_label "$region")" \
+    --release-target "${target}/${target}" \
     --quiet
 
   echo "  Created component space: $space"

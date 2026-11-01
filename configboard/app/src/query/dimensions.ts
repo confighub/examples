@@ -33,11 +33,12 @@ export const UNIT_DIMENSIONS: Dimension[] = [
     whereKey: 'ToolchainType',
   }),
   dim({
-    id: 'Unit.ProviderType',
-    label: 'Provider',
+    id: 'Unit.Unreleasable',
+    label: 'Releasable',
     kind: 'string',
     source: 'Unit',
-    whereKey: 'ProviderType',
+    // Derived client-side: the stored field is a boolean, and the chart categories
+    // are names, so a click cannot be pushed down as `Unreleasable = '<name>'`.
   }),
   dim({
     id: 'Unit.Deployable',
@@ -126,13 +127,6 @@ export const REVISION_DIMENSIONS: Dimension[] = [
 
 export const TARGET_DIMENSIONS: Dimension[] = [
   dim({ id: 'Target.Slug', label: 'Target', kind: 'string', source: 'Target', whereKey: 'Slug' }),
-  dim({
-    id: 'Target.ProviderType',
-    label: 'Provider',
-    kind: 'string',
-    source: 'Target',
-    whereKey: 'ProviderType',
-  }),
   dim({
     id: 'Target.KubernetesVersion',
     label: 'Kubernetes version',

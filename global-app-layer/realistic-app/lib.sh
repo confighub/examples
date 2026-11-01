@@ -486,7 +486,7 @@ ensure_namespace_unit() {
   _mapfile namespace_labels < <(namespace_unit_label_args)
   upsert_unit_from_file "$(deploy_space)" "$(namespace_unit_name)" "${manifest_path}" "${namespace_labels[@]}"
   if [[ -n "${target_ref}" ]]; then
-    cub unit set-target "${target_ref}" --space "$(deploy_space)" --unit "$(namespace_unit_name)"
+    cub space update "$(deploy_space)" --release-target "${target_ref}"
   fi
 }
 
@@ -548,7 +548,7 @@ Core cub commands:
 EOF_PLAN
   if [[ -n "${target_ref}" ]]; then
     cat <<EOF_PLAN
-- cub unit set-target ${target_ref}
+- cub space update $(deploy_space) --release-target ${target_ref}
 EOF_PLAN
   fi
 }
@@ -672,7 +672,7 @@ show_setup_plan_json() {
         "cub function do set-replicas",
         "cub function do set-string-path",
         "cub function do set-namespace"
-      ] + (if $target == "" then [] else ["cub unit set-target"] end))
+      ] + (if $target == "" then [] else ["cub space update --release-target"] end))
     }'
 }
 
@@ -821,11 +821,7 @@ apply_deploy_mutations() {
 
 set_target_for_deploy_units() {
   local target_ref="$1"
-  local component
   ensure_namespace_unit "${target_ref}"
-  for component in "${COMPONENTS[@]}"; do
-    cub unit set-target "${target_ref}" --space "$(deploy_space)" --unit "$(unit_name "${component}" deployment)"
-  done
 }
 
 show_summary() {
@@ -927,7 +923,7 @@ Logs:
 Next steps:
 1. ./verify.sh
 2. ./upgrade-chain.sh ${DEFAULT_BACKEND_TAG} ${DEFAULT_FRONTEND_TAG} ${DEFAULT_POSTGRES_TAG}
-3. ./set-target.sh <space/target>  # optional, binds target + prepares namespace bootstrap unit
+3. ./set-target.sh <space/target>  # optional, sets the deploy space's release target + prepares namespace bootstrap unit
 EOF_SUMMARY
   fi
 }

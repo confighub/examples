@@ -41,7 +41,7 @@ Pieces:
   docker push ghcr.io/confighub/promoter:$tag
 
   cub unit create promoter promoter/deploy/k8s.yaml --space prod-use2-ui-preview \
-    --target prod-use2/prod-use2-oci --delete-gate critical   # first deploy only
+    --delete-gate critical   # first deploy only
   cub function do --space prod-use2-ui-preview --unit promoter \
     set-image-reference promoter ":$tag"
   cub release publish prod-use2-ui-preview

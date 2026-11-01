@@ -49,7 +49,7 @@ cub-rbac findings -o table                 # human table
 cub-rbac findings --severity high          # high only
 cub-rbac findings --analyzer wildcard-rules
 cub-rbac findings --environment prod                    # scope to prod (label shorthand)
-cub-rbac findings --where "Target.ProviderType = 'OCI'" # scope by any Unit/Space/Target attribute
+cub-rbac findings --where "Unreleasable = false" # scope by any Unit/Space/Target attribute
 ```
 
 Filters: `--severity` (high | medium | low), `--analyzer` (e.g. `cluster-admin-bindings`). Scope the fleet with a single Unit `--where` filter, or the label shorthands `--component` / `--environment` / `--region` / `--owner` / `--layer` / `--variant` (each expands to `Space.Labels.<Key> = '<value>'`). ConfigHub `where` is flat AND-only — no parentheses, no OR; the shorthands AND onto any `--where`.

@@ -124,7 +124,7 @@ build() {
 # a change made on the base still reaches it.
 has_unit() {
   cub unit get --space "$1" "$2" >/dev/null 2>&1 && return 0
-  cub unit create --space "$1" "$2" --upstream-space "$3" --upstream-unit "$2" --target "$4" --quiet
+  cub unit create --space "$1" "$2" --upstream-space "$3" --upstream-unit "$2" --quiet
 }
 render() {
   mkdir -p render
@@ -181,52 +181,52 @@ step "3/5 One variant per cluster, each holding what its own path renders to"
 no_flux_layer=; case "$(cub variant create --help 2>&1)" in *--no-flux-layer*) no_flux_layer=--no-flux-layer ;; esac
 cub variant create dev-1 flux-infrastructure-base --stage dev --space-pattern template:flux-infrastructure-dev-1 --target flux-targets/dev-1 --space-label Role=deployment --space-label Cluster=dev-1 $no_flux_layer --allow-exists --quiet
 render 'gitops/flux/expert-fleet/infrastructure/dev' 'flux-infrastructure-dev-1'
-has_unit flux-infrastructure-dev-1 infrastructure flux-infrastructure-base flux-targets/dev-1
+has_unit flux-infrastructure-dev-1 infrastructure flux-infrastructure-base
 cub unit update --space flux-infrastructure-dev-1 infrastructure render/flux-infrastructure-dev-1.yaml --change-desc 'What gitops/flux/expert-fleet/infrastructure/dev renders for dev-1' --quiet
 holds flux-infrastructure-dev-1 1
 cub variant create staging-1 flux-infrastructure-base --stage staging --space-pattern template:flux-infrastructure-staging-1 --target flux-targets/staging-1 --space-label Role=deployment --space-label Cluster=staging-1 $no_flux_layer --allow-exists --quiet
 render 'gitops/flux/expert-fleet/infrastructure/staging' 'flux-infrastructure-staging-1'
-has_unit flux-infrastructure-staging-1 infrastructure flux-infrastructure-base flux-targets/staging-1
+has_unit flux-infrastructure-staging-1 infrastructure flux-infrastructure-base
 cub unit update --space flux-infrastructure-staging-1 infrastructure render/flux-infrastructure-staging-1.yaml --change-desc 'What gitops/flux/expert-fleet/infrastructure/staging renders for staging-1' --quiet
 holds flux-infrastructure-staging-1 1
 cub variant create prod-1 flux-infrastructure-base --stage prod --space-pattern template:flux-infrastructure-prod-1 --target flux-targets/prod-1 --space-label Role=deployment --space-label Cluster=prod-1 $no_flux_layer --allow-exists --quiet
 render 'gitops/flux/expert-fleet/infrastructure/prod' 'flux-infrastructure-prod-1'
-has_unit flux-infrastructure-prod-1 infrastructure flux-infrastructure-base flux-targets/prod-1
+has_unit flux-infrastructure-prod-1 infrastructure flux-infrastructure-base
 cub unit update --space flux-infrastructure-prod-1 infrastructure render/flux-infrastructure-prod-1.yaml --change-desc 'What gitops/flux/expert-fleet/infrastructure/prod renders for prod-1' --quiet
 holds flux-infrastructure-prod-1 1
 cub variant create dev-1 flux-apps-base --stage dev --space-pattern template:flux-apps-dev-1 --target flux-targets/dev-1 --space-label Role=deployment --space-label Cluster=dev-1 $no_flux_layer --allow-exists --quiet
 render 'gitops/flux/expert-fleet/apps/dev' 'flux-apps-dev-1'
-has_unit flux-apps-dev-1 apps flux-apps-base flux-targets/dev-1
+has_unit flux-apps-dev-1 apps flux-apps-base
 cub unit update --space flux-apps-dev-1 apps render/flux-apps-dev-1.yaml --change-desc 'What gitops/flux/expert-fleet/apps/dev renders for dev-1' --quiet
 holds flux-apps-dev-1 1
 cub variant create staging-1 flux-apps-base --stage staging --space-pattern template:flux-apps-staging-1 --target flux-targets/staging-1 --space-label Role=deployment --space-label Cluster=staging-1 $no_flux_layer --allow-exists --quiet
 render 'gitops/flux/expert-fleet/apps/staging' 'flux-apps-staging-1'
-has_unit flux-apps-staging-1 apps flux-apps-base flux-targets/staging-1
+has_unit flux-apps-staging-1 apps flux-apps-base
 cub unit update --space flux-apps-staging-1 apps render/flux-apps-staging-1.yaml --change-desc 'What gitops/flux/expert-fleet/apps/staging renders for staging-1' --quiet
 holds flux-apps-staging-1 1
 cub variant create prod-1 flux-apps-base --stage prod --space-pattern template:flux-apps-prod-1 --target flux-targets/prod-1 --space-label Role=deployment --space-label Cluster=prod-1 $no_flux_layer --allow-exists --quiet
 render 'gitops/flux/expert-fleet/apps/prod' 'flux-apps-prod-1'
-has_unit flux-apps-prod-1 apps flux-apps-base flux-targets/prod-1
+has_unit flux-apps-prod-1 apps flux-apps-base
 cub unit update --space flux-apps-prod-1 apps render/flux-apps-prod-1.yaml --change-desc 'What gitops/flux/expert-fleet/apps/prod renders for prod-1' --quiet
 holds flux-apps-prod-1 1
 cub variant create dev-1 flux-tenants-base --stage dev --space-pattern template:flux-tenants-dev-1 --target flux-targets/dev-1 --space-label Role=deployment --space-label Cluster=dev-1 $no_flux_layer --allow-exists --quiet
 render 'gitops/flux/expert-fleet/tenants/dev' 'flux-tenants-dev-1'
-has_unit flux-tenants-dev-1 tenants flux-tenants-base flux-targets/dev-1
+has_unit flux-tenants-dev-1 tenants flux-tenants-base
 cub unit update --space flux-tenants-dev-1 tenants render/flux-tenants-dev-1.yaml --change-desc 'What gitops/flux/expert-fleet/tenants/dev renders for dev-1' --quiet
 holds flux-tenants-dev-1 1
 cub variant create staging-1 flux-tenants-base --stage staging --space-pattern template:flux-tenants-staging-1 --target flux-targets/staging-1 --space-label Role=deployment --space-label Cluster=staging-1 $no_flux_layer --allow-exists --quiet
 render 'gitops/flux/expert-fleet/tenants/staging' 'flux-tenants-staging-1'
-has_unit flux-tenants-staging-1 tenants flux-tenants-base flux-targets/staging-1
+has_unit flux-tenants-staging-1 tenants flux-tenants-base
 cub unit update --space flux-tenants-staging-1 tenants render/flux-tenants-staging-1.yaml --change-desc 'What gitops/flux/expert-fleet/tenants/staging renders for staging-1' --quiet
 holds flux-tenants-staging-1 1
 cub variant create prod-1 flux-tenants-base --stage prod --space-pattern template:flux-tenants-prod-1 --target flux-targets/prod-1 --space-label Role=deployment --space-label Cluster=prod-1 $no_flux_layer --allow-exists --quiet
 render 'gitops/flux/expert-fleet/tenants/prod' 'flux-tenants-prod-1'
-has_unit flux-tenants-prod-1 tenants flux-tenants-base flux-targets/prod-1
+has_unit flux-tenants-prod-1 tenants flux-tenants-base
 cub unit update --space flux-tenants-prod-1 tenants render/flux-tenants-prod-1.yaml --change-desc 'What gitops/flux/expert-fleet/tenants/prod renders for prod-1' --quiet
 holds flux-tenants-prod-1 1
 cub variant create dev-1 flux-image-automation-base --stage dev --space-pattern template:flux-image-automation-dev-1 --target flux-targets/dev-1 --space-label Role=deployment --space-label Cluster=dev-1 $no_flux_layer --allow-exists --quiet
 render 'gitops/flux/expert-fleet/image-automation' 'flux-image-automation-dev-1'
-has_unit flux-image-automation-dev-1 image-automation flux-image-automation-base flux-targets/dev-1
+has_unit flux-image-automation-dev-1 image-automation flux-image-automation-base
 cub unit update --space flux-image-automation-dev-1 image-automation render/flux-image-automation-dev-1.yaml --change-desc 'What gitops/flux/expert-fleet/image-automation renders for dev-1' --quiet
 holds flux-image-automation-dev-1 1
 

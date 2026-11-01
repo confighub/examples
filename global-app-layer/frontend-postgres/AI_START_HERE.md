@@ -153,9 +153,9 @@ Run:
 
 What to explain:
 
-- `set-target.sh` binds deployment units to the target
+- `set-target.sh` sets the deploy space's release target, which its deployment units take
 
-GUI now: Inspect the unit and confirm target binding is visible.
+GUI now: Inspect the unit and confirm its release target is visible.
 
 **PAUSE.** Wait for the human.
 

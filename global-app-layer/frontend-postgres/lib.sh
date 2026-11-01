@@ -414,7 +414,7 @@ Core cub commands:
 EOF_PLAN
   if [[ -n "${target_ref}" ]]; then
     cat <<EOF_PLAN
-- cub unit set-target ${target_ref}
+- cub space update $(deploy_space) --release-target ${target_ref}
 EOF_PLAN
   fi
 }
@@ -523,7 +523,7 @@ show_setup_plan_json() {
         "cub function do set-replicas",
         "cub function do set-string-path",
         "cub function do set-namespace"
-      ] + (if $target == "" then [] else ["cub unit set-target"] end))
+      ] + (if $target == "" then [] else ["cub space update --release-target"] end))
     }'
 }
 
@@ -711,10 +711,7 @@ apply_deploy_mutations() {
 
 set_target_for_deploy_units() {
   local target_ref="$1"
-  local component
-  for component in "${COMPONENTS[@]}"; do
-    cub unit set-target "${target_ref}" --space "$(deploy_space)" --unit "$(unit_name "${component}" deployment)"
-  done
+  cub space update "$(deploy_space)" --release-target "${target_ref}"
 }
 
 show_summary() {

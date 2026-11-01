@@ -35,7 +35,7 @@ What it is **not**:
 | --------------------------- | ------------------------------------------------------------------------------------------------------- |
 | Fact table                  | Units (`GET /unit`, org-wide, no space required)                                                        |
 | Event table                 | Revisions (`GET /revision`) — one row per config change, with `CreatedAt`, `LiveAt`, `Source`, `UserID` |
-| Dimension table             | Space Labels, Unit Labels, `Target` (the cluster) with its `Labels` and `Facts`, `ToolchainType`, `ProviderType` |
+| Dimension table             | Space Labels, Unit Labels, `Target` (the cluster) with its `Labels` and `Facts`, `ToolchainType`, `Unreleasable` |
 | `WHERE`                     | `where` (SQL-ish, AND-only), `where_data`, `resource_type`, `trigger_filter`                            |
 | `JOIN`                      | `include=<FieldID>` — registers a related entity as a `where` prefix *and* returns it expanded on the row |
 | Saved query                 | **Filter** entity                                                                                       |
@@ -198,7 +198,7 @@ and nudges you up the ladder.
 
 ### Tier 0 — metadata (free, filterable, no config parsing)
 
-On the Unit itself: `Labels`, `ToolchainType`, `ProviderType`, `TargetID`,
+On the Unit itself: `Labels`, `ToolchainType`, `Unreleasable`, `TargetID`,
 `HeadRevisionNum` vs `LastReleasedRevisionNum`, `ValidationErrors`, `ValidationWarnings`,
 `UpstreamRevisionNum`, `UpdatedAt`, `LastActionAt`.
 
@@ -212,9 +212,8 @@ unlabelled org is a dashboard with one bar. **The setup script's first job is
 labelling.**
 
 **Cluster is not a label — it's a reference, and it joins.** A Space's optional
-`ReleaseTargetID` names the Target that is the default destination for its Units,
-and for Units delivered via ProviderType `OCI` the Unit's own `TargetID` is set
-from it. So the cluster is reachable **directly from the Unit**:
+`ReleaseTargetID` names the Target its Releases are for, and every Unit in it that
+is not `Unreleasable` reports it as its own `TargetID`. So the cluster is reachable **directly from the Unit**:
 `include=TargetID` puts `Target.Slug`, `Target.Labels.*`, and `Target.Facts.*`
 into both the `where` vocabulary and the returned row.
 

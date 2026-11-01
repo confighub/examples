@@ -406,18 +406,15 @@ set_target_for_compatible_units() {
   variant="$(deployment_variant_for_provider_type "${provider_type}")"
   case "${variant}" in
     direct)
-      cub unit set-target "${target_ref}" --space "$(deploy_space)" --unit "${DEPLOY_UNIT}"
-      cub unit set-target "${target_ref}" --space "$(deploy_space)" --unit "${DEPLOY_STUB_UNIT}"
+      cub space update "$(deploy_space)" --release-target "${target_ref}"
       DIRECT_TARGET_REF="${target_ref}"
       ;;
     flux)
-      cub unit set-target "${target_ref}" --space "$(flux_deploy_space)" --unit "${DEPLOY_FLUX_UNIT}"
-      cub unit set-target "${target_ref}" --space "$(flux_deploy_space)" --unit "postgres-stub-flux"
+      cub space update "$(flux_deploy_space)" --release-target "${target_ref}"
       FLUX_TARGET_REF="${target_ref}"
       ;;
     argo)
-      cub unit set-target "${target_ref}" --space "$(argo_deploy_space)" --unit "${DEPLOY_ARGO_UNIT}"
-      cub unit set-target "${target_ref}" --space "$(argo_deploy_space)" --unit "postgres-stub-argo"
+      cub space update "$(argo_deploy_space)" --release-target "${target_ref}"
       ARGO_TARGET_REF="${target_ref}"
       ;;
     *)
@@ -524,9 +521,9 @@ Core cub commands:
 - cub function do set-replicas
 - cub function do set-string-path
 - cub function do set-namespace
-- cub unit set-target <kubernetes-target>   # for direct variant
-- cub unit set-target <fluxoci-target>      # for flux variant
-- cub unit set-target <argocdoci-target>    # for argo variant
+- cub space update <deploy-space> --release-target <kubernetes-target>   # for direct variant
+- cub space update <deploy-space> --release-target <fluxoci-target>      # for flux variant
+- cub space update <deploy-space> --release-target <argocdoci-target>    # for argo variant
 EOF_PLAN
 }
 
@@ -626,9 +623,9 @@ show_setup_plan_json() {
         "cub function do set-replicas",
         "cub function do set-string-path",
         "cub function do set-namespace",
-        "cub unit set-target <kubernetes target>",
-        "cub unit set-target <fluxoci target>",
-        "cub unit set-target <argocdoci target>"
+        "cub space update <deploy space> --release-target <kubernetes target>",
+        "cub space update <deploy space> --release-target <fluxoci target>",
+        "cub space update <deploy space> --release-target <argocdoci target>"
       ]
     }'
 }

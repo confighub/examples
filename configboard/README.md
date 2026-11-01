@@ -133,13 +133,11 @@ cub space update --patch <space> --label Environment=prod --label Component=chec
 ```
 
 Note that **cluster is not a label**. A Space's optional `ReleaseTargetID` names the
-Target its Units deploy to, and for OCI-delivered Units the Unit's own `TargetID` is
-set from it — so the cluster dimension comes from the Target, along with facts like
-`Cluster.KubernetesVersion` that `cub` collects rather than a human maintaining.
-
-`ReleaseTargetID` is new, so Spaces created before it exists won't have it set. Until
-they do, cluster-grain panels run off each Unit's own `TargetID` (which most Units
-have) and the Space-grain panels are sparse. `preflight.sh` reports both counts.
+Target its Units deploy to, and each Unit that is not `Unreleasable` reports it as its
+own `TargetID` — so the cluster dimension comes from the Target, along with facts like
+`Cluster.KubernetesVersion` that `cub` collects rather than a human maintaining. A
+Space with no release Target leaves the cluster-grain panels empty for its Units;
+`preflight.sh` reports both counts.
 
 If your org is empty, seed one of these first:
 [`promotion-demo-data`](../promotion-demo-data/) (multi-app, multi-environment),

@@ -113,7 +113,7 @@ for entry in "${COMPONENTS[@]}"; do
         -- yq-i ".spec.replicas = ${replicas}" >/dev/null 2>&1 || true
     fi
 
-    $cub unit set-target "$cluster" --space "$space" --unit "$dunit,$sunit" >/dev/null 2>&1 || true
+    $cub space update "$space" --release-target "${space}/${cluster}" >/dev/null 2>&1 || true
     prev_space="$space"
   done
 

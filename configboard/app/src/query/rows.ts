@@ -48,7 +48,7 @@ export function unitRow(e: ExtendedUnitRead, baseUrl: string): Row {
     'Unit.Slug': u?.Slug ?? null,
     'Unit.DisplayName': u?.DisplayName || u?.Slug || null,
     'Unit.ToolchainType': u?.ToolchainType ?? null,
-    'Unit.ProviderType': u?.ProviderType || '(none)',
+    'Unit.Unreleasable': u?.Unreleasable ? 'Unreleasable' : 'Releasable',
     'Unit.HeadRevisionNum': u?.HeadRevisionNum ?? 0,
     'Unit.LastReleasedRevisionNum': u?.LastReleasedRevisionNum ?? 0,
     'Unit.UpstreamRevisionNum': u?.UpstreamRevisionNum ?? 0,
@@ -58,7 +58,6 @@ export function unitRow(e: ExtendedUnitRead, baseUrl: string): Row {
     'Unit.LastChangeDescription': u?.LastChangeDescription ?? null,
     'Space.Slug': e.Space?.Slug ?? u?.SpaceSlug ?? null,
     'Target.Slug': e.Target?.Slug ?? null,
-    'Target.ProviderType': e.Target?.ProviderType ?? null,
   };
 
   // A Unit with no Target is not a hole in the data: it is normally a base unit held
@@ -140,8 +139,6 @@ export function targetRow(e: ExtendedTargetRead): Row {
   const values: Record<string, RowValue> = {
     'Target.Slug': t?.Slug ?? null,
     'Target.DisplayName': t?.DisplayName || t?.Slug || null,
-    'Target.ProviderType': t?.ProviderType ?? null,
-    'Target.ToolchainType': t?.ToolchainType ?? null,
     'Target.KubernetesVersion': t?.Facts?.['Cluster.KubernetesVersion'] ?? null,
     'Target.ClusterName': t?.Facts?.['Cluster.Name'] ?? null,
     'Space.Slug': e.Space?.Slug ?? null,

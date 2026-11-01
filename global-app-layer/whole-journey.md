@@ -177,10 +177,6 @@ If you have a second live target, you can bind this custom variant to it and pub
 ```bash
 SECOND_TARGET="<space/target>"
 
-cub unit set-target "${SECOND_TARGET}" --space "${CUSTOM_SPACE}" backend-${CUSTOM_CLUSTER}
-cub unit set-target "${SECOND_TARGET}" --space "${CUSTOM_SPACE}" frontend-${CUSTOM_CLUSTER}
-cub unit set-target "${SECOND_TARGET}" --space "${CUSTOM_SPACE}" postgres-${CUSTOM_CLUSTER}
-
 cub space update "${CUSTOM_SPACE}" --release-target "${SECOND_TARGET}"
 cub release publish "${CUSTOM_SPACE}"
 ```

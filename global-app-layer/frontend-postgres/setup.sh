@@ -132,9 +132,8 @@ create_unit_from_file "$(deploy_space)" "${DEPLOY_STUB_UNIT}" "${BACKEND_STUB_YA
 cub function do set-namespace "${DEPLOY_NAMESPACE}" --space "$(deploy_space)" --unit "${DEPLOY_STUB_UNIT}"
 
 if [[ -n "${TARGET_REF}" ]]; then
-  echo "==> Setting target on deployment units"
+  echo "==> Setting the deploy space's release target"
   set_target_for_deploy_units "${TARGET_REF}"
-  cub unit set-target "${TARGET_REF}" --space "$(deploy_space)" --unit "${DEPLOY_STUB_UNIT}"
 fi
 
 echo "==> Rendering explicit app-level recipe manifest"

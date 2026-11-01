@@ -60,7 +60,7 @@ for app in "${APPS[@]}"; do
   for yaml_file in "${SCRIPT_DIR}/config-data/${app}"/*.yaml; do
     unit_slug=$(basename "$yaml_file" .yaml)
     $CUB unit create --space "$dev_space" "$unit_slug" "$yaml_file" \
-      --target "us-dev-1/us-dev-1" --quiet --wait=false
+      --quiet --wait=false
     echo "  Created unit: ${dev_space}/${unit_slug}"
   done
 done
@@ -79,7 +79,7 @@ for target in us-dev-2 us-qa-1 us-staging-1 eu-staging-1; do
     dev_space="us-dev-1-${app}"
     dest_space="${target}-${app}"
     $CUB unit create --space "$dev_space" --dest-space "$dest_space" \
-      --target "${target}/${target}" --quiet --wait=false
+      --quiet --wait=false
     echo "  Cloned ${app} -> ${dest_space} (target: ${target}/${target})"
   done
 done
@@ -91,10 +91,10 @@ echo "Phase 4b: Cloning staging units to prod..."
 
 for app in "${APPS[@]}"; do
   $CUB unit create --space "us-staging-1-${app}" --dest-space "us-prod-1-${app}" \
-    --target "us-prod-1/us-prod-1" --quiet --wait=false
+    --quiet --wait=false
   echo "  Cloned ${app} -> us-prod-1-${app} (from us-staging-1)"
   $CUB unit create --space "eu-staging-1-${app}" --dest-space "eu-prod-1-${app}" \
-    --target "eu-prod-1/eu-prod-1" --quiet --wait=false
+    --quiet --wait=false
   echo "  Cloned ${app} -> eu-prod-1-${app} (from eu-staging-1)"
 done
 
