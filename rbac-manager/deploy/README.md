@@ -45,7 +45,7 @@ Pieces:
   docker push ghcr.io/confighub/rbac-manager:$tag
 
   cub unit create rbac-manager rbac-manager/deploy/k8s.yaml --space prod-use2-ui-preview \
-    --target prod-use2/prod-use2-oci --delete-gate critical   # first deploy only
+    --delete-gate critical   # first deploy only
   cub function do --space prod-use2-ui-preview --unit rbac-manager \
     set-image-reference rbac-manager ":$tag"
   cub release publish prod-use2-ui-preview

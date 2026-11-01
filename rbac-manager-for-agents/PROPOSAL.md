@@ -230,8 +230,7 @@ examples/rbac-manager-for-agents/
    parallel org-scoped invokes). If not, that is an SDK/CLI gap to file, not work around.
 2. **Persona/cluster modeling** — confirm the label conventions (`Variant=base`, standard Space
    labels) the snapshot and `--where` scoping (incl. the label shorthands) should rely on. Base/
-   template Units can bind a Noop-ProviderType dummy Target (server-hosted, never applied) so every
-   Unit is targeted and `Target.Slug` is a consistent grouping key.
+   template Units live in Spaces with no release Target, so they group under `None`.
 3. **Findings parity** — port all six analyzers verbatim, or trim to the highest-signal set for v1?
 
 ## Sources

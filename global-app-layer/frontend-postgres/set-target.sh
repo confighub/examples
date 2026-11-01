@@ -22,6 +22,6 @@ save_state "${PREFIX}" "${target_ref}"
 TARGET_REF="${target_ref}"
 refresh_recipe_manifest_unit "${target_ref}"
 
-echo "Updated deployment target for $(deploy_space): frontend + postgres => ${target_ref}"
+echo "Updated release target for $(deploy_space): ${target_ref}"
 echo "Bundle hint: $(bundle_hint_from_target_ref "${target_ref}")"
 show_summary "${target_ref}"

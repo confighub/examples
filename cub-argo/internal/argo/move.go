@@ -16,7 +16,6 @@ import (
 // It returns "" when no ApplicationSet is a Unit in a control Space: then no
 // parent syncs one from ConfigHub, and handover.sh prints the kubectl patches.
 func MoveScript(p *Plan, prefix string) string {
-	targets := prefix + "-targets"
 	homes := p.unitHomes(prefix)
 	parentOf := map[string]string{}
 	for _, s := range p.controlSpaces(prefix) {
@@ -170,7 +169,7 @@ func MoveScript(p *Plan, prefix string) string {
 	add(`    record "$1" "$2" "$3" new`)
 	add(`    cub argo application-unit --rendered "apps/$2.yaml" --namespace "$ns" --space "$2" --gateway "$addr" > "render/app-$2.yaml"`)
 	add(`  fi`)
-	add(`  cub unit create --space "$3" "$2" "render/app-$2.yaml" --target %s/argocd --change-desc "Deliver $1 from its Space $2" --quiet`, targets)
+	add(`  cub unit create --space "$3" "$2" "render/app-$2.yaml" --change-desc "Deliver $1 from its Space $2" --quiet`)
 	add(`  moved="$moved $1"`)
 	add(`  echo "  $1 is a Unit in $3, reading $2"`)
 	add(`}`)

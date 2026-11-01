@@ -29,7 +29,6 @@ const unitManagedByLabel = "cub-netpol"
 type createDest struct {
 	spaceID    goclientnew.UUID
 	spaceSlug  string
-	targetID   *goclientnew.UUID
 	targetSlug string
 	cluster    string
 }
@@ -38,7 +37,7 @@ type createDest struct {
 // workloads in it. It requires the namespace to contain at least one managed
 // workload, and a single Space (use --cluster / --space to disambiguate).
 func resolveCreateDest(snap *snapshot.Snapshot, namespace, clusterFilter, spaceOverride string) (createDest, error) {
-	type cand struct{ cluster, spaceID, spaceSlug, targetID, targetSlug string }
+	type cand struct{ cluster, spaceID, spaceSlug, targetSlug string }
 	var cands []cand
 	seenSpace := map[string]bool{}
 	for clusterName, c := range snap.Clusters {
@@ -60,7 +59,7 @@ func resolveCreateDest(snap *snapshot.Snapshot, namespace, clusterFilter, spaceO
 				continue
 			}
 			seenSpace[meta.SpaceID] = true
-			cands = append(cands, cand{clusterName, meta.SpaceID, meta.SpaceSlug, meta.TargetID, meta.TargetSlug})
+			cands = append(cands, cand{clusterName, meta.SpaceID, meta.SpaceSlug, meta.TargetSlug})
 		}
 	}
 	if len(cands) == 0 {
@@ -88,15 +87,7 @@ func resolveCreateDest(snap *snapshot.Snapshot, namespace, clusterFilter, spaceO
 	if err != nil {
 		return createDest{}, fmt.Errorf("parse space id %q: %w", c.spaceID, err)
 	}
-	dest := createDest{spaceID: sid, spaceSlug: c.spaceSlug, targetSlug: c.targetSlug, cluster: c.cluster}
-	if c.targetID != "" {
-		tid, err := uuid.Parse(c.targetID)
-		if err != nil {
-			return createDest{}, fmt.Errorf("parse target id %q: %w", c.targetID, err)
-		}
-		dest.targetID = &tid
-	}
-	return dest, nil
+	return createDest{spaceID: sid, spaceSlug: c.spaceSlug, targetSlug: c.targetSlug, cluster: c.cluster}, nil
 }
 
 // createPlan is the structured result of a create command (dry-run or commit).
@@ -157,9 +148,6 @@ func buildUnit(dest createDest, slug, changeDesc string) goclientnew.Unit {
 		Labels:                map[string]string{"managed-by": unitManagedByLabel},
 		LastChangeDescription: changeDesc,
 	}
-	if dest.targetID != nil {
-		u.TargetID = dest.targetID
-	}
 	return u
 }
 
@@ -171,15 +159,7 @@ func destFromUnitMeta(meta snapshot.UnitMeta) (createDest, error) {
 	if err != nil {
 		return createDest{}, fmt.Errorf("parse space id %q: %w", meta.SpaceID, err)
 	}
-	dest := createDest{spaceID: sid, spaceSlug: meta.SpaceSlug, targetSlug: meta.TargetSlug}
-	if meta.TargetID != "" {
-		tid, err := uuid.Parse(meta.TargetID)
-		if err != nil {
-			return createDest{}, fmt.Errorf("parse target id %q: %w", meta.TargetID, err)
-		}
-		dest.targetID = &tid
-	}
-	return dest, nil
+	return createDest{spaceID: sid, spaceSlug: meta.SpaceSlug, targetSlug: meta.TargetSlug}, nil
 }
 
 func clusterNote(clusterFilter, spaceOverride string) string {

@@ -543,9 +543,9 @@ Core cub commands:
 - cub unit create --upstream-space ... --upstream-unit ...
 - cub function do set-env
 - cub function do set-namespace
-- cub unit set-target <kubernetes target>   # for direct variant
-- cub unit set-target <fluxoci target>      # for flux variant
-- cub unit set-target <argocdoci target>    # for argo variant
+- cub space update <deploy space> --release-target <kubernetes target>   # for direct variant
+- cub space update <deploy space> --release-target <fluxoci target>      # for flux variant
+- cub space update <deploy space> --release-target <argocdoci target>    # for argo variant
 EOF_PLAN
 }
 
@@ -665,9 +665,9 @@ show_setup_plan_json() {
         "cub unit create --upstream-space ... --upstream-unit ...",
         "cub function do set-env",
         "cub function do set-namespace",
-        "cub unit set-target <kubernetes target>",
-        "cub unit set-target <fluxoci target>",
-        "cub unit set-target <argocdoci target>"
+        "cub space update <deploy space> --release-target <kubernetes target>",
+        "cub space update <deploy space> --release-target <fluxoci target>",
+        "cub space update <deploy space> --release-target <argocdoci target>"
       ]
     }'
 }
@@ -821,10 +821,7 @@ apply_deploy_mutations() {
 set_target_for_deploy_variant() {
   local variant="$1"
   local target_ref="$2"
-  local component
-  for component in "${COMPONENTS[@]}"; do
-    cub unit set-target "${target_ref}" --space "$(deploy_space_for_variant "${variant}")" --unit "$(deployment_unit_name "${component}" "${variant}")"
-  done
+  cub space update "$(deploy_space_for_variant "${variant}")" --release-target "${target_ref}"
 }
 
 remember_target_ref_for_variant() {

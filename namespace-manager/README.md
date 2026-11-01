@@ -85,7 +85,7 @@ the matching Units' resources are fetched):
 
 | Flag | Compiles to |
 |---|---|
-| `--where "<expr>"` | raw predicate — e.g. `"Target.ProviderType = 'OCI'"` (the ProviderType recommended for ArgoCD/Flux), `"Space.Slug LIKE 'apptique-%'"` |
+| `--where "<expr>"` | raw predicate — e.g. `"Unreleasable = false"` (the Units a Release delivers), `"Space.Slug LIKE 'apptique-%'"` |
 | `--component <v>` | `Space.Labels.Component = '<v>'` |
 | `--environment <v>` | `Space.Labels.Environment = '<v>'` |
 | `--region` / `--owner` / `--layer` / `--variant` `<v>` | the matching `Space.Labels.<Key>` |
@@ -145,7 +145,6 @@ them from deploying.
   own checks, at `restricted` and `baseline` over the Units holding workloads,
   as dry runs, and the engine joins each failing resource to its namespace.
 
-> Clusters are ConfigHub Targets. Base/template Units are best bound to a
-> **Noop** Target (a no-apply, server-hosted ProviderType), so every Unit has a
-> Target and `Target.Slug` is a total grouping key and `Target.ProviderType =
-> 'Noop'` cleanly distinguishes bases from deployed config.
+> Clusters are ConfigHub Targets. A Unit is released to its Space's release
+> Target unless it is `Unreleasable`, so base/template Units live in Spaces with
+> no release Target and group under `None`, apart from deployed config.

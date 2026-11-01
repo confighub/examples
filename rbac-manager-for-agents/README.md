@@ -55,7 +55,7 @@ the fleet with a single ConfigHub Unit `--where` filter, plus opinionated
 label shorthands — `--component`, `--environment`, `--region`, `--owner`,
 `--layer`, `--variant` — that expand to `Space.Labels.<Key> = '<value>'`. A
 single Unit filter can reference Unit, Space, and Target metadata (e.g.
-`--where "Target.ProviderType = 'OCI'"` or `--where "Slug = 'rbac'"`), so the
+`--where "Unreleasable = false"` or `--where "Slug = 'rbac'"`), so the
 server does all the scoping and only the matching Units' resources are fetched.
 
 ConfigHub `where` is **flat AND-only** — no parentheses and no `OR`. The label
@@ -73,10 +73,9 @@ Reads also take `-o json` (default) or `-o table`. Write commands (`edit`,
 require an explicit `--commit`; committing an `edit` also requires
 `--change-desc`.
 
-> **Tip:** so every Unit is targeted and `Target.Slug` is a consistent
-> grouping key, base/template Units can bind a dummy Target with a Noop
-> ProviderType — server-hosted and never applied — rather than being left
-> unbound.
+> **Tip:** a Unit takes its Space's release Target unless it is
+> `Unreleasable`, so keep base/template Units in Spaces with no release Target;
+> they group under `None`.
 
 ## Agent Skills
 

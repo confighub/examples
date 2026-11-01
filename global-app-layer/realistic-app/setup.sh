@@ -132,7 +132,7 @@ for component in "${COMPONENTS[@]}"; do
 done
 
 if [[ -n "${TARGET_REF}" ]]; then
-  echo "==> Setting target on deployment clones"
+  echo "==> Setting the deploy space's release target"
   set_target_for_deploy_units "${TARGET_REF}"
 fi
 

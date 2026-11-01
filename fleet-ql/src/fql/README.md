@@ -151,7 +151,7 @@ SELECT space, COUNT(*) AS n FROM units WHERE labels.team = 'payments' GROUP BY s
 
 | Table | Source | Notable columns |
 |---|---|---|
-| `units` | `GET /unit` | `slug`, `space`, `cluster`, `environment`, `component`, `region`, `toolchain`, `target`, `headRevisionNum`, `lastReleasedRevisionNum`, `upstreamRevisionNum`, `upstreamUnitId`, `providerType`, `gates`, `warnings`, `labels.*`, `annotations.*`, `validationErrors['<space>/<trigger>/<fn>']`, `validationWarnings[...]`, `gate['<trigger>']`, `warning['<trigger>']` |
+| `units` | `GET /unit` | `slug`, `space`, `cluster`, `environment`, `component`, `region`, `toolchain`, `target`, `headRevisionNum`, `lastReleasedRevisionNum`, `upstreamRevisionNum`, `upstreamUnitId`, `unreleasable`, `gates`, `warnings`, `labels.*`, `annotations.*`, `validationErrors['<space>/<trigger>/<fn>']`, `validationWarnings[...]`, `gate['<trigger>']`, `warning['<trigger>']` |
 | `resources` | `POST /function/invoke` + `get-resources` (or a revision's data blob) | `unit`, `space`, `cluster`, `target`, `environment`, `component`, `region`, `kind`, `name`, `namespace`, `replicas`, `resourceType`, `revision`, `labels.*`, + any raw data path |
 | `spaces` | `GET /space` | `slug`, `displayName`, `environment`, `component`, `region`, `labels.*`, `annotations.*` |
 | `revisions` | `GET /space/{id}/unit/{id}/revision` (per Unit) | `unit`, `space` (scope which units), `revisionNum`, `source`, `description`, `createdAt`, `userId` |

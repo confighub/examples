@@ -57,7 +57,7 @@ function unitRow(e: ExtendedUnit): Row {
     lastReleasedRevisionNum: u.LastReleasedRevisionNum,
     upstreamRevisionNum: u.UpstreamRevisionNum,
     upstreamUnitId: u.UpstreamUnitID,
-    providerType: u.ProviderType,
+    unreleasable: u.Unreleasable,
     // Well-known fleet labels as flat fields, so they project / GROUP BY (the
     // `environment` etc. columns also push to where via Labels.* for filtering).
     environment: u.Labels?.Environment ?? null,
@@ -79,7 +79,7 @@ function unitRow(e: ExtendedUnit): Row {
 }
 
 const SELECT_UNIT =
-  'UnitID,Slug,DisplayName,SpaceID,TargetID,ToolchainType,HeadRevisionNum,LastReleasedRevisionNum,UpstreamRevisionNum,UpstreamUnitID,ProviderType,Labels,Annotations,ValidationErrors,ValidationWarnings';
+  'UnitID,Slug,DisplayName,SpaceID,TargetID,ToolchainType,HeadRevisionNum,LastReleasedRevisionNum,UpstreamRevisionNum,UpstreamUnitID,Unreleasable,Labels,Annotations,ValidationErrors,ValidationWarnings';
 
 // The get-resources invocation body, shared by the resources and RBAC paths.
 const GET_RESOURCES: Schemas['FunctionInvocationsRequest']['FunctionInvocations'] = [

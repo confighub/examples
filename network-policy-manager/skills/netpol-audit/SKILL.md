@@ -61,11 +61,11 @@ cub-netpol list --cluster prod-cluster --namespace apptique
 
 ### Scoping the fleet
 
-Scope server-side with a single Unit `--where` predicate — one Unit-level filter can reference Unit, Space, and Target metadata, so prefer it over post-filtering large JSON. Example: `--where "Target.ProviderType = 'OCI'"` (Units bound to an OCI Target) or `--where "Space.Slug LIKE 'prod-%'"`.
+Scope server-side with a single Unit `--where` predicate — one Unit-level filter can reference Unit, Space, and Target metadata, so prefer it over post-filtering large JSON. Example: `--where "Unreleasable = false"` (the Units a Release delivers) or `--where "Space.Slug LIKE 'prod-%'"`.
 
 For the standard Space labels, use the shorthands `--component`, `--environment`, `--region`, `--owner`, `--layer`, `--variant` (each compiles to `Space.Labels.<Key> = '<value>'`), AND-joined with any raw `--where`. ConfigHub `where` is flat AND-only — no parentheses, no `OR` (a parenthesized clause fails with `invalid attribute name`); express alternatives as separate runs.
 
-`--cluster` / `--namespace` are client-side display filters over the fetched snapshot, not server-side scope. Tip: bind base/template Units to a Noop-ProviderType dummy Target (a no-apply, server-hosted bridge) so every Unit is targeted and `Target.Slug` is a consistent grouping key.
+`--cluster` / `--namespace` are client-side display filters over the fetched snapshot, not server-side scope. Units whose Space has no release Target (base/template Spaces) group under `None`.
 
 ## Stop conditions
 

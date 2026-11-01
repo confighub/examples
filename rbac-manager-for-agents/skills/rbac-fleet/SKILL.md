@@ -44,7 +44,7 @@ Both commands require a selector — either a raw `--where` filter or at least o
 - `--environment dev` — label shorthand; expands to `Space.Labels.Environment = 'dev'`. Other shorthands: `--component`, `--region`, `--owner`, `--layer`, `--variant`.
 - `--where "Space.Labels.Environment = 'dev'"` — the raw equivalent (Units inherit their cluster's Space labels).
 - `--environment prod --region us-east` — shorthands AND together (and AND onto any raw `--where`).
-- `--where "Target.ProviderType = 'OCI'"` — by any Unit/Space/Target attribute.
+- `--where "Unreleasable = false"` — by any Unit/Space/Target attribute.
 - `--where "Slug = 'rbac'"` — by Unit slug across the fleet.
 
 Running with no selector at all is rejected.

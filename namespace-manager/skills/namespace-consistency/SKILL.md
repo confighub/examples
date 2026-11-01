@@ -46,7 +46,7 @@ A component is **inconsistent** when a workload runs in a different namespace on
 
 ### Scoping the fleet
 
-Scope server-side with a single Unit `--where` predicate (Unit / `Space.*` / `Target.*`), plus the label shorthands `--component`, `--environment`, `--region`, `--owner`, `--layer`, `--variant` (each compiles to `Space.Labels.<Key> = '<value>'`), AND-joined. ConfigHub `where` is flat AND-only — no parentheses, no `OR` (a parenthesized clause fails with `invalid attribute name`). Example: `--where "Target.ProviderType = 'OCI'"` (the ProviderType recommended for ArgoCD/Flux).
+Scope server-side with a single Unit `--where` predicate (Unit / `Space.*` / `Target.*`), plus the label shorthands `--component`, `--environment`, `--region`, `--owner`, `--layer`, `--variant` (each compiles to `Space.Labels.<Key> = '<value>'`), AND-joined. ConfigHub `where` is flat AND-only — no parentheses, no `OR` (a parenthesized clause fails with `invalid attribute name`). Example: `--where "Unreleasable = false"` (the Units a Release delivers).
 
 Note: `--component` (server-side, `Space.Labels.Component`) scopes which Units are fetched; `--component-name` is a client-side display filter over the computed components. Consistency still needs to see *all* of a component's variant Spaces, so scoping narrower than a whole component can hide drift — prefer scoping by environment/region, not by a single Space.
 

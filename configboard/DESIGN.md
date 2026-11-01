@@ -35,7 +35,7 @@ What it is **not**:
 | --------------------------- | ------------------------------------------------------------------------------------------------------- |
 | Fact table                  | Units (`GET /unit`, org-wide, no space required)                                                        |
 | Event table                 | Revisions (`GET /revision`) — one row per config change, with `CreatedAt`, `LiveAt`, `Source`, `UserID` |
-| Dimension table             | Space Labels, Unit Labels, `Target` (the cluster) with its `Labels` and `Facts`, `ToolchainType`, `ProviderType` |
+| Dimension table             | Space Labels, Unit Labels, `Target` (the cluster) with its `Labels` and `Facts`, `ToolchainType`, `Unreleasable` |
 | `WHERE`                     | `where` (SQL-ish, AND-only), `where_data`, `resource_type`, `trigger_filter`                            |
 | `JOIN`                      | `include=<FieldID>` — registers a related entity as a `where` prefix *and* returns it expanded on the row |
 | Saved query                 | **Filter** entity                                                                                       |
@@ -101,8 +101,7 @@ before building on this:
 
 ## 3. Concepts → data model
 
-Dashboards are stored the way `promoter` stores workflows: as ConfigHub Units, in
-the tool's own Space. The BI tool's own artifacts are config-as-data — a small
+Dashboards are stored as ConfigHub Units, in the tool's own Space. The BI tool's own artifacts are config-as-data — a small
 piece of dogfooding that costs nothing and demonstrates the model.
 
 | configboard concept     | ConfigHub                                                                     |
@@ -198,7 +197,7 @@ and nudges you up the ladder.
 
 ### Tier 0 — metadata (free, filterable, no config parsing)
 
-On the Unit itself: `Labels`, `ToolchainType`, `ProviderType`, `TargetID`,
+On the Unit itself: `Labels`, `ToolchainType`, `Unreleasable`, `TargetID`,
 `HeadRevisionNum` vs `LastReleasedRevisionNum`, `ValidationErrors`, `ValidationWarnings`,
 `UpstreamRevisionNum`, `UpdatedAt`, `LastActionAt`.
 
@@ -212,9 +211,8 @@ unlabelled org is a dashboard with one bar. **The setup script's first job is
 labelling.**
 
 **Cluster is not a label — it's a reference, and it joins.** A Space's optional
-`ReleaseTargetID` names the Target that is the default destination for its Units,
-and for Units delivered via ProviderType `OCI` the Unit's own `TargetID` is set
-from it. So the cluster is reachable **directly from the Unit**:
+`ReleaseTargetID` names the Target its Releases are for, and every Unit in it that
+is not `Unreleasable` reports it as its own `TargetID`. So the cluster is reachable **directly from the Unit**:
 `include=TargetID` puts `Target.Slug`, `Target.Labels.*`, and `Target.Facts.*`
 into both the `where` vocabulary and the returned row.
 
@@ -428,7 +426,7 @@ tile is lying and the drill-down is right.
 
 Rationale, in the order that decided it:
 
-1. **The other examples are MUI + React 18 + Vite** (`promoter`, `sec-scanner`,
+1. **The other examples are MUI + React 18 + Vite** (`sec-scanner`,
    `rbac-manager`, `cost-estimator`). Matching that keeps the example legible to
    anyone who has read one of the others.
 2. **Recharts is declarative SVG composition** — `<Bar>`, `<Line>`, `<Cell>` —
@@ -513,7 +511,7 @@ examples/configboard/
 `@confighub/react-auth` (browser-direct OIDC PKCE) and `@confighub/rtk-query`
 (`listAllUnits`, `listAllRevisions`, `listAllTargets`, `listSpaces`,
 `listAllViews`, `listAllFilters`). Static SPA, no backend — same
-deploy shape as `promoter`. Registration is one command:
+deploy shape as `rbac-manager`. Registration is one command:
 `cub oauthclient create configboard --redirect-uri http://localhost:5173/`.
 
 **One prerequisite in the SDK.** The js-sdk pins its spec to `v0.1.90`
@@ -564,7 +562,7 @@ part that waits on the bump.
 
 ## 8. Seed data and the demo story
 
-`configboard` should follow `promoter`'s lead and **not seed workloads** — it is a
+`configboard` should **not seed workloads** — it is a
 lens over whatever org it is pointed at. `setup.sh` seeds only its own Space,
 Views, Triggers, and the four starter dashboards, and prints what it found
 (spaces, label coverage, resource-type mix) so the user knows whether the org has
@@ -773,5 +771,4 @@ Each milestone is independently demoable; M0 alone is a credible example.
   parameters and the includable fields per entity
 - JS SDK — [github.com/confighub/js-sdk](https://github.com/confighub/js-sdk)
   (`@confighub/react-auth`, `@confighub/rtk-query`); bump `.spec-version` to `v0.2.0`
-- Prior art in this repo — `promoter` (SPA on the JS SDK, config-as-data storage),
-  `cost-estimator` / `sec-scanner` (analysis over config data)
+- Prior art in this repo — `cost-estimator` / `sec-scanner` (analysis over config data)

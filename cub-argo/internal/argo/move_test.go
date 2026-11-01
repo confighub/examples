@@ -114,7 +114,7 @@ func TestMoveDeliversOneStage(t *testing.T) {
 		t.Fatalf("%v\n%s", r.err, r.out)
 	}
 	for _, want := range []string{
-		"cub unit create --space argo-storefront-children argo-apptique-dev-1 render/app-argo-apptique-dev-1.yaml --target argo-targets/argocd",
+		"cub unit create --space argo-storefront-children argo-apptique-dev-1 render/app-argo-apptique-dev-1.yaml --change-desc",
 		"cub unit create --space argo-storefront-children argo-checkout-cache-dev-1 ",
 		"cub unit create --space argo-root-children argo-platform-addons-cluster-baseline-dev-1 ",
 		"cub release publish argo-storefront-children",

@@ -211,7 +211,7 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 	add("# a change made on the base still reaches it.")
 	add("has_unit() {")
 	add(`  cub unit get --space "$1" "$2" >/dev/null 2>&1 && return 0`)
-	add(`  cub unit create --space "$1" "$2" --upstream-space "$3" --upstream-unit "$2" --target "$4" --quiet`)
+	add(`  cub unit create --space "$1" "$2" --upstream-space "$3" --upstream-unit "$2" --quiet`)
 	add("}")
 	add("render() {")
 	add("  mkdir -p render")
@@ -322,7 +322,7 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 				add("cub variant create %s %s --stage %s --space-pattern template:%s --target %s/%s --space-label Role=deployment --space-label Cluster=%s $no_flux_layer --allow-exists --quiet",
 					v.Cluster, c.Base, st.Name, v.Space, targets, v.Cluster, v.Cluster)
 				add("render %s %s", q(v.Path), q(v.Space))
-				add("has_unit %s %s %s %s/%s", v.Space, c.Name, c.Base, targets, v.Cluster)
+				add("has_unit %s %s %s", v.Space, c.Name, c.Base)
 				add("cub unit update --space %s %s render/%s.yaml --change-desc %s --quiet",
 					v.Space, c.Name, v.Space, q(fmt.Sprintf("What %s renders for %s", v.Path, v.Cluster)))
 				add("holds %s 1", v.Space)

@@ -49,7 +49,7 @@ shared workflow contract before connecting live operations.
 
 ## Connect To ConfigHub
 
-The live browser GUI uses the ConfigHub Custom UI Apps JavaScript SDK: `@confighub/react-auth` for sign-in and `@confighub/api` for typed ConfigHub API calls. Do not reimplement browser OAuth in the app. For a live read/write SPA built on the same SDK, see [`../promoter`](../promoter).
+The live browser GUI uses the ConfigHub Custom UI Apps JavaScript SDK: `@confighub/react-auth` for sign-in and `@confighub/api` for typed ConfigHub API calls. Do not reimplement browser OAuth in the app. For a live read/write SPA built on the same SDK, see [`../rbac-manager`](../rbac-manager/README.md).
 
 Create a browser OAuth client for this app, install the UI dependencies, then start the SDK-backed GUI with the server URL and client ID. Production ConfigHub supports client registration through `cub oauthclient`.
 

@@ -34,7 +34,7 @@ const UNIT_SELECT = [
   'Labels',
   'Values',
   'ToolchainType',
-  'ProviderType',
+  'Unreleasable',
   'TargetID',
   'HeadRevisionNum',
   'LastReleasedRevisionNum',

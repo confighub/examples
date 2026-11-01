@@ -240,7 +240,7 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 	add("# a change made on the base still reaches it.")
 	add("has_unit() {")
 	add(`  cub unit get --space "$1" "$2" >/dev/null 2>&1 && return 0`)
-	add(`  cub unit create --space "$1" "$2" --upstream-space "$3" --upstream-unit "$2" --target "$4" --quiet`)
+	add(`  cub unit create --space "$1" "$2" --upstream-space "$3" --upstream-unit "$2" --quiet`)
 	add("}")
 	add("render() {")
 	add(`  mkdir -p render`)
@@ -295,17 +295,17 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 			add("cub space create %s --component %s --label Component=%s --label Role=control --allow-exists --quiet", s.Space, s.Space, s.Space)
 			for _, f := range s.Files {
 				unit := strings.TrimSuffix(filepath.Base(f), filepath.Ext(f))
-				add("cub unit create --space %s %s control/%s/%s --target %s/argocd --change-desc %s --allow-exists --quiet",
-					s.Space, unit, s.Space, filepath.Base(f), targets,
+				add("cub unit create --space %s %s control/%s/%s --change-desc %s --allow-exists --quiet",
+					s.Space, unit, s.Space, filepath.Base(f),
 					q(fmt.Sprintf("Onboard %s: what the %s app of apps syncs", unit, s.Parent)))
 			}
 			// A control Space needs a release Target of its own and a published
 			// Release, or the parent repointed at it reads tag "latest" from a
 			// repository that has none. Measured: without this the handover
 			// fails with "<space>:latest: not found", which reads as a wrong
-			// address rather than as an empty Space. Units carry the argocd
-			// Target; the Space does not get one from that, and
-			// `cub release publish` refuses a Space without a ReleaseTargetID.
+			// address rather than as an empty Space. Its Units take the
+			// argocd Target from the Space, and `cub release publish` refuses
+			// a Space without a ReleaseTargetID.
 			add(`tid=$(cub target get --space %s argocd -o jq=.Target.TargetID | tr -d '"')`, targets)
 			add(`[ -n "$tid" ] || { echo "no argocd Target in %s: run step 1 first"; exit 1; }`, targets)
 			add(`echo "{\"ReleaseTargetID\":\"$tid\"}" | cub space update --patch %s --from-stdin --quiet`, s.Space)
@@ -385,7 +385,7 @@ func ApplyScript(p *Plan, prefix, repoRel string) string {
 					v.Cluster, c.Base, st.Name, v.Space, targets, v.Cluster, v.Cluster)
 				if v.Path != "" && v.Path != "(multi-source)" {
 					add("  render %s %s%s", q(v.Path), q(v.Space), v.recurseArg())
-					add("  has_unit %s %s %s %s/%s", v.Space, c.Name, c.Base, targets, v.Cluster)
+					add("  has_unit %s %s %s", v.Space, c.Name, c.Base)
 					add("  cub unit update --space %s %s render/%s.yaml --change-desc %s --quiet",
 						v.Space, c.Name, v.Space, q(fmt.Sprintf("What %s renders for %s", v.Path, v.Cluster)))
 				}
