@@ -101,8 +101,7 @@ before building on this:
 
 ## 3. Concepts → data model
 
-Dashboards are stored the way `promoter` stores workflows: as ConfigHub Units, in
-the tool's own Space. The BI tool's own artifacts are config-as-data — a small
+Dashboards are stored as ConfigHub Units, in the tool's own Space. The BI tool's own artifacts are config-as-data — a small
 piece of dogfooding that costs nothing and demonstrates the model.
 
 | configboard concept     | ConfigHub                                                                     |
@@ -427,7 +426,7 @@ tile is lying and the drill-down is right.
 
 Rationale, in the order that decided it:
 
-1. **The other examples are MUI + React 18 + Vite** (`promoter`, `sec-scanner`,
+1. **The other examples are MUI + React 18 + Vite** (`sec-scanner`,
    `rbac-manager`, `cost-estimator`). Matching that keeps the example legible to
    anyone who has read one of the others.
 2. **Recharts is declarative SVG composition** — `<Bar>`, `<Line>`, `<Cell>` —
@@ -512,7 +511,7 @@ examples/configboard/
 `@confighub/react-auth` (browser-direct OIDC PKCE) and `@confighub/rtk-query`
 (`listAllUnits`, `listAllRevisions`, `listAllTargets`, `listSpaces`,
 `listAllViews`, `listAllFilters`). Static SPA, no backend — same
-deploy shape as `promoter`. Registration is one command:
+deploy shape as `rbac-manager`. Registration is one command:
 `cub oauthclient create configboard --redirect-uri http://localhost:5173/`.
 
 **One prerequisite in the SDK.** The js-sdk pins its spec to `v0.1.90`
@@ -563,7 +562,7 @@ part that waits on the bump.
 
 ## 8. Seed data and the demo story
 
-`configboard` should follow `promoter`'s lead and **not seed workloads** — it is a
+`configboard` should **not seed workloads** — it is a
 lens over whatever org it is pointed at. `setup.sh` seeds only its own Space,
 Views, Triggers, and the four starter dashboards, and prints what it found
 (spaces, label coverage, resource-type mix) so the user knows whether the org has
@@ -772,5 +771,4 @@ Each milestone is independently demoable; M0 alone is a credible example.
   parameters and the includable fields per entity
 - JS SDK — [github.com/confighub/js-sdk](https://github.com/confighub/js-sdk)
   (`@confighub/react-auth`, `@confighub/rtk-query`); bump `.spec-version` to `v0.2.0`
-- Prior art in this repo — `promoter` (SPA on the JS SDK, config-as-data storage),
-  `cost-estimator` / `sec-scanner` (analysis over config data)
+- Prior art in this repo — `cost-estimator` / `sec-scanner` (analysis over config data)

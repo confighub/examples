@@ -14,7 +14,7 @@ data via [`@confighub/rtk-query`](https://www.npmjs.com/package/@confighub/rtk-q
 browser-direct login via [`@confighub/react-auth`](https://www.npmjs.com/package/@confighub/react-auth).
 No backend — it is a static SPA that talks to the ConfigHub API directly.
 
-Like [`promoter`](../promoter/README.md), configboard **seeds nothing**. It is a lens
+configboard **seeds nothing**. It is a lens
 over whatever organization you point it at. See [DESIGN.md](DESIGN.md) for the full
 design, including the milestones beyond what is built.
 

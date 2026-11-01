@@ -1,8 +1,7 @@
 # AI Guide: configboard
 
-A BI-style dashboard app over ConfigHub configuration data. Like
-[`promoter`](../promoter/AI_START_HERE.md), it is a **webapp with no `setup.sh`** — it
-seeds nothing and reads whatever organization you point it at. Built on the published
+A BI-style dashboard app over ConfigHub configuration data. It is a **webapp with no
+`setup.sh`** — it seeds nothing and reads whatever organization you point it at. Built on the published
 ConfigHub JS SDK: [`@confighub/rtk-query`](https://github.com/confighub/js-sdk) for
 data, [`@confighub/react-auth`](https://github.com/confighub/js-sdk) for browser-direct
 OIDC PKCE login.

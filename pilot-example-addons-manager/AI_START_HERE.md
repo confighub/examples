@@ -6,8 +6,7 @@ seed-and-verify examples, this is a UI app with a zero-dependency CLI sibling
 and no `setup.sh` — everything below runs on a cold clone with no install and
 no ConfigHub account until the final stage. The live browser GUI is built on
 the ConfigHub Custom UI Apps JavaScript SDK (`@confighub/react-auth` +
-`@confighub/api`); the neighbouring [`../promoter`](../promoter) example is a
-live read/write SPA on the same SDK.
+`@confighub/api`).
 
 ## CRITICAL: Demo Pacing
 

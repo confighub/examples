@@ -122,7 +122,6 @@ Some other examples
   [`webkit`](./webkit/README.md) — the auth shell, fleet scope and snapshot,
   config-data access, and RBAC engine behind the web consoles
   ([`configboard`](./configboard/README.md),
-  [`promoter`](./promoter/README.md),
   [`rbac-manager`](./rbac-manager/README.md),
   [`sec-scanner`](./sec-scanner/README.md),
   [`fleet-ql`](./fleet-ql/README.md), and
