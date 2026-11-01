@@ -1,10 +1,10 @@
 # Argo OCI Specification
 
-**Status:** The worker-based `ArgoCDOCI` provider is being removed, with ConfigHub Workers. Argo OCI delivery is now a published Release that Argo CD pulls from ConfigHub's OCI gateway as a service account; see [Current implementation](#current-implementation-releases-and-the-oci-gateway).
+**Status:** The worker-based `ArgoCDOCI` provider was removed with ConfigHub Workers, in v0.10.0. Argo OCI delivery is now a published Release that Argo CD pulls from ConfigHub's OCI gateway as a service account; see [Current implementation](#current-implementation-releases-and-the-oci-gateway).
 **Provider Type:** `ArgoCDOCI` (historical)
 **ArgoCD Support:** Confirmed. ArgoCD v3.1+ (August 2025) has native OCI support.
 
-This document specifies the Argo OCI delivery path for ConfigHub. It was written against the `ArgoCDOCI` bridge worker, which is being removed with ConfigHub Workers; the contracts below (raw manifests in, an OCI artifact out, an Argo `Application` reading it) still hold, and [Current implementation](#current-implementation-releases-and-the-oci-gateway) says how they are met today.
+This document specifies the Argo OCI delivery path for ConfigHub. It was written against the `ArgoCDOCI` bridge worker, which was removed with ConfigHub Workers in v0.10.0; the contracts below (raw manifests in, an OCI artifact out, an Argo `Application` reading it) still hold, and [Current implementation](#current-implementation-releases-and-the-oci-gateway) says how they are met today.
 
 ## Why This Spec Exists
 
@@ -191,7 +191,7 @@ ConfigHub unit revision → OCI artifact digest → Argo targetRevision → depl
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| ArgoCDOCI provider type | **Removed** | It was a bridge worker; it goes away with ConfigHub Workers |
+| ArgoCDOCI provider type | **Removed** | It was a bridge worker; removed with ConfigHub Workers in v0.10.0 |
 | OCI publication logic | Exists | `cub release publish` publishes a Space's Release to ConfigHub's OCI gateway |
 | Argo Application creation | Not automatic | The Application is written by the operator, or stored as a Unit (as `cub argo` does) |
 | Application source contract | Exists | ArgoCD v3.1+ OCI source format |

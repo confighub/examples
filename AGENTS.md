@@ -60,7 +60,6 @@ These commands do not mutate:
 - spaces
 - units
 - targets
-- workers
 - clusters
 
 ## 5. For `global-app-layer`, do this before reading shell code

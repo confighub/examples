@@ -8,7 +8,7 @@
 # Keys while a command is waiting: space runs it, s skips it, f stops the
 # typing effect, ! opens a subshell, q quits. See ../scripts/demo-lib.sh.
 #
-# Wants: cub, authenticated. No cluster and no worker.
+# Wants: cub, authenticated. No cluster.
 #
 # The edit step opens $EDITOR (vi if unset) for you to make the change by hand:
 # add Validated to the prod stage's Prerequisites. With DEMO_AUTO=1 an editor

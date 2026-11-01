@@ -26,7 +26,7 @@
 # The dev "developer" persona also diverges from base (gains the "delete"
 # verb) via a server-side yq-i mutation, to demo variant divergence.
 #
-# These are "paper clusters": Spaces only, no Targets/Workers, so nothing is
+# These are "paper clusters": Spaces only, no Targets, so nothing is
 # deployed to live infrastructure. (A --kind mode binding real kind-cluster
 # Targets is planned but not yet implemented.)
 #
@@ -100,7 +100,7 @@ Will create (idempotently):
   - 1 divergence: ${PREFIX}-dev/developer gains the "delete" verb (server-side yq-i)
   - 3 planted violations in ${PREFIX}-dev (2 gated, 1 app-side audit finding)
 
-Mutates: ConfigHub only. No Targets, no Workers, no live infrastructure.
+Mutates: ConfigHub only. No Targets, no live infrastructure.
 EOF
 }
 

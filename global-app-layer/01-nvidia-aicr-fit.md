@@ -31,8 +31,8 @@ ConfigHub already has the core primitives needed to model this:
 
 - units can hold desired configuration
 - clones and upstream links can model layered variants
-- workers and targets already give an execution path from ConfigHub to real systems
-- apply can be direct, or delegated to ArgoCD or Flux through bundle-style outputs
+- targets and published Releases give an execution path from ConfigHub to real systems
+- delivery is delegated to ArgoCD or Flux, which pull published bundles
 - functions can mutate, validate, inspect, and compare configuration
 - units already have revisions and hashes, which is the basis for provenance and reproducibility
 
@@ -64,8 +64,7 @@ AICR cares about exact versions and reproducible output. ConfigHub already track
 AICR bundles for Helm, ArgoCD, and similar deployers. ConfigHub already supports a similar split:
 
 - desired state lives in ConfigHub
-- a worker applies directly, or
-- a worker publishes material for ArgoCD or Flux to reconcile
+- a Release publishes it as an OCI bundle for ArgoCD or Flux to reconcile
 
 ### 4. Private extension
 
@@ -75,7 +74,7 @@ AICR supports overlaying private data on top of public recipes. ConfigHub can do
 
 ### 1. First-class snapshot flow
 
-ConfigHub can inspect live systems, and workers can talk to targets, but there is not yet a productized "snapshot this cluster and persist the evidence" story equivalent to AICR's snapshot agent.
+ConfigHub records the live status bots report back, but there is not yet a productized "snapshot this cluster and persist the evidence" story equivalent to AICR's snapshot agent.
 
 ### 2. First-class recipe catalog UX
 
@@ -145,7 +144,7 @@ These are not GPU examples, but they show the exact ConfigHub pattern that a lar
 3. Keep `examples/global-app-layer/realistic-app/` as the fuller app-level proof.
 4. Keep `examples/global-app-layer/gpu-eks-h100-training/` as the first multi-component GPU recipe proof.
 5. Add a first-class snapshot and phased validation story.
-6. Make the GUI show the exact connected worker, target, controller, bundle, freshness, and validation state.
+6. Make the GUI show the exact target, controller, bundle, freshness, and validation state.
 
 ## Bottom Line
 

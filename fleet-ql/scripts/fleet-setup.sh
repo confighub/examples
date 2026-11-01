@@ -10,8 +10,8 @@
 # overrides (local divergence preserved by upgrades). storefront-dev is bumped
 # ahead of its downstreams to seed a "change awaiting promotion" gap.
 #
-# Idempotent (safe to re-run). ConfigHub only; the OCI targets use a server
-# worker, so no real cluster is contacted. Tear down with fleet-teardown.sh.
+# Idempotent (safe to re-run). ConfigHub only; releases to the OCI
+# targets are only published, so no real cluster is contacted. Tear down with fleet-teardown.sh.
 set -euo pipefail
 cub=cub
 

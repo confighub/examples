@@ -24,7 +24,7 @@
 # onto the Unit as an annotation. The Trigger then gates whatever it marked
 # CRITICAL. Config (the image ref + the scan verdict) and policy live as data.
 #
-# These are "paper clusters": ConfigHub Spaces only, no Targets/Workers — nothing
+# These are "paper clusters": ConfigHub Spaces only, no Targets — nothing
 # deploys to a live cluster. The scanner does pull the real images locally to
 # scan them; that is the only thing that touches the outside world.
 #
@@ -114,7 +114,7 @@ the fleet with --write-back so the no-critical-cves gate fires on the vulnerable
 Units.
 
 Mutates: ConfigHub (Spaces/Units) + a local SQLite file (cvedb/cve.db). Pulls
-the demo images locally to scan them. No Kubernetes Targets, Workers, or live deploys.
+the demo images locally to scan them. No Kubernetes Targets or live deploys.
 EOF
 }
 

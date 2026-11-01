@@ -24,7 +24,7 @@
 # annotations. The Trigger then gates whatever it marked OVER. Config (the
 # requests) and the verdict both live as data.
 #
-# These are "paper clusters": ConfigHub Spaces only, no Targets/Workers — nothing
+# These are "paper clusters": ConfigHub Spaces only, no Targets — nothing
 # deploys to a live cluster, and nothing touches the outside world.
 #
 # Prerequisites:
@@ -106,7 +106,7 @@ within-budget gate fires on the over-budget Units, and publish a costdb-status
 Unit into ${POLICY_SPACE}.
 
 Mutates: ConfigHub (Spaces/Units) + a local SQLite file (costdb/cost.db). No
-Kubernetes Targets, Workers, or live deploys; no external network.
+Kubernetes Targets or live deploys; no external network.
 EOF
 }
 

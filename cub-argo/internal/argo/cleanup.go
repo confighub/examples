@@ -8,7 +8,7 @@ import (
 // CleanupScript undoes what apply.sh created.
 //
 // This was once a seven-step ordering: Units, then each Space's release Target,
-// then Targets, the worker, Releases, Tags, and only then the Spaces -- because
+// then Targets, Releases, Tags, and only then the Spaces -- because
 // ConfigHub refuses a Space while anything still references it and names only
 // the first blocker each time. That order was measured against ConfigHub
 // v0.5.1, and on v0.6.2 it deleted nothing at all: Attestations are a kind of

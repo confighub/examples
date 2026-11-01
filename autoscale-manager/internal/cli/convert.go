@@ -37,7 +37,7 @@ ScaledObject, preserving min/max replicas and cpu/memory metrics.
 
 The conversion runs the convert-hpa-to-keda ConfigHub function in an embedded
 executor in-process: the command fetches the Unit's data, runs the function on
-it locally (no server-side function, no worker), and writes the result back as a
+it locally (no server-side function), and writes the result back as a
 new Unit revision. cpu/memory Resource metrics become KEDA cpu/memory triggers;
 Pods/Object/External metrics are not converted (KEDA needs a matching scaler).
 

@@ -51,7 +51,7 @@ sec-demo-staging   Cluster Space (env=staging) — clones
 sec-demo-prod      Cluster Space (env=prod)    — clones
 ```
 
-The ConfigHub Spaces are "paper clusters" — no Targets or Workers, nothing
+The ConfigHub Spaces are "paper clusters" — no Targets, nothing
 deploys to live infrastructure. The scanner *does* pull the real demo images
 locally in order to scan them; that is the only outside contact. The planted
 violations in dev:

@@ -268,7 +268,7 @@ variables push a `where` down so the common case invokes a fraction of the fleet
 `TotalUnitCount`, `UnreleasedUnitCount`, `GatedUnitCount`,
 `WarnedUnitCount`, `UpgradableUnitCount`, `UnlinkedUnitCount`, plus `TriggerCountByEventType`,
 and totals for Links, Filters, Views, Tags, ChangeSets, Invocations, Attributes,
-Releases, Targets, BridgeWorkers.
+Releases, Targets.
 
 This is the one place ConfigHub *does* aggregate for you, and it is exactly the
 grain most governance panels want. The whole KPI row (§5D) and any per-Space,
