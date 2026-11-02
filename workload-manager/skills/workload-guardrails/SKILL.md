@@ -9,7 +9,7 @@ allowed-tools: Bash(cub-workload --help) Bash(cub-workload * --help) Bash(cub au
 
 Turn workload-readiness policy into **enforcement** — advisory ValidationWarnings (promotable to blocking ValidationErrors) that fire in the normal apply pipeline. Three subcommands:
 
-- **`guardrails install`** — creates the `common` Space, four `Warn=true` `vet-cel` Triggers, labeled `Guardrails: workload`, then adds the `workload` group to each in-scope Space's `WhereTrigger`. **Dry-run by default**; re-run with `--commit`.
+- **`guardrails install`** — creates the `common` Space, four `Warn=true` `vet-cel` Triggers, labeled `Pack: workload`, then adds the `workload` group to each in-scope Space's `WhereTrigger`. **Dry-run by default**; re-run with `--commit`.
 - **`guardrails status`** — lists Units carrying workload-readiness ValidationWarnings or ValidationErrors.
 - **`guardrails annotate`** — writes the `workload.confighub.com/pdb-coverage` finding onto each uncovered multi-replica workload Unit (the producing half of annotate-then-validate). Dry-run unless `--commit --change-desc`.
 

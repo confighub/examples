@@ -9,7 +9,7 @@ allowed-tools: Bash(cub-autoscale --help) Bash(cub-autoscale * --help) Bash(cub 
 
 Turn the autoscaling anti-patterns into **enforcement** — advisory ValidationWarnings (promotable to blocking ValidationErrors) that fire in the normal apply pipeline.
 
-- **`guardrails install`** — creates the `common` Space, two `Warn=true` Triggers, labeled `Guardrails: autoscale`, then adds the `autoscale` group to each in-scope Space's `WhereTrigger`. **Dry-run by default**; re-run with `--commit`.
+- **`guardrails install`** — creates the `common` Space, two `Warn=true` Triggers, labeled `Pack: autoscale`, then adds the `autoscale` group to each in-scope Space's `WhereTrigger`. **Dry-run by default**; re-run with `--commit`.
   - `autoscaler-not-pinned` (`vet-cel`) — an HPA/ScaledObject must not have `min == max`.
   - `schema-valid` (`vet-schemas`) — a resource must pass Kubernetes/CRD schema validation. This is the **post-convert check** for `convert-keda`: a committed ScaledObject fires the Mutation Trigger and is validated against `keda.sh`'s schema.
 - **`guardrails status`** — lists Units carrying autoscaling ValidationWarnings or ValidationErrors.

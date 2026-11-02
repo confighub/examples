@@ -9,7 +9,7 @@ allowed-tools: Bash(cub-observability --help) Bash(cub-observability * --help) B
 
 Turn the ServiceMonitor-coverage gap into **enforcement** — an advisory ValidationWarning (promotable to a blocking ValidationError) that fires in the normal apply pipeline.
 
-- **`guardrails install`** — creates the `common` Space, a `Warn=true` `vet-cel` Trigger (`servicemonitor-coverage`), labeled `Guardrails: observability`, then adds the `observability` group to each in-scope Space's `WhereTrigger`. **Dry-run by default**; re-run with `--commit`.
+- **`guardrails install`** — creates the `common` Space, a `Warn=true` `vet-cel` Trigger (`servicemonitor-coverage`), labeled `Pack: observability`, then adds the `observability` group to each in-scope Space's `WhereTrigger`. **Dry-run by default**; re-run with `--commit`.
 - **`guardrails status`** — lists Units carrying observability ValidationWarnings or ValidationErrors.
 - **`guardrails annotate`** — writes the `observability.confighub.com/coverage` finding onto each uncovered metrics-Service Unit (the producing half of annotate-then-validate). Dry-run unless `--commit --change-desc`.
 

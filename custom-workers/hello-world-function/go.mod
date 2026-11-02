@@ -3,8 +3,8 @@ module github.com/confighub/examples/custom-workers/hello-world-function
 go 1.26.0
 
 require (
-	github.com/confighub/sdk/configkit/k8skit v0.10.0
-	github.com/confighub/sdk/core v0.10.0
+	github.com/confighub/sdk/configkit/k8skit v0.10.2
+	github.com/confighub/sdk/core v0.10.2
 )
 
 require (

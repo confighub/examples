@@ -1,6 +1,6 @@
 ---
 name: rbac-guardrails
-description: 'Install and inspect the RBAC guardrail policy pack across a ConfigHub fleet with the cub-rbac CLI. Use for "enforce RBAC policy", "block wildcard roles / privilege escalation / cluster-admin bindings", "set up RBAC guardrails", "wire the guardrail triggers to my spaces", "which units have RBAC warnings?", "are our RBAC policies installed?". Installs three Warn=true Triggers in a policy Space, labeled Guardrails: rbac, and adds the rbac group to each in-scope Space''s WhereTrigger; dry-run by default, --commit to apply. Not for one-off validation (use rbac-findings), not for editing RBAC config (use rbac-edit); promoting a guardrail to blocking and applying changes are done with cub directly.'
+description: 'Install and inspect the RBAC guardrail policy pack across a ConfigHub fleet with the cub-rbac CLI. Use for "enforce RBAC policy", "block wildcard roles / privilege escalation / cluster-admin bindings", "set up RBAC guardrails", "wire the guardrail triggers to my spaces", "which units have RBAC warnings?", "are our RBAC policies installed?". Installs three Warn=true Triggers in a policy Space, labeled Pack: rbac, and adds the rbac group to each in-scope Space''s WhereTrigger; dry-run by default, --commit to apply. Not for one-off validation (use rbac-findings), not for editing RBAC config (use rbac-edit); promoting a guardrail to blocking and applying changes are done with cub directly.'
 phase: act
 allowed-tools: Bash(cub-rbac --help) Bash(cub-rbac * --help) Bash(cub auth status) Bash(cub-rbac preflight) Bash(cub-rbac findings *) Bash(cub-rbac guardrails *)
 ---
@@ -25,10 +25,10 @@ cub trigger update no-rbac-wildcards --space <policy-space> --unwarn
 
 ## Why this matters
 
-This is the *enforcement* complement to **rbac-findings** (which only reports). The policies are defined once in a policy Space and labeled `Guardrails: rbac`. Each wired Space's `WhereTrigger` lists the groups it has opted into, from that one policy Space:
+This is the *enforcement* complement to **rbac-findings** (which only reports). The policies are defined once in a policy Space and labeled `Pack: rbac`. Each wired Space's `WhereTrigger` lists the groups it has opted into, from that one policy Space:
 
 ```
-Space.Slug = 'common' AND Labels.Guardrails IN ('namespace', 'rbac') AND Labels.AppliedTo != 'Target'
+Space.Slug = 'common' AND Labels.Pack IN ('namespace', 'rbac') AND Labels.AppliedTo != 'Target'
 ```
 
 So the rules run on every Mutation in those Spaces, another tool's group is added to a Space only when that tool's install wires it, and a Trigger labeled into the group in any other Space is never selected.
