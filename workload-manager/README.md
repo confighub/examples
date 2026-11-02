@@ -43,7 +43,7 @@ apply`), and never bypass ValidationErrors.
 | `ensure-spread` | write | Add pod anti-affinity or topology spread |
 | `profile install\|list\|apply` | write | The profile library (parameterized Invocations) |
 | `fleet-edit` | write | Bulk remediation: apply a profile across a `--where` selector |
-| `guardrails install\|status\|annotate` | write | Enforcement pack — `vet-cel` per-resource + annotate-then-validate for PDB coverage |
+| `guardrails install\|status\|annotate` | write | Enforcement pack — `vet-cel` and `vet-images` per-resource + annotate-then-validate for PDB coverage |
 
 ## Agent skills
 

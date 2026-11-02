@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/confighub/sdk/core/cubapi"
+	"github.com/confighub/sdk/core/function/api"
 	"github.com/confighub/sdk/managerkit/guardrails"
 
 	"github.com/confighub/examples/workload-manager/internal/cub"
@@ -43,12 +44,32 @@ const (
 	celNoPDBFinding = "!has(r.metadata.annotations) || r.metadata.annotations == null || !('" + pdbCoverageAnnotation + "' in r.metadata.annotations)"
 )
 
+// databaseImage matches an image of a common database server by its repository
+// name, the last path segment before any image tag or digest, so registry
+// mirrors (bitnami/postgresql, docker.io/library/mysql) match too.
+const databaseImage = `^([^/]+/)*(postgres|postgresql|postgis|timescaledb|timescaledb-ha|mysql|mariadb|percona-server|mongo|mongodb|cassandra|scylla|cockroach|couchdb|neo4j|clickhouse-server)([:@].*)?$`
+
+// celDatabaseStateful fails a Deployment or ReplicaSet that runs a database
+// image. Their Pods are interchangeable, so a rollout can run two database
+// Pods on one volume, or start a replacement before the old one lets go of it;
+// a StatefulSet gives each replica a stable identity and its own volume.
+const celDatabaseStateful = "!(r.kind in ['Deployment', 'ReplicaSet']) || !has(r.spec.template.spec.containers) || !r.spec.template.spec.containers.exists(c, has(c.image) && c.image.matches('" + databaseImage + "'))"
+
+// untaggedOrLatestImage matches an image reference whose image tag is latest, or
+// that has neither an image tag nor a digest, where the runtime pulls latest. The
+// last path segment is checked alone, so a registry host's port is not mistaken
+// for an image tag.
+const untaggedOrLatestImage = `(:latest$)|^([^/]+/)*[^/:@]+$`
+
 var pack = guardrails.Pack{
 	Group: "workload",
 	Rules: []guardrails.Rule{
 		{Slug: "workload-has-limits", Description: "Warns on a controller whose containers don't all set resources.limits.memory. Fix: `cub-workload set-resources <space>/<unit>`.", Expression: celHasLimits},
 		{Slug: "workload-runs-nonroot", Description: "Warns on a controller not running as non-root (pod or all containers). Fix: `cub-workload harden <space>/<unit>`.", Expression: celRunsNonRoot},
 		{Slug: "workload-termination-message-policy", Description: "Warns on a controller whose containers don't all set terminationMessagePolicy: FallbackToLogsOnError. Fix: the termination-message-policy profile.", Expression: celTerminationMsg},
+		{Slug: "workload-explicit-image-tag", Description: "Warns on a container image with no image tag or digest, or with the latest image tag. Fix: set a version with `cub function set set-image-reference-by-uri <repository> :<version>`.",
+			Function: "vet-images", Arguments: []api.FunctionArgument{{ParameterName: "image-filter", Value: `{"DenyRegexp": "` + untaggedOrLatestImage + `"}`}}},
+		{Slug: "workload-database-statefulset", Description: "Warns on a Deployment or ReplicaSet running a database image (postgres, mysql, mariadb, mongo, cassandra, ...). Fix: run it as a StatefulSet, with volumeClaimTemplates for its data.", Expression: celDatabaseStateful},
 		{Slug: "workload-pdb-coverage", Description: "Warns while a workload.confighub.com/pdb-coverage annotation is present (set by `cub-workload guardrails annotate`). Fix: `cub-workload ensure-pdb`, then re-run annotate.", Expression: celNoPDBFinding},
 	},
 }
@@ -65,12 +86,14 @@ in a policy Space and enforced in each Space that opts into the group:
   workload-has-limits                controller containers set a memory limit
   workload-runs-nonroot              controller runs as non-root
   workload-termination-message-policy  containers set FallbackToLogsOnError
+  workload-explicit-image-tag        images name an image tag other than latest, or a digest
+  workload-database-statefulset      database images run in a StatefulSet or DaemonSet
   workload-pdb-coverage              warns while a PDB-coverage finding is annotated
 
-The first three are plain per-resource vet-cel checks — a single Unit answers
-them, no annotation needed. The last realizes annotate-then-validate for the one
-property vet-cel can't see under one-resource-per-Unit: whether a *matching* PDB
-exists in some other Unit. 'guardrails annotate' writes that finding onto each
+The first five are plain per-resource checks (vet-cel, and vet-images for image
+tags) — a single Unit answers them, no annotation needed. The last realizes
+annotate-then-validate for the one property vet-cel can't see under
+one-resource-per-Unit: whether a *matching* PDB exists in some other Unit. 'guardrails annotate' writes that finding onto each
 uncovered workload Unit and this Trigger turns it into a warning.
 
 Triggers are created with Warn=true (advisory ValidationWarnings, never blocking).
