@@ -1,6 +1,6 @@
 ---
 name: workload-guardrails
-description: 'Install and operate the workload-readiness enforcement pack with the cub-workload CLI — a common Space of Warn=true vet-cel Triggers (containers set a memory limit, run as non-root, set terminationMessagePolicy) plus an annotate-then-validate Trigger for cross-Unit PodDisruptionBudget coverage, added to in-scope Spaces as the workload guardrail group. guardrails install (dry-run by default), status (Units with ValidationWarnings/Gates), annotate (write the PDB-coverage finding onto uncovered workloads). Use for "enforce workload readiness", "block workloads with no memory limit", "warn on workloads with no PDB", "which workloads are flagged?". Not for read-only scoring (use workload-audit / workload-findings) or fixing workloads (use workload-harden / workload-fleet).'
+description: 'Install and operate the workload-readiness enforcement pack with the cub-workload CLI — a common Space of Warn=true vet-cel Triggers (containers set a memory limit, run as non-root, set terminationMessagePolicy, run database images in a StatefulSet), a vet-images Trigger (no untagged or latest images), plus an annotate-then-validate Trigger for cross-Unit PodDisruptionBudget coverage, added to in-scope Spaces as the workload guardrail group. guardrails install (dry-run by default), status (Units with ValidationWarnings/Gates), annotate (write the PDB-coverage finding onto uncovered workloads). Use for "enforce workload readiness", "block workloads with no memory limit", "warn on latest images", "flag databases run as Deployments", "warn on workloads with no PDB", "which workloads are flagged?". Not for read-only scoring (use workload-audit / workload-findings) or fixing workloads (use workload-harden / workload-fleet).'
 phase: act
 allowed-tools: Bash(cub-workload --help) Bash(cub-workload * --help) Bash(cub auth status) Bash(cub-workload preflight) Bash(cub-workload guardrails) Bash(cub-workload guardrails *)
 ---
@@ -9,18 +9,20 @@ allowed-tools: Bash(cub-workload --help) Bash(cub-workload * --help) Bash(cub au
 
 Turn workload-readiness policy into **enforcement** — advisory ValidationWarnings (promotable to blocking ValidationErrors) that fire in the normal apply pipeline. Three subcommands:
 
-- **`guardrails install`** — creates the `common` Space, four `Warn=true` `vet-cel` Triggers, labeled `Pack: workload`, then adds the `workload` group to each in-scope Space's `WhereTrigger`. **Dry-run by default**; re-run with `--commit`.
+- **`guardrails install`** — creates the `common` Space, six `Warn=true` Triggers, labeled `Pack: workload`, then adds the `workload` group to each in-scope Space's `WhereTrigger`. **Dry-run by default**; re-run with `--commit`.
 - **`guardrails status`** — lists Units carrying workload-readiness ValidationWarnings or ValidationErrors.
 - **`guardrails annotate`** — writes the `workload.confighub.com/pdb-coverage` finding onto each uncovered multi-replica workload Unit (the producing half of annotate-then-validate). Dry-run unless `--commit --change-desc`.
 
 ## Why this matters
 
-The manager can't set ValidationWarnings directly — only a failed Trigger can. Three of the rules are plain **per-resource `vet-cel`** (a single Unit answers them): `workload-has-limits`, `workload-runs-nonroot`, `workload-termination-message-policy`. The fourth, **`workload-pdb-coverage`**, is the one property `vet-cel` can't see under one-resource-per-Unit — whether a *matching* PDB exists in another Unit — so it uses **annotate-then-validate**: `annotate` computes the cross-Unit coverage finding and stamps it on the workload Unit, and the Trigger turns that annotation into a warning. `install` is conservative: it skips Spaces that already select Triggers their own way (their own Triggers, a custom WhereTrigger, or a TriggerFilterID) rather than clobbering them.
+The manager can't set ValidationWarnings directly — only a failed Trigger can. Five of the rules are plain **per-resource** checks (a single Unit answers them): `workload-has-limits`, `workload-runs-nonroot`, `workload-termination-message-policy` and `workload-database-statefulset` (a Deployment or ReplicaSet running a database image such as postgres, mysql or mongo) are `vet-cel`, and `workload-explicit-image-tag` is `vet-images`, warning on an image with no image tag or digest, or the `latest` image tag. The sixth, **`workload-pdb-coverage`**, is the one property `vet-cel` can't see under one-resource-per-Unit — whether a *matching* PDB exists in another Unit — so it uses **annotate-then-validate**: `annotate` computes the cross-Unit coverage finding and stamps it on the workload Unit, and the Trigger turns that annotation into a warning. `install` is conservative: it skips Spaces that already select Triggers their own way (their own Triggers, a custom WhereTrigger, or a TriggerFilterID) rather than clobbering them.
 
 ## When to use
 
 - "Enforce workload readiness across the fleet." → `guardrails install` (preview), then `--commit`.
 - "Block / warn on workloads with no memory limit or running as root." → the `install`ed vet-cel Triggers.
+- "Warn on images with no image tag or the `latest` image tag." → the `install`ed vet-images Trigger.
+- "Flag databases deployed as a Deployment instead of a StatefulSet." → the `install`ed `workload-database-statefulset` Trigger.
 - "Warn on workloads with no PDB." → `guardrails install` + `guardrails annotate --commit`.
 - "Which workloads are flagged?" → `guardrails status`.
 

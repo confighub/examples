@@ -240,7 +240,9 @@ $ cub-workload fleet-edit --profile resources-medium --environment dev --param c
 ## 8. Enforce with guardrails
 
 `guardrails install` stands up a policy pack — `Warn=true` `vet-cel` Triggers
-(memory limits, run-as-non-root, terminationMessagePolicy) plus an
+(memory limits, run-as-non-root, terminationMessagePolicy, database images
+in a StatefulSet or DaemonSet rather than a Deployment), a `vet-images`
+Trigger that warns on an image with no image tag or the `latest` image tag, plus an
 annotate-then-validate Trigger for PDB coverage — labeled `Pack: workload`,
 and adds the `workload` group to each in-scope Space's `WhereTrigger`. It's
 dry-run by default and **conservative**: it skips Spaces that already select
@@ -249,12 +251,12 @@ Triggers their own way rather than clobbering them.
 ```console
 $ cub-workload guardrails install -o table
 Plan (dry-run) — guardrail group "workload" in policy Space "common"
-  triggers: workload-has-limits, workload-runs-nonroot, workload-termination-message-policy, workload-pdb-coverage
+  triggers: workload-has-limits, workload-runs-nonroot, workload-termination-message-policy, workload-explicit-image-tag, workload-database-statefulset, workload-pdb-coverage
   to wire: none
   already wired (1): platform-dev
 ```
 
-Apply with `--commit`. The three per-resource rules fire on their own; the
+Apply with `--commit`. The five per-resource rules fire on their own; the
 cross-Unit PDB-coverage rule is fed by `guardrails annotate`, which stamps the
 finding onto each uncovered multi-replica workload:
 
