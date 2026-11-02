@@ -224,7 +224,7 @@ Do not continue until I say continue.
 After running the example, verify:
 - ConfigHub objects
 - GUI state
-- target/worker readiness
+- target readiness
 - live apply or GitOps state if available
 ```
 

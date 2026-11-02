@@ -32,7 +32,7 @@ ConfigHub already has the primitives needed to model a NIM Blueprint as a recipe
 
 - units hold component manifests
 - clones and upstream links model layered specialization
-- workers and targets give an execution path to real clusters
+- targets and published Releases give an execution path to real clusters
 - functions mutate at each layer (model versions, GPU resources, retrieval params, tenant overrides)
 - revisions and hashes give provenance and reproducibility
 

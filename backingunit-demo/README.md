@@ -19,7 +19,7 @@ stops the typing effect, `!` opens a subshell, and `q` quits. The runner is
 
 - `cub`, authenticated (`cub auth login`)
 
-No cluster and no worker: everything happens in one Space, `workflow-demo` unless `DEMO_SPACE` says
+No cluster: everything happens in one Space, `workflow-demo` unless `DEMO_SPACE` says
 otherwise.
 
 ## What it shows

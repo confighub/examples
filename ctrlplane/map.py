@@ -417,7 +417,7 @@ def render_cub_commands(plan: dict) -> str:
     for t in plan["plan"]["targets"]:
         lines.append(
             f"# target {t['space']}/{t['slug']} [{t['kind']}] -> bind via "
-            f"`cub target create` once the worker/cluster is connected"
+            f"`cub target create` once the cluster is connected"
         )
     lines.append("")
     lines.append("# promotion: pull base changes down into a variant (the Ctrlplane 'promote' step)")

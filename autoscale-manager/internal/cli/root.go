@@ -38,7 +38,7 @@ scheduling-manager, and observability-manager.
 
 The HPA→KEDA conversion (convert-keda) runs the convert-hpa-to-keda ConfigHub
 function in an embedded executor in-process: it fetches the Unit's data, runs the
-function locally, and writes the result back — no server-side function or worker
+function locally, and writes the result back — no server-side function
 required.
 
 Read-only analysis ('snapshot', 'list', 'findings') surveys autoscaling coverage

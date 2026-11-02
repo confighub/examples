@@ -49,7 +49,7 @@ Stable, machine-checkable behavior for this example. See
 ### `./demo-setup.sh`
 
 - mutates: yes (ConfigHub Spaces/Units + a local SQLite file at costdb/cost.db;
-  no Targets, Workers, or live infrastructure; no external network)
+  no Targets or live infrastructure; no external network)
 - creates: 5 spaces, 3 triggers, 1 filter, 4 base units, 12 cloned units,
   2 violation units; then builds the cost DB, runs the estimator, writes the cost
   + budget-verdict annotations back onto every workload (incl. `provider`,

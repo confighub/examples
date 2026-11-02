@@ -54,7 +54,7 @@ Stable, machine-checkable behavior for this example. See
 
 ### `./demo-setup.sh`
 
-- mutates: yes (ConfigHub only; no Targets, Workers, or live infrastructure)
+- mutates: yes (ConfigHub only; no Targets or live infrastructure)
 - creates: 5 spaces, 4 triggers, 1 filter, 4 base units, 12 cloned units,
   3 violation units, 1 divergence revision; plus the `rbac-edits` Space and its
   7 parameterized set-yq edit Invocations (shared with the web app and agent CLI)

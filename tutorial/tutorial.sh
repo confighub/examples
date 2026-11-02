@@ -62,7 +62,7 @@ section_cluster() {
     run "source ~/.confighub/clusters/dev.env"
     run "kubectl get pods -n argocd"
 
-    desc "On the ConfigHub side: a space holding the OCI worker and the target,"
+    desc "On the ConfigHub side: a space holding the cluster's OCI target,"
     desc "and a companion space holding the root app-of-apps Argo Application."
     run "cub space get dev"
     run "cub unit list --space dev-argo-apps"

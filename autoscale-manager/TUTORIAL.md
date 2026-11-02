@@ -118,7 +118,7 @@ profile apply hpa-range: 1 of 1 Unit(s) changed
 
 `convert-keda` rewrites an HPA as an equivalent KEDA ScaledObject — preserving
 `min`/`max` and cpu/memory metrics — by running the `convert-hpa-to-keda` function
-in an embedded executor **in-process** (no server-side function, no worker). Dry
+in an embedded executor **in-process** (no server-side function). Dry
 run prints the result:
 
 ```console

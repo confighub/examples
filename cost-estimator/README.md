@@ -108,7 +108,7 @@ command behavior.
 
 ## Boundaries
 
-- **Paper clusters.** ConfigHub Spaces only — no Targets, Workers, or live
+- **Paper clusters.** ConfigHub Spaces only — no Targets or live
   deploys, and no external network.
 - **Static pricing.** The cost DB is built from checked-in fixtures, not a live
   billing API (`--source FILE` imports a custom export). CPU + memory + storage +

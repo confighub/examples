@@ -50,7 +50,7 @@ Stable, machine-checkable behavior for this example. See
 ### `./demo-setup.sh`
 
 - mutates: yes (ConfigHub Spaces/Units + a local SQLite file at cvedb/cve.db;
-  pulls the demo images locally to scan them; no Targets, Workers, or live infrastructure)
+  pulls the demo images locally to scan them; no Targets or live infrastructure)
 - creates: 5 spaces, 3 triggers, 1 filter, 3 base units, 9 cloned units,
   3 violation units; then loads the cvedb, writes the gate-signal annotations
   back onto every workload (incl. `scanned-at` + `cvedb-version`), publishes one

@@ -20,7 +20,7 @@ drains stall at minimum scale.
 **HPA → KEDA, client-side.** `convert-keda` rewrites an HPA as an equivalent KEDA
 ScaledObject by running the `convert-hpa-to-keda` function in an **embedded
 executor in-process** — it fetches the Unit's data, runs the function locally, and
-writes the result back. No server-side function and no worker are required.
+writes the result back. No server-side function is required.
 
 ## Tutorial
 

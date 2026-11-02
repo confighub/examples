@@ -34,7 +34,7 @@ rbac-demo-staging    Cluster Space (env=staging) — persona clones
 rbac-demo-prod       Cluster Space (env=prod)    — persona clones
 ```
 
-These are "paper clusters": Spaces only, no Targets or Workers — nothing
+These are "paper clusters": Spaces only, no Targets — nothing
 touches live infrastructure. The planted violations in dev make the audit and
 gate stories visible immediately:
 

@@ -281,7 +281,6 @@ The GUI page should continue to show:
 The examples still assume the user can sort out:
 
 - authentication
-- which worker is active
 - which target to use
 - whether a cluster is fresh and connected
 

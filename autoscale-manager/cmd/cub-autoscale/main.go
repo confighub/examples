@@ -5,7 +5,7 @@
 // across a fleet: HorizontalPodAutoscalers and their conversion to KEDA
 // ScaledObjects, in a form usable by an AI agent in a terminal. The HPA→KEDA
 // conversion runs a ConfigHub function (convert-hpa-to-keda) in an embedded
-// executor in-process — no server-side function or worker required.
+// executor in-process — no server-side function required.
 //
 // It can be run standalone (cub-autoscale ...) or as a cub plugin
 // (cub autoscale ...).

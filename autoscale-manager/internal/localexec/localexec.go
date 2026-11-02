@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 // Package localexec runs ConfigHub functions in-process using an embedded
-// function executor — no worker connector, no server round-trip. The CLI fetches
+// function executor — no server round-trip. The CLI fetches
 // a Unit's data, runs a function on it here, and writes the result back. This is
 // how cub-autoscale ships convert-hpa-to-keda before it exists as a server-side
 // function: the same handler.FunctionImplementation, invoked locally.
