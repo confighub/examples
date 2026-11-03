@@ -38,7 +38,7 @@ redis/prod Units
   -> cub manage rbac snapshot
   -> cub manage rbac who-can get secrets
   -> cub manage rbac findings --severity high
-  -> cub manage rbac edit ...     # dry-run by default
+  -> cub manage profile apply rbac-remove-verb <space>/<unit> --param ...   # dry-run by default
 ```
 
 ## Why this is useful
@@ -52,7 +52,7 @@ questions. The RBAC manager gives the agent Kubernetes-specific operations:
 | Can the Redis service account read Secrets? | `access ServiceAccount:<namespace>/<name>` |
 | Who can update Redis RBAC objects? | `who-can update roles` / `who-can update rolebindings` |
 | Are any Redis bindings too broad? | `findings --severity high` |
-| Can this be tightened safely? | `edit ...` dry-run, then ConfigHub diff and gates |
+| Can this be tightened safely? | an `rbac-*` profile, such as `rbac-remove-verb`, with `profile apply` as a dry-run, then ConfigHub diff and gates |
 
 ## Example agent task
 
