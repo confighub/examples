@@ -3,7 +3,7 @@
 #
 # The structured edits (add/remove a verb or subject) live in ConfigHub as
 # parameterized set-yq Invocations. Both the web app (UnitPage/FleetPage) and the
-# agent CLI (../rbac-manager-for-agents) reference them by slug and supply only
+# agent CLI (`cub manage rbac`, in github.com/confighub/cub-manage) reference them by slug and supply only
 # the variable values as parameters, instead of compiling yq client-side.
 #
 # Source this file and call install_edit_invocations. Requires $cub to be set to

@@ -1,8 +1,8 @@
 // Structured RBAC edits expressed as stored, parameterized set-yq Invocations.
 // The fixed yq templates live in ConfigHub — created by setup.sh in the
 // `rbac-edits` Space under the slugs below — and each edit supplies only the
-// variable values as parameters. The agent CLI (../rbac-manager-for-agents)
-// references the same Invocations by the same slugs. The templates are validated
+// variable values as parameters. The agent CLI (`cub manage rbac` in
+// github.com/confighub/cub-manage) references the same Invocations by the same slugs. The templates are validated
 // offline against the example manifests with `cub function local`.
 
 /** Space holding the shared, parameterized edit Invocations. */

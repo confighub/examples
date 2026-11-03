@@ -91,28 +91,17 @@ Some other examples
   [`cost-estimator`](./cost-estimator/README.md) (workload cloud cost); the
   cost reduction counterpart is
   [`cost-management-app`](./cost-management-app/README.md).
-- Agentic RBAC companion patterns:
-  [`rbac-manager-for-agents`](./rbac-manager-for-agents/README.md),
+- Agentic RBAC companion patterns for `cub manage rbac`
+  ([cub-manage](https://github.com/confighub/cub-manage)):
   [`rbac-manager-over-redis`](./rbac-manager-over-redis/README.md), and
   [`redis-platform-with-rbac-guardrails`](./redis-platform-with-rbac-guardrails/README.md)
-- Agent-driven fleet managers — each a `cub-*` CLI that manages one domain of
-  Kubernetes config as data across a fleet of cluster-Spaces, siblings of
-  [`rbac-manager-for-agents`](./rbac-manager-for-agents/README.md):
-  [`workload-manager`](./workload-manager/README.md) (workload security and
-  reliability posture: security context, resources, probes, PDBs),
-  [`namespace-manager`](./namespace-manager/README.md) (namespaces and their
-  policy envelope: pod-security labels, default-deny NetworkPolicy, baseline
-  RBAC),
-  [`network-policy-manager`](./network-policy-manager/README.md) (NetworkPolicy,
-  reasoned about with the Namespaces, workloads, and Services it covers),
-  [`scheduling-manager`](./scheduling-manager/README.md) (workload placement:
-  `nodeSelector`, tolerations, node affinity),
-  [`autoscale-manager`](./autoscale-manager/README.md) (autoscaling:
-  HorizontalPodAutoscalers and KEDA ScaledObjects),
-  [`observability-manager`](./observability-manager/README.md) (observability
-  posture: Prometheus ServiceMonitor coverage and telemetry sidecar injection),
-  and [`eks-manager`](./eks-manager/README.md) (AWS EKS clusters as Crossplane
-  managed resources)
+- Agent-driven fleet managers that manage Kubernetes config as data across a
+  fleet of cluster-Spaces:
+  [cub-manage](https://github.com/confighub/cub-manage), a `cub` plugin with one command group each for
+  namespaces, RBAC, NetworkPolicy, workload readiness, scheduling, autoscaling,
+  and observability (it replaces the separate `*-manager` tools that used to be
+  here), and [`eks-manager`](./eks-manager/README.md) (AWS EKS clusters as
+  Crossplane managed resources)
 - Platform view builders — read the config data in a Space and project it into a
   different platform representation:
   [`k8s-to-score`](./k8s-to-score/README.md) reads the Kubernetes resources in a
@@ -125,7 +114,7 @@ Some other examples
   [`rbac-manager`](./rbac-manager/README.md),
   [`sec-scanner`](./sec-scanner/README.md),
   [`fleet-ql`](./fleet-ql/README.md), and
-  [`cost-estimator`](./cost-estimator/README.md)). What the `cub-*` fleet
+  [`cost-estimator`](./cost-estimator/README.md)). What the fleet
   managers share is in the Go SDK itself:
   [`managerkit`](https://pkg.go.dev/github.com/confighub/sdk/managerkit)
   (the guardrail policy pack, the profile library, and reporting what a write

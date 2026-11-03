@@ -1,146 +1,16 @@
-# cub-netpol — NetworkPolicy manager for ConfigHub
+# NetworkPolicy Manager (moved)
 
-`cub-netpol` manages Kubernetes **NetworkPolicy** config stored as data in
-ConfigHub, reasoning about it together with the Namespaces, workloads, and
-Services it must cover — across a whole fleet of cluster-Spaces. It is designed
-for use by an AI agent in a terminal, and is a sibling of
-[`rbac-manager-for-agents`](../rbac-manager-for-agents).
+`cub-netpol` is now `cub manage netpol`, the NetworkPolicy command group of
+[cub-manage](https://github.com/confighub/cub-manage). cub-manage is one `cub` plugin that
+manages Kubernetes configuration across a ConfigHub fleet; each of the manager tools that used to
+be here is one of its command groups.
 
-**Why a manager, not just a validator?** A per-resource policy check (kube-score,
-Kyverno, OPA) only ever sees one object at a time, so it can't answer the
-questions that actually matter for network segmentation — *does every namespace
-have a default-deny? is this workload uncovered on egress? does an egress allow
-have a matching ingress allow?* Those are properties of the **whole set** of
-resources. And because such checks only report, fixing a finding means editing
-the cluster out-of-band, which causes drift. `cub-netpol` reasons over the whole
-ConfigHub-managed set and fixes issues **as data**, so the cluster converges
-through the normal apply pipeline with no drift.
+| Before                         | Now                            |
+| ------------------------------ | ------------------------------ |
+| `cub-netpol <command>`         | `cub manage netpol <command>`  |
+| `cub-netpol preflight`         | `cub manage preflight`         |
+| `cub-netpol version`           | `cub manage version`           |
+| `cub-netpol guardrails status` | `cub manage guardrails status` |
 
-## Commands
-
-All read commands default to JSON (`-o json`); pass `-o table` for a human view.
-All write commands are **dry-run by default** and require `--commit` with a
-`--change-desc`; they create/edit Units but do **not** publish them
-(rolling out is a separate, deliberate `cub release publish <space>`).
-
-| Command | Kind | What it does |
-|---|---|---|
-| `preflight` / `version` | diag | Verify the ConfigHub session; print version |
-| `snapshot` | read | Per-cluster inventory: NetworkPolicy / namespace / workload / service + gated/unapplied Units |
-| `list` | read | Enumerate NetworkPolicy-relevant resources across the fleet |
-| `coverage` | read | Per-namespace default-deny presence + uncovered workloads (the coverage gap report) |
-| `who-can-reach` / `reachable-from` | read | Effective connectivity under the policy set |
-| `findings` | read | Hygiene & anti-pattern checks (missing-default-deny, uncovered, allow-all, metadata-egress, asymmetry) |
-| `default-deny <ns>` | write | Author a default-deny NetworkPolicy Unit for a namespace (`--egress` adds egress + DNS) |
-| `allow <src> <dst>` | write | Author an allow policy between two workloads |
-| `allow-from-links` | write | Derive allow policies from ConfigHub **Links** (the dependency graph); consolidates per destination, upserts on re-run |
-| `fix dns\|metadata <space>/<unit>` | write | Patch an existing policy (add DNS egress / except the cloud-metadata IP) via `set-yq` |
-| `fleet default-deny` | write | Bulk: a default-deny for **every** uncovered namespace (idempotent) |
-| `guardrails install\|status\|annotate` | write | The enforcement pack — `Warn=true` `vet-celexpr` Triggers + annotate-then-validate for coverage |
-
-## Build
-
-```
-make build      # -> bin/cub-netpol
-make test
-```
-
-## Use
-
-`cub-netpol` uses your existing `cub` session — run `cub auth login` first if you
-are not signed in. It can run standalone (`cub-netpol …`) or, installed as a cub
-plugin, as `cub netpol …`. ConfigHub I/O goes through the ConfigHub Go SDK
-(`github.com/confighub/sdk/core/cubapi`); there is no `cub` subprocess.
-
-```bash
-# Audit
-bin/cub-netpol coverage -o table
-bin/cub-netpol findings --severity High -o table
-bin/cub-netpol who-can-reach cartservice --cluster prod-cluster -o table
-
-# Fix as data (dry-run, then --commit)
-bin/cub-netpol fleet default-deny -o table
-bin/cub-netpol fleet default-deny --commit --change-desc "Default-deny uncovered namespaces"
-bin/cub-netpol allow-from-links --space apptique-prod --commit --change-desc "Allows from the dependency graph"
-
-# Enforce
-bin/cub-netpol guardrails install --where-space "Slug LIKE 'apptique-%'" --commit
-bin/cub-netpol guardrails status -o table
-```
-
-A typical loop: **`coverage`/`findings`** to see the gaps → **`fleet default-deny`**
-+ **`allow-from-links`** to fix them as data → **`who-can-reach`** to verify the
-intended least-privilege graph → **`guardrails`** to keep it that way.
-
-## Scoping the fleet
-
-The read commands (and `fleet default-deny`) narrow the fleet with a
-**single ConfigHub Unit `--where` predicate**. One Unit-level filter can already
-reference Unit, Space, and Target metadata, so there is no separate Space or
-Target filter — the server does the scoping and only the matching Units' config
-is fetched.
-
-```bash
-# Only the Units a Release delivers
-bin/cub-netpol coverage --where "Unreleasable = false" -o table
-
-# By Slug, or any Space/Target attribute
-bin/cub-netpol snapshot --where "Space.Slug LIKE 'apptique-%'" -o table
-```
-
-For the standard Space labels the `cub variant` commands use, there are
-convenience shorthands that compile to `Space.Labels.<Key> = '<value>'`:
-`--component`, `--environment`, `--region`, `--owner`, `--layer`, `--variant`.
-They are AND-joined with any raw `--where`:
-
-```bash
-bin/cub-netpol coverage --environment prod --region us-east -o table
-# ≡ --where "Space.Labels.Environment = 'prod' AND Space.Labels.Region = 'us-east'"
-```
-
-ConfigHub `where` is **flat AND-only** — no parentheses, no `OR`. A parenthesized
-clause fails server-side with `invalid attribute name`, so express alternatives
-as separate invocations rather than one OR expression.
-
-`--cluster` and `--namespace` are **client-side display filters** applied to the
-already-fetched snapshot (they match the cluster key, which is the Target slug,
-or `None` for Units whose Space has no release Target — a server-side
-`Target.Slug` predicate would wrongly drop the unbound ones). Use them to focus
-output, not to scope the server-side fetch.
-
-> Tip: a Unit takes its Space's release Target unless it is `Unreleasable`, so
-> keep base/template Units in Spaces with no release Target; they group under
-> `None`.
-
-## Agent skills
-
-`skills/` holds six ConfigHub-format agent skills (read vs. write split, scoped
-`allowed-tools`, preflight gates, evals):
-
-| Skill | Phase | Surface |
-|---|---|---|
-| `netpol-audit` | read | `snapshot`, `list`, `coverage` |
-| `netpol-connectivity` | read | `who-can-reach`, `reachable-from` |
-| `netpol-findings` | read | `findings` |
-| `netpol-fix` | write | `default-deny`, `allow`, `allow-from-links`, `fix` |
-| `netpol-fleet` | write | `fleet default-deny` |
-| `netpol-guardrails` | write | `guardrails install/status/annotate` |
-
-## How it works
-
-- **Snapshot** (`internal/snapshot`) — discovers every `Kubernetes/YAML` Unit you
-  can view, reads the NetworkPolicies, Namespaces, pod-bearing workloads, and
-  Services inside them from the Resource entity in one SQL-backed query, and
-  joins with Unit / Space / Target metadata. Coverage is over ConfigHub-managed Units only.
-- **Engine** (`internal/netpol`) — a deterministic, table-tested analysis package:
-  label-selector matching, per-namespace/per-workload coverage, a connectivity
-  model (isolation + ingress/egress rule matching, additive-OR semantics), the
-  findings analyzers, and the policy-YAML generators.
-- **Writes** — new Units via the SDK's unit-create; in-place edits and upserts via
-  the `set-yq` function; guardrails via Triggers/Filters. Dry-run/commit and
-  change descriptions throughout; nothing reaches a cluster without a separate
-  `cub release publish <space>`.
-
-> Documented limitations (v1): ipBlock peers don't match pod-to-pod traffic;
-> ports aren't considered in the reachability boolean; the egress default-deny
-> DNS-break check and a few others are tracked as deferred analyzers.
+The code, the agent skills and the design are in the
+[cub-manage repository](https://github.com/confighub/cub-manage).

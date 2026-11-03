@@ -1,4 +1,0 @@
-# Built binaries — never commit Go executables.
-/bin/
-cub-rbac
-cub-rbac-*

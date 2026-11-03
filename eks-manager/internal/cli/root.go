@@ -41,9 +41,9 @@ func NewRoot() *cobra.Command {
 		Long: `cub-eks manages AWS EKS clusters as data: the control plane, node capacity,
 addons, access entries, and the VPC and IAM resources a cluster needs — stored
 as ConfigHub Units containing Crossplane managed resources, across a fleet of
-cluster-Spaces. It is designed for use by an AI agent in a terminal, and is a
-sibling of workload-manager, namespace-manager, rbac-manager, and
-network-policy-manager.
+cluster-Spaces. It is designed for use by an AI agent in a terminal, and follows
+the conventions of cub-manage, which manages the Kubernetes configuration that
+runs on such clusters.
 
 The command shape is eksctl's; the substrate is not. eksctl's config file is an
 input to a one-shot run and the real state lives in CloudFormation. A Crossplane
