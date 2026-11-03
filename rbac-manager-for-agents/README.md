@@ -5,12 +5,14 @@
 manages Kubernetes configuration across a ConfigHub fleet; each of the manager tools that used to
 be here is one of its command groups.
 
-| Before                       | Now                            |
-| ---------------------------- | ------------------------------ |
-| `cub-rbac <command>`         | `cub manage rbac <command>`    |
-| `cub-rbac preflight`         | `cub manage preflight`         |
-| `cub-rbac version`           | `cub manage version`           |
-| `cub-rbac guardrails status` | `cub manage guardrails status` |
+| Before                                | Now                                                   |
+| ------------------------------------- | ----------------------------------------------------- |
+| `cub-rbac <command>`                  | `cub manage rbac <command>`                           |
+| `cub-rbac preflight`                  | `cub manage preflight`                                |
+| `cub-rbac version`                    | `cub manage version`                                  |
+| `cub-rbac guardrails status`          | `cub manage guardrails status`                        |
+| `cub-rbac edit install`               | `cub manage profile install`                          |
+| `cub-rbac edit <edit> <space>/<unit>` | `cub manage profile apply rbac-<edit> <space>/<unit>` |
 
 The code, the agent skills and the design are in the
 [cub-manage repository](https://github.com/confighub/cub-manage).
