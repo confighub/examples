@@ -3,11 +3,9 @@
 `cub-eks` manages **AWS EKS clusters as data**: the control plane, node capacity,
 addons, access entries, and the VPC and IAM resources a cluster needs — stored as
 ConfigHub Units containing **Crossplane managed resources**, across a whole fleet
-of cluster-Spaces. It is designed for use by an AI agent in a terminal, and is a
-sibling of [`workload-manager`](../workload-manager),
-[`namespace-manager`](../namespace-manager),
-[`rbac-manager-for-agents`](../rbac-manager-for-agents), and
-[`network-policy-manager`](../network-policy-manager).
+of cluster-Spaces. It is designed for use by an AI agent in a terminal, and follows
+the conventions of [cub-manage](https://github.com/confighub/cub-manage), which manages the Kubernetes
+configuration that runs on such clusters.
 
 **Why not just eksctl?** The command shape here is deliberately eksctl's — `create
 cluster`, `upgrade cluster`, `scale nodegroup`. The substrate is not. eksctl is a
@@ -85,7 +83,7 @@ Read commands take one flat ConfigHub Unit filter plus label shorthands, all
 | `--owner` / `--layer` / `--variant` | `Space.Labels.Owner` / `.Layer` / `.Variant` |
 
 ConfigHub `where` is flat **`AND`-only — no parentheses, no `OR`**. Note that
-`--cluster` is server-side here, unlike in the sibling managers where it filters
+`--cluster` is server-side here, unlike in cub-manage, where it filters
 on the Target slug client-side: for `cub-eks` **a cluster is a Space**, because
 its Units *describe* a cluster rather than deploy to one.
 

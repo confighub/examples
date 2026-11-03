@@ -31,8 +31,8 @@ example's README and contract for its actual effects and prerequisites.
 | Layer an application across environments | [global-app-layer](../global-app-layer/README.md): single-component, frontend-postgres, realistic-app, gpu-eks-h100-training and enterprise-rag-blueprint. A GPU-shaped configuration is not evidence of an H100 run. |
 | Change app settings and understand platform ownership | [spring-platform](../spring-platform/README.md), with the current source-generation product path in cub-gen below. |
 | Promote and govern changes | [promotion-demo-data](../promotion-demo-data/README.md), its `verify/` companion, and [initiatives-demo](../initiatives-demo/README.md). |
-| Control security, permissions and cost | [sec-scanner](../sec-scanner/README.md), [rbac-manager](../rbac-manager/README.md), [cost-estimator](../cost-estimator/README.md), plus rbac-manager-for-agents, rbac-manager-over-redis and redis-platform-with-rbac-guardrails. |
-| Operate a fleet | workload-manager, namespace-manager, network-policy-manager, scheduling-manager, autoscale-manager, observability-manager and eks-manager; linked from the [main README](../README.md). |
+| Control security, permissions and cost | [sec-scanner](../sec-scanner/README.md), [rbac-manager](../rbac-manager/README.md), [cost-estimator](../cost-estimator/README.md), plus rbac-manager-over-redis and redis-platform-with-rbac-guardrails, companions of `cub manage rbac` in [cub-manage](https://github.com/confighub/cub-manage). |
+| Operate a fleet | [cub-manage](https://github.com/confighub/cub-manage) (namespaces, RBAC, NetworkPolicy, workloads, scheduling, autoscaling, observability) and eks-manager; linked from the [main README](../README.md). |
 | Build useful operational applications | [configboard](../configboard/README.md), [fleet-ql](../fleet-ql/README.md), [pilot-example-addons-manager](../pilot-example-addons-manager/README.md) and [cost-management-app](../cost-management-app/README.md). |
 | Extend or transform configuration | [custom-workers](../custom-workers/), [k8s-to-score](../k8s-to-score/README.md) and [prompts for an existing repository](../prompts/README.md). |
 

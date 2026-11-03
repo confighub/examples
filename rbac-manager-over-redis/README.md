@@ -3,7 +3,7 @@
 Status: companion design example.
 
 This example explains the smallest useful pattern for
-[`rbac-manager-for-agents`](../rbac-manager-for-agents/README.md): use the RBAC
+`cub manage rbac` ([cub-manage](https://github.com/confighub/cub-manage)): use the RBAC
 manager as a specialist tool over one Helm-sourced component that has been
 loaded into ConfigHub.
 
@@ -35,10 +35,10 @@ The RBAC manager works over those Units:
 
 ```text
 redis/prod Units
-  -> cub-rbac snapshot
-  -> cub-rbac who-can get secrets
-  -> cub-rbac findings --severity high
-  -> cub-rbac edit ...     # dry-run by default
+  -> cub manage rbac snapshot
+  -> cub manage rbac who-can get secrets
+  -> cub manage rbac findings --severity high
+  -> cub manage rbac edit ...     # dry-run by default
 ```
 
 ## Why this is useful
@@ -61,10 +61,10 @@ Task:
   Check whether redis/prod grants broader RBAC permissions than redis/base.
 
 Agent route:
-  1. Use cub-rbac snapshot scoped to the redis component.
+  1. Use cub manage rbac snapshot scoped to the redis component.
   2. Compare ServiceAccount, Role, ClusterRole, RoleBinding, and
      ClusterRoleBinding Units between redis/base and redis/prod.
-  3. Run cub-rbac findings.
+  3. Run cub manage rbac findings.
   4. If a safe edit exists, create a dry-run change.
   5. Let ConfigHub show the exact Unit diff before commit.
 ```

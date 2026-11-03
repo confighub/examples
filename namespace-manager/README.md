@@ -1,150 +1,16 @@
-# cub-namespace — Namespace manager for ConfigHub
+# Namespace Manager (moved)
 
-`cub-namespace` manages Kubernetes **namespaces themselves** — the Namespace
-object, its pod-security labels, its name, and whether that name is used
-consistently — stored as data in ConfigHub across a whole fleet of
-cluster-Spaces. It is designed for use by an AI agent in a terminal.
+`cub-namespace` is now `cub manage namespace`, the namespaces command group of
+[cub-manage](https://github.com/confighub/cub-manage). cub-manage is one `cub` plugin that
+manages Kubernetes configuration across a ConfigHub fleet; each of the manager tools that used to
+be here is one of its command groups.
 
-The envelope stops at the namespace itself. Whether a namespace has the
-NetworkPolicy coverage it needs is [`network-policy-manager`](../network-policy-manager)'s
-subject, and whether its RBAC is sound is
-[`rbac-manager-for-agents`](../rbac-manager-for-agents)'s. Each of those reasons
-about its own resources far more carefully than a namespace-completeness check
-could, so this tool does not second-guess them.
+| Before                            | Now                              |
+| --------------------------------- | -------------------------------- |
+| `cub-namespace <command>`         | `cub manage namespace <command>` |
+| `cub-namespace preflight`         | `cub manage preflight`           |
+| `cub-namespace version`           | `cub manage version`             |
+| `cub-namespace guardrails status` | `cub manage guardrails status`   |
 
-**Why a manager, not a runtime controller?** Tenancy controllers (Capsule, the
-retired HNC) and per-resource validators each see one cluster, or one object, at
-a time. They can't answer the question that matters for namespace governance —
-*does every namespace in the fleet carry its full policy envelope, and is a
-component's namespace consistent across all its variants?* That's a property of
-the **whole set** of resources across the fleet's source of record. `cub-namespace`
-reasons over the whole ConfigHub-managed set and (in later milestones) fixes gaps
-**as data**, so clusters converge through the normal apply pipeline with no drift.
-
-The cloneable envelope itself is an
-[installer Package](https://github.com/confighub/installer/tree/main/packages/namespace-envelope)
-(`bases/` + `set-namespace` / `set-pod-security-defaults` transformers +
-`vet-placeholders` validators); `cub-namespace` owns the **fleet-wide analysis**
-the installer doesn't do, and the **backfill** of the envelope into existing Spaces.
-
-## Commands
-
-All read commands default to JSON (`-o json`); pass `-o table` for a human view.
-
-| Command | Kind | What it does |
-|---|---|---|
-| `preflight` / `version` | diag | Verify the ConfigHub session; print version |
-| `snapshot` | read | Per-cluster inventory: namespace and workload counts + gated/unapplied Units |
-| `list` | read | Enumerate Namespaces and the workloads occupying them across the fleet |
-| `envelope` | read | Per-namespace completeness — which namespaces lack a Namespace object or pod-security label, plus duplicate-namespace-per-Target collisions |
-| `pod-security` | read | Per-namespace: the strictest Pod Security Standard all its workloads meet (via the server's `vet-pod-security-standard`), how that compares with the Namespace's `enforce` label, and the Units / resources blocking the next level |
-| `consistency` | read | Per-component: does each workload run in the same namespace on every cluster, and is the pod-security level the same in every variant Space? |
-| `findings` | read | Severity-ranked governance findings (envelope gaps + duplicates + cross-variant inconsistency) |
-| `apply-envelope` | write | Set each selected namespace's Pod Security Standard to the most restrictive level its workloads meet (or `--level`), never lowering one, and copy it onto the namespace's workloads for the `namespace-pod-security-standard` guardrail (fixes `missing-pod-security`) |
-| `backfill` | write | Clone a base envelope Space's Units into an existing Space, re-homed via `set-namespace` |
-| `guardrails install\|status\|annotate` | write | The enforcement pack — `Warn=true` `vet-celexpr` Triggers + annotate-then-validate for envelope gaps |
-
-All write commands are **dry-run by default** and require `--commit` with a
-`--change-desc`; they create/edit Units but do **not** publish them
-(rolling out is a separate, deliberate `cub release publish <space>`).
-
-This build ships **M0–M4**: read-only analysis, config-as-data envelope fixes,
-fleet promotion, and annotate-then-validate enforcement (guardrails). The
-namespace-name invariant (`metadata.namespace == normalizeName(Component)`) is
-enforced separately by a cluster-selected mutating `set-namespace` Trigger — the
-promotable active-correction option, wired outside the advisory pack.
-
-## Build
-
-```
-make build      # -> bin/cub-namespace
-make test
-```
-
-## Use
-
-`cub-namespace` uses your existing `cub` session — run `cub auth login` first if
-you are not signed in. It can run standalone (`cub-namespace …`) or, installed as
-a cub plugin, as `cub namespace …`. ConfigHub I/O goes through the ConfigHub Go
-SDK (`github.com/confighub/sdk/core/cubapi`); there is no `cub` subprocess.
-
-```bash
-bin/cub-namespace snapshot -o table
-bin/cub-namespace envelope -o table
-bin/cub-namespace envelope --incomplete-only -o table       # just the gaps
-bin/cub-namespace envelope --component apptique -o table    # one component, every variant
-bin/cub-namespace envelope --cluster prod-cluster -o table  # one cluster (Target)
-bin/cub-namespace list --kind Namespace -o table
-```
-
-## Scoping the fleet
-
-Read commands scope the fleet **server-side** with one ConfigHub Unit `where`
-predicate that may reference Unit, `Space.*`, and `Target.*` metadata (so only
-the matching Units' resources are fetched):
-
-| Flag | Compiles to |
-|---|---|
-| `--where "<expr>"` | raw predicate — e.g. `"Unreleasable = false"` (the Units a Release delivers), `"Space.Slug LIKE 'apptique-%'"` |
-| `--component <v>` | `Space.Labels.Component = '<v>'` |
-| `--environment <v>` | `Space.Labels.Environment = '<v>'` |
-| `--region` / `--owner` / `--layer` / `--variant` `<v>` | the matching `Space.Labels.<Key>` |
-
-The label flags are shorthands over `--where`, mirroring the standard Space
-labels the `cub variant` commands use. All provided flags are `AND`-combined
-(ConfigHub `where` is flat `AND`-only — **no parentheses, no `OR`**; a
-parenthesized clause fails with `invalid attribute name`). With no flag,
-everything you can view is in scope.
-
-Separately, `--cluster` and `--namespace` are **client-side** display filters
-that narrow the loaded results to one cluster (a Target slug, or `None` for
-Units whose Space has no release Target) or namespace — a presentation concern,
-distinct from the server-side scoping above.
-
-## The envelope
-
-A namespace's policy **envelope** — the members `envelope` checks for:
-
-| Member | Present when |
-|---|---|
-| `namespace-object` | a `v1/Namespace` object exists for the namespace |
-| `pod-security` | the Namespace carries a `pod-security.kubernetes.io/enforce` label |
-
-`envelope` also flags **duplicate Namespace objects** that resolve to the same
-name on the same Target (a collision in one cluster). Base Units still carrying
-the `confighubplaceholder` name are exempt — `vet-placeholders` already gates
-them from deploying.
-
-## Agent skills
-
-`skills/` holds six ConfigHub-format agent skills (read vs. write split, scoped
-`allowed-tools`, preflight gates, evals):
-
-| Skill | Kind | Surface |
-|---|---|---|
-| `namespace-audit` | read | `snapshot`, `list`, `envelope` |
-| `namespace-pod-security` | read | `pod-security` |
-| `namespace-consistency` | read | `consistency` |
-| `namespace-findings` | read | `findings` |
-| `namespace-backfill` | write | `apply-envelope`, `backfill` |
-| `namespace-enforce` | write | `guardrails install/status/annotate` |
-
-## How it works
-
-- **Snapshot** (`internal/snapshot`) — discovers every `Kubernetes/YAML` Unit you
-  can view, reads the Namespaces and the workloads occupying them from the
-  Resource entity in one SQL-backed query, and joins with
-  Unit / Space / Target metadata. Canonical base/policy Spaces are excluded from cluster
-  analysis. Clusters are ConfigHub Targets; Units whose Space has no release
-  Target group under a single `None` cluster.
-- **Engine** (`internal/nsmanager`) — a deterministic, table-tested analysis
-  package: the typed model, per-namespace envelope completeness, and the
-  duplicate-namespace check.
-- **Pod security** (`pod-security`) — runs the server's
-  `vet-pod-security-standard` function, the PodSecurity admission controller's
-  own checks, at `restricted` and `baseline` over the Units holding workloads,
-  as dry runs, and the engine joins each failing resource to its namespace.
-
-> Clusters are ConfigHub Targets. A Unit is released to its Space's release
-> Target unless it is `Unreleasable`, so base/template Units live in Spaces with
-> no release Target and group under `None`, apart from deployed config.
+The code, the agent skills and the design are in the
+[cub-manage repository](https://github.com/confighub/cub-manage).

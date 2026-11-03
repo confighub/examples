@@ -3,7 +3,7 @@
 Status: runnable offline companion app.
 
 This example implements the larger-product pattern for
-[`rbac-manager-for-agents`](../rbac-manager-for-agents/README.md): Redis is one
+`cub manage rbac` ([cub-manage](https://github.com/confighub/cub-manage)): Redis is one
 part of a platform or app stack, and RBAC guardrails are managed across the whole
 product.
 
@@ -65,7 +65,7 @@ Task:
   Prepare an RBAC hardening change for payments-platform/prod-us.
 
 Agent route:
-  1. Use cub-rbac snapshot over the payments-platform component.
+  1. Use cub manage rbac snapshot over the payments-platform component.
   2. Run who-can and findings across redis, payments-api, ingress, and
      external-secrets Units.
   3. Propose the smallest RBAC edit.
