@@ -4,8 +4,8 @@ go 1.26.0
 
 require (
 	github.com/cockroachdb/errors v1.11.3
-	github.com/confighub/sdk/configkit/k8skit v0.10.2
-	github.com/confighub/sdk/core v0.10.2
+	github.com/confighub/sdk/configkit/k8skit v0.10.11
+	github.com/confighub/sdk/core v0.10.11
 	github.com/google/uuid v1.6.0
 	github.com/stretchr/testify v1.11.1
 	gopkg.in/yaml.v3 v3.0.1
