@@ -330,8 +330,8 @@ selected units, which is a write — so it's offered explicitly, never implicitl
 
 `trigger_filter` + `triggers_passed` runs validators as part of the query, so
 "units failing the platform's `vet-*` triggers" is a first-class panel source
-without any precomputation. Pair with `initiatives-demo`'s Kyverno-CEL policies
-for a compliance dashboard that is genuinely live.
+without any precomputation, so a compliance dashboard over the platform's
+validating Triggers is genuinely live.
 
 ## 5. Panel catalog — the use cases
 
@@ -569,8 +569,7 @@ Views, Triggers, and the four starter dashboards, and prints what it found
 enough shape to be interesting.
 
 For a populated org, compose existing examples: `promotion-demo-data` (multi-app,
-multi-environment clone chains → velocity and skew panels), `initiatives-demo`
-(Kyverno-CEL policies → compliance panels), `eks-manager` (Crossplane MRs →
+multi-environment clone chains → velocity and skew panels), `eks-manager` (Crossplane MRs →
 cloud-footprint panels), `global-app` (multi-service). If none exist, `setup.sh`
 should say so and name them rather than silently rendering four empty dashboards.
 

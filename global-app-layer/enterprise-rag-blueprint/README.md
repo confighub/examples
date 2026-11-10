@@ -227,6 +227,5 @@ cub function do set-env rag-server "REGION=eu-west" --space "${deploy_b}" --unit
 - [`../02-nvidia-blueprints-fit.md`](../02-nvidia-blueprints-fit.md) — fit analysis (this example is what it specifies)
 - [`../01-nvidia-aicr-fit.md`](../01-nvidia-aicr-fit.md) — substrate-rung counterpart fit
 - [`../gpu-eks-h100-training/`](../gpu-eks-h100-training/) — substrate-rung worked example
-- [`../../initiatives-demo/`](../../initiatives-demo/) — initiatives primitive (with `vet-kyverno` triggers)
 - [`../confighub-aicr-value-add.md`](../confighub-aicr-value-add.md) — the three stories this example exercises
 - [`../04-bundles-attestation-and-todo.md`](../04-bundles-attestation-and-todo.md) — bundle/attestation gaps that apply identically here

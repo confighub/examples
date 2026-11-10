@@ -187,7 +187,6 @@ The repo has 28 `AI_START_HERE.md` files. A tick means the file follows this sta
 - [ ] `global-app-layer/gpu-eks-h100-training/AI_START_HERE.md`
 - [ ] `global-app-layer/realistic-app/AI_START_HERE.md`
 - [x] `global-app-layer/single-component/AI_START_HERE.md`
-- [ ] `initiatives-demo/AI_START_HERE.md`
 - [ ] `pilot-example-addons-manager/AI_START_HERE.md`
 - [ ] `promotion-demo-data/AI_START_HERE.md`
 - [ ] `promotion-demo-data/verify/AI_START_HERE.md`

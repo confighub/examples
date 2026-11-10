@@ -25,7 +25,7 @@ Both are required for full runnable examples. Together they support:
 
 The verifier (`scripts/verify.sh`) currently covers **22 examples**, the ones
 listed in its `ai_guide_examples` array. They include the `spring-platform`
-apps, `initiatives-demo`, `promotion-demo-data` and its `verify` wrapper, the
+apps, `promotion-demo-data` and its `verify` wrapper, the
 guardrail examples, the five `global-app-layer` examples, and the
 `gitops/` examples.
 
@@ -184,7 +184,6 @@ Some lighter stable examples are exempt from the stronger requirements.
 
 | Example | Exempt from | Reason |
 |---------|-------------|--------|
-| `initiatives-demo` | `contracts.md`, `--explain` | Stable demo data |
 | `promotion-demo-data` | `contracts.md`, `--explain` | Stable demo data |
 
 ### When exemptions are appropriate

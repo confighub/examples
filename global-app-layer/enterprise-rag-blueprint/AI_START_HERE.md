@@ -134,7 +134,7 @@ What to explain:
 
 - Five initiatives now exist as ConfigHub Views with Filters and metadata.
 - They span pinned-model-versions, embed/index-dim match, GPU resource limits, guardrail policy, and resource limits.
-- They use the same View+Filter+Trigger shape as `../../initiatives-demo/`. No `vet-kyverno` triggers are attached yet. For live policy enforcement, run `vet-kyverno` as a function bot on a ConfigHub Channel, as `../../initiatives-demo/` does.
+- No `vet-kyverno` triggers are attached yet. For live policy enforcement, run `vet-kyverno` as a function bot on a ConfigHub Channel; [`../../custom-workers/kyverno/`](../../custom-workers/kyverno/) has one.
 - The script prints a View Explorer URL per initiative (`/x/view-explorer?view=<ViewID>`). The filters span all 8 spaces, so a single initiative covers direct + Flux + Argo variants.
 
 GUI now: Open one of the printed View Explorer URLs (e.g. GPU Resource Limits) — you should see 6 units (2 GPU components × 3 deploy variants).

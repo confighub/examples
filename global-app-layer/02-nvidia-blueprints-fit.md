@@ -42,7 +42,7 @@ A NIM Blueprint is a recipe chain at the app rung. The same pattern that `gpu-ek
 
 This is the part that AICR fit does not cover and NIM Blueprints do.
 
-ConfigHub initiatives (see [`../initiatives-demo/`](../initiatives-demo/)) are Views with a filter, initiative metadata (priority / status / deadline), and an optional `vet-kyverno` Trigger that runs a Kyverno CEL policy against matched units. They are the governance layer over a set of related units.
+ConfigHub initiatives here are Views with a filter, initiative metadata (priority / status / deadline), and an optional `vet-kyverno` Trigger that runs a Kyverno CEL policy against matched units. They are the governance layer over a set of related units.
 
 NIM Blueprints have natural compliance concerns that map almost one-to-one onto initiatives:
 
@@ -150,4 +150,4 @@ NIM Blueprints are useful for ConfigHub because they validate four ideas the pac
 - variant fleets at the deployment leaf are how real customers run AI apps
 - runtime honesty matters: the same recipe should support stubs, laptop hardware, and production GPUs without changing the chain
 
-`enterprise-rag-blueprint/` is the worked example that exercises all four. It pairs naturally with `gpu-eks-h100-training/` (the substrate rung) and with `initiatives-demo/` (the governance primitive), and it is the first example where the AICR-shape, the NIM-Blueprint-shape, and the initiatives-shape cohabit.
+`enterprise-rag-blueprint/` is the worked example that exercises all four. It pairs naturally with `gpu-eks-h100-training/` (the substrate rung), and it is the first example where the AICR-shape, the NIM-Blueprint-shape, and the initiatives-shape cohabit.
