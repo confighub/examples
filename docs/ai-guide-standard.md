@@ -51,12 +51,10 @@ Some examples are exempt from `contracts.md` or `--explain` requirements:
 
 ```bash
 exempt_from_contracts=(
-  "${repo_root}/initiatives-demo"
   "${repo_root}/promotion-demo-data"
 )
 
 exempt_from_explain=(
-  "${repo_root}/initiatives-demo"
   "${repo_root}/promotion-demo-data"
 )
 ```

@@ -118,8 +118,7 @@ reads; it starts with real frontend, backend and database manifests.
 Pick the family that matches the user's goal:
 
 - Stable no-cluster intro:
-  [`promotion-demo-data`](./promotion-demo-data/README.md) and
-  [`initiatives-demo`](./initiatives-demo/README.md)
+  [`promotion-demo-data`](./promotion-demo-data/README.md)
 - Argo CD and Flux repo shapes, by skill level:
   [`gitops`](./gitops/README.md)
 - App mutation and platform flow:

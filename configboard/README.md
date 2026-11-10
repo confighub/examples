@@ -140,8 +140,7 @@ Space with no release Target leaves the cluster-grain panels empty for its Units
 `preflight.sh` reports both counts.
 
 If your org is empty, seed one of these first:
-[`promotion-demo-data`](../promotion-demo-data/) (multi-app, multi-environment),
-[`initiatives-demo`](../initiatives-demo/) (policies to chart compliance against),
+[`promotion-demo-data`](../promotion-demo-data/) (multi-app, multi-environment)
 or [`global-app-layer/realistic-app`](../global-app-layer/realistic-app/) (a three-component app).
 
 ## Dashboards are data

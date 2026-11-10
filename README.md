@@ -49,7 +49,6 @@ If you are not logged in yet, run `cub auth login` before the `cub` commands.
   sample from source manifests to planned ConfigHub Units and delivery boundaries.
 - [`gitops`](./gitops/README.md): index of canonical Argo CD and Flux example repo shapes, by tool and skill level. Start here if you run Argo CD or Flux and want an example that looks like your repo.
 - [`promotion-demo-data`](./promotion-demo-data/README.md): quickest no-cluster demo data for learning ConfigHub's App-Deployment-Target model and promotion flow.
-- [`initiatives-demo`](./initiatives-demo/README.md): 5 compliance initiatives backed by Kyverno CEL policies, with sample Kubernetes units to evaluate.
 - [`custom-workers`](./custom-workers/): custom functions served by function bots on ConfigHub Channels, including Kyverno, OPA Gatekeeper, kube-linter, kube-score, kubepug and kubescape validators.
 - [`pilot-example-addons-manager`](./pilot-example-addons-manager/README.md): standalone generated operational app with Variant-first GUI, CLI sibling, production ConfigHub browser OAuth registration, and live-binding proof gates.
 - [`cost-management-app`](./cost-management-app/README.md): generated operational app with a real cost engine: org-wide waste findings priced from config data, then a finding-owned dry run, short-lived exact review, explicit execution confirmation, revision-verified mutation, and receipt. The reduction plane beside [`cost-estimator`](./cost-estimator/README.md)'s enforcement plane.
@@ -58,7 +57,6 @@ If you are not logged in yet, run `cub auth login` before the `cub` commands.
 
 ## Recommended Starting Points
 
-- If you want to explore Initiatives and compliance workflows, start with [`initiatives-demo`](./initiatives-demo/README.md).
 - If you want the quickest no-cluster path, start with [`promotion-demo-data`](./promotion-demo-data/README.md).
 - If you want to understand Generators as functions on config data, start with
   [`spring-platform`](./spring-platform/), then move to
