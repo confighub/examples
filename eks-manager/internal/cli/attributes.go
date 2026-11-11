@@ -74,14 +74,14 @@ report and the server-side gate cannot drift apart.
 
 Once registered, attach a Trigger:
 
-  cub trigger create eks-disruption --space <space> \
-    --function vet-disruption --argument score-threshold=High \
-    --other-data-source LastReleasedRevisionNum --event Mutation --warn
+  cub trigger create --space <space> --warn eks-disruption Mutation Kubernetes/YAML \
+    -- vet-disruption --score-threshold=High
 
 The threshold decides which severities fail; the Trigger's Warn field decides
-whether a failure warns or blocks. Set --other-data-source explicitly: without a
-baseline the function cannot tell a wedging change from a clean slate, and it
-passes.
+whether a failure warns or blocks. vet-disruption grades each change against the
+Unit's last released revision, which ConfigHub passes it as its baseline. A Unit
+never released has no baseline, and passes: nothing has been applied that a
+change could disrupt.
 
 Paths are registered in their canonical object-shaped form
 (spec.forProvider.scalingConfig.desiredSize). A fleet still carrying deprecated
@@ -258,7 +258,6 @@ func printAttributePlan(cmd *cobra.Command, p attributePlan) {
 	}
 	fprintln(out, "Attach a Trigger to enforce them (threshold decides which severities fail;")
 	fprintln(out, "the Trigger's Warn field decides whether a failure warns or blocks):")
-	fprintln(out, fmt.Sprintf("  cub trigger create eks-disruption --space %s \\", p.Space))
-	fprintln(out, "    --function vet-disruption --argument score-threshold=High \\")
-	fprintln(out, "    --other-data-source LastReleasedRevisionNum --event Mutation --warn")
+	fprintln(out, fmt.Sprintf("  cub trigger create --space %s --warn eks-disruption Mutation Kubernetes/YAML \\", p.Space))
+	fprintln(out, "    -- vet-disruption --score-threshold=High")
 }
