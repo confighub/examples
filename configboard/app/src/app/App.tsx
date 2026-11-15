@@ -194,9 +194,11 @@ export function App() {
               </Button>
             }
           >
-            These four dashboards are bundled with the app. Saving them writes one
-            <code> AppConfig/YAML </code> unit each to the <code>configboard</code> Space, after
-            which they are editable, versioned config like anything else.
+            These {store.entries.length} dashboards are bundled with the app. Saving them writes
+            one <code> AppConfig/YAML </code> unit each to the <code>configboard</code> Space,
+            after which they are editable, versioned config like anything else. It also creates
+            the two <strong>Views</strong> the Version Skew dashboard reads configuration data
+            through.
           </Alert>
         )}
 

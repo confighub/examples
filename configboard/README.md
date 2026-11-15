@@ -56,7 +56,7 @@ Working now:
 - **A panel builder.** Pick a source, dimensions, a measure, and a form; see it
   rendered against your real data before saving. What it saves is the same panel stanza
   a hand-editor would write, appended to the document with comments intact.
-- **Data-path dimensions.** Two ConfigHub **Views** (seeded on request) read values out
+- **Data-path dimensions.** Two ConfigHub **Views** (created with the dashboards) read values out
   of the configuration itself — container image, replica count, cloud region, instance
   class — so dimensions are not limited to metadata. A `derive`/`coalesce` transform
   folds provider-specific spellings (`spec.forProvider.region` vs an ACK annotation)
@@ -102,6 +102,14 @@ npm install
 cp .env.example .env          # set VITE_OAUTH_CLIENT_ID=$CLIENT_ID
 npm run dev                   # http://localhost:5173
 ```
+
+On first sign-in the app shows the bundled dashboards without having written anything.
+**Save to ConfigHub** creates the `configboard` Space, one Unit per dashboard, and the
+two Views (`cb-workload`, `cb-cloud-resource`) that the Version Skew dashboard reads
+configuration data through. Until then, Version Skew's panels report that their View
+is missing. If the dashboards were saved by an earlier version of the app that did not
+create the Views, a **Create Views** banner offers them. No script creates any of this:
+the app is the only writer.
 
 Register the client in the **same organization as the app's users** — an app can only
 sign in members of the org that owns its `client_id`. See

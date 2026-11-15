@@ -69,11 +69,14 @@ tests catch one without the other.
 ## Storage (M1)
 
 Dashboards are `AppConfig/YAML` Units in a `configboard` Space, labelled
-`app=configboard`. `src/storage/dashboards.ts` is the only code that writes anything.
+`app=configboard`. The app's **Save to ConfigHub** creates them together with the two
+Views Version Skew reads (`src/storage/views.ts`); there is no setup script. Every write
+goes through `src/storage/`.
 
 ```bash
 cub unit list --space configboard --where "Labels.app = 'configboard'"
 cub revision list <slug> --space configboard      # every save is a revision
+cub view list --space configboard                  # cb-workload, cb-cloud-resource
 cub space delete configboard --recursive           # clean up
 ```
 

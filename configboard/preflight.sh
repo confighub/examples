@@ -102,8 +102,8 @@ echo
 
 if [[ "$space_count" -eq 0 || "$unit_count" -eq 0 ]]; then
   echo "  This organization has nothing to chart. Seed one of:"
-  echo "    ../promotion-demo-data   multi-app, multi-environment"
-  echo "    ../global-app            multi-service"
+  echo "    ../promotion-demo-data              multi-app, multi-environment"
+  echo "    ../global-app-layer/realistic-app   a three-component app"
   exit 0
 fi
 

@@ -165,7 +165,7 @@ export function useQueryResult(
     isFetching: active.isFetching || viewLookup.isFetching,
     error:
       viewMissing && spec.view
-        ? `View "${spec.view}" not found — seed the configboard Views, or fix the panel's view reference.`
+        ? `View "${spec.view}" not found. Create the configboard Views from the banner above, or fix the panel's view reference.`
         : errorMessage(active.error) ?? errorMessage(viewLookup.error),
     overSoftLimit: rows.length > SOFT_ROW_LIMIT && !overHardLimit,
     overHardLimit,
