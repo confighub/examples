@@ -108,7 +108,13 @@ export function useDashboards(enabled: boolean): DashboardsState {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled]);
 
-  /** Creates the bundled dashboards that are not stored yet. Existing ones are left alone. */
+  /**
+   * Creates the bundled dashboards that are not stored yet, and the Views they read.
+   * Existing dashboards and Views are left alone. The Views are part of the starter set
+   * because Version Skew renders nothing but errors without them, and offering them
+   * as a second, separate step left that dashboard broken for anyone who stopped after
+   * the first.
+   */
   const seedBundled = useCallback(async () => {
     setLoading(true);
     setError(undefined);
@@ -119,12 +125,14 @@ export function useDashboards(enabled: boolean): DashboardsState {
         await storage.create(entry.dashboard.slug, entry.yaml, entry.dashboard.title);
       }
       setStored(await storage.list());
+      await views.seed(await storage.ensureSpace());
+      setViewSlugs(await views.existing());
     } catch (e) {
       setError(message(e));
     } finally {
       setLoading(false);
     }
-  }, [storage, stored]);
+  }, [storage, stored, views]);
 
   const duplicate = useCallback(
     async (entry: DashboardEntry, slug: string, title: string) => {

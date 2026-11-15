@@ -562,16 +562,18 @@ part that waits on the bump.
 
 ## 8. Seed data and the demo story
 
-`configboard` should **not seed workloads** — it is a
-lens over whatever org it is pointed at. `setup.sh` seeds only its own Space,
-Views, Triggers, and the four starter dashboards, and prints what it found
-(spaces, label coverage, resource-type mix) so the user knows whether the org has
-enough shape to be interesting.
+`configboard` does **not seed workloads** — it is a lens over whatever org it is
+pointed at. There is no `setup.sh`. The app writes only its own Space, and only when
+asked: **Save to ConfigHub** creates the starter dashboards and the two Views Version
+Skew reads; recording Triggers and Filters are created from their own dialogs.
+`preflight.sh` is read-only and reports what the org has (Spaces, label coverage,
+Target binding) so the user knows whether it has enough shape to be interesting.
 
 For a populated org, compose existing examples: `promotion-demo-data` (multi-app,
 multi-environment clone chains → velocity and skew panels), `eks-manager` (Crossplane MRs →
-cloud-footprint panels), `global-app` (multi-service). If none exist, `setup.sh`
-should say so and name them rather than silently rendering four empty dashboards.
+cloud-footprint panels), `global-app-layer/realistic-app` (multi-component). If the org
+is empty, `preflight.sh` says so and names them rather than leaving the dashboards to
+render empty.
 
 Dimension coverage is the real prerequisite. `setup.sh --explain` should report
 which of `Component` / `Environment` / `Region` are present on Spaces, offer the
