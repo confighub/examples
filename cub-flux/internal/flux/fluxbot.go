@@ -7,7 +7,7 @@ import (
 
 // Flux has no reporter of its own. `cub flux status --watch` is one, for as
 // long as someone keeps it running where kubectl and a signed-in cub are. This
-// puts the same reporter on the cluster, as argobot is for Argo CD: one pod
+// puts the same reporter on the cluster, as k8sbot is for Argo CD: one pod
 // that reads the layers and records each release's live status, signed in as
 // the service account the Targets grant.
 //

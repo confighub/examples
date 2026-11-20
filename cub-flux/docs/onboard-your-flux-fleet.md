@@ -523,7 +523,7 @@ any other. It is no longer an edit to a `Kustomization` in Git.
 
 Once a layer reads ConfigHub, `cub flux status` records what Flux applied as
 live status on the Release it applied: what ConfigHub's Healthy gate, its
-change orders and its UI read. It is what argobot does for Argo CD, in the
+change orders and its UI read. It is what k8sbot does for Argo CD, in the
 same words, and nothing else does it for Flux.
 
 ```bash
@@ -550,7 +550,7 @@ passes the gate.
 
 Flux has no reporter of its own, so something has to run this for as long as
 the cluster is governed. `fluxbot.sh`, which `cub flux apply` writes beside the
-other scripts, runs it on the cluster itself, as argobot does for Argo CD:
+other scripts, runs it on the cluster itself, as k8sbot does for Argo CD:
 
 ```bash
 FLUX_CONTEXT=<dev-1> CLUSTER=dev-1 CONFIGHUB_URL=https://hub.confighub.com \
@@ -591,7 +591,7 @@ that works: the script waits, then fails and shows what the new pod said.
 `kubectl -n flux-system logs deploy/fluxbot` shows each pass. The script prints
 how to take it out again: one `kubectl delete`, and the grant.
 
-It is a step of its own on purpose, as `argobot.sh` is: the handover moves
+It is a step of its own on purpose, as `k8sbot.sh` is: the handover moves
 where Flux reads from and installs nothing, and a pod holding a ConfigHub
 credential is a separate thing to agree to. Without it, run `cub flux status
 --watch` yourself; both record the same thing for each layer, and a reading

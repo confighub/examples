@@ -128,7 +128,7 @@ ConfigHub (materialized raw Kubernetes YAML)
             → Flux or Argo CD reconciles workloads in the cluster
 ```
 
-The identity that pulls is a service account with View and ViewChildren on the Target. argobot runs in the cluster and syncs the Argo CD Application or Flux source when a Release is published, so a change shows up without waiting for the next poll.
+The identity that pulls is a service account with View and ViewChildren on the Target. k8sbot runs in the cluster and syncs the Argo CD Application or Flux source when a Release is published, so a change shows up without waiting for the next poll.
 
 The layered variant chain is the same whichever tool pulls. The Flux and Argo deployment variants at the leaf of `single-component` and `gpu-eks-h100-training` carry what each tool needs. The direct variant holds plain manifests; ConfigHub no longer applies to a cluster itself, so it is delivered through a Release like the others.
 

@@ -228,8 +228,8 @@ func TestReportStatusWritesOnlyWhatChanged(t *testing.T) {
 		{"same, recent", held(StatusReporter, "Synced", time.Minute), false, "unchanged"},
 		{"same, old enough to refresh", held(StatusReporter, "Synced", time.Hour), false, "written"},
 		{"changed", held(StatusReporter, "OutOfSync", time.Minute), false, "written"},
-		{"argobot reporting", held("argobot", "OutOfSync", time.Minute), false, "left"},
-		{"argobot stopped long ago", held("argobot", "OutOfSync", time.Hour), false, "written"},
+		{"k8sbot reporting", held("k8sbot", "OutOfSync", time.Minute), false, "left"},
+		{"k8sbot stopped long ago", held("k8sbot", "OutOfSync", time.Hour), false, "written"},
 		{"dry run", nil, true, "dry-run"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -248,7 +248,7 @@ func TestReportStatusWritesOnlyWhatChanged(t *testing.T) {
 			if len(wrote) == 1 && !strings.HasPrefix(wrote[0], `flux-apps-dev release 2 {"reporter":"cub-flux"`) {
 				t.Errorf("the status goes on release 2 of the Space, as ours: %s", wrote[0])
 			}
-			if tc.did == "left" && !strings.Contains(outs[0].Why, "argobot") {
+			if tc.did == "left" && !strings.Contains(outs[0].Why, "k8sbot") {
 				t.Errorf("say whose reading was left alone: %q", outs[0].Why)
 			}
 		})
@@ -277,7 +277,7 @@ func TestReportStatusRecordsNothingWithoutARelease(t *testing.T) {
 func TestLeftSpaceReplacesOurStaleReading(t *testing.T) {
 	now := time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)
 	ours := &LiveStatus{Reporter: StatusReporter, DataSource: "apps", Sync: "Synced", Health: "Healthy", Operation: "Succeeded", ObservedAt: now.Format(time.RFC3339)}
-	theirs := &LiveStatus{Reporter: "argobot", DataSource: "apps", Sync: "Synced", Health: "Healthy", Operation: "Succeeded", ObservedAt: now.Add(-time.Hour).Format(time.RFC3339)}
+	theirs := &LiveStatus{Reporter: "k8sbot", DataSource: "apps", Sync: "Synced", Health: "Healthy", Operation: "Succeeded", ObservedAt: now.Add(-time.Hour).Format(time.RFC3339)}
 	for _, tc := range []struct {
 		name string
 		held *LiveStatus
@@ -392,7 +392,7 @@ func TestWithdrawsAPassingReadingThatIsNoLongerTrue(t *testing.T) {
 	}{
 		{"rolled back to release 1", rolledBack, passing(StatusReporter), "written", `release 2 {"reporter":"cub-flux","dataSource":"apps","sync":"OutOfSync","health":"Unknown","message":"not what is running: Flux reports release 1"`},
 		{"no reading at all", notCompared, passing(StatusReporter), "written", `release 2 {"reporter":"cub-flux","dataSource":"apps","sync":"Unknown","health":"Unknown","message":"not known to be running: artifact not found`},
-		{"argobot's reading is not ours to withdraw", rolledBack, passing("argobot"), "", ""},
+		{"k8sbot's reading is not ours to withdraw", rolledBack, passing("k8sbot"), "", ""},
 		{"another Application's reading is not this one's", rolledBack, func() *LiveStatus { p := passing(StatusReporter); p.DataSource = "other"; return p }(), "", ""},
 		{"nothing on the newest release", rolledBack, nil, "", ""},
 	} {
@@ -428,16 +428,16 @@ func TestWithdrawsAPassingReadingThatIsNoLongerTrue(t *testing.T) {
 	}
 }
 
-// argobot writes only when something changes, so an old reading of its that
+// k8sbot writes only when something changes, so an old reading of its that
 // says the same is not a stopped reporter, and is left alone.
 func TestLeavesAnOldReadingOfAnotherReporterThatSaysTheSame(t *testing.T) {
 	now := time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)
 	reading := LiveStatus{Reporter: StatusReporter, DataSource: "apps", Sync: "Synced", Health: "Healthy", Operation: "Succeeded", ObservedAt: now.Format(time.RFC3339)}
 	theirs := reading
-	theirs.Reporter, theirs.Message, theirs.ObservedAt = "argobot", "its own words", now.Add(-24*time.Hour).Format(time.RFC3339)
+	theirs.Reporter, theirs.Message, theirs.ObservedAt = "k8sbot", "its own words", now.Add(-24*time.Hour).Format(time.RFC3339)
 	hub := &fakeHub{}
 	outs, err := ReportStatus(hub, []Reading{at(reading, &theirs)}, 10*time.Minute, false, now)
-	if err != nil || outs[0].Did != "left" || len(hub.recorded) != 0 || !strings.Contains(outs[0].Why, "argobot reported the same") {
+	if err != nil || outs[0].Did != "left" || len(hub.recorded) != 0 || !strings.Contains(outs[0].Why, "k8sbot reported the same") {
 		t.Errorf("want it left alone, and said why: %+v %v %v", outs, hub.recorded, err)
 	}
 }

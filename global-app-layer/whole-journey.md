@@ -84,7 +84,7 @@ If you started ConfigHub-only, continue like this:
 ./verify.sh
 ```
 
-Then set the deployment Space's release Target and publish a Release. Argo CD or Flux pulls it from ConfigHub's OCI registry, and argobot syncs on the release event:
+Then set the deployment Space's release Target and publish a Release. Argo CD or Flux pulls it from ConfigHub's OCI registry, and k8sbot syncs on the release event:
 
 ```bash
 source .state/state.env

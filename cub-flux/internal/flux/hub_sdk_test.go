@@ -45,7 +45,7 @@ func stubHub(t *testing.T) (*SDKHub, *[]string) {
 			all := []string{
 				`{"Release":{"ReleaseNum":1,"ManifestDigest":"sha256:m1","Published":true,"TagID":"` + tagID + `"}}`,
 				`{"Release":{"ReleaseID":"` + rel2ID + `","ReleaseNum":2,"ManifestDigest":"sha256:m2","Published":true,"TagID":"` + tagID + `",
-				  "LiveStatus":{"Reporter":"argobot","DataSource":"app","Sync":"Synced","Health":"Healthy","Operation":"Succeeded","ReporterSync":"Synced","Message":"m","ObservedAt":"2026-10-09T08:00:00Z"}}}`,
+				  "LiveStatus":{"Reporter":"k8sbot","DataSource":"app","Sync":"Synced","Health":"Healthy","Operation":"Succeeded","ReporterSync":"Synced","Message":"m","ObservedAt":"2026-10-09T08:00:00Z"}}}`,
 				`{"Release":{"ReleaseNum":3,"ManifestDigest":"sha256:m3","Published":false}}`,
 			}
 			switch q.Get("where") {
@@ -167,7 +167,7 @@ func TestSDKHubReadsAndRecordsLiveStatus(t *testing.T) {
 	if !strings.HasSuffix(last(asked), "select=ReleaseID,ReleaseNum,SpaceID,OrganizationID,Published,ManifestDigest,TagID,LiveStatus") {
 		t.Errorf("want the fields named: %s", last(asked))
 	}
-	if got, want := *all[1].Live, (LiveStatus{Reporter: "argobot", DataSource: "app", Sync: "Synced", Health: "Healthy", Operation: "Succeeded",
+	if got, want := *all[1].Live, (LiveStatus{Reporter: "k8sbot", DataSource: "app", Sync: "Synced", Health: "Healthy", Operation: "Succeeded",
 		ReporterSync: "Synced", Message: "m", ObservedAt: "2026-10-09T08:00:00Z"}); got != want {
 		t.Errorf("want %+v, got %+v", want, got)
 	}
