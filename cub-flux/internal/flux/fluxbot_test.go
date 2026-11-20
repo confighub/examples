@@ -52,7 +52,7 @@ case " $* " in
   *" key add "*) [ -z "${KEY_ADD_FAILS:-}" ] || exit 1; printf '{"d":"s3cret"}' > "${@: -3:1}"; touch "$STUB_LOG.added" ;;
   *" key list "*)
     for k in ${KEYS:-}; do echo "$k fluxbot on dev"; done
-    echo "k-other argobot on ctx-a"
+    echo "k-other k8sbot on ctx-a"
     [ ! -f "$STUB_LOG.added" ] || echo "k-new fluxbot on dev" ;;
 esac
 exit 0

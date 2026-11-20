@@ -14,7 +14,7 @@ import (
 // recorded on the Release: what the tool deploying that Release says about it
 // running. ConfigHub's Healthy gate reads the newest published Release of a
 // Space and nothing else, so a Release no tool has reported on is not healthy,
-// however the one before it was. argobot records it for Argo CD; this records
+// however the one before it was. k8sbot records it for Argo CD; this records
 // it for Flux, in the same normalized words, so the gate, change order stages
 // and the UI read both alike.
 //
@@ -538,8 +538,8 @@ type Outcome struct {
 // sign this reporter is still running, so an unchanged reading is written
 // again now and then.
 //
-// A reading another reporter wrote, argobot say, is left alone while it is
-// fresher than refresh, and for as long as it says the same: argobot writes
+// A reading another reporter wrote, k8sbot say, is left alone while it is
+// fresher than refresh, and for as long as it says the same: k8sbot writes
 // only when something changes, so an old reading of its is not a stopped
 // reporter. It is replaced only when it is both old and different.
 //

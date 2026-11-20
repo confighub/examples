@@ -194,7 +194,7 @@ cub release publish "${PREFIX}-deploy-cluster-a-flux"
 What to explain:
 
 - A Release bundles the Units in the Space that are assigned to the Space's release Target, and serves them from ConfigHub's OCI registry
-- Argo CD or Flux pulls the Release from there; argobot syncs on release events
+- Argo CD or Flux pulls the Release from there; k8sbot syncs on release events
 
 GUI now: Inspect the Release in the deploy space.
 

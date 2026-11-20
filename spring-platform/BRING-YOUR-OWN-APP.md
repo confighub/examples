@@ -71,7 +71,7 @@ cd my-service  # your scaffolded directory
 ```
 
 Delivery to a cluster is out of scope for this example. ConfigHub delivers
-Releases to clusters through Argo CD or Flux, driven by a bot such as argobot.
+Releases to clusters through Argo CD or Flux, driven by a bot such as k8sbot.
 
 ## From This Example to the Real Tool
 
