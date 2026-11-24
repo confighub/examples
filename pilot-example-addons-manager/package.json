@@ -31,8 +31,8 @@
     "verify": "node scripts/verify.mjs && npm test"
   },
   "dependencies": {
-    "@confighub/react-auth": "^0.11.5",
-    "@confighub/api": "^0.11.5",
+    "@confighub/react-auth": "^0.11.15",
+    "@confighub/api": "^0.11.15",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
